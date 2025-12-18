@@ -6,7 +6,7 @@ import {
     sqliteTable,
     text
 } from "drizzle-orm/sqlite-core";
-import { domains, exitNodes, orgs, sessions, users } from "./schema";
+import { domains, exitNodes, olms, orgs, sessions, users } from "./schema";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -289,6 +289,27 @@ export const accessAuditLog = sqliteTable(
     ]
 );
 
+export const approvals = sqliteTable("approvals", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    timestamp: integer("timestamp").notNull(), // this is EPOCH time in seconds
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    olmId: text("olmId").references(() => olms.olmId, {
+        onDelete: "cascade"
+    }), // olms reference user devices clients
+    decision: text("type")
+        .$type<"approved" | "denied" | "pending">()
+        .default("pending")
+        .notNull(),
+    type: text("type")
+        .$type<"user_device" /*| 'proxy' // for later */>()
+        .notNull()
+});
+
+export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
 export type Certificate = InferSelectModel<typeof certificates>;
