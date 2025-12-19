@@ -503,7 +503,10 @@ export const roles = sqliteTable("roles", {
         .notNull(),
     isAdmin: integer("isAdmin", { mode: "boolean" }),
     name: text("name").notNull(),
-    description: text("description")
+    description: text("description"),
+    requireDeviceApproval: integer("requireDeviceApproval", {
+        mode: "boolean"
+    }).default(false)
 });
 
 export const roleActions = sqliteTable("roleActions", {

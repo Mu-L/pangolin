@@ -355,7 +355,8 @@ export const roles = pgTable("roles", {
         .notNull(),
     isAdmin: boolean("isAdmin"),
     name: varchar("name").notNull(),
-    description: varchar("description")
+    description: varchar("description"),
+    requireDeviceApproval: boolean("requireDeviceApproval").default(false)
 });
 
 export const roleActions = pgTable("roleActions", {
@@ -699,7 +700,10 @@ export const olms = pgTable("olms", {
     userId: text("userId").references(() => users.userId, {
         // optionally tied to a user and in this case delete when the user deletes
         onDelete: "cascade"
-    })
+    }),
+    authorizationState: varchar("authorizationState")
+        .$type<"pending" | "authorized" | "denied">()
+        .default("authorized")
 });
 
 export const olmSessions = pgTable("clientSession", {

@@ -307,7 +307,11 @@ export const approvals = pgTable("approvals", {
         .notNull(),
     olmId: varchar("olmId").references(() => olms.olmId, {
         onDelete: "cascade"
-    }), // olms reference user devices clients
+    }), // olms reference user devices clients (in this case)
+    userId: varchar("userId").references(() => users.userId, {
+        // optionally tied to a user and in this case delete when the user deletes
+        onDelete: "cascade"
+    }),
     decision: varchar("type")
         .$type<"approved" | "denied" | "pending">()
         .default("pending")
