@@ -1,4 +1,4 @@
-import { db, requestAuditLog, driver } from "@server/db";
+import { db, requestAuditLog, driver, primaryDb } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -74,12 +74,12 @@ async function query(query: Q) {
         );
     }
 
-    const [all] = await db
+    const [all] = await primaryDb
         .select({ total: count() })
         .from(requestAuditLog)
         .where(baseConditions);
 
-    const [blocked] = await db
+    const [blocked] = await primaryDb
         .select({ total: count() })
         .from(requestAuditLog)
         .where(and(baseConditions, eq(requestAuditLog.action, false)));
@@ -88,7 +88,9 @@ async function query(query: Q) {
         .mapWith(Number)
         .as("total");
 
-    const requestsPerCountry = await db
+    const DISTINCT_LIMIT = 500;
+
+    const requestsPerCountry = await primaryDb
         .selectDistinct({
             code: requestAuditLog.location,
             count: totalQ
@@ -96,7 +98,16 @@ async function query(query: Q) {
         .from(requestAuditLog)
         .where(and(baseConditions, not(isNull(requestAuditLog.location))))
         .groupBy(requestAuditLog.location)
-        .orderBy(desc(totalQ));
+        .orderBy(desc(totalQ))
+        .limit(DISTINCT_LIMIT+1);
+
+    if (requestsPerCountry.length > DISTINCT_LIMIT) {
+        // throw an error
+        throw createHttpError(
+            HttpCode.BAD_REQUEST,
+            `Too many distinct countries. Please narrow your query.`
+        );
+    }
 
     const groupByDayFunction =
         driver === "pg"
@@ -106,7 +117,7 @@ async function query(query: Q) {
     const booleanTrue = driver === "pg" ? sql`true` : sql`1`;
     const booleanFalse = driver === "pg" ? sql`false` : sql`0`;
 
-    const requestsPerDay = await db
+    const requestsPerDay = await primaryDb
         .select({
             day: groupByDayFunction.as("day"),
             allowedCount:

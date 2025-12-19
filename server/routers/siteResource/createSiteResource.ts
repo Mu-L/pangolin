@@ -2,6 +2,7 @@ import {
     clientSiteResources,
     db,
     newts,
+    orgs,
     roles,
     roleSiteResources,
     SiteResource,
@@ -10,7 +11,7 @@ import {
     userSiteResources
 } from "@server/db";
 import { getUniqueSiteResourceName } from "@server/db/names";
-import { getNextAvailableAliasAddress, portRangeStringSchema } from "@server/lib/ip";
+import { getNextAvailableAliasAddress, isIpInCidr, portRangeStringSchema } from "@server/lib/ip";
 import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
 import response from "@server/lib/response";
 import logger from "@server/logger";
@@ -84,8 +85,7 @@ const createSiteResourceSchema = z
             if (data.mode === "cidr") {
                 // Check if it's a valid CIDR (v4 or v6)
                 const isValidCIDR = z
-                    // .union([z.cidrv4(), z.cidrv6()])
-                    .union([z.cidrv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                    .union([z.cidrv4(), z.cidrv6()])
                     .safeParse(data.destination).success;
                 return isValidCIDR;
             }
@@ -173,6 +173,39 @@ export async function createSiteResource(
 
         if (!site) {
             return next(createHttpError(HttpCode.NOT_FOUND, "Site not found"));
+        }
+
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(createHttpError(HttpCode.NOT_FOUND, "Organization not found"));
+        }
+
+        if (!org.subnet || !org.utilitySubnet) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    `Organization with ID ${orgId} has no subnet or utilitySubnet defined defined`
+                )
+            );
+        }
+
+        // Only check if destination is an IP address
+        const isIp = z.union([z.ipv4(), z.ipv6()]).safeParse(destination).success;
+        if (
+            isIp &&
+            (isIpInCidr(destination, org.subnet) || isIpInCidr(destination, org.utilitySubnet))
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "IP can not be in the CIDR range of the organization's subnet or utility subnet"
+                )
+            );
         }
 
         // // check if resource with same protocol and proxy port already exists (only for port mode)

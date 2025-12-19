@@ -1,4 +1,4 @@
-import { db, requestAuditLog, resources } from "@server/db";
+import { db, primaryDb, requestAuditLog, resources } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -107,7 +107,7 @@ function getWhere(data: Q) {
 }
 
 export function queryRequest(data: Q) {
-    return db
+    return primaryDb
         .select({
             id: requestAuditLog.id,
             timestamp: requestAuditLog.timestamp,
@@ -143,7 +143,7 @@ export function queryRequest(data: Q) {
 }
 
 export function countRequestQuery(data: Q) {
-    const countQuery = db
+    const countQuery = primaryDb
         .select({ count: count() })
         .from(requestAuditLog)
         .where(getWhere(data));
@@ -173,50 +173,61 @@ async function queryUniqueFilterAttributes(
         eq(requestAuditLog.orgId, orgId)
     );
 
-    // Get unique actors
-    const uniqueActors = await db
-        .selectDistinct({
-            actor: requestAuditLog.actor
-        })
-        .from(requestAuditLog)
-        .where(baseConditions);
+    const DISTINCT_LIMIT = 500;
 
-    // Get unique locations
-    const uniqueLocations = await db
-        .selectDistinct({
-            locations: requestAuditLog.location
-        })
-        .from(requestAuditLog)
-        .where(baseConditions);
+    // TODO: SOMEONE PLEASE OPTIMIZE THIS!!!!!
 
-    // Get unique actors
-    const uniqueHosts = await db
-        .selectDistinct({
-            hosts: requestAuditLog.host
-        })
-        .from(requestAuditLog)
-        .where(baseConditions);
+    // Run all queries in parallel
+    const [
+        uniqueActors,
+        uniqueLocations,
+        uniqueHosts,
+        uniquePaths,
+        uniqueResources
+    ] = await Promise.all([
+        primaryDb
+            .selectDistinct({ actor: requestAuditLog.actor })
+            .from(requestAuditLog)
+            .where(baseConditions)
+            .limit(DISTINCT_LIMIT+1),
+        primaryDb
+            .selectDistinct({ locations: requestAuditLog.location })
+            .from(requestAuditLog)
+            .where(baseConditions)
+            .limit(DISTINCT_LIMIT+1),
+        primaryDb
+            .selectDistinct({ hosts: requestAuditLog.host })
+            .from(requestAuditLog)
+            .where(baseConditions)
+            .limit(DISTINCT_LIMIT+1),
+        primaryDb
+            .selectDistinct({ paths: requestAuditLog.path })
+            .from(requestAuditLog)
+            .where(baseConditions)
+            .limit(DISTINCT_LIMIT+1),
+        primaryDb
+            .selectDistinct({
+                id: requestAuditLog.resourceId,
+                name: resources.name
+            })
+            .from(requestAuditLog)
+            .leftJoin(
+                resources,
+                eq(requestAuditLog.resourceId, resources.resourceId)
+            )
+            .where(baseConditions)
+            .limit(DISTINCT_LIMIT+1)
+    ]);
 
-    // Get unique actors
-    const uniquePaths = await db
-        .selectDistinct({
-            paths: requestAuditLog.path
-        })
-        .from(requestAuditLog)
-        .where(baseConditions);
-
-    // Get unique resources with names
-    const uniqueResources = await db
-        .selectDistinct({
-            id: requestAuditLog.resourceId,
-            name: resources.name
-        })
-        .from(requestAuditLog)
-        .leftJoin(
-            resources,
-            eq(requestAuditLog.resourceId, resources.resourceId)
-        )
-        .where(baseConditions);
+    if (
+        uniqueActors.length > DISTINCT_LIMIT ||
+        uniqueLocations.length > DISTINCT_LIMIT ||
+        uniqueHosts.length > DISTINCT_LIMIT ||
+        uniquePaths.length > DISTINCT_LIMIT ||
+        uniqueResources.length > DISTINCT_LIMIT
+    ) {
+        throw new Error("Too many distinct filter attributes to retrieve. Please refine your time range.");
+    }
 
     return {
         actors: uniqueActors
@@ -295,6 +306,12 @@ export async function queryRequestAuditLogs(
         });
     } catch (error) {
         logger.error(error);
+        // if the message is "Too many distinct filter attributes to retrieve. Please refine your time range.", return a 400 and the message
+        if (error instanceof Error && error.message === "Too many distinct filter attributes to retrieve. Please refine your time range.") {
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, error.message)
+            );
+        }
         return next(
             createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
         );

@@ -303,6 +303,24 @@ export default function Page() {
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
+                        <div>
+                            <div className="mb-2">
+                                <span className="text-sm font-medium">
+                                    {t("idpType")}
+                                </span>
+                            </div>
+                            <StrategySelect
+                                options={providerTypes}
+                                defaultValue={form.getValues("type")}
+                                onChange={(value) => {
+                                    handleProviderChange(
+                                        value as "oidc" | "google" | "azure"
+                                    );
+                                }}
+                                cols={3}
+                            />
+                        </div>
+
                         <SettingsSectionForm>
                             <Form {...form}>
                                 <form
@@ -331,24 +349,6 @@ export default function Page() {
                                 </form>
                             </Form>
                         </SettingsSectionForm>
-
-                        <div>
-                            <div className="mb-2">
-                                <span className="text-sm font-medium">
-                                    {t("idpType")}
-                                </span>
-                            </div>
-                            <StrategySelect
-                                options={providerTypes}
-                                defaultValue={form.getValues("type")}
-                                onChange={(value) => {
-                                    handleProviderChange(
-                                        value as "oidc" | "google" | "azure"
-                                    );
-                                }}
-                                cols={3}
-                            />
-                        </div>
                     </SettingsSectionBody>
                 </SettingsSection>
 

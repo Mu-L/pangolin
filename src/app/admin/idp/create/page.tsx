@@ -209,22 +209,22 @@ export default function Page() {
                             </Form>
                         </SettingsSectionForm>
 
-                        <div>
-                            <div className="mb-2">
-                                <span className="text-sm font-medium">
-                                    {t("idpType")}
-                                </span>
-                            </div>
-
-                            <StrategySelect
-                                options={providerTypes}
-                                defaultValue={form.getValues("type")}
-                                onChange={(value) => {
-                                    form.setValue("type", value as "oidc");
-                                }}
-                                cols={3}
-                            />
-                        </div>
+                        {/* <div> */}
+                        {/*     <div className="mb-2"> */}
+                        {/*         <span className="text-sm font-medium"> */}
+                        {/*             {t("idpType")} */}
+                        {/*         </span> */}
+                        {/*     </div> */}
+                        {/*  */}
+                        {/*     <StrategySelect */}
+                        {/*         options={providerTypes} */}
+                        {/*         defaultValue={form.getValues("type")} */}
+                        {/*         onChange={(value) => { */}
+                        {/*             form.setValue("type", value as "oidc"); */}
+                        {/*         }} */}
+                        {/*         cols={3} */}
+                        {/*     /> */}
+                        {/* </div> */}
                     </SettingsSectionBody>
                 </SettingsSection>
 

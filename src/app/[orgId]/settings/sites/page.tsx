@@ -4,6 +4,7 @@ import { ListSitesResponse } from "@server/routers/site";
 import { AxiosResponse } from "axios";
 import SitesTable, { SiteRow } from "../../../../components/SitesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
+import SitesBanner from "@app/components/SitesBanner";
 import SitesSplashCard from "../../../../components/SitesSplashCard";
 import { getTranslations } from "next-intl/server";
 
@@ -66,6 +67,8 @@ export default async function SitesPage(props: SitesPageProps) {
                 title={t("siteManageSites")}
                 description={t("siteDescription")}
             />
+
+            <SitesBanner />
 
             <SitesTable sites={siteRows} orgId={params.orgId} />
         </>

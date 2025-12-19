@@ -59,13 +59,14 @@ export default function CertificateStatus({
         }
     };
 
-    const shouldShowRefreshButton = (status: string, updatedAt: string) => {
+    const shouldShowRefreshButton = (status: string, updatedAt: number) => {
         return (
             status === "failed" ||
             status === "expired" ||
             (status === "requested" &&
                 updatedAt &&
-                new Date(updatedAt).getTime() < Date.now() - 5 * 60 * 1000)
+                new Date(updatedAt * 1000).getTime() <
+                    Date.now() - 5 * 60 * 1000)
         );
     };
 

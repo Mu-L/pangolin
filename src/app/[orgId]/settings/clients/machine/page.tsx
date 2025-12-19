@@ -1,6 +1,7 @@
 import type { ClientRow } from "@app/components/MachineClientsTable";
 import MachineClientsTable from "@app/components/MachineClientsTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
+import MachineClientsBanner from "@app/components/MachineClientsBanner";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import { ListClientsResponse } from "@server/routers/client";
@@ -70,6 +71,8 @@ export default async function ClientsPage(props: ClientsPageProps) {
                 title={t("manageMachineClients")}
                 description={t("manageMachineClientsDescription")}
             />
+
+            <MachineClientsBanner orgId={params.orgId} />
 
             <MachineClientsTable
                 machineClients={machineClientRows}

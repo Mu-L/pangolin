@@ -1,6 +1,7 @@
 import type { ResourceRow } from "@app/components/ProxyResourcesTable";
 import ProxyResourcesTable from "@app/components/ProxyResourcesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
+import ProxyResourcesBanner from "@app/components/ProxyResourcesBanner";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import OrgProvider from "@app/providers/OrgProvider";
@@ -96,6 +97,8 @@ export default async function ProxyResourcesPage(
                 title={t("proxyResourceTitle")}
                 description={t("proxyResourceDescription")}
             />
+
+            <ProxyResourcesBanner />
 
             <OrgProvider org={org}>
                 <ProxyResourcesTable

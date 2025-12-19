@@ -6,8 +6,8 @@ export type GetCertificateResponse = {
     status: string; // pending, requested, valid, expired, failed
     expiresAt: string | null;
     lastRenewalAttempt: Date | null;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: number;
+    updatedAt: number;
     errorMessage?: string | null;
     renewalCount: number;
 };

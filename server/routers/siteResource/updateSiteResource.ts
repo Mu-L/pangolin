@@ -5,6 +5,7 @@ import {
     clientSiteResourcesAssociationsCache,
     db,
     newts,
+    orgs,
     roles,
     roleSiteResources,
     sites,
@@ -24,6 +25,7 @@ import {
     generateAliasConfig,
     generateRemoteSubnets,
     generateSubnetProxyTargets,
+    isIpInCidr,
     portRangeStringSchema
 } from "@server/lib/ip";
 import {
@@ -96,8 +98,7 @@ const updateSiteResourceSchema = z
             if (data.mode === "cidr" && data.destination) {
                 // Check if it's a valid CIDR (v4 or v6)
                 const isValidCIDR = z
-                    // .union([z.cidrv4(), z.cidrv6()])
-                    .union([z.cidrv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                    .union([z.cidrv4(), z.cidrv6()])
                     .safeParse(data.destination).success;
                 return isValidCIDR;
             }
@@ -193,6 +194,39 @@ export async function updateSiteResource(
         if (!existingSiteResource) {
             return next(
                 createHttpError(HttpCode.NOT_FOUND, "Site resource not found")
+            );
+        }
+
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, existingSiteResource.orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(createHttpError(HttpCode.NOT_FOUND, "Organization not found"));
+        }
+
+        if (!org.subnet || !org.utilitySubnet) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    `Organization with ID ${existingSiteResource.orgId} has no subnet or utilitySubnet defined defined`
+                )
+            );
+        }
+
+        // Only check if destination is an IP address
+        const isIp = z.union([z.ipv4(), z.ipv6()]).safeParse(destination).success;
+        if (
+            isIp &&
+            (isIpInCidr(destination!, org.subnet) || isIpInCidr(destination!, org.utilitySubnet))
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "IP can not be in the CIDR range of the organization's subnet or utility subnet"
+                )
             );
         }
 

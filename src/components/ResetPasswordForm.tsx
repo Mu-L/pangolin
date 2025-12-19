@@ -546,6 +546,7 @@ export default function ResetPasswordForm({
                                     )}
                                     <Button
                                         type="button"
+                                        variant="outline"
                                         className="w-full"
                                         onClick={() => {
                                             const email =

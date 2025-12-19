@@ -24,7 +24,7 @@ import {
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
-import { ChevronDown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { build } from "@server/build";
 
 export type SidebarNavItem = {
@@ -51,6 +51,7 @@ export interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
 type CollapsibleNavItemProps = {
     item: SidebarNavItem;
     level: number;
+    isActive: boolean;
     isChildActive: boolean;
     isDisabled: boolean;
     isCollapsed: boolean;
@@ -63,6 +64,7 @@ type CollapsibleNavItemProps = {
 function CollapsibleNavItem({
     item,
     level,
+    isActive,
     isChildActive,
     isDisabled,
     isCollapsed,
@@ -112,30 +114,30 @@ function CollapsibleNavItem({
             <CollapsibleTrigger asChild>
                 <button
                     className={cn(
-                        "flex items-center w-full rounded transition-colors hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
-                        level === 0 ? "p-3 py-1.5" : "py-1.5",
-                        isChildActive
-                            ? "text-primary font-medium"
-                            : "text-muted-foreground hover:text-foreground",
+                        "flex items-center w-full rounded-md transition-colors",
+                        level === 0 ? "px-3 py-2" : "px-3 py-1.5",
+                        isActive
+                            ? "bg-secondary text-primary font-medium"
+                            : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                         isDisabled && "cursor-not-allowed opacity-60"
                     )}
                     disabled={isDisabled}
                 >
                     {item.icon && (
-                        <span className="flex-shrink-0 mr-2">{item.icon}</span>
+                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">{item.icon}</span>
                     )}
-                    <div className="flex items-center gap-1.5 flex-1">
-                        <span className="text-left">{t(item.title)}</span>
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className="text-left truncate">{t(item.title)}</span>
                         {item.isBeta && (
                             <Badge
                                 variant="outline"
-                                className="text-muted-foreground"
+                                className="text-muted-foreground flex-shrink-0"
                             >
                                 {t("beta")}
                             </Badge>
                         )}
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                         {build === "enterprise" &&
                             item.showEE &&
                             !isUnlocked() && (
@@ -143,10 +145,10 @@ function CollapsibleNavItem({
                                     {t("licenseBadge")}
                                 </Badge>
                             )}
-                        <ChevronDown
+                        <ChevronRight
                             className={cn(
-                                "h-4 w-4 transition-transform duration-300 ease-in-out",
-                                "group-data-[state=open]/collapsible:rotate-180"
+                                "h-4 w-4 transition-transform duration-300 ease-in-out text-muted-foreground",
+                                "group-data-[state=open]/collapsible:rotate-90"
                             )}
                         />
                     </div>
@@ -155,7 +157,7 @@ function CollapsibleNavItem({
             <CollapsibleContent>
                 <div
                     className={cn(
-                        "border-l ml-3 pl-2 mt-1 space-y-1",
+                        "border-l ml-3 pl-3 mt-0 space-y-0",
                         "border-border"
                     )}
                 >
@@ -236,6 +238,7 @@ export function SidebarNav({
                     key={item.title}
                     item={item}
                     level={level}
+                    isActive={isActive}
                     isChildActive={isChildActive}
                     isDisabled={isDisabled || false}
                     isCollapsed={isCollapsed}
@@ -252,11 +255,11 @@ export function SidebarNav({
             <Link
                 href={isDisabled ? "#" : hydratedHref}
                 className={cn(
-                    "flex items-center rounded transition-colors hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
-                    isCollapsed ? "px-2 py-2 justify-center" : "px-3 py-1.5",
+                    "flex items-center rounded-md transition-colors",
+                    isCollapsed ? "px-2 py-2 justify-center" : level === 0 ? "px-3 py-2" : "px-3 py-1.5",
                     isActive
-                        ? "text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground",
+                        ? "bg-secondary text-primary font-medium"
+                        : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
                 onClick={(e) => {
@@ -271,19 +274,22 @@ export function SidebarNav({
             >
                 {item.icon && (
                     <span
-                        className={cn("flex-shrink-0", !isCollapsed && "mr-2")}
+                        className={cn(
+                            "flex-shrink-0 w-5 h-5 flex items-center justify-center",
+                            !isCollapsed && "mr-3"
+                        )}
                     >
                         {item.icon}
                     </span>
                 )}
                 {!isCollapsed && (
                     <>
-                        <div className="flex items-center gap-1.5 flex-1">
-                            <span>{t(item.title)}</span>
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <span className="truncate">{t(item.title)}</span>
                             {item.isBeta && (
                                 <Badge
                                     variant="outline"
-                                    className="text-muted-foreground"
+                                    className="text-muted-foreground flex-shrink-0"
                                 >
                                     {t("beta")}
                                 </Badge>
@@ -292,7 +298,7 @@ export function SidebarNav({
                         {build === "enterprise" &&
                             item.showEE &&
                             !isUnlocked() && (
-                                <Badge variant="outlinePrimary">
+                                <Badge variant="outlinePrimary" className="flex-shrink-0">
                                     {t("licenseBadge")}
                                 </Badge>
                             )}
@@ -302,27 +308,28 @@ export function SidebarNav({
         ) : (
             <div
                 className={cn(
-                    "flex items-center rounded transition-colors px-3 py-1.5",
+                    "flex items-center rounded-md transition-colors",
+                    level === 0 ? "px-3 py-2" : "px-3 py-1.5",
                     "text-muted-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
             >
                 {item.icon && (
-                    <span className="flex-shrink-0 mr-2">{item.icon}</span>
+                    <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">{item.icon}</span>
                 )}
-                <div className="flex items-center gap-1.5 flex-1">
-                    <span>{t(item.title)}</span>
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="truncate">{t(item.title)}</span>
                     {item.isBeta && (
                         <Badge
                             variant="outline"
-                            className="text-muted-foreground"
+                            className="text-muted-foreground flex-shrink-0"
                         >
                             {t("beta")}
                         </Badge>
                     )}
                 </div>
                 {build === "enterprise" && item.showEE && !isUnlocked() && (
-                    <Badge variant="outlinePrimary">{t("licenseBadge")}</Badge>
+                    <Badge variant="outlinePrimary" className="flex-shrink-0 ml-2">{t("licenseBadge")}</Badge>
                 )}
             </div>
         );
@@ -338,17 +345,17 @@ export function SidebarNav({
                                     <TooltipTrigger asChild>
                                         <button
                                             className={cn(
-                                                "flex items-center rounded transition-colors hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md px-2 py-2 justify-center w-full",
-                                                isChildActive
-                                                    ? "text-primary font-medium"
-                                                    : "text-muted-foreground hover:text-foreground",
+                                                "flex items-center rounded-md transition-colors px-2 py-2 justify-center w-full",
+                                                isActive || isChildActive
+                                                    ? "bg-secondary text-primary font-medium"
+                                                    : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                                                 isDisabled &&
                                                     "cursor-not-allowed opacity-60"
                                             )}
                                             disabled={isDisabled}
                                         >
                                             {item.icon && (
-                                                <span className="flex-shrink-0">
+                                                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                                                     {item.icon}
                                                 </span>
                                             )}
@@ -393,7 +400,7 @@ export function SidebarNav({
                                                             : childHydratedHref
                                                     }
                                                     className={cn(
-                                                        "flex items-center rounded transition-colors px-3 py-1.5 text-sm",
+                                                        "flex items-center rounded-md transition-colors px-3 py-1.5 text-sm",
                                                         childIsActive
                                                             ? "bg-secondary text-primary font-medium"
                                                             : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
@@ -411,18 +418,18 @@ export function SidebarNav({
                                                     }}
                                                 >
                                                     {childItem.icon && (
-                                                        <span className="flex-shrink-0 mr-2">
+                                                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">
                                                             {childItem.icon}
                                                         </span>
                                                     )}
-                                                    <div className="flex items-center gap-1.5 flex-1">
-                                                        <span>
+                                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                                        <span className="truncate">
                                                             {t(childItem.title)}
                                                         </span>
                                                         {childItem.isBeta && (
                                                             <Badge
                                                                 variant="outline"
-                                                                className="text-muted-foreground"
+                                                                className="text-muted-foreground flex-shrink-0"
                                                             >
                                                                 {t("beta")}
                                                             </Badge>
@@ -431,7 +438,7 @@ export function SidebarNav({
                                                     {build === "enterprise" &&
                                                         childItem.showEE &&
                                                         !isUnlocked() && (
-                                                            <Badge variant="outlinePrimary">
+                                                            <Badge variant="outlinePrimary" className="flex-shrink-0 ml-2">
                                                                 {t(
                                                                     "licenseBadge"
                                                                 )}
@@ -467,20 +474,20 @@ export function SidebarNav({
     return (
         <nav
             className={cn(
-                "flex flex-col gap-2 text-sm",
+                "flex flex-col text-sm",
                 disabled && "pointer-events-none opacity-60",
                 className
             )}
             {...props}
         >
-            {sections.map((section) => (
-                <div key={section.heading} className="mb-2">
+            {sections.map((section, sectionIndex) => (
+                <div key={section.heading} className={cn(sectionIndex > 0 && "mt-4")}>
                     {!isCollapsed && (
-                        <div className="px-3 py-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wide">
+                        <div className="px-3 py-2 text-xs font-medium text-muted-foreground/80 uppercase tracking-wider">
                             {t(`${section.heading}`)}
                         </div>
                     )}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-0">
                         {section.items.map((item) => renderNavItem(item, 0))}
                     </div>
                 </div>

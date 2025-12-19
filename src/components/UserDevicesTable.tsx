@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "./ui/badge";
 import { InfoPopup } from "./ui/info-popup";
+import ClientDownloadBanner from "./ClientDownloadBanner";
 
 export type ClientRow = {
     id: number;
@@ -412,6 +413,8 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                     title="Delete Client"
                 />
             )}
+
+            <ClientDownloadBanner />
 
             <DataTable
                 columns={columns}

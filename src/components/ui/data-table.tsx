@@ -30,7 +30,7 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { Button } from "@app/components/ui/button";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@app/components/ui/input";
 import { DataTablePagination } from "@app/components/DataTablePagination";
 import { Plus, Search, RefreshCw, Columns } from "lucide-react";
@@ -236,6 +236,12 @@ export function DataTable<TData, TValue>({
         defaultTab || tabs?.[0]?.id || ""
     );
 
+    // Track initial values to avoid storing defaults on first render
+    const initialPageSize = useRef(pageSize);
+    const initialColumnVisibilityState = useRef(columnVisibility);
+    const hasUserChangedPageSize = useRef(false);
+    const hasUserChangedColumnVisibility = useRef(false);
+
     // Apply tab filter to data
     const filteredData = useMemo(() => {
         if (!tabs || activeTab === "") {
@@ -278,18 +284,26 @@ export function DataTable<TData, TValue>({
         }
     });
 
-    // Persist pageSize to localStorage when it changes
+    // Persist pageSize to localStorage when it changes (but not on initial mount)
     useEffect(() => {
         if (persistPageSize && pagination.pageSize !== pageSize) {
-            setStoredPageSize(pagination.pageSize, tableId);
+            // Only store if user has actually changed it from initial value
+            if (hasUserChangedPageSize.current && pagination.pageSize !== initialPageSize.current) {
+                setStoredPageSize(pagination.pageSize, tableId);
+            }
             setPageSize(pagination.pageSize);
         }
     }, [pagination.pageSize, persistPageSize, tableId, pageSize]);
 
     useEffect(() => {
-        // Persist column visibility to localStorage when it changes
+        // Persist column visibility to localStorage when it changes (but not on initial mount)
         if (shouldPersistColumnVisibility) {
-            setStoredColumnVisibility(columnVisibility, tableId);
+            const hasChanged = JSON.stringify(columnVisibility) !== JSON.stringify(initialColumnVisibilityState.current);
+            if (hasChanged) {
+                // Mark as user-initiated change and persist
+                hasUserChangedColumnVisibility.current = true;
+                setStoredColumnVisibility(columnVisibility, tableId);
+            }
         }
     }, [columnVisibility, shouldPersistColumnVisibility, tableId]);
 
@@ -301,6 +315,7 @@ export function DataTable<TData, TValue>({
 
     // Enhanced pagination component that updates our local state
     const handlePageSizeChange = (newPageSize: number) => {
+        hasUserChangedPageSize.current = true;
         setPagination((prev) => ({
             ...prev,
             pageSize: newPageSize,
@@ -308,7 +323,7 @@ export function DataTable<TData, TValue>({
         }));
         setPageSize(newPageSize);
 
-        // Persist immediately when changed
+        // Persist immediately when user changes it
         if (persistPageSize) {
             setStoredPageSize(newPageSize, tableId);
         }

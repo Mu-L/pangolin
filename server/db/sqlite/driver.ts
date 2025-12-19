@@ -20,6 +20,7 @@ function createDb() {
 
 export const db = createDb();
 export default db;
+export const primaryDb = db;
 export type Transaction = Parameters<
     Parameters<(typeof db)["transaction"]>[0]
 >[0];

@@ -17,6 +17,7 @@ import { cleanRedirect } from "@app/lib/cleanRedirect";
 import BrandingLogo from "@app/components/BrandingLogo";
 import { useTranslations } from "next-intl";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
+import { build } from "@server/build";
 
 type DashboardLoginFormProps = {
     redirect?: string;
@@ -48,9 +49,14 @@ export default function DashboardLoginForm({
         ? env.branding.logo?.authPage?.height || 58
         : 58;
 
+    const gradientClasses =
+        build === "saas"
+            ? "border-b border-primary/30 bg-gradient-to-br dark:from-primary/20 from-primary/20 via-background to-background overflow-hidden rounded-t-lg"
+            : "border-b";
+
     return (
         <Card className="w-full max-w-md">
-            <CardHeader className="border-b">
+            <CardHeader className={gradientClasses}>
                 <div className="flex flex-row items-center justify-center">
                     <BrandingLogo height={logoHeight} width={logoWidth} />
                 </div>

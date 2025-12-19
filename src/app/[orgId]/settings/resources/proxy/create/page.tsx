@@ -1312,6 +1312,35 @@ export default function Page() {
                                     </SettingsSectionTitle>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
+                                    {resourceTypes.length > 1 && (
+                                        <>
+                                            <div className="mb-2">
+                                                <span className="text-sm font-medium">
+                                                    {t("type")}
+                                                </span>
+                                            </div>
+
+                                            <StrategySelect
+                                                options={resourceTypes}
+                                                defaultValue="http"
+                                                onChange={(value) => {
+                                                    baseForm.setValue(
+                                                        "http",
+                                                        value === "http"
+                                                    );
+                                                    // Update method default when switching resource type
+                                                    addTargetForm.setValue(
+                                                        "method",
+                                                        value === "http"
+                                                            ? "http"
+                                                            : null
+                                                    );
+                                                }}
+                                                cols={2}
+                                            />
+                                        </>
+                                    )}
+
                                     <SettingsSectionForm>
                                         <Form {...baseForm}>
                                             <form
@@ -1348,35 +1377,6 @@ export default function Page() {
                                             </form>
                                         </Form>
                                     </SettingsSectionForm>
-
-                                    {resourceTypes.length > 1 && (
-                                        <>
-                                            <div className="mb-2">
-                                                <span className="text-sm font-medium">
-                                                    {t("type")}
-                                                </span>
-                                            </div>
-
-                                            <StrategySelect
-                                                options={resourceTypes}
-                                                defaultValue="http"
-                                                onChange={(value) => {
-                                                    baseForm.setValue(
-                                                        "http",
-                                                        value === "http"
-                                                    );
-                                                    // Update method default when switching resource type
-                                                    addTargetForm.setValue(
-                                                        "method",
-                                                        value === "http"
-                                                            ? "http"
-                                                            : null
-                                                    );
-                                                }}
-                                                cols={2}
-                                            />
-                                        </>
-                                    )}
                                 </SettingsSectionBody>
                             </SettingsSection>
 
@@ -1684,7 +1684,7 @@ export default function Page() {
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="text-center p-4">
+                                        <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg p-4">
                                             <p className="text-muted-foreground mb-4">
                                                 {t("targetNoOne")}
                                             </p>

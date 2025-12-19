@@ -228,7 +228,7 @@ export const resourceQueries = {
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<ListSiteResourceUsersResponse>
-                >(`/resource/${resourceId}/users`, { signal });
+                >(`/site-resource/${resourceId}/users`, { signal });
                 return res.data.data.users;
             }
         }),
@@ -238,7 +238,7 @@ export const resourceQueries = {
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<ListSiteResourceRolesResponse>
-                >(`/resource/${resourceId}/roles`, { signal });
+                >(`/site-resource/${resourceId}/roles`, { signal });
 
                 return res.data.data.roles;
             }
@@ -249,7 +249,7 @@ export const resourceQueries = {
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<ListSiteResourceClientsResponse>
-                >(`/resource/${resourceId}/clients`, { signal });
+                >(`/site-resource/${resourceId}/clients`, { signal });
 
                 return res.data.data.clients;
             }
