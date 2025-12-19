@@ -573,6 +573,20 @@ class RedisManager {
         }
     }
 
+    public async incr(key: string): Promise<number> {
+        if (!this.isRedisEnabled() || !this.writeClient) return 0;
+
+        try {
+            return await this.executeWithRetry(
+                () => this.writeClient!.incr(key),
+                "Redis INCR"
+            );
+        } catch (error) {
+            logger.error("Redis INCR error:", error);
+            return 0;
+        }
+    }
+
     public async sadd(key: string, member: string): Promise<boolean> {
         if (!this.isRedisEnabled() || !this.writeClient) return false;
 
