@@ -7,7 +7,8 @@ import {
     ExitNode,
     exitNodes,
     siteResources,
-    clientSiteResourcesAssociationsCache
+    clientSiteResourcesAssociationsCache,
+    Site
 } from "@server/db";
 import { clients, clientSitesAssociationsCache, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
@@ -129,6 +130,38 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
             });
         }
     }
+
+    const { peers, targets } = await buildClientConfigurationForNewtClient(
+        site,
+        exitNode
+    );
+
+    // Build the configuration response
+    const configResponse = {
+        ipAddress: site.address,
+        peers,
+        targets
+    };
+
+    logger.debug("Sending config: ", configResponse);
+
+    return {
+        message: {
+            type: "newt/wg/receive-config",
+            data: {
+                ...configResponse
+            }
+        },
+        broadcast: false,
+        excludeSender: false,
+    };
+};
+
+export async function buildClientConfigurationForNewtClient(
+    site: Site,
+    exitNode?: ExitNode
+) {
+    const siteId = site.siteId;
 
     // Get all clients connected to this site
     const clientsRes = await db
@@ -278,22 +311,8 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         targetsToSend.push(...resourceTargets);
     }
 
-    // Build the configuration response
-    const configResponse = {
-        ipAddress: site.address,
+    return {
         peers: validPeers,
         targets: targetsToSend
     };
-
-    logger.debug("Sending config: ", configResponse);
-    return {
-        message: {
-            type: "newt/wg/receive-config",
-            data: {
-                ...configResponse
-            }
-        },
-        broadcast: false,
-        excludeSender: false
-    };
-};
+}

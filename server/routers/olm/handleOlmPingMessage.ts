@@ -1,6 +1,6 @@
 import { db } from "@server/db";
 import { disconnectClient } from "#dynamic/routers/ws";
-import { MessageHandler } from "@server/routers/ws";
+import { getClientConfigVersion, MessageHandler } from "@server/routers/ws";
 import { clients, Olm } from "@server/db";
 import { eq, lt, isNull, and, or } from "drizzle-orm";
 import logger from "@server/logger";
@@ -106,6 +106,15 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
     if (!olm) {
         logger.warn("Olm not found");
         return;
+    }
+
+    // get the version
+    const configVersion = await getClientConfigVersion(olm.olmId);
+
+    if (message.configVersion && configVersion != message.configVersion) {
+        logger.warn(`Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`);
+
+        // TODO: sync the client
     }
 
     if (olm.userId) {

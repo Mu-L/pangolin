@@ -52,7 +52,11 @@ export interface HandlerContext {
     senderWs: WebSocket;
     client: Newt | Olm | RemoteExitNode | undefined;
     clientType: ClientType;
-    sendToClient: (clientId: string, message: WSMessage, options?: SendMessageOptions) => Promise<boolean>;
+    sendToClient: (
+        clientId: string,
+        message: WSMessage,
+        options?: SendMessageOptions
+    ) => Promise<boolean>;
     broadcastToAllExcept: (
         message: WSMessage,
         excludeClientId?: string,

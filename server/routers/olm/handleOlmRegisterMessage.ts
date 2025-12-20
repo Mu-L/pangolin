@@ -1,4 +1,5 @@
 import {
+    Client,
     clientSiteResourcesAssociationsCache,
     db,
     orgs,
@@ -13,7 +14,7 @@ import {
     olms,
     sites
 } from "@server/db";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull } from "drizzle-orm";
 import { addPeer, deletePeer } from "../newt/peers";
 import logger from "@server/logger";
 import { generateAliasConfig } from "@server/lib/ip";
@@ -145,6 +146,64 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     }
 
     // Get all sites data
+    const sitesCountResult = await db
+        .select({ count: count() })
+        .from(sites)
+        .innerJoin(
+            clientSitesAssociationsCache,
+            eq(sites.siteId, clientSitesAssociationsCache.siteId)
+        )
+        .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
+
+    // Extract the count value from the result array
+    const sitesCount = sitesCountResult.length > 0 ? sitesCountResult[0].count : 0;
+
+    // Prepare an array to store site configurations
+    logger.debug(
+        `Found ${sitesCount} sites for client ${client.clientId}`
+    );
+
+    // this prevents us from accepting a register from an olm that has not hole punched yet.
+    // the olm will pump the register so we can keep checking
+    // TODO: I still think there is a better way to do this rather than locking it out here but ???
+    if (now - (client.lastHolePunch || 0) > 5 && sitesCount > 0) {
+        logger.warn(
+            "Client last hole punch is too old and we have sites to send; skipping this register"
+        );
+        return;
+    }
+
+    const siteConfigurations = await buildSiteConfigurationForOlmClient(client, publicKey, relay);
+
+    // REMOVED THIS SO IT CREATES THE INTERFACE AND JUST WAITS FOR THE SITES
+    // if (siteConfigurations.length === 0) {
+    //     logger.warn("No valid site configurations found");
+    //     return;
+    // }
+
+    // Return connect message with all site configurations
+    return {
+        message: {
+            type: "olm/wg/connect",
+            data: {
+                sites: siteConfigurations,
+                tunnelIP: client.subnet,
+                utilitySubnet: org.utilitySubnet
+            }
+        },
+        broadcast: false,
+        excludeSender: false
+    };
+};
+
+export async function buildSiteConfigurationForOlmClient(
+    client: Client,
+    publicKey: string,
+    relay: boolean
+) {
+    const siteConfigurations = [];
+
+    // Get all sites data
     const sitesData = await db
         .select()
         .from(sites)
@@ -153,22 +212,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             eq(sites.siteId, clientSitesAssociationsCache.siteId)
         )
         .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
-
-    // Prepare an array to store site configurations
-    const siteConfigurations = [];
-    logger.debug(
-        `Found ${sitesData.length} sites for client ${client.clientId}`
-    );
-
-    // this prevents us from accepting a register from an olm that has not hole punched yet.
-    // the olm will pump the register so we can keep checking
-    // TODO: I still think there is a better way to do this rather than locking it out here but ???
-    if (now - (client.lastHolePunch || 0) > 5 && sitesData.length > 0) {
-        logger.warn(
-            "Client last hole punch is too old and we have sites to send; skipping this register"
-        );
-        return;
-    }
 
     // Process each site
     for (const {
@@ -289,23 +332,5 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         });
     }
 
-    // REMOVED THIS SO IT CREATES THE INTERFACE AND JUST WAITS FOR THE SITES
-    // if (siteConfigurations.length === 0) {
-    //     logger.warn("No valid site configurations found");
-    //     return;
-    // }
-
-    // Return connect message with all site configurations
-    return {
-        message: {
-            type: "olm/wg/connect",
-            data: {
-                sites: siteConfigurations,
-                tunnelIP: client.subnet,
-                utilitySubnet: org.utilitySubnet
-            }
-        },
-        broadcast: false,
-        excludeSender: false
-    };
-};
+    return siteConfigurations;
+}

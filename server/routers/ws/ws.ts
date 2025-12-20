@@ -95,7 +95,7 @@ const sendToClientLocal = async (
     if (!clients || clients.length === 0) {
         return false;
     }
-    
+
     // Increment config version if requested
     if (options.incrementConfigVersion) {
         const currentVersion = clientConfigVersions.get(clientId) || 0;
@@ -106,14 +106,14 @@ const sendToClientLocal = async (
             client.configVersion = newVersion;
         });
     }
-    
+
     // Include config version in message
     const configVersion = clientConfigVersions.get(clientId) || 0;
     const messageWithVersion = {
         ...message,
         configVersion
     };
-    
+
     const messageString = JSON.stringify(messageWithVersion);
     clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
@@ -189,7 +189,7 @@ const hasActiveConnections = async (clientId: string): Promise<boolean> => {
 };
 
 // Get the current config version for a client
-const getClientConfigVersion = (clientId: string): number => {
+const getClientConfigVersion = async (clientId: string): Promise<number> => {
     return clientConfigVersions.get(clientId) || 0;
 };
 

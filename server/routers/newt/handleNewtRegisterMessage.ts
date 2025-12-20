@@ -233,6 +233,35 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             .where(eq(newts.newtId, newt.newtId));
     }
 
+    const { tcpTargets, udpTargets, validHealthCheckTargets } =
+        await buildTargetConfigurationForNewtClient(siteId);
+
+    logger.debug(
+        `Sending health check targets to newt ${newt.newtId}: ${JSON.stringify(validHealthCheckTargets)}`
+    );
+
+    return {
+        message: {
+            type: "newt/wg/connect",
+            data: {
+                endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
+                relayPort: config.getRawConfig().gerbil.clients_start_port,
+                publicKey: exitNode.publicKey,
+                serverIP: exitNode.address.split("/")[0],
+                tunnelIP: siteSubnet.split("/")[0],
+                targets: {
+                    udp: udpTargets,
+                    tcp: tcpTargets
+                },
+                healthCheckTargets: validHealthCheckTargets
+            }
+        },
+        broadcast: false, // Send to all clients
+        excludeSender: false // Include sender in broadcast
+    };
+};
+
+export async function buildTargetConfigurationForNewtClient(siteId: number) {
     // Get all enabled targets with their resource protocol information
     const allTargets = await db
         .select({
@@ -337,30 +366,12 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         (target) => target !== null
     );
 
-    logger.debug(
-        `Sending health check targets to newt ${newt.newtId}: ${JSON.stringify(validHealthCheckTargets)}`
-    );
-
     return {
-        message: {
-            type: "newt/wg/connect",
-            data: {
-                endpoint: `${exitNode.endpoint}:${exitNode.listenPort}`,
-                relayPort: config.getRawConfig().gerbil.clients_start_port,
-                publicKey: exitNode.publicKey,
-                serverIP: exitNode.address.split("/")[0],
-                tunnelIP: siteSubnet.split("/")[0],
-                targets: {
-                    udp: udpTargets,
-                    tcp: tcpTargets
-                },
-                healthCheckTargets: validHealthCheckTargets
-            }
-        },
-        broadcast: false, // Send to all clients
-        excludeSender: false // Include sender in broadcast
+        validHealthCheckTargets,
+        tcpTargets,
+        udpTargets
     };
-};
+}
 
 async function getUniqueSubnetForSite(
     exitNode: ExitNode,
