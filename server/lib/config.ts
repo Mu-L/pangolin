@@ -84,6 +84,10 @@ export class Config {
             ?.disable_basic_wireguard_sites
             ? "true"
             : "false";
+        process.env.FLAGS_DISABLE_PRODUCT_HELP_BANNERS = parsedConfig.flags
+            ?.disable_product_help_banners
+            ? "true"
+            : "false";
 
         process.env.PRODUCT_UPDATES_NOTIFICATION_ENABLED = parsedConfig.app
             .notifications.product_updates

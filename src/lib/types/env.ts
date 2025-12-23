@@ -33,6 +33,7 @@ export type Env = {
         disableBasicWireguardSites: boolean;
         hideSupporterKey: boolean;
         usePangolinDns: boolean;
+        disableProductHelpBanners: boolean;
     };
     branding: {
         appName?: string;

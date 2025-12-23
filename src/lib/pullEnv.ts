@@ -59,7 +59,11 @@ export function pullEnv(): Env {
             hideSupporterKey:
                 process.env.HIDE_SUPPORTER_KEY === "true" ? true : false,
             usePangolinDns:
-                process.env.USE_PANGOLIN_DNS === "true" ? true : false
+                process.env.USE_PANGOLIN_DNS === "true" ? true : false,
+            disableProductHelpBanners:
+                process.env.FLAGS_DISABLE_PRODUCT_HELP_BANNERS === "true"
+                    ? true
+                    : false
         },
 
         branding: {
