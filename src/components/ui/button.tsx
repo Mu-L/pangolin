@@ -3,7 +3,6 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@app/lib/cn";
-import { Loader2 } from "lucide-react";
 
 const buttonVariants = cva(
     "cursor-pointer inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50",
@@ -75,12 +74,34 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 {asChild ? (
                     props.children
                 ) : (
-                    <>
+                    <span className="relative inline-flex items-center justify-center">
+                        <span
+                            className={cn(
+                                "inline-flex items-center justify-center",
+                                loading && "opacity-0"
+                            )}
+                        >
+                            {props.children}
+                        </span>
                         {loading && (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <span className="absolute inset-0 flex items-center justify-center">
+                                <span className="flex items-center gap-1">
+                                    <span 
+                                        className="h-1 w-1 bg-current animate-dot-pulse" 
+                                        style={{ animationDelay: "0ms" }} 
+                                    />
+                                    <span 
+                                        className="h-1 w-1 bg-current animate-dot-pulse" 
+                                        style={{ animationDelay: "200ms" }} 
+                                    />
+                                    <span 
+                                        className="h-1 w-1 bg-current animate-dot-pulse" 
+                                        style={{ animationDelay: "400ms" }} 
+                                    />
+                                </span>
+                            </span>
                         )}
-                        {props.children}
-                    </>
+                    </span>
                 )}
             </Comp>
         );
