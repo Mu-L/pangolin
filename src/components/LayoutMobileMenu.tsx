@@ -72,7 +72,7 @@ export function LayoutMobileMenu({
                                     <SheetDescription className="sr-only">
                                         {t("navbarDescription")}
                                     </SheetDescription>
-                                    <div className="flex-1 overflow-y-auto">
+                                    <div className="flex-1 overflow-y-auto relative">
                                         <div className="px-3">
                                             <OrgSelector
                                                 orgId={orgId}
@@ -113,6 +113,7 @@ export function LayoutMobileMenu({
                                                 }
                                             />
                                         </div>
+                                        <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
                                     </div>
                                     <div className="px-3 pt-3 pb-3 space-y-4 border-t shrink-0">
                                         <SupporterStatus />
