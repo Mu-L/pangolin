@@ -3,6 +3,7 @@ import logger from "@server/logger";
 import { and, eq, lt } from "drizzle-orm";
 import cache from "@server/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
+import { stripPortFromHost } from "@server/lib/ip";
 
 /**
 
@@ -208,26 +209,7 @@ export async function logRequestAudit(
         }
 
         const clientIp = body.requestIp
-            ? (() => {
-                  if (
-                      body.requestIp.startsWith("[") &&
-                      body.requestIp.includes("]")
-                  ) {
-                      // if brackets are found, extract the IPv6 address from between the brackets
-                      const ipv6Match = body.requestIp.match(/\[(.*?)\]/);
-                      if (ipv6Match) {
-                          return ipv6Match[1];
-                      }
-                  }
-
-                  // ivp4
-                  // split at last colon
-                  const lastColonIndex = body.requestIp.lastIndexOf(":");
-                  if (lastColonIndex !== -1) {
-                      return body.requestIp.substring(0, lastColonIndex);
-                  }
-                  return body.requestIp;
-              })()
+            ? stripPortFromHost(body.requestIp)
             : undefined;
 
         // Add to buffer instead of writing directly to DB

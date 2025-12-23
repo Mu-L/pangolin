@@ -12,6 +12,7 @@ import { TimeSpan } from "oslo";
 import { maxmindLookup } from "@server/db/maxmind";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
+import { stripPortFromHost } from "@server/lib/ip";
 
 const bodySchema = z
     .object({
@@ -37,30 +38,6 @@ function generateDeviceCode(): string {
 // Helper function to hash device code before storing in database
 function hashDeviceCode(code: string): string {
     return encodeHexLowerCase(sha256(new TextEncoder().encode(code)));
-}
-
-// Helper function to extract IP from request
-function extractIpFromRequest(req: Request): string | undefined {
-    const ip = req.ip;
-    if (!ip) {
-        return undefined;
-    }
-
-    // Handle IPv6 format [::1] or IPv4 format
-    if (ip.startsWith("[") && ip.includes("]")) {
-        const ipv6Match = ip.match(/\[(.*?)\]/);
-        if (ipv6Match) {
-            return ipv6Match[1];
-        }
-    }
-
-    // Handle IPv4 with port (split at last colon)
-    const lastColonIndex = ip.lastIndexOf(":");
-    if (lastColonIndex !== -1) {
-        return ip.substring(0, lastColonIndex);
-    }
-
-    return ip;
 }
 
 // Helper function to get city from IP (if available)
@@ -112,7 +89,7 @@ export async function startDeviceWebAuth(
         const hashedCode = hashDeviceCode(code);
 
         // Extract IP from request
-        const ip = extractIpFromRequest(req);
+        const ip = req.ip ? stripPortFromHost(req.ip) : undefined;
 
         // Get city (optional, may return undefined)
         const city = ip ? await getCityFromIp(ip) : undefined;

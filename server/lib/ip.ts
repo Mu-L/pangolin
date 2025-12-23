@@ -4,6 +4,7 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import config from "@server/lib/config";
 import z from "zod";
 import logger from "@server/logger";
+import semver from "semver";
 
 interface IPRange {
     start: bigint;
@@ -682,4 +683,36 @@ export function parsePortRangeString(
     }
 
     return result;
+}
+
+export function stripPortFromHost(ip: string, badgerVersion?: string): string {
+    const isNewerBadger =
+        badgerVersion &&
+        semver.valid(badgerVersion) &&
+        semver.gte(badgerVersion, "1.3.1");
+
+    if (isNewerBadger) {
+        return ip;
+    }
+
+    if (ip.startsWith("[") && ip.includes("]")) {
+        // if brackets are found, extract the IPv6 address from between the brackets
+        const ipv6Match = ip.match(/\[(.*?)\]/);
+        if (ipv6Match) {
+            return ipv6Match[1];
+        }
+    }
+
+    // Check if it looks like IPv4 (contains dots and matches IPv4 pattern)
+    // IPv4 format: x.x.x.x where x is 0-255
+    const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}/;
+    if (ipv4Pattern.test(ip)) {
+        const lastColonIndex = ip.lastIndexOf(":");
+        if (lastColonIndex !== -1) {
+            return ip.substring(0, lastColonIndex);
+        }
+    }
+
+    // Return as is
+    return ip;
 }
