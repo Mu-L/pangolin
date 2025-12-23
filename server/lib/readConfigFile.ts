@@ -330,7 +330,8 @@ export const configSchema = z
                 enable_integration_api: z.boolean().optional(),
                 disable_local_sites: z.boolean().optional(),
                 disable_basic_wireguard_sites: z.boolean().optional(),
-                disable_config_managed_domains: z.boolean().optional()
+                disable_config_managed_domains: z.boolean().optional(),
+                disable_product_help_banners: z.boolean().optional()
             })
             .optional(),
         dns: z

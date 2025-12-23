@@ -19,6 +19,7 @@ import {
 import { SESSION_COOKIE_EXPIRES as RESOURCE_SESSION_COOKIE_EXPIRES } from "@server/auth/sessions/resource";
 import config from "@server/lib/config";
 import { response } from "@server/lib/response";
+import { stripPortFromHost } from "@server/lib/ip";
 
 const exchangeSessionBodySchema = z.object({
     requestToken: z.string(),
@@ -62,26 +63,7 @@ export async function exchangeSession(
             cleanHost = cleanHost.slice(0, -1 * matched.length);
         }
 
-        const clientIp = requestIp
-            ? (() => {
-                  if (requestIp.startsWith("[") && requestIp.includes("]")) {
-                      const ipv6Match = requestIp.match(/\[(.*?)\]/);
-                      if (ipv6Match) {
-                          return ipv6Match[1];
-                      }
-                  }
-
-                  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}/;
-                  if (ipv4Pattern.test(requestIp)) {
-                      const lastColonIndex = requestIp.lastIndexOf(":");
-                      if (lastColonIndex !== -1) {
-                          return requestIp.substring(0, lastColonIndex);
-                      }
-                  }
-
-                  return requestIp;
-              })()
-            : undefined;
+        const clientIp = requestIp ? stripPortFromHost(requestIp) : undefined;
 
         const [resource] = await db
             .select()

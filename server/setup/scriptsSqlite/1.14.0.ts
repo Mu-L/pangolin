@@ -73,16 +73,18 @@ export default async function migration() {
             ).run();
 
             db.prepare(
-                `ALTER TABLE 'siteResources' ADD 'tcpPortRangeString' text;`
+                `ALTER TABLE 'siteResources' ADD 'tcpPortRangeString' text DEFAULT '*' NOT NULL;`
             ).run();
 
             db.prepare(
-                `ALTER TABLE 'siteResources' ADD 'udpPortRangeString' text;`
+                `ALTER TABLE 'siteResources' ADD 'udpPortRangeString' text DEFAULT '*' NOT NULL;`
             ).run();
 
             db.prepare(
-                `ALTER TABLE 'siteResources' ADD 'disableIcmp' integer;`
+                `ALTER TABLE 'siteResources' ADD 'disableIcmp' integer NOT NULL DEFAULT false;`
             ).run();
+
+
         })();
 
         db.pragma("foreign_keys = ON");

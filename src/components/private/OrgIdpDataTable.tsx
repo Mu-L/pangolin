@@ -27,6 +27,8 @@ export function IdpDataTable<TData, TValue>({
             searchColumn="name"
             addButtonText={t("idpAdd")}
             onAdd={onAdd}
+            enableColumnVisibility={true}
+            stickyRightColumn="actions"
         />
     );
 }

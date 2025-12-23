@@ -60,11 +60,11 @@ export default async function migration() {
         );
 
         await db.execute(
-            sql`ALTER TABLE "siteResources" ADD COLUMN "tcpPortRangeString" varchar;`
+            sql`ALTER TABLE "siteResources" ADD COLUMN "tcpPortRangeString" varchar NOT NULL DEFAULT '*';`
         );
 
         await db.execute(
-            sql`ALTER TABLE "siteResources" ADD COLUMN "udpPortRangeString" varchar;`
+            sql`ALTER TABLE "siteResources" ADD COLUMN "udpPortRangeString" varchar NOT NULL DEFAULT '*';`
         );
 
         await db.execute(

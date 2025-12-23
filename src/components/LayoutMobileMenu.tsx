@@ -48,7 +48,7 @@ export function LayoutMobileMenu({
     const t = useTranslations();
 
     return (
-        <div className="shrink-0 md:hidden">
+        <div className="shrink-0 md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
             <div className="h-16 flex items-center px-2">
                 <div className="flex items-center gap-4">
                     {showSidebar && (
@@ -72,7 +72,7 @@ export function LayoutMobileMenu({
                                     <SheetDescription className="sr-only">
                                         {t("navbarDescription")}
                                     </SheetDescription>
-                                    <div className="flex-1 overflow-y-auto">
+                                    <div className="flex-1 overflow-y-auto relative">
                                         <div className="px-3">
                                             <OrgSelector
                                                 orgId={orgId}
@@ -83,7 +83,7 @@ export function LayoutMobileMenu({
                                         <div className="px-3">
                                             {!isAdminPage &&
                                                 user.serverAdmin && (
-                                                    <div className="pb-3">
+                                                    <div className="py-2">
                                                         <Link
                                                             href="/admin"
                                                             className={cn(
@@ -113,6 +113,7 @@ export function LayoutMobileMenu({
                                                 }
                                             />
                                         </div>
+                                        <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
                                     </div>
                                     <div className="px-3 pt-3 pb-3 space-y-4 border-t shrink-0">
                                         <SupporterStatus />

@@ -10,6 +10,7 @@ import { eq, and, gt } from "drizzle-orm";
 import { createSession, generateSessionToken } from "@server/auth/sessions/app";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
+import { stripPortFromHost } from "@server/lib/ip";
 
 const paramsSchema = z.object({
     code: z.string().min(1, "Code is required")
@@ -26,30 +27,6 @@ export type PollDeviceWebAuthResponse = {
     verified: boolean;
     token?: string;
 };
-
-// Helper function to extract IP from request (same as in startDeviceWebAuth)
-function extractIpFromRequest(req: Request): string | undefined {
-    const ip = req.ip || req.socket.remoteAddress;
-    if (!ip) {
-        return undefined;
-    }
-
-    // Handle IPv6 format [::1] or IPv4 format
-    if (ip.startsWith("[") && ip.includes("]")) {
-        const ipv6Match = ip.match(/\[(.*?)\]/);
-        if (ipv6Match) {
-            return ipv6Match[1];
-        }
-    }
-
-    // Handle IPv4 with port (split at last colon)
-    const lastColonIndex = ip.lastIndexOf(":");
-    if (lastColonIndex !== -1) {
-        return ip.substring(0, lastColonIndex);
-    }
-
-    return ip;
-}
 
 export async function pollDeviceWebAuth(
     req: Request,
@@ -70,7 +47,7 @@ export async function pollDeviceWebAuth(
     try {
         const { code } = parsedParams.data;
         const now = Date.now();
-        const requestIp = extractIpFromRequest(req);
+        const requestIp = req.ip ? stripPortFromHost(req.ip) : undefined;
 
         // Hash the code before querying
         const hashedCode = hashDeviceCode(code);

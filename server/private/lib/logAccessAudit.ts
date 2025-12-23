@@ -17,6 +17,7 @@ import logger from "@server/logger";
 import { and, eq, lt } from "drizzle-orm";
 import cache from "@server/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
+import { stripPortFromHost } from "@server/lib/ip";
 
 async function getAccessDays(orgId: string): Promise<number> {
     // check cache first
@@ -116,19 +117,7 @@ export async function logAccessAudit(data: {
         }
 
         const clientIp = data.requestIp
-            ? (() => {
-                  if (
-                      data.requestIp.startsWith("[") &&
-                      data.requestIp.includes("]")
-                  ) {
-                      // if brackets are found, extract the IPv6 address from between the brackets
-                      const ipv6Match = data.requestIp.match(/\[(.*?)\]/);
-                      if (ipv6Match) {
-                          return ipv6Match[1];
-                      }
-                  }
-                  return data.requestIp;
-              })()
+            ? stripPortFromHost(data.requestIp)
             : undefined;
 
         const countryCode = data.requestIp

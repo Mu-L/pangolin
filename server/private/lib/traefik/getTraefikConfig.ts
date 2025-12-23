@@ -358,18 +358,6 @@ export async function getTraefikConfig(
                 }
             }
 
-            if (resource.ssl) {
-                config_output.http.routers![routerName + "-redirect"] = {
-                    entryPoints: [
-                        config.getRawConfig().traefik.http_entrypoint
-                    ],
-                    middlewares: [redirectHttpsMiddlewareName],
-                    service: serviceName,
-                    rule: rule,
-                    priority: priority
-                };
-            }
-
             let tls = {};
             if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
                 const domainParts = fullDomain.split(".");
@@ -435,6 +423,18 @@ export async function getTraefikConfig(
                 }
             }
 
+            if (resource.ssl) {
+                config_output.http.routers![routerName + "-redirect"] = {
+                    entryPoints: [
+                        config.getRawConfig().traefik.http_entrypoint
+                    ],
+                    middlewares: [redirectHttpsMiddlewareName],
+                    service: serviceName,
+                    rule: rule,
+                    priority: priority
+                };
+            }
+
             const availableServers = targets.filter((target) => {
                 if (!target.enabled) return false;
 
@@ -464,7 +464,7 @@ export async function getTraefikConfig(
                 }
             }
 
-            if (showMaintenancePage) {
+            if (showMaintenancePage && allowMaintenancePage) {
                 const maintenanceServiceName = `${key}-maintenance-service`;
                 const maintenanceRouterName = `${key}-maintenance-router`;
                 const rewriteMiddlewareName = `${key}-maintenance-rewrite`;
