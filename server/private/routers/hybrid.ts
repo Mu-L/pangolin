@@ -247,7 +247,8 @@ hybridRouter.get(
                 ["newt", "local", "wireguard"], // Allow them to use all the site types
                 true, // But don't allow domain namespace resources
                 false, // Dont include login pages,
-                true // allow raw resources
+                true, // allow raw resources
+                false // dont generate maintenance page
             );
 
             return response(res, {

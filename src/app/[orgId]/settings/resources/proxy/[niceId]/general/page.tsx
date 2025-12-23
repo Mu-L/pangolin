@@ -189,7 +189,7 @@ function MaintenanceSectionForm({
                                 name="maintenanceModeEnabled"
                                 render={({ field }) => {
                                     const isDisabled =
-                                        isSecurityFeatureDisabled();
+                                        isSecurityFeatureDisabled() || resource.http === false;
 
                                     return (
                                         <FormItem>
