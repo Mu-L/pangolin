@@ -133,7 +133,8 @@ export const configSchema = z
                     .optional(),
                 trust_proxy: z.int().gte(0).optional().default(1),
                 secret: z.string().pipe(z.string().min(8)).optional(),
-                maxmind_db_path: z.string().optional()
+                maxmind_db_path: z.string().optional(),
+                maxmind_asn_path: z.string().optional()
             })
             .optional()
             .default({

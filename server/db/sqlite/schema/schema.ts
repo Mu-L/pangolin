@@ -150,7 +150,19 @@ export const resources = sqliteTable("resources", {
     proxyProtocol: integer("proxyProtocol", { mode: "boolean" })
         .notNull()
         .default(false),
-    proxyProtocolVersion: integer("proxyProtocolVersion").default(1)
+    proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
+
+    maintenanceModeEnabled: integer("maintenanceModeEnabled", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
+    maintenanceModeType: text("maintenanceModeType", {
+        enum: ["forced", "automatic"]
+    }).default("forced"), // "forced" = always show, "automatic" = only when down
+    maintenanceTitle: text("maintenanceTitle"),
+    maintenanceMessage: text("maintenanceMessage"),
+    maintenanceEstimatedTime: text("maintenanceEstimatedTime")
 });
 
 export const targets = sqliteTable("targets", {
@@ -241,9 +253,9 @@ export const siteResources = sqliteTable("siteResources", {
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     alias: text("alias"),
     aliasAddress: text("aliasAddress"),
-    tcpPortRangeString: text("tcpPortRangeString"),
-    udpPortRangeString: text("udpPortRangeString"),
-    disableIcmp: integer("disableIcmp", { mode: "boolean" })
+    tcpPortRangeString: text("tcpPortRangeString").notNull().default("*"),
+    udpPortRangeString: text("udpPortRangeString").notNull().default("*"),
+    disableIcmp: integer("disableIcmp", { mode: "boolean" }).notNull().default(false)
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -628,6 +640,26 @@ export const resourceHeaderAuth = sqliteTable("resourceHeaderAuth", {
     headerAuthHash: text("headerAuthHash").notNull()
 });
 
+export const resourceHeaderAuthExtendedCompatibility = sqliteTable(
+    "resourceHeaderAuthExtendedCompatibility",
+    {
+        headerAuthExtendedCompatibilityId: integer(
+            "headerAuthExtendedCompatibilityId"
+        ).primaryKey({
+            autoIncrement: true
+        }),
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" }),
+        extendedCompatibilityIsActivated: integer(
+            "extendedCompatibilityIsActivated",
+            { mode: "boolean" }
+        )
+            .notNull()
+            .default(true)
+    }
+);
+
 export const resourceAccessToken = sqliteTable("resourceAccessToken", {
     accessTokenId: text("accessTokenId").primaryKey(),
     orgId: text("orgId")
@@ -913,6 +945,9 @@ export type ResourceSession = InferSelectModel<typeof resourceSessions>;
 export type ResourcePincode = InferSelectModel<typeof resourcePincode>;
 export type ResourcePassword = InferSelectModel<typeof resourcePassword>;
 export type ResourceHeaderAuth = InferSelectModel<typeof resourceHeaderAuth>;
+export type ResourceHeaderAuthExtendedCompatibility = InferSelectModel<
+    typeof resourceHeaderAuthExtendedCompatibility
+>;
 export type ResourceOtp = InferSelectModel<typeof resourceOtp>;
 export type ResourceAccessToken = InferSelectModel<typeof resourceAccessToken>;
 export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;

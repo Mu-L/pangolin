@@ -21,8 +21,7 @@ export async function pickOrgDefaults(
         // const subnet = await getNextAvailableOrgSubnet();
         // Just hard code the subnet for now for everyone
         const subnet = config.getRawConfig().orgs.subnet_group;
-        const utilitySubnet =
-            config.getRawConfig().orgs.utility_subnet_group;
+        const utilitySubnet = config.getRawConfig().orgs.utility_subnet_group;
 
         return response<PickOrgDefaultsResponse>(res, {
             data: {

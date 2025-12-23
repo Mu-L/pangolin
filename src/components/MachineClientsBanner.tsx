@@ -11,9 +11,7 @@ type MachineClientsBannerProps = {
     orgId: string;
 };
 
-export const MachineClientsBanner = ({
-    orgId
-}: MachineClientsBannerProps) => {
+export const MachineClientsBanner = ({ orgId }: MachineClientsBannerProps) => {
     const t = useTranslations();
 
     return (
@@ -57,4 +55,3 @@ export const MachineClientsBanner = ({
 };
 
 export default MachineClientsBanner;
-

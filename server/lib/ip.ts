@@ -318,10 +318,7 @@ export function doCidrsOverlap(cidr1: string, cidr2: string): boolean {
     const range2 = cidrToRange(cidr2);
 
     // Overlap if the ranges intersect
-    return (
-        range1.start <= range2.end &&
-        range2.start <= range1.end
-    );
+    return range1.start <= range2.end && range2.start <= range1.end;
 }
 
 export async function getNextAvailableClientSubnet(

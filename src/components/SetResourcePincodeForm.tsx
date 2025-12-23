@@ -84,16 +84,6 @@ export default function SetResourcePincodeForm({
         api.post<AxiosResponse<Resource>>(`/resource/${resourceId}/pincode`, {
             pincode: data.pincode
         })
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("resourceErrorPincodeSetup"),
-                    description: formatAxiosError(
-                        e,
-                        t("resourceErrorPincodeSetupDescription")
-                    )
-                });
-            })
             .then(() => {
                 toast({
                     title: t("resourcePincodeSetup"),
@@ -103,6 +93,16 @@ export default function SetResourcePincodeForm({
                 if (onSetPincode) {
                     onSetPincode();
                 }
+            })
+            .catch((e) => {
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorPincodeSetup"),
+                    description: formatAxiosError(
+                        e,
+                        t("resourceErrorPincodeSetupDescription")
+                    )
+                });
             })
             .finally(() => setLoading(false));
     }

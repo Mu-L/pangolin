@@ -41,7 +41,10 @@ export default function ProductUpdates({
 
     const data = useQueries({
         queries: [
-            productUpdatesQueries.list(env.app.notifications.product_updates),
+            productUpdatesQueries.list(
+                env.app.notifications.product_updates,
+                env.app.version
+            ),
             productUpdatesQueries.latestVersion(
                 env.app.notifications.new_releases
             )
@@ -87,6 +90,10 @@ export default function ProductUpdates({
     const filteredUpdates = data.updates.filter(
         (update) => !productUpdatesRead.includes(update.id)
     );
+
+    if (filteredUpdates.length === 0 && !showNewVersionPopup) {
+        return null;
+    }
 
     return (
         <div
@@ -185,7 +192,7 @@ function ProductUpdatesListPopup({
                     <div
                         className={cn(
                             "relative z-1 cursor-pointer block group",
-                            "rounded-md border border-primary/30 bg-gradient-to-br dark:from-primary/20 from-primary/20 via-background to-background p-2 py-3 w-full flex flex-col gap-2 text-sm",
+                            "rounded-md border border-primary/30 bg-linear-to-br dark:from-primary/20 from-primary/20 via-background to-background p-2 py-3 w-full flex flex-col gap-2 text-sm",
                             "transition duration-300 ease-in-out",
                             "data-closed:opacity-0 data-closed:translate-y-full"
                         )}
@@ -339,7 +346,7 @@ function NewVersionAvailable({
                     rel="noopener noreferrer"
                     className={cn(
                         "relative z-2 group cursor-pointer block",
-                        "rounded-md border border-primary/30 bg-gradient-to-br dark:from-primary/20 from-primary/20 via-background to-background p-2 py-3 w-full flex flex-col gap-2 text-sm",
+                        "rounded-md border border-primary/30 bg-linear-to-br dark:from-primary/20 from-primary/20 via-background to-background p-2 py-3 w-full flex flex-col gap-2 text-sm",
                         "transition duration-300 ease-in-out",
                         "data-closed:opacity-0 data-closed:translate-y-full"
                     )}

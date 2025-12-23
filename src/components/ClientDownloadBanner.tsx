@@ -66,4 +66,3 @@ export const ClientDownloadBanner = () => {
 };
 
 export default ClientDownloadBanner;
-

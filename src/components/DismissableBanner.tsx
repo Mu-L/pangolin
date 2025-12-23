@@ -95,4 +95,3 @@ export const DismissableBanner = ({
 };
 
 export default DismissableBanner;
-

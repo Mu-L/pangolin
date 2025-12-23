@@ -11,6 +11,7 @@ import {
     FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import {
     Credenza,
@@ -41,7 +42,7 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import { AxiosResponse } from "axios";
-import { Globe } from "lucide-react";
+import { AlertCircle, Globe } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII, toUnicode } from "punycode";
@@ -49,6 +50,374 @@ import { useActionState, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
+import { build } from "@server/build";
+import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
+import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
+import {
+    Tooltip,
+    TooltipProvider,
+    TooltipTrigger
+} from "@app/components/ui/tooltip";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { GetResourceResponse } from "@server/routers/resource/getResource";
+import type { ResourceContextType } from "@app/contexts/resourceContext";
+
+type MaintenanceSectionFormProps = {
+    resource: GetResourceResponse;
+    updateResource: ResourceContextType["updateResource"];
+};
+
+function MaintenanceSectionForm({
+    resource,
+    updateResource
+}: MaintenanceSectionFormProps) {
+    const { env } = useEnvContext();
+    const t = useTranslations();
+    const api = createApiClient({ env });
+    const { isUnlocked } = useLicenseStatusContext();
+    const subscription = useSubscriptionStatusContext();
+
+    const MaintenanceFormSchema = z.object({
+        maintenanceModeEnabled: z.boolean().optional(),
+        maintenanceModeType: z.enum(["forced", "automatic"]).optional(),
+        maintenanceTitle: z.string().max(255).optional(),
+        maintenanceMessage: z.string().max(2000).optional(),
+        maintenanceEstimatedTime: z.string().max(100).optional()
+    });
+
+    const maintenanceForm = useForm({
+        resolver: zodResolver(MaintenanceFormSchema),
+        defaultValues: {
+            maintenanceModeEnabled: resource.maintenanceModeEnabled || false,
+            maintenanceModeType: resource.maintenanceModeType || "automatic",
+            maintenanceTitle:
+                resource.maintenanceTitle || "We'll be back soon!",
+            maintenanceMessage:
+                resource.maintenanceMessage ||
+                "We are currently performing scheduled maintenance. Please check back soon.",
+            maintenanceEstimatedTime: resource.maintenanceEstimatedTime || ""
+        },
+        mode: "onChange"
+    });
+
+    const isMaintenanceEnabled = maintenanceForm.watch(
+        "maintenanceModeEnabled"
+    );
+    const maintenanceModeType = maintenanceForm.watch("maintenanceModeType");
+
+    const [, maintenanceFormAction, maintenanceSaveLoading] = useActionState(
+        onMaintenanceSubmit,
+        null
+    );
+
+    async function onMaintenanceSubmit() {
+        const isValid = await maintenanceForm.trigger();
+        if (!isValid) return;
+
+        const data = maintenanceForm.getValues();
+
+        const res = await api
+            .post<AxiosResponse<UpdateResourceResponse>>(
+                `resource/${resource?.resourceId}`,
+                {
+                    maintenanceModeEnabled: data.maintenanceModeEnabled,
+                    maintenanceModeType: data.maintenanceModeType,
+                    maintenanceTitle: data.maintenanceTitle || null,
+                    maintenanceMessage: data.maintenanceMessage || null,
+                    maintenanceEstimatedTime:
+                        data.maintenanceEstimatedTime || null
+                }
+            )
+            .catch((e) => {
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorUpdate"),
+                    description: formatAxiosError(
+                        e,
+                        t("resourceErrorUpdateDescription")
+                    )
+                });
+            });
+
+        if (res && res.status === 200) {
+            updateResource({
+                maintenanceModeEnabled: data.maintenanceModeEnabled,
+                maintenanceModeType: data.maintenanceModeType,
+                maintenanceTitle: data.maintenanceTitle || null,
+                maintenanceMessage: data.maintenanceMessage || null,
+                maintenanceEstimatedTime: data.maintenanceEstimatedTime || null
+            });
+
+            toast({
+                title: t("resourceUpdated"),
+                description: t("resourceUpdatedDescription")
+            });
+        }
+    }
+
+    const isSecurityFeatureDisabled = () => {
+        const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
+        const isSaasNotSubscribed =
+            build === "saas" && !subscription?.isSubscribed();
+        return isEnterpriseNotLicensed || isSaasNotSubscribed;
+    };
+
+    return (
+        <SettingsSection>
+            <SettingsSectionHeader>
+                <SettingsSectionTitle>
+                    {t("maintenanceMode")}
+                </SettingsSectionTitle>
+                <SettingsSectionDescription>
+                    {t("maintenanceModeDescription")}
+                </SettingsSectionDescription>
+            </SettingsSectionHeader>
+
+            <SettingsSectionBody>
+                <SettingsSectionForm>
+                    <Form {...maintenanceForm}>
+                        <form
+                            action={maintenanceFormAction}
+                            className="space-y-4"
+                            id="maintenance-settings-form"
+                        >
+                            <PaidFeaturesAlert></PaidFeaturesAlert>
+                            <FormField
+                                control={maintenanceForm.control}
+                                name="maintenanceModeEnabled"
+                                render={({ field }) => {
+                                    const isDisabled =
+                                        isSecurityFeatureDisabled();
+
+                                    return (
+                                        <FormItem>
+                                            <div className="flex items-center space-x-2">
+                                                <FormControl>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger
+                                                                asChild
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <SwitchInput
+                                                                        id="enable-maintenance"
+                                                                        checked={
+                                                                            field.value
+                                                                        }
+                                                                        label={t(
+                                                                            "enableMaintenanceMode"
+                                                                        )}
+                                                                        disabled={
+                                                                            isDisabled
+                                                                        }
+                                                                        onCheckedChange={(
+                                                                            val
+                                                                        ) => {
+                                                                            if (
+                                                                                !isDisabled
+                                                                            ) {
+                                                                                maintenanceForm.setValue(
+                                                                                    "maintenanceModeEnabled",
+                                                                                    val
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </FormControl>
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    );
+                                }}
+                            />
+
+                            {isMaintenanceEnabled && (
+                                <div className="space-y-4">
+                                    <FormField
+                                        control={maintenanceForm.control}
+                                        name="maintenanceModeType"
+                                        render={({ field }) => (
+                                            <FormItem className="space-y-3">
+                                                <FormLabel>
+                                                    {t("maintenanceModeType")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <RadioGroup
+                                                        onValueChange={
+                                                            field.onChange
+                                                        }
+                                                        defaultValue={
+                                                            field.value
+                                                        }
+                                                        disabled={isSecurityFeatureDisabled()}
+                                                        className="flex flex-col space-y-1"
+                                                    >
+                                                        <FormItem className="flex items-start space-x-3 space-y-0">
+                                                            <FormControl>
+                                                                <RadioGroupItem value="automatic" />
+                                                            </FormControl>
+                                                            <div className="space-y-1 leading-none">
+                                                                <FormLabel className="font-normal">
+                                                                    <strong>
+                                                                        {t(
+                                                                            "automatic"
+                                                                        )}
+                                                                    </strong>{" "}
+                                                                    (
+                                                                    {t(
+                                                                        "recommended"
+                                                                    )}
+                                                                    )
+                                                                </FormLabel>
+                                                                <FormDescription>
+                                                                    {t(
+                                                                        "automaticModeDescription"
+                                                                    )}
+                                                                </FormDescription>
+                                                            </div>
+                                                        </FormItem>
+                                                        <FormItem className="flex items-start space-x-3 space-y-0">
+                                                            <FormControl>
+                                                                <RadioGroupItem value="forced" />
+                                                            </FormControl>
+                                                            <div className="space-y-1 leading-none">
+                                                                <FormLabel className="font-normal">
+                                                                    <strong>
+                                                                        {t(
+                                                                            "forced"
+                                                                        )}
+                                                                    </strong>
+                                                                </FormLabel>
+                                                                <FormDescription>
+                                                                    {t(
+                                                                        "forcedModeDescription"
+                                                                    )}
+                                                                </FormDescription>
+                                                            </div>
+                                                        </FormItem>
+                                                    </RadioGroup>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {maintenanceModeType === "forced" && (
+                                        <Alert variant={"neutral"}>
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription>
+                                                {t("forcedeModeWarning")}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    <FormField
+                                        control={maintenanceForm.control}
+                                        name="maintenanceTitle"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("pageTitle")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isSecurityFeatureDisabled()}
+                                                        placeholder="We'll be back soon!"
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t("pageTitleDescription")}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={maintenanceForm.control}
+                                        name="maintenanceMessage"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t(
+                                                        "maintenancePageMessage"
+                                                    )}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        {...field}
+                                                        rows={4}
+                                                        disabled={isSecurityFeatureDisabled()}
+                                                        placeholder={t(
+                                                            "maintenancePageMessagePlaceholder"
+                                                        )}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "maintenancePageMessageDescription"
+                                                    )}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={maintenanceForm.control}
+                                        name="maintenanceEstimatedTime"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t(
+                                                        "maintenancePageTimeTitle"
+                                                    )}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isSecurityFeatureDisabled()}
+                                                        placeholder={t(
+                                                            "maintenanceTime"
+                                                        )}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "maintenanceEstimatedTimeDescription"
+                                                    )}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            )}
+                        </form>
+                    </Form>
+                </SettingsSectionForm>
+            </SettingsSectionBody>
+
+            <SettingsSectionFooter>
+                <Button
+                    type="submit"
+                    loading={maintenanceSaveLoading}
+                    disabled={maintenanceSaveLoading}
+                    form="maintenance-settings-form"
+                >
+                    {t("saveSettings")}
+                </Button>
+            </SettingsSectionFooter>
+        </SettingsSection>
+    );
+}
 
 export default function GeneralForm() {
     const params = useParams();
@@ -87,7 +456,7 @@ export default function GeneralForm() {
             name: z.string().min(1).max(255),
             niceId: z.string().min(1).max(255).optional(),
             domainId: z.string().optional(),
-            proxyPort: z.int().min(1).max(65535).optional()
+            proxyPort: z.number().int().min(1).max(65535).optional()
         })
         .refine(
             (data) => {
@@ -105,6 +474,8 @@ export default function GeneralForm() {
                 path: ["proxyPort"]
             }
         );
+
+    type GeneralFormValues = z.infer<typeof GeneralFormSchema>;
 
     const form = useForm({
         resolver: zodResolver(GeneralFormSchema),
@@ -163,9 +534,6 @@ export default function GeneralForm() {
                 fullDomain: updated.fullDomain,
                 proxyPort: data.proxyPort,
                 domainId: data.domainId
-                // ...(!resource.http && {
-                //     enableProxy: data.enableProxy
-                // })
             });
 
             toast({
@@ -289,8 +657,12 @@ export default function GeneralForm() {
                                                             <Input
                                                                 type="number"
                                                                 value={
-                                                                    field.value ??
-                                                                    ""
+                                                                    field.value !==
+                                                                    undefined
+                                                                        ? String(
+                                                                              field.value
+                                                                          )
+                                                                        : ""
                                                                 }
                                                                 onChange={(e) =>
                                                                     field.onChange(
@@ -355,6 +727,13 @@ export default function GeneralForm() {
                         </Button>
                     </SettingsSectionFooter>
                 </SettingsSection>
+
+                {build !== "oss" && (
+                    <MaintenanceSectionForm
+                        resource={resource}
+                        updateResource={updateResource}
+                    />
+                )}
             </SettingsContainer>
 
             <Credenza

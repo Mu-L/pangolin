@@ -236,6 +236,7 @@ function DeleteForm({ org }: SectionFormProps) {
 }
 
 function GeneralSectionForm({ org }: SectionFormProps) {
+    const { updateOrg } = useOrgContext();
     const form = useForm({
         resolver: zodResolver(
             GeneralFormSchema.pick({
@@ -268,6 +269,11 @@ function GeneralSectionForm({ org }: SectionFormProps) {
 
             // Update organization
             await api.post(`/org/${org.orgId}`, reqData);
+
+            // Update the org context to reflect the change in the info card
+            updateOrg({
+                name: data.name
+            });
 
             toast({
                 title: t("orgUpdated"),
@@ -311,22 +317,6 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                                         <FormMessage />
                                         <FormDescription>
                                             {t("orgDisplayName")}
-                                        </FormDescription>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="subnet"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t("subnet")}</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} disabled={true} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        <FormDescription>
-                                            {t("subnetDescription")}
                                         </FormDescription>
                                     </FormItem>
                                 )}

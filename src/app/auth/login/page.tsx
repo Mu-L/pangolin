@@ -66,6 +66,7 @@ export default async function Page(props: {
     let redirectUrl: string | undefined = undefined;
     if (searchParams.redirect) {
         redirectUrl = cleanRedirect(searchParams.redirect as string);
+        searchParams.redirect = redirectUrl;
     }
 
     let loginIdps: LoginFormIDP[] = [];
@@ -119,6 +120,35 @@ export default async function Page(props: {
                     </Link>
                 </p>
             )}
+
+            {!isInvite && build === "saas" ? (
+                <div className="text-center text-muted-foreground mt-12 flex flex-col items-center">
+                    <span>{t("needToSignInToOrg")}</span>
+                    <Link
+                        href={`/auth/org${buildQueryString(searchParams)}`}
+                        className="underline"
+                    >
+                        {t("orgAuthSignInToOrg")}
+                    </Link>
+                </div>
+            ) : null}
         </>
     );
+}
+
+function buildQueryString(searchParams: {
+    [key: string]: string | string[] | undefined;
+}): string {
+    const params = new URLSearchParams();
+    const redirect = searchParams.redirect;
+    const forceLogin = searchParams.forceLogin;
+
+    if (redirect && typeof redirect === "string") {
+        params.set("redirect", redirect);
+    }
+    if (forceLogin && typeof forceLogin === "string") {
+        params.set("forceLogin", forceLogin);
+    }
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : "";
 }

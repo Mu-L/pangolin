@@ -19,6 +19,7 @@ export type Env = {
         resourceAccessTokenHeadersToken: string;
         reoClientId?: string;
         maxmind_db_path?: string;
+        maxmind_asn_path?: string;
     };
     email: {
         emailEnabled: boolean;

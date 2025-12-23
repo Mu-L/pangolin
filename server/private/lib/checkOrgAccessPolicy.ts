@@ -23,10 +23,10 @@ import {
 } from "@server/lib/checkOrgAccessPolicy";
 import { UserType } from "@server/types/UserTypes";
 
-export async function enforceResourceSessionLength(
+export function enforceResourceSessionLength(
     resourceSession: ResourceSession,
     org: Org
-): Promise<{ valid: boolean; error?: string }> {
+): { valid: boolean; error?: string } {
     if (org.maxSessionLengthHours) {
         const sessionIssuedAt = resourceSession.issuedAt; // may be null
         const maxSessionLengthHours = org.maxSessionLengthHours;

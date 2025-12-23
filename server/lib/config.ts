@@ -99,6 +99,10 @@ export class Config {
             process.env.MAXMIND_DB_PATH = parsedConfig.server.maxmind_db_path;
         }
 
+        if (parsedConfig.server.maxmind_asn_path) {
+            process.env.MAXMIND_ASN_PATH = parsedConfig.server.maxmind_asn_path;
+        }
+
         this.rawConfig = parsedConfig;
     }
 

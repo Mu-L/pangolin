@@ -73,13 +73,14 @@ export function LayoutMobileMenu({
                                         {t("navbarDescription")}
                                     </SheetDescription>
                                     <div className="flex-1 overflow-y-auto">
-                                        <div className="p-4">
+                                        <div className="px-3">
                                             <OrgSelector
                                                 orgId={orgId}
                                                 orgs={orgs}
                                             />
                                         </div>
-                                        <div className="px-4">
+                                        <div className="w-full border-b border-border" />
+                                        <div className="px-3">
                                             {!isAdminPage &&
                                                 user.serverAdmin && (
                                                     <div className="pb-3">
@@ -113,7 +114,7 @@ export function LayoutMobileMenu({
                                             />
                                         </div>
                                     </div>
-                                    <div className="p-4 space-y-4 border-t shrink-0">
+                                    <div className="px-3 pt-3 pb-3 space-y-4 border-t shrink-0">
                                         <SupporterStatus />
                                         {env?.app?.version && (
                                             <div className="text-xs text-muted-foreground text-center">

@@ -88,9 +88,7 @@ export async function deleteSiteResource(
             );
         });
 
-        logger.info(
-            `Deleted site resource ${siteResourceId}`
-        );
+        logger.info(`Deleted site resource ${siteResourceId}`);
 
         return response(res, {
             data: { message: "Site resource deleted successfully" },

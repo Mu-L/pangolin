@@ -30,6 +30,13 @@ import {
 } from "@app/components/ui/form";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { useTranslations } from "next-intl";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger
+} from "@app/components/ui/collapsible";
+import { ChevronsUpDown } from "lucide-react";
+import { cn } from "@app/lib/cn";
 
 type Step = "org" | "site" | "resources";
 
@@ -43,6 +50,7 @@ export default function StepperForm() {
     const [isChecked, setIsChecked] = useState(false);
     // Removed error state, now using toast for API errors
     const [orgCreated, setOrgCreated] = useState(false);
+    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
     const orgSchema = z.object({
         orgName: z.string().min(1, { message: t("orgNameRequired") }),
@@ -304,53 +312,85 @@ export default function StepperForm() {
                                         )}
                                     />
 
-                                    <FormField
-                                        control={orgForm.control}
-                                        name="subnet"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("setupSubnetAdvanced")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="text"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                                <FormDescription>
-                                                    {t(
-                                                        "setupSubnetDescription"
-                                                    )}
-                                                </FormDescription>
-                                            </FormItem>
-                                        )}
-                                    />
+                                    <Collapsible
+                                        open={isAdvancedOpen}
+                                        onOpenChange={setIsAdvancedOpen}
+                                        className="space-y-2"
+                                    >
+                                        <div className="flex items-center justify-between space-x-4">
+                                            <CollapsibleTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="text"
+                                                    size="sm"
+                                                    className="p-0 flex items-center justify-between w-full"
+                                                >
+                                                    <h4 className="text-sm">
+                                                        {t("advancedSettings")}
+                                                    </h4>
+                                                    <div>
+                                                        <ChevronsUpDown className="h-4 w-4" />
+                                                        <span className="sr-only">
+                                                            {t("toggle")}
+                                                        </span>
+                                                    </div>
+                                                </Button>
+                                            </CollapsibleTrigger>
+                                        </div>
+                                        <CollapsibleContent className="space-y-4">
+                                            <FormField
+                                                control={orgForm.control}
+                                                name="subnet"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(
+                                                                "setupSubnetAdvanced"
+                                                            )}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="text"
+                                                                {...field}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                        <FormDescription>
+                                                            {t(
+                                                                "setupSubnetDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                    </FormItem>
+                                                )}
+                                            />
 
-                                    <FormField
-                                        control={orgForm.control}
-                                        name="utilitySubnet"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("setupUtilitySubnet")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="text"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                                <FormDescription>
-                                                    {t(
-                                                        "setupUtilitySubnetDescription"
-                                                    )}
-                                                </FormDescription>
-                                            </FormItem>
-                                        )}
-                                    />
+                                            <FormField
+                                                control={orgForm.control}
+                                                name="utilitySubnet"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(
+                                                                "setupUtilitySubnet"
+                                                            )}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="text"
+                                                                {...field}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                        <FormDescription>
+                                                            {t(
+                                                                "setupUtilitySubnetDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </CollapsibleContent>
+                                    </Collapsible>
 
                                     {orgIdTaken && !orgCreated ? (
                                         <Alert variant="destructive">
@@ -366,10 +406,7 @@ export default function StepperForm() {
                                         <Button
                                             type="submit"
                                             loading={loading}
-                                            disabled={
-                                                loading ||
-                                                orgIdTaken
-                                            }
+                                            disabled={loading || orgIdTaken}
                                         >
                                             {t("setupCreateOrg")}
                                         </Button>

@@ -281,9 +281,9 @@ export default function EditInternalResourceDialog({
                     filter: "machine"
                 }
             }),
-            resourceQueries.resourceUsers({ resourceId: resource.id }),
-            resourceQueries.resourceRoles({ resourceId: resource.id }),
-            resourceQueries.resourceClients({ resourceId: resource.id })
+            resourceQueries.siteResourceUsers({ siteResourceId: resource.id }),
+            resourceQueries.siteResourceRoles({ siteResourceId: resource.id }),
+            resourceQueries.siteResourceClients({ siteResourceId: resource.id })
         ],
         combine: (results) => {
             const [
@@ -501,13 +501,19 @@ export default function EditInternalResourceDialog({
             // ]);
 
             await queryClient.invalidateQueries(
-                resourceQueries.resourceRoles({ resourceId: resource.id })
+                resourceQueries.siteResourceRoles({
+                    siteResourceId: resource.id
+                })
             );
             await queryClient.invalidateQueries(
-                resourceQueries.resourceUsers({ resourceId: resource.id })
+                resourceQueries.siteResourceUsers({
+                    siteResourceId: resource.id
+                })
             );
             await queryClient.invalidateQueries(
-                resourceQueries.resourceClients({ resourceId: resource.id })
+                resourceQueries.siteResourceClients({
+                    siteResourceId: resource.id
+                })
             );
 
             toast({

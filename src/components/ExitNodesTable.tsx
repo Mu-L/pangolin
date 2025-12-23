@@ -330,7 +330,7 @@ export default function ExitNodesTable({
                 isRefreshing={isRefreshing}
                 columnVisibility={{
                     type: false,
-                    address: false,
+                    address: false
                 }}
                 enableColumnVisibility={true}
             />

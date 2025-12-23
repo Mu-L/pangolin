@@ -10,15 +10,37 @@ interface OrgProviderProps {
     org: GetOrgResponse | null;
 }
 
-export function OrgProvider({ children, org }: OrgProviderProps) {
+export function OrgProvider({ children, org: serverOrg }: OrgProviderProps) {
     const t = useTranslations();
 
-    if (!org) {
+    if (!serverOrg) {
         throw new Error(t("orgErrorNoProvided"));
     }
 
+    const [org, setOrg] = useState<GetOrgResponse>(serverOrg);
+
+    const updateOrg = (updatedOrg: Partial<GetOrgResponse["org"]>) => {
+        if (!org) {
+            throw new Error(t("orgErrorNoUpdate"));
+        }
+        setOrg((prev) => {
+            if (!prev) {
+                return prev;
+            }
+            return {
+                ...prev,
+                org: {
+                    ...prev.org,
+                    ...updatedOrg
+                }
+            };
+        });
+    };
+
     return (
-        <OrgContext.Provider value={{ org }}>{children}</OrgContext.Provider>
+        <OrgContext.Provider value={{ org, updateOrg }}>
+            {children}
+        </OrgContext.Provider>
     );
 }
 

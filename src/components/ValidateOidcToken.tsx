@@ -56,11 +56,7 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
             if (props.providerError?.error) {
                 const providerMessage =
                     props.providerError.description ||
-                    t("idpErrorOidcProviderRejected", {
-                        error: props.providerError.error,
-                        defaultValue:
-                            "The identity provider returned an error: {error}."
-                    });
+                    "The identity provider returned an error: {error}.";
                 const suffix = props.providerError.uri
                     ? ` (${props.providerError.uri})`
                     : "";
@@ -76,10 +72,7 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
                 if (!isCancelled) {
                     setIsProviderError(false);
                     setError(
-                        t("idpErrorOidcMissingCode", {
-                            defaultValue:
-                                "The identity provider did not return an authorization code."
-                        })
+                        "The identity provider did not return an authorization code."
                     );
                     setLoading(false);
                 }
@@ -90,10 +83,7 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
                 if (!isCancelled) {
                     setIsProviderError(false);
                     setError(
-                        t("idpErrorOidcMissingState", {
-                            defaultValue:
-                                "The login request is missing state information. Please restart the login process."
-                        })
+                        "The login request is missing state information. Please restart the login process."
                     );
                     setLoading(false);
                 }
@@ -159,12 +149,7 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
                 console.error(e);
                 if (!isCancelled) {
                     setIsProviderError(false);
-                    setError(
-                        t("idpErrorOidcTokenValidating", {
-                            defaultValue:
-                                "An unexpected error occurred. Please try again."
-                        })
-                    );
+                    setError("An unexpected error occurred. Please try again.");
                 }
             } finally {
                 if (!isCancelled) {
@@ -181,7 +166,7 @@ export default function ValidateOidcToken(props: ValidateOidcTokenParams) {
     }, []);
 
     return (
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle>

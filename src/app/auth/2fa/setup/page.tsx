@@ -32,7 +32,6 @@ export default function Setup2FAPage() {
         console.log("2FA setup complete", redirect, email);
         if (redirect) {
             const cleanUrl = cleanRedirect(redirect);
-            console.log("Redirecting to:", cleanUrl);
             router.push(cleanUrl);
         } else {
             router.push("/");

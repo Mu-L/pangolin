@@ -132,7 +132,17 @@ export const resources = pgTable("resources", {
     }),
     headers: text("headers"), // comma-separated list of headers to add to the request
     proxyProtocol: boolean("proxyProtocol").notNull().default(false),
-    proxyProtocolVersion: integer("proxyProtocolVersion").default(1)
+    proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
+
+    maintenanceModeEnabled: boolean("maintenanceModeEnabled")
+        .notNull()
+        .default(false),
+    maintenanceModeType: text("maintenanceModeType", {
+        enum: ["forced", "automatic"]
+    }).default("forced"), // "forced" = always show, "automatic" = only when down
+    maintenanceTitle: text("maintenanceTitle"),
+    maintenanceMessage: text("maintenanceMessage"),
+    maintenanceEstimatedTime: text("maintenanceEstimatedTime")
 });
 
 export const targets = pgTable("targets", {
@@ -215,8 +225,8 @@ export const siteResources = pgTable("siteResources", {
     enabled: boolean("enabled").notNull().default(true),
     alias: varchar("alias"),
     aliasAddress: varchar("aliasAddress"),
-    tcpPortRangeString: varchar("tcpPortRangeString"),
-    udpPortRangeString: varchar("udpPortRangeString"),
+    tcpPortRangeString: varchar("tcpPortRangeString").notNull().default("*"),
+    udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
     disableIcmp: boolean("disableIcmp").notNull().default(false)
 });
 
@@ -455,6 +465,23 @@ export const resourceHeaderAuth = pgTable("resourceHeaderAuth", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     headerAuthHash: varchar("headerAuthHash").notNull()
 });
+
+export const resourceHeaderAuthExtendedCompatibility = pgTable(
+    "resourceHeaderAuthExtendedCompatibility",
+    {
+        headerAuthExtendedCompatibilityId: serial(
+            "headerAuthExtendedCompatibilityId"
+        ).primaryKey(),
+        resourceId: integer("resourceId")
+            .notNull()
+            .references(() => resources.resourceId, { onDelete: "cascade" }),
+        extendedCompatibilityIsActivated: boolean(
+            "extendedCompatibilityIsActivated"
+        )
+            .notNull()
+            .default(true)
+    }
+);
 
 export const resourceAccessToken = pgTable("resourceAccessToken", {
     accessTokenId: varchar("accessTokenId").primaryKey(),
@@ -856,6 +883,9 @@ export type ResourceSession = InferSelectModel<typeof resourceSessions>;
 export type ResourcePincode = InferSelectModel<typeof resourcePincode>;
 export type ResourcePassword = InferSelectModel<typeof resourcePassword>;
 export type ResourceHeaderAuth = InferSelectModel<typeof resourceHeaderAuth>;
+export type ResourceHeaderAuthExtendedCompatibility = InferSelectModel<
+    typeof resourceHeaderAuthExtendedCompatibility
+>;
 export type ResourceOtp = InferSelectModel<typeof resourceOtp>;
 export type ResourceAccessToken = InferSelectModel<typeof resourceAccessToken>;
 export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;

@@ -15,7 +15,8 @@ export function pullEnv(): Env {
             resourceAccessTokenHeadersToken: process.env
                 .RESOURCE_ACCESS_TOKEN_HEADERS_TOKEN as string,
             reoClientId: process.env.REO_CLIENT_ID as string,
-            maxmind_db_path: process.env.MAXMIND_DB_PATH as string
+            maxmind_db_path: process.env.MAXMIND_DB_PATH as string,
+            maxmind_asn_path: process.env.MAXMIND_ASN_PATH as string
         },
         app: {
             environment: process.env.ENVIRONMENT as string,

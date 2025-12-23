@@ -87,7 +87,12 @@ const isValidPortRangeString = (val: string | undefined | null): boolean => {
                 return false;
             }
 
-            if (startPort < 1 || startPort > 65535 || endPort < 1 || endPort > 65535) {
+            if (
+                startPort < 1 ||
+                startPort > 65535 ||
+                endPort < 1 ||
+                endPort > 65535
+            ) {
                 return false;
             }
 
@@ -131,7 +136,10 @@ const getPortModeFromString = (val: string | undefined | null): PortMode => {
 };
 
 // Helper to get the port string for API from mode and custom value
-const getPortStringFromMode = (mode: PortMode, customValue: string): string | undefined => {
+const getPortStringFromMode = (
+    mode: PortMode,
+    customValue: string
+): string | undefined => {
     if (mode === "all") return "*";
     if (mode === "blocked") return "";
     return customValue;
@@ -170,7 +178,9 @@ export default function CreateInternalResourceDialog({
         mode: z.enum(["host", "cidr"]),
         // protocol: z.enum(["tcp", "udp"]).nullish(),
         // proxyPort: z.int().positive().min(1, t("createInternalResourceDialogProxyPortMin")).max(65535, t("createInternalResourceDialogProxyPortMax")).nullish(),
-        destination: z.string().min(1),
+        destination: z.string().min(1, {
+            message: t("createInternalResourceDialogDestinationRequired")
+        }),
         // destinationPort: z.int().positive().min(1, t("createInternalResourceDialogDestinationPortMin")).max(65535, t("createInternalResourceDialogDestinationPortMax")).nullish(),
         alias: z.string().nullish(),
         tcpPortRangeString: createPortRangeStringSchema(t),
@@ -341,10 +351,10 @@ export default function CreateInternalResourceDialog({
     };
 
     useEffect(() => {
-        if (open && availableSites.length > 0) {
+        if (open) {
             form.reset({
                 name: "",
-                siteId: availableSites[0].siteId,
+                siteId: availableSites[0]?.siteId || 0,
                 mode: "host",
                 // protocol: "tcp",
                 // proxyPort: undefined,
@@ -466,30 +476,6 @@ export default function CreateInternalResourceDialog({
             setIsSubmitting(false);
         }
     };
-
-    if (availableSites.length === 0) {
-        return (
-            <Credenza open={open} onOpenChange={setOpen}>
-                <CredenzaContent className="max-w-md">
-                    <CredenzaHeader>
-                        <CredenzaTitle>
-                            {t("createInternalResourceDialogNoSitesAvailable")}
-                        </CredenzaTitle>
-                        <CredenzaDescription>
-                            {t(
-                                "createInternalResourceDialogNoSitesAvailableDescription"
-                            )}
-                        </CredenzaDescription>
-                    </CredenzaHeader>
-                    <CredenzaFooter>
-                        <Button onClick={() => setOpen(false)}>
-                            {t("createInternalResourceDialogClose")}
-                        </Button>
-                    </CredenzaFooter>
-                </CredenzaContent>
-            </Credenza>
-        );
-    }
 
     return (
         <Credenza open={open} onOpenChange={setOpen}>
@@ -1119,8 +1105,7 @@ export default function CreateInternalResourceDialog({
                                                             size="sm"
                                                             tags={
                                                                 form.getValues()
-                                                                    .roles ||
-                                                                []
+                                                                    .roles || []
                                                             }
                                                             setTags={(
                                                                 newRoles
@@ -1149,11 +1134,6 @@ export default function CreateInternalResourceDialog({
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
-                                                    <FormDescription>
-                                                        {t(
-                                                            "resourceRoleDescription"
-                                                        )}
-                                                    </FormDescription>
                                                 </FormItem>
                                             )}
                                         />
@@ -1181,8 +1161,7 @@ export default function CreateInternalResourceDialog({
                                                             )}
                                                             tags={
                                                                 form.getValues()
-                                                                    .users ||
-                                                                []
+                                                                    .users || []
                                                             }
                                                             size="sm"
                                                             setTags={(
@@ -1272,9 +1251,7 @@ export default function CreateInternalResourceDialog({
                                                                 restrictTagsToAutocompleteOptions={
                                                                     true
                                                                 }
-                                                                sortTags={
-                                                                    true
-                                                                }
+                                                                sortTags={true}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />

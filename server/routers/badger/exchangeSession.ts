@@ -62,7 +62,26 @@ export async function exchangeSession(
             cleanHost = cleanHost.slice(0, -1 * matched.length);
         }
 
-        const clientIp = requestIp?.split(":")[0];
+        const clientIp = requestIp
+            ? (() => {
+                  if (requestIp.startsWith("[") && requestIp.includes("]")) {
+                      const ipv6Match = requestIp.match(/\[(.*?)\]/);
+                      if (ipv6Match) {
+                          return ipv6Match[1];
+                      }
+                  }
+
+                  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}/;
+                  if (ipv4Pattern.test(requestIp)) {
+                      const lastColonIndex = requestIp.lastIndexOf(":");
+                      if (lastColonIndex !== -1) {
+                          return requestIp.substring(0, lastColonIndex);
+                      }
+                  }
+
+                  return requestIp;
+              })()
+            : undefined;
 
         const [resource] = await db
             .select()

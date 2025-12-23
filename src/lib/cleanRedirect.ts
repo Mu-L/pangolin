@@ -1,22 +1,86 @@
-type PatternConfig = {
-    name: string;
-    regex: RegExp;
+type CleanRedirectOptions = {
+    fallback?: string;
+    maxRedirectDepth?: number;
 };
 
-const patterns: PatternConfig[] = [
-    { name: "Invite Token", regex: /^\/invite\?token=[a-zA-Z0-9-]+$/ },
-    { name: "Setup", regex: /^\/setup$/ },
-    { name: "Resource Auth Portal", regex: /^\/auth\/resource\/\d+$/ },
-    {
-        name: "Device Login",
-        regex: /^\/auth\/login\/device(\?code=[a-zA-Z0-9-]+)?$/
-    }
-];
+const ALLOWED_QUERY_PARAMS = new Set([
+    "forceLogin",
+    "code",
+    "token",
+    "redirect"
+]);
 
-export function cleanRedirect(input: string, fallback?: string): string {
+const DUMMY_BASE = "https://internal.local";
+
+export function cleanRedirect(
+    input: string,
+    options: CleanRedirectOptions = {}
+): string {
+    const { fallback = "/", maxRedirectDepth = 2 } = options;
+
     if (!input || typeof input !== "string") {
-        return "/";
+        return fallback;
     }
-    const isAccepted = patterns.some((pattern) => pattern.regex.test(input));
-    return isAccepted ? input : fallback || "/";
+
+    try {
+        return sanitizeUrl(input, fallback, maxRedirectDepth);
+    } catch {
+        return fallback;
+    }
+}
+
+function sanitizeUrl(
+    input: string,
+    fallback: string,
+    remainingRedirectDepth: number
+): string {
+    if (
+        input.startsWith("javascript:") ||
+        input.startsWith("data:") ||
+        input.startsWith("//")
+    ) {
+        return fallback;
+    }
+
+    const url = new URL(input, DUMMY_BASE);
+
+    // Must be a relative/internal path
+    if (url.origin !== DUMMY_BASE) {
+        return fallback;
+    }
+
+    if (!url.pathname.startsWith("/")) {
+        return fallback;
+    }
+
+    const cleanParams = new URLSearchParams();
+
+    for (const [key, value] of url.searchParams.entries()) {
+        if (!ALLOWED_QUERY_PARAMS.has(key)) {
+            continue;
+        }
+
+        if (key === "redirect") {
+            if (remainingRedirectDepth <= 0) {
+                continue;
+            }
+
+            const cleanedRedirect = sanitizeUrl(
+                value,
+                "",
+                remainingRedirectDepth - 1
+            );
+
+            if (cleanedRedirect) {
+                cleanParams.set("redirect", cleanedRedirect);
+            }
+
+            continue;
+        }
+
+        cleanParams.set(key, value);
+    }
+
+    const queryString = cleanParams.toString();
+    return queryString ? `${url.pathname}?${queryString}` : url.pathname;
 }

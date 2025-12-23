@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           skopeo list-tags --retry-times 3 docker://"${SOURCE_IMAGE}" \
-            | jq -r '.Tags[]' | sort -u > src-tags.txt
+            | jq -r '.Tags[]' | grep -v -e '-arm64' -e '-amd64' | sort -u > src-tags.txt
           echo "Found source tags: $(wc -l < src-tags.txt)"
           head -n 20 src-tags.txt || true
 

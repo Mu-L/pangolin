@@ -28,7 +28,7 @@ export function SettingsSectionForm({
     className?: string;
 }) {
     return (
-        <div className={cn("md:max-w-1/2 space-y-4", className)}>{children}</div>
+        <div className={cn("max-w-xl space-y-4", className)}>{children}</div>
     );
 }
 

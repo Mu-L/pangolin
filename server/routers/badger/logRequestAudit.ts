@@ -10,7 +10,7 @@ Reasons:
 100 - Allowed by Rule
 101 - Allowed No Auth
 102 - Valid Access Token
-103 - Valid header auth
+103 - Valid Header Auth (HTTP Basic Auth)
 104 - Valid Pincode
 105 - Valid Password
 106 - Valid email

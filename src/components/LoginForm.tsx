@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -84,6 +84,7 @@ export default function LoginForm({
 
     const [mfaRequested, setMfaRequested] = useState(false);
     const [showSecurityKeyPrompt, setShowSecurityKeyPrompt] = useState(false);
+    const otpContainerRef = useRef<HTMLDivElement>(null);
 
     const t = useTranslations();
     const currentHost =
@@ -111,6 +112,53 @@ export default function LoginForm({
             init();
         }
     }, []);
+
+    // Auto-focus MFA input when MFA is requested
+    useEffect(() => {
+        if (!mfaRequested) return;
+
+        const focusInput = () => {
+            // Try using the ref first
+            if (otpContainerRef.current) {
+                const hiddenInput = otpContainerRef.current.querySelector(
+                    "input"
+                ) as HTMLInputElement;
+                if (hiddenInput) {
+                    hiddenInput.focus();
+                    return;
+                }
+            }
+
+            // Fallback: query the DOM
+            const otpContainer = document.querySelector(
+                '[data-slot="input-otp"]'
+            );
+            if (!otpContainer) return;
+
+            const hiddenInput = otpContainer.querySelector(
+                "input"
+            ) as HTMLInputElement;
+            if (hiddenInput) {
+                hiddenInput.focus();
+                return;
+            }
+
+            // Last resort: click the first slot
+            const firstSlot = otpContainer.querySelector(
+                '[data-slot="input-otp-slot"]'
+            ) as HTMLElement;
+            if (firstSlot) {
+                firstSlot.click();
+            }
+        };
+
+        // Use requestAnimationFrame to wait for the next paint
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                focusInput();
+            });
+        });
+    }, [mfaRequested]);
 
     const formSchema = z.object({
         email: z.string().email({ message: t("emailInvalid") }),
@@ -468,10 +516,14 @@ export default function LoginForm({
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormControl>
-                                            <div className="flex justify-center">
+                                            <div
+                                                ref={otpContainerRef}
+                                                className="flex justify-center"
+                                            >
                                                 <InputOTP
                                                     maxLength={6}
                                                     {...field}
+                                                    autoFocus
                                                     pattern={
                                                         REGEXP_ONLY_DIGITS_AND_CHARS
                                                     }

@@ -3,6 +3,7 @@ import {
     orgDomains,
     Resource,
     resourceHeaderAuth,
+    resourceHeaderAuthExtendedCompatibility,
     resourcePincode,
     resourceRules,
     resourceWhitelist,
@@ -30,7 +31,8 @@ import { pickPort } from "@server/routers/target/helpers";
 import { resourcePassword } from "@server/db";
 import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
-import { get } from "http";
+import { isLicensedOrSubscribed } from "../isLicencedOrSubscribed";
+import { build } from "@server/build";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -209,6 +211,16 @@ export async function updateProxyResources(
                 resource = existingResource;
             } else {
                 // Update existing resource
+
+                const isLicensed = await isLicensedOrSubscribed(orgId);
+                if (build == "enterprise" && !isLicensed) {
+                    logger.warn(
+                        "Server is not licensed! Clearing set maintenance screen values"
+                    );
+                    // null the maintenance mode fields if not licensed
+                    resourceData.maintenance = undefined;
+                }
+
                 [resource] = await trx
                     .update(resources)
                     .set({
@@ -233,7 +245,14 @@ export async function updateProxyResources(
                             : false,
                         headers: headers || null,
                         applyRules:
-                            resourceData.rules && resourceData.rules.length > 0
+                            resourceData.rules && resourceData.rules.length > 0,
+                        maintenanceModeEnabled:
+                            resourceData.maintenance?.enabled,
+                        maintenanceModeType: resourceData.maintenance?.type,
+                        maintenanceTitle: resourceData.maintenance?.title,
+                        maintenanceMessage: resourceData.maintenance?.message,
+                        maintenanceEstimatedTime:
+                            resourceData.maintenance?.["estimated-time"]
                     })
                     .where(
                         eq(resources.resourceId, existingResource.resourceId)
@@ -287,21 +306,47 @@ export async function updateProxyResources(
                             existingResource.resourceId
                         )
                     );
+
+                await trx
+                    .delete(resourceHeaderAuthExtendedCompatibility)
+                    .where(
+                        eq(
+                            resourceHeaderAuthExtendedCompatibility.resourceId,
+                            existingResource.resourceId
+                        )
+                    );
+
                 if (resourceData.auth?.["basic-auth"]) {
                     const headerAuthUser =
                         resourceData.auth?.["basic-auth"]?.user;
                     const headerAuthPassword =
                         resourceData.auth?.["basic-auth"]?.password;
-                    if (headerAuthUser && headerAuthPassword) {
+                    const headerAuthExtendedCompatibility =
+                        resourceData.auth?.["basic-auth"]
+                            ?.extendedCompatibility;
+                    if (
+                        headerAuthUser &&
+                        headerAuthPassword &&
+                        headerAuthExtendedCompatibility !== null
+                    ) {
                         const headerAuthHash = await hashPassword(
                             Buffer.from(
                                 `${headerAuthUser}:${headerAuthPassword}`
                             ).toString("base64")
                         );
-                        await trx.insert(resourceHeaderAuth).values({
-                            resourceId: existingResource.resourceId,
-                            headerAuthHash
-                        });
+                        await Promise.all([
+                            trx.insert(resourceHeaderAuth).values({
+                                resourceId: existingResource.resourceId,
+                                headerAuthHash
+                            }),
+                            trx
+                                .insert(resourceHeaderAuthExtendedCompatibility)
+                                .values({
+                                    resourceId: existingResource.resourceId,
+                                    extendedCompatibilityIsActivated:
+                                        headerAuthExtendedCompatibility
+                                })
+                        ]);
                     }
                 }
 
@@ -604,6 +649,15 @@ export async function updateProxyResources(
                 );
             }
 
+            const isLicensed = await isLicensedOrSubscribed(orgId);
+            if (build == "enterprise" && !isLicensed) {
+                logger.warn(
+                    "Server is not licensed! Clearing set maintenance screen values"
+                );
+                // null the maintenance mode fields if not licensed
+                resourceData.maintenance = undefined;
+            }
+
             // Create new resource
             const [newResource] = await trx
                 .insert(resources)
@@ -625,7 +679,13 @@ export async function updateProxyResources(
                     ssl: resourceSsl,
                     headers: headers || null,
                     applyRules:
-                        resourceData.rules && resourceData.rules.length > 0
+                        resourceData.rules && resourceData.rules.length > 0,
+                    maintenanceModeEnabled: resourceData.maintenance?.enabled,
+                    maintenanceModeType: resourceData.maintenance?.type,
+                    maintenanceTitle: resourceData.maintenance?.title,
+                    maintenanceMessage: resourceData.maintenance?.message,
+                    maintenanceEstimatedTime:
+                        resourceData.maintenance?.["estimated-time"]
                 })
                 .returning();
 
@@ -656,18 +716,33 @@ export async function updateProxyResources(
                 const headerAuthUser = resourceData.auth?.["basic-auth"]?.user;
                 const headerAuthPassword =
                     resourceData.auth?.["basic-auth"]?.password;
+                const headerAuthExtendedCompatibility =
+                    resourceData.auth?.["basic-auth"]?.extendedCompatibility;
 
-                if (headerAuthUser && headerAuthPassword) {
+                if (
+                    headerAuthUser &&
+                    headerAuthPassword &&
+                    headerAuthExtendedCompatibility !== null
+                ) {
                     const headerAuthHash = await hashPassword(
                         Buffer.from(
                             `${headerAuthUser}:${headerAuthPassword}`
                         ).toString("base64")
                     );
 
-                    await trx.insert(resourceHeaderAuth).values({
-                        resourceId: newResource.resourceId,
-                        headerAuthHash
-                    });
+                    await Promise.all([
+                        trx.insert(resourceHeaderAuth).values({
+                            resourceId: newResource.resourceId,
+                            headerAuthHash
+                        }),
+                        trx
+                            .insert(resourceHeaderAuthExtendedCompatibility)
+                            .values({
+                                resourceId: newResource.resourceId,
+                                extendedCompatibilityIsActivated:
+                                    headerAuthExtendedCompatibility
+                            })
+                    ]);
                 }
             }
 

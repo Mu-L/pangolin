@@ -99,14 +99,12 @@ export default function ClientResourcesTable({
         siteId: number
     ) => {
         try {
-            await api
-                .delete(`/site-resource/${resourceId}`)
-                .then(() => {
-                    startTransition(() => {
-                        router.refresh();
-                        setIsDeleteModalOpen(false);
-                    });
+            await api.delete(`/site-resource/${resourceId}`).then(() => {
+                startTransition(() => {
+                    router.refresh();
+                    setIsDeleteModalOpen(false);
                 });
+            });
         } catch (e) {
             console.error(t("resourceErrorDelete"), e);
             toast({

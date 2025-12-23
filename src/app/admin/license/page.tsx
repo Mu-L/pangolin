@@ -244,7 +244,7 @@ export default function LicensePage() {
                             {t("licenseActivateKeyDescription")}
                         </CredenzaDescription>
                     </CredenzaHeader>
-                    <CredenzaBody>
+                    <CredenzaBody className="overflow-y-hidden">
                         <Form {...form}>
                             <form
                                 onSubmit={form.handleSubmit(onSubmit)}

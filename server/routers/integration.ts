@@ -858,14 +858,12 @@ authenticated.put(
     blueprints.applyJSONBlueprint
 );
 
-
 authenticated.get(
     "/org/:orgId/blueprint/:blueprintId",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.getBlueprint),
     blueprints.getBlueprint
 );
-
 
 authenticated.get(
     "/org/:orgId/blueprints",

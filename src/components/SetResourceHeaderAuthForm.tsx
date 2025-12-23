@@ -31,17 +31,21 @@ import { Resource } from "@server/db";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
+import { SwitchInput } from "@/components/SwitchInput";
+import { InfoPopup } from "@/components/ui/info-popup";
 
 const setHeaderAuthFormSchema = z.object({
     user: z.string().min(4).max(100),
-    password: z.string().min(4).max(100)
+    password: z.string().min(4).max(100),
+    extendedCompatibility: z.boolean()
 });
 
 type SetHeaderAuthFormValues = z.infer<typeof setHeaderAuthFormSchema>;
 
 const defaultValues: Partial<SetHeaderAuthFormValues> = {
     user: "",
-    password: ""
+    password: "",
+    extendedCompatibility: true
 };
 
 type SetHeaderAuthFormProps = {
@@ -82,19 +86,10 @@ export default function SetResourceHeaderAuthForm({
             `/resource/${resourceId}/header-auth`,
             {
                 user: data.user,
-                password: data.password
+                password: data.password,
+                extendedCompatibility: data.extendedCompatibility
             }
         )
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("resourceErrorHeaderAuthSetup"),
-                    description: formatAxiosError(
-                        e,
-                        t("resourceErrorHeaderAuthSetupDescription")
-                    )
-                });
-            })
             .then(() => {
                 toast({
                     title: t("resourceHeaderAuthSetup"),
@@ -104,6 +99,16 @@ export default function SetResourceHeaderAuthForm({
                 if (onSetHeaderAuth) {
                     onSetHeaderAuth();
                 }
+            })
+            .catch((e) => {
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorHeaderAuthSetup"),
+                    description: formatAxiosError(
+                        e,
+                        t("resourceErrorHeaderAuthSetupDescription")
+                    )
+                });
             })
             .finally(() => setLoading(false));
     }
@@ -164,6 +169,30 @@ export default function SetResourceHeaderAuthForm({
                                                     autoComplete="off"
                                                     type="password"
                                                     {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="extendedCompatibility"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <SwitchInput
+                                                    id="header-auth-compatibility-toggle"
+                                                    label={t(
+                                                        "headerAuthCompatibility"
+                                                    )}
+                                                    info={t(
+                                                        "headerAuthCompatibilityInfo"
+                                                    )}
+                                                    checked={field.value}
+                                                    onCheckedChange={
+                                                        field.onChange
+                                                    }
                                                 />
                                             </FormControl>
                                             <FormMessage />

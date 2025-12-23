@@ -204,7 +204,9 @@ export async function updateSiteResource(
             .limit(1);
 
         if (!org) {
-            return next(createHttpError(HttpCode.NOT_FOUND, "Organization not found"));
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Organization not found")
+            );
         }
 
         if (!org.subnet || !org.utilitySubnet) {
@@ -217,10 +219,13 @@ export async function updateSiteResource(
         }
 
         // Only check if destination is an IP address
-        const isIp = z.union([z.ipv4(), z.ipv6()]).safeParse(destination).success;
+        const isIp = z
+            .union([z.ipv4(), z.ipv6()])
+            .safeParse(destination).success;
         if (
             isIp &&
-            (isIpInCidr(destination!, org.subnet) || isIpInCidr(destination!, org.utilitySubnet))
+            (isIpInCidr(destination!, org.subnet) ||
+                isIpInCidr(destination!, org.utilitySubnet))
         ) {
             return next(
                 createHttpError(
@@ -295,7 +300,7 @@ export async function updateSiteResource(
                 const [insertedSiteResource] = await trx
                     .insert(siteResources)
                     .values({
-                        ...existingSiteResource,
+                        ...existingSiteResource
                     })
                     .returning();
 
@@ -517,9 +522,14 @@ export async function handleMessagingForUpdatedSiteResource(
     site: { siteId: number; orgId: string },
     trx: Transaction
 ) {
-
-    logger.debug("handleMessagingForUpdatedSiteResource: existingSiteResource is: ", existingSiteResource);
-    logger.debug("handleMessagingForUpdatedSiteResource: updatedSiteResource is: ", updatedSiteResource);
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: existingSiteResource is: ",
+        existingSiteResource
+    );
+    logger.debug(
+        "handleMessagingForUpdatedSiteResource: updatedSiteResource is: ",
+        updatedSiteResource
+    );
 
     const { mergedAllClients } =
         await rebuildClientAssociationsFromSiteResource(
