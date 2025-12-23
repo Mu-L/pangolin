@@ -83,7 +83,7 @@ export function LayoutMobileMenu({
                                         <div className="px-3">
                                             {!isAdminPage &&
                                                 user.serverAdmin && (
-                                                    <div className="pb-3">
+                                                    <div className="py-2">
                                                         <Link
                                                             href="/admin"
                                                             className={cn(
