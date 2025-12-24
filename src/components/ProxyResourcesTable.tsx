@@ -198,7 +198,7 @@ export default function ProxyResourcesTable({
 
         if (!targets || targets.length === 0) {
             return (
-                <div className="flex items-center gap-2">
+                <div id="LOOK_FOR_ME" className="flex items-center gap-2">
                     <StatusIcon status="unknown" />
                     <span className="text-sm">
                         {t("resourcesTableNoTargets")}

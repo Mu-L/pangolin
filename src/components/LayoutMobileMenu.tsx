@@ -48,7 +48,7 @@ export function LayoutMobileMenu({
     const t = useTranslations();
 
     return (
-        <div className="shrink-0 md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
+        <div className="shrink-0 md:hidden sticky top-0 z-50">
             <div className="h-16 flex items-center px-2">
                 <div className="flex items-center gap-4">
                     {showSidebar && (
