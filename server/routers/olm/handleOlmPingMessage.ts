@@ -9,6 +9,7 @@ import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { sendTerminateClient } from "../client/terminate";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
+import { sendOlmSyncMessage } from "./sync";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -108,15 +109,6 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         return;
     }
 
-    // get the version
-    const configVersion = await getClientConfigVersion(olm.olmId);
-
-    if (message.configVersion && configVersion != message.configVersion) {
-        logger.warn(`Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`);
-
-        // TODO: sync the client
-    }
-
     if (olm.userId) {
         // we need to check a user token to make sure its still valid
         const { session: userSession, user } =
@@ -172,13 +164,24 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
 
     try {
         // Update the client's last ping timestamp
-        await db
+        const [client] = await db
             .update(clients)
             .set({
                 lastPing: Math.floor(Date.now() / 1000),
                 online: true
             })
-            .where(eq(clients.clientId, olm.clientId));
+            .where(eq(clients.clientId, olm.clientId)).returning();
+
+
+        // get the version
+        const configVersion = await getClientConfigVersion(olm.olmId);
+
+        if (message.configVersion && configVersion != message.configVersion) {
+            logger.warn(`Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`);
+            await sendOlmSyncMessage(olm, client);
+        }
+
+
     } catch (error) {
         logger.error("Error handling ping message", { error });
     }
