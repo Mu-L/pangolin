@@ -618,6 +618,16 @@ hybridRouter.get(
                 )
                 .limit(1);
 
+            if (!result) {
+                return response<LoginPage | null>(res, {
+                    data: null,
+                    success: true,
+                    error: false,
+                    message: "Login page not found",
+                    status: HttpCode.OK
+                });
+            }
+
             if (
                 await checkExitNodeOrg(
                     remoteExitNode.exitNodeId,
@@ -631,16 +641,6 @@ hybridRouter.get(
                         "Exit node not allowed for this organization"
                     )
                 );
-            }
-
-            if (!result) {
-                return response<LoginPage | null>(res, {
-                    data: null,
-                    success: true,
-                    error: false,
-                    message: "Login page not found",
-                    status: HttpCode.OK
-                });
             }
 
             return response<LoginPage>(res, {

@@ -48,6 +48,11 @@ async function query(orgId: string) {
             )
         )
         .limit(1);
+
+    if (!res) {
+        return null;
+    }
+
     return {
         ...res,
         orgId: orgLink.orgs.orgId,

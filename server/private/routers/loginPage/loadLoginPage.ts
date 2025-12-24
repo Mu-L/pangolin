@@ -40,6 +40,11 @@ async function query(orgId: string | undefined, fullDomain: string) {
                 eq(loginPage.loginPageId, loginPageOrg.loginPageId)
             )
             .limit(1);
+
+        if (!res) {
+            return null;
+        }
+
         return {
             ...res.loginPage,
             orgId: res.loginPageOrg.orgId
@@ -65,6 +70,11 @@ async function query(orgId: string | undefined, fullDomain: string) {
             )
         )
         .limit(1);
+
+    if (!res) {
+        return null;
+    }
+
     return {
         ...res,
         orgId: orgLink.orgId
