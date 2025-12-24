@@ -33,12 +33,6 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                     cols={resource.http && env.flags.usePangolinDns ? 5 : 4}
                 >
                     <InfoSection>
-                        <InfoSectionTitle>URL</InfoSectionTitle>
-                        <InfoSectionContent>
-                            <CopyToClipboard text={fullUrl} isLink={true} />
-                        </InfoSectionContent>
-                    </InfoSection>
-                    <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>
                             {resource.niceId}
@@ -46,6 +40,12 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                     </InfoSection>
                     {resource.http ? (
                         <>
+                            <InfoSection>
+                                <InfoSectionTitle>URL</InfoSectionTitle>
+                                <InfoSectionContent>
+                                    <CopyToClipboard text={fullUrl} isLink={true} />
+                                </InfoSectionContent>
+                            </InfoSection>
                             <InfoSection>
                                 <InfoSectionTitle>
                                     {t("authentication")}
