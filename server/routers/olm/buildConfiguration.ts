@@ -7,7 +7,7 @@ import config from "@server/lib/config";
 
 export async function buildSiteConfigurationForOlmClient(
     client: Client,
-    publicKey: string,
+    publicKey: string | null,
     relay: boolean
 ) {
     const siteConfigurations = [];
@@ -74,7 +74,7 @@ export async function buildSiteConfigurationForOlmClient(
             .limit(1);
 
         // Add the peer to the exit node for this site
-        if (clientSite.endpoint) {
+        if (clientSite.endpoint && publicKey) {
             logger.info(
                 `Adding peer ${publicKey} to site ${site.siteId} with endpoint ${clientSite.endpoint}`
             );
