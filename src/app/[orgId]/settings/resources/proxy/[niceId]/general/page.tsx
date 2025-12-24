@@ -164,6 +164,10 @@ function MaintenanceSectionForm({
         return isEnterpriseNotLicensed || isSaasNotSubscribed;
     };
 
+    if (!resource.http) {
+        return null;
+    }
+
     return (
         <SettingsSection>
             <SettingsSectionHeader>
@@ -437,9 +441,16 @@ export default function GeneralForm() {
     );
 
     const resourceFullDomainName = useMemo(() => {
-        const url = new URL(resourceFullDomain);
-        return url.hostname;
-    }, [resourceFullDomain]);
+        if (!resource.fullDomain) {
+            return "";
+        }
+        try {
+            const url = new URL(resourceFullDomain);
+            return url.hostname;
+        } catch {
+            return "";
+        }
+    }, [resourceFullDomain, resource.fullDomain]);
 
     const [selectedDomain, setSelectedDomain] = useState<{
         domainId: string;
