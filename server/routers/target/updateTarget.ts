@@ -213,9 +213,11 @@ export async function updateTarget(
 
         // When health check is disabled, reset hcHealth to "unknown"
         // to prevent previously unhealthy targets from being excluded
+        // Also when the site is not a newt, set hcHealth to "unknown"
         const hcHealthValue =
             parsedBody.data.hcEnabled === false ||
-            parsedBody.data.hcEnabled === null
+            parsedBody.data.hcEnabled === null ||
+            site.type !== "newt"
                 ? "unknown"
                 : undefined;
 
