@@ -288,7 +288,10 @@ export function DataTable<TData, TValue>({
     useEffect(() => {
         if (persistPageSize && pagination.pageSize !== pageSize) {
             // Only store if user has actually changed it from initial value
-            if (hasUserChangedPageSize.current && pagination.pageSize !== initialPageSize.current) {
+            if (
+                hasUserChangedPageSize.current &&
+                pagination.pageSize !== initialPageSize.current
+            ) {
                 setStoredPageSize(pagination.pageSize, tableId);
             }
             setPageSize(pagination.pageSize);
@@ -298,7 +301,9 @@ export function DataTable<TData, TValue>({
     useEffect(() => {
         // Persist column visibility to localStorage when it changes (but not on initial mount)
         if (shouldPersistColumnVisibility) {
-            const hasChanged = JSON.stringify(columnVisibility) !== JSON.stringify(initialColumnVisibilityState.current);
+            const hasChanged =
+                JSON.stringify(columnVisibility) !==
+                JSON.stringify(initialColumnVisibilityState.current);
             if (hasChanged) {
                 // Mark as user-initiated change and persist
                 hasUserChangedColumnVisibility.current = true;

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@app/components/ui/button";
 import {
     Command,
     CommandEmpty,
@@ -52,13 +51,14 @@ export function OrgSelector({
     const orgSelectorContent = (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="secondary"
-                    size={isCollapsed ? "icon" : "lg"}
+                <div
                     role="combobox"
                     aria-expanded={open}
                     className={cn(
-                        isCollapsed ? "w-8 h-8" : "w-full h-12 px-3 py-4"
+                        "cursor-pointer transition-colors",
+                        isCollapsed
+                            ? "w-full h-16 flex items-center justify-center hover:bg-muted"
+                            : "w-full px-4 py-4 hover:bg-muted"
                     )}
                 >
                     {isCollapsed ? (
@@ -66,9 +66,8 @@ export function OrgSelector({
                     ) : (
                         <div className="flex items-center justify-between w-full min-w-0">
                             <div className="flex items-center min-w-0 flex-1">
-                                <Building2 className="h-4 w-4 mr-3 shrink-0" />
-                                <div className="flex flex-col items-start min-w-0 flex-1">
-                                    <span className="font-bold text-sm">
+                                <div className="flex flex-col items-start min-w-0 flex-1 gap-1">
+                                    <span className="font-bold">
                                         {t("org")}
                                     </span>
                                     <span className="text-sm text-muted-foreground truncate w-full text-left">
@@ -79,7 +78,7 @@ export function OrgSelector({
                             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
                         </div>
                     )}
-                </Button>
+                </div>
             </PopoverTrigger>
             <PopoverContent className="w-[320px] p-0" align="start">
                 <Command className="rounded-lg">

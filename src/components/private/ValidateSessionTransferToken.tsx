@@ -12,6 +12,7 @@ import { TransferSessionResponse } from "@server/routers/auth/types";
 
 type ValidateSessionTransferTokenParams = {
     token: string;
+    redirect?: string;
 };
 
 export default function ValidateSessionTransferToken(
@@ -49,7 +50,9 @@ export default function ValidateSessionTransferToken(
             }
 
             if (doRedirect) {
-                redirect(env.app.dashboardUrl);
+                // add redirect param to dashboardUrl if provided
+                const fullUrl = `${env.app.dashboardUrl}${props.redirect || ""}`;
+                router.push(fullUrl);
             }
         }
 

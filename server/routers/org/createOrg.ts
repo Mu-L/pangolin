@@ -27,6 +27,7 @@ import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { doCidrsOverlap } from "@server/lib/ip";
 
 const createOrgSchema = z.strictObject({
     orgId: z.string(),
@@ -36,6 +37,11 @@ const createOrgSchema = z.strictObject({
         .union([z.cidrv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
         .refine((val) => isValidCIDR(val), {
             message: "Invalid subnet CIDR"
+        }),
+    utilitySubnet: z
+        .union([z.cidrv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+        .refine((val) => isValidCIDR(val), {
+            message: "Invalid utility subnet CIDR"
         })
 });
 
@@ -84,7 +90,7 @@ export async function createOrg(
             );
         }
 
-        const { orgId, name, subnet } = parsedBody.data;
+        const { orgId, name, subnet, utilitySubnet } = parsedBody.data;
 
         // TODO: for now we are making all of the orgs the same subnet
         // make sure the subnet is unique
@@ -119,6 +125,15 @@ export async function createOrg(
             );
         }
 
+        if (doCidrsOverlap(subnet, utilitySubnet)) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    `Subnet ${subnet} overlaps with utility subnet ${utilitySubnet}`
+                )
+            );
+        }
+
         let error = "";
         let org: Org | null = null;
 
@@ -127,9 +142,6 @@ export async function createOrg(
                 .select()
                 .from(domains)
                 .where(eq(domains.configManaged, true));
-
-            const utilitySubnet =
-                config.getRawConfig().orgs.utility_subnet_group;
 
             const newOrg = await trx
                 .insert(orgs)

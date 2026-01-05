@@ -48,7 +48,7 @@ export function LayoutMobileMenu({
     const t = useTranslations();
 
     return (
-        <div className="shrink-0 md:hidden">
+        <div className="shrink-0 md:hidden sticky top-0 z-50">
             <div className="h-16 flex items-center px-2">
                 <div className="flex items-center gap-4">
                     {showSidebar && (
@@ -72,17 +72,18 @@ export function LayoutMobileMenu({
                                     <SheetDescription className="sr-only">
                                         {t("navbarDescription")}
                                     </SheetDescription>
-                                    <div className="flex-1 overflow-y-auto">
-                                        <div className="p-4">
+                                    <div className="flex-1 overflow-y-auto relative">
+                                        <div className="px-3">
                                             <OrgSelector
                                                 orgId={orgId}
                                                 orgs={orgs}
                                             />
                                         </div>
-                                        <div className="px-4">
+                                        <div className="w-full border-b border-border" />
+                                        <div className="px-3">
                                             {!isAdminPage &&
                                                 user.serverAdmin && (
-                                                    <div className="pb-3">
+                                                    <div className="py-2">
                                                         <Link
                                                             href="/admin"
                                                             className={cn(
@@ -112,8 +113,9 @@ export function LayoutMobileMenu({
                                                 }
                                             />
                                         </div>
+                                        <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
                                     </div>
-                                    <div className="p-4 space-y-4 border-t shrink-0">
+                                    <div className="px-3 pt-3 pb-3 space-y-4 border-t shrink-0">
                                         <SupporterStatus />
                                         {env?.app?.version && (
                                             <div className="text-xs text-muted-foreground text-center">

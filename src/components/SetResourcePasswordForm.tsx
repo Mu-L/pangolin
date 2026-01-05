@@ -78,16 +78,6 @@ export default function SetResourcePasswordForm({
         api.post<AxiosResponse<Resource>>(`/resource/${resourceId}/password`, {
             password: data.password
         })
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("resourceErrorPasswordSetup"),
-                    description: formatAxiosError(
-                        e,
-                        t("resourceErrorPasswordSetupDescription")
-                    )
-                });
-            })
             .then(() => {
                 toast({
                     title: t("resourcePasswordSetup"),
@@ -97,6 +87,16 @@ export default function SetResourcePasswordForm({
                 if (onSetPassword) {
                     onSetPassword();
                 }
+            })
+            .catch((e) => {
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorPasswordSetup"),
+                    description: formatAxiosError(
+                        e,
+                        t("resourceErrorPasswordSetupDescription")
+                    )
+                });
             })
             .finally(() => setLoading(false));
     }

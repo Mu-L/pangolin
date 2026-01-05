@@ -19,6 +19,7 @@ import {
 import { SESSION_COOKIE_EXPIRES as RESOURCE_SESSION_COOKIE_EXPIRES } from "@server/auth/sessions/resource";
 import config from "@server/lib/config";
 import { response } from "@server/lib/response";
+import { stripPortFromHost } from "@server/lib/ip";
 
 const exchangeSessionBodySchema = z.object({
     requestToken: z.string(),
@@ -62,7 +63,7 @@ export async function exchangeSession(
             cleanHost = cleanHost.slice(0, -1 * matched.length);
         }
 
-        const clientIp = requestIp?.split(":")[0];
+        const clientIp = requestIp ? stripPortFromHost(requestIp) : undefined;
 
         const [resource] = await db
             .select()

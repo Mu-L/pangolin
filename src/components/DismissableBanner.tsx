@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, type ReactNode } from "react";
+import React, { useState, useEffect, type ReactNode, useEffectEvent } from "react";
 import { Card, CardContent } from "@app/components/ui/card";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type DismissableBannerProps = {
     storageKey: string;
@@ -24,6 +25,12 @@ export const DismissableBanner = ({
 }: DismissableBannerProps) => {
     const [isDismissed, setIsDismissed] = useState(true);
     const t = useTranslations();
+
+    const { env } = useEnvContext();
+
+    if (env.flags.disableProductHelpBanners) {
+        return null;
+    }
 
     useEffect(() => {
         const dismissedData = localStorage.getItem(storageKey);

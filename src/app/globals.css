@@ -162,3 +162,32 @@ p {
 #nprogress .bar {
     background: var(--color-primary) !important;
 }
+
+@keyframes dot-pulse {
+    0%, 80%, 100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@layer utilities {
+    .animate-dot-pulse {
+        animation: dot-pulse 1.4s ease-in-out infinite;
+    }
+
+    /* Use JavaScript-set viewport height for mobile to handle keyboard properly */
+    .h-screen-safe {
+        height: 100vh; /* Default for desktop and fallback */
+    }
+
+    /* Only apply custom viewport height on mobile */
+    @media (max-width: 767px) {
+        .h-screen-safe {
+            height: var(--vh, 100vh); /* Use CSS variable set by ViewportHeightFix on mobile */
+        }
+    }
+}

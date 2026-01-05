@@ -1,4 +1,14 @@
-import { db, newts, blueprints, Blueprint, Site, siteResources, roleSiteResources, userSiteResources, clientSiteResources } from "@server/db";
+import {
+    db,
+    newts,
+    blueprints,
+    Blueprint,
+    Site,
+    siteResources,
+    roleSiteResources,
+    userSiteResources,
+    clientSiteResources
+} from "@server/db";
 import { Config, ConfigSchema } from "./types";
 import { ProxyResourcesResults, updateProxyResources } from "./proxyResources";
 import { fromError } from "zod-validation-error";
@@ -126,7 +136,7 @@ export async function applyBlueprint({
                         )
                         .then((rows) => rows.map((row) => row.roleId));
 
-                    const existingUserIds= await trx
+                    const existingUserIds = await trx
                         .select()
                         .from(userSiteResources)
                         .where(
@@ -134,7 +144,8 @@ export async function applyBlueprint({
                                 userSiteResources.siteResourceId,
                                 result.oldSiteResource.siteResourceId
                             )
-                        ).then((rows) => rows.map((row) => row.userId));
+                        )
+                        .then((rows) => rows.map((row) => row.userId));
 
                     const existingClientIds = await trx
                         .select()
@@ -144,13 +155,19 @@ export async function applyBlueprint({
                                 clientSiteResources.siteResourceId,
                                 result.oldSiteResource.siteResourceId
                             )
-                        ).then((rows) => rows.map((row) => row.clientId));
+                        )
+                        .then((rows) => rows.map((row) => row.clientId));
 
                     // delete the existing site resource
                     await trx
                         .delete(siteResources)
                         .where(
-                            and(eq(siteResources.siteResourceId, result.oldSiteResource.siteResourceId))
+                            and(
+                                eq(
+                                    siteResources.siteResourceId,
+                                    result.oldSiteResource.siteResourceId
+                                )
+                            )
                         );
 
                     await rebuildClientAssociationsFromSiteResource(
@@ -161,7 +178,7 @@ export async function applyBlueprint({
                     const [insertedSiteResource] = await trx
                         .insert(siteResources)
                         .values({
-                            ...result.newSiteResource,
+                            ...result.newSiteResource
                         })
                         .returning();
 
@@ -172,18 +189,20 @@ export async function applyBlueprint({
 
                     if (existingRoleIds.length > 0) {
                         await trx.insert(roleSiteResources).values(
-                           existingRoleIds.map((roleId) => ({
+                            existingRoleIds.map((roleId) => ({
                                 roleId,
-                                siteResourceId: insertedSiteResource!.siteResourceId
+                                siteResourceId:
+                                    insertedSiteResource!.siteResourceId
                             }))
                         );
                     }
 
                     if (existingUserIds.length > 0) {
                         await trx.insert(userSiteResources).values(
-                           existingUserIds.map((userId) => ({
+                            existingUserIds.map((userId) => ({
                                 userId,
-                                siteResourceId: insertedSiteResource!.siteResourceId
+                                siteResourceId:
+                                    insertedSiteResource!.siteResourceId
                             }))
                         );
                     }
@@ -192,7 +211,8 @@ export async function applyBlueprint({
                         await trx.insert(clientSiteResources).values(
                             existingClientIds.map((clientId) => ({
                                 clientId,
-                                siteResourceId: insertedSiteResource!.siteResourceId
+                                siteResourceId:
+                                    insertedSiteResource!.siteResourceId
                             }))
                         );
                     }
@@ -201,7 +221,6 @@ export async function applyBlueprint({
                         insertedSiteResource,
                         trx
                     );
-
                 } else {
                     const [newSite] = await trx
                         .select()

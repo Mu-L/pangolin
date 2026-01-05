@@ -15,6 +15,7 @@ import {
     useSearchParams
 } from "next/navigation";
 import { useRouter } from "next/navigation";
+import { cleanRedirect } from "@app/lib/cleanRedirect";
 
 export type LoginFormIDP = {
     idpId: number;
@@ -57,9 +58,11 @@ export default function IdpLoginButtons({
 
         let redirectToUrl: string | undefined;
         try {
+            console.log("generating", idpId, redirect || "/", orgId);
+            const safeRedirect = cleanRedirect(redirect || "/");
             const response = await generateOidcUrlProxy(
                 idpId,
-                redirect || "/auth/org?gotoapp=app",
+                safeRedirect,
                 orgId
             );
 
@@ -70,7 +73,6 @@ export default function IdpLoginButtons({
             }
 
             const data = response.data;
-            console.log("Redirecting to:", data?.redirectUrl);
             if (data?.redirectUrl) {
                 redirectToUrl = data.redirectUrl;
             }

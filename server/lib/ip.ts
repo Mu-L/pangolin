@@ -4,6 +4,7 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import config from "@server/lib/config";
 import z from "zod";
 import logger from "@server/logger";
+import semver from "semver";
 
 interface IPRange {
     start: bigint;
@@ -299,6 +300,26 @@ export function isIpInCidr(ip: string, cidr: string): boolean {
     const ipBigInt = ipToBigInt(ip);
     const range = cidrToRange(cidr);
     return ipBigInt >= range.start && ipBigInt <= range.end;
+}
+
+/**
+ * Checks if two CIDR ranges overlap
+ * @param cidr1 First CIDR string
+ * @param cidr2 Second CIDR string
+ * @returns boolean indicating if the two CIDRs overlap
+ */
+export function doCidrsOverlap(cidr1: string, cidr2: string): boolean {
+    const version1 = detectIpVersion(cidr1.split("/")[0]);
+    const version2 = detectIpVersion(cidr2.split("/")[0]);
+    if (version1 !== version2) {
+        // Different IP versions cannot overlap
+        return false;
+    }
+    const range1 = cidrToRange(cidr1);
+    const range2 = cidrToRange(cidr2);
+
+    // Overlap if the ranges intersect
+    return range1.start <= range2.end && range2.start <= range1.end;
 }
 
 export async function getNextAvailableClientSubnet(
@@ -662,4 +683,36 @@ export function parsePortRangeString(
     }
 
     return result;
+}
+
+export function stripPortFromHost(ip: string, badgerVersion?: string): string {
+    const isNewerBadger =
+        badgerVersion &&
+        semver.valid(badgerVersion) &&
+        semver.gte(badgerVersion, "1.3.1");
+
+    if (isNewerBadger) {
+        return ip;
+    }
+
+    if (ip.startsWith("[") && ip.includes("]")) {
+        // if brackets are found, extract the IPv6 address from between the brackets
+        const ipv6Match = ip.match(/\[(.*?)\]/);
+        if (ipv6Match) {
+            return ipv6Match[1];
+        }
+    }
+
+    // Check if it looks like IPv4 (contains dots and matches IPv4 pattern)
+    // IPv4 format: x.x.x.x where x is 0-255
+    const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}/;
+    if (ipv4Pattern.test(ip)) {
+        const lastColonIndex = ip.lastIndexOf(":");
+        if (lastColonIndex !== -1) {
+            return ip.substring(0, lastColonIndex);
+        }
+    }
+
+    // Return as is
+    return ip;
 }

@@ -3,6 +3,7 @@ import logger from "@server/logger";
 import { and, eq, lt } from "drizzle-orm";
 import cache from "@server/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
+import { stripPortFromHost } from "@server/lib/ip";
 
 /**
 
@@ -10,7 +11,7 @@ Reasons:
 100 - Allowed by Rule
 101 - Allowed No Auth
 102 - Valid Access Token
-103 - Valid header auth
+103 - Valid Header Auth (HTTP Basic Auth)
 104 - Valid Pincode
 105 - Valid Password
 106 - Valid email
@@ -48,27 +49,43 @@ const auditLogBuffer: Array<{
 
 const BATCH_SIZE = 100; // Write to DB every 100 logs
 const BATCH_INTERVAL_MS = 5000; // Or every 5 seconds, whichever comes first
+const MAX_BUFFER_SIZE = 10000; // Prevent unbounded memory growth
 let flushTimer: NodeJS.Timeout | null = null;
+let isFlushInProgress = false;
 
 /**
  * Flush buffered logs to database
  */
 async function flushAuditLogs() {
-    if (auditLogBuffer.length === 0) {
+    if (auditLogBuffer.length === 0 || isFlushInProgress) {
         return;
     }
+
+    isFlushInProgress = true;
 
     // Take all current logs and clear buffer
     const logsToWrite = auditLogBuffer.splice(0, auditLogBuffer.length);
 
     try {
-        // Batch insert all logs at once
-        await db.insert(requestAuditLog).values(logsToWrite);
+        // Batch insert logs in groups of 25 to avoid overwhelming the database
+        const BATCH_DB_SIZE = 25;
+        for (let i = 0; i < logsToWrite.length; i += BATCH_DB_SIZE) {
+            const batch = logsToWrite.slice(i, i + BATCH_DB_SIZE);
+            await db.insert(requestAuditLog).values(batch);
+        }
         logger.debug(`Flushed ${logsToWrite.length} audit logs to database`);
     } catch (error) {
         logger.error("Error flushing audit logs:", error);
         // On error, we lose these logs - consider a fallback strategy if needed
         // (e.g., write to file, or put back in buffer with retry limit)
+    } finally {
+        isFlushInProgress = false;
+        // If buffer filled up while we were flushing, flush again
+        if (auditLogBuffer.length >= BATCH_SIZE) {
+            flushAuditLogs().catch((err) =>
+                logger.error("Error in follow-up flush:", err)
+            );
+        }
     }
 }
 
@@ -93,6 +110,10 @@ export async function shutdownAuditLogger() {
     if (flushTimer) {
         clearTimeout(flushTimer);
         flushTimer = null;
+    }
+    // Force flush even if one is in progress by waiting and retrying
+    while (isFlushInProgress) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
     }
     await flushAuditLogs();
 }
@@ -208,27 +229,16 @@ export async function logRequestAudit(
         }
 
         const clientIp = body.requestIp
-            ? (() => {
-                  if (
-                      body.requestIp.startsWith("[") &&
-                      body.requestIp.includes("]")
-                  ) {
-                      // if brackets are found, extract the IPv6 address from between the brackets
-                      const ipv6Match = body.requestIp.match(/\[(.*?)\]/);
-                      if (ipv6Match) {
-                          return ipv6Match[1];
-                      }
-                  }
-
-                  // ivp4
-                  // split at last colon
-                  const lastColonIndex = body.requestIp.lastIndexOf(":");
-                  if (lastColonIndex !== -1) {
-                      return body.requestIp.substring(0, lastColonIndex);
-                  }
-                  return body.requestIp;
-              })()
+            ? stripPortFromHost(body.requestIp)
             : undefined;
+
+        // Prevent unbounded buffer growth - drop oldest entries if buffer is too large
+        if (auditLogBuffer.length >= MAX_BUFFER_SIZE) {
+            const dropped = auditLogBuffer.splice(0, BATCH_SIZE);
+            logger.warn(
+                `Audit log buffer exceeded max size (${MAX_BUFFER_SIZE}), dropped ${dropped.length} oldest entries`
+            );
+        }
 
         // Add to buffer instead of writing directly to DB
         auditLogBuffer.push({

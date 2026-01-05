@@ -14,13 +14,13 @@ const checkboxVariants = cva(
         variants: {
             variant: {
                 outlinePrimary:
-                    "border rounded-[5px] border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+                    "border rounded-[5px] border-input data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
                 outline:
-                    "border rounded-[5px] border-input data-[state=checked]:bg-muted data-[state=checked]:text-accent-foreground",
+                    "border rounded-[5px] border-input data-[state=checked]:border-primary data-[state=checked]:bg-muted data-[state=checked]:text-accent-foreground",
                 outlinePrimarySquare:
-                    "border rounded-[5px] border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+                    "border rounded-[5px] border-input data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
                 outlineSquare:
-                    "border rounded-[5px] border-input data-[state=checked]:bg-muted data-[state=checked]:text-accent-foreground"
+                    "border rounded-[5px] border-input data-[state=checked]:border-primary data-[state=checked]:bg-muted data-[state=checked]:text-accent-foreground"
             }
         },
         defaultVariants: {
@@ -30,8 +30,7 @@ const checkboxVariants = cva(
 );
 
 interface CheckboxProps
-    extends
-        React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+    extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
         VariantProps<typeof checkboxVariants> {}
 
 const Checkbox = React.forwardRef<
@@ -50,9 +49,8 @@ const Checkbox = React.forwardRef<
 ));
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
-interface CheckboxWithLabelProps extends React.ComponentPropsWithoutRef<
-    typeof Checkbox
-> {
+interface CheckboxWithLabelProps
+    extends React.ComponentPropsWithoutRef<typeof Checkbox> {
     label: string;
 }
 

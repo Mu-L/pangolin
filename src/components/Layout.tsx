@@ -37,7 +37,7 @@ export async function Layout({
         (sidebarStateCookie !== "expanded" && defaultSidebarCollapsed);
 
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen-safe overflow-hidden">
             {/* Desktop Sidebar */}
             {showSidebar && (
                 <LayoutSidebar

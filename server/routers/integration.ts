@@ -859,6 +859,20 @@ authenticated.put(
 );
 
 authenticated.get(
+    "/org/:orgId/blueprint/:blueprintId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getBlueprint),
+    blueprints.getBlueprint
+);
+
+authenticated.get(
+    "/org/:orgId/blueprints",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listBlueprints),
+    blueprints.listBlueprints
+);
+
+authenticated.get(
     "/org/:orgId/logs/request",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.viewLogs),

@@ -25,7 +25,7 @@ const updateResourceRuleParamsSchema = z.strictObject({
 const updateResourceRuleSchema = z
     .strictObject({
         action: z.enum(["ACCEPT", "DROP", "PASS"]).optional(),
-        match: z.enum(["CIDR", "IP", "PATH", "COUNTRY"]).optional(),
+        match: z.enum(["CIDR", "IP", "PATH", "COUNTRY", "ASN"]).optional(),
         value: z.string().min(1).optional(),
         priority: z.int(),
         enabled: z.boolean().optional()

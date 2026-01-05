@@ -19,24 +19,33 @@ import { sanitize, validatePathRewriteConfig } from "./utils";
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const badgerMiddlewareName = "badger";
 
+// Define extended target type with site information
+type TargetWithSite = Target & {
+    resourceId: number;
+    targetId: number;
+    ip: string | null;
+    method: string | null;
+    port: number | null;
+    internalPort: number | null;
+    enabled: boolean;
+    health: string | null;
+    site: {
+        siteId: number;
+        type: string;
+        subnet: string | null;
+        exitNodeId: number | null;
+        online: boolean;
+    };
+};
+
 export async function getTraefikConfig(
     exitNodeId: number,
     siteTypes: string[],
-    filterOutNamespaceDomains = false,
-    generateLoginPageRouters = false,
-    allowRawResources = true
+    filterOutNamespaceDomains = false, // UNUSED BUT USED IN PRIVATE
+    generateLoginPageRouters = false, // UNUSED BUT USED IN PRIVATE
+    allowRawResources = true,
+    allowMaintenancePage = true, // UNUSED BUT USED IN PRIVATE
 ): Promise<any> {
-    // Define extended target type with site information
-    type TargetWithSite = Target & {
-        site: {
-            siteId: number;
-            type: string;
-            subnet: string | null;
-            exitNodeId: number | null;
-            online: boolean;
-        };
-    };
-
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
     const resourcesWithTargetsAndSites = await db
@@ -59,6 +68,7 @@ export async function getTraefikConfig(
             headers: resources.headers,
             proxyProtocol: resources.proxyProtocol,
             proxyProtocolVersion: resources.proxyProtocolVersion,
+
             // Target fields
             targetId: targets.targetId,
             targetEnabled: targets.enabled,
@@ -102,10 +112,6 @@ export async function getTraefikConfig(
                         sql`(${siteTypes.includes("local") ? 1 : 0} = 1)`, // only allow local sites if "local" is in siteTypes
                         eq(sites.type, "local")
                     )
-                ),
-                or(
-                    ne(targetHealthCheck.hcHealth, "unhealthy"), // Exclude unhealthy targets
-                    isNull(targetHealthCheck.hcHealth) // Include targets with no health check record
                 ),
                 inArray(sites.type, siteTypes),
                 allowRawResources
@@ -184,7 +190,6 @@ export async function getTraefikConfig(
             });
         }
 
-        // Add target with its associated site data
         resourcesMap.get(key).targets.push({
             resourceId: row.resourceId,
             targetId: row.targetId,
@@ -193,6 +198,7 @@ export async function getTraefikConfig(
             port: row.port,
             internalPort: row.internalPort,
             enabled: row.targetEnabled,
+            health: row.hcHealth,
             site: {
                 siteId: row.siteId,
                 type: row.siteType,
@@ -222,7 +228,7 @@ export async function getTraefikConfig(
 
     // get the key and the resource
     for (const [key, resource] of resourcesMap.entries()) {
-        const targets = resource.targets;
+        const targets = resource.targets as TargetWithSite[];
 
         const routerName = `${key}-${resource.name}-router`;
         const serviceName = `${key}-${resource.name}-service`;
@@ -470,14 +476,18 @@ export async function getTraefikConfig(
                         // RECEIVE BANDWIDTH ENDPOINT.
 
                         // TODO: HOW TO HANDLE ^^^^^^ BETTER
-                        const anySitesOnline = (
-                            targets as TargetWithSite[]
-                        ).some((target: TargetWithSite) => target.site.online);
+                        const anySitesOnline = targets.some(
+                            (target) => target.site.online
+                        );
 
                         return (
-                            (targets as TargetWithSite[])
-                                .filter((target: TargetWithSite) => {
+                            targets
+                                .filter((target) => {
                                     if (!target.enabled) {
+                                        return false;
+                                    }
+
+                                    if (target.health == "unhealthy") {
                                         return false;
                                     }
 
@@ -508,7 +518,7 @@ export async function getTraefikConfig(
                                     }
                                     return true;
                                 })
-                                .map((target: TargetWithSite) => {
+                                .map((target) => {
                                     if (
                                         target.site.type === "local" ||
                                         target.site.type === "wireguard"
@@ -594,12 +604,12 @@ export async function getTraefikConfig(
                 loadBalancer: {
                     servers: (() => {
                         // Check if any sites are online
-                        const anySitesOnline = (
-                            targets as TargetWithSite[]
-                        ).some((target: TargetWithSite) => target.site.online);
+                        const anySitesOnline = targets.some(
+                            (target) => target.site.online
+                        );
 
-                        return (targets as TargetWithSite[])
-                            .filter((target: TargetWithSite) => {
+                        return targets
+                            .filter((target) => {
                                 if (!target.enabled) {
                                     return false;
                                 }
@@ -626,7 +636,7 @@ export async function getTraefikConfig(
                                 }
                                 return true;
                             })
-                            .map((target: TargetWithSite) => {
+                            .map((target) => {
                                 if (
                                     target.site.type === "local" ||
                                     target.site.type === "wireguard"

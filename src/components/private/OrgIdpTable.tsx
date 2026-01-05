@@ -118,6 +118,7 @@ export default function IdpTable({ idps, orgId }: Props) {
         },
         {
             id: "actions",
+            enableHiding: false,
             header: () => <span className="p-3">{t("actions")}</span>,
             cell: ({ row }) => {
                 const siteRow = row.original;

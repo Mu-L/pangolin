@@ -605,9 +605,18 @@ export async function validateOidcCallback(
 
             res.appendHeader("Set-Cookie", cookie);
 
+            let finalRedirectUrl = postAuthRedirectUrl;
+            if (loginPageId) {
+                finalRedirectUrl = `/auth/org/?redirect=${encodeURIComponent(
+                    postAuthRedirectUrl
+                )}`;
+            }
+
+            logger.debug("Final redirect URL", { finalRedirectUrl });
+
             return response<ValidateOidcUrlCallbackResponse>(res, {
                 data: {
-                    redirectUrl: postAuthRedirectUrl
+                    redirectUrl: finalRedirectUrl
                 },
                 success: true,
                 error: false,

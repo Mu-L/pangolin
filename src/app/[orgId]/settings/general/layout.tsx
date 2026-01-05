@@ -3,6 +3,7 @@ import { HorizontalTabs, type TabItem } from "@app/components/HorizontalTabs";
 import { verifySession } from "@app/lib/auth/verifySession";
 import OrgProvider from "@app/providers/OrgProvider";
 import OrgUserProvider from "@app/providers/OrgUserProvider";
+import OrgInfoCard from "@app/components/OrgInfoCard";
 
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -68,7 +69,12 @@ export default async function GeneralSettingsPage({
                         description={t("orgSettingsDescription")}
                     />
 
-                    <HorizontalTabs items={navItems}>{children}</HorizontalTabs>
+                    <div className="space-y-6">
+                        <OrgInfoCard />
+                        <HorizontalTabs items={navItems}>
+                            {children}
+                        </HorizontalTabs>
+                    </div>
                 </OrgUserProvider>
             </OrgProvider>
         </>

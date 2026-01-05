@@ -84,6 +84,10 @@ export class Config {
             ?.disable_basic_wireguard_sites
             ? "true"
             : "false";
+        process.env.FLAGS_DISABLE_PRODUCT_HELP_BANNERS = parsedConfig.flags
+            ?.disable_product_help_banners
+            ? "true"
+            : "false";
 
         process.env.PRODUCT_UPDATES_NOTIFICATION_ENABLED = parsedConfig.app
             .notifications.product_updates
@@ -97,6 +101,10 @@ export class Config {
 
         if (parsedConfig.server.maxmind_db_path) {
             process.env.MAXMIND_DB_PATH = parsedConfig.server.maxmind_db_path;
+        }
+
+        if (parsedConfig.server.maxmind_asn_path) {
+            process.env.MAXMIND_ASN_PATH = parsedConfig.server.maxmind_asn_path;
         }
 
         this.rawConfig = parsedConfig;

@@ -20,4 +20,3 @@ export const ProxyResourcesBanner = () => {
 };
 
 export default ProxyResourcesBanner;
-

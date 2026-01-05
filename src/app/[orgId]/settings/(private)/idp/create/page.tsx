@@ -285,7 +285,7 @@ export default function Page() {
                 <Button
                     variant="outline"
                     onClick={() => {
-                        router.push("/admin/idp");
+                        router.push(`/${params.orgId}/settings/idp`);
                     }}
                 >
                     {t("idpSeeAll")}

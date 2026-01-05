@@ -16,7 +16,6 @@ import { SwitchInput } from "@app/components/SwitchInput";
 import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
-import { CheckboxWithLabel } from "@app/components/ui/checkbox";
 import {
     Form,
     FormControl,
@@ -184,9 +183,6 @@ export default function ResourceAuthenticationPage() {
 
     const [ssoEnabled, setSsoEnabled] = useState(resource.sso);
 
-    const [autoLoginEnabled, setAutoLoginEnabled] = useState(
-        resource.skipToIdpId !== null && resource.skipToIdpId !== undefined
-    );
     const [selectedIdpId, setSelectedIdpId] = useState<number | null>(
         resource.skipToIdpId || null
     );
@@ -243,19 +239,8 @@ export default function ResourceAuthenticationPage() {
                 text: w.email
             }))
         );
-        if (autoLoginEnabled && !selectedIdpId && orgIdps.length > 0) {
-            setSelectedIdpId(orgIdps[0].idpId);
-        }
         hasInitializedRef.current = true;
-    }, [
-        pageLoading,
-        resourceRoles,
-        resourceUsers,
-        whitelist,
-        autoLoginEnabled,
-        selectedIdpId,
-        orgIdps
-    ]);
+    }, [pageLoading, resourceRoles, resourceUsers, whitelist, orgIdps]);
 
     const [, submitUserRolesForm, loadingSaveUsersRoles] = useActionState(
         onSubmitUsersRoles,
@@ -269,16 +254,6 @@ export default function ResourceAuthenticationPage() {
         const data = usersRolesForm.getValues();
 
         try {
-            // Validate that an IDP is selected if auto login is enabled
-            if (autoLoginEnabled && !selectedIdpId) {
-                toast({
-                    variant: "destructive",
-                    title: t("error"),
-                    description: t("selectIdpRequired")
-                });
-                return;
-            }
-
             const jobs = [
                 api.post(`/resource/${resource.resourceId}/roles`, {
                     roleIds: data.roles.map((i) => parseInt(i.id))
@@ -288,7 +263,7 @@ export default function ResourceAuthenticationPage() {
                 }),
                 api.post(`/resource/${resource.resourceId}`, {
                     sso: ssoEnabled,
-                    skipToIdpId: autoLoginEnabled ? selectedIdpId : null
+                    skipToIdpId: selectedIdpId
                 })
             ];
 
@@ -296,7 +271,7 @@ export default function ResourceAuthenticationPage() {
 
             updateResource({
                 sso: ssoEnabled,
-                skipToIdpId: autoLoginEnabled ? selectedIdpId : null
+                skipToIdpId: selectedIdpId
             });
 
             updateAuthInfo({
@@ -307,17 +282,18 @@ export default function ResourceAuthenticationPage() {
                 title: t("resourceAuthSettingsSave"),
                 description: t("resourceAuthSettingsSaveDescription")
             });
-            await queryClient.invalidateQueries({
-                predicate(query) {
-                    const resourceKey = resourceQueries.resourceClients({
-                        resourceId: resource.resourceId
-                    }).queryKey;
-                    return (
-                        query.queryKey[0] === resourceKey[0] &&
-                        query.queryKey[1] === resourceKey[1]
-                    );
-                }
-            });
+            // invalidate resource queries
+            await queryClient.invalidateQueries(
+                resourceQueries.resourceUsers({
+                    resourceId: resource.resourceId
+                })
+            );
+            await queryClient.invalidateQueries(
+                resourceQueries.resourceRoles({
+                    resourceId: resource.resourceId
+                })
+            );
+
             router.refresh();
         } catch (e) {
             console.error(e);
@@ -397,7 +373,8 @@ export default function ResourceAuthenticationPage() {
 
         api.post(`/resource/${resource.resourceId}/header-auth`, {
             user: null,
-            password: null
+            password: null,
+            extendedCompatibility: null
         })
             .then(() => {
                 toast({
@@ -617,86 +594,53 @@ export default function ResourceAuthenticationPage() {
                                     )}
 
                                     {ssoEnabled && allIdps.length > 0 && (
-                                        <>
-                                            <div className="space-y-2 mb-3">
-                                                <CheckboxWithLabel
-                                                    label={t(
-                                                        "autoLoginExternalIdp"
-                                                    )}
-                                                    checked={autoLoginEnabled}
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) => {
-                                                        setAutoLoginEnabled(
-                                                            checked as boolean
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">
+                                                {t("defaultIdentityProvider")}
+                                            </label>
+                                            <Select
+                                                onValueChange={(value) => {
+                                                    if (value === "none") {
+                                                        setSelectedIdpId(null);
+                                                    } else {
+                                                        setSelectedIdpId(
+                                                            parseInt(value)
                                                         );
-                                                        if (
-                                                            checked &&
-                                                            allIdps.length > 0
-                                                        ) {
-                                                            setSelectedIdpId(
-                                                                allIdps[0].id
-                                                            );
-                                                        } else {
-                                                            setSelectedIdpId(
-                                                                null
-                                                            );
-                                                        }
-                                                    }}
-                                                />
-                                                <p className="text-sm text-muted-foreground">
-                                                    {t(
-                                                        "autoLoginExternalIdpDescription"
-                                                    )}
-                                                </p>
-                                            </div>
-
-                                            {autoLoginEnabled && (
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium">
-                                                        {t("defaultIdentityProvider")}
-                                                    </label>
-                                                    <Select
-                                                        onValueChange={(
-                                                            value
-                                                        ) =>
-                                                            setSelectedIdpId(
-                                                                parseInt(value)
-                                                            )
-                                                        }
-                                                        value={
-                                                            selectedIdpId
-                                                                ? selectedIdpId.toString()
-                                                                : undefined
-                                                        }
-                                                    >
-                                                        <SelectTrigger className="w-full mt-1">
-                                                            <SelectValue
-                                                                placeholder={t(
-                                                                    "selectIdpPlaceholder"
-                                                                )}
-                                                            />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {allIdps.map(
-                                                                (idp) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            idp.id
-                                                                        }
-                                                                        value={idp.id.toString()}
-                                                                    >
-                                                                        {
-                                                                            idp.text
-                                                                        }
-                                                                    </SelectItem>
-                                                                )
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-                                        </>
+                                                    }
+                                                }}
+                                                value={
+                                                    selectedIdpId
+                                                        ? selectedIdpId.toString()
+                                                        : "none"
+                                                }
+                                            >
+                                                <SelectTrigger className="w-full mt-1">
+                                                    <SelectValue
+                                                        placeholder={t(
+                                                            "selectIdpPlaceholder"
+                                                        )}
+                                                    />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">
+                                                        {t("none")}
+                                                    </SelectItem>
+                                                    {allIdps.map((idp) => (
+                                                        <SelectItem
+                                                            key={idp.id}
+                                                            value={idp.id.toString()}
+                                                        >
+                                                            {idp.text}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t(
+                                                    "defaultIdentityProviderDescription"
+                                                )}
+                                            </p>
+                                        </div>
                                     )}
                                 </form>
                             </Form>

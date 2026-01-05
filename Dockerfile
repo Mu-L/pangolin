@@ -1,9 +1,19 @@
 FROM node:24-alpine AS builder
 
+# OCI Image Labels - Build Args for dynamic values
+ARG VERSION="dev"
+ARG REVISION=""
+ARG CREATED=""
+ARG LICENSE="AGPL-3.0"
+
 WORKDIR /app
 
 ARG BUILD=oss
 ARG DATABASE=sqlite
+
+# Derive title and description based on BUILD type
+ARG IMAGE_TITLE="Pangolin"
+ARG IMAGE_DESCRIPTION="Identity-aware VPN and proxy for remote access to anything, anywhere"
 
 RUN apk add --no-cache curl tzdata python3 make g++
 
@@ -68,5 +78,18 @@ RUN chmod +x /usr/local/bin/pangctl ./dist/cli.mjs
 
 COPY server/db/names.json ./dist/names.json
 COPY public ./public
+
+# OCI Image Labels
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md
+LABEL org.opencontainers.image.source="https://github.com/fosrl/pangolin" \
+      org.opencontainers.image.url="https://github.com/fosrl/pangolin" \
+      org.opencontainers.image.documentation="https://docs.pangolin.net" \
+      org.opencontainers.image.vendor="Fossorial" \
+      org.opencontainers.image.licenses="${LICENSE}" \
+      org.opencontainers.image.title="${IMAGE_TITLE}" \
+      org.opencontainers.image.description="${IMAGE_DESCRIPTION}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"
 
 CMD ["npm", "run", "start"]

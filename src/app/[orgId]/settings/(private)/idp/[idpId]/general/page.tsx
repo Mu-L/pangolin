@@ -62,6 +62,7 @@ export default function GeneralPage() {
     const [variant, setVariant] = useState<"oidc" | "google" | "azure">("oidc");
     const { isUnlocked } = useLicenseStatusContext();
 
+    const dashboardRedirectUrl = `${env.app.dashboardUrl}/auth/idp/${idpId}/oidc/callback`;
     const [redirectUrl, setRedirectUrl] = useState(
         `${env.app.dashboardUrl}/auth/idp/${idpId}/oidc/callback`
     );
@@ -423,11 +424,18 @@ export default function GeneralPage() {
                         <InfoSections cols={3}>
                             <InfoSection>
                                 <InfoSectionTitle>
-                                    {t("redirectUrl")}
+                                    {t("orgIdpRedirectUrls")}
                                 </InfoSectionTitle>
                                 <InfoSectionContent>
                                     <CopyToClipboard text={redirectUrl} />
                                 </InfoSectionContent>
+                                {redirectUrl !== dashboardRedirectUrl && (
+                                    <InfoSectionContent>
+                                        <CopyToClipboard
+                                            text={dashboardRedirectUrl}
+                                        />
+                                    </InfoSectionContent>
+                                )}
                             </InfoSection>
                         </InfoSections>
 

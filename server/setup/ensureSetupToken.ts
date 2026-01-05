@@ -56,7 +56,7 @@ export async function ensureSetupToken() {
             .where(eq(setupTokens.used, false));
 
         const envSetupToken = process.env.PANGOLIN_SETUP_TOKEN;
-        console.debug("PANGOLIN_SETUP_TOKEN:", envSetupToken);
+        // console.debug("PANGOLIN_SETUP_TOKEN:", envSetupToken);
         if (envSetupToken) {
             if (!validateToken(envSetupToken)) {
                 throw new Error(

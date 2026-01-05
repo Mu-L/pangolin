@@ -37,4 +37,3 @@ export const SitesBanner = () => {
 };
 
 export default SitesBanner;
-

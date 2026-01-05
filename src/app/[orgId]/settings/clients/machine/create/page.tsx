@@ -25,7 +25,7 @@ import { createElement, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@app/components/ui/input";
-import { InfoIcon, Terminal } from "lucide-react";
+import { ChevronDown, ChevronUp, InfoIcon, Terminal } from "lucide-react";
 import { Button } from "@app/components/ui/button";
 import CopyTextBox from "@app/components/CopyTextBox";
 import CopyToClipboard from "@app/components/CopyToClipboard";
@@ -121,6 +121,7 @@ export default function Page() {
     const [olmCommand, setOlmCommand] = useState("");
 
     const [createLoading, setCreateLoading] = useState(false);
+    const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
     const [clientDefaults, setClientDefaults] =
         useState<PickClientDefaultsResponse | null>(null);
@@ -443,33 +444,54 @@ export default function Page() {
                                                 </FormItem>
                                             )}
                                         />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="subnet"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("clientAddress")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            autoComplete="off"
-                                                            placeholder={t(
-                                                                "subnetPlaceholder"
+                                        <div className="flex items-center justify-end md:col-start-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setShowAdvancedSettings(
+                                                        !showAdvancedSettings
+                                                    )
+                                                }
+                                                className="flex items-center gap-2"
+                                            >
+                                                {showAdvancedSettings ? (
+                                                    <ChevronUp className="h-4 w-4" />
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4" />
+                                                )}
+                                                {t("advancedSettings")}
+                                            </Button>
+                                        </div>
+                                        {showAdvancedSettings && (
+                                            <FormField
+                                                control={form.control}
+                                                name="subnet"
+                                                render={({ field }) => (
+                                                    <FormItem className="md:col-start-1 md:col-span-2">
+                                                        <FormLabel>
+                                                            {t("clientAddress")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                autoComplete="off"
+                                                                placeholder={t(
+                                                                    "subnetPlaceholder"
+                                                                )}
+                                                                {...field}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                        <FormDescription>
+                                                            {t(
+                                                                "addressDescription"
                                                             )}
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    <FormDescription>
-                                                        {t(
-                                                            "addressDescription"
-                                                        )}
-                                                    </FormDescription>
-                                                </FormItem>
-                                            )}
-                                        />
+                                                        </FormDescription>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
                                     </form>
                                 </Form>
                             </SettingsSectionBody>

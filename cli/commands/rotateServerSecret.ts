@@ -7,8 +7,8 @@ import fs from "fs";
 import yaml from "js-yaml";
 
 type RotateServerSecretArgs = {
-    oldSecret: string;
-    newSecret: string;
+    "old-secret": string;
+    "new-secret": string;
     force?: boolean;
 };
 
@@ -21,12 +21,12 @@ export const rotateServerSecret: CommandModule<
         "Rotate the server secret by decrypting all encrypted values with the old secret and re-encrypting with a new secret",
     builder: (yargs) => {
         return yargs
-            .option("oldSecret", {
+            .option("old-secret", {
                 type: "string",
                 demandOption: true,
                 describe: "The current server secret (for verification)"
             })
-            .option("newSecret", {
+            .option("new-secret", {
                 type: "string",
                 demandOption: true,
                 describe: "The new server secret to use"
@@ -42,8 +42,8 @@ export const rotateServerSecret: CommandModule<
             });
     },
     handler: async (argv: {
-        oldSecret: string;
-        newSecret: string;
+        "old-secret": string;
+        "new-secret": string;
         force?: boolean;
     }) => {
         try {
@@ -73,8 +73,8 @@ export const rotateServerSecret: CommandModule<
             }
 
             const configSecret = config.server.secret;
-            const oldSecret = argv.oldSecret;
-            const newSecret = argv.newSecret;
+            const oldSecret = argv["old-secret"];
+            const newSecret = argv["new-secret"];
             const force = argv.force || false;
 
             // Verify that the provided old secret matches the one in config

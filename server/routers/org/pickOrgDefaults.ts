@@ -8,6 +8,7 @@ import config from "@server/lib/config";
 
 export type PickOrgDefaultsResponse = {
     subnet: string;
+    utilitySubnet: string;
 };
 
 export async function pickOrgDefaults(
@@ -20,10 +21,12 @@ export async function pickOrgDefaults(
         // const subnet = await getNextAvailableOrgSubnet();
         // Just hard code the subnet for now for everyone
         const subnet = config.getRawConfig().orgs.subnet_group;
+        const utilitySubnet = config.getRawConfig().orgs.utility_subnet_group;
 
         return response<PickOrgDefaultsResponse>(res, {
             data: {
-                subnet: subnet
+                subnet: subnet,
+                utilitySubnet: utilitySubnet
             },
             success: true,
             error: false,

@@ -276,14 +276,15 @@ function AuthPageSettings({
         <>
             <SettingsSection>
                 <SettingsSectionHeader>
-                    <SettingsSectionTitle>{t("customDomain")}</SettingsSectionTitle>
+                    <SettingsSectionTitle>
+                        {t("customDomain")}
+                    </SettingsSectionTitle>
                     <SettingsSectionDescription>
                         {t("authPageDescription")}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     <SettingsSectionForm>
-
                         <PaidFeaturesAlert />
 
                         <Form {...form}>

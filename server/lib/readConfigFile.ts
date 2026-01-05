@@ -133,7 +133,8 @@ export const configSchema = z
                     .optional(),
                 trust_proxy: z.int().gte(0).optional().default(1),
                 secret: z.string().pipe(z.string().min(8)).optional(),
-                maxmind_db_path: z.string().optional()
+                maxmind_db_path: z.string().optional(),
+                maxmind_asn_path: z.string().optional()
             })
             .optional()
             .default({
@@ -255,11 +256,11 @@ export const configSchema = z
         orgs: z
             .object({
                 block_size: z.number().positive().gt(0).optional().default(24),
-                subnet_group: z.string().optional().default("100.90.128.0/24"),
+                subnet_group: z.string().optional().default("100.90.128.0/20"),
                 utility_subnet_group: z
                     .string()
                     .optional()
-                    .default("100.96.128.0/24") //just hardcode this for now as well
+                    .default("100.96.128.0/20") //just hardcode this for now as well
             })
             .optional()
             .default({
@@ -329,7 +330,8 @@ export const configSchema = z
                 enable_integration_api: z.boolean().optional(),
                 disable_local_sites: z.boolean().optional(),
                 disable_basic_wireguard_sites: z.boolean().optional(),
-                disable_config_managed_domains: z.boolean().optional()
+                disable_config_managed_domains: z.boolean().optional(),
+                disable_product_help_banners: z.boolean().optional()
             })
             .optional(),
         dns: z

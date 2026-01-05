@@ -13,36 +13,41 @@ import {
     LoadLoginPageBrandingResponse,
     LoadLoginPageResponse
 } from "@server/routers/loginPage/types";
-import IdpLoginButtons from "@app/components/private/IdpLoginButtons";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle
-} from "@app/components/ui/card";
-import { Button } from "@app/components/ui/button";
-import Link from "next/link";
-import { getTranslations } from "next-intl/server";
 import { GetSessionTransferTokenRenponse } from "@server/routers/auth/types";
 import ValidateSessionTransferToken from "@app/components/private/ValidateSessionTransferToken";
-import { replacePlaceholder } from "@app/lib/replacePlaceholder";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
+import { OrgSelectionForm } from "@app/components/OrgSelectionForm";
+import OrgLoginPage from "@app/components/OrgLoginPage";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrgAuthPage(props: {
     params: Promise<{}>;
-    searchParams: Promise<{ token?: string }>;
+    searchParams: Promise<{
+        token?: string;
+        redirect?: string;
+        forceLogin?: string;
+    }>;
 }) {
     const searchParams = await props.searchParams;
+    const forceLoginParam = searchParams.forceLogin;
+    const forceLogin = forceLoginParam === "true";
+
+    if (build !== "saas") {
+        redirect("/");
+    }
 
     const env = pullEnv();
 
     const authHeader = await authCookieHeader();
 
     if (searchParams.token) {
-        return <ValidateSessionTransferToken token={searchParams.token} />;
+        return (
+            <ValidateSessionTransferToken
+                token={searchParams.token}
+                redirect={searchParams.redirect}
+            />
+        );
     }
 
     const getUser = cache(verifySession);
@@ -50,8 +55,6 @@ export default async function OrgAuthPage(props: {
 
     const allHeaders = await headers();
     const host = allHeaders.get("host");
-
-    const t = await getTranslations();
 
     const expectedHost = env.app.dashboardUrl.split("//")[1];
 
@@ -84,7 +87,7 @@ export default async function OrgAuthPage(props: {
             redirect(env.app.dashboardUrl);
         }
 
-        if (user) {
+        if (user && !forceLogin) {
             let redirectToken: string | undefined;
             try {
                 const res = await priv.post<
@@ -102,13 +105,23 @@ export default async function OrgAuthPage(props: {
             }
 
             if (redirectToken) {
-                redirectToUrl = `${env.app.dashboardUrl}/auth/org?token=${redirectToken}`;
+                // redirectToUrl = `${env.app.dashboardUrl}/auth/org?token=${redirectToken}`;
+                // include redirect param if exists
+                redirectToUrl = `${env.app.dashboardUrl}/auth/org?token=${redirectToken}${
+                    searchParams.redirect
+                        ? `&redirect=${encodeURIComponent(
+                              searchParams.redirect
+                          )}`
+                        : ""
+                }`;
+                console.log(
+                    `Redirecting logged in user to org auth callback: ${redirectToUrl}`
+                );
                 redirect(redirectToUrl);
             }
         }
     } else {
-        console.log(`Host ${host} is the same`);
-        redirect(env.app.dashboardUrl);
+        return <OrgSelectionForm />;
     }
 
     let loginIdps: LoginFormIDP[] = [];
@@ -137,68 +150,11 @@ export default async function OrgAuthPage(props: {
     }
 
     return (
-        <div>
-            <div className="text-center mb-2">
-                <span className="text-sm text-muted-foreground">
-                    {t("poweredBy")}{" "}
-                    <Link
-                        href="https://pangolin.net/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                    >
-                        {env.branding.appName || "Pangolin"}
-                    </Link>
-                </span>
-            </div>
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    {branding?.logoUrl && (
-                        <div className="flex flex-row items-center justify-center mb-3">
-                            <img
-                                src={branding.logoUrl}
-                                height={branding.logoHeight}
-                                width={branding.logoWidth}
-                            />
-                        </div>
-                    )}
-                    <CardTitle>
-                        {branding?.orgTitle
-                            ? replacePlaceholder(branding.orgTitle, {
-                                  orgName: branding.orgName
-                              })
-                            : t("orgAuthSignInTitle")}
-                    </CardTitle>
-                    <CardDescription>
-                        {branding?.orgSubtitle
-                            ? replacePlaceholder(branding.orgSubtitle, {
-                                  orgName: branding.orgName
-                              })
-                            : loginIdps.length > 0
-                              ? t("orgAuthChooseIdpDescription")
-                              : ""}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loginIdps.length > 0 ? (
-                        <IdpLoginButtons
-                            idps={loginIdps}
-                            orgId={loginPage?.orgId}
-                        />
-                    ) : (
-                        <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                                {t("orgAuthNoIdpConfigured")}
-                            </p>
-                            <Link href={`${env.app.dashboardUrl}/auth/login`}>
-                                <Button className="w-full">
-                                    {t("orgAuthSignInWithPangolin")}
-                                </Button>
-                            </Link>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+        <OrgLoginPage
+            loginPage={loginPage}
+            loginIdps={loginIdps}
+            branding={branding}
+            searchParams={searchParams}
+        />
     );
 }
