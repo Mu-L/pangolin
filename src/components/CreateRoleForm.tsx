@@ -35,6 +35,8 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
 import { CheckboxWithLabel } from "./ui/checkbox";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { build } from "@server/build";
+import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 
 type CreateRoleFormProps = {
     open: boolean;
@@ -165,35 +167,41 @@ export default function CreateRoleForm({
                                         </FormItem>
                                     )}
                                 />
-                                {isPaidUser && (
-                                    <FormField
-                                        control={form.control}
-                                        name="requireDeviceApproval"
-                                        render={({ field }) => (
-                                            <FormItem className="pt-3">
-                                                <FormControl>
-                                                    <CheckboxWithLabel
-                                                        {...field}
-                                                        value={undefined}
-                                                        defaultChecked={
-                                                            field.value
-                                                        }
-                                                        label={t(
-                                                            "requireDeviceApproval"
+                                {build !== "oss" && (
+                                    <>
+                                        <PaidFeaturesAlert />
+                                        <FormField
+                                            control={form.control}
+                                            name="requireDeviceApproval"
+                                            render={({ field }) => (
+                                                <FormItem className="pt-3">
+                                                    <FormControl>
+                                                        <CheckboxWithLabel
+                                                            {...field}
+                                                            disabled={
+                                                                !isPaidUser
+                                                            }
+                                                            value={undefined}
+                                                            defaultChecked={
+                                                                field.value
+                                                            }
+                                                            label={t(
+                                                                "requireDeviceApproval"
+                                                            )}
+                                                        />
+                                                    </FormControl>
+
+                                                    <FormDescription>
+                                                        {t(
+                                                            "requireDeviceApprovalDescription"
                                                         )}
-                                                    />
-                                                </FormControl>
+                                                    </FormDescription>
 
-                                                <FormDescription>
-                                                    {t(
-                                                        "requireDeviceApprovalDescription"
-                                                    )}
-                                                </FormDescription>
-
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </>
                                 )}
                             </form>
                         </Form>
