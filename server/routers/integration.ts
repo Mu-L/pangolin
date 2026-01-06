@@ -751,9 +751,10 @@ authenticated.post(
 );
 
 authenticated.get(
-    "/idp",
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.listIdps),
+    "/idp", // no guards on this because anyone can list idps for login purposes
+    // we do the same for the external api
+    // verifyApiKeyIsRoot,
+    // verifyApiKeyHasAction(ActionsEnum.listIdps),
     idp.listIdps
 );
 
