@@ -255,7 +255,9 @@ export const siteResources = sqliteTable("siteResources", {
     aliasAddress: text("aliasAddress"),
     tcpPortRangeString: text("tcpPortRangeString").notNull().default("*"),
     udpPortRangeString: text("udpPortRangeString").notNull().default("*"),
-    disableIcmp: integer("disableIcmp", { mode: "boolean" }).notNull().default(false)
+    disableIcmp: integer("disableIcmp", { mode: "boolean" })
+        .notNull()
+        .default(false)
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -796,7 +798,10 @@ export const idpOidcConfig = sqliteTable("idpOidcConfig", {
     identifierPath: text("identifierPath").notNull(),
     emailPath: text("emailPath"),
     namePath: text("namePath"),
-    scopes: text("scopes").notNull()
+    scopes: text("scopes").notNull(),
+    approvalState: text("approvalState")
+        .$type<"pending" | "approved" | "denied">()
+        .default("approved")
 });
 
 export const licenseKey = sqliteTable("licenseKey", {

@@ -36,7 +36,8 @@ async function queryRoles(orgId: string, limit: number, offset: number) {
             isAdmin: roles.isAdmin,
             name: roles.name,
             description: roles.description,
-            orgName: orgs.name
+            orgName: orgs.name,
+            requireDeviceApproval: roles.requireDeviceApproval
         })
         .from(roles)
         .leftJoin(orgs, eq(roles.orgId, orgs.orgId))

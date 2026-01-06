@@ -4,6 +4,7 @@ import { Button } from "@app/components/ui/button";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -27,11 +28,13 @@ import {
     CredenzaTitle
 } from "@app/components/Credenza";
 import { useOrgContext } from "@app/hooks/useOrgContext";
-import { CreateRoleBody, CreateRoleResponse } from "@server/routers/role";
+import type { CreateRoleBody, CreateRoleResponse } from "@server/routers/role";
 import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
+import { CheckboxWithLabel } from "./ui/checkbox";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 
 type CreateRoleFormProps = {
     open: boolean;
@@ -46,10 +49,12 @@ export default function CreateRoleForm({
 }: CreateRoleFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
+    const { isPaidUser } = usePaidStatus();
 
     const formSchema = z.object({
         name: z.string({ message: t("nameRequired") }).max(32),
-        description: z.string().max(255).optional()
+        description: z.string().max(255).optional(),
+        requireDeviceApproval: z.boolean().optional()
     });
 
     const [loading, setLoading] = useState(false);
@@ -60,7 +65,8 @@ export default function CreateRoleForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
-            description: ""
+            description: "",
+            requireDeviceApproval: false
         }
     });
 
@@ -159,6 +165,36 @@ export default function CreateRoleForm({
                                         </FormItem>
                                     )}
                                 />
+                                {isPaidUser && (
+                                    <FormField
+                                        control={form.control}
+                                        name="requireDeviceApproval"
+                                        render={({ field }) => (
+                                            <FormItem className="pt-3">
+                                                <FormControl>
+                                                    <CheckboxWithLabel
+                                                        {...field}
+                                                        value={undefined}
+                                                        defaultChecked={
+                                                            field.value
+                                                        }
+                                                        label={t(
+                                                            "requireDeviceApproval"
+                                                        )}
+                                                    />
+                                                </FormControl>
+
+                                                <FormDescription>
+                                                    {t(
+                                                        "requireDeviceApprovalDescription"
+                                                    )}
+                                                </FormDescription>
+
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
                             </form>
                         </Form>
                     </CredenzaBody>

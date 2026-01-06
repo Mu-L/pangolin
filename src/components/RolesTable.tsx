@@ -1,27 +1,21 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@app/components/ui/dropdown-menu";
-import { Button } from "@app/components/ui/button";
-import { ArrowUpDown, Crown, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { useOrgContext } from "@app/hooks/useOrgContext";
-import { toast } from "@app/hooks/useToast";
-import { RolesDataTable } from "@app/components/RolesDataTable";
-import { Role } from "@server/db";
 import CreateRoleForm from "@app/components/CreateRoleForm";
 import DeleteRoleForm from "@app/components/DeleteRoleForm";
-import { createApiClient } from "@app/lib/api";
+import { RolesDataTable } from "@app/components/RolesDataTable";
+import { Button } from "@app/components/ui/button";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient } from "@app/lib/api";
+import { Role } from "@server/db";
+import { ArrowUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Switch } from "./ui/switch";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 
 export type RoleRow = Role;
 
@@ -41,6 +35,7 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
     const api = createApiClient(useEnvContext());
 
     const { org } = useOrgContext();
+    const { isPaidUser } = usePaidStatus();
 
     const t = useTranslations();
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -86,6 +81,32 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
             friendlyName: t("description"),
             header: () => <span className="p-3">{t("description")}</span>
         },
+
+        ...(isPaidUser
+            ? ([
+                  {
+                      accessorKey: "requireDeviceApproval",
+                      friendlyName: t("requireDeviceApproval"),
+                      header: () => (
+                          <span className="p-3">
+                              {t("requireDeviceApproval")}
+                          </span>
+                      ),
+                      cell: ({ row }) => (
+                          <Switch
+                              defaultChecked={
+                                  !!row.original.requireDeviceApproval
+                              }
+                              disabled={!!row.original.isAdmin}
+                              onCheckedChange={(val) => {
+                                  // ...
+                              }}
+                          />
+                      )
+                  }
+              ] as ExtendedColumnDef<RoleRow>[])
+            : []),
+
         {
             id: "actions",
             enableHiding: false,

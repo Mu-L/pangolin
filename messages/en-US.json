@@ -1548,6 +1548,8 @@
     "IntervalSeconds": "Healthy Interval",
     "timeoutSeconds": "Timeout (sec)",
     "timeIsInSeconds": "Time is in seconds",
+    "requireDeviceApproval": "Require Device Approvals",
+    "requireDeviceApprovalDescription": "Users with this role need their devices approved by an admin before they can access resources",
     "retryAttempts": "Retry Attempts",
     "expectedResponseCodes": "Expected Response Codes",
     "expectedResponseCodesDescription": "HTTP status code that indicates healthy status. If left blank, 200-300 is considered healthy.",
