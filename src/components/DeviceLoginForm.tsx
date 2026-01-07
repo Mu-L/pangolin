@@ -85,8 +85,6 @@ export default function DeviceLoginForm({
                 data.code = data.code.slice(0, 4) + "-" + data.code.slice(4);
             }
 
-            await new Promise((resolve) => setTimeout(resolve, 300));
-
             // First check - get metadata
             const res = await api.post(
                 "/device-web-auth/verify?forceLogin=true",
@@ -117,8 +115,6 @@ export default function DeviceLoginForm({
         setLoading(true);
 
         try {
-            await new Promise((resolve) => setTimeout(resolve, 300));
-
             // Final verify
             await api.post("/device-web-auth/verify", {
                 code: code,
