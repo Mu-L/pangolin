@@ -70,7 +70,7 @@ export default async function Page(props: {
     }
 
     let loginIdps: LoginFormIDP[] = [];
-    if (build !== "saas") {
+    if (build === "oss" || !env.flags.useOrgOnlyIdp) {
         const idpsRes = await cache(
             async () => await priv.get<AxiosResponse<ListIdpsResponse>>("/idp")
         )();
@@ -121,7 +121,7 @@ export default async function Page(props: {
                 </p>
             )}
 
-            {!isInvite && build === "saas" ? (
+            {!isInvite && (build === "saas" || env.flags.useOrgOnlyIdp) ? (
                 <div className="text-center text-muted-foreground mt-12 flex flex-col items-center">
                     <span>{t("needToSignInToOrg")}</span>
                     <Link
