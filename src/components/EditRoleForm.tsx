@@ -28,7 +28,13 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
-import type { CreateRoleBody, CreateRoleResponse } from "@server/routers/role";
+import type { Role } from "@server/db";
+import type {
+    CreateRoleBody,
+    CreateRoleResponse,
+    UpdateRoleBody,
+    UpdateRoleResponse
+} from "@server/routers/role";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -38,15 +44,17 @@ import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { CheckboxWithLabel } from "./ui/checkbox";
 
 type CreateRoleFormProps = {
+    role: Role;
     open: boolean;
     setOpen: (open: boolean) => void;
-    afterCreate?: (res: CreateRoleResponse) => void;
+    onSuccess?: (res: CreateRoleResponse) => void;
 };
 
-export default function CreateRoleForm({
+export default function EditRoleForm({
     open,
+    role,
     setOpen,
-    afterCreate
+    onSuccess
 }: CreateRoleFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
@@ -66,9 +74,9 @@ export default function CreateRoleForm({
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: "",
-            description: "",
-            requireDeviceApproval: false
+            name: role.name,
+            description: role.description ?? "",
+            requireDeviceApproval: role.requireDeviceApproval ?? false
         }
     });
 
@@ -76,32 +84,32 @@ export default function CreateRoleForm({
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         const res = await api
-            .put<
-                AxiosResponse<CreateRoleResponse>
-            >(`/org/${org?.org.orgId}/role`, values satisfies CreateRoleBody)
+            .post<
+                AxiosResponse<UpdateRoleResponse>
+            >(`/org/${org?.org.orgId}/role/${role.roleId}`, values satisfies UpdateRoleBody)
             .catch((e) => {
                 toast({
                     variant: "destructive",
-                    title: t("accessRoleErrorCreate"),
+                    title: t("accessRoleErrorUpdate"),
                     description: formatAxiosError(
                         e,
-                        t("accessRoleErrorCreateDescription")
+                        t("accessRoleErrorUpdateDescription")
                     )
                 });
             });
 
-        if (res && res.status === 201) {
+        if (res && res.status === 200) {
             toast({
                 variant: "default",
-                title: t("accessRoleCreated"),
-                description: t("accessRoleCreatedDescription")
+                title: t("accessRoleUpdated"),
+                description: t("accessRoleUpdatedDescription")
             });
 
             if (open) {
                 setOpen(false);
             }
 
-            afterCreate?.(res.data.data);
+            onSuccess?.(res.data.data);
         }
     }
 
@@ -223,7 +231,7 @@ export default function CreateRoleForm({
                             loading={loading}
                             disabled={loading}
                         >
-                            {t("accessRoleCreateSubmit")}
+                            {t("accessRoleUpdateSubmit")}
                         </Button>
                     </CredenzaFooter>
                 </CredenzaContent>

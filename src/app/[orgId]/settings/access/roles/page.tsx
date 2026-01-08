@@ -5,7 +5,7 @@ import { GetOrgResponse } from "@server/routers/org";
 import { cache } from "react";
 import OrgProvider from "@app/providers/OrgProvider";
 import { ListRolesResponse } from "@server/routers/role";
-import RolesTable, { RoleRow } from "../../../../../components/RolesTable";
+import RolesTable, { type RoleRow } from "@app/components/RolesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
 

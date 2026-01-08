@@ -1,9 +1,8 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { DataTable } from "@app/components/ui/data-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
+import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,18 +12,12 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import {
-    ArrowRight,
-    ArrowUpDown,
-    ArrowUpRight,
-    MoreHorizontal
-} from "lucide-react";
+import { ArrowRight, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "./ui/badge";
-import { InfoPopup } from "./ui/info-popup";
 
 export type ClientRow = {
     id: number;
