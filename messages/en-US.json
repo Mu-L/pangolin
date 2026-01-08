@@ -729,6 +729,8 @@
     "countries": "Countries",
     "accessRoleCreate": "Create Role",
     "accessRoleCreateDescription": "Create a new role to group users and manage their permissions.",
+    "accessRoleEdit": "Edit Role",
+    "accessRoleEditDescription": "Edit role information.",
     "accessRoleCreateSubmit": "Create Role",
     "accessRoleCreated": "Role created",
     "accessRoleCreatedDescription": "The role has been successfully created.",

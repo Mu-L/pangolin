@@ -124,9 +124,9 @@ export default function EditRoleForm({
             >
                 <CredenzaContent>
                     <CredenzaHeader>
-                        <CredenzaTitle>{t("accessRoleCreate")}</CredenzaTitle>
+                        <CredenzaTitle>{t("accessRoleEdit")}</CredenzaTitle>
                         <CredenzaDescription>
-                            {t("accessRoleCreateDescription")}
+                            {t("accessRoleEditDescription")}
                         </CredenzaDescription>
                     </CredenzaHeader>
                     <CredenzaBody>
