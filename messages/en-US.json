@@ -743,7 +743,7 @@
     "accessRoleErrorRemove": "Failed to remove role",
     "accessRoleErrorRemoveDescription": "An error occurred while removing the role.",
     "accessRoleName": "Role Name",
-    "accessRoleQuestionRemove": "You're about to delete the {name} role. You cannot undo this action.",
+    "accessRoleQuestionRemove": "You're about to delete the `{name}` role. You cannot undo this action.",
     "accessRoleRemove": "Remove Role",
     "accessRoleRemoveDescription": "Remove a role from the organization",
     "accessRoleRemoveSubmit": "Remove Role",

@@ -36,7 +36,7 @@ export default function UsersTable({ roles }: RolesTableProps) {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const router = useRouter();
 
-    const [roleToRemove, setUserToRemove] = useState<RoleRow | null>(null);
+    const [roleToRemove, setRoleToRemove] = useState<RoleRow | null>(null);
 
     const api = createApiClient(useEnvContext());
 
@@ -130,9 +130,7 @@ export default function UsersTable({ roles }: RolesTableProps) {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuItem
                                         onClick={() => {
-                                            // setSelectedInternalResource(
-                                            //     resourceRow
-                                            // );
+                                            setRoleToRemove(roleRow);
                                             setIsDeleteModalOpen(true);
                                         }}
                                     >
@@ -169,8 +167,11 @@ export default function UsersTable({ roles }: RolesTableProps) {
                     onSuccess={() => {
                         // Delay refresh to allow modal to close smoothly
                         setTimeout(() => {
-                            router.refresh();
-                            setEditingRole(null);
+                            startTransition(async () => {
+                                await refreshData().then(() =>
+                                    setEditingRole(null)
+                                );
+                            });
                         }, 150);
                     }}
                 />
@@ -189,8 +190,11 @@ export default function UsersTable({ roles }: RolesTableProps) {
                     setOpen={setIsDeleteModalOpen}
                     roleToDelete={roleToRemove}
                     afterDelete={() => {
-                        startTransition(refreshData);
-                        setUserToRemove(null);
+                        startTransition(async () => {
+                            await refreshData().then(() =>
+                                setRoleToRemove(null)
+                            );
+                        });
                     }}
                 />
             )}
