@@ -17,7 +17,7 @@ import {
     users,
     exitNodes,
     sessions,
-    olms
+    clients
 } from "./schema";
 
 export const certificates = pgTable("certificates", {
@@ -305,14 +305,14 @@ export const approvals = pgTable("approvals", {
             onDelete: "cascade"
         })
         .notNull(),
-    olmId: varchar("olmId").references(() => olms.olmId, {
+    clientId: integer("clientId").references(() => clients.clientId, {
         onDelete: "cascade"
-    }), // olms reference user devices clients (in this case)
+    }), // clients reference user devices (in this case)
     userId: varchar("userId").references(() => users.userId, {
         // optionally tied to a user and in this case delete when the user deletes
         onDelete: "cascade"
     }),
-    decision: varchar("type")
+    decision: varchar("decision")
         .$type<"approved" | "denied" | "pending">()
         .default("pending")
         .notNull(),

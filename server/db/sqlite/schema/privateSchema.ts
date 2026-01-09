@@ -6,7 +6,7 @@ import {
     sqliteTable,
     text
 } from "drizzle-orm/sqlite-core";
-import { domains, exitNodes, olms, orgs, sessions, users } from "./schema";
+import { clients, domains, exitNodes, orgs, sessions, users } from "./schema";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -297,10 +297,14 @@ export const approvals = sqliteTable("approvals", {
             onDelete: "cascade"
         })
         .notNull(),
-    olmId: text("olmId").references(() => olms.olmId, {
+    clientId: integer("clientId").references(() => clients.clientId, {
         onDelete: "cascade"
     }), // olms reference user devices clients
-    decision: text("type")
+    userId: text("userId").references(() => users.userId, {
+        // optionally tied to a user and in this case delete when the user deletes
+        onDelete: "cascade"
+    }),
+    decision: text("decision")
         .$type<"approved" | "denied" | "pending">()
         .default("pending")
         .notNull(),
