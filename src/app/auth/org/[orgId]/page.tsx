@@ -11,6 +11,7 @@ import {
 } from "@server/routers/loginPage/types";
 import { redirect } from "next/navigation";
 import OrgLoginPage from "@app/components/OrgLoginPage";
+import { pullEnv } from "@app/lib/pullEnv";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,9 @@ export default async function OrgAuthPage(props: {
     const searchParams = await props.searchParams;
     const params = await props.params;
 
-    if (build !== "saas") {
+    const env = pullEnv();
+
+    if (build !== "saas" && !env.flags.useOrgOnlyIdp) {
         const queryString = new URLSearchParams(searchParams as any).toString();
         redirect(`/auth/login${queryString ? `?${queryString}` : ""}`);
     }
@@ -50,29 +53,25 @@ export default async function OrgAuthPage(props: {
     } catch (e) {}
 
     let loginIdps: LoginFormIDP[] = [];
-    if (build === "saas") {
-        const idpsRes = await priv.get<AxiosResponse<ListOrgIdpsResponse>>(
-            `/org/${orgId}/idp`
-        );
+    const idpsRes = await priv.get<AxiosResponse<ListOrgIdpsResponse>>(
+        `/org/${orgId}/idp`
+    );
 
-        loginIdps = idpsRes.data.data.idps.map((idp) => ({
-            idpId: idp.idpId,
-            name: idp.name,
-            variant: idp.variant
-        })) as LoginFormIDP[];
-    }
+    loginIdps = idpsRes.data.data.idps.map((idp) => ({
+        idpId: idp.idpId,
+        name: idp.name,
+        variant: idp.variant
+    })) as LoginFormIDP[];
 
     let branding: LoadLoginPageBrandingResponse | null = null;
-    if (build === "saas") {
-        try {
-            const res = await priv.get<
-                AxiosResponse<LoadLoginPageBrandingResponse>
-            >(`/login-page-branding?orgId=${orgId}`);
-            if (res.status === 200) {
-                branding = res.data.data;
-            }
-        } catch (error) {}
-    }
+    try {
+        const res = await priv.get<
+            AxiosResponse<LoadLoginPageBrandingResponse>
+        >(`/login-page-branding?orgId=${orgId}`);
+        if (res.status === 200) {
+            branding = res.data.data;
+        }
+    } catch (error) {}
 
     return (
         <OrgLoginPage

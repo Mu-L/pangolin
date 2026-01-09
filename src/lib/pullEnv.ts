@@ -63,7 +63,9 @@ export function pullEnv(): Env {
             disableProductHelpBanners:
                 process.env.FLAGS_DISABLE_PRODUCT_HELP_BANNERS === "true"
                     ? true
-                    : false
+                    : false,
+            useOrgOnlyIdp:
+                process.env.USE_ORG_ONLY_IDP === "true" ? true : false
         },
 
         branding: {

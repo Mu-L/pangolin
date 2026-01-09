@@ -118,6 +118,7 @@ export default function AuthPageBrandingForm({
         const brandingData = form.getValues();
 
         if (!isValid || !isPaidUser) return;
+
         try {
             const updateRes = await api.put(
                 `/org/${orgId}/login-page-branding`,
@@ -289,7 +290,8 @@ export default function AuthPageBrandingForm({
                                     </div>
                                 </div>
 
-                                {build === "saas" && (
+                                {build === "saas" ||
+                                env.env.flags.useOrgOnlyIdp ? (
                                     <>
                                         <div className="mt-3 mb-6">
                                             <SettingsSectionTitle>
@@ -343,7 +345,7 @@ export default function AuthPageBrandingForm({
                                             />
                                         </div>
                                     </>
-                                )}
+                                ) : null}
 
                                 <div className="mt-3 mb-6">
                                     <SettingsSectionTitle>

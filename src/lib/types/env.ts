@@ -34,6 +34,7 @@ export type Env = {
         hideSupporterKey: boolean;
         usePangolinDns: boolean;
         disableProductHelpBanners: boolean;
+        useOrgOnlyIdp: boolean;
     };
     branding: {
         appName?: string;
