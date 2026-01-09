@@ -2,8 +2,6 @@
 
 import * as React from "react";
 
-import { cn } from "@app/lib/cn";
-import { useMediaQuery } from "@app/hooks/useMediaQuery";
 import {
     Dialog,
     DialogClose,
@@ -14,16 +12,9 @@ import {
     DialogTitle,
     DialogTrigger
 } from "@/components/ui/dialog";
-import {
-    Drawer,
-    DrawerClose,
-    DrawerContent,
-    DrawerDescription,
-    DrawerFooter,
-    DrawerHeader,
-    DrawerTitle,
-    DrawerTrigger
-} from "@/components/ui/drawer";
+import { DrawerClose } from "@/components/ui/drawer";
+import { useMediaQuery } from "@app/hooks/useMediaQuery";
+import { cn } from "@app/lib/cn";
 import {
     Sheet,
     SheetContent,
@@ -187,12 +178,12 @@ const CredenzaFooter = ({ className, children, ...props }: CredenzaProps) => {
 
 export {
     Credenza,
-    CredenzaTrigger,
+    CredenzaBody,
     CredenzaClose,
     CredenzaContent,
     CredenzaDescription,
+    CredenzaFooter,
     CredenzaHeader,
     CredenzaTitle,
-    CredenzaBody,
-    CredenzaFooter
+    CredenzaTrigger
 };
