@@ -103,6 +103,10 @@ export default async function Page(props: {
                 redirect={redirectUrl}
                 idps={loginIdps}
                 forceLogin={forceLogin}
+                showOrgLogin={
+                    !isInvite && (build === "saas" || env.flags.useOrgOnlyIdp)
+                }
+                searchParams={searchParams}
             />
 
             {(!signUpDisabled || isInvite) && (
@@ -120,35 +124,6 @@ export default async function Page(props: {
                     </Link>
                 </p>
             )}
-
-            {!isInvite && (build === "saas" || env.flags.useOrgOnlyIdp) ? (
-                <div className="text-center text-muted-foreground mt-12 flex flex-col items-center">
-                    <span>{t("needToSignInToOrg")}</span>
-                    <Link
-                        href={`/auth/org${buildQueryString(searchParams)}`}
-                        className="underline"
-                    >
-                        {t("orgAuthSignInToOrg")}
-                    </Link>
-                </div>
-            ) : null}
         </>
     );
-}
-
-function buildQueryString(searchParams: {
-    [key: string]: string | string[] | undefined;
-}): string {
-    const params = new URLSearchParams();
-    const redirect = searchParams.redirect;
-    const forceLogin = searchParams.forceLogin;
-
-    if (redirect && typeof redirect === "string") {
-        params.set("redirect", redirect);
-    }
-    if (forceLogin && typeof forceLogin === "string") {
-        params.set("forceLogin", forceLogin);
-    }
-    const queryString = params.toString();
-    return queryString ? `?${queryString}` : "";
 }
