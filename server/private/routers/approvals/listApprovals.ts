@@ -21,8 +21,8 @@ import type { Request, Response, NextFunction } from "express";
 import { build } from "@server/build";
 import { getOrgTierData } from "@server/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
-import { approvals, db } from "@server/db";
-import { eq, sql } from "drizzle-orm";
+import { approvals, clients, db, users } from "@server/db";
+import { eq, isNull, sql, not, and } from "drizzle-orm";
 import response from "@server/lib/response";
 
 const paramsSchema = z.strictObject({
@@ -48,6 +48,14 @@ async function queryApprovals(orgId: string, limit: number, offset: number) {
     const res = await db
         .select()
         .from(approvals)
+        .leftJoin(
+            clients,
+            and(
+                eq(approvals.clientId, clients.clientId),
+                not(isNull(clients.userId)) // only user devices
+            )
+        )
+        .leftJoin(users, and(eq(approvals.userId, users.userId)))
         .where(eq(approvals.orgId, orgId))
         .limit(limit)
         .offset(offset);
