@@ -712,6 +712,49 @@ export const clientSiteResourcesAssociationsCache = pgTable(
     }
 );
 
+export const clientPostureSnapshots = pgTable("clientPostureSnapshots", {
+    snapshotId: serial("snapshotId").primaryKey(),
+
+    clientId: integer("clientId").references(() => clients.clientId, {
+        onDelete: "cascade"
+    }),
+
+    // Platform-agnostic checks
+
+    biometricsEnabled: boolean("biometricsEnabled").notNull().default(false),
+    diskEncrypted: boolean("diskEncrypted").notNull().default(false),
+    firewallEnabled: boolean("firewallEnabled").notNull().default(false),
+    autoUpdatesEnabled: boolean("autoUpdatesEnabled").notNull().default(false),
+    tpmAvailable: boolean("tpmAvailable").notNull().default(false),
+
+    // Windows-specific posture check information
+
+    windowsDefenderEnabled: boolean("windowsDefenderEnabled")
+        .notNull()
+        .default(false),
+
+    // macOS-specific posture check information
+
+    macosSipEnabled: boolean("macosSipEnabled").notNull().default(false),
+    macosGatekeeperEnabled: boolean("macosGatekeeperEnabled")
+        .notNull()
+        .default(false),
+    macosFirewallStealthMode: boolean("macosFirewallStealthMode")
+        .notNull()
+        .default(false),
+
+    // Linux-specific posture check information
+
+    linuxAppArmorEnabled: boolean("linuxAppArmorEnabled")
+        .notNull()
+        .default(false),
+    linuxSELinuxEnabled: boolean("linuxSELinuxEnabled")
+        .notNull()
+        .default(false),
+
+    collectedAt: integer("collectedAt").notNull()
+});
+
 export const olms = pgTable("olms", {
     olmId: varchar("id").primaryKey(),
     secretHash: varchar("secretHash").notNull(),
@@ -728,6 +771,26 @@ export const olms = pgTable("olms", {
         onDelete: "cascade"
     }),
     archived: boolean("archived").notNull().default(false)
+});
+
+export const fingerprints = pgTable("fingerprints", {
+    fingerprintId: serial("id").primaryKey(),
+
+    olmId: text("olmId")
+        .references(() => olms.olmId, { onDelete: "cascade" })
+        .notNull(),
+
+    firstSeen: integer("firstSeen").notNull(),
+    lastSeen: integer("lastSeen").notNull(),
+
+    username: text("username"),
+    hostname: text("hostname"),
+    platform: text("platform"), // macos | windows | linux | ios | android | unknown
+    osVersion: text("osVersion"),
+    kernelVersion: text("kernelVersion"),
+    arch: text("arch"),
+    deviceModel: text("deviceModel"),
+    serialNumber: text("serialNumber")
 });
 
 export const olmSessions = pgTable("clientSession", {
