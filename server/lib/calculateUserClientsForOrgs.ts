@@ -218,7 +218,7 @@ export async function calculateUserClientsForOrgs(
                     await transaction
                         .insert(approvals)
                         .values({
-                            timestamp: new Date().getTime() / 1000,
+                            timestamp: Math.floor(new Date().getTime() / 1000),
                             orgId: userOrg.orgId,
                             clientId: newClient.clientId,
                             userId,
