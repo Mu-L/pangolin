@@ -257,6 +257,8 @@
     "accessRolesSearch": "Search roles...",
     "accessRolesAdd": "Add Role",
     "accessRoleDelete": "Delete Role",
+    "accessApprovalsManage": "Manage Approvals",
+    "accessApprovalsDescription": "Manage approval requests in the organization",
     "description": "Description",
     "inviteTitle": "Open Invitations",
     "inviteDescription": "Manage invitations for other users to join the organization",
