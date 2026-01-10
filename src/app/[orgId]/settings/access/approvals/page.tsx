@@ -1,3 +1,4 @@
+import { ApprovalFeed } from "@app/components/ApprovalFeed";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
@@ -42,7 +43,9 @@ export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
                 description={t("accessApprovalsDescription")}
             />
             <OrgProvider org={org}>
-                <h1>Orgs</h1>
+                <div className="container mx-auto max-w-12xl">
+                    <ApprovalFeed orgId={params.orgId} />
+                </div>
             </OrgProvider>
         </>
     );

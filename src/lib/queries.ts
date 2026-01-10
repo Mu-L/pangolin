@@ -21,6 +21,7 @@ import type {
 } from "@server/routers/resource";
 import type { ListTargetsResponse } from "@server/routers/target";
 import type { ListDomainsResponse } from "@server/routers/domain";
+import type { ListApprovalsResponse } from "@server/private/routers/approvals";
 
 export type ProductUpdate = {
     link: string | null;
@@ -305,6 +306,28 @@ export const resourceQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<ListResourceNamesResponse>
                 >(`/org/${orgId}/resource-names`, {
+                    signal
+                });
+                return res.data.data;
+            }
+        })
+};
+
+export const approvalFiltersSchema = z.object({
+    approvalState: z
+        .enum(["pending", "approved", "denied", "all"])
+        .optional()
+        .catch("pending")
+});
+
+export const approvalQueries = {
+    listApprovals: (orgId: string) =>
+        queryOptions({
+            queryKey: ["APPROVALS", orgId] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListApprovalsResponse>
+                >(`/org/${orgId}/approvals`, {
                     signal
                 });
                 return res.data.data;

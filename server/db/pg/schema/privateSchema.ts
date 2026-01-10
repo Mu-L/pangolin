@@ -308,10 +308,12 @@ export const approvals = pgTable("approvals", {
     clientId: integer("clientId").references(() => clients.clientId, {
         onDelete: "cascade"
     }), // clients reference user devices (in this case)
-    userId: varchar("userId").references(() => users.userId, {
-        // optionally tied to a user and in this case delete when the user deletes
-        onDelete: "cascade"
-    }),
+    userId: varchar("userId")
+        .references(() => users.userId, {
+            // optionally tied to a user and in this case delete when the user deletes
+            onDelete: "cascade"
+        })
+        .notNull(),
     decision: varchar("decision")
         .$type<"approved" | "denied" | "pending">()
         .default("pending")

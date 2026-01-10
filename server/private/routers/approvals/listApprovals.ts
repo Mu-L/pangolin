@@ -50,13 +50,16 @@ async function queryApprovals(orgId: string, limit: number, offset: number) {
             approvalId: approvals.id,
             orgId: approvals.orgId,
             clientId: approvals.clientId,
-            userId: users.userId,
-            username: users.username,
-            name: users.name,
             decision: approvals.decision,
-            type: approvals.type
+            type: approvals.type,
+            user: {
+                name: users.name,
+                userId: users.userId,
+                username: users.username
+            }
         })
         .from(approvals)
+        .innerJoin(users, and(eq(approvals.userId, users.userId)))
         .leftJoin(
             clients,
             and(
@@ -64,7 +67,6 @@ async function queryApprovals(orgId: string, limit: number, offset: number) {
                 not(isNull(clients.userId)) // only user devices
             )
         )
-        .leftJoin(users, and(eq(approvals.userId, users.userId)))
         .where(eq(approvals.orgId, orgId))
         .orderBy(desc(approvals.timestamp))
         .limit(limit)
