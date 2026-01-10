@@ -808,11 +808,11 @@ authenticated.put("/user/:userId/olm", verifyIsLoggedInUser, olm.createUserOlm);
 
 authenticated.get("/user/:userId/olms", verifyIsLoggedInUser, olm.listUserOlms);
 
-authenticated.delete(
-    "/user/:userId/olm/:olmId",
+authenticated.post(
+    "/user/:userId/olm/:olmId/archive",
     verifyIsLoggedInUser,
     verifyOlmAccess,
-    olm.deleteUserOlm
+    olm.archiveUserOlm
 );
 
 authenticated.get(

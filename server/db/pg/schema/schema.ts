@@ -726,7 +726,8 @@ export const olms = pgTable("olms", {
     userId: text("userId").references(() => users.userId, {
         // optionally tied to a user and in this case delete when the user deletes
         onDelete: "cascade"
-    })
+    }),
+    archived: boolean("archived").notNull().default(false)
 });
 
 export const olmSessions = pgTable("clientSession", {
