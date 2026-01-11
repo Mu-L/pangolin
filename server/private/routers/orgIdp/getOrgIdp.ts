@@ -48,16 +48,16 @@ async function query(idpId: number, orgId: string) {
     return res;
 }
 
-// registry.registerPath({
-//     method: "get",
-//     path: "/idp/{idpId}",
-//     description: "Get an IDP by its IDP ID.",
-//     tags: [OpenAPITags.Idp],
-//     request: {
-//         params: paramsSchema
-//     },
-//     responses: {}
-// });
+registry.registerPath({
+    method: "get",
+    path: "/org/:orgId/idp/:idpId",
+    description: "Get an IDP by its IDP ID for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    request: {
+        params: paramsSchema
+    },
+    responses: {}
+});
 
 export async function getOrgIdp(
     req: Request,

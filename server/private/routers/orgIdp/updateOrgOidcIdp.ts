@@ -53,23 +53,23 @@ export type UpdateOrgIdpResponse = {
     idpId: number;
 };
 
-// registry.registerPath({
-//     method: "post",
-//     path: "/idp/{idpId}/oidc",
-//     description: "Update an OIDC IdP.",
-//     tags: [OpenAPITags.Idp],
-//     request: {
-//         params: paramsSchema,
-//         body: {
-//             content: {
-//                 "application/json": {
-//                     schema: bodySchema
-//                 }
-//             }
-//         }
-//     },
-//     responses: {}
-// });
+registry.registerPath({
+    method: "post",
+    path: "/org/{orgId}/idp/{idpId}/oidc",
+    description: "Update an OIDC IdP for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    request: {
+        params: paramsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: bodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
 
 export async function updateOrgOidcIdp(
     req: Request,
