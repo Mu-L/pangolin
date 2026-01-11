@@ -456,11 +456,11 @@ export async function getTraefikConfig(
                     // );
                 } else if (resource.maintenanceModeType === "automatic") {
                     showMaintenancePage = !hasHealthyServers;
-                    if (showMaintenancePage) {
-                        logger.warn(
-                            `Resource ${resource.name} (${fullDomain}) has no healthy servers - showing maintenance page (AUTOMATIC mode)`
-                        );
-                    }
+                    // if (showMaintenancePage) {
+                    //     logger.warn(
+                    //         `Resource ${resource.name} (${fullDomain}) has no healthy servers - showing maintenance page (AUTOMATIC mode)`
+                    //     );
+                    // }
                 }
             }
 

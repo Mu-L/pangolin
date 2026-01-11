@@ -27,7 +27,18 @@ export async function verifyValidSubscription(
             return next();
         }
 
-        const tier = await getOrgTierData(req.params.orgId);
+        const orgId = req.params.orgId || req.body.orgId || req.query.orgId || req.userOrgId;
+
+        if (!orgId) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Organization ID is required to verify subscription"
+                )
+            );
+        }
+
+        const tier = await getOrgTierData(orgId);
 
         if (!tier.active) {
             return next(

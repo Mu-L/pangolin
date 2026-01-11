@@ -436,18 +436,18 @@ authenticated.get(
 
 authenticated.post(
     "/re-key/:clientId/regenerate-client-secret",
+    verifyClientAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription,
-    verifyClientAccess,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateClientSecret
 );
 
 authenticated.post(
     "/re-key/:siteId/regenerate-site-secret",
+    verifySiteAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription,
-    verifySiteAccess,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateSiteSecret
 );

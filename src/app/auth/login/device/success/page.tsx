@@ -7,6 +7,7 @@ import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { CheckCircle2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function DeviceAuthSuccessPage() {
     const { env } = useEnvContext();
@@ -19,6 +20,32 @@ export default function DeviceAuthSuccessPage() {
     const logoHeight = isUnlocked()
         ? env.branding.logo?.authPage?.height || 58
         : 58;
+
+    useEffect(() => {
+        // Detect if we're on iOS or Android
+        const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
+        const isAndroid = /android/i.test(userAgent);
+
+        if (isAndroid) {
+            // For Android Chrome Custom Tabs, use intent:// scheme which works more reliably
+            // This explicitly tells Chrome to send an intent to the app, which will bring
+            // SignInCodeActivity back to the foreground (it has launchMode="singleTop")
+            setTimeout(() => {
+                window.location.href = "intent://auth-success#Intent;scheme=pangolin;package=net.pangolin.Pangolin;end";
+            }, 500);
+        } else if (isIOS) {
+            // Wait 500ms then attempt to open the app
+            setTimeout(() => {
+                // Try to open the app using deep link
+                window.location.href = "pangolin://";
+
+                setTimeout(() => {
+                    window.location.href = "https://apps.apple.com/app/pangolin/net.pangolin.Pangolin.PangoliniOS";
+                }, 2000);
+            }, 500);
+        }
+    }, []);
 
     return (
         <>
