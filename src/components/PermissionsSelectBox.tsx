@@ -114,6 +114,16 @@ function getActionsCategories(root: boolean) {
         }
     };
 
+    if (root || build === "saas" || env.flags.useOrgOnlyIdp) {
+        actionsByCategory["Identity Provider (IDP)"] = {
+            [t("actionCreateIdp")]: "createIdp",
+            [t("actionUpdateIdp")]: "updateIdp",
+            [t("actionDeleteIdp")]: "deleteIdp",
+            [t("actionListIdps")]: "listIdps",
+            [t("actionGetIdp")]: "getIdp"
+        };
+    }
+
     if (root) {
         actionsByCategory["Organization"] = {
             [t("actionListOrgs")]: "listOrgs",
@@ -128,24 +138,21 @@ function getActionsCategories(root: boolean) {
             ...actionsByCategory["Organization"]
         };
 
-        actionsByCategory["Identity Provider (IDP)"] = {
-            [t("actionCreateIdp")]: "createIdp",
-            [t("actionUpdateIdp")]: "updateIdp",
-            [t("actionDeleteIdp")]: "deleteIdp",
-            [t("actionListIdps")]: "listIdps",
-            [t("actionGetIdp")]: "getIdp",
-            [t("actionCreateIdpOrg")]: "createIdpOrg",
-            [t("actionDeleteIdpOrg")]: "deleteIdpOrg",
-            [t("actionListIdpOrgs")]: "listIdpOrgs",
-            [t("actionUpdateIdpOrg")]: "updateIdpOrg"
-        };
+        actionsByCategory["Identity Provider (IDP)"][t("actionCreateIdpOrg")] =
+            "createIdpOrg";
+        actionsByCategory["Identity Provider (IDP)"][t("actionDeleteIdpOrg")] =
+            "deleteIdpOrg";
+        actionsByCategory["Identity Provider (IDP)"][t("actionListIdpOrgs")] =
+            "listIdpOrgs";
+        actionsByCategory["Identity Provider (IDP)"][t("actionUpdateIdpOrg")] =
+            "updateIdpOrg";
 
         actionsByCategory["User"] = {
             [t("actionUpdateUser")]: "updateUser",
             [t("actionGetUser")]: "getUser"
         };
 
-        if (build == "saas") {
+        if (build === "saas") {
             actionsByCategory["SAAS"] = {
                 ["Send Usage Notification Email"]: "sendUsageNotification"
             };

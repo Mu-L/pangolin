@@ -46,22 +46,23 @@ const bodySchema = z.strictObject({
     roleMapping: z.string().optional()
 });
 
-// registry.registerPath({
-//     method: "put",
-//     path: "/idp/oidc",
-//     description: "Create an OIDC IdP.",
-//     tags: [OpenAPITags.Idp],
-//     request: {
-//         body: {
-//             content: {
-//                 "application/json": {
-//                     schema: bodySchema
-//                 }
-//             }
-//         }
-//     },
-//     responses: {}
-// });
+registry.registerPath({
+    method: "put",
+    path: "/org/{orgId}/idp/oidc",
+    description: "Create an OIDC IdP for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    request: {
+        params: paramsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: bodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
 
 export async function createOrgOidcIdp(
     req: Request,
