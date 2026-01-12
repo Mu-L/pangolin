@@ -4,6 +4,7 @@ export * from "./createUserOlm";
 export * from "./handleOlmRelayMessage";
 export * from "./handleOlmPingMessage";
 export * from "./archiveUserOlm";
+export * from "./unarchiveUserOlm";
 export * from "./listUserOlms";
 export * from "./getUserOlm";
 export * from "./handleOlmServerPeerAddMessage";

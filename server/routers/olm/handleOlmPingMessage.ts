@@ -1,7 +1,7 @@
 import { db } from "@server/db";
 import { disconnectClient } from "#dynamic/routers/ws";
 import { MessageHandler } from "@server/routers/ws";
-import { clients, Olm } from "@server/db";
+import { clients, olms, Olm } from "@server/db";
 import { eq, lt, isNull, and, or } from "drizzle-orm";
 import logger from "@server/logger";
 import { validateSessionToken } from "@server/auth/sessions/app";
@@ -108,6 +108,8 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         return;
     }
 
+    let client: (typeof clients.$inferSelect) | undefined;
+
     if (olm.userId) {
         // we need to check a user token to make sure its still valid
         const { session: userSession, user } =
@@ -122,7 +124,7 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         }
 
         // get the client
-        const [client] = await db
+        const [userClient] = await db
             .select()
             .from(clients)
             .where(
@@ -133,10 +135,12 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
             )
             .limit(1);
 
-        if (!client) {
+        if (!userClient) {
             logger.warn("Client not found for olm ping");
             return;
         }
+
+        client = userClient;
 
         const sessionId = encodeHexLowerCase(
             sha256(new TextEncoder().encode(userToken))
@@ -167,9 +171,12 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
             .update(clients)
             .set({
                 lastPing: Math.floor(Date.now() / 1000),
-                online: true
+                online: true,
+                archived: false
             })
             .where(eq(clients.clientId, olm.clientId));
+
+        await db.update(olms).set({ archived: false }).where(eq(olms.olmId, olm.olmId));
     } catch (error) {
         logger.error("Error handling ping message", { error });
     }

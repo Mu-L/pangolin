@@ -844,6 +844,22 @@ authenticated.delete(
 );
 
 authenticated.post(
+    "/client/:clientId/archive",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.archiveClient),
+    logActionAudit(ActionsEnum.archiveClient),
+    client.archiveClient
+);
+
+authenticated.post(
+    "/client/:clientId/unarchive",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.unarchiveClient),
+    logActionAudit(ActionsEnum.unarchiveClient),
+    client.unarchiveClient
+);
+
+authenticated.post(
     "/client/:clientId",
     verifyApiKeyClientAccess,
     verifyApiKeyHasAction(ActionsEnum.updateClient),

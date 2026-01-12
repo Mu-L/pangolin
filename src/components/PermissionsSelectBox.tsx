@@ -103,6 +103,8 @@ function getActionsCategories(root: boolean) {
         Client: {
             [t("actionCreateClient")]: "createClient",
             [t("actionDeleteClient")]: "deleteClient",
+            [t("actionArchiveClient")]: "archiveClient",
+            [t("actionUnarchiveClient")]: "unarchiveClient",
             [t("actionUpdateClient")]: "updateClient",
             [t("actionListClients")]: "listClients",
             [t("actionGetClient")]: "getClient"

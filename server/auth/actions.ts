@@ -78,6 +78,8 @@ export enum ActionsEnum {
     updateSiteResource = "updateSiteResource",
     createClient = "createClient",
     deleteClient = "deleteClient",
+    archiveClient = "archiveClient",
+    unarchiveClient = "unarchiveClient",
     updateClient = "updateClient",
     listClients = "listClients",
     getClient = "getClient",

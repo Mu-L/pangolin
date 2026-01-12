@@ -8,7 +8,6 @@ import response from "@server/lib/response";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
-import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "../client/terminate";
 
@@ -18,17 +17,6 @@ const paramsSchema = z
         olmId: z.string()
     })
     .strict();
-
-// registry.registerPath({
-//     method: "post",
-//     path: "/user/{userId}/olm/{olmId}/archive",
-//     description: "Archive an olm for a user.",
-//     tags: [OpenAPITags.User, OpenAPITags.Client],
-//     request: {
-//         params: paramsSchema
-//     },
-//     responses: {}
-// });
 
 export async function archiveUserOlm(
     req: Request,

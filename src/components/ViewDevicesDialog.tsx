@@ -123,6 +123,34 @@ export default function ViewDevicesDialog({
         }
     };
 
+    const unarchiveDevice = async (olmId: string) => {
+        try {
+            await api.post(`/user/${user?.userId}/olm/${olmId}/unarchive`);
+            toast({
+                title: t("deviceUnarchived") || "Device unarchived",
+                description:
+                    t("deviceUnarchivedDescription") ||
+                    "The device has been successfully unarchived."
+            });
+            // Update the device's archived status in the local state
+            setDevices(
+                devices.map((d) =>
+                    d.olmId === olmId ? { ...d, archived: false } : d
+                )
+            );
+        } catch (error: any) {
+            console.error("Error unarchiving device:", error);
+            toast({
+                variant: "destructive",
+                title: t("errorUnarchivingDevice") || "Error unarchiving device",
+                description: formatAxiosError(
+                    error,
+                    t("failedToUnarchiveDevice") || "Failed to unarchive device"
+                )
+            });
+        }
+    };
+
     function reset() {
         setDevices([]);
         setSelectedDevice(null);
@@ -186,29 +214,29 @@ export default function ViewDevicesDialog({
                                 <TabsContent value="available" className="mt-4">
                                     {devices.filter((d) => !d.archived)
                                         .length === 0 ? (
-                                        <div className="text-center py-8 text-muted-foreground">
+                            <div className="text-center py-8 text-muted-foreground">
                                             {t("noDevices") ||
                                                 "No devices found"}
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-md border">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="pl-3">
-                                                        {t("name") || "Name"}
-                                                        </TableHead>
-                                                        <TableHead>
-                                                            {t("dateCreated") ||
-                                                                "Date Created"}
-                                                        </TableHead>
-                                                        <TableHead>
+                            </div>
+                        ) : (
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="pl-3">
+                                                {t("name") || "Name"}
+                                            </TableHead>
+                                            <TableHead>
+                                                {t("dateCreated") ||
+                                                    "Date Created"}
+                                            </TableHead>
+                                            <TableHead>
                                                             {t("actions") ||
                                                                 "Actions"}
-                                                        </TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                                     {devices
                                                         .filter(
                                                             (d) => !d.archived
@@ -217,43 +245,43 @@ export default function ViewDevicesDialog({
                                                             <TableRow
                                                                 key={device.olmId}
                                                             >
-                                                                <TableCell className="font-medium">
-                                                                    {device.name ||
+                                                <TableCell className="font-medium">
+                                                    {device.name ||
                                                                         t(
                                                                             "unnamedDevice"
                                                                         ) ||
-                                                                        "Unnamed Device"}
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    {moment(
-                                                                        device.dateCreated
+                                                        "Unnamed Device"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {moment(
+                                                        device.dateCreated
                                                                     ).format(
                                                                         "lll"
                                                                     )}
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        onClick={() => {
-                                                                            setSelectedDevice(
-                                                                                device
-                                                                            );
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setSelectedDevice(
+                                                                device
+                                                            );
                                                                             setIsArchiveModalOpen(
-                                                                                true
-                                                                            );
-                                                                        }}
-                                                                    >
+                                                                true
+                                                            );
+                                                        }}
+                                                    >
                                                                         {t(
                                                                             "archive"
                                                                         ) ||
                                                                             "Archive"}
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                                     )}
                                 </TabsContent>
                                 <TabsContent value="archived" className="mt-4">
@@ -274,6 +302,10 @@ export default function ViewDevicesDialog({
                                                         <TableHead>
                                                             {t("dateCreated") ||
                                                                 "Date Created"}
+                                                        </TableHead>
+                                                        <TableHead>
+                                                            {t("actions") ||
+                                                                "Actions"}
                                                         </TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -299,6 +331,16 @@ export default function ViewDevicesDialog({
                                                                     ).format(
                                                                         "lll"
                                                                     )}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={() => {
+                                                                            unarchiveDevice(device.olmId);
+                                                                        }}
+                                                                    >
+                                                                        {t("unarchive") || "Unarchive"}
+                                                                    </Button>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}

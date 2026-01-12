@@ -42,6 +42,7 @@ export type ClientRow = {
     userEmail: string | null;
     niceId: string;
     agent: string | null;
+    archived?: boolean;
 };
 
 type ClientTableProps = {
@@ -103,6 +104,40 @@ export default function MachineClientsTable({
             });
     };
 
+    const archiveClient = (clientId: number) => {
+        api.post(`/client/${clientId}/archive`)
+            .catch((e) => {
+                console.error("Error archiving client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error archiving client",
+                    description: formatAxiosError(e, "Error archiving client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                });
+            });
+    };
+
+    const unarchiveClient = (clientId: number) => {
+        api.post(`/client/${clientId}/unarchive`)
+            .catch((e) => {
+                console.error("Error unarchiving client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error unarchiving client",
+                    description: formatAxiosError(e, "Error unarchiving client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                });
+            });
+    };
+
     // Check if there are any rows without userIds in the current view's data
     const hasRowsWithoutUserId = useMemo(() => {
         return machineClients.some((client) => !client.userId) ?? false;
@@ -127,6 +162,19 @@ export default function MachineClientsTable({
                             Name
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
+                    );
+                },
+                cell: ({ row }) => {
+                    const r = row.original;
+                    return (
+                        <div className="flex items-center gap-2">
+                            <span>{r.name}</span>
+                            {r.archived && (
+                                <Badge variant="secondary">
+                                    {t("archived")}
+                                </Badge>
+                            )}
+                        </div>
                     );
                 }
             },
@@ -307,14 +355,19 @@ export default function MachineClientsTable({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    {/* <Link */}
-                                    {/*     className="block w-full" */}
-                                    {/*     href={`/${clientRow.orgId}/settings/sites/${clientRow.nice}`} */}
-                                    {/* > */}
-                                    {/*     <DropdownMenuItem> */}
-                                    {/*         View settings */}
-                                    {/*     </DropdownMenuItem> */}
-                                    {/* </Link> */}
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            if (clientRow.archived) {
+                                                unarchiveClient(clientRow.id);
+                                            } else {
+                                                archiveClient(clientRow.id);
+                                            }
+                                        }}
+                                    >
+                                        <span>
+                                            {clientRow.archived ? "Unarchive" : "Archive"}
+                                        </span>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSelectedClient(clientRow);
@@ -383,6 +436,32 @@ export default function MachineClientsTable({
                 columnVisibility={defaultMachineColumnVisibility}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
+                filters={[
+                    {
+                        id: "status",
+                        label: t("status") || "Status",
+                        multiSelect: true,
+                        displayMode: "calculated",
+                        options: [
+                            {
+                                id: "active",
+                                label: t("active") || "Active",
+                                value: false
+                            },
+                            {
+                                id: "archived",
+                                label: t("archived") || "Archived",
+                                value: true
+                            }
+                        ],
+                        filterFn: (row: ClientRow, selectedValues: (string | number | boolean)[]) => {
+                            if (selectedValues.length === 0) return true;
+                            const rowArchived = row.archived || false;
+                            return selectedValues.includes(rowArchived);
+                        },
+                        defaultValues: [false] // Default to showing active clients
+                    }
+                ]}
             />
         </>
     );
