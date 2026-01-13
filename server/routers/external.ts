@@ -191,6 +191,22 @@ authenticated.post(
 );
 
 authenticated.post(
+    "/client/:clientId/block",
+    verifyClientAccess,
+    verifyUserHasAction(ActionsEnum.blockClient),
+    logActionAudit(ActionsEnum.blockClient),
+    client.blockClient
+);
+
+authenticated.post(
+    "/client/:clientId/unblock",
+    verifyClientAccess,
+    verifyUserHasAction(ActionsEnum.unblockClient),
+    logActionAudit(ActionsEnum.unblockClient),
+    client.unblockClient
+);
+
+authenticated.post(
     "/client/:clientId",
     verifyClientAccess, // this will check if the user has access to the client
     verifyUserHasAction(ActionsEnum.updateClient), // this will check if the user has permission to update the client

@@ -860,6 +860,22 @@ authenticated.post(
 );
 
 authenticated.post(
+    "/client/:clientId/block",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.blockClient),
+    logActionAudit(ActionsEnum.blockClient),
+    client.blockClient
+);
+
+authenticated.post(
+    "/client/:clientId/unblock",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.unblockClient),
+    logActionAudit(ActionsEnum.unblockClient),
+    client.unblockClient
+);
+
+authenticated.post(
     "/client/:clientId",
     verifyApiKeyClientAccess,
     verifyApiKeyHasAction(ActionsEnum.updateClient),

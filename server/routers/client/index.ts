@@ -3,6 +3,8 @@ export * from "./createClient";
 export * from "./deleteClient";
 export * from "./archiveClient";
 export * from "./unarchiveClient";
+export * from "./blockClient";
+export * from "./unblockClient";
 export * from "./listClients";
 export * from "./updateClient";
 export * from "./getClient";

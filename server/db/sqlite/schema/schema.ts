@@ -384,7 +384,8 @@ export const clients = sqliteTable("clients", {
     online: integer("online", { mode: "boolean" }).notNull().default(false),
     // endpoint: text("endpoint"),
     lastHolePunch: integer("lastHolePunch"),
-    archived: integer("archived", { mode: "boolean" }).notNull().default(false)
+    archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false)
 });
 
 export const clientSitesAssociationsCache = sqliteTable(

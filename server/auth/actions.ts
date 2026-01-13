@@ -80,6 +80,8 @@ export enum ActionsEnum {
     deleteClient = "deleteClient",
     archiveClient = "archiveClient",
     unarchiveClient = "unarchiveClient",
+    blockClient = "blockClient",
+    unblockClient = "unblockClient",
     updateClient = "updateClient",
     listClients = "listClients",
     getClient = "getClient",

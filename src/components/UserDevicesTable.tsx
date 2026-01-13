@@ -17,7 +17,8 @@ import {
     ArrowRight,
     ArrowUpDown,
     ArrowUpRight,
-    MoreHorizontal
+    MoreHorizontal,
+    CircleSlash
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -44,6 +45,7 @@ export type ClientRow = {
     niceId: string;
     agent: string | null;
     archived?: boolean;
+    blocked?: boolean;
 };
 
 type ClientTableProps = {
@@ -56,6 +58,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const t = useTranslations();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
         null
     );
@@ -134,6 +137,42 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             });
     };
 
+    const blockClient = (clientId: number) => {
+        api.post(`/client/${clientId}/block`)
+            .catch((e) => {
+                console.error("Error blocking client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error blocking client",
+                    description: formatAxiosError(e, "Error blocking client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                    setIsBlockModalOpen(false);
+                    setSelectedClient(null);
+                });
+            });
+    };
+
+    const unblockClient = (clientId: number) => {
+        api.post(`/client/${clientId}/unblock`)
+            .catch((e) => {
+                console.error("Error unblocking client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error unblocking client",
+                    description: formatAxiosError(e, "Error unblocking client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                });
+            });
+    };
+
     // Check if there are any rows without userIds in the current view's data
     const hasRowsWithoutUserId = useMemo(() => {
         return userClients.some((client) => !client.userId);
@@ -168,6 +207,12 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             {r.archived && (
                                 <Badge variant="secondary">
                                     {t("archived")}
+                                </Badge>
+                            )}
+                            {r.blocked && (
+                                <Badge variant="destructive" className="flex items-center gap-1">
+                                    <CircleSlash className="h-3 w-3" />
+                                    {t("blocked")}
                                 </Badge>
                             )}
                         </div>
@@ -417,6 +462,18 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 >
                                     <span>{clientRow.archived ? "Unarchive" : "Archive"}</span>
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        if (clientRow.blocked) {
+                                            unblockClient(clientRow.id);
+                                        } else {
+                                            setSelectedClient(clientRow);
+                                            setIsBlockModalOpen(true);
+                                        }
+                                    }}
+                                >
+                                    <span>{clientRow.blocked ? "Unblock" : "Block"}</span>
+                                </DropdownMenuItem>
                                 {!clientRow.userId && (
                                     // Machine client - also show delete option
                                     <DropdownMenuItem
@@ -467,6 +524,27 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                     title="Delete Client"
                 />
             )}
+            {selectedClient && (
+                <ConfirmDeleteDialog
+                    open={isBlockModalOpen}
+                    setOpen={(val) => {
+                        setIsBlockModalOpen(val);
+                        if (!val) {
+                            setSelectedClient(null);
+                        }
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("blockClientQuestion")}</p>
+                            <p>{t("blockClientMessage")}</p>
+                        </div>
+                    }
+                    buttonText={t("blockClientConfirm")}
+                    onConfirm={async () => blockClient(selectedClient!.id)}
+                    string={selectedClient.name}
+                    title={t("blockClient")}
+                />
+            )}
 
             <ClientDownloadBanner />
 
@@ -493,20 +571,31 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             {
                                 id: "active",
                                 label: t("active") || "Active",
-                                value: false
+                                value: "active"
                             },
                             {
                                 id: "archived",
                                 label: t("archived") || "Archived",
-                                value: true
+                                value: "archived"
+                            },
+                            {
+                                id: "blocked",
+                                label: t("blocked") || "Blocked",
+                                value: "blocked"
                             }
                         ],
                         filterFn: (row: ClientRow, selectedValues: (string | number | boolean)[]) => {
                             if (selectedValues.length === 0) return true;
                             const rowArchived = row.archived || false;
-                            return selectedValues.includes(rowArchived);
+                            const rowBlocked = row.blocked || false;
+                            const isActive = !rowArchived && !rowBlocked;
+                            
+                            if (selectedValues.includes("active") && isActive) return true;
+                            if (selectedValues.includes("archived") && rowArchived) return true;
+                            if (selectedValues.includes("blocked") && rowBlocked) return true;
+                            return false;
                         },
-                        defaultValues: [false] // Default to showing active clients
+                        defaultValues: ["active"] // Default to showing active clients
                     }
                 ]}
             />

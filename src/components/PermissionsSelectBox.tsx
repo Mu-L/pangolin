@@ -105,6 +105,8 @@ function getActionsCategories(root: boolean) {
             [t("actionDeleteClient")]: "deleteClient",
             [t("actionArchiveClient")]: "archiveClient",
             [t("actionUnarchiveClient")]: "unarchiveClient",
+            [t("actionBlockClient")]: "blockClient",
+            [t("actionUnblockClient")]: "unblockClient",
             [t("actionUpdateClient")]: "updateClient",
             [t("actionListClients")]: "listClients",
             [t("actionGetClient")]: "getClient"

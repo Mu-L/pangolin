@@ -689,7 +689,8 @@ export const clients = pgTable("clients", {
     // endpoint: varchar("endpoint"),
     lastHolePunch: integer("lastHolePunch"),
     maxConnections: integer("maxConnections"),
-    archived: boolean("archived").notNull().default(false)
+    archived: boolean("archived").notNull().default(false),
+    blocked: boolean("blocked").notNull().default(false)
 });
 
 export const clientSitesAssociationsCache = pgTable(
