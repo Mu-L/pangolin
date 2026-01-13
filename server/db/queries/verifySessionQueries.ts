@@ -1,4 +1,4 @@
-import { db, loginPage, LoginPage, loginPageOrg, Org, orgs } from "@server/db";
+import { db, loginPage, LoginPage, loginPageOrg, Org, orgs, roles } from "@server/db";
 import {
     Resource,
     ResourcePassword,
@@ -108,9 +108,17 @@ export async function getUserSessionWithUser(
  */
 export async function getUserOrgRole(userId: string, orgId: string) {
     const userOrgRole = await db
-        .select()
+        .select({
+            userId: userOrgs.userId,
+            orgId: userOrgs.orgId,
+            roleId: userOrgs.roleId,
+            isOwner: userOrgs.isOwner,
+            autoProvisioned: userOrgs.autoProvisioned,
+            roleName: roles.name
+        })
         .from(userOrgs)
         .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
+        .leftJoin(roles, eq(userOrgs.roleId, roles.roleId))
         .limit(1);
 
     return userOrgRole.length > 0 ? userOrgRole[0] : null;
