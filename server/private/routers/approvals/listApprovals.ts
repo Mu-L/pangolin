@@ -68,7 +68,10 @@ async function queryApprovals(orgId: string, limit: number, offset: number) {
             )
         )
         .where(eq(approvals.orgId, orgId))
-        .orderBy(desc(approvals.timestamp))
+        .orderBy(
+            sql`CASE ${approvals.decision} WHEN 'pending' THEN 0 ELSE 1 END`,
+            desc(approvals.timestamp)
+        )
         .limit(limit)
         .offset(offset);
     return res;
