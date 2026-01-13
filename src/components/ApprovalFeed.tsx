@@ -110,17 +110,15 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
                                 <li>
                                     <ApprovalRequest approval={approval} />
                                 </li>
-                                {/* <Separator /> */}
                                 {index < approvals.length - 1 && <Separator />}
-                                {/* <li>
-                                    <ApprovalRequest approval={approval} />
-                                </li>
-                                <Separator />
-                                <li>
-                                    <ApprovalRequest approval={approval} />
-                                </li> */}
                             </Fragment>
                         ))}
+
+                        {approvals.length === 0 && (
+                            <li className="flex justify-center items-center p-4 text-muted-foreground">
+                                {t("approvalListEmpty")}
+                            </li>
+                        )}
                     </ul>
                 </CardHeader>
             </Card>

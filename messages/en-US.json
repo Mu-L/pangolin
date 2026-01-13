@@ -454,6 +454,7 @@
     "filterByResource": "Filter By Resource",
     "selectApprovalState": "Select Approval State",
     "filterByApprovalState": "Filter By Approval State",
+    "approvalListEmpty": "No approval yet at the moment",
     "approve": "Approve",
     "deny": "Deny",
     "viewDetails": "View Details",
