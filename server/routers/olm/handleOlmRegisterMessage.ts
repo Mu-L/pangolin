@@ -55,6 +55,11 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         return;
     }
 
+    if (client.blocked) {
+        logger.debug(`Client ${client.clientId} is blocked. Ignoring register.`);
+        return;
+    }
+
     const [org] = await db
         .select()
         .from(orgs)
@@ -112,18 +117,20 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (
         (olmVersion && olm.version !== olmVersion) ||
-        (olmAgent && olm.agent !== olmAgent)
+        (olmAgent && olm.agent !== olmAgent) ||
+        olm.archived
     ) {
         await db
             .update(olms)
             .set({
                 version: olmVersion,
-                agent: olmAgent
+                agent: olmAgent,
+                archived: false
             })
             .where(eq(olms.olmId, olm.olmId));
     }
 
-    if (client.pubKey !== publicKey) {
+    if (client.pubKey !== publicKey || client.archived) {
         logger.info(
             "Public key mismatch. Updating public key and clearing session info..."
         );
@@ -131,7 +138,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         await db
             .update(clients)
             .set({
-                pubKey: publicKey
+                pubKey: publicKey,
+                archived: false,
             })
             .where(eq(clients.clientId, client.clientId));
 
