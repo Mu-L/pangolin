@@ -1,5 +1,9 @@
 http:
   middlewares:
+    badger:
+      plugin:
+        badger:
+          disableForwardAuth: true
     redirect-to-https:
       redirectScheme:
         scheme: https
@@ -13,6 +17,7 @@ http:
         - web
       middlewares:
         - redirect-to-https
+        - badger
 
     # Next.js router (handles everything except API and WebSocket paths)
     next-router:
@@ -21,6 +26,8 @@ http:
       priority: 10
       entryPoints:
         - websecure
+      middlewares:
+        - badger
       tls:
         certResolver: letsencrypt
 
@@ -31,6 +38,8 @@ http:
       priority: 100
       entryPoints:
         - websecure
+      middlewares:
+        - badger
       tls:
         certResolver: letsencrypt
 

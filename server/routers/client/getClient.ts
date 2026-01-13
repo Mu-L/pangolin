@@ -36,7 +36,7 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
             .select()
             .from(clients)
             .where(and(eq(clients.niceId, niceId), eq(clients.orgId, orgId)))
-            .leftJoin(olms, eq(olms.clientId, olms.clientId))
+            .leftJoin(olms, eq(clients.clientId, olms.clientId))
             .limit(1);
         return res;
     }

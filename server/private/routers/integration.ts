@@ -18,7 +18,8 @@ import * as logs from "#private/routers/auditLogs";
 import {
     verifyApiKeyHasAction,
     verifyApiKeyIsRoot,
-    verifyApiKeyOrgAccess
+    verifyApiKeyOrgAccess,
+    verifyApiKeyIdpAccess
 } from "@server/middlewares";
 import {
     verifyValidSubscription,
@@ -31,6 +32,8 @@ import {
     authenticated as a
 } from "@server/routers/integration";
 import { logActionAudit } from "#private/middlewares";
+import config from "#private/lib/config";
+import { build } from "@server/build";
 
 export const unauthenticated = ua;
 export const authenticated = a;
@@ -87,4 +90,50 @@ authenticated.get(
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
     logs.exportAccessAuditLogs
+);
+
+authenticated.put(
+    "/org/:orgId/idp/oidc",
+    verifyValidLicense,
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.createIdp),
+    logActionAudit(ActionsEnum.createIdp),
+    orgIdp.createOrgOidcIdp
+);
+
+authenticated.post(
+    "/org/:orgId/idp/:idpId/oidc",
+    verifyValidLicense,
+    verifyApiKeyOrgAccess,
+    verifyApiKeyIdpAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateIdp),
+    logActionAudit(ActionsEnum.updateIdp),
+    orgIdp.updateOrgOidcIdp
+);
+
+authenticated.delete(
+    "/org/:orgId/idp/:idpId",
+    verifyValidLicense,
+    verifyApiKeyOrgAccess,
+    verifyApiKeyIdpAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteIdp),
+    logActionAudit(ActionsEnum.deleteIdp),
+    orgIdp.deleteOrgIdp
+);
+
+authenticated.get(
+    "/org/:orgId/idp/:idpId",
+    verifyValidLicense,
+    verifyApiKeyOrgAccess,
+    verifyApiKeyIdpAccess,
+    verifyApiKeyHasAction(ActionsEnum.getIdp),
+    orgIdp.getOrgIdp
+);
+
+authenticated.get(
+    "/org/:orgId/idp",
+    verifyValidLicense,
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listIdps),
+    orgIdp.listOrgIdps
 );

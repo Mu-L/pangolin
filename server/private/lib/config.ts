@@ -139,6 +139,10 @@ export class PrivateConfig {
             process.env.USE_PANGOLIN_DNS =
                 this.rawPrivateConfig.flags.use_pangolin_dns.toString();
         }
+        if (this.rawPrivateConfig.flags.use_org_only_idp) {
+            process.env.USE_ORG_ONLY_IDP =
+                this.rawPrivateConfig.flags.use_org_only_idp.toString();
+        }
     }
 
     public getRawPrivateConfig() {

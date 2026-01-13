@@ -175,6 +175,38 @@ authenticated.delete(
 );
 
 authenticated.post(
+    "/client/:clientId/archive",
+    verifyClientAccess,
+    verifyUserHasAction(ActionsEnum.archiveClient),
+    logActionAudit(ActionsEnum.archiveClient),
+    client.archiveClient
+);
+
+authenticated.post(
+    "/client/:clientId/unarchive",
+    verifyClientAccess,
+    verifyUserHasAction(ActionsEnum.unarchiveClient),
+    logActionAudit(ActionsEnum.unarchiveClient),
+    client.unarchiveClient
+);
+
+authenticated.post(
+    "/client/:clientId/block",
+    verifyClientAccess,
+    verifyUserHasAction(ActionsEnum.blockClient),
+    logActionAudit(ActionsEnum.blockClient),
+    client.blockClient
+);
+
+authenticated.post(
+    "/client/:clientId/unblock",
+    verifyClientAccess,
+    verifyUserHasAction(ActionsEnum.unblockClient),
+    logActionAudit(ActionsEnum.unblockClient),
+    client.unblockClient
+);
+
+authenticated.post(
     "/client/:clientId",
     verifyClientAccess, // this will check if the user has access to the client
     verifyUserHasAction(ActionsEnum.updateClient), // this will check if the user has permission to update the client
@@ -808,11 +840,18 @@ authenticated.put("/user/:userId/olm", verifyIsLoggedInUser, olm.createUserOlm);
 
 authenticated.get("/user/:userId/olms", verifyIsLoggedInUser, olm.listUserOlms);
 
-authenticated.delete(
-    "/user/:userId/olm/:olmId",
+authenticated.post(
+    "/user/:userId/olm/:olmId/archive",
     verifyIsLoggedInUser,
     verifyOlmAccess,
-    olm.deleteUserOlm
+    olm.archiveUserOlm
+);
+
+authenticated.post(
+    "/user/:userId/olm/:olmId/unarchive",
+    verifyIsLoggedInUser,
+    verifyOlmAccess,
+    olm.unarchiveUserOlm
 );
 
 authenticated.get(

@@ -204,7 +204,7 @@ export default async function ResourceAuthPage(props: {
     }
 
     let loginIdps: LoginFormIDP[] = [];
-    if (build === "saas") {
+    if (build === "saas" || env.flags.useOrgOnlyIdp) {
         if (subscribed) {
             const idpsRes = await cache(
                 async () =>

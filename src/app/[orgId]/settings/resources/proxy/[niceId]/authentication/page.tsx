@@ -36,8 +36,8 @@ import {
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useOrgContext } from "@app/hooks/useOrgContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useResourceContext } from "@app/hooks/useResourceContext";
-import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
@@ -95,7 +95,7 @@ export default function ResourceAuthenticationPage() {
     const router = useRouter();
     const t = useTranslations();
 
-    const subscription = useSubscriptionStatusContext();
+    const { isPaidUser } = usePaidStatus();
 
     const queryClient = useQueryClient();
     const { data: resourceRoles = [], isLoading: isLoadingResourceRoles } =
@@ -129,7 +129,8 @@ export default function ResourceAuthenticationPage() {
     );
     const { data: orgIdps = [], isLoading: isLoadingOrgIdps } = useQuery(
         orgQueries.identityProviders({
-            orgId: org.org.orgId
+            orgId: org.org.orgId,
+            useOrgOnlyIdp: env.flags.useOrgOnlyIdp
         })
     );
 
@@ -159,7 +160,7 @@ export default function ResourceAuthenticationPage() {
 
     const allIdps = useMemo(() => {
         if (build === "saas") {
-            if (subscription?.subscribed) {
+            if (isPaidUser) {
                 return orgIdps.map((idp) => ({
                     id: idp.idpId,
                     text: idp.name

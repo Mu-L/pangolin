@@ -55,7 +55,9 @@ export default async function ClientsPage(props: ClientsPageProps) {
             username: client.username,
             userEmail: client.userEmail,
             niceId: client.niceId,
-            agent: client.agent
+            agent: client.agent,
+            archived: client.archived || false,
+            blocked: client.blocked || false
         };
     };
 

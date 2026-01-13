@@ -17,7 +17,8 @@ import {
     ArrowRight,
     ArrowUpDown,
     ArrowUpRight,
-    MoreHorizontal
+    MoreHorizontal,
+    CircleSlash
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -42,6 +43,8 @@ export type ClientRow = {
     userEmail: string | null;
     niceId: string;
     agent: string | null;
+    archived?: boolean;
+    blocked?: boolean;
 };
 
 type ClientTableProps = {
@@ -58,6 +61,7 @@ export default function MachineClientsTable({
     const t = useTranslations();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
         null
     );
@@ -103,6 +107,76 @@ export default function MachineClientsTable({
             });
     };
 
+    const archiveClient = (clientId: number) => {
+        api.post(`/client/${clientId}/archive`)
+            .catch((e) => {
+                console.error("Error archiving client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error archiving client",
+                    description: formatAxiosError(e, "Error archiving client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                });
+            });
+    };
+
+    const unarchiveClient = (clientId: number) => {
+        api.post(`/client/${clientId}/unarchive`)
+            .catch((e) => {
+                console.error("Error unarchiving client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error unarchiving client",
+                    description: formatAxiosError(e, "Error unarchiving client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                });
+            });
+    };
+
+    const blockClient = (clientId: number) => {
+        api.post(`/client/${clientId}/block`)
+            .catch((e) => {
+                console.error("Error blocking client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error blocking client",
+                    description: formatAxiosError(e, "Error blocking client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                    setIsBlockModalOpen(false);
+                    setSelectedClient(null);
+                });
+            });
+    };
+
+    const unblockClient = (clientId: number) => {
+        api.post(`/client/${clientId}/unblock`)
+            .catch((e) => {
+                console.error("Error unblocking client", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error unblocking client",
+                    description: formatAxiosError(e, "Error unblocking client")
+                });
+            })
+            .then(() => {
+                startTransition(() => {
+                    router.refresh();
+                });
+            });
+    };
+
     // Check if there are any rows without userIds in the current view's data
     const hasRowsWithoutUserId = useMemo(() => {
         return machineClients.some((client) => !client.userId) ?? false;
@@ -127,6 +201,25 @@ export default function MachineClientsTable({
                             Name
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
+                    );
+                },
+                cell: ({ row }) => {
+                    const r = row.original;
+                    return (
+                        <div className="flex items-center gap-2">
+                            <span>{r.name}</span>
+                            {r.archived && (
+                                <Badge variant="secondary">
+                                    {t("archived")}
+                                </Badge>
+                            )}
+                            {r.blocked && (
+                                <Badge variant="destructive" className="flex items-center gap-1">
+                                    <CircleSlash className="h-3 w-3" />
+                                    {t("blocked")}
+                                </Badge>
+                            )}
+                        </div>
                     );
                 }
             },
@@ -307,14 +400,33 @@ export default function MachineClientsTable({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    {/* <Link */}
-                                    {/*     className="block w-full" */}
-                                    {/*     href={`/${clientRow.orgId}/settings/sites/${clientRow.nice}`} */}
-                                    {/* > */}
-                                    {/*     <DropdownMenuItem> */}
-                                    {/*         View settings */}
-                                    {/*     </DropdownMenuItem> */}
-                                    {/* </Link> */}
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            if (clientRow.archived) {
+                                                unarchiveClient(clientRow.id);
+                                            } else {
+                                                archiveClient(clientRow.id);
+                                            }
+                                        }}
+                                    >
+                                        <span>
+                                            {clientRow.archived ? "Unarchive" : "Archive"}
+                                        </span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            if (clientRow.blocked) {
+                                                unblockClient(clientRow.id);
+                                            } else {
+                                                setSelectedClient(clientRow);
+                                                setIsBlockModalOpen(true);
+                                            }
+                                        }}
+                                    >
+                                        <span>
+                                            {clientRow.blocked ? "Unblock" : "Block"}
+                                        </span>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => {
                                             setSelectedClient(clientRow);
@@ -365,6 +477,27 @@ export default function MachineClientsTable({
                     title="Delete Client"
                 />
             )}
+            {selectedClient && (
+                <ConfirmDeleteDialog
+                    open={isBlockModalOpen}
+                    setOpen={(val) => {
+                        setIsBlockModalOpen(val);
+                        if (!val) {
+                            setSelectedClient(null);
+                        }
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("blockClientQuestion")}</p>
+                            <p>{t("blockClientMessage")}</p>
+                        </div>
+                    }
+                    buttonText={t("blockClientConfirm")}
+                    onConfirm={async () => blockClient(selectedClient!.id)}
+                    string={selectedClient.name}
+                    title={t("blockClient")}
+                />
+            )}
 
             <DataTable
                 columns={columns}
@@ -383,6 +516,43 @@ export default function MachineClientsTable({
                 columnVisibility={defaultMachineColumnVisibility}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
+                filters={[
+                    {
+                        id: "status",
+                        label: t("status") || "Status",
+                        multiSelect: true,
+                        displayMode: "calculated",
+                        options: [
+                            {
+                                id: "active",
+                                label: t("active") || "Active",
+                                value: "active"
+                            },
+                            {
+                                id: "archived",
+                                label: t("archived") || "Archived",
+                                value: "archived"
+                            },
+                            {
+                                id: "blocked",
+                                label: t("blocked") || "Blocked",
+                                value: "blocked"
+                            }
+                        ],
+                        filterFn: (row: ClientRow, selectedValues: (string | number | boolean)[]) => {
+                            if (selectedValues.length === 0) return true;
+                            const rowArchived = row.archived || false;
+                            const rowBlocked = row.blocked || false;
+                            const isActive = !rowArchived && !rowBlocked;
+                            
+                            if (selectedValues.includes("active") && isActive) return true;
+                            if (selectedValues.includes("archived") && rowArchived) return true;
+                            if (selectedValues.includes("blocked") && rowBlocked) return true;
+                            return false;
+                        },
+                        defaultValues: ["active"] // Default to showing active clients
+                    }
+                ]}
             />
         </>
     );

@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "type": "module",
-    "description": "Tunneled Reverse Proxy Management Server with Identity and Access Control and Dashboard UI",
+    "description": "Identity-aware VPN and proxy for remote access to anything, anywhere and Dashboard UI",
     "homepage": "https://github.com/fosrl/pangolin",
     "repository": {
         "type": "git",

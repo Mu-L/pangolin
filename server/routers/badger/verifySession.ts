@@ -1035,14 +1035,25 @@ export function isPathAllowed(pattern: string, path: string): boolean {
     logger.debug(`Normalized pattern parts: [${patternParts.join(", ")}]`);
     logger.debug(`Normalized path parts: [${pathParts.join(", ")}]`);
 
+    // Maximum recursion depth to prevent stack overflow and memory issues
+    const MAX_RECURSION_DEPTH = 100;
+
     // Recursive function to try different wildcard matches
-    function matchSegments(patternIndex: number, pathIndex: number): boolean {
-        const indent = "  ".repeat(pathIndex); // Indent based on recursion depth
+    function matchSegments(patternIndex: number, pathIndex: number, depth: number = 0): boolean {
+        // Check recursion depth limit
+        if (depth > MAX_RECURSION_DEPTH) {
+            logger.warn(
+                `Path matching exceeded maximum recursion depth (${MAX_RECURSION_DEPTH}) for pattern "${pattern}" and path "${path}"`
+            );
+            return false;
+        }
+
+        const indent = "  ".repeat(depth); // Indent based on recursion depth
         const currentPatternPart = patternParts[patternIndex];
         const currentPathPart = pathParts[pathIndex];
 
         logger.debug(
-            `${indent}Checking patternIndex=${patternIndex} (${currentPatternPart || "END"}) vs pathIndex=${pathIndex} (${currentPathPart || "END"})`
+            `${indent}Checking patternIndex=${patternIndex} (${currentPatternPart || "END"}) vs pathIndex=${pathIndex} (${currentPathPart || "END"}) [depth=${depth}]`
         );
 
         // If we've consumed all pattern parts, we should have consumed all path parts
@@ -1075,7 +1086,7 @@ export function isPathAllowed(pattern: string, path: string): boolean {
             logger.debug(
                 `${indent}Trying to skip wildcard (consume 0 segments)`
             );
-            if (matchSegments(patternIndex + 1, pathIndex)) {
+            if (matchSegments(patternIndex + 1, pathIndex, depth + 1)) {
                 logger.debug(
                     `${indent}Successfully matched by skipping wildcard`
                 );
@@ -1086,7 +1097,7 @@ export function isPathAllowed(pattern: string, path: string): boolean {
             logger.debug(
                 `${indent}Trying to consume segment "${currentPathPart}" for wildcard`
             );
-            if (matchSegments(patternIndex, pathIndex + 1)) {
+            if (matchSegments(patternIndex, pathIndex + 1, depth + 1)) {
                 logger.debug(
                     `${indent}Successfully matched by consuming segment for wildcard`
                 );
@@ -1114,7 +1125,7 @@ export function isPathAllowed(pattern: string, path: string): boolean {
                 logger.debug(
                     `${indent}Segment with wildcard matches: "${currentPatternPart}" matches "${currentPathPart}"`
                 );
-                return matchSegments(patternIndex + 1, pathIndex + 1);
+                return matchSegments(patternIndex + 1, pathIndex + 1, depth + 1);
             }
 
             logger.debug(
@@ -1135,10 +1146,10 @@ export function isPathAllowed(pattern: string, path: string): boolean {
             `${indent}Segments match: "${currentPatternPart}" = "${currentPathPart}"`
         );
         // Move to next segments in both pattern and path
-        return matchSegments(patternIndex + 1, pathIndex + 1);
+        return matchSegments(patternIndex + 1, pathIndex + 1, depth + 1);
     }
 
-    const result = matchSegments(0, 0);
+    const result = matchSegments(0, 0, 0);
     logger.debug(`Final result: ${result}`);
     return result;
 }

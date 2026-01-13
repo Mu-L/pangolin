@@ -1,0 +1,105 @@
+import { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import { db } from "@server/db";
+import { clients } from "@server/db";
+import { eq } from "drizzle-orm";
+import response from "@server/lib/response";
+import HttpCode from "@server/types/HttpCode";
+import createHttpError from "http-errors";
+import logger from "@server/logger";
+import { fromError } from "zod-validation-error";
+import { OpenAPITags, registry } from "@server/openApi";
+import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
+import { sendTerminateClient } from "./terminate";
+
+const archiveClientSchema = z.strictObject({
+    clientId: z.string().transform(Number).pipe(z.int().positive())
+});
+
+registry.registerPath({
+    method: "post",
+    path: "/client/{clientId}/archive",
+    description: "Archive a client by its client ID.",
+    tags: [OpenAPITags.Client],
+    request: {
+        params: archiveClientSchema
+    },
+    responses: {}
+});
+
+export async function archiveClient(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<any> {
+    try {
+        const parsedParams = archiveClientSchema.safeParse(req.params);
+        if (!parsedParams.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error).toString()
+                )
+            );
+        }
+
+        const { clientId } = parsedParams.data;
+
+        // Check if client exists
+        const [client] = await db
+            .select()
+            .from(clients)
+            .where(eq(clients.clientId, clientId))
+            .limit(1);
+
+        if (!client) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Client with ID ${clientId} not found`
+                )
+            );
+        }
+
+        if (client.archived) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    `Client with ID ${clientId} is already archived`
+                )
+            );
+        }
+
+        await db.transaction(async (trx) => {
+            // Archive the client
+            await trx
+                .update(clients)
+                .set({ archived: true })
+                .where(eq(clients.clientId, clientId));
+
+            // Rebuild associations to clean up related data
+            await rebuildClientAssociationsFromClient(client, trx);
+
+            // Send terminate signal if there's an associated OLM
+            if (client.olmId) {
+                await sendTerminateClient(client.clientId, client.olmId);
+            }
+        });
+
+        return response(res, {
+            data: null,
+            success: true,
+            error: false,
+            message: "Client archived successfully",
+            status: HttpCode.OK
+        });
+    } catch (error) {
+        logger.error(error);
+        return next(
+            createHttpError(
+                HttpCode.INTERNAL_SERVER_ERROR,
+                "Failed to archive client"
+            )
+        );
+    }
+}

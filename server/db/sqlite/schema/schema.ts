@@ -383,7 +383,9 @@ export const clients = sqliteTable("clients", {
     type: text("type").notNull(), // "olm"
     online: integer("online", { mode: "boolean" }).notNull().default(false),
     // endpoint: text("endpoint"),
-    lastHolePunch: integer("lastHolePunch")
+    lastHolePunch: integer("lastHolePunch"),
+    archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false)
 });
 
 export const clientSitesAssociationsCache = sqliteTable(
@@ -423,7 +425,8 @@ export const olms = sqliteTable("olms", {
     userId: text("userId").references(() => users.userId, {
         // optionally tied to a user and in this case delete when the user deletes
         onDelete: "cascade"
-    })
+    }),
+    archived: integer("archived", { mode: "boolean" }).notNull().default(false)
 });
 
 export const twoFactorBackupCodes = sqliteTable("twoFactorBackupCodes", {

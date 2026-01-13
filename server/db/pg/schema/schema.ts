@@ -688,7 +688,9 @@ export const clients = pgTable("clients", {
     online: boolean("online").notNull().default(false),
     // endpoint: varchar("endpoint"),
     lastHolePunch: integer("lastHolePunch"),
-    maxConnections: integer("maxConnections")
+    maxConnections: integer("maxConnections"),
+    archived: boolean("archived").notNull().default(false),
+    blocked: boolean("blocked").notNull().default(false)
 });
 
 export const clientSitesAssociationsCache = pgTable(
@@ -726,7 +728,8 @@ export const olms = pgTable("olms", {
     userId: text("userId").references(() => users.userId, {
         // optionally tied to a user and in this case delete when the user deletes
         onDelete: "cascade"
-    })
+    }),
+    archived: boolean("archived").notNull().default(false)
 });
 
 export const olmSessions = pgTable("clientSession", {

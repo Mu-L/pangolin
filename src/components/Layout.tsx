@@ -37,7 +37,7 @@ export async function Layout({
         (sidebarStateCookie !== "expanded" && defaultSidebarCollapsed);
 
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen-safe overflow-hidden">
             {/* Desktop Sidebar */}
             {showSidebar && (
                 <LayoutSidebar
@@ -75,7 +75,7 @@ export async function Layout({
                     <div
                         className={cn(
                             "container mx-auto max-w-12xl mb-12",
-                            showHeader && "pt-16 md:pt-16" // Add top padding on mobile and desktop to account for fixed header
+                            showHeader && "md:pt-16" // Add top padding only on desktop to account for fixed header
                         )}
                     >
                         {children}

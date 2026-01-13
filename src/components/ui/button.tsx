@@ -73,35 +73,30 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             >
                 {asChild ? (
                     props.children
-                ) : (
+                ) : loading ? (
                     <span className="relative inline-flex items-center justify-center">
-                        <span
-                            className={cn(
-                                "inline-flex items-center justify-center",
-                                loading && "opacity-0"
-                            )}
-                        >
+                        <span className="inline-flex items-center justify-center opacity-0">
                             {props.children}
                         </span>
-                        {loading && (
-                            <span className="absolute inset-0 flex items-center justify-center">
-                                <span className="flex items-center gap-1">
-                                    <span 
-                                        className="h-1 w-1 bg-current animate-dot-pulse" 
-                                        style={{ animationDelay: "0ms" }} 
-                                    />
-                                    <span 
-                                        className="h-1 w-1 bg-current animate-dot-pulse" 
-                                        style={{ animationDelay: "200ms" }} 
-                                    />
-                                    <span 
-                                        className="h-1 w-1 bg-current animate-dot-pulse" 
-                                        style={{ animationDelay: "400ms" }} 
-                                    />
-                                </span>
+                        <span className="absolute inset-0 flex items-center justify-center">
+                            <span className="flex items-center gap-1.5">
+                                <span
+                                    className="h-1 w-1 bg-current animate-dot-pulse"
+                                    style={{ animationDelay: "0ms" }}
+                                />
+                                <span
+                                    className="h-1 w-1 bg-current animate-dot-pulse"
+                                    style={{ animationDelay: "200ms" }}
+                                />
+                                <span
+                                    className="h-1 w-1 bg-current animate-dot-pulse"
+                                    style={{ animationDelay: "400ms" }}
+                                />
                             </span>
-                        )}
+                        </span>
                     </span>
+                ) : (
+                    props.children
                 )}
             </Comp>
         );

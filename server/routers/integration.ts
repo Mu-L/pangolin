@@ -751,9 +751,10 @@ authenticated.post(
 );
 
 authenticated.get(
-    "/idp",
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.listIdps),
+    "/idp", // no guards on this because anyone can list idps for login purposes
+    // we do the same for the external api
+    // verifyApiKeyIsRoot,
+    // verifyApiKeyHasAction(ActionsEnum.listIdps),
     idp.listIdps
 );
 
@@ -840,6 +841,38 @@ authenticated.delete(
     verifyApiKeyHasAction(ActionsEnum.deleteClient),
     logActionAudit(ActionsEnum.deleteClient),
     client.deleteClient
+);
+
+authenticated.post(
+    "/client/:clientId/archive",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.archiveClient),
+    logActionAudit(ActionsEnum.archiveClient),
+    client.archiveClient
+);
+
+authenticated.post(
+    "/client/:clientId/unarchive",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.unarchiveClient),
+    logActionAudit(ActionsEnum.unarchiveClient),
+    client.unarchiveClient
+);
+
+authenticated.post(
+    "/client/:clientId/block",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.blockClient),
+    logActionAudit(ActionsEnum.blockClient),
+    client.blockClient
+);
+
+authenticated.post(
+    "/client/:clientId/unblock",
+    verifyApiKeyClientAccess,
+    verifyApiKeyHasAction(ActionsEnum.unblockClient),
+    logActionAudit(ActionsEnum.unblockClient),
+    client.unblockClient
 );
 
 authenticated.post(

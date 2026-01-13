@@ -60,11 +60,12 @@ export async function deleteClient(
             );
         }
 
+        // Only allow deletion of machine clients (clients without userId)
         if (client.userId) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    `Cannot delete a user client with this endpoint`
+                    `Cannot delete a user client. User clients must be archived instead.`
                 )
             );
         }
