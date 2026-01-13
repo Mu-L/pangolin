@@ -50,10 +50,14 @@ export async function sendToExitNode(
             );
         }
 
-        return sendToClient(remoteExitNode.remoteExitNodeId, {
-            type: request.remoteType,
-            data: request.data
-        });
+        return sendToClient(
+            remoteExitNode.remoteExitNodeId,
+            {
+                type: request.remoteType,
+                data: request.data
+            },
+            { incrementConfigVersion: true }
+        );
     } else {
         let hostname = exitNode.reachableAt;
 

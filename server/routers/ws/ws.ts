@@ -306,15 +306,21 @@ const setupConnection = async (
                 if (response.broadcast) {
                     await broadcastToAllExcept(
                         response.message,
-                        response.excludeSender ? clientId : undefined
+                        response.excludeSender ? clientId : undefined,
+                        response.options
                     );
                 } else if (response.targetClientId) {
                     await sendToClient(
                         response.targetClientId,
-                        response.message
+                        response.message,
+                        response.options
                     );
                 } else {
-                    ws.send(JSON.stringify(response.message));
+                    await sendToClient(
+                        clientId,
+                        response.message,
+                        response.options
+                    );
                 }
             }
         } catch (error) {

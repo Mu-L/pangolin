@@ -39,7 +39,7 @@ export async function addPeer(
     await sendToClient(newtId, {
         type: "newt/wg/peer/add",
         data: peer
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 
@@ -81,7 +81,7 @@ export async function deletePeer(
         data: {
             publicKey
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 
@@ -128,7 +128,7 @@ export async function updatePeer(
             publicKey,
             ...peer
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 

@@ -110,7 +110,9 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
     const configVersion = await getClientConfigVersion(newt.newtId);
 
     if (message.configVersion && configVersion != message.configVersion) {
-        logger.warn(`Newt ping with outdated config version: ${message.configVersion} (current: ${configVersion})`);
+        logger.warn(
+            `Newt ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
+        );
 
         // TODO: sync the client
     }

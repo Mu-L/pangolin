@@ -153,6 +153,6 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
             }
         },
         broadcast: false,
-        excludeSender: false,
+        excludeSender: false
     };
 };

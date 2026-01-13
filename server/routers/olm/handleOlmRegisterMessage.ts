@@ -157,12 +157,11 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
 
     // Extract the count value from the result array
-    const sitesCount = sitesCountResult.length > 0 ? sitesCountResult[0].count : 0;
+    const sitesCount =
+        sitesCountResult.length > 0 ? sitesCountResult[0].count : 0;
 
     // Prepare an array to store site configurations
-    logger.debug(
-        `Found ${sitesCount} sites for client ${client.clientId}`
-    );
+    logger.debug(`Found ${sitesCount} sites for client ${client.clientId}`);
 
     // this prevents us from accepting a register from an olm that has not hole punched yet.
     // the olm will pump the register so we can keep checking
@@ -175,7 +174,11 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     }
 
     // NOTE: its important that the client here is the old client and the public key is the new key
-    const siteConfigurations = await buildSiteConfigurationForOlmClient(client, publicKey, relay);
+    const siteConfigurations = await buildSiteConfigurationForOlmClient(
+        client,
+        publicKey,
+        relay
+    );
 
     // REMOVED THIS SO IT CREATES THE INTERFACE AND JUST WAITS FOR THE SITES
     // if (siteConfigurations.length === 0) {

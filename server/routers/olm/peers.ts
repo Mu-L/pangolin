@@ -45,7 +45,7 @@ export async function addPeer(
             remoteSubnets: peer.remoteSubnets, // optional, comma-separated list of subnets that this site can access
             aliases: peer.aliases
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 
@@ -76,7 +76,7 @@ export async function deletePeer(
             publicKey,
             siteId: siteId
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 
@@ -121,7 +121,7 @@ export async function updatePeer(
             remoteSubnets: peer.remoteSubnets,
             aliases: peer.aliases
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 
@@ -161,6 +161,8 @@ export async function initPeerAddHandshake(
                 endpoint: peer.exitNode.endpoint
             }
         }
+    // }, { incrementConfigVersion: true }).catch((error) => {
+    // TODO: DOES THIS NEED TO BE A INCREMENT VERSION? I AM NOT SURE BECAUSE IT WOULD BE TRIGGERED BY THE SYNC?
     }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });

@@ -119,12 +119,21 @@ const processMessage = async (
             if (response.broadcast) {
                 await broadcastToAllExcept(
                     response.message,
-                    response.excludeSender ? clientId : undefined
+                    response.excludeSender ? clientId : undefined,
+                    response.options
                 );
             } else if (response.targetClientId) {
-                await sendToClient(response.targetClientId, response.message);
+                await sendToClient(
+                    response.targetClientId,
+                    response.message,
+                    response.options
+                );
             } else {
-                ws.send(JSON.stringify(response.message));
+                await sendToClient(
+                    clientId,
+                    response.message,
+                    response.options
+                );
             }
         }
     } catch (error) {
@@ -186,7 +195,8 @@ const getClientMapKey = (clientId: string) => clientId;
 const getConnectionsKey = (clientId: string) => `ws:connections:${clientId}`;
 const getNodeConnectionsKey = (nodeId: string, clientId: string) =>
     `ws:node:${nodeId}:${clientId}`;
-const getConfigVersionKey = (clientId: string) => `ws:configVersion:${clientId}`;
+const getConfigVersionKey = (clientId: string) =>
+    `ws:configVersion:${clientId}`;
 
 // Initialize Redis subscription for cross-node messaging
 const initializeRedisSubscription = async (): Promise<void> => {
@@ -387,7 +397,9 @@ const getClientConfigVersion = async (clientId: string): Promise<number> => {
     // Try Redis first if available
     if (redisManager.isRedisEnabled()) {
         try {
-            const redisVersion = await redisManager.get(getConfigVersionKey(clientId));
+            const redisVersion = await redisManager.get(
+                getConfigVersionKey(clientId)
+            );
             if (redisVersion !== null) {
                 const version = parseInt(redisVersion, 10);
                 // Sync local cache with Redis
@@ -398,15 +410,17 @@ const getClientConfigVersion = async (clientId: string): Promise<number> => {
             logger.error("Failed to get config version from Redis:", error);
         }
     }
-    
+
     // Fall back to local cache
     return clientConfigVersions.get(clientId) || 0;
 };
 
 // Helper to increment and get the new config version for a client
-const incrementClientConfigVersion = async (clientId: string): Promise<number> => {
+const incrementClientConfigVersion = async (
+    clientId: string
+): Promise<number> => {
     let newVersion: number;
-    
+
     if (redisManager.isRedisEnabled()) {
         try {
             // Use Redis INCR for atomic increment across nodes
@@ -419,7 +433,7 @@ const incrementClientConfigVersion = async (clientId: string): Promise<number> =
             // Fall through to local increment
         }
     }
-    
+
     // Local increment
     const currentVersion = clientConfigVersions.get(clientId) || 0;
     newVersion = currentVersion + 1;
@@ -438,19 +452,19 @@ const sendToClientLocal = async (
     if (!clients || clients.length === 0) {
         return false;
     }
-    
+
     // Handle config version
     let configVersion = await getClientConfigVersion(clientId);
     if (options.incrementConfigVersion) {
         configVersion = await incrementClientConfigVersion(clientId);
     }
-    
+
     // Add config version to message
     const messageWithVersion = {
         ...message,
         configVersion
     };
-    
+
     const messageString = JSON.stringify(messageWithVersion);
     clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
@@ -461,7 +475,6 @@ const sendToClientLocal = async (
     logger.debug(
         `sendToClient: Message type ${message.type} sent to clientId ${clientId} (configVersion: ${configVersion})`
     );
-
 
     return true;
 };
@@ -480,13 +493,13 @@ const broadcastToAllExceptLocal = async (
             if (options.incrementConfigVersion) {
                 configVersion = await incrementClientConfigVersion(clientId);
             }
-            
+
             // Add config version to message
             const messageWithVersion = {
                 ...message,
                 configVersion
             };
-            
+
             clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify(messageWithVersion));
@@ -514,7 +527,7 @@ const sendToClient = async (
             if (options.incrementConfigVersion) {
                 configVersion = await incrementClientConfigVersion(clientId);
             }
-            
+
             const redisMessage: RedisMessage = {
                 type: "direct",
                 targetClientId: clientId,

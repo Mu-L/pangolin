@@ -28,7 +28,7 @@ export async function addTargets(newtId: string, targets: SubnetProxyTarget[]) {
         await sendToClient(newtId, {
             type: `newt/wg/targets/add`,
             data: batches[i]
-        });
+        }, { incrementConfigVersion: true });
     }
 }
 
@@ -44,7 +44,7 @@ export async function removeTargets(
         await sendToClient(newtId, {
             type: `newt/wg/targets/remove`,
             data: batches[i]
-        });
+        },{ incrementConfigVersion: true });
     }
 }
 
@@ -69,7 +69,7 @@ export async function updateTargets(
                 oldTargets: oldBatches[i] || [],
                 newTargets: newBatches[i] || []
             }
-        }).catch((error) => {
+        }, { incrementConfigVersion: true }).catch((error) => {
             logger.warn(`Error sending message:`, error);
         });
     }
@@ -101,7 +101,7 @@ export async function addPeerData(
             remoteSubnets: remoteSubnets,
             aliases: aliases
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 }
@@ -132,7 +132,7 @@ export async function removePeerData(
             remoteSubnets: remoteSubnets,
             aliases: aliases
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 }
@@ -173,7 +173,7 @@ export async function updatePeerData(
             ...remoteSubnets,
             ...aliases
         }
-    }).catch((error) => {
+    }, { incrementConfigVersion: true }).catch((error) => {
         logger.warn(`Error sending message:`, error);
     });
 }

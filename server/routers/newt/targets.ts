@@ -22,7 +22,7 @@ export async function addTargets(
         data: {
             targets: payloadTargets
         }
-    });
+    }, { incrementConfigVersion: true });
 
     // Create a map for quick lookup
     const healthCheckMap = new Map<number, TargetHealthCheck>();
@@ -103,7 +103,7 @@ export async function addTargets(
         data: {
             targets: validHealthCheckTargets
         }
-    });
+    }, { incrementConfigVersion: true });
 }
 
 export async function removeTargets(
@@ -124,7 +124,7 @@ export async function removeTargets(
         data: {
             targets: payloadTargets
         }
-    });
+    }, { incrementConfigVersion: true });
 
     const healthCheckTargets = targets.map((target) => {
         return target.targetId;
@@ -135,5 +135,5 @@ export async function removeTargets(
         data: {
             ids: healthCheckTargets
         }
-    });
+    }, { incrementConfigVersion: true });
 }

@@ -45,6 +45,7 @@ export interface HandlerResponse {
     broadcast?: boolean;
     excludeSender?: boolean;
     targetClientId?: string;
+    options?: SendMessageOptions;
 }
 
 export interface HandlerContext {
