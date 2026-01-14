@@ -63,6 +63,8 @@ export default function ConfirmDeleteDialog({
         }
     });
 
+    const isConfirmed = form.watch("string") === string;
+
     async function onSubmit() {
         try {
             await onConfirm();
@@ -139,7 +141,8 @@ export default function ConfirmDeleteDialog({
                             type="submit"
                             form="confirm-delete-form"
                             loading={loading}
-                            disabled={loading}
+                            disabled={loading || !isConfirmed}
+                            className={!isConfirmed && !loading ? "opacity-50" : ""}
                         >
                             {buttonText}
                         </Button>

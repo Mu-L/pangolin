@@ -43,25 +43,27 @@ const bodySchema = z.strictObject({
     scopes: z.string().nonempty(),
     autoProvision: z.boolean().optional(),
     variant: z.enum(["oidc", "google", "azure"]).optional().default("oidc"),
-    roleMapping: z.string().optional()
+    roleMapping: z.string().optional(),
+    tags: z.string().optional()
 });
 
-// registry.registerPath({
-//     method: "put",
-//     path: "/idp/oidc",
-//     description: "Create an OIDC IdP.",
-//     tags: [OpenAPITags.Idp],
-//     request: {
-//         body: {
-//             content: {
-//                 "application/json": {
-//                     schema: bodySchema
-//                 }
-//             }
-//         }
-//     },
-//     responses: {}
-// });
+registry.registerPath({
+    method: "put",
+    path: "/org/{orgId}/idp/oidc",
+    description: "Create an OIDC IdP for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    request: {
+        params: paramsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: bodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
 
 export async function createOrgOidcIdp(
     req: Request,
@@ -103,7 +105,8 @@ export async function createOrgOidcIdp(
             name,
             autoProvision,
             variant,
-            roleMapping
+            roleMapping,
+            tags
         } = parsedBody.data;
 
         if (build === "saas") {
@@ -131,7 +134,8 @@ export async function createOrgOidcIdp(
                 .values({
                     name,
                     autoProvision,
-                    type: "oidc"
+                    type: "oidc",
+                    tags
                 })
                 .returning();
 

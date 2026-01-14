@@ -137,7 +137,10 @@ function queryClients(
             userEmail: users.email,
             niceId: clients.niceId,
             agent: olms.agent,
-            approvalState: clients.approvalState
+            approvalState: clients.approvalState,
+            olmArchived: olms.archived,
+            archived: clients.archived,
+            blocked: clients.blocked
         })
         .from(clients)
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))

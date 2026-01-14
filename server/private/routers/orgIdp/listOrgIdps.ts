@@ -50,7 +50,8 @@ async function query(orgId: string, limit: number, offset: number) {
             orgId: idpOrg.orgId,
             name: idp.name,
             type: idp.type,
-            variant: idpOidcConfig.variant
+            variant: idpOidcConfig.variant,
+            tags: idp.tags
         })
         .from(idpOrg)
         .where(eq(idpOrg.orgId, orgId))
@@ -62,16 +63,17 @@ async function query(orgId: string, limit: number, offset: number) {
     return res;
 }
 
-// registry.registerPath({
-//     method: "get",
-//     path: "/idp",
-//     description: "List all IDP in the system.",
-//     tags: [OpenAPITags.Idp],
-//     request: {
-//         query: querySchema
-//     },
-//     responses: {}
-// });
+registry.registerPath({
+    method: "get",
+    path: "/org/{orgId}/idp",
+    description: "List all IDP for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    request: {
+        query: querySchema,
+        params: paramsSchema
+    },
+    responses: {}
+});
 
 export async function listOrgIdps(
     req: Request,

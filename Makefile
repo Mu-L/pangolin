@@ -90,6 +90,18 @@ build-ee-postgresql:
 		--tag fosrl/pangolin:ee-postgresql-$(tag) \
 		--push .
 
+build-saas:
+	@if [ -z "$(tag)" ]; then \
+		echo "Error: tag is required. Usage: make build-release tag=<tag>"; \
+		exit 1; \
+	fi
+	docker buildx build \
+		--build-arg BUILD=saas \
+		--build-arg DATABASE=pg \
+		--platform linux/arm64 \
+		--tag $(AWS_IMAGE):$(tag) \
+		--push .
+
 build-release-arm:
 	@if [ -z "$(tag)" ]; then \
 		echo "Error: tag is required. Usage: make build-release-arm tag=<tag>"; \

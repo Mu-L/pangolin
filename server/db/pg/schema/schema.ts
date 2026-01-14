@@ -592,7 +592,8 @@ export const idp = pgTable("idp", {
     type: varchar("type").notNull(),
     defaultRoleMapping: varchar("defaultRoleMapping"),
     defaultOrgMapping: varchar("defaultOrgMapping"),
-    autoProvision: boolean("autoProvision").notNull().default(false)
+    autoProvision: boolean("autoProvision").notNull().default(false),
+    tags: text("tags")
 });
 
 export const idpOidcConfig = pgTable("idpOidcConfig", {
@@ -690,6 +691,8 @@ export const clients = pgTable("clients", {
     // endpoint: varchar("endpoint"),
     lastHolePunch: integer("lastHolePunch"),
     maxConnections: integer("maxConnections"),
+    archived: boolean("archived").notNull().default(false),
+    blocked: boolean("blocked").notNull().default(false),
     approvalState: varchar("approvalState")
         .$type<"pending" | "approved" | "denied">()
         .default("approved")
@@ -730,7 +733,8 @@ export const olms = pgTable("olms", {
     userId: text("userId").references(() => users.userId, {
         // optionally tied to a user and in this case delete when the user deletes
         onDelete: "cascade"
-    })
+    }),
+    archived: boolean("archived").notNull().default(false)
 });
 
 export const olmSessions = pgTable("clientSession", {

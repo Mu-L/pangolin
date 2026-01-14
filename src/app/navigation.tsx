@@ -1,4 +1,5 @@
 import { SidebarNavItem } from "@app/components/SidebarNav";
+import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
     ChartLine,
@@ -39,7 +40,7 @@ export const orgLangingNavItems: SidebarNavItem[] = [
     }
 ];
 
-export const orgNavSections = (): SidebarNavSection[] => [
+export const orgNavSections = (env?: Env): SidebarNavSection[] => [
     {
         heading: "sidebarGeneral",
         items: [
@@ -92,8 +93,7 @@ export const orgNavSections = (): SidebarNavSection[] => [
                       {
                           title: "sidebarRemoteExitNodes",
                           href: "/{orgId}/settings/remote-exit-nodes",
-                          icon: <Server className="size-4 flex-none" />,
-                          showEE: true
+                          icon: <Server className="size-4 flex-none" />
                       }
                   ]
                 : [])
@@ -123,13 +123,21 @@ export const orgNavSections = (): SidebarNavSection[] => [
                 href: "/{orgId}/settings/access/roles",
                 icon: <Users className="size-4 flex-none" />
             },
-            ...(build === "saas"
+            ...(build === "saas" || env?.flags.useOrgOnlyIdp
                 ? [
                       {
                           title: "sidebarIdentityProviders",
                           href: "/{orgId}/settings/idp",
-                          icon: <Fingerprint className="size-4 flex-none" />,
-                          showEE: true
+                          icon: <Fingerprint className="size-4 flex-none" />
+                      }
+                  ]
+                : []),
+            ...(build !== "oss"
+                ? [
+                      {
+                          title: "sidebarApprovals",
+                          href: "/{orgId}/settings/access/approvals",
+                          icon: <UserCog className="size-4 flex-none" />
                       }
                   ]
                 : []),
@@ -237,7 +245,7 @@ export const orgNavSections = (): SidebarNavSection[] => [
     }
 ];
 
-export const adminNavSections: SidebarNavSection[] = [
+export const adminNavSections = (env?: Env): SidebarNavSection[] => [
     {
         heading: "sidebarAdmin",
         items: [
@@ -251,11 +259,15 @@ export const adminNavSections: SidebarNavSection[] = [
                 href: "/admin/api-keys",
                 icon: <KeyRound className="size-4 flex-none" />
             },
-            {
-                title: "sidebarIdentityProviders",
-                href: "/admin/idp",
-                icon: <Fingerprint className="size-4 flex-none" />
-            },
+            ...(build === "oss" || !env?.flags.useOrgOnlyIdp
+                ? [
+                      {
+                          title: "sidebarIdentityProviders",
+                          href: "/admin/idp",
+                          icon: <Fingerprint className="size-4 flex-none" />
+                      }
+                  ]
+                : []),
             ...(build == "enterprise"
                 ? [
                       {

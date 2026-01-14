@@ -28,6 +28,7 @@ import { eq, InferInsertModel } from "drizzle-orm";
 import { getOrgTierData } from "#private/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import { build } from "@server/build";
+import config from "@server/private/lib/config";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
@@ -94,8 +95,10 @@ export async function upsertLoginPageBranding(
             typeof loginPageBranding
         >;
 
-        if (build !== "saas") {
-            // org branding settings are only considered in the saas build
+        if (
+            build !== "saas" &&
+            !config.getRawPrivateConfig().flags.use_org_only_idp
+        ) {
             const { orgTitle, orgSubtitle, ...rest } = updateData;
             updateData = rest;
         }

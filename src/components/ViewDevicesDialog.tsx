@@ -27,6 +27,7 @@ import {
     TableHeader,
     TableRow
 } from "@app/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@app/components/ui/tabs";
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Loader2, RefreshCw } from "lucide-react";
 import moment from "moment";
@@ -44,6 +45,7 @@ type Device = {
     name: string | null;
     clientId: number | null;
     userId: string | null;
+    archived: boolean;
 };
 
 export default function ViewDevicesDialog({
@@ -57,8 +59,9 @@ export default function ViewDevicesDialog({
 
     const [devices, setDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+    const [activeTab, setActiveTab] = useState<"available" | "archived">("available");
 
     const fetchDevices = async () => {
         setLoading(true);
@@ -90,26 +93,59 @@ export default function ViewDevicesDialog({
         }
     }, [open]);
 
-    const deleteDevice = async (olmId: string) => {
+    const archiveDevice = async (olmId: string) => {
         try {
-            await api.delete(`/user/${user?.userId}/olm/${olmId}`);
+            await api.post(`/user/${user?.userId}/olm/${olmId}/archive`);
             toast({
-                title: t("deviceDeleted") || "Device deleted",
+                title: t("deviceArchived") || "Device archived",
                 description:
-                    t("deviceDeletedDescription") ||
-                    "The device has been successfully deleted."
+                    t("deviceArchivedDescription") ||
+                    "The device has been successfully archived."
             });
-            setDevices(devices.filter((d) => d.olmId !== olmId));
-            setIsDeleteModalOpen(false);
+            // Update the device's archived status in the local state
+            setDevices(
+                devices.map((d) =>
+                    d.olmId === olmId ? { ...d, archived: true } : d
+                )
+            );
+            setIsArchiveModalOpen(false);
             setSelectedDevice(null);
         } catch (error: any) {
-            console.error("Error deleting device:", error);
+            console.error("Error archiving device:", error);
             toast({
                 variant: "destructive",
-                title: t("errorDeletingDevice") || "Error deleting device",
+                title: t("errorArchivingDevice"),
                 description: formatAxiosError(
                     error,
-                    t("failedToDeleteDevice") || "Failed to delete device"
+                    t("failedToArchiveDevice")
+                )
+            });
+        }
+    };
+
+    const unarchiveDevice = async (olmId: string) => {
+        try {
+            await api.post(`/user/${user?.userId}/olm/${olmId}/unarchive`);
+            toast({
+                title: t("deviceUnarchived") || "Device unarchived",
+                description:
+                    t("deviceUnarchivedDescription") ||
+                    "The device has been successfully unarchived."
+            });
+            // Update the device's archived status in the local state
+            setDevices(
+                devices.map((d) =>
+                    d.olmId === olmId ? { ...d, archived: false } : d
+                )
+            );
+        } catch (error: any) {
+            console.error("Error unarchiving device:", error);
+            toast({
+                variant: "destructive",
+                title: t("errorUnarchivingDevice") || "Error unarchiving device",
+                description: formatAxiosError(
+                    error,
+                    t("failedToUnarchiveDevice") || "Failed to unarchive device"
                 )
             });
         }
@@ -118,7 +154,7 @@ export default function ViewDevicesDialog({
     function reset() {
         setDevices([]);
         setSelectedDevice(null);
-        setIsDeleteModalOpen(false);
+        setIsArchiveModalOpen(false);
     }
 
     return (
@@ -147,9 +183,40 @@ export default function ViewDevicesDialog({
                             <div className="flex items-center justify-center py-8">
                                 <Loader2 className="h-6 w-6 animate-spin" />
                             </div>
-                        ) : devices.length === 0 ? (
+                        ) : (
+                            <Tabs
+                                value={activeTab}
+                                onValueChange={(value) =>
+                                    setActiveTab(value as "available" | "archived")
+                                }
+                                className="w-full"
+                            >
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="available">
+                                        {t("available") || "Available"} (
+                                        {
+                                            devices.filter(
+                                                (d) => !d.archived
+                                            ).length
+                                        }
+                                        )
+                                    </TabsTrigger>
+                                    <TabsTrigger value="archived">
+                                        {t("archived") || "Archived"} (
+                                        {
+                                            devices.filter(
+                                                (d) => d.archived
+                                            ).length
+                                        }
+                                        )
+                                    </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="available" className="mt-4">
+                                    {devices.filter((d) => !d.archived)
+                                        .length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
-                                {t("noDevices") || "No devices found"}
+                                            {t("noDevices") ||
+                                                "No devices found"}
                             </div>
                         ) : (
                             <div className="rounded-md border">
@@ -164,22 +231,33 @@ export default function ViewDevicesDialog({
                                                     "Date Created"}
                                             </TableHead>
                                             <TableHead>
-                                                {t("actions") || "Actions"}
+                                                            {t("actions") ||
+                                                                "Actions"}
                                             </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {devices.map((device) => (
-                                            <TableRow key={device.olmId}>
+                                                    {devices
+                                                        .filter(
+                                                            (d) => !d.archived
+                                                        )
+                                                        .map((device) => (
+                                                            <TableRow
+                                                                key={device.olmId}
+                                                            >
                                                 <TableCell className="font-medium">
                                                     {device.name ||
-                                                        t("unnamedDevice") ||
+                                                                        t(
+                                                                            "unnamedDevice"
+                                                                        ) ||
                                                         "Unnamed Device"}
                                                 </TableCell>
                                                 <TableCell>
                                                     {moment(
                                                         device.dateCreated
-                                                    ).format("lll")}
+                                                                    ).format(
+                                                                        "lll"
+                                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Button
@@ -188,13 +266,15 @@ export default function ViewDevicesDialog({
                                                             setSelectedDevice(
                                                                 device
                                                             );
-                                                            setIsDeleteModalOpen(
+                                                                            setIsArchiveModalOpen(
                                                                 true
                                                             );
                                                         }}
                                                     >
-                                                        {t("delete") ||
-                                                            "Delete"}
+                                                                        {t(
+                                                                            "archive"
+                                                                        ) ||
+                                                                            "Archive"}
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -202,6 +282,74 @@ export default function ViewDevicesDialog({
                                     </TableBody>
                                 </Table>
                             </div>
+                                    )}
+                                </TabsContent>
+                                <TabsContent value="archived" className="mt-4">
+                                    {devices.filter((d) => d.archived)
+                                        .length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            {t("noArchivedDevices") ||
+                                                "No archived devices found"}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-md border">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="pl-3">
+                                                        {t("name") || "Name"}
+                                                        </TableHead>
+                                                        <TableHead>
+                                                            {t("dateCreated") ||
+                                                                "Date Created"}
+                                                        </TableHead>
+                                                        <TableHead>
+                                                            {t("actions") ||
+                                                                "Actions"}
+                                                        </TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {devices
+                                                        .filter(
+                                                            (d) => d.archived
+                                                        )
+                                                        .map((device) => (
+                                                            <TableRow
+                                                                key={device.olmId}
+                                                            >
+                                                                <TableCell className="font-medium">
+                                                                    {device.name ||
+                                                                        t(
+                                                                            "unnamedDevice"
+                                                                        ) ||
+                                                                        "Unnamed Device"}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {moment(
+                                                                        device.dateCreated
+                                                                    ).format(
+                                                                        "lll"
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={() => {
+                                                                            unarchiveDevice(device.olmId);
+                                                                        }}
+                                                                    >
+                                                                        {t("unarchive") || "Unarchive"}
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
+                                </TabsContent>
+                            </Tabs>
                         )}
                     </CredenzaBody>
                     <CredenzaFooter>
@@ -216,9 +364,9 @@ export default function ViewDevicesDialog({
 
             {selectedDevice && (
                 <ConfirmDeleteDialog
-                    open={isDeleteModalOpen}
+                    open={isArchiveModalOpen}
                     setOpen={(val) => {
-                        setIsDeleteModalOpen(val);
+                        setIsArchiveModalOpen(val);
                         if (!val) {
                             setSelectedDevice(null);
                         }
@@ -226,19 +374,19 @@ export default function ViewDevicesDialog({
                     dialog={
                         <div className="space-y-2">
                             <p>
-                                {t("deviceQuestionRemove") ||
-                                    "Are you sure you want to delete this device?"}
+                                {t("deviceQuestionArchive") ||
+                                    "Are you sure you want to archive this device?"}
                             </p>
                             <p>
-                                {t("deviceMessageRemove") ||
-                                    "This action cannot be undone."}
+                                {t("deviceMessageArchive") ||
+                                    "The device will be archived and removed from your active devices list."}
                             </p>
                         </div>
                     }
-                    buttonText={t("deviceDeleteConfirm") || "Delete Device"}
-                    onConfirm={async () => deleteDevice(selectedDevice.olmId)}
+                    buttonText={t("deviceArchiveConfirm") || "Archive Device"}
+                    onConfirm={async () => archiveDevice(selectedDevice.olmId)}
                     string={selectedDevice.name || selectedDevice.olmId}
-                    title={t("deleteDevice") || "Delete Device"}
+                    title={t("archiveDevice") || "Archive Device"}
                 />
             )}
         </>

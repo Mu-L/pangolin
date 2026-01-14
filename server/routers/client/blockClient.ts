@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, olms } from "@server/db";
-import { clients, clientSitesAssociationsCache } from "@server/db";
+import { db } from "@server/db";
+import { clients } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -9,31 +9,30 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "./terminate";
 
-const deleteClientSchema = z.strictObject({
+const blockClientSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
 });
 
 registry.registerPath({
-    method: "delete",
-    path: "/client/{clientId}",
-    description: "Delete a client by its client ID.",
+    method: "post",
+    path: "/client/{clientId}/block",
+    description: "Block a client by its client ID.",
     tags: [OpenAPITags.Client],
     request: {
-        params: deleteClientSchema
+        params: blockClientSchema
     },
     responses: {}
 });
 
-export async function deleteClient(
+export async function blockClient(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = deleteClientSchema.safeParse(req.params);
+        const parsedParams = blockClientSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -45,6 +44,7 @@ export async function deleteClient(
 
         const { clientId } = parsedParams.data;
 
+        // Check if client exists
         const [client] = await db
             .select()
             .from(clients)
@@ -60,38 +60,25 @@ export async function deleteClient(
             );
         }
 
-        // Only allow deletion of machine clients (clients without userId)
-        if (client.userId) {
+        if (client.blocked) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    `Cannot delete a user client. User clients must be archived instead.`
+                    `Client with ID ${clientId} is already blocked`
                 )
             );
         }
 
         await db.transaction(async (trx) => {
-            // Then delete the client itself
-            const [deletedClient] = await trx
-                .delete(clients)
-                .where(eq(clients.clientId, clientId))
-                .returning();
+            // Block the client
+            await trx
+                .update(clients)
+                .set({ blocked: true })
+                .where(eq(clients.clientId, clientId));
 
-            const [olm] = await trx
-                .select()
-                .from(olms)
-                .where(eq(olms.clientId, clientId))
-                .limit(1);
-
-            // this is a machine client so we also delete the olm
-            if (!client.userId && client.olmId) {
-                await trx.delete(olms).where(eq(olms.olmId, client.olmId));
-            }
-
-            await rebuildClientAssociationsFromClient(deletedClient, trx);
-
-            if (olm) {
-                await sendTerminateClient(deletedClient.clientId, olm.olmId); //  the olmId needs to be provided because it cant look it up after deletion
+            // Send terminate signal if there's an associated OLM and it's connected
+            if (client.olmId && client.online) {
+                await sendTerminateClient(client.clientId, client.olmId);
             }
         });
 
@@ -99,13 +86,16 @@ export async function deleteClient(
             data: null,
             success: true,
             error: false,
-            message: "Client deleted successfully",
+            message: "Client blocked successfully",
             status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);
         return next(
-            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
+            createHttpError(
+                HttpCode.INTERNAL_SERVER_ERROR,
+                "Failed to block client"
+            )
         );
     }
 }

@@ -1,7 +1,7 @@
 import { db } from "@server/db";
 import { disconnectClient } from "#dynamic/routers/ws";
 import { MessageHandler } from "@server/routers/ws";
-import { clients, Olm } from "@server/db";
+import { clients, olms, Olm } from "@server/db";
 import { eq, lt, isNull, and, or } from "drizzle-orm";
 import logger from "@server/logger";
 import { validateSessionToken } from "@server/auth/sessions/app";
@@ -108,29 +108,17 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         return;
     }
 
-    if (olm.userId) {
-        // we need to check a user token to make sure its still valid
-        const { session: userSession, user } =
-            await validateSessionToken(userToken);
-        if (!userSession || !user) {
-            logger.warn("Invalid user session for olm ping");
-            return; // by returning here we just ignore the ping and the setInterval will force it to disconnect
-        }
-        if (user.userId !== olm.userId) {
-            logger.warn("User ID mismatch for olm ping");
-            return;
-        }
+    if (!olm.clientId) {
+        logger.warn("Olm has no client ID!");
+        return;
+    }
 
+    try {
         // get the client
         const [client] = await db
             .select()
             .from(clients)
-            .where(
-                and(
-                    eq(clients.olmId, olm.olmId),
-                    eq(clients.userId, olm.userId)
-                )
-            )
+            .where(eq(clients.clientId, olm.clientId))
             .limit(1);
 
         if (!client) {
@@ -138,38 +126,62 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
             return;
         }
 
-        const sessionId = encodeHexLowerCase(
-            sha256(new TextEncoder().encode(userToken))
-        );
-
-        const policyCheck = await checkOrgAccessPolicy({
-            orgId: client.orgId,
-            userId: olm.userId,
-            sessionId // this is the user token passed in the message
-        });
-
-        if (!policyCheck.allowed) {
-            logger.warn(
-                `Olm user ${olm.userId} does not pass access policies for org ${client.orgId}: ${policyCheck.error}`
-            );
+        if (client.blocked) {
+            // NOTE: by returning we dont update the lastPing, so the offline checker will eventually disconnect them
+            logger.debug(`Blocked client ${client.clientId} attempted olm ping`);
             return;
         }
-    }
 
-    if (!olm.clientId) {
-        logger.warn("Olm has no client ID!");
-        return;
-    }
+        if (olm.userId) {
+            // we need to check a user token to make sure its still valid
+            const { session: userSession, user } =
+                await validateSessionToken(userToken);
+            if (!userSession || !user) {
+                logger.warn("Invalid user session for olm ping");
+                return; // by returning here we just ignore the ping and the setInterval will force it to disconnect
+            }
+            if (user.userId !== olm.userId) {
+                logger.warn("User ID mismatch for olm ping");
+                return;
+            }
+            if (user.userId !== client.userId) {
+                logger.warn("Client user ID mismatch for olm ping");
+                return;
+            }
 
-    try {
-        // Update the client's last ping timestamp
+            const sessionId = encodeHexLowerCase(
+                sha256(new TextEncoder().encode(userToken))
+            );
+
+            const policyCheck = await checkOrgAccessPolicy({
+                orgId: client.orgId,
+                userId: olm.userId,
+                sessionId // this is the user token passed in the message
+            });
+
+            if (!policyCheck.allowed) {
+                logger.warn(
+                    `Olm user ${olm.userId} does not pass access policies for org ${client.orgId}: ${policyCheck.error}`
+                );
+                return;
+            }
+        }
+
         await db
             .update(clients)
             .set({
                 lastPing: Math.floor(Date.now() / 1000),
-                online: true
+                online: true,
+                archived: false
             })
             .where(eq(clients.clientId, olm.clientId));
+
+        if (olm.archived) {
+            await db
+                .update(olms)
+                .set({ archived: false })
+                .where(eq(olms.olmId, olm.olmId));
+        }
     } catch (error) {
         logger.error("Error handling ping message", { error });
     }

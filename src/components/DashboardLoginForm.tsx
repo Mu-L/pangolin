@@ -17,17 +17,26 @@ import { cleanRedirect } from "@app/lib/cleanRedirect";
 import BrandingLogo from "@app/components/BrandingLogo";
 import { useTranslations } from "next-intl";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
+import Link from "next/link";
+import { Button } from "./ui/button";
+import { ArrowRight } from "lucide-react";
 
 type DashboardLoginFormProps = {
     redirect?: string;
     idps?: LoginFormIDP[];
     forceLogin?: boolean;
+    showOrgLogin?: boolean;
+    searchParams?: {
+        [key: string]: string | string[] | undefined;
+    };
 };
 
 export default function DashboardLoginForm({
     redirect,
     idps,
-    forceLogin
+    forceLogin,
+    showOrgLogin,
+    searchParams
 }: DashboardLoginFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -35,6 +44,9 @@ export default function DashboardLoginForm({
     const { isUnlocked } = useLicenseStatusContext();
 
     function getSubtitle() {
+        if (forceLogin) {
+            return t("loginRequiredForDevice");
+        }
         if (isUnlocked() && env.branding?.loginPage?.subtitleText) {
             return env.branding.loginPage.subtitleText;
         }
@@ -57,6 +69,22 @@ export default function DashboardLoginForm({
                 <div className="text-center space-y-1 pt-3">
                     <p className="text-muted-foreground">{getSubtitle()}</p>
                 </div>
+                {showOrgLogin && (
+                    <div className="space-y-2 mt-4">
+                        <Link
+                            href={`/auth/org${buildQueryString(searchParams || {})}`}
+                            className="underline"
+                        >
+                            <Button
+                                variant="secondary"
+                                className="w-full gap-2"
+                            >
+                                {t("orgAuthSignInToOrg")}
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </div>
+                )}
             </CardHeader>
             <CardContent className="pt-6">
                 <LoginForm
@@ -75,4 +103,21 @@ export default function DashboardLoginForm({
             </CardContent>
         </Card>
     );
+}
+
+function buildQueryString(searchParams: {
+    [key: string]: string | string[] | undefined;
+}): string {
+    const params = new URLSearchParams();
+    const redirect = searchParams.redirect;
+    const forceLogin = searchParams.forceLogin;
+
+    if (redirect && typeof redirect === "string") {
+        params.set("redirect", redirect);
+    }
+    if (forceLogin && typeof forceLogin === "string") {
+        params.set("forceLogin", forceLogin);
+    }
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : "";
 }

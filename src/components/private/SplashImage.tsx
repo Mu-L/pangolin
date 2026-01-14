@@ -21,7 +21,7 @@ export default function SplashImage({ children }: SplashImageProps) {
         if (!env.branding.background_image_path) {
             return false;
         }
-        const pathsPrefixes = ["/auth/login", "/auth/signup", "/auth/resource"];
+        const pathsPrefixes = ["/auth/login", "/auth/signup", "/auth/resource", "/auth/org"];
         for (const prefix of pathsPrefixes) {
             if (pathname.startsWith(prefix)) {
                 return true;

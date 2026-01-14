@@ -158,7 +158,13 @@ export const orgQueries = {
                 return res.data.data.domains;
             }
         }),
-    identityProviders: ({ orgId }: { orgId: string }) =>
+    identityProviders: ({
+        orgId,
+        useOrgOnlyIdp
+    }: {
+        orgId: string;
+        useOrgOnlyIdp?: boolean;
+    }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "IDPS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -166,7 +172,12 @@ export const orgQueries = {
                     AxiosResponse<{
                         idps: { idpId: number; name: string }[];
                     }>
-                >(build === "saas" ? `/org/${orgId}/idp` : "/idp", { signal });
+                >(
+                    build === "saas" || useOrgOnlyIdp
+                        ? `/org/${orgId}/idp`
+                        : "/idp",
+                    { signal }
+                );
                 return res.data.data.idps;
             }
         })

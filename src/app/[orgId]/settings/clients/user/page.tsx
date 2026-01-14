@@ -56,6 +56,8 @@ export default async function ClientsPage(props: ClientsPageProps) {
             userEmail: client.userEmail,
             niceId: client.niceId,
             agent: client.agent,
+            archived: client.archived || false,
+            blocked: client.blocked || false,
             approvalState: client.approvalState ?? "approved"
         };
     };

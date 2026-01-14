@@ -51,6 +51,7 @@ export type ListUserOlmsResponse = {
         name: string | null;
         clientId: number | null;
         userId: string | null;
+        archived: boolean;
     }>;
     pagination: {
         total: number;
@@ -89,7 +90,7 @@ export async function listUserOlms(
 
         const { userId } = parsedParams.data;
 
-        // Get total count
+        // Get total count (including archived OLMs)
         const [totalCountResult] = await db
             .select({ count: count() })
             .from(olms)
@@ -97,7 +98,7 @@ export async function listUserOlms(
 
         const total = totalCountResult?.count || 0;
 
-        // Get OLMs for the current user
+        // Get OLMs for the current user (including archived OLMs)
         const userOlms = await db
             .select({
                 olmId: olms.olmId,
@@ -105,7 +106,8 @@ export async function listUserOlms(
                 version: olms.version,
                 name: olms.name,
                 clientId: olms.clientId,
-                userId: olms.userId
+                userId: olms.userId,
+                archived: olms.archived
             })
             .from(olms)
             .where(eq(olms.userId, userId))

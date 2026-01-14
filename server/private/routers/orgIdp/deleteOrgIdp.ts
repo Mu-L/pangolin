@@ -32,9 +32,9 @@ const paramsSchema = z
 
 registry.registerPath({
     method: "delete",
-    path: "/idp/{idpId}",
-    description: "Delete IDP.",
-    tags: [OpenAPITags.Idp],
+    path: "/org/{orgId}/idp/{idpId}",
+    description: "Delete IDP for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
     request: {
         params: paramsSchema
     },

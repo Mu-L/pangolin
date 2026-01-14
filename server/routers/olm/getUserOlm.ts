@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { db } from "@server/db";
-import { olms } from "@server/db";
+import { olms, clients } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -16,6 +16,10 @@ const paramsSchema = z
         olmId: z.string()
     })
     .strict();
+
+const querySchema = z.object({
+    orgId: z.string().optional()
+});
 
 // registry.registerPath({
 //     method: "get",
@@ -44,15 +48,56 @@ export async function getUserOlm(
             );
         }
 
+        const parsedQuery = querySchema.safeParse(req.query);
+        if (!parsedQuery.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedQuery.error).toString()
+                )
+            );
+        }
+
         const { olmId, userId } = parsedParams.data;
+        const { orgId } = parsedQuery.data;
 
         const [olm] = await db
             .select()
             .from(olms)
             .where(and(eq(olms.userId, userId), eq(olms.olmId, olmId)));
 
+        if (!olm) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    "Olm not found"
+                )
+            );
+        }
+
+        // If orgId is provided and olm has a clientId, fetch the client to check blocked status
+        let blocked: boolean | undefined;
+        if (orgId && olm.clientId) {
+            const [client] = await db
+                .select({ blocked: clients.blocked })
+                .from(clients)
+                .where(
+                    and(
+                        eq(clients.clientId, olm.clientId),
+                        eq(clients.orgId, orgId)
+                    )
+                )
+                .limit(1);
+
+            blocked = client?.blocked ?? false;
+        }
+
+        const responseData = blocked !== undefined 
+            ? { ...olm, blocked }
+            : olm;
+
         return response(res, {
-            data: olm,
+            data: responseData,
             success: true,
             error: false,
             message: "Successfully retrieved olm",

@@ -46,30 +46,31 @@ const bodySchema = z.strictObject({
     namePath: z.string().optional(),
     scopes: z.string().optional(),
     autoProvision: z.boolean().optional(),
-    roleMapping: z.string().optional()
+    roleMapping: z.string().optional(),
+    tags: z.string().optional()
 });
 
 export type UpdateOrgIdpResponse = {
     idpId: number;
 };
 
-// registry.registerPath({
-//     method: "post",
-//     path: "/idp/{idpId}/oidc",
-//     description: "Update an OIDC IdP.",
-//     tags: [OpenAPITags.Idp],
-//     request: {
-//         params: paramsSchema,
-//         body: {
-//             content: {
-//                 "application/json": {
-//                     schema: bodySchema
-//                 }
-//             }
-//         }
-//     },
-//     responses: {}
-// });
+registry.registerPath({
+    method: "post",
+    path: "/org/{orgId}/idp/{idpId}/oidc",
+    description: "Update an OIDC IdP for a specific organization.",
+    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    request: {
+        params: paramsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: bodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
 
 export async function updateOrgOidcIdp(
     req: Request,
@@ -109,7 +110,8 @@ export async function updateOrgOidcIdp(
             namePath,
             name,
             autoProvision,
-            roleMapping
+            roleMapping,
+            tags
         } = parsedBody.data;
 
         if (build === "saas") {
@@ -167,7 +169,8 @@ export async function updateOrgOidcIdp(
         await db.transaction(async (trx) => {
             const idpData = {
                 name,
-                autoProvision
+                autoProvision,
+                tags
             };
 
             // only update if at least one key is not undefined
