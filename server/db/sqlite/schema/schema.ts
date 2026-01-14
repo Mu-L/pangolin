@@ -805,10 +805,7 @@ export const idpOidcConfig = sqliteTable("idpOidcConfig", {
     identifierPath: text("identifierPath").notNull(),
     emailPath: text("emailPath"),
     namePath: text("namePath"),
-    scopes: text("scopes").notNull(),
-    approvalState: text("approvalState")
-        .$type<"pending" | "approved" | "denied">()
-        .default("approved")
+    scopes: text("scopes").notNull()
 });
 
 export const licenseKey = sqliteTable("licenseKey", {
