@@ -46,7 +46,8 @@ const bodySchema = z.strictObject({
     namePath: z.string().optional(),
     scopes: z.string().optional(),
     autoProvision: z.boolean().optional(),
-    roleMapping: z.string().optional()
+    roleMapping: z.string().optional(),
+    tags: z.string().optional()
 });
 
 export type UpdateOrgIdpResponse = {
@@ -109,7 +110,8 @@ export async function updateOrgOidcIdp(
             namePath,
             name,
             autoProvision,
-            roleMapping
+            roleMapping,
+            tags
         } = parsedBody.data;
 
         if (build === "saas") {
@@ -167,7 +169,8 @@ export async function updateOrgOidcIdp(
         await db.transaction(async (trx) => {
             const idpData = {
                 name,
-                autoProvision
+                autoProvision,
+                tags
             };
 
             // only update if at least one key is not undefined

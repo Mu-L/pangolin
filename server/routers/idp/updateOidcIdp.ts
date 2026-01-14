@@ -30,7 +30,8 @@ const bodySchema = z.strictObject({
     scopes: z.string().optional(),
     autoProvision: z.boolean().optional(),
     defaultRoleMapping: z.string().optional(),
-    defaultOrgMapping: z.string().optional()
+    defaultOrgMapping: z.string().optional(),
+    tags: z.string().optional()
 });
 
 export type UpdateIdpResponse = {
@@ -94,7 +95,8 @@ export async function updateOidcIdp(
             name,
             autoProvision,
             defaultRoleMapping,
-            defaultOrgMapping
+            defaultOrgMapping,
+            tags
         } = parsedBody.data;
 
         // Check if IDP exists and is of type OIDC
@@ -127,7 +129,8 @@ export async function updateOidcIdp(
                 name,
                 autoProvision,
                 defaultRoleMapping,
-                defaultOrgMapping
+                defaultOrgMapping,
+                tags
             };
 
             // only update if at least one key is not undefined

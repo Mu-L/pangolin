@@ -777,7 +777,8 @@ export const idp = sqliteTable("idp", {
         mode: "boolean"
     })
         .notNull()
-        .default(false)
+        .default(false),
+    tags: text("tags")
 });
 
 // Identity Provider OAuth Configuration

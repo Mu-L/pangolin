@@ -591,7 +591,8 @@ export const idp = pgTable("idp", {
     type: varchar("type").notNull(),
     defaultRoleMapping: varchar("defaultRoleMapping"),
     defaultOrgMapping: varchar("defaultOrgMapping"),
-    autoProvision: boolean("autoProvision").notNull().default(false)
+    autoProvision: boolean("autoProvision").notNull().default(false),
+    tags: text("tags")
 });
 
 export const idpOidcConfig = pgTable("idpOidcConfig", {
