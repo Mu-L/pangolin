@@ -321,6 +321,15 @@ authenticated.get(
     approval.listApprovals
 );
 
+authenticated.put(
+    "/org/:orgId/approvals/:approvalId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateApprovals),
+    logActionAudit(ActionsEnum.updateApprovals),
+    approval.processPendingApproval
+);
+
 authenticated.get(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,

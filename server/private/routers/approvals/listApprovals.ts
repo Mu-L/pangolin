@@ -72,7 +72,7 @@ async function queryApprovals(
 
     const res = await db
         .select({
-            approvalId: approvals.id,
+            approvalId: approvals.approvalId,
             orgId: approvals.orgId,
             clientId: approvals.clientId,
             decision: approvals.decision,

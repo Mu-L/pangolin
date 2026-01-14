@@ -290,7 +290,7 @@ export const accessAuditLog = sqliteTable(
 );
 
 export const approvals = sqliteTable("approvals", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    approvalId: integer("approvalId").primaryKey({ autoIncrement: true }),
     timestamp: integer("timestamp").notNull(), // this is EPOCH time in seconds
     orgId: text("orgId")
         .references(() => orgs.orgId, {

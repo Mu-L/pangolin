@@ -12,3 +12,4 @@
  */
 
 export * from "./listApprovals";
+export * from "./processPendingApproval";

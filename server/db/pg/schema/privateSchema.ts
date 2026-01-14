@@ -298,7 +298,7 @@ export const accessAuditLog = pgTable(
 );
 
 export const approvals = pgTable("approvals", {
-    id: serial("id").primaryKey(),
+    approvalId: serial("approvalId").primaryKey(),
     timestamp: integer("timestamp").notNull(), // this is EPOCH time in seconds
     orgId: varchar("orgId")
         .references(() => orgs.orgId, {
