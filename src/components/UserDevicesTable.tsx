@@ -1,9 +1,8 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { DataTable } from "@app/components/ui/data-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
+import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -23,9 +22,11 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Badge } from "./ui/badge";
-import { InfoPopup } from "./ui/info-popup";
 import ClientDownloadBanner from "./ClientDownloadBanner";
+import { Badge } from "./ui/badge";
+import { build } from "@server/build";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { t } from "@faker-js/faker/dist/airline-DF6RqYmq";
 
 export type ClientRow = {
     id: number;
@@ -43,6 +44,7 @@ export type ClientRow = {
     userEmail: string | null;
     niceId: string;
     agent: string | null;
+    approvalState: "approved" | "pending" | "denied";
 };
 
 type ClientTableProps = {
@@ -58,6 +60,8 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
         null
     );
+
+    const { isPaidUser } = usePaidStatus();
 
     const api = createApiClient(useEnvContext());
     const [isRefreshing, startTransition] = useTransition();
@@ -179,33 +183,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                     );
                 }
             },
-            // {
-            //     accessorKey: "siteName",
-            //     header: ({ column }) => {
-            //         return (
-            //             <Button
-            //                 variant="ghost"
-            //                 onClick={() =>
-            //                     column.toggleSorting(column.getIsSorted() === "asc")
-            //                 }
-            //             >
-            //                 Site
-            //                 <ArrowUpDown className="ml-2 h-4 w-4" />
-            //             </Button>
-            //         );
-            //     },
-            //     cell: ({ row }) => {
-            //         const r = row.original;
-            //         return (
-            //             <Link href={`/${r.orgId}/settings/sites/${r.siteId}`}>
-            //                 <Button variant="outline">
-            //                     {r.siteName}
-            //                     <ArrowUpRight className="ml-2 h-4 w-4" />
-            //                 </Button>
-            //             </Link>
-            //         );
-            //     }
-            // },
             {
                 accessorKey: "online",
                 friendlyName: "Connectivity",
@@ -341,6 +318,32 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                 }
             }
         ];
+
+        if (build !== "oss" && isPaidUser) {
+            // insert as the 3rd item
+            baseColumns.splice(3, 0, {
+                id: "approvalState",
+                enableHiding: false,
+                header: () => <span className="p-3">{t("approvalState")}</span>,
+                cell: ({ row }) => {
+                    const { approvalState } = row.original;
+                    switch (approvalState) {
+                        case "approved":
+                            return (
+                                <Badge variant="green">{t("approved")}</Badge>
+                            );
+                        case "denied":
+                            return <Badge variant="red">{t("denied")}</Badge>;
+                        default:
+                            return (
+                                <Badge variant="secondary">
+                                    {t("pending")}
+                                </Badge>
+                            );
+                    }
+                }
+            });
+        }
 
         baseColumns.push({
             id: "actions",

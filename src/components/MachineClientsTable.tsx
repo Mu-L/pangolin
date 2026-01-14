@@ -35,6 +35,7 @@ export type ClientRow = {
     userEmail: string | null;
     niceId: string;
     agent: string | null;
+    approvalState: "approved" | "pending" | "denied";
 };
 
 type ClientTableProps = {
