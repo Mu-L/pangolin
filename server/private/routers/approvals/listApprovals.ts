@@ -21,7 +21,7 @@ import type { Request, Response, NextFunction } from "express";
 import { build } from "@server/build";
 import { getOrgTierData } from "@server/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
-import { approvals, clients, db, users } from "@server/db";
+import { approvals, clients, db, users, type Approval } from "@server/db";
 import { eq, isNull, sql, not, and, desc } from "drizzle-orm";
 import response from "@server/lib/response";
 
@@ -41,10 +41,35 @@ const querySchema = z.strictObject({
         .optional()
         .default("0")
         .transform(Number)
-        .pipe(z.int().nonnegative())
+        .pipe(z.int().nonnegative()),
+    approvalState: z
+        .enum(["pending", "approved", "denied", "all"])
+        .optional()
+        .default("pending")
+        .catch("all")
 });
 
-async function queryApprovals(orgId: string, limit: number, offset: number) {
+async function queryApprovals(
+    orgId: string,
+    limit: number,
+    offset: number,
+    approvalState: z.infer<typeof querySchema>["approvalState"]
+) {
+    let state: Array<Approval["decision"]> = [];
+    switch (approvalState) {
+        case "pending":
+            state = ["pending"];
+            break;
+        case "approved":
+            state = ["approved"];
+            break;
+        case "denied":
+            state = ["denied"];
+            break;
+        default:
+            state = ["approved", "denied", "pending"];
+    }
+
     const res = await db
         .select({
             approvalId: approvals.id,
@@ -67,7 +92,12 @@ async function queryApprovals(orgId: string, limit: number, offset: number) {
                 not(isNull(clients.userId)) // only user devices
             )
         )
-        .where(eq(approvals.orgId, orgId))
+        .where(
+            and(
+                eq(approvals.orgId, orgId),
+                sql`${approvals.decision} in ${state}`
+            )
+        )
         .orderBy(
             sql`CASE ${approvals.decision} WHEN 'pending' THEN 0 ELSE 1 END`,
             desc(approvals.timestamp)
@@ -107,7 +137,7 @@ export async function listApprovals(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { limit, offset, approvalState } = parsedQuery.data;
 
         const { orgId } = parsedParams.data;
 
@@ -127,7 +157,8 @@ export async function listApprovals(
         const approvalsList = await queryApprovals(
             orgId.toString(),
             limit,
-            offset
+            offset,
+            approvalState
         );
 
         const [{ count }] = await db

@@ -321,13 +321,22 @@ export const approvalFiltersSchema = z.object({
 });
 
 export const approvalQueries = {
-    listApprovals: (orgId: string) =>
+    listApprovals: (
+        orgId: string,
+        filters: z.infer<typeof approvalFiltersSchema>
+    ) =>
         queryOptions({
-            queryKey: ["APPROVALS", orgId] as const,
+            queryKey: ["APPROVALS", orgId, filters] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+
+                if (filters.approvalState) {
+                    sp.set("approvalState", filters.approvalState);
+                }
+
                 const res = await meta!.api.get<
                     AxiosResponse<ListApprovalsResponse>
-                >(`/org/${orgId}/approvals`, {
+                >(`/org/${orgId}/approvals?${sp.toString()}`, {
                     signal
                 });
                 return res.data.data;

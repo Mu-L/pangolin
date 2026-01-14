@@ -36,14 +36,10 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
     );
 
     const { data, isFetching, refetch } = useQuery(
-        approvalQueries.listApprovals(orgId)
+        approvalQueries.listApprovals(orgId, filters)
     );
 
     const approvals = data?.approvals ?? [];
-
-    console.log({
-        approvals
-    });
 
     return (
         <div className="flex flex-col gap-5">
@@ -75,11 +71,16 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
                                 />
                             </SelectTrigger>
                             <SelectContent className="w-full">
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="approved">
-                                    Approved
+                                <SelectItem value="pending">
+                                    {t("pending")}
                                 </SelectItem>
-                                <SelectItem value="all">All</SelectItem>
+                                <SelectItem value="approved">
+                                    {t("approved")}
+                                </SelectItem>
+                                <SelectItem value="denied">
+                                    {t("denied")}
+                                </SelectItem>
+                                <SelectItem value="all">{t("all")}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
