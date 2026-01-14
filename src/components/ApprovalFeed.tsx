@@ -1,10 +1,23 @@
 "use client";
-import { useTranslations } from "next-intl";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { Card, CardHeader } from "./ui/card";
-import { Button } from "./ui/button";
-import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
+import { approvalFiltersSchema, approvalQueries } from "@app/lib/queries";
+import type {
+    ListApprovalsResponse,
+    ProcessApprovalResponse
+} from "@server/private/routers/approvals";
+import { useQuery } from "@tanstack/react-query";
+import type { AxiosResponse } from "axios";
+import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Fragment, useActionState } from "react";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card, CardHeader } from "./ui/card";
 import { Label } from "./ui/label";
 import {
     Select,
@@ -13,12 +26,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "./ui/select";
-import { approvalFiltersSchema, approvalQueries } from "@app/lib/queries";
-import { useQuery } from "@tanstack/react-query";
-import { Fragment } from "react";
 import { Separator } from "./ui/separator";
-import type { ListApprovalsResponse } from "@server/private/routers/approvals";
-import Link from "next/link";
 
 export type ApprovalFeedProps = {
     orgId: string;
@@ -60,7 +68,7 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
                                     `${path}?${newSearch.toString()}`
                                 );
                             }}
-                            value={filters.approvalState ?? "pending"}
+                            value={filters.approvalState ?? "all"}
                         >
                             <SelectTrigger
                                 id="approvalState"
@@ -109,7 +117,11 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
                         {approvals.map((approval, index) => (
                             <Fragment key={approval.approvalId}>
                                 <li>
-                                    <ApprovalRequest approval={approval} />
+                                    <ApprovalRequest
+                                        approval={approval}
+                                        orgId={orgId}
+                                        onSuccess={() => refetch()}
+                                    />
                                 </li>
                                 {index < approvals.length - 1 && <Separator />}
                             </Fragment>
@@ -129,10 +141,47 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
 
 type ApprovalRequestProps = {
     approval: ListApprovalsResponse["approvals"][number];
+    orgId: string;
+    onSuccess?: (data: ProcessApprovalResponse) => void;
 };
 
-function ApprovalRequest({ approval }: ApprovalRequestProps) {
+function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
     const t = useTranslations();
+
+    const [_, formAction, isSubmitting] = useActionState(onSubmit, null);
+    const api = createApiClient(useEnvContext());
+
+    async function onSubmit(_previousState: any, formData: FormData) {
+        const decision = formData.get("decision");
+        const res = await api
+            .put<
+                AxiosResponse<ProcessApprovalResponse>
+            >(`/org/${orgId}/approvals/${approval.approvalId}`, { decision })
+            .catch((e) => {
+                toast({
+                    variant: "destructive",
+                    title: t("accessApprovalErrorUpdate"),
+                    description: formatAxiosError(
+                        e,
+                        t("accessApprovalErrorUpdateDescription")
+                    )
+                });
+            });
+        if (res && res.status === 200) {
+            const result = res.data.data;
+            toast({
+                variant: "default",
+                title: t("accessApprovalUpdated"),
+                description:
+                    result.decision === "approved"
+                        ? t("accessApprovalApprovedDescription")
+                        : t("accessApprovalDeniedDescription")
+            });
+
+            onSuccess?.(res.data.data);
+        }
+    }
+
     return (
         <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="inline-flex items-start md:items-center gap-2">
@@ -148,27 +197,42 @@ function ApprovalRequest({ approval }: ApprovalRequestProps) {
                 </span>
             </div>
             <div className="inline-flex gap-2">
-                <Button
-                    onClick={() => {}}
-                    className="lg:static gap-2"
-                    type="submit"
-                >
-                    <Check className="size-4 flex-none" />
-                    {t("approve")}
-                </Button>
-                <Button
-                    variant="destructive"
-                    onClick={() => {}}
-                    className="lg:static gap-2"
-                    type="submit"
-                >
-                    <Ban className="size-4 flex-none" />
-                    {t("deny")}
-                </Button>
+                {approval.decision === "pending" && (
+                    <form action={formAction} className="inline-flex gap-2">
+                        <Button
+                            value="approved"
+                            name="decision"
+                            className="gap-2"
+                            type="submit"
+                            loading={isSubmitting}
+                        >
+                            <Check className="size-4 flex-none" />
+                            {t("approve")}
+                        </Button>
+                        <Button
+                            value="denied"
+                            name="decision"
+                            variant="destructive"
+                            className="gap-2"
+                            type="submit"
+                            loading={isSubmitting}
+                        >
+                            <Ban className="size-4 flex-none" />
+                            {t("deny")}
+                        </Button>
+                    </form>
+                )}
+                {approval.decision === "approved" && (
+                    <Badge variant="green">{t("approved")}</Badge>
+                )}
+                {approval.decision === "denied" && (
+                    <Badge variant="red">{t("denied")}</Badge>
+                )}
+
                 <Button
                     variant="outline"
                     onClick={() => {}}
-                    className="lg:static gap-2"
+                    className="gap-2"
                     asChild
                 >
                     <Link href={"#"}>

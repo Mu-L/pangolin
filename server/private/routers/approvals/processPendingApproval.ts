@@ -18,7 +18,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import { build } from "@server/build";
-import { approvals, clients, db, orgs } from "@server/db";
+import { approvals, clients, db, orgs, type Approval } from "@server/db";
 import { getOrgTierData } from "@server/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import response from "@server/lib/response";
@@ -27,12 +27,14 @@ import type { NextFunction, Request, Response } from "express";
 
 const paramsSchema = z.strictObject({
     orgId: z.string(),
-    approvalId: z.int()
+    approvalId: z.string().transform(Number).pipe(z.int().positive())
 });
 
 const bodySchema = z.strictObject({
     decision: z.enum(["approved", "denied"])
 });
+
+export type ProcessApprovalResponse = Approval;
 
 export async function processPendingApproval(
     req: Request,

@@ -317,7 +317,7 @@ export const approvalFiltersSchema = z.object({
     approvalState: z
         .enum(["pending", "approved", "denied", "all"])
         .optional()
-        .catch("pending")
+        .catch("all")
 });
 
 export const approvalQueries = {

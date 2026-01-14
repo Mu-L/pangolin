@@ -45,7 +45,7 @@ const querySchema = z.strictObject({
     approvalState: z
         .enum(["pending", "approved", "denied", "all"])
         .optional()
-        .default("pending")
+        .default("all")
         .catch("all")
 });
 
