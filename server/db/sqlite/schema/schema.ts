@@ -387,7 +387,10 @@ export const clients = sqliteTable("clients", {
     // endpoint: text("endpoint"),
     lastHolePunch: integer("lastHolePunch"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
-    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false)
+    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
+    approvalState: text("approvalState")
+        .$type<"pending" | "approved" | "denied">()
+        .default("approved")
 });
 
 export const clientSitesAssociationsCache = sqliteTable(
