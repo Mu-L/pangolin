@@ -4,7 +4,6 @@ import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";
 import OrgProvider from "@app/providers/OrgProvider";
-import type { ListApprovalsResponse } from "@server/private/routers/approvals";
 import type { GetOrgResponse } from "@server/routers/org";
 import type { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
@@ -13,13 +12,26 @@ export interface ApprovalFeedPageProps {
     params: Promise<{ orgId: string }>;
 }
 
+type ApprovalItem = {
+    approvalId: number;
+    orgId: string;
+    clientId: number | null;
+    decision: "pending" | "approved" | "denied";
+    type: "user_device";
+    user: {
+        name: string | null;
+        userId: string;
+        username: string;
+    };
+};
+
 export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
     const params = await props.params;
 
-    let approvals: ListApprovalsResponse["approvals"] = [];
+    let approvals: ApprovalItem[] = [];
     const res = await internal
         .get<
-            AxiosResponse<ListApprovalsResponse>
+            AxiosResponse<{ approvals: ApprovalItem[] }>
         >(`/org/${params.orgId}/approvals`, await authCookieHeader())
         .catch((e) => {});
 
