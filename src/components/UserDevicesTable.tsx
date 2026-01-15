@@ -45,7 +45,7 @@ export type ClientRow = {
     userEmail: string | null;
     niceId: string;
     agent: string | null;
-    approvalState: "approved" | "pending" | "denied";
+    approvalState: "approved" | "pending" | "denied" | null;
     archived?: boolean;
     blocked?: boolean;
 };
@@ -430,11 +430,17 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             );
                         case "denied":
                             return <Badge variant="red">{t("denied")}</Badge>;
-                        default:
+                        case "pending":
                             return (
                                 <Badge variant="secondary">
                                     {t("pending")}
                                 </Badge>
+                            );
+                        default:
+                            return (
+                                <span className="text-muted-foreground">
+                                    N/A
+                                </span>
                             );
                     }
                 }

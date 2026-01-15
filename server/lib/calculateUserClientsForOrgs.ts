@@ -204,7 +204,7 @@ export async function calculateUserClientsForOrgs(
                     olmId: olm.olmId,
                     type: "olm",
                     niceId,
-                    approvalState: requireApproval ? "pending" : "approved"
+                    approvalState: requireApproval ? "pending" : null
                 };
 
                 // Create the client

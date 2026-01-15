@@ -58,7 +58,7 @@ export default async function ClientsPage(props: ClientsPageProps) {
             agent: client.agent,
             archived: client.archived || false,
             blocked: client.blocked || false,
-            approvalState: client.approvalState ?? "approved"
+            approvalState: client.approvalState
         };
     };
 

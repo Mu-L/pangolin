@@ -141,15 +141,6 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                       }
                   ]
                 : []),
-            ...(build !== "oss"
-                ? [
-                      {
-                          title: "sidebarApprovals",
-                          href: "/{orgId}/settings/access/approvals",
-                          icon: <UserCog className="size-4 flex-none" />
-                      }
-                  ]
-                : []),
             {
                 title: "sidebarShareableLinks",
                 href: "/{orgId}/settings/share-links",

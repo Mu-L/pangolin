@@ -693,9 +693,9 @@ export const clients = pgTable("clients", {
     maxConnections: integer("maxConnections"),
     archived: boolean("archived").notNull().default(false),
     blocked: boolean("blocked").notNull().default(false),
-    approvalState: varchar("approvalState")
-        .$type<"pending" | "approved" | "denied">()
-        .default("approved")
+    approvalState: varchar("approvalState").$type<
+        "pending" | "approved" | "denied"
+    >()
 });
 
 export const clientSitesAssociationsCache = pgTable(
