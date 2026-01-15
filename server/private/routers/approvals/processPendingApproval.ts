@@ -22,7 +22,7 @@ import { approvals, clients, db, orgs, type Approval } from "@server/db";
 import { getOrgTierData } from "@server/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import response from "@server/lib/response";
-import { and, eq } from "drizzle-orm";
+import { and, eq, type InferInsertModel } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 
 const paramsSchema = z.strictObject({
@@ -112,12 +112,17 @@ export async function processPendingApproval(
             updatedApproval.type === "user_device" &&
             updatedApproval.clientId
         ) {
+            const updateDataBody: Partial<InferInsertModel<typeof clients>> = {
+                approvalState: updateData.decision
+            };
+
+            if (updateData.decision === "denied") {
+                updateDataBody.blocked = true;
+            }
+
             await db
                 .update(clients)
-                .set({
-                    approvalState: updateData.decision,
-                    blocked: updateData.decision == "denied"
-                })
+                .set(updateDataBody)
                 .where(eq(clients.clientId, updatedApproval.clientId));
         }
 

@@ -71,7 +71,7 @@ export async function unblockClient(
         // Unblock the client
         await db
             .update(clients)
-            .set({ blocked: false })
+            .set({ blocked: false, approvalState: null })
             .where(eq(clients.clientId, clientId));
 
         return response(res, {
