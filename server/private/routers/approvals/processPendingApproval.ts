@@ -115,7 +115,8 @@ export async function processPendingApproval(
             await db
                 .update(clients)
                 .set({
-                    approvalState: updateData.decision
+                    approvalState: updateData.decision,
+                    blocked: updateData.decision == "denied"
                 })
                 .where(eq(clients.clientId, updatedApproval.clientId));
         }
