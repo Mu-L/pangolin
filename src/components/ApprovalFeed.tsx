@@ -3,7 +3,11 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
-import { approvalFiltersSchema, approvalQueries } from "@app/lib/queries";
+import {
+    approvalFiltersSchema,
+    approvalQueries,
+    type ApprovalItem
+} from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -22,19 +26,6 @@ import {
     SelectValue
 } from "./ui/select";
 import { Separator } from "./ui/separator";
-
-export type ApprovalItem = {
-    approvalId: number;
-    orgId: string;
-    clientId: number | null;
-    decision: "pending" | "approved" | "denied";
-    type: "user_device";
-    user: {
-        name: string | null;
-        userId: string;
-        username: string;
-    };
-};
 
 export type ApprovalFeedProps = {
     orgId: string;

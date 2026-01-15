@@ -1,5 +1,11 @@
 import { build } from "@server/build";
+import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
+import type { ListDomainsResponse } from "@server/routers/domain";
+import type {
+    GetResourceWhitelistResponse,
+    ListResourceNamesResponse
+} from "@server/routers/resource";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -7,21 +13,14 @@ import type {
     ListSiteResourceRolesResponse,
     ListSiteResourceUsersResponse
 } from "@server/routers/siteResource";
+import type { ListTargetsResponse } from "@server/routers/target";
 import type { ListUsersResponse } from "@server/routers/user";
 import type ResponseT from "@server/types/Response";
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
-import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
-import type {
-    GetResourceWhitelistResponse,
-    ListResourceNamesResponse
-} from "@server/routers/resource";
-import type { ListTargetsResponse } from "@server/routers/target";
-import type { ListDomainsResponse } from "@server/routers/domain";
-import type { ListApprovalsResponse } from "@server/private/routers/approvals";
 
 export type ProductUpdate = {
     link: string | null;
@@ -331,6 +330,19 @@ export const approvalFiltersSchema = z.object({
         .catch("all")
 });
 
+export type ApprovalItem = {
+    approvalId: number;
+    orgId: string;
+    clientId: number | null;
+    decision: "pending" | "approved" | "denied";
+    type: "user_device";
+    user: {
+        name: string | null;
+        userId: string;
+        username: string;
+    };
+};
+
 export const approvalQueries = {
     listApprovals: (
         orgId: string,
@@ -346,7 +358,7 @@ export const approvalQueries = {
                 }
 
                 const res = await meta!.api.get<
-                    AxiosResponse<ListApprovalsResponse>
+                    AxiosResponse<{ approvals: ApprovalItem[] }>
                 >(`/org/${orgId}/approvals?${sp.toString()}`, {
                     signal
                 });
