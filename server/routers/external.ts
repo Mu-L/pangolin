@@ -1108,6 +1108,21 @@ authRouter.post(
 );
 authRouter.post("/logout", auth.logout);
 authRouter.post(
+    "/lookup-user",
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 15,
+        keyGenerator: (req) =>
+            `lookupUser:${req.body.identifier || ipKeyGenerator(req.ip || "")}`,
+        handler: (req, res, next) => {
+            const message = `You can only lookup users ${15} times every ${15} minutes. Please try again later.`;
+            return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
+        },
+        store: createStore()
+    }),
+    auth.lookupUser
+);
+authRouter.post(
     "/newt/get-token",
     rateLimit({
         windowMs: 15 * 60 * 1000,

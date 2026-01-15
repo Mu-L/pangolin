@@ -1,19 +1,22 @@
 import { verifySession } from "@app/lib/auth/verifySession";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import OrgSignInLink from "@app/components/OrgSignInLink";
 import { cache } from "react";
+import SmartLoginForm from "@app/components/SmartLoginForm";
 import DashboardLoginForm from "@app/components/DashboardLoginForm";
 import { Mail } from "lucide-react";
 import { pullEnv } from "@app/lib/pullEnv";
 import { cleanRedirect } from "@app/lib/cleanRedirect";
-import { idp } from "@server/db";
-import { LoginFormIDP } from "@app/components/LoginForm";
-import { priv } from "@app/lib/api";
-import { AxiosResponse } from "axios";
-import { ListIdpsResponse } from "@server/routers/idp";
 import { getTranslations } from "next-intl/server";
 import { build } from "@server/build";
 import { LoadLoginPageResponse } from "@server/routers/loginPage/types";
+import { Card, CardContent } from "@app/components/ui/card";
+import LoginCardHeader from "@app/components/LoginCardHeader";
+import { priv } from "@app/lib/api";
+import { AxiosResponse } from "axios";
+import { LoginFormIDP } from "@app/components/LoginForm";
+import { ListIdpsResponse } from "@server/routers/idp";
 
 export const dynamic = "force-dynamic";
 
@@ -69,22 +72,57 @@ export default async function Page(props: {
         searchParams.redirect = redirectUrl;
     }
 
+    // Only use SmartLoginForm if NOT (OSS build OR org-only IdP enabled)
+    const useSmartLogin =
+        build === "saas" || (build === "enterprise" && env.flags.useOrgOnlyIdp);
+
     let loginIdps: LoginFormIDP[] = [];
-    if (build === "oss" || !env.flags.useOrgOnlyIdp) {
-        const idpsRes = await cache(
-            async () => await priv.get<AxiosResponse<ListIdpsResponse>>("/idp")
-        )();
-        loginIdps = idpsRes.data.data.idps.map((idp) => ({
-            idpId: idp.idpId,
-            name: idp.name,
-            variant: idp.type
-        })) as LoginFormIDP[];
+    if (!useSmartLogin) {
+        // Load IdPs for DashboardLoginForm (OSS or org-only IdP mode)
+        if (build === "oss" || !env.flags.useOrgOnlyIdp) {
+            const idpsRes = await cache(
+                async () =>
+                    await priv.get<AxiosResponse<ListIdpsResponse>>("/idp")
+            )();
+            loginIdps = idpsRes.data.data.idps.map((idp) => ({
+                idpId: idp.idpId,
+                name: idp.name,
+                variant: idp.type
+            })) as LoginFormIDP[];
+        }
     }
 
     const t = await getTranslations();
 
     return (
         <>
+            {build === "saas" && (
+                <p className="text-xs text-muted-foreground text-center mb-4">
+                    {t.rich("loginLegalDisclaimer", {
+                        termsOfService: (chunks) => (
+                            <Link
+                                href="https://pangolin.net/terms-of-service.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                {chunks}
+                            </Link>
+                        ),
+                        privacyPolicy: (chunks) => (
+                            <Link
+                                href="https://pangolin.net/privacy-policy.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                {chunks}
+                            </Link>
+                        )
+                    })}
+                </p>
+            )}
+
             {isInvite && (
                 <div className="border rounded-md p-3 mb-4 bg-card">
                     <div className="flex flex-col items-center">
@@ -99,15 +137,36 @@ export default async function Page(props: {
                 </div>
             )}
 
-            <DashboardLoginForm
-                redirect={redirectUrl}
-                idps={loginIdps}
-                forceLogin={forceLogin}
-                showOrgLogin={
-                    !isInvite && (build === "saas" || env.flags.useOrgOnlyIdp)
-                }
-                searchParams={searchParams}
-            />
+            {useSmartLogin ? (
+                <>
+                    <Card className="w-full max-w-md">
+                        <LoginCardHeader
+                            subtitle={
+                                forceLogin
+                                    ? t("loginRequiredForDevice")
+                                    : t("loginStart")
+                            }
+                        />
+                        <CardContent className="pt-6">
+                            <SmartLoginForm
+                                redirect={redirectUrl}
+                                forceLogin={forceLogin}
+                            />
+                        </CardContent>
+                    </Card>
+                </>
+            ) : (
+                <DashboardLoginForm
+                    redirect={redirectUrl}
+                    idps={loginIdps}
+                    forceLogin={forceLogin}
+                    showOrgLogin={
+                        !isInvite &&
+                        (build === "saas" || env.flags.useOrgOnlyIdp)
+                    }
+                    searchParams={searchParams}
+                />
+            )}
 
             {(!signUpDisabled || isInvite) && (
                 <p className="text-center text-muted-foreground mt-4">
@@ -124,6 +183,31 @@ export default async function Page(props: {
                     </Link>
                 </p>
             )}
+
+            {!isInvite && (build === "saas" || env.flags.useOrgOnlyIdp) ? (
+                <OrgSignInLink
+                    href={`/auth/org${buildQueryString(searchParams)}`}
+                    linkText={t("orgAuthSignInToOrg")}
+                    descriptionText={t("needToSignInToOrg")}
+                />
+            ) : null}
         </>
     );
+}
+
+function buildQueryString(searchParams: {
+    [key: string]: string | string[] | undefined;
+}): string {
+    const params = new URLSearchParams();
+    const redirect = searchParams.redirect;
+    const forceLogin = searchParams.forceLogin;
+
+    if (redirect && typeof redirect === "string") {
+        params.set("redirect", redirect);
+    }
+    if (forceLogin && typeof forceLogin === "string") {
+        params.set("forceLogin", forceLogin);
+    }
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : "";
 }

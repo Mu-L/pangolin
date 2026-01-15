@@ -113,7 +113,7 @@ export default async function AuthLayout({ children }: AuthLayoutProps) {
                                     aria-label="GitHub"
                                     className="flex items-center space-x-2 whitespace-nowrap"
                                 >
-                                    <span>{t("terms")}</span>
+                                    <span>{t("termsOfService")}</span>
                                 </a>
                                 <Separator orientation="vertical" />
                                 <a
@@ -123,7 +123,7 @@ export default async function AuthLayout({ children }: AuthLayoutProps) {
                                     aria-label="GitHub"
                                     className="flex items-center space-x-2 whitespace-nowrap"
                                 >
-                                    <span>{t("privacy")}</span>
+                                    <span>{t("privacyPolicy")}</span>
                                 </a>
                             </>
                         )}

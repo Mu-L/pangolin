@@ -116,6 +116,14 @@ export default async function OrgLoginPage({
                     )}
                 </CardContent>
             </Card>
+            <p className="text-center text-muted-foreground mt-4">
+                <Link
+                    href={`${env.app.dashboardUrl}/auth/login${buildQueryString(searchParams)}`}
+                    className="underline"
+                >
+                    {t("loginBack")}
+                </Link>
+            </p>
         </div>
     );
 }

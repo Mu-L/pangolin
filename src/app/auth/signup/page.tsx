@@ -14,6 +14,7 @@ export default async function Page(props: {
     searchParams: Promise<{
         redirect: string | undefined;
         email: string | undefined;
+        fromSmartLogin: string | undefined;
     }>;
 }) {
     const searchParams = await props.searchParams;
@@ -73,6 +74,7 @@ export default async function Page(props: {
                 inviteToken={inviteToken}
                 inviteId={inviteId}
                 emailParam={searchParams.email}
+                fromSmartLogin={searchParams.fromSmartLogin === "true"}
             />
 
             <p className="text-center text-muted-foreground mt-4">
