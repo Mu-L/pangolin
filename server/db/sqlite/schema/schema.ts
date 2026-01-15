@@ -255,7 +255,9 @@ export const siteResources = sqliteTable("siteResources", {
     aliasAddress: text("aliasAddress"),
     tcpPortRangeString: text("tcpPortRangeString").notNull().default("*"),
     udpPortRangeString: text("udpPortRangeString").notNull().default("*"),
-    disableIcmp: integer("disableIcmp", { mode: "boolean" }).notNull().default(false)
+    disableIcmp: integer("disableIcmp", { mode: "boolean" })
+        .notNull()
+        .default(false)
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -411,6 +413,69 @@ export const clientSiteResourcesAssociationsCache = sqliteTable(
     }
 );
 
+export const clientPostureSnapshots = sqliteTable("clientPostureSnapshots", {
+    snapshotId: integer("snapshotId").primaryKey({ autoIncrement: true }),
+
+    clientId: integer("clientId").references(() => clients.clientId, {
+        onDelete: "cascade"
+    }),
+
+    // Platform-agnostic checks
+
+    biometricsEnabled: integer("biometricsEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    diskEncrypted: integer("diskEncrypted", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    firewallEnabled: integer("firewallEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    autoUpdatesEnabled: integer("autoUpdatesEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    tpmAvailable: integer("tpmAvailable", { mode: "boolean" })
+        .notNull()
+        .default(false),
+
+    // Windows-specific posture check information
+
+    windowsDefenderEnabled: integer("windowsDefenderEnabled", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
+
+    // macOS-specific posture check information
+
+    macosSipEnabled: integer("macosSipEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    macosGatekeeperEnabled: integer("macosGatekeeperEnabled", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
+    macosFirewallStealthMode: integer("macosFirewallStealthMode", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
+
+    // Linux-specific posture check information
+
+    linuxAppArmorEnabled: integer("linuxAppArmorEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    linuxSELinuxEnabled: integer("linuxSELinuxEnabled", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
+
+    collectedAt: integer("collectedAt").notNull()
+});
+
 export const olms = sqliteTable("olms", {
     olmId: text("id").primaryKey(),
     secretHash: text("secretHash").notNull(),
@@ -427,6 +492,27 @@ export const olms = sqliteTable("olms", {
         onDelete: "cascade"
     }),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false)
+});
+
+export const fingerprints = sqliteTable("fingerprints", {
+    fingerprintId: integer("id").primaryKey({ autoIncrement: true }),
+
+    olmId: text("olmId")
+        .references(() => olms.olmId, { onDelete: "cascade" })
+        .notNull(),
+
+    firstSeen: integer("firstSeen").notNull(),
+    lastSeen: integer("lastSeen").notNull(),
+
+    username: text("username"),
+    hostname: text("hostname"),
+    platform: text("platform"), // macos | windows | linux | ios | android | unknown
+    osVersion: text("osVersion"),
+    kernelVersion: text("kernelVersion"),
+    arch: text("arch"),
+    deviceModel: text("deviceModel"),
+    serialNumber: text("serialNumber"),
+    platformFingerprint: text("platformFingerprint")
 });
 
 export const twoFactorBackupCodes = sqliteTable("twoFactorBackupCodes", {

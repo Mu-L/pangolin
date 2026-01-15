@@ -1,4 +1,4 @@
-import { db } from "@server/db";
+import { clientPostureSnapshots, db, fingerprints } from "@server/db";
 import { disconnectClient } from "#dynamic/routers/ws";
 import { MessageHandler } from "@server/routers/ws";
 import { clients, olms, Olm } from "@server/db";
@@ -101,7 +101,7 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
     const { message, client: c, sendToClient } = context;
     const olm = c as Olm;
 
-    const { userToken } = message.data;
+    const { userToken, fingerprint, postures } = message.data;
 
     if (!olm) {
         logger.warn("Olm not found");
@@ -184,6 +184,74 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         }
     } catch (error) {
         logger.error("Error handling ping message", { error });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+
+    if (fingerprint && olm.olmId) {
+        const [existingFingerprint] = await db
+            .select()
+            .from(fingerprints)
+            .where(eq(fingerprints.olmId, olm.olmId))
+            .limit(1);
+
+        if (!existingFingerprint) {
+            await db.insert(fingerprints).values({
+                olmId: olm.olmId,
+                firstSeen: now,
+                lastSeen: now,
+
+                username: fingerprint.username,
+                hostname: fingerprint.hostname,
+                platform: fingerprint.platform,
+                osVersion: fingerprint.osVersion,
+                kernelVersion: fingerprint.kernelVersion,
+                arch: fingerprint.arch,
+                deviceModel: fingerprint.deviceModel,
+                serialNumber: fingerprint.serialNumber,
+                platformFingerprint: fingerprint.platformFingerprint
+            });
+        } else {
+            await db
+                .update(fingerprints)
+                .set({
+                    lastSeen: now,
+
+                    username: fingerprint.username,
+                    hostname: fingerprint.hostname,
+                    platform: fingerprint.platform,
+                    osVersion: fingerprint.osVersion,
+                    kernelVersion: fingerprint.kernelVersion,
+                    arch: fingerprint.arch,
+                    deviceModel: fingerprint.deviceModel,
+                    serialNumber: fingerprint.serialNumber,
+                    platformFingerprint: fingerprint.platformFingerprint
+                })
+                .where(eq(fingerprints.olmId, olm.olmId));
+        }
+    }
+
+    if (postures && olm.clientId) {
+        await db.insert(clientPostureSnapshots).values({
+            clientId: olm.clientId,
+
+            biometricsEnabled: postures?.biometricsEnabled,
+            diskEncrypted: postures?.diskEncrypted,
+            firewallEnabled: postures?.firewallEnabled,
+            autoUpdatesEnabled: postures?.autoUpdatesEnabled,
+            tpmAvailable: postures?.tpmAvailable,
+
+            windowsDefenderEnabled: postures?.windowsDefenderEnabled,
+
+            macosSipEnabled: postures?.macosSipEnabled,
+            macosGatekeeperEnabled: postures?.macosGatekeeperEnabled,
+            macosFirewallStealthMode: postures?.macosFirewallStealthMode,
+
+            linuxAppArmorEnabled: postures?.linuxAppArmorEnabled,
+            linuxSELinuxEnabled: postures?.linuxSELinuxEnabled,
+
+            collectedAt: now
+        });
     }
 
     return {
