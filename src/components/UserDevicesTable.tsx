@@ -65,8 +65,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         null
     );
 
-    const { isPaidUser } = usePaidStatus();
-
     const api = createApiClient(useEnvContext());
     const [isRefreshing, startTransition] = useTransition();
 
@@ -220,6 +218,14 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 >
                                     <CircleSlash className="h-3 w-3" />
                                     {t("blocked")}
+                                </Badge>
+                            )}
+                            {r.approvalState === "pending" && (
+                                <Badge
+                                    variant="outlinePrimary"
+                                    className="flex items-center gap-1"
+                                >
+                                    {t("pendingApproval")}
                                 </Badge>
                             )}
                         </div>
@@ -415,38 +421,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             }
         ];
 
-        if (build !== "oss" && isPaidUser) {
-            // insert as the 3rd item
-            baseColumns.splice(3, 0, {
-                id: "approvalState",
-                enableHiding: false,
-                header: () => <span className="p-3">{t("approvalState")}</span>,
-                cell: ({ row }) => {
-                    const { approvalState } = row.original;
-                    switch (approvalState) {
-                        case "approved":
-                            return (
-                                <Badge variant="green">{t("approved")}</Badge>
-                            );
-                        case "denied":
-                            return <Badge variant="red">{t("denied")}</Badge>;
-                        case "pending":
-                            return (
-                                <Badge variant="secondary">
-                                    {t("pending")}
-                                </Badge>
-                            );
-                        default:
-                            return (
-                                <span className="text-muted-foreground">
-                                    N/A
-                                </span>
-                            );
-                    }
-                }
-            });
-        }
-
         baseColumns.push({
             id: "actions",
             enableHiding: false,
@@ -592,17 +566,27 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         options: [
                             {
                                 id: "active",
-                                label: t("active") || "Active",
+                                label: t("active"),
                                 value: "active"
                             },
                             {
+                                id: "pending",
+                                label: t("pendingApproval"),
+                                value: "pending"
+                            },
+                            {
+                                id: "denied",
+                                label: t("deniedApproval"),
+                                value: "denied"
+                            },
+                            {
                                 id: "archived",
-                                label: t("archived") || "Archived",
+                                label: t("archived"),
                                 value: "archived"
                             },
                             {
                                 id: "blocked",
-                                label: t("blocked") || "Blocked",
+                                label: t("blocked"),
                                 value: "blocked"
                             }
                         ],
@@ -611,11 +595,22 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             selectedValues: (string | number | boolean)[]
                         ) => {
                             if (selectedValues.length === 0) return true;
-                            const rowArchived = row.archived || false;
-                            const rowBlocked = row.blocked || false;
+                            const rowArchived = row.archived;
+                            const rowBlocked = row.blocked;
+                            const approvalState = row.approvalState;
                             const isActive = !rowArchived && !rowBlocked;
 
                             if (selectedValues.includes("active") && isActive)
+                                return true;
+                            if (
+                                selectedValues.includes("pending") &&
+                                approvalState === "pending"
+                            )
+                                return true;
+                            if (
+                                selectedValues.includes("denied") &&
+                                approvalState === "denied"
+                            )
                                 return true;
                             if (
                                 selectedValues.includes("archived") &&
@@ -629,7 +624,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 return true;
                             return false;
                         },
-                        defaultValues: ["active"] // Default to showing active clients
+                        defaultValues: ["active", "pending"] // Default to showing active clients
                     }
                 ]}
             />

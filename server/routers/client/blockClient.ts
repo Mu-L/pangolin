@@ -73,7 +73,7 @@ export async function blockClient(
             // Block the client
             await trx
                 .update(clients)
-                .set({ blocked: true })
+                .set({ blocked: true, approvalState: "denied" })
                 .where(eq(clients.clientId, clientId));
 
             // Send terminate signal if there's an associated OLM and it's connected
