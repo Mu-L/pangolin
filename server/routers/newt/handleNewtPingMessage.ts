@@ -1,4 +1,4 @@
-import { db } from "@server/db";
+import { db, sites } from "@server/db";
 import { disconnectClient } from "#dynamic/routers/ws";
 import { getClientConfigVersion, MessageHandler } from "@server/routers/ws";
 import { clients, Newt } from "@server/db";
@@ -9,6 +9,7 @@ import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { sendTerminateClient } from "../client/terminate";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
+import { sendNewtSyncMessage } from "./sync";
 
 // Track if the offline checker interval is running
 // let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -102,7 +103,26 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
     const newt = c as Newt;
 
     if (!newt) {
-        logger.warn("Newt not found");
+        logger.warn("Newt ping message: Newt not found");
+        return;
+    }
+
+    if (!newt.siteId) {
+        logger.warn("Newt ping message: has no site ID");
+        return;
+    }
+
+    // get the site
+    const [site] = await db
+        .select()
+        .from(sites)
+        .where(eq(sites.siteId, newt.siteId))
+        .limit(1);
+
+    if (!site) {
+        logger.warn(
+            `Newt ping message: site with ID ${newt.siteId} not found`
+        );
         return;
     }
 
@@ -114,7 +134,7 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
             `Newt ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
         );
 
-        // TODO: sync the client
+        await sendNewtSyncMessage(newt, site);
     }
 
     // try {

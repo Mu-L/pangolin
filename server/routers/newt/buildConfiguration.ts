@@ -1,3 +1,10 @@
+import { clients, clientSiteResourcesAssociationsCache, clientSitesAssociationsCache, db, ExitNode, resources, Site, siteResources, targetHealthCheck, targets } from "@server/db";
+import logger from "@server/logger";
+import { initPeerAddHandshake, updatePeer } from "../olm/peers";
+import { eq, and } from "drizzle-orm";
+import config from "@server/lib/config";
+import { generateSubnetProxyTargets, SubnetProxyTarget } from "@server/lib/ip";
+
 export async function buildClientConfigurationForNewtClient(
     site: Site,
     exitNode?: ExitNode

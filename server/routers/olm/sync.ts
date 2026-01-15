@@ -1,5 +1,5 @@
 import { Client, Olm } from "@server/db";
-import { buildSiteConfigurationForOlmClient } from "./buildSiteConfigurationForOlmClient";
+import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
 

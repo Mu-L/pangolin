@@ -18,6 +18,7 @@ import {
 } from "#dynamic/lib/exitNodes";
 import { fetchContainers } from "./dockerSocket";
 import { lockManager } from "#dynamic/lib/lock";
+import { buildTargetConfigurationForNewtClient } from "./buildConfiguration";
 
 export type ExitNodePingResult = {
     exitNodeId: number;
@@ -260,118 +261,6 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         excludeSender: false // Include sender in broadcast
     };
 };
-
-export async function buildTargetConfigurationForNewtClient(siteId: number) {
-    // Get all enabled targets with their resource protocol information
-    const allTargets = await db
-        .select({
-            resourceId: targets.resourceId,
-            targetId: targets.targetId,
-            ip: targets.ip,
-            method: targets.method,
-            port: targets.port,
-            internalPort: targets.internalPort,
-            enabled: targets.enabled,
-            protocol: resources.protocol,
-            hcEnabled: targetHealthCheck.hcEnabled,
-            hcPath: targetHealthCheck.hcPath,
-            hcScheme: targetHealthCheck.hcScheme,
-            hcMode: targetHealthCheck.hcMode,
-            hcHostname: targetHealthCheck.hcHostname,
-            hcPort: targetHealthCheck.hcPort,
-            hcInterval: targetHealthCheck.hcInterval,
-            hcUnhealthyInterval: targetHealthCheck.hcUnhealthyInterval,
-            hcTimeout: targetHealthCheck.hcTimeout,
-            hcHeaders: targetHealthCheck.hcHeaders,
-            hcMethod: targetHealthCheck.hcMethod,
-            hcTlsServerName: targetHealthCheck.hcTlsServerName
-        })
-        .from(targets)
-        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
-        .leftJoin(
-            targetHealthCheck,
-            eq(targets.targetId, targetHealthCheck.targetId)
-        )
-        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
-
-    const { tcpTargets, udpTargets } = allTargets.reduce(
-        (acc, target) => {
-            // Filter out invalid targets
-            if (!target.internalPort || !target.ip || !target.port) {
-                return acc;
-            }
-
-            // Format target into string
-            const formattedTarget = `${target.internalPort}:${target.ip}:${target.port}`;
-
-            // Add to the appropriate protocol array
-            if (target.protocol === "tcp") {
-                acc.tcpTargets.push(formattedTarget);
-            } else {
-                acc.udpTargets.push(formattedTarget);
-            }
-
-            return acc;
-        },
-        { tcpTargets: [] as string[], udpTargets: [] as string[] }
-    );
-
-    const healthCheckTargets = allTargets.map((target) => {
-        // make sure the stuff is defined
-        if (
-            !target.hcPath ||
-            !target.hcHostname ||
-            !target.hcPort ||
-            !target.hcInterval ||
-            !target.hcMethod
-        ) {
-            logger.debug(
-                `Skipping target ${target.targetId} due to missing health check fields`
-            );
-            return null; // Skip targets with missing health check fields
-        }
-
-        // parse headers
-        const hcHeadersParse = target.hcHeaders
-            ? JSON.parse(target.hcHeaders)
-            : null;
-        const hcHeadersSend: { [key: string]: string } = {};
-        if (hcHeadersParse) {
-            hcHeadersParse.forEach(
-                (header: { name: string; value: string }) => {
-                    hcHeadersSend[header.name] = header.value;
-                }
-            );
-        }
-
-        return {
-            id: target.targetId,
-            hcEnabled: target.hcEnabled,
-            hcPath: target.hcPath,
-            hcScheme: target.hcScheme,
-            hcMode: target.hcMode,
-            hcHostname: target.hcHostname,
-            hcPort: target.hcPort,
-            hcInterval: target.hcInterval, // in seconds
-            hcUnhealthyInterval: target.hcUnhealthyInterval, // in seconds
-            hcTimeout: target.hcTimeout, // in seconds
-            hcHeaders: hcHeadersSend,
-            hcMethod: target.hcMethod,
-            hcTlsServerName: target.hcTlsServerName
-        };
-    });
-
-    // Filter out any null values from health check targets
-    const validHealthCheckTargets = healthCheckTargets.filter(
-        (target) => target !== null
-    );
-
-    return {
-        validHealthCheckTargets,
-        tcpTargets,
-        udpTargets
-    };
-}
 
 async function getUniqueSubnetForSite(
     exitNode: ExitNode,

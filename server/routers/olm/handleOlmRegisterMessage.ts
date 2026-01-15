@@ -24,7 +24,7 @@ import { validateSessionToken } from "@server/auth/sessions/app";
 import config from "@server/lib/config";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
-import { buildSiteConfigurationForOlmClient } from "./buildSiteConfigurationForOlmClient";
+import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
 
 export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     logger.info("Handling register olm message!");

@@ -2,20 +2,10 @@ import { z } from "zod";
 import { MessageHandler } from "@server/routers/ws";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import {
-    db,
-    ExitNode,
-    exitNodes,
-    siteResources,
-    clientSiteResourcesAssociationsCache,
-    Site
-} from "@server/db";
-import { clients, clientSitesAssociationsCache, Newt, sites } from "@server/db";
+import { db, ExitNode, exitNodes, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
-import { initPeerAddHandshake, updatePeer } from "../olm/peers";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
-import { generateSubnetProxyTargets, SubnetProxyTarget } from "@server/lib/ip";
-import config from "@server/lib/config";
+import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
 
 const inputSchema = z.object({
     publicKey: z.string(),
@@ -136,20 +126,13 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
-    // Build the configuration response
-    const configResponse = {
-        ipAddress: site.address,
-        peers,
-        targets
-    };
-
-    logger.debug("Sending config: ", configResponse);
-
     return {
         message: {
             type: "newt/wg/receive-config",
             data: {
-                ...configResponse
+                ipAddress: site.address,
+                peers,
+                targets
             }
         },
         broadcast: false,
