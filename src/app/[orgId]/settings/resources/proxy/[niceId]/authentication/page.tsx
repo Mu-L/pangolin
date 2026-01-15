@@ -768,6 +768,8 @@ export default function ResourceAuthenticationPage() {
                 <OneTimePasswordFormSection
                     resource={resource}
                     updateResource={updateResource}
+                    whitelist={whitelist}
+                    isLoadingWhiteList={isLoadingWhiteList}
                 />
             </SettingsContainer>
         </>
@@ -777,11 +779,16 @@ export default function ResourceAuthenticationPage() {
 type OneTimePasswordFormSectionProps = Pick<
     ResourceContextType,
     "resource" | "updateResource"
->;
+> & {
+    whitelist: Array<{ email: string }>;
+    isLoadingWhiteList: boolean;
+};
 
 function OneTimePasswordFormSection({
     resource,
-    updateResource
+    updateResource,
+    whitelist,
+    isLoadingWhiteList
 }: OneTimePasswordFormSectionProps) {
     const { env } = useEnvContext();
     const [whitelistEnabled, setWhitelistEnabled] = useState(
@@ -801,6 +808,18 @@ function OneTimePasswordFormSection({
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
+
+    useEffect(() => {
+        if (isLoadingWhiteList) return;
+
+        whitelistForm.setValue(
+            "emails",
+            whitelist.map((w) => ({
+                id: w.email,
+                text: w.email
+            }))
+        );
+    }, [isLoadingWhiteList, whitelist, whitelistForm]);
 
     async function saveWhitelist() {
         try {
