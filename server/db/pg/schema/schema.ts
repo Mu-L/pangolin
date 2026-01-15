@@ -790,7 +790,8 @@ export const fingerprints = pgTable("fingerprints", {
     kernelVersion: text("kernelVersion"),
     arch: text("arch"),
     deviceModel: text("deviceModel"),
-    serialNumber: text("serialNumber")
+    serialNumber: text("serialNumber"),
+    platformFingerprint: varchar("platformFingerprint")
 });
 
 export const olmSessions = pgTable("clientSession", {

@@ -509,7 +509,8 @@ export const fingerprints = sqliteTable("fingerprints", {
     kernelVersion: text("kernelVersion"),
     arch: text("arch"),
     deviceModel: text("deviceModel"),
-    serialNumber: text("serialNumber")
+    serialNumber: text("serialNumber"),
+    platformFingerprint: text("platformFingerprint")
 });
 
 export const twoFactorBackupCodes = sqliteTable("twoFactorBackupCodes", {

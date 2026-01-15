@@ -319,7 +319,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 kernelVersion: fingerprint.kernelVersion,
                 arch: fingerprint.arch,
                 deviceModel: fingerprint.deviceModel,
-                serialNumber: fingerprint.serialNumber
+                serialNumber: fingerprint.serialNumber,
+                platformFingerprint: fingerprint.platformFingerprint
             });
         } else {
             await db
@@ -334,7 +335,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                     kernelVersion: fingerprint.kernelVersion,
                     arch: fingerprint.arch,
                     deviceModel: fingerprint.deviceModel,
-                    serialNumber: fingerprint.serialNumber
+                    serialNumber: fingerprint.serialNumber,
+                    platformFingerprint: fingerprint.platformFingerprint
                 })
                 .where(eq(fingerprints.olmId, olm.olmId));
         }
