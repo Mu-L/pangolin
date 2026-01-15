@@ -4,12 +4,7 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
 import { approvalFiltersSchema, approvalQueries } from "@app/lib/queries";
-import type {
-    ListApprovalsResponse,
-    ProcessApprovalResponse
-} from "@server/private/routers/approvals";
 import { useQuery } from "@tanstack/react-query";
-import type { AxiosResponse } from "axios";
 import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -27,6 +22,19 @@ import {
     SelectValue
 } from "./ui/select";
 import { Separator } from "./ui/separator";
+
+export type ApprovalItem = {
+    approvalId: number;
+    orgId: string;
+    clientId: number | null;
+    decision: "pending" | "approved" | "denied";
+    type: "user_device";
+    user: {
+        name: string | null;
+        userId: string;
+        username: string;
+    };
+};
 
 export type ApprovalFeedProps = {
     orgId: string;
@@ -140,9 +148,9 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
 }
 
 type ApprovalRequestProps = {
-    approval: ListApprovalsResponse["approvals"][number];
+    approval: ApprovalItem;
     orgId: string;
-    onSuccess?: (data: ProcessApprovalResponse) => void;
+    onSuccess?: () => void;
 };
 
 function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
@@ -154,9 +162,7 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
     async function onSubmit(_previousState: any, formData: FormData) {
         const decision = formData.get("decision");
         const res = await api
-            .put<
-                AxiosResponse<ProcessApprovalResponse>
-            >(`/org/${orgId}/approvals/${approval.approvalId}`, { decision })
+            .put(`/org/${orgId}/approvals/${approval.approvalId}`, { decision })
             .catch((e) => {
                 toast({
                     variant: "destructive",
@@ -178,7 +184,7 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                         : t("accessApprovalDeniedDescription")
             });
 
-            onSuccess?.(res.data.data);
+            onSuccess?.();
         }
     }
 

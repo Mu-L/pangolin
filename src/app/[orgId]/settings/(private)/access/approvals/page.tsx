@@ -1,4 +1,4 @@
-import { ApprovalFeed } from "@app/components/ApprovalFeed";
+import { ApprovalFeed, type ApprovalItem } from "@app/components/ApprovalFeed";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
@@ -11,19 +11,6 @@ import { getTranslations } from "next-intl/server";
 export interface ApprovalFeedPageProps {
     params: Promise<{ orgId: string }>;
 }
-
-type ApprovalItem = {
-    approvalId: number;
-    orgId: string;
-    clientId: number | null;
-    decision: "pending" | "approved" | "denied";
-    type: "user_device";
-    user: {
-        name: string | null;
-        userId: string;
-        username: string;
-    };
-};
 
 export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
     const params = await props.params;
