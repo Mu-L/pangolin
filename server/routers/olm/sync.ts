@@ -66,7 +66,7 @@ export async function sendOlmSyncMessage(olm: Olm, client: Client) {
         });
     }
 
-    logger.debug("++++++++++++++++++++++++++++sendOlmSyncMessage: sending sync message")
+    logger.debug("sendOlmSyncMessage: sending sync message")
 
     await sendToClient(olm.olmId, {
         type: "olm/sync",

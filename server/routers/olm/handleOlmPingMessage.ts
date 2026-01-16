@@ -171,17 +171,17 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         }
 
         // get the version
-        logger.debug(`++++++++++++++++++++++++++++handleOlmPingMessage: About to get config version for olmId: ${olm.olmId}`);
+        logger.debug(`handleOlmPingMessage: About to get config version for olmId: ${olm.olmId}`);
         const configVersion = await getClientConfigVersion(olm.olmId);
-        logger.debug(`++++++++++++++++++++++++++++handleOlmPingMessage: Got config version: ${configVersion} (type: ${typeof configVersion})`);
+        logger.debug(`handleOlmPingMessage: Got config version: ${configVersion} (type: ${typeof configVersion})`);
 
         if (configVersion == null || configVersion === undefined) {
-            logger.debug(`++++++++++++++++++++++++++++handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`)
+            logger.debug(`handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`)
         }
 
         if (message.configVersion != null && configVersion != null && configVersion != message.configVersion) {
             logger.debug(
-                `++++++++++++++++++++++++++++handleOlmPingMessage: Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
+                `handleOlmPingMessage: Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
             );
             await sendOlmSyncMessage(olm, client);
         }

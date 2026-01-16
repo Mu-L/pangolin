@@ -26,6 +26,7 @@ export function initLogCleanupInterval() {
                     )
                 );
 
+            // TODO: handle when there are multiple nodes doing this clearing using redis
             for (const org of orgsToClean) {
                 const {
                     orgId,
