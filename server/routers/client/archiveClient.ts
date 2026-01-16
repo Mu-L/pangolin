@@ -11,6 +11,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "./terminate";
+import { OlmErrorCodes } from "../olm/error";
 
 const archiveClientSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
@@ -82,7 +83,7 @@ export async function archiveClient(
 
             // Send terminate signal if there's an associated OLM
             if (client.olmId) {
-                await sendTerminateClient(client.clientId, client.olmId);
+                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_ARCHIVED, "Archived", client.olmId);
             }
         });
 

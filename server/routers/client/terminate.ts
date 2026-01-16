@@ -1,9 +1,12 @@
 import { sendToClient } from "#dynamic/routers/ws";
 import { db, olms } from "@server/db";
 import { eq } from "drizzle-orm";
+import { OlmErrorCodes } from "../olm/error";
 
 export async function sendTerminateClient(
     clientId: number,
+    code: (typeof OlmErrorCodes)[keyof typeof OlmErrorCodes],
+    message: string,
     olmId?: string | null
 ) {
     if (!olmId) {
@@ -20,6 +23,9 @@ export async function sendTerminateClient(
 
     await sendToClient(olmId, {
         type: `olm/terminate`,
-        data: {}
+        data: {
+            code,
+            message
+        }
     });
 }

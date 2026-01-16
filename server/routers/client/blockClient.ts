@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { sendTerminateClient } from "./terminate";
+import { OlmErrorCodes } from "../olm/error";
 
 const blockClientSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
@@ -78,7 +79,7 @@ export async function blockClient(
 
             // Send terminate signal if there's an associated OLM and it's connected
             if (client.olmId && client.online) {
-                await sendTerminateClient(client.clientId, client.olmId);
+                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_BLOCKED, "Blocked", client.olmId);
             }
         });
 

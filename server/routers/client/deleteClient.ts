@@ -11,6 +11,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "./terminate";
+import { OlmErrorCodes } from "../olm/error";
 
 const deleteClientSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
@@ -91,7 +92,7 @@ export async function deleteClient(
             await rebuildClientAssociationsFromClient(deletedClient, trx);
 
             if (olm) {
-                await sendTerminateClient(deletedClient.clientId, olm.olmId); //  the olmId needs to be provided because it cant look it up after deletion
+                await sendTerminateClient(deletedClient.clientId, OlmErrorCodes.TERMINATED_DELETED, "Deleted", olm.olmId); //  the olmId needs to be provided because it cant look it up after deletion
             }
         });
 

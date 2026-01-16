@@ -10,6 +10,7 @@ import { sendTerminateClient } from "../client/terminate";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { sendOlmSyncMessage } from "./sync";
+import { OlmErrorCodes } from "./error";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -64,6 +65,8 @@ export const startOlmOfflineChecker = (): void => {
                 try {
                     await sendTerminateClient(
                         offlineClient.clientId,
+                        OlmErrorCodes.TERMINATED_INACTIVITY,
+                        "Client terminated due to inactivity",
                         offlineClient.olmId
                     ); // terminate first
                     // wait a moment to ensure the message is sent

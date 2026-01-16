@@ -24,6 +24,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { hashPassword } from "@server/auth/password";
 import { disconnectClient, sendToClient } from "#private/routers/ws";
+import { OlmErrorCodes, sendOlmError } from "@server/routers/olm/error";
 
 const reGenerateSecretParamsSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
@@ -119,7 +120,10 @@ export async function reGenerateClientSecret(
         if (disconnect) {
             const payload = {
                 type: `olm/terminate`,
-                data: {}
+                data: {
+                    code: OlmErrorCodes.TERMINATED_REKEYED,
+                    message: "Client secret has been regenerated"
+                }
             };
             // Don't await this to prevent blocking the response
             sendToClient(existingOlms[0].olmId, payload).catch((error) => {

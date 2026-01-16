@@ -19,6 +19,7 @@ import logger from "@server/logger";
 import { sendTerminateClient } from "@server/routers/client/terminate";
 import { and, eq, notInArray, type InferInsertModel } from "drizzle-orm";
 import { rebuildClientAssociationsFromClient } from "./rebuildClientAssociations";
+import { OlmErrorCodes } from "@server/routers/olm/error";
 
 export async function calculateUserClientsForOrgs(
     userId: string,
@@ -305,6 +306,8 @@ async function cleanupOrphanedClients(
             if (deletedClient.olmId) {
                 await sendTerminateClient(
                     deletedClient.clientId,
+                    OlmErrorCodes.TERMINATED_DELETED,
+                    "Deleted",
                     deletedClient.olmId
                 );
             }
