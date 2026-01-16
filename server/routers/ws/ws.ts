@@ -56,6 +56,13 @@ const addClient = async (
     existingClients.push(ws);
     connectedClients.set(mapKey, existingClients);
 
+    // Initialize config version to 0 if not already set, otherwise use existing
+    if (!clientConfigVersions.has(clientId)) {
+        clientConfigVersions.set(clientId, 0);
+    }
+    // Set the current config version on the websocket
+    ws.configVersion = clientConfigVersions.get(clientId) || 0;
+
     logger.info(
         `Client added to tracking - ${clientType.toUpperCase()} ID: ${clientId}, Connection ID: ${connectionId}, Total connections: ${existingClients.length}`
     );
@@ -96,19 +103,13 @@ const sendToClientLocal = async (
         return false;
     }
 
-    // Increment config version if requested
-    if (options.incrementConfigVersion) {
-        const currentVersion = clientConfigVersions.get(clientId) || 0;
-        const newVersion = currentVersion + 1;
-        clientConfigVersions.set(clientId, newVersion);
-        // Update version on all client connections
-        clients.forEach((client) => {
-            client.configVersion = newVersion;
-        });
-    }
-
     // Include config version in message
     const configVersion = clientConfigVersions.get(clientId) || 0;
+    // Update version on all client connections
+    clients.forEach((client) => {
+        client.configVersion = configVersion;
+    });
+
     const messageWithVersion = {
         ...message,
         configVersion
@@ -129,7 +130,6 @@ const broadcastToAllExceptLocal = async (
     options: SendMessageOptions = {}
 ): Promise<void> => {
     connectedClients.forEach((clients, mapKey) => {
-        const [type, id] = mapKey.split(":");
         const clientId = mapKey; // mapKey is the clientId
         if (!(excludeClientId && clientId === excludeClientId)) {
             // Handle config version per client
@@ -162,6 +162,13 @@ const sendToClient = async (
     message: WSMessage,
     options: SendMessageOptions = {}
 ): Promise<boolean> => {
+    // Increment config version if requested
+    if (options.incrementConfigVersion) {
+        const currentVersion = clientConfigVersions.get(clientId) || 0;
+        const newVersion = currentVersion + 1;
+        clientConfigVersions.set(clientId, newVersion);
+    }
+
     // Try to send locally first
     const localSent = await sendToClientLocal(clientId, message, options);
 
@@ -189,8 +196,10 @@ const hasActiveConnections = async (clientId: string): Promise<boolean> => {
 };
 
 // Get the current config version for a client
-const getClientConfigVersion = async (clientId: string): Promise<number> => {
-    return clientConfigVersions.get(clientId) || 0;
+const getClientConfigVersion = async (clientId: string): Promise<number | undefined> => {
+    const version = clientConfigVersions.get(clientId);
+    logger.debug(`getClientConfigVersion called for clientId: ${clientId}, returning: ${version} (type: ${typeof version})`);
+    return version;
 };
 
 // Get all active nodes for a client

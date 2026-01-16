@@ -1,6 +1,6 @@
 import { db } from "@server/db";
-import { disconnectClient } from "#dynamic/routers/ws";
-import { getClientConfigVersion, MessageHandler } from "@server/routers/ws";
+import { disconnectClient, getClientConfigVersion } from "#dynamic/routers/ws";
+import { MessageHandler } from "@server/routers/ws";
 import { clients, olms, Olm } from "@server/db";
 import { eq, lt, isNull, and, or } from "drizzle-orm";
 import logger from "@server/logger";
@@ -171,11 +171,17 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         }
 
         // get the version
+        logger.debug(`++++++++++++++++++++++++++++handleOlmPingMessage: About to get config version for olmId: ${olm.olmId}`);
         const configVersion = await getClientConfigVersion(olm.olmId);
+        logger.debug(`++++++++++++++++++++++++++++handleOlmPingMessage: Got config version: ${configVersion} (type: ${typeof configVersion})`);
 
-        if (message.configVersion && configVersion != message.configVersion) {
-            logger.warn(
-                `Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
+        if (configVersion == null || configVersion === undefined) {
+            logger.debug(`++++++++++++++++++++++++++++handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`)
+        }
+
+        if (message.configVersion != null && configVersion != null && configVersion != message.configVersion) {
+            logger.debug(
+                `++++++++++++++++++++++++++++handleOlmPingMessage: Olm ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
             );
             await sendOlmSyncMessage(olm, client);
         }

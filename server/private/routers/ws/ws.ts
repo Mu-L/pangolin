@@ -319,6 +319,45 @@ const addClient = async (
     existingClients.push(ws);
     connectedClients.set(mapKey, existingClients);
 
+    // Get or initialize config version
+    let configVersion = 0;
+
+    // Check Redis first if enabled
+    if (redisManager.isRedisEnabled()) {
+        try {
+            const redisVersion = await redisManager.get(getConfigVersionKey(clientId));
+            if (redisVersion !== null) {
+                configVersion = parseInt(redisVersion, 10);
+                // Sync to local cache
+                clientConfigVersions.set(clientId, configVersion);
+            } else if (!clientConfigVersions.has(clientId)) {
+                // No version in Redis or local cache, initialize to 0
+                await redisManager.set(getConfigVersionKey(clientId), "0");
+                clientConfigVersions.set(clientId, 0);
+            } else {
+                // Use local cache version and sync to Redis
+                configVersion = clientConfigVersions.get(clientId) || 0;
+                await redisManager.set(getConfigVersionKey(clientId), configVersion.toString());
+            }
+        } catch (error) {
+            logger.error("Failed to get/set config version in Redis:", error);
+            // Fall back to local cache
+            if (!clientConfigVersions.has(clientId)) {
+                clientConfigVersions.set(clientId, 0);
+            }
+            configVersion = clientConfigVersions.get(clientId) || 0;
+        }
+    } else {
+        // Redis not enabled, use local cache only
+        if (!clientConfigVersions.has(clientId)) {
+            clientConfigVersions.set(clientId, 0);
+        }
+        configVersion = clientConfigVersions.get(clientId) || 0;
+    }
+
+    // Set config version on websocket
+    ws.configVersion = configVersion;
+
     // Add to Redis tracking if enabled
     if (redisManager.isRedisEnabled()) {
         try {
@@ -337,7 +376,7 @@ const addClient = async (
     }
 
     logger.info(
-        `Client added to tracking - ${clientType.toUpperCase()} ID: ${clientId}, Connection ID: ${connectionId}, Total connections: ${existingClients.length}`
+        `Client added to tracking - ${clientType.toUpperCase()} ID: ${clientId}, Connection ID: ${connectionId}, Total connections: ${existingClients.length}, Config version: ${configVersion}`
     );
 };
 
@@ -393,7 +432,7 @@ const removeClient = async (
 };
 
 // Helper to get the current config version for a client
-const getClientConfigVersion = async (clientId: string): Promise<number> => {
+const getClientConfigVersion = async (clientId: string): Promise<number | undefined> => {
     // Try Redis first if available
     if (redisManager.isRedisEnabled()) {
         try {
@@ -412,7 +451,7 @@ const getClientConfigVersion = async (clientId: string): Promise<number> => {
     }
 
     // Fall back to local cache
-    return clientConfigVersions.get(clientId) || 0;
+    return clientConfigVersions.get(clientId);
 };
 
 // Helper to increment and get the new config version for a client
@@ -455,9 +494,6 @@ const sendToClientLocal = async (
 
     // Handle config version
     let configVersion = await getClientConfigVersion(clientId);
-    if (options.incrementConfigVersion) {
-        configVersion = await incrementClientConfigVersion(clientId);
-    }
 
     // Add config version to message
     const messageWithVersion = {
@@ -471,10 +507,6 @@ const sendToClientLocal = async (
             client.send(messageString);
         }
     });
-
-    logger.debug(
-        `sendToClient: Message type ${message.type} sent to clientId ${clientId} (configVersion: ${configVersion})`
-    );
 
     return true;
 };
@@ -515,19 +547,21 @@ const sendToClient = async (
     message: WSMessage,
     options: SendMessageOptions = {}
 ): Promise<boolean> => {
+    let configVersion = await getClientConfigVersion(clientId);
+    if (options.incrementConfigVersion) {
+        configVersion = await incrementClientConfigVersion(clientId);
+    }
+
+    logger.debug(
+        `sendToClient: Message type ${message.type} sent to clientId ${clientId} (new configVersion: ${configVersion})`
+    );
+
     // Try to send locally first
     const localSent = await sendToClientLocal(clientId, message, options);
 
     // Only send via Redis if the client is not connected locally and Redis is enabled
     if (!localSent && redisManager.isRedisEnabled()) {
         try {
-            // If we need to increment config version, do it before sending via Redis
-            // so remote nodes send the correct version
-            let configVersion = await getClientConfigVersion(clientId);
-            if (options.incrementConfigVersion) {
-                configVersion = await incrementClientConfigVersion(clientId);
-            }
-
             const redisMessage: RedisMessage = {
                 type: "direct",
                 targetClientId: clientId,
