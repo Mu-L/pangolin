@@ -90,6 +90,18 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         return;
     }
 
+    if (client.approvalState == "pending") {
+        logger.debug(
+            `Client ${client.clientId} approval is pending. Ignoring register.`
+        );
+        sendOlmError(
+            OlmErrorCodes.CLIENT_PENDING,
+            "Client approval is pending",
+            olm.olmId
+        );
+        return;
+    }
+
     const [org] = await db
         .select()
         .from(orgs)
