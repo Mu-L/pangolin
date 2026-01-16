@@ -586,6 +586,14 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.listRoles),
     role.listRoles
 );
+
+authenticated.post(
+    "/org/:orgId/role/:roleId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateRole),
+    logActionAudit(ActionsEnum.updateRole),
+    role.updateRole
+);
 // authenticated.get(
 //     "/role/:roleId",
 //     verifyRoleAccess,
@@ -861,6 +869,12 @@ authenticated.get(
     olm.getUserOlm
 );
 
+authenticated.post(
+    "/user/:userId/olm/recover",
+    verifyIsLoggedInUser,
+    olm.recoverOlmWithFingerprint
+);
+
 authenticated.put(
     "/idp/oidc",
     verifyUserIsServerAdmin,
@@ -1107,6 +1121,21 @@ authRouter.post(
     auth.login
 );
 authRouter.post("/logout", auth.logout);
+authRouter.post(
+    "/lookup-user",
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 15,
+        keyGenerator: (req) =>
+            `lookupUser:${req.body.identifier || ipKeyGenerator(req.ip || "")}`,
+        handler: (req, res, next) => {
+            const message = `You can only lookup users ${15} times every ${15} minutes. Please try again later.`;
+            return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
+        },
+        store: createStore()
+    }),
+    auth.lookupUser
+);
 authRouter.post(
     "/newt/get-token",
     rateLimit({

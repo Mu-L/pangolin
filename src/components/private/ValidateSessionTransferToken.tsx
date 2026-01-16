@@ -50,9 +50,13 @@ export default function ValidateSessionTransferToken(
             }
 
             if (doRedirect) {
-                // add redirect param to dashboardUrl if provided
-                const fullUrl = `${env.app.dashboardUrl}${props.redirect || ""}`;
-                router.push(fullUrl);
+                if (props.redirect && props.redirect.startsWith("http")) {
+                    router.push(props.redirect);
+                } else {
+                    // add redirect param to dashboardUrl if provided
+                    const fullUrl = `${env.app.dashboardUrl}${props.redirect || ""}`;
+                    router.push(fullUrl);
+                }
             }
         }
 

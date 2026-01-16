@@ -245,7 +245,7 @@ export default function VerifyEmailForm({
                                 className="w-full"
                                 onClick={logout}
                             >
-                                Log in with another account
+                                {t("verifyEmailLogInWithDifferentAccount")}
                             </Button>
                         </form>
                     </Form>

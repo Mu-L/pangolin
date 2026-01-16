@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, olms } from "@server/db";
-import { clients } from "@server/db";
+import { clients, fingerprints } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import stoi from "@server/lib/stoi";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { getUserDeviceName } from "@server/db/names";
 
 const getClientSchema = z.strictObject({
     clientId: z
@@ -29,6 +30,7 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
             .from(clients)
             .where(eq(clients.clientId, clientId))
             .leftJoin(olms, eq(clients.clientId, olms.clientId))
+            .leftJoin(fingerprints, eq(olms.olmId, fingerprints.olmId))
             .limit(1);
         return res;
     } else if (niceId && orgId) {
@@ -37,6 +39,7 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
             .from(clients)
             .where(and(eq(clients.niceId, niceId), eq(clients.orgId, orgId)))
             .leftJoin(olms, eq(clients.clientId, olms.clientId))
+            .leftJoin(fingerprints, eq(olms.olmId, fingerprints.olmId))
             .limit(1);
         return res;
     }
@@ -105,8 +108,16 @@ export async function getClient(
             );
         }
 
+        // Replace name with device name if OLM exists
+        let clientName = client.clients.name;
+        if (client.olms) {
+            const model = client.fingerprints?.deviceModel || null;
+            clientName = getUserDeviceName(model, client.clients.name);
+        }
+
         const data: GetClientResponse = {
             ...client.clients,
+            name: clientName,
             olmId: client.olms ? client.olms.olmId : null
         };
 

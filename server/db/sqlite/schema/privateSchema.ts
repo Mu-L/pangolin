@@ -6,7 +6,7 @@ import {
     sqliteTable,
     text
 } from "drizzle-orm/sqlite-core";
-import { domains, exitNodes, orgs, sessions, users } from "./schema";
+import { clients, domains, exitNodes, orgs, sessions, users } from "./schema";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -289,6 +289,31 @@ export const accessAuditLog = sqliteTable(
     ]
 );
 
+export const approvals = sqliteTable("approvals", {
+    approvalId: integer("approvalId").primaryKey({ autoIncrement: true }),
+    timestamp: integer("timestamp").notNull(), // this is EPOCH time in seconds
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    clientId: integer("clientId").references(() => clients.clientId, {
+        onDelete: "cascade"
+    }), // olms reference user devices clients
+    userId: text("userId").references(() => users.userId, {
+        // optionally tied to a user and in this case delete when the user deletes
+        onDelete: "cascade"
+    }),
+    decision: text("decision")
+        .$type<"approved" | "denied" | "pending">()
+        .default("pending")
+        .notNull(),
+    type: text("type")
+        .$type<"user_device" /*| 'proxy' // for later */>()
+        .notNull()
+});
+
+export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
 export type Certificate = InferSelectModel<typeof certificates>;

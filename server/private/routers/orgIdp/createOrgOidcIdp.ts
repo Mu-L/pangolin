@@ -43,7 +43,8 @@ const bodySchema = z.strictObject({
     scopes: z.string().nonempty(),
     autoProvision: z.boolean().optional(),
     variant: z.enum(["oidc", "google", "azure"]).optional().default("oidc"),
-    roleMapping: z.string().optional()
+    roleMapping: z.string().optional(),
+    tags: z.string().optional()
 });
 
 registry.registerPath({
@@ -104,7 +105,8 @@ export async function createOrgOidcIdp(
             name,
             autoProvision,
             variant,
-            roleMapping
+            roleMapping,
+            tags
         } = parsedBody.data;
 
         if (build === "saas") {
@@ -132,7 +134,8 @@ export async function createOrgOidcIdp(
                 .values({
                     name,
                     autoProvision,
-                    type: "oidc"
+                    type: "oidc",
+                    tags
                 })
                 .returning();
 

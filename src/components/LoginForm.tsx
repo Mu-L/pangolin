@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,32 +23,24 @@ import {
 } from "@app/components/ui/card";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { useParams, useRouter } from "next/navigation";
-import { LockIcon, FingerprintIcon } from "lucide-react";
+import { LockIcon } from "lucide-react";
+import SecurityKeyAuthButton from "@app/components/SecurityKeyAuthButton";
 import { createApiClient } from "@app/lib/api";
-import {
-    InputOTP,
-    InputOTPGroup,
-    InputOTPSeparator,
-    InputOTPSlot
-} from "./ui/input-otp";
 import Link from "next/link";
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import Image from "next/image";
 import { GenerateOidcUrlResponse } from "@server/routers/idp";
 import { Separator } from "./ui/separator";
 import { useTranslations } from "next-intl";
-import { startAuthentication } from "@simplewebauthn/browser";
 import {
     generateOidcUrlProxy,
-    loginProxy,
-    securityKeyStartProxy,
-    securityKeyVerifyProxy
+    loginProxy
 } from "@app/actions/server";
 import { redirect as redirectTo } from "next/navigation";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 // @ts-ignore
 import { loadReoScript } from "reodotdev";
 import { build } from "@server/build";
+import MfaInputForm from "@app/components/MfaInputForm";
 
 export type LoginFormIDP = {
     idpId: number;
@@ -83,8 +75,6 @@ export default function LoginForm({
     const hasIdp = idps && idps.length > 0;
 
     const [mfaRequested, setMfaRequested] = useState(false);
-    const [showSecurityKeyPrompt, setShowSecurityKeyPrompt] = useState(false);
-    const otpContainerRef = useRef<HTMLDivElement>(null);
 
     const t = useTranslations();
     const currentHost =
@@ -113,52 +103,6 @@ export default function LoginForm({
         }
     }, []);
 
-    // Auto-focus MFA input when MFA is requested
-    useEffect(() => {
-        if (!mfaRequested) return;
-
-        const focusInput = () => {
-            // Try using the ref first
-            if (otpContainerRef.current) {
-                const hiddenInput = otpContainerRef.current.querySelector(
-                    "input"
-                ) as HTMLInputElement;
-                if (hiddenInput) {
-                    hiddenInput.focus();
-                    return;
-                }
-            }
-
-            // Fallback: query the DOM
-            const otpContainer = document.querySelector(
-                '[data-slot="input-otp"]'
-            );
-            if (!otpContainer) return;
-
-            const hiddenInput = otpContainer.querySelector(
-                "input"
-            ) as HTMLInputElement;
-            if (hiddenInput) {
-                hiddenInput.focus();
-                return;
-            }
-
-            // Last resort: click the first slot
-            const firstSlot = otpContainer.querySelector(
-                '[data-slot="input-otp-slot"]'
-            ) as HTMLElement;
-            if (firstSlot) {
-                firstSlot.click();
-            }
-        };
-
-        // Use requestAnimationFrame to wait for the next paint
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                focusInput();
-            });
-        });
-    }, [mfaRequested]);
 
     const formSchema = z.object({
         email: z.string().email({ message: t("emailInvalid") }),
@@ -184,97 +128,6 @@ export default function LoginForm({
         }
     });
 
-    async function initiateSecurityKeyAuth() {
-        setShowSecurityKeyPrompt(true);
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Start WebAuthn authentication without email
-            const startResponse = await securityKeyStartProxy({}, forceLogin);
-
-            if (startResponse.error) {
-                setError(startResponse.message);
-                return;
-            }
-
-            const { tempSessionId, ...options } = startResponse.data!;
-
-            // Perform WebAuthn authentication
-            try {
-                const credential = await startAuthentication({
-                    optionsJSON: {
-                        ...options,
-                        userVerification: options.userVerification as
-                            | "required"
-                            | "preferred"
-                            | "discouraged"
-                    }
-                });
-
-                // Verify authentication
-                const verifyResponse = await securityKeyVerifyProxy(
-                    { credential },
-                    tempSessionId,
-                    forceLogin
-                );
-
-                if (verifyResponse.error) {
-                    setError(verifyResponse.message);
-                    return;
-                }
-
-                if (verifyResponse.success) {
-                    if (onLogin) {
-                        await onLogin(redirect);
-                    }
-                }
-            } catch (error: any) {
-                if (error.name === "NotAllowedError") {
-                    if (error.message.includes("denied permission")) {
-                        setError(
-                            t("securityKeyPermissionDenied", {
-                                defaultValue:
-                                    "Please allow access to your security key to continue signing in."
-                            })
-                        );
-                    } else {
-                        setError(
-                            t("securityKeyRemovedTooQuickly", {
-                                defaultValue:
-                                    "Please keep your security key connected until the sign-in process completes."
-                            })
-                        );
-                    }
-                } else if (error.name === "NotSupportedError") {
-                    setError(
-                        t("securityKeyNotSupported", {
-                            defaultValue:
-                                "Your security key may not be compatible. Please try a different security key."
-                        })
-                    );
-                } else {
-                    setError(
-                        t("securityKeyUnknownError", {
-                            defaultValue:
-                                "There was a problem using your security key. Please try again."
-                        })
-                    );
-                }
-            }
-        } catch (e: any) {
-            console.error(e);
-            setError(
-                t("securityKeyAuthError", {
-                    defaultValue:
-                        "An unexpected error occurred. Please try again."
-                })
-            );
-        } finally {
-            setLoading(false);
-            setShowSecurityKeyPrompt(false);
-        }
-    }
 
     async function onSubmit(values: any) {
         const { email, password } = form.getValues();
@@ -282,7 +135,6 @@ export default function LoginForm({
 
         setLoading(true);
         setError(null);
-        setShowSecurityKeyPrompt(false);
 
         try {
             const response = await loginProxy(
@@ -323,7 +175,12 @@ export default function LoginForm({
             }
 
             if (data.useSecurityKey) {
-                await initiateSecurityKeyAuth();
+                setError(
+                    t("securityKeyRequired", {
+                        defaultValue:
+                            "Please use your security key to sign in."
+                    })
+                );
                 return;
             }
 
@@ -409,18 +266,6 @@ export default function LoginForm({
 
     return (
         <div className="space-y-4">
-            {showSecurityKeyPrompt && (
-                <Alert>
-                    <FingerprintIcon className="w-5 h-5 mr-2" />
-                    <AlertDescription>
-                        {t("securityKeyPrompt", {
-                            defaultValue:
-                                "Please verify your identity using your security key. Make sure your security key is connected and ready."
-                        })}
-                    </AlertDescription>
-                </Alert>
-            )}
-
             {!mfaRequested && (
                 <>
                     <Form {...form}>
@@ -488,115 +333,36 @@ export default function LoginForm({
             )}
 
             {mfaRequested && (
-                <>
-                    <div className="text-center">
-                        <h3 className="text-lg font-medium">{t("otpAuth")}</h3>
-                        <p className="text-sm text-muted-foreground">
-                            {t("otpAuthDescription")}
-                        </p>
-                    </div>
-                    <Form {...mfaForm}>
-                        <form
-                            onSubmit={mfaForm.handleSubmit(onSubmit)}
-                            className="space-y-4"
-                            id="form"
-                        >
-                            <FormField
-                                control={mfaForm.control}
-                                name="code"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <div
-                                                ref={otpContainerRef}
-                                                className="flex justify-center"
-                                            >
-                                                <InputOTP
-                                                    maxLength={6}
-                                                    {...field}
-                                                    autoFocus
-                                                    pattern={
-                                                        REGEXP_ONLY_DIGITS_AND_CHARS
-                                                    }
-                                                    onChange={(
-                                                        value: string
-                                                    ) => {
-                                                        field.onChange(value);
-                                                        if (
-                                                            value.length === 6
-                                                        ) {
-                                                            mfaForm.handleSubmit(
-                                                                onSubmit
-                                                            )();
-                                                        }
-                                                    }}
-                                                >
-                                                    <InputOTPGroup>
-                                                        <InputOTPSlot
-                                                            index={0}
-                                                        />
-                                                        <InputOTPSlot
-                                                            index={1}
-                                                        />
-                                                        <InputOTPSlot
-                                                            index={2}
-                                                        />
-                                                        <InputOTPSlot
-                                                            index={3}
-                                                        />
-                                                        <InputOTPSlot
-                                                            index={4}
-                                                        />
-                                                        <InputOTPSlot
-                                                            index={5}
-                                                        />
-                                                    </InputOTPGroup>
-                                                </InputOTP>
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </form>
-                    </Form>
-                </>
+                <MfaInputForm
+                    form={mfaForm}
+                    onSubmit={onSubmit}
+                    onBack={() => {
+                        setMfaRequested(false);
+                        mfaForm.reset();
+                    }}
+                    error={error}
+                    loading={loading}
+                    formId="form"
+                />
             )}
 
-            {error && (
+            {!mfaRequested && error && (
                 <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
 
             <div className="space-y-4">
-                {mfaRequested && (
-                    <Button
-                        type="submit"
-                        form="form"
-                        className="w-full"
-                        loading={loading}
-                        disabled={loading}
-                    >
-                        {t("otpAuthSubmit")}
-                    </Button>
-                )}
 
                 {!mfaRequested && (
                     <>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full"
-                            onClick={initiateSecurityKeyAuth}
-                            loading={loading}
-                            disabled={loading || showSecurityKeyPrompt}
-                        >
-                            <FingerprintIcon className="w-4 h-4 mr-2" />
-                            {t("securityKeyLogin", {
-                                defaultValue: "Sign in with security key"
-                            })}
-                        </Button>
+                        <SecurityKeyAuthButton
+                            redirect={redirect}
+                            forceLogin={forceLogin}
+                            onSuccess={onLogin}
+                            onError={setError}
+                            disabled={loading}
+                        />
 
                         {hasIdp && (
                             <>
@@ -652,19 +418,6 @@ export default function LoginForm({
                     </>
                 )}
 
-                {mfaRequested && (
-                    <Button
-                        type="button"
-                        className="w-full"
-                        variant="outline"
-                        onClick={() => {
-                            setMfaRequested(false);
-                            mfaForm.reset();
-                        }}
-                    >
-                        {t("otpAuthBack")}
-                    </Button>
-                )}
             </div>
         </div>
     );

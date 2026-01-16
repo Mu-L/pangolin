@@ -467,6 +467,14 @@ authenticated.put(
     role.createRole
 );
 
+authenticated.post(
+    "/org/:orgId/role/:roleId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateRole),
+    logActionAudit(ActionsEnum.updateRole),
+    role.updateRole
+);
+
 authenticated.get(
     "/org/:orgId/roles",
     verifyApiKeyOrgAccess,

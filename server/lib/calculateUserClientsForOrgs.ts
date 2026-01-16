@@ -1,21 +1,24 @@
+import { listExitNodes } from "#dynamic/lib/exitNodes";
+import { build } from "@server/build";
 import {
+    approvals,
     clients,
     db,
     olms,
     orgs,
     roleClients,
     roles,
+    Transaction,
     userClients,
-    userOrgs,
-    Transaction
+    userOrgs
 } from "@server/db";
-import { eq, and, notInArray } from "drizzle-orm";
-import { listExitNodes } from "#dynamic/lib/exitNodes";
-import { getNextAvailableClientSubnet } from "@server/lib/ip";
-import logger from "@server/logger";
-import { rebuildClientAssociationsFromClient } from "./rebuildClientAssociations";
-import { sendTerminateClient } from "@server/routers/client/terminate";
 import { getUniqueClientName } from "@server/db/names";
+import { getNextAvailableClientSubnet } from "@server/lib/ip";
+import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import logger from "@server/logger";
+import { sendTerminateClient } from "@server/routers/client/terminate";
+import { and, eq, notInArray, type InferInsertModel } from "drizzle-orm";
+import { rebuildClientAssociationsFromClient } from "./rebuildClientAssociations";
 
 export async function calculateUserClientsForOrgs(
     userId: string,
@@ -38,13 +41,15 @@ export async function calculateUserClientsForOrgs(
         const allUserOrgs = await transaction
             .select()
             .from(userOrgs)
+            .innerJoin(roles, eq(roles.roleId, userOrgs.roleId))
             .where(eq(userOrgs.userId, userId));
 
-        const userOrgIds = allUserOrgs.map((uo) => uo.orgId);
+        const userOrgIds = allUserOrgs.map(({ userOrgs: uo }) => uo.orgId);
 
         // For each OLM, ensure there's a client in each org the user is in
         for (const olm of userOlms) {
-            for (const userOrg of allUserOrgs) {
+            for (const userRoleOrg of allUserOrgs) {
+                const { userOrgs: userOrg, roles: role } = userRoleOrg;
                 const orgId = userOrg.orgId;
 
                 const [org] = await transaction
@@ -182,20 +187,45 @@ export async function calculateUserClientsForOrgs(
 
                 const niceId = await getUniqueClientName(orgId);
 
+                const isOrgLicensed = await isLicensedOrSubscribed(
+                    userOrg.orgId
+                );
+                const requireApproval =
+                    build !== "oss" &&
+                    isOrgLicensed &&
+                    role.requireDeviceApproval;
+
+                const newClientData: InferInsertModel<typeof clients> = {
+                    userId,
+                    orgId: userOrg.orgId,
+                    exitNodeId: randomExitNode.exitNodeId,
+                    name: olm.name || "User Client",
+                    subnet: updatedSubnet,
+                    olmId: olm.olmId,
+                    type: "olm",
+                    niceId,
+                    approvalState: requireApproval ? "pending" : null
+                };
+
                 // Create the client
                 const [newClient] = await transaction
                     .insert(clients)
-                    .values({
-                        userId,
-                        orgId: userOrg.orgId,
-                        exitNodeId: randomExitNode.exitNodeId,
-                        name: olm.name || "User Client",
-                        subnet: updatedSubnet,
-                        olmId: olm.olmId,
-                        type: "olm",
-                        niceId
-                    })
+                    .values(newClientData)
                     .returning();
+
+                // create approval request
+                if (requireApproval) {
+                    await transaction
+                        .insert(approvals)
+                        .values({
+                            timestamp: Math.floor(new Date().getTime() / 1000),
+                            orgId: userOrg.orgId,
+                            clientId: newClient.clientId,
+                            userId,
+                            type: "user_device"
+                        })
+                        .returning();
+                }
 
                 await rebuildClientAssociationsFromClient(
                     newClient,

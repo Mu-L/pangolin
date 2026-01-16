@@ -24,7 +24,8 @@ const bodySchema = z.strictObject({
     emailPath: z.string().optional(),
     namePath: z.string().optional(),
     scopes: z.string().nonempty(),
-    autoProvision: z.boolean().optional()
+    autoProvision: z.boolean().optional(),
+    tags: z.string().optional()
 });
 
 export type CreateIdpResponse = {
@@ -75,7 +76,8 @@ export async function createOidcIdp(
             emailPath,
             namePath,
             name,
-            autoProvision
+            autoProvision,
+            tags
         } = parsedBody.data;
 
         const key = config.getRawConfig().server.secret!;
@@ -90,7 +92,8 @@ export async function createOidcIdp(
                 .values({
                     name,
                     autoProvision,
-                    type: "oidc"
+                    type: "oidc",
+                    tags
                 })
                 .returning();
 

@@ -365,7 +365,8 @@ export const roles = pgTable("roles", {
         .notNull(),
     isAdmin: boolean("isAdmin"),
     name: varchar("name").notNull(),
-    description: varchar("description")
+    description: varchar("description"),
+    requireDeviceApproval: boolean("requireDeviceApproval").default(false)
 });
 
 export const roleActions = pgTable("roleActions", {
@@ -591,7 +592,8 @@ export const idp = pgTable("idp", {
     type: varchar("type").notNull(),
     defaultRoleMapping: varchar("defaultRoleMapping"),
     defaultOrgMapping: varchar("defaultOrgMapping"),
-    autoProvision: boolean("autoProvision").notNull().default(false)
+    autoProvision: boolean("autoProvision").notNull().default(false),
+    tags: text("tags")
 });
 
 export const idpOidcConfig = pgTable("idpOidcConfig", {
@@ -690,7 +692,10 @@ export const clients = pgTable("clients", {
     lastHolePunch: integer("lastHolePunch"),
     maxConnections: integer("maxConnections"),
     archived: boolean("archived").notNull().default(false),
-    blocked: boolean("blocked").notNull().default(false)
+    blocked: boolean("blocked").notNull().default(false),
+    approvalState: varchar("approvalState").$type<
+        "pending" | "approved" | "denied"
+    >()
 });
 
 export const clientSitesAssociationsCache = pgTable(
@@ -714,6 +719,49 @@ export const clientSiteResourcesAssociationsCache = pgTable(
     }
 );
 
+export const clientPostureSnapshots = pgTable("clientPostureSnapshots", {
+    snapshotId: serial("snapshotId").primaryKey(),
+
+    clientId: integer("clientId").references(() => clients.clientId, {
+        onDelete: "cascade"
+    }),
+
+    // Platform-agnostic checks
+
+    biometricsEnabled: boolean("biometricsEnabled").notNull().default(false),
+    diskEncrypted: boolean("diskEncrypted").notNull().default(false),
+    firewallEnabled: boolean("firewallEnabled").notNull().default(false),
+    autoUpdatesEnabled: boolean("autoUpdatesEnabled").notNull().default(false),
+    tpmAvailable: boolean("tpmAvailable").notNull().default(false),
+
+    // Windows-specific posture check information
+
+    windowsDefenderEnabled: boolean("windowsDefenderEnabled")
+        .notNull()
+        .default(false),
+
+    // macOS-specific posture check information
+
+    macosSipEnabled: boolean("macosSipEnabled").notNull().default(false),
+    macosGatekeeperEnabled: boolean("macosGatekeeperEnabled")
+        .notNull()
+        .default(false),
+    macosFirewallStealthMode: boolean("macosFirewallStealthMode")
+        .notNull()
+        .default(false),
+
+    // Linux-specific posture check information
+
+    linuxAppArmorEnabled: boolean("linuxAppArmorEnabled")
+        .notNull()
+        .default(false),
+    linuxSELinuxEnabled: boolean("linuxSELinuxEnabled")
+        .notNull()
+        .default(false),
+
+    collectedAt: integer("collectedAt").notNull()
+});
+
 export const olms = pgTable("olms", {
     olmId: varchar("id").primaryKey(),
     secretHash: varchar("secretHash").notNull(),
@@ -730,6 +778,27 @@ export const olms = pgTable("olms", {
         onDelete: "cascade"
     }),
     archived: boolean("archived").notNull().default(false)
+});
+
+export const fingerprints = pgTable("fingerprints", {
+    fingerprintId: serial("id").primaryKey(),
+
+    olmId: text("olmId")
+        .references(() => olms.olmId, { onDelete: "cascade" })
+        .notNull(),
+
+    firstSeen: integer("firstSeen").notNull(),
+    lastSeen: integer("lastSeen").notNull(),
+
+    username: text("username"),
+    hostname: text("hostname"),
+    platform: text("platform"), // macos | windows | linux | ios | android | unknown
+    osVersion: text("osVersion"),
+    kernelVersion: text("kernelVersion"),
+    arch: text("arch"),
+    deviceModel: text("deviceModel"),
+    serialNumber: text("serialNumber"),
+    platformFingerprint: varchar("platformFingerprint")
 });
 
 export const olmSessions = pgTable("clientSession", {

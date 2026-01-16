@@ -4,7 +4,7 @@ import { AxiosResponse } from "axios";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { ListClientsResponse } from "@server/routers/client";
 import { getTranslations } from "next-intl/server";
-import type { ClientRow } from "@app/components/MachineClientsTable";
+import type { ClientRow } from "@app/components/UserDevicesTable";
 import UserDevicesTable from "@app/components/UserDevicesTable";
 
 type ClientsPageProps = {
@@ -57,7 +57,8 @@ export default async function ClientsPage(props: ClientsPageProps) {
             niceId: client.niceId,
             agent: client.agent,
             archived: client.archived || false,
-            blocked: client.blocked || false
+            blocked: client.blocked || false,
+            approvalState: client.approvalState
         };
     };
 

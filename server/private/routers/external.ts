@@ -24,6 +24,7 @@ import * as generateLicense from "./generatedLicense";
 import * as logs from "#private/routers/auditLogs";
 import * as misc from "#private/routers/misc";
 import * as reKey from "#private/routers/re-key";
+import * as approval from "#private/routers/approvals";
 
 import {
     verifyOrgAccess,
@@ -309,6 +310,24 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getLoginPage),
     loginPage.getLoginPage
+);
+
+authenticated.get(
+    "/org/:orgId/approvals",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listApprovals),
+    logActionAudit(ActionsEnum.listApprovals),
+    approval.listApprovals
+);
+
+authenticated.put(
+    "/org/:orgId/approvals/:approvalId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateApprovals),
+    logActionAudit(ActionsEnum.updateApprovals),
+    approval.processPendingApproval
 );
 
 authenticated.get(

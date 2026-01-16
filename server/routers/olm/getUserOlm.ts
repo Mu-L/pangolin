@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { db } from "@server/db";
-import { olms } from "@server/db";
+import { olms, clients, fingerprints } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -9,6 +9,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
+import { getUserDeviceName } from "@server/db/names";
 
 const paramsSchema = z
     .object({
@@ -16,6 +17,10 @@ const paramsSchema = z
         olmId: z.string()
     })
     .strict();
+
+const querySchema = z.object({
+    orgId: z.string().optional()
+});
 
 // registry.registerPath({
 //     method: "get",
@@ -44,15 +49,64 @@ export async function getUserOlm(
             );
         }
 
-        const { olmId, userId } = parsedParams.data;
+        const parsedQuery = querySchema.safeParse(req.query);
+        if (!parsedQuery.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedQuery.error).toString()
+                )
+            );
+        }
 
-        const [olm] = await db
+        const { olmId, userId } = parsedParams.data;
+        const { orgId } = parsedQuery.data;
+
+        const [result] = await db
             .select()
             .from(olms)
-            .where(and(eq(olms.userId, userId), eq(olms.olmId, olmId)));
+            .where(and(eq(olms.userId, userId), eq(olms.olmId, olmId)))
+            .leftJoin(fingerprints, eq(olms.olmId, fingerprints.olmId))
+            .limit(1);
+
+        if (!result || !result.olms) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    "Olm not found"
+                )
+            );
+        }
+
+        const olm = result.olms;
+
+        // If orgId is provided and olm has a clientId, fetch the client to check blocked status
+        let blocked: boolean | undefined;
+        if (orgId && olm.clientId) {
+            const [client] = await db
+                .select({ blocked: clients.blocked })
+                .from(clients)
+                .where(
+                    and(
+                        eq(clients.clientId, olm.clientId),
+                        eq(clients.orgId, orgId)
+                    )
+                )
+                .limit(1);
+
+            blocked = client?.blocked ?? false;
+        }
+
+        // Replace name with device name
+        const model = result.fingerprints?.deviceModel || null;
+        const newName = getUserDeviceName(model, olm.name);
+
+        const responseData = blocked !== undefined 
+            ? { ...olm, name: newName, blocked }
+            : { ...olm, name: newName };
 
         return response(res, {
-            data: olm,
+            data: responseData,
             success: true,
             error: false,
             message: "Successfully retrieved olm",

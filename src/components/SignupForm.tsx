@@ -16,7 +16,8 @@ import {
     FormMessage
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
 import { Progress } from "@/components/ui/progress";
 import { SignUpResponse } from "@server/routers/auth";
 import { useRouter } from "next/navigation";
@@ -70,6 +71,7 @@ type SignupFormProps = {
     inviteId?: string;
     inviteToken?: string;
     emailParam?: string;
+    fromSmartLogin?: boolean;
 };
 
 const formSchema = z
@@ -100,7 +102,8 @@ export default function SignupForm({
     redirect,
     inviteId,
     inviteToken,
-    emailParam
+    emailParam,
+    fromSmartLogin = false
 }: SignupFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -201,8 +204,28 @@ export default function SignupForm({
         ? env.branding.logo?.authPage?.height || 58
         : 58;
 
+    const showOrgBanner = fromSmartLogin && (build === "saas" || env.flags.useOrgOnlyIdp);
+    const orgBannerHref = redirect
+        ? `/auth/org?redirect=${encodeURIComponent(redirect)}`
+        : "/auth/org";
+
     return (
-        <Card className="w-full max-w-md">
+        <>
+            {showOrgBanner && (
+                <Alert className="mb-4 w-full max-w-md">
+                    <AlertTitle>{t("signupOrgNotice")}</AlertTitle>
+                    <AlertDescription className="space-y-2 mt-3">
+                        <p>{t("signupOrgTip")}</p>
+                        <Link
+                            href={orgBannerHref}
+                            className="text-sm font-medium underline"
+                        >
+                            {t("signupOrgLink")}
+                        </Link>
+                    </AlertDescription>
+                </Alert>
+            )}
+            <Card className="w-full max-w-md">
             <CardHeader className="border-b">
                 <div className="flex flex-row items-center justify-center">
                     <BrandingLogo height={logoHeight} width={logoWidth} />
@@ -581,9 +604,10 @@ export default function SignupForm({
                         <Button type="submit" className="w-full">
                             {t("createAccount")}
                         </Button>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                </form>
+            </Form>
+        </CardContent>
+    </Card>
+        </>
     );
 }

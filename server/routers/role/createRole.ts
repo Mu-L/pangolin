@@ -10,6 +10,8 @@ import { fromError } from "zod-validation-error";
 import { ActionsEnum } from "@server/auth/actions";
 import { eq, and } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
+import { build } from "@server/build";
+import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
 
 const createRoleParamsSchema = z.strictObject({
     orgId: z.string()
@@ -17,7 +19,8 @@ const createRoleParamsSchema = z.strictObject({
 
 const createRoleSchema = z.strictObject({
     name: z.string().min(1).max(255),
-    description: z.string().optional()
+    description: z.string().optional(),
+    requireDeviceApproval: z.boolean().optional()
 });
 
 export const defaultRoleAllowedActions: ActionsEnum[] = [
@@ -95,6 +98,11 @@ export async function createRole(
                     "Role with that name already exists"
                 )
             );
+        }
+
+        const isLicensed = await isLicensedOrSubscribed(orgId);
+        if (build === "oss" || !isLicensed) {
+            roleData.requireDeviceApproval = undefined;
         }
 
         await db.transaction(async (trx) => {

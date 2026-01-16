@@ -942,7 +942,7 @@ async function isUserAllowedToAccessResource(
             username: user.username,
             email: user.email,
             name: user.name,
-            role: user.role
+            role: userOrgRole.roleName
         };
     }
 
@@ -956,7 +956,7 @@ async function isUserAllowedToAccessResource(
             username: user.username,
             email: user.email,
             name: user.name,
-            role: user.role
+            role: userOrgRole.roleName
         };
     }
 

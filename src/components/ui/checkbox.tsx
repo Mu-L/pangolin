@@ -30,7 +30,8 @@ const checkboxVariants = cva(
 );
 
 interface CheckboxProps
-    extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+    extends
+        React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
         VariantProps<typeof checkboxVariants> {}
 
 const Checkbox = React.forwardRef<
@@ -49,17 +50,18 @@ const Checkbox = React.forwardRef<
 ));
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
-interface CheckboxWithLabelProps
-    extends React.ComponentPropsWithoutRef<typeof Checkbox> {
+interface CheckboxWithLabelProps extends React.ComponentPropsWithoutRef<
+    typeof Checkbox
+> {
     label: string;
 }
 
 const CheckboxWithLabel = React.forwardRef<
-    React.ElementRef<typeof Checkbox>,
+    React.ComponentRef<typeof Checkbox>,
     CheckboxWithLabelProps
 >(({ className, label, id, ...props }, ref) => {
     return (
-        <div className={cn("flex items-center space-x-2", className)}>
+        <div className={cn("flex items-center gap-x-2", className)}>
             <Checkbox id={id} ref={ref} {...props} />
             <label
                 htmlFor={id}

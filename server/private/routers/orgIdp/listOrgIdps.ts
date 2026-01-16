@@ -50,7 +50,8 @@ async function query(orgId: string, limit: number, offset: number) {
             orgId: idpOrg.orgId,
             name: idp.name,
             type: idp.type,
-            variant: idpOidcConfig.variant
+            variant: idpOidcConfig.variant,
+            tags: idp.tags
         })
         .from(idpOrg)
         .where(eq(idpOrg.orgId, orgId))

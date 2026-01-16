@@ -1,9 +1,8 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { DataTable } from "@app/components/ui/data-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
+import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -16,7 +15,6 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import {
     ArrowRight,
     ArrowUpDown,
-    ArrowUpRight,
     MoreHorizontal,
     CircleSlash
 } from "lucide-react";
@@ -25,7 +23,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "./ui/badge";
-import { InfoPopup } from "./ui/info-popup";
 
 export type ClientRow = {
     id: number;
@@ -45,6 +42,7 @@ export type ClientRow = {
     agent: string | null;
     archived?: boolean;
     blocked?: boolean;
+    approvalState: "approved" | "pending" | "denied";
 };
 
 type ClientTableProps = {
@@ -214,7 +212,10 @@ export default function MachineClientsTable({
                                 </Badge>
                             )}
                             {r.blocked && (
-                                <Badge variant="destructive" className="flex items-center gap-1">
+                                <Badge
+                                    variant="destructive"
+                                    className="flex items-center gap-1"
+                                >
                                     <CircleSlash className="h-3 w-3" />
                                     {t("blocked")}
                                 </Badge>
@@ -410,7 +411,9 @@ export default function MachineClientsTable({
                                         }}
                                     >
                                         <span>
-                                            {clientRow.archived ? "Unarchive" : "Archive"}
+                                            {clientRow.archived
+                                                ? "Unarchive"
+                                                : "Archive"}
                                         </span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
@@ -424,7 +427,9 @@ export default function MachineClientsTable({
                                         }}
                                     >
                                         <span>
-                                            {clientRow.blocked ? "Unblock" : "Block"}
+                                            {clientRow.blocked
+                                                ? "Unblock"
+                                                : "Block"}
                                         </span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
@@ -539,15 +544,27 @@ export default function MachineClientsTable({
                                 value: "blocked"
                             }
                         ],
-                        filterFn: (row: ClientRow, selectedValues: (string | number | boolean)[]) => {
+                        filterFn: (
+                            row: ClientRow,
+                            selectedValues: (string | number | boolean)[]
+                        ) => {
                             if (selectedValues.length === 0) return true;
                             const rowArchived = row.archived || false;
                             const rowBlocked = row.blocked || false;
                             const isActive = !rowArchived && !rowBlocked;
-                            
-                            if (selectedValues.includes("active") && isActive) return true;
-                            if (selectedValues.includes("archived") && rowArchived) return true;
-                            if (selectedValues.includes("blocked") && rowBlocked) return true;
+
+                            if (selectedValues.includes("active") && isActive)
+                                return true;
+                            if (
+                                selectedValues.includes("archived") &&
+                                rowArchived
+                            )
+                                return true;
+                            if (
+                                selectedValues.includes("blocked") &&
+                                rowBlocked
+                            )
+                                return true;
                             return false;
                         },
                         defaultValues: ["active"] // Default to showing active clients

@@ -1,21 +1,5 @@
 "use client";
 
-import { Button } from "@app/components/ui/button";
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage
-} from "@app/components/ui/form";
-import { Input } from "@app/components/ui/input";
-import { toast } from "@app/hooks/useToast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { AxiosResponse } from "axios";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import {
     Credenza,
     CredenzaBody,
@@ -26,17 +10,37 @@ import {
     CredenzaHeader,
     CredenzaTitle
 } from "@app/components/Credenza";
-import { useOrgContext } from "@app/hooks/useOrgContext";
-import { CreateRoleBody, CreateRoleResponse } from "@server/routers/role";
-import { formatAxiosError } from "@app/lib/api";
-import { createApiClient } from "@app/lib/api";
+import { Button } from "@app/components/ui/button";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
+import { Input } from "@app/components/ui/input";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { build } from "@server/build";
+import type { CreateRoleBody, CreateRoleResponse } from "@server/routers/role";
+import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
+import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
+import { CheckboxWithLabel } from "./ui/checkbox";
 
 type CreateRoleFormProps = {
     open: boolean;
     setOpen: (open: boolean) => void;
-    afterCreate?: (res: CreateRoleResponse) => Promise<void>;
+    afterCreate?: (res: CreateRoleResponse) => void;
 };
 
 export default function CreateRoleForm({
@@ -46,13 +50,16 @@ export default function CreateRoleForm({
 }: CreateRoleFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
+    const { isPaidUser } = usePaidStatus();
 
     const formSchema = z.object({
-        name: z.string({ message: t("nameRequired") }).max(32),
-        description: z.string().max(255).optional()
+        name: z
+            .string({ message: t("nameRequired") })
+            .min(1)
+            .max(32),
+        description: z.string().max(255).optional(),
+        requireDeviceApproval: z.boolean().optional()
     });
-
-    const [loading, setLoading] = useState(false);
 
     const api = createApiClient(useEnvContext());
 
@@ -60,21 +67,18 @@ export default function CreateRoleForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
-            description: ""
+            description: "",
+            requireDeviceApproval: false
         }
     });
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        setLoading(true);
+    const [loading, startTransition] = useTransition();
 
+    async function onSubmit(values: z.infer<typeof formSchema>) {
         const res = await api
-            .put<AxiosResponse<CreateRoleResponse>>(
-                `/org/${org?.org.orgId}/role`,
-                {
-                    name: values.name,
-                    description: values.description
-                } as CreateRoleBody
-            )
+            .put<
+                AxiosResponse<CreateRoleResponse>
+            >(`/org/${org?.org.orgId}/role`, values satisfies CreateRoleBody)
             .catch((e) => {
                 toast({
                     variant: "destructive",
@@ -97,12 +101,8 @@ export default function CreateRoleForm({
                 setOpen(false);
             }
 
-            if (afterCreate) {
-                afterCreate(res.data.data);
-            }
+            afterCreate?.(res.data.data);
         }
-
-        setLoading(false);
     }
 
     return (
@@ -111,7 +111,6 @@ export default function CreateRoleForm({
                 open={open}
                 onOpenChange={(val) => {
                     setOpen(val);
-                    setLoading(false);
                     form.reset();
                 }}
             >
@@ -125,7 +124,9 @@ export default function CreateRoleForm({
                     <CredenzaBody>
                         <Form {...form}>
                             <form
-                                onSubmit={form.handleSubmit(onSubmit)}
+                                onSubmit={form.handleSubmit((values) =>
+                                    startTransition(() => onSubmit(values))
+                                )}
                                 className="space-y-4"
                                 id="create-role-form"
                             >
@@ -159,6 +160,56 @@ export default function CreateRoleForm({
                                         </FormItem>
                                     )}
                                 />
+                                {build !== "oss" && (
+                                    <div className="pt-3">
+                                        <PaidFeaturesAlert />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="requireDeviceApproval"
+                                            render={({ field }) => (
+                                                <FormItem className="my-2">
+                                                    <FormControl>
+                                                        <CheckboxWithLabel
+                                                            {...field}
+                                                            disabled={
+                                                                !isPaidUser
+                                                            }
+                                                            value="on"
+                                                            checked={form.watch(
+                                                                "requireDeviceApproval"
+                                                            )}
+                                                            onCheckedChange={(
+                                                                checked
+                                                            ) => {
+                                                                if (
+                                                                    checked !==
+                                                                    "indeterminate"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "requireDeviceApproval",
+                                                                        checked
+                                                                    );
+                                                                }
+                                                            }}
+                                                            label={t(
+                                                                "requireDeviceApproval"
+                                                            )}
+                                                        />
+                                                    </FormControl>
+
+                                                    <FormDescription>
+                                                        {t(
+                                                            "requireDeviceApprovalDescription"
+                                                        )}
+                                                    </FormDescription>
+
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                )}
                             </form>
                         </Form>
                     </CredenzaBody>

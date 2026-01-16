@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { db } from "@server/db";
+import { db, fingerprints } from "@server/db";
 import { olms } from "@server/db";
 import { eq, count, desc } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
@@ -9,6 +9,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
+import { getUserDeviceName } from "@server/db/names";
 
 const querySchema = z.object({
     limit: z
@@ -99,21 +100,29 @@ export async function listUserOlms(
         const total = totalCountResult?.count || 0;
 
         // Get OLMs for the current user (including archived OLMs)
-        const userOlms = await db
-            .select({
-                olmId: olms.olmId,
-                dateCreated: olms.dateCreated,
-                version: olms.version,
-                name: olms.name,
-                clientId: olms.clientId,
-                userId: olms.userId,
-                archived: olms.archived
-            })
+        const list = await db
+            .select()
             .from(olms)
             .where(eq(olms.userId, userId))
+            .leftJoin(fingerprints, eq(olms.olmId, fingerprints.olmId))
             .orderBy(desc(olms.dateCreated))
             .limit(limit)
             .offset(offset);
+
+        const userOlms = list.map((item) => {
+            const model = item.fingerprints?.deviceModel || null;
+            const newName = getUserDeviceName(model, item.olms.name);
+
+            return {
+                olmId: item.olms.olmId,
+                dateCreated: item.olms.dateCreated,
+                version: item.olms.version,
+                name: newName,
+                clientId: item.olms.clientId,
+                userId: item.olms.userId,
+                archived: item.olms.archived
+            };
+        });
 
         return response<ListUserOlmsResponse>(res, {
             data: {

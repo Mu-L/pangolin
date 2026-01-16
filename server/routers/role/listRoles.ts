@@ -1,15 +1,13 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { db } from "@server/db";
-import { roles, orgs } from "@server/db";
+import { db, orgs, roles } from "@server/db";
 import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import { sql, eq } from "drizzle-orm";
 import logger from "@server/logger";
-import { fromError } from "zod-validation-error";
-import stoi from "@server/lib/stoi";
 import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import { eq, sql } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const listRolesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -38,7 +36,8 @@ async function queryRoles(orgId: string, limit: number, offset: number) {
             isAdmin: roles.isAdmin,
             name: roles.name,
             description: roles.description,
-            orgName: orgs.name
+            orgName: orgs.name,
+            requireDeviceApproval: roles.requireDeviceApproval
         })
         .from(roles)
         .leftJoin(orgs, eq(roles.orgId, orgs.orgId))

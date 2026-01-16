@@ -10,7 +10,15 @@ import {
     index
 } from "drizzle-orm/pg-core";
 import { InferSelectModel } from "drizzle-orm";
-import { domains, orgs, targets, users, exitNodes, sessions } from "./schema";
+import {
+    domains,
+    orgs,
+    targets,
+    users,
+    exitNodes,
+    sessions,
+    clients
+} from "./schema";
 
 export const certificates = pgTable("certificates", {
     certId: serial("certId").primaryKey(),
@@ -289,6 +297,33 @@ export const accessAuditLog = pgTable(
     ]
 );
 
+export const approvals = pgTable("approvals", {
+    approvalId: serial("approvalId").primaryKey(),
+    timestamp: integer("timestamp").notNull(), // this is EPOCH time in seconds
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    clientId: integer("clientId").references(() => clients.clientId, {
+        onDelete: "cascade"
+    }), // clients reference user devices (in this case)
+    userId: varchar("userId")
+        .references(() => users.userId, {
+            // optionally tied to a user and in this case delete when the user deletes
+            onDelete: "cascade"
+        })
+        .notNull(),
+    decision: varchar("decision")
+        .$type<"approved" | "denied" | "pending">()
+        .default("pending")
+        .notNull(),
+    type: varchar("type")
+        .$type<"user_device" /*| 'proxy' // for later */>()
+        .notNull()
+});
+
+export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
 export type Certificate = InferSelectModel<typeof certificates>;

@@ -1,9 +1,8 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { DataTable } from "@app/components/ui/data-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
+import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,9 +23,11 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Badge } from "./ui/badge";
-import { InfoPopup } from "./ui/info-popup";
 import ClientDownloadBanner from "./ClientDownloadBanner";
+import { Badge } from "./ui/badge";
+import { build } from "@server/build";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { t } from "@faker-js/faker/dist/airline-DF6RqYmq";
 
 export type ClientRow = {
     id: number;
@@ -44,6 +45,7 @@ export type ClientRow = {
     userEmail: string | null;
     niceId: string;
     agent: string | null;
+    approvalState: "approved" | "pending" | "denied" | null;
     archived?: boolean;
     blocked?: boolean;
 };
@@ -210,9 +212,20 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 </Badge>
                             )}
                             {r.blocked && (
-                                <Badge variant="destructive" className="flex items-center gap-1">
+                                <Badge
+                                    variant="destructive"
+                                    className="flex items-center gap-1"
+                                >
                                     <CircleSlash className="h-3 w-3" />
                                     {t("blocked")}
+                                </Badge>
+                            )}
+                            {r.approvalState === "pending" && (
+                                <Badge
+                                    variant="outlinePrimary"
+                                    className="flex items-center gap-1"
+                                >
+                                    {t("pendingApproval")}
                                 </Badge>
                             )}
                         </div>
@@ -272,33 +285,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                     );
                 }
             },
-            // {
-            //     accessorKey: "siteName",
-            //     header: ({ column }) => {
-            //         return (
-            //             <Button
-            //                 variant="ghost"
-            //                 onClick={() =>
-            //                     column.toggleSorting(column.getIsSorted() === "asc")
-            //                 }
-            //             >
-            //                 Site
-            //                 <ArrowUpDown className="ml-2 h-4 w-4" />
-            //             </Button>
-            //         );
-            //     },
-            //     cell: ({ row }) => {
-            //         const r = row.original;
-            //         return (
-            //             <Link href={`/${r.orgId}/settings/sites/${r.siteId}`}>
-            //                 <Button variant="outline">
-            //                     {r.siteName}
-            //                     <ArrowUpRight className="ml-2 h-4 w-4" />
-            //                 </Button>
-            //             </Link>
-            //         );
-            //     }
-            // },
             {
                 accessorKey: "online",
                 friendlyName: "Connectivity",
@@ -460,7 +446,11 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                         }
                                     }}
                                 >
-                                    <span>{clientRow.archived ? "Unarchive" : "Archive"}</span>
+                                    <span>
+                                        {clientRow.archived
+                                            ? "Unarchive"
+                                            : "Archive"}
+                                    </span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => {
@@ -472,7 +462,11 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                         }
                                     }}
                                 >
-                                    <span>{clientRow.blocked ? "Unblock" : "Block"}</span>
+                                    <span>
+                                        {clientRow.blocked
+                                            ? "Unblock"
+                                            : "Block"}
+                                    </span>
                                 </DropdownMenuItem>
                                 {!clientRow.userId && (
                                     // Machine client - also show delete option
@@ -482,7 +476,9 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                             setIsDeleteModalOpen(true);
                                         }}
                                     >
-                                        <span className="text-red-500">Delete</span>
+                                        <span className="text-red-500">
+                                            Delete
+                                        </span>
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
@@ -570,32 +566,65 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         options: [
                             {
                                 id: "active",
-                                label: t("active") || "Active",
+                                label: t("active"),
                                 value: "active"
                             },
                             {
+                                id: "pending",
+                                label: t("pendingApproval"),
+                                value: "pending"
+                            },
+                            {
+                                id: "denied",
+                                label: t("deniedApproval"),
+                                value: "denied"
+                            },
+                            {
                                 id: "archived",
-                                label: t("archived") || "Archived",
+                                label: t("archived"),
                                 value: "archived"
                             },
                             {
                                 id: "blocked",
-                                label: t("blocked") || "Blocked",
+                                label: t("blocked"),
                                 value: "blocked"
                             }
                         ],
-                        filterFn: (row: ClientRow, selectedValues: (string | number | boolean)[]) => {
+                        filterFn: (
+                            row: ClientRow,
+                            selectedValues: (string | number | boolean)[]
+                        ) => {
                             if (selectedValues.length === 0) return true;
-                            const rowArchived = row.archived || false;
-                            const rowBlocked = row.blocked || false;
+                            const rowArchived = row.archived;
+                            const rowBlocked = row.blocked;
+                            const approvalState = row.approvalState;
                             const isActive = !rowArchived && !rowBlocked;
-                            
-                            if (selectedValues.includes("active") && isActive) return true;
-                            if (selectedValues.includes("archived") && rowArchived) return true;
-                            if (selectedValues.includes("blocked") && rowBlocked) return true;
+
+                            if (selectedValues.includes("active") && isActive)
+                                return true;
+                            if (
+                                selectedValues.includes("pending") &&
+                                approvalState === "pending"
+                            )
+                                return true;
+                            if (
+                                selectedValues.includes("denied") &&
+                                approvalState === "denied"
+                            )
+                                return true;
+                            if (
+                                selectedValues.includes("archived") &&
+                                rowArchived
+                            )
+                                return true;
+                            if (
+                                selectedValues.includes("blocked") &&
+                                rowBlocked
+                            )
+                                return true;
                             return false;
                         },
-                        defaultValues: ["active"] // Default to showing active clients
+                        defaultValues: ["active", "pending"] // Default to showing active clients
                     }
                 ]}
             />
