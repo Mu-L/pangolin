@@ -27,6 +27,7 @@ import config from "@server/lib/config";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
+import { OlmErrorCodes, sendOlmError } from "./error";
 
 export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     logger.info("Handling register olm message!");
@@ -53,6 +54,11 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!olm.clientId) {
         logger.warn("Olm client ID not found");
+        sendOlmError(
+            OlmErrorCodes.CLIENT_ID_NOT_FOUND,
+            "Olm client ID not found",
+            olm.olmId
+        );
         return;
     }
 
@@ -64,11 +70,23 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!client) {
         logger.warn("Client ID not found");
+        sendOlmError(
+            OlmErrorCodes.CLIENT_NOT_FOUND,
+            "Client not found in organization",
+            olm.olmId
+        );
         return;
     }
 
     if (client.blocked) {
-        logger.debug(`Client ${client.clientId} is blocked. Ignoring register.`);
+        logger.debug(
+            `Client ${client.clientId} is blocked. Ignoring register.`
+        );
+        sendOlmError(
+            OlmErrorCodes.CLIENT_BLOCKED,
+            "Client is blocked",
+            olm.olmId
+        );
         return;
     }
 
@@ -80,12 +98,22 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!org) {
         logger.warn("Org not found");
+        sendOlmError(
+            OlmErrorCodes.ORG_NOT_FOUND,
+            "Organization not found",
+            olm.olmId
+        );
         return;
     }
 
     if (orgId) {
         if (!olm.userId) {
             logger.warn("Olm has no user ID");
+            sendOlmError(
+                OlmErrorCodes.USER_ID_NOT_FOUND,
+                "User ID not found for this client",
+                olm.olmId
+            );
             return;
         }
 
@@ -93,10 +121,20 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             await validateSessionToken(userToken);
         if (!userSession || !user) {
             logger.warn("Invalid user session for olm register");
-            return; // by returning here we just ignore the ping and the setInterval will force it to disconnect
+            sendOlmError(
+                OlmErrorCodes.INVALID_USER_SESSION,
+                "Invalid or expired user session token",
+                olm.olmId
+            );
+            return;
         }
         if (user.userId !== olm.userId) {
             logger.warn("User ID mismatch for olm register");
+            sendOlmError(
+                OlmErrorCodes.USER_ID_MISMATCH,
+                "User ID does not match the authenticated session",
+                olm.olmId
+            );
             return;
         }
 
@@ -113,6 +151,11 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         if (!policyCheck.allowed) {
             logger.warn(
                 `Olm user ${olm.userId} does not pass access policies for org ${orgId}: ${policyCheck.error}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ACCESS_POLICY_DENIED,
+                `Access policy denied: ${policyCheck.error}`,
+                olm.olmId
             );
             return;
         }
@@ -151,7 +194,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             .update(clients)
             .set({
                 pubKey: publicKey,
-                archived: false,
+                archived: false
             })
             .where(eq(clients.clientId, client.clientId));
 
