@@ -112,27 +112,27 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
         return;
     }
 
-    // get the site
-    const [site] = await db
-        .select()
-        .from(sites)
-        .where(eq(sites.siteId, newt.siteId))
-        .limit(1);
-
-    if (!site) {
-        logger.warn(
-            `Newt ping message: site with ID ${newt.siteId} not found`
-        );
-        return;
-    }
-
     // get the version
     const configVersion = await getClientConfigVersion(newt.newtId);
 
-    if (message.configVersion && configVersion != message.configVersion) {
+    if (message.configVersion && configVersion != null && configVersion != message.configVersion) {
         logger.warn(
             `Newt ping with outdated config version: ${message.configVersion} (current: ${configVersion})`
         );
+
+        // get the site
+        const [site] = await db
+            .select()
+            .from(sites)
+            .where(eq(sites.siteId, newt.siteId))
+            .limit(1);
+
+        if (!site) {
+            logger.warn(
+                `Newt ping message: site with ID ${newt.siteId} not found`
+            );
+            return;
+        }
 
         await sendNewtSyncMessage(newt, site);
     }
