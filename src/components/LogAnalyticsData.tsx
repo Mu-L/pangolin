@@ -523,7 +523,7 @@ function TopCountriesList(props: TopCountriesListProps) {
                         )}
                     </div>
                 )}
-                {props.countries.slice(0, 3).map((country) => {
+                {props.countries.map((country) => {
                     const percent = country.count / props.total;
                     return (
                         <li
