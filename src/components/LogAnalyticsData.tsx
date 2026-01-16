@@ -510,7 +510,7 @@ function TopCountriesList(props: TopCountriesListProps) {
                 </div>
             )}
             {/* `aspect-475/335` is the same aspect ratio as the world map component */}
-            <ol className="w-full overflow-auto grid gap-1 aspect-475/335">
+            <ol className="w-full overflow-auto gap-1 aspect-475/335 flex flex-col">
                 {props.countries.length === 0 && (
                     <div className="flex items-center justify-center size-full text-muted-foreground gap-1">
                         {props.isLoading ? (
@@ -523,12 +523,12 @@ function TopCountriesList(props: TopCountriesListProps) {
                         )}
                     </div>
                 )}
-                {props.countries.map((country) => {
+                {props.countries.slice(0, 3).map((country) => {
                     const percent = country.count / props.total;
                     return (
                         <li
                             key={country.code}
-                            className="grid grid-cols-7 rounded-xs hover:bg-muted relative items-center text-sm"
+                            className="w-full grid grid-cols-7 rounded-xs hover:bg-muted relative items-center text-sm"
                         >
                             <div
                                 className={cn(
