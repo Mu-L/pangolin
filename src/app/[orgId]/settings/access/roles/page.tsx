@@ -2,12 +2,12 @@ import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import { AxiosResponse } from "axios";
 import { GetOrgResponse } from "@server/routers/org";
-import { cache } from "react";
 import OrgProvider from "@app/providers/OrgProvider";
 import { ListRolesResponse } from "@server/routers/role";
-import RolesTable, { RoleRow } from "../../../../../components/RolesTable";
+import RolesTable, { type RoleRow } from "@app/components/RolesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
+import { getCachedOrg } from "@app/lib/api/getCachedOrg";
 
 type RolesPageProps = {
     params: Promise<{ orgId: string }>;
@@ -47,14 +47,7 @@ export default async function RolesPage(props: RolesPageProps) {
     }
 
     let org: GetOrgResponse | null = null;
-    const getOrg = cache(async () =>
-        internal
-            .get<
-                AxiosResponse<GetOrgResponse>
-            >(`/org/${params.orgId}`, await authCookieHeader())
-            .catch((e) => {})
-    );
-    const orgRes = await getOrg();
+    const orgRes = await getCachedOrg(params.orgId);
 
     if (orgRes && orgRes.status === 200) {
         org = orgRes.data.data;

@@ -365,7 +365,8 @@ export const roles = pgTable("roles", {
         .notNull(),
     isAdmin: boolean("isAdmin"),
     name: varchar("name").notNull(),
-    description: varchar("description")
+    description: varchar("description"),
+    requireDeviceApproval: boolean("requireDeviceApproval").default(false)
 });
 
 export const roleActions = pgTable("roleActions", {
@@ -691,7 +692,10 @@ export const clients = pgTable("clients", {
     lastHolePunch: integer("lastHolePunch"),
     maxConnections: integer("maxConnections"),
     archived: boolean("archived").notNull().default(false),
-    blocked: boolean("blocked").notNull().default(false)
+    blocked: boolean("blocked").notNull().default(false),
+    approvalState: varchar("approvalState").$type<
+        "pending" | "approved" | "denied"
+    >()
 });
 
 export const clientSitesAssociationsCache = pgTable(

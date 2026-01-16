@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, orgs, type Role } from "@server/db";
 import { roles } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -8,19 +8,27 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
+import { build } from "@server/build";
+import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
 
 const updateRoleParamsSchema = z.strictObject({
+    orgId: z.string(),
     roleId: z.string().transform(Number).pipe(z.int().positive())
 });
 
 const updateRoleBodySchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
-        description: z.string().optional()
+        description: z.string().optional(),
+        requireDeviceApproval: z.boolean().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
     });
+
+export type UpdateRoleBody = z.infer<typeof updateRoleBodySchema>;
+
+export type UpdateRoleResponse = Role;
 
 export async function updateRole(
     req: Request,
@@ -48,13 +56,14 @@ export async function updateRole(
             );
         }
 
-        const { roleId } = parsedParams.data;
+        const { roleId, orgId } = parsedParams.data;
         const updateData = parsedBody.data;
 
         const role = await db
             .select()
             .from(roles)
             .where(eq(roles.roleId, roleId))
+            .innerJoin(orgs, eq(roles.orgId, orgs.orgId))
             .limit(1);
 
         if (role.length === 0) {
@@ -66,13 +75,18 @@ export async function updateRole(
             );
         }
 
-        if (role[0].isAdmin) {
+        if (role[0].roles.isAdmin) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
                     `Cannot update a Admin role`
                 )
             );
+        }
+
+        const isLicensed = await isLicensedOrSubscribed(orgId);
+        if (build === "oss" || !isLicensed) {
+            updateData.requireDeviceApproval = undefined;
         }
 
         const updatedRole = await db

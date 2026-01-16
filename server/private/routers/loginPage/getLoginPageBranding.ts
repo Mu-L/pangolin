@@ -29,11 +29,9 @@ import { getOrgTierData } from "#private/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import { build } from "@server/build";
 
-const paramsSchema = z
-    .object({
-        orgId: z.string()
-    })
-    .strict();
+const paramsSchema = z.strictObject({
+    orgId: z.string()
+});
 
 export async function getLoginPageBranding(
     req: Request,

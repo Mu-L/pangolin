@@ -129,7 +129,9 @@ export enum ActionsEnum {
     getBlueprint = "getBlueprint",
     applyBlueprint = "applyBlueprint",
     viewLogs = "viewLogs",
-    exportLogs = "exportLogs"
+    exportLogs = "exportLogs",
+    listApprovals = "listApprovals",
+    updateApprovals = "updateApprovals"
 }
 
 export async function checkUserActionPermission(

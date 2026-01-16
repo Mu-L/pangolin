@@ -1,27 +1,27 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@app/components/ui/dropdown-menu";
-import { Button } from "@app/components/ui/button";
-import { ArrowUpDown, Crown, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { useOrgContext } from "@app/hooks/useOrgContext";
-import { toast } from "@app/hooks/useToast";
-import { RolesDataTable } from "@app/components/RolesDataTable";
-import { Role } from "@server/db";
 import CreateRoleForm from "@app/components/CreateRoleForm";
 import DeleteRoleForm from "@app/components/DeleteRoleForm";
-import { createApiClient } from "@app/lib/api";
+import { RolesDataTable } from "@app/components/RolesDataTable";
+import { Button } from "@app/components/ui/button";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient } from "@app/lib/api";
+import { Role } from "@server/db";
+import { ArrowRight, ArrowUpDown, Link, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem
+} from "./ui/dropdown-menu";
+import EditRoleForm from "./EditRoleForm";
 
 export type RoleRow = Role;
 
@@ -29,27 +29,26 @@ type RolesTableProps = {
     roles: RoleRow[];
 };
 
-export default function UsersTable({ roles: r }: RolesTableProps) {
+export default function UsersTable({ roles }: RolesTableProps) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [editingRole, setEditingRole] = useState<RoleRow | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const router = useRouter();
 
-    const [roles, setRoles] = useState<RoleRow[]>(r);
-
-    const [roleToRemove, setUserToRemove] = useState<RoleRow | null>(null);
+    const [roleToRemove, setRoleToRemove] = useState<RoleRow | null>(null);
 
     const api = createApiClient(useEnvContext());
 
     const { org } = useOrgContext();
+    const { isPaidUser } = usePaidStatus();
 
     const t = useTranslations();
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isRefreshing, startTransition] = useTransition();
 
     const refreshData = async () => {
         console.log("Data refreshed");
-        setIsRefreshing(true);
         try {
-            await new Promise((resolve) => setTimeout(resolve, 200));
             router.refresh();
         } catch (error) {
             toast({
@@ -57,8 +56,6 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
                 description: t("refreshError"),
                 variant: "destructive"
             });
-        } finally {
-            setIsRefreshing(false);
         }
     };
 
@@ -86,26 +83,74 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
             friendlyName: t("description"),
             header: () => <span className="p-3">{t("description")}</span>
         },
+        // {
+        //     id: "actions",
+        //     enableHiding: false,
+        //     header: () => <span className="p-3"></span>,
+        //     cell: ({ row }) => {
+        //         const roleRow = row.original;
+
+        //         return (
+        //             <div className="flex items-center gap-2 justify-end">
+        //                 <Button
+        //                     variant={"outline"}
+        //                     disabled={roleRow.isAdmin || false}
+        //                     onClick={() => {
+        //                         setIsDeleteModalOpen(true);
+        //                         setUserToRemove(roleRow);
+        //                     }}
+        //                 >
+        //                     {t("accessRoleDelete")}
+        //                 </Button>
+        //             </div>
+        //         );
+        //     }
+        // },
         {
             id: "actions",
             enableHiding: false,
             header: () => <span className="p-3"></span>,
             cell: ({ row }) => {
                 const roleRow = row.original;
-
                 return (
-                    <div className="flex items-center gap-2 justify-end">
-                        <Button
-                            variant={"outline"}
-                            disabled={roleRow.isAdmin || false}
-                            onClick={() => {
-                                setIsDeleteModalOpen(true);
-                                setUserToRemove(roleRow);
-                            }}
-                        >
-                            {t("accessRoleDelete")}
-                        </Button>
-                    </div>
+                    !roleRow.isAdmin && (
+                        <div className="flex items-center gap-2 justify-end">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        <span className="sr-only">
+                                            {t("openMenu")}
+                                        </span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setRoleToRemove(roleRow);
+                                            setIsDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        <span className="text-red-500">
+                                            {t("delete")}
+                                        </span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button
+                                variant={"outline"}
+                                onClick={() => {
+                                    setEditingRole(roleRow);
+                                    setIsEditDialogOpen(true);
+                                }}
+                            >
+                                {t("edit")}
+                            </Button>
+                        </div>
+                    )
                 );
             }
         }
@@ -113,11 +158,29 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
 
     return (
         <>
+            {editingRole && (
+                <EditRoleForm
+                    role={editingRole}
+                    open={isEditDialogOpen}
+                    key={editingRole.roleId}
+                    setOpen={setIsEditDialogOpen}
+                    onSuccess={() => {
+                        // Delay refresh to allow modal to close smoothly
+                        setTimeout(() => {
+                            startTransition(async () => {
+                                await refreshData().then(() =>
+                                    setEditingRole(null)
+                                );
+                            });
+                        }, 150);
+                    }}
+                />
+            )}
             <CreateRoleForm
                 open={isCreateModalOpen}
                 setOpen={setIsCreateModalOpen}
-                afterCreate={async (role) => {
-                    setRoles((prev) => [...prev, role]);
+                afterCreate={() => {
+                    startTransition(refreshData);
                 }}
             />
 
@@ -127,10 +190,11 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
                     setOpen={setIsDeleteModalOpen}
                     roleToDelete={roleToRemove}
                     afterDelete={() => {
-                        setRoles((prev) =>
-                            prev.filter((r) => r.roleId !== roleToRemove.roleId)
-                        );
-                        setUserToRemove(null);
+                        startTransition(async () => {
+                            await refreshData().then(() =>
+                                setRoleToRemove(null)
+                            );
+                        });
                     }}
                 />
             )}
@@ -141,7 +205,7 @@ export default function UsersTable({ roles: r }: RolesTableProps) {
                 createRole={() => {
                     setIsCreateModalOpen(true);
                 }}
-                onRefresh={refreshData}
+                onRefresh={() => startTransition(refreshData)}
                 isRefreshing={isRefreshing}
             />
         </>

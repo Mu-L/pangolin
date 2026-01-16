@@ -586,6 +586,14 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.listRoles),
     role.listRoles
 );
+
+authenticated.post(
+    "/org/:orgId/role/:roleId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateRole),
+    logActionAudit(ActionsEnum.updateRole),
+    role.updateRole
+);
 // authenticated.get(
 //     "/role/:roleId",
 //     verifyRoleAccess,

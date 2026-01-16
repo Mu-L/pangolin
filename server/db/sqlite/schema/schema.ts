@@ -387,7 +387,10 @@ export const clients = sqliteTable("clients", {
     // endpoint: text("endpoint"),
     lastHolePunch: integer("lastHolePunch"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
-    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false)
+    blocked: integer("blocked", { mode: "boolean" }).notNull().default(false),
+    approvalState: text("approvalState").$type<
+        "pending" | "approved" | "denied"
+    >()
 });
 
 export const clientSitesAssociationsCache = sqliteTable(
@@ -604,7 +607,10 @@ export const roles = sqliteTable("roles", {
         .notNull(),
     isAdmin: integer("isAdmin", { mode: "boolean" }),
     name: text("name").notNull(),
-    description: text("description")
+    description: text("description"),
+    requireDeviceApproval: integer("requireDeviceApproval", {
+        mode: "boolean"
+    }).default(false)
 });
 
 export const roleActions = sqliteTable("roleActions", {

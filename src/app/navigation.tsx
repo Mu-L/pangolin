@@ -2,27 +2,27 @@ import { SidebarNavItem } from "@app/components/SidebarNav";
 import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
-    Settings,
-    Users,
-    Link as LinkIcon,
-    Waypoints,
+    ChartLine,
     Combine,
+    CreditCard,
     Fingerprint,
+    Globe,
+    GlobeLock,
     KeyRound,
+    Laptop,
+    Link as LinkIcon,
+    Logs, // Added from 'dev' branch
+    MonitorUp,
+    ReceiptText,
+    ScanEye, // Added from 'dev' branch
+    Server,
+    Settings,
+    SquareMousePointer,
     TicketCheck,
     User,
-    Globe, // Added from 'dev' branch
-    MonitorUp, // Added from 'dev' branch
-    Server,
-    ReceiptText,
-    CreditCard,
-    Logs,
-    SquareMousePointer,
-    ScanEye,
-    GlobeLock,
-    Smartphone,
-    Laptop,
-    ChartLine
+    UserCog,
+    Users,
+    Waypoints
 } from "lucide-react";
 
 export type SidebarNavSection = {
@@ -123,12 +123,21 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/{orgId}/settings/access/roles",
                 icon: <Users className="size-4 flex-none" />
             },
-            ...(build == "saas" || env?.flags.useOrgOnlyIdp
+            ...(build === "saas" || env?.flags.useOrgOnlyIdp
                 ? [
                       {
                           title: "sidebarIdentityProviders",
                           href: "/{orgId}/settings/idp",
                           icon: <Fingerprint className="size-4 flex-none" />
+                      }
+                  ]
+                : []),
+            ...(build !== "oss"
+                ? [
+                      {
+                          title: "sidebarApprovals",
+                          href: "/{orgId}/settings/access/approvals",
+                          icon: <UserCog className="size-4 flex-none" />
                       }
                   ]
                 : []),
