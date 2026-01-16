@@ -159,7 +159,7 @@ export default function DeviceLoginForm({
         const cleanedInitialCode = initialCode.replace(/-/g, "").toUpperCase();
         if (cleanedInitialCode && cleanedInitialCode.length === 8) {
             setValidatingInitialCode(true);
-            validateCode(cleanedInitialCode, true).finally(() => {
+            validateCode(cleanedInitialCode, false).finally(() => {
                 setValidatingInitialCode(false);
             });
         }

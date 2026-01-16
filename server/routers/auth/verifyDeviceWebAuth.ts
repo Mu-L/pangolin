@@ -10,6 +10,7 @@ import { eq, and, gt } from "drizzle-orm";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { unauthorized } from "@server/auth/unauthorizedResponse";
+import { getIosDeviceName, getMacDeviceName } from "@server/db/names";
 
 const bodySchema = z
     .object({
@@ -120,6 +121,11 @@ export async function verifyDeviceWebAuth(
             );
         }
 
+        const deviceName =
+            getMacDeviceName(deviceCode.deviceName) ||
+            getIosDeviceName(deviceCode.deviceName) ||
+            deviceCode.deviceName;
+
         // If verify is false, just return metadata without verifying
         if (!verify) {
             return response<VerifyDeviceWebAuthResponse>(res, {
@@ -129,7 +135,7 @@ export async function verifyDeviceWebAuth(
                     metadata: {
                         ip: deviceCode.ip,
                         city: deviceCode.city,
-                        deviceName: deviceCode.deviceName,
+                        deviceName: deviceName,
                         applicationName: deviceCode.applicationName,
                         createdAt: deviceCode.createdAt
                     }

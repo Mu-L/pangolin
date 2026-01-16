@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { db } from "@server/db";
-import { olms, clients } from "@server/db";
+import { olms, clients, fingerprints } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -9,6 +9,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
+import { getUserDeviceName } from "@server/db/names";
 
 const paramsSchema = z
     .object({
@@ -61,12 +62,14 @@ export async function getUserOlm(
         const { olmId, userId } = parsedParams.data;
         const { orgId } = parsedQuery.data;
 
-        const [olm] = await db
+        const [result] = await db
             .select()
             .from(olms)
-            .where(and(eq(olms.userId, userId), eq(olms.olmId, olmId)));
+            .where(and(eq(olms.userId, userId), eq(olms.olmId, olmId)))
+            .leftJoin(fingerprints, eq(olms.olmId, fingerprints.olmId))
+            .limit(1);
 
-        if (!olm) {
+        if (!result || !result.olms) {
             return next(
                 createHttpError(
                     HttpCode.NOT_FOUND,
@@ -74,6 +77,8 @@ export async function getUserOlm(
                 )
             );
         }
+
+        const olm = result.olms;
 
         // If orgId is provided and olm has a clientId, fetch the client to check blocked status
         let blocked: boolean | undefined;
@@ -92,9 +97,13 @@ export async function getUserOlm(
             blocked = client?.blocked ?? false;
         }
 
+        // Replace name with device name
+        const model = result.fingerprints?.deviceModel || null;
+        const newName = getUserDeviceName(model, olm.name);
+
         const responseData = blocked !== undefined 
-            ? { ...olm, blocked }
-            : olm;
+            ? { ...olm, name: newName, blocked }
+            : { ...olm, name: newName };
 
         return response(res, {
             data: responseData,

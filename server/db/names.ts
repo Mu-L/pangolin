@@ -16,6 +16,24 @@ if (!dev) {
 }
 export const names = JSON.parse(readFileSync(file, "utf-8"));
 
+// Load iOS and Mac model mappings
+let iosModelsFile: string;
+let macModelsFile: string;
+if (!dev) {
+    iosModelsFile = join(__DIRNAME, "ios_models.json");
+    macModelsFile = join(__DIRNAME, "mac_models.json");
+} else {
+    iosModelsFile = join("server/db/ios_models.json");
+    macModelsFile = join("server/db/mac_models.json");
+}
+
+const iosModels: Record<string, string> = JSON.parse(
+    readFileSync(iosModelsFile, "utf-8")
+);
+const macModels: Record<string, string> = JSON.parse(
+    readFileSync(macModelsFile, "utf-8")
+);
+
 export async function getUniqueClientName(orgId: string): Promise<string> {
     let loops = 0;
     while (true) {
@@ -158,4 +176,30 @@ export function generateName(): string {
 
     // clean out any non-alphanumeric characters except for dashes
     return name.replace(/[^a-z0-9-]/g, "");
+}
+
+export function getMacDeviceName(macIdentifier?: string | null): string | null {
+    if (macIdentifier && macModels[macIdentifier]) {
+        return macModels[macIdentifier];
+    }
+    return null;
+}
+
+export function getIosDeviceName(iosIdentifier?: string | null): string | null {
+    if (iosIdentifier && iosModels[iosIdentifier]) {
+        return iosModels[iosIdentifier];
+    }
+    return null;
+}
+
+export function getUserDeviceName(
+    model: string | null,
+    fallBack: string | null
+): string {
+    return (
+        getMacDeviceName(model) ||
+        getIosDeviceName(model) ||
+        fallBack ||
+        "Unknown Device"
+    );
 }
