@@ -1085,7 +1085,7 @@ WantedBy=default.target`
                             </SettingsSection>
                         )}
 
-                        {build == "saas" &&
+                        {build === "saas" &&
                             form.watch("method") === "local" && (
                                 <SettingsSection>
                                     <SettingsSectionHeader>
