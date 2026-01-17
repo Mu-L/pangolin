@@ -68,7 +68,6 @@ export function LogAnalyticsData(props: AnalyticsContentProps) {
 
     const router = useRouter();
 
-    console.log({ filters });
     const dateRange = {
         startDate: filters.timeStart
             ? new Date(filters.timeStart)
