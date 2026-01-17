@@ -1,29 +1,16 @@
-import {
-    Client,
-    clientPostureSnapshots,
-    clientSiteResourcesAssociationsCache,
-    db,
-    fingerprints,
-    orgs,
-    siteResources
-} from "@server/db";
+import { clientPostureSnapshots, db, fingerprints, orgs } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import {
     clients,
     clientSitesAssociationsCache,
-    exitNodes,
     Olm,
     olms,
     sites
 } from "@server/db";
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
-import { addPeer, deletePeer } from "../newt/peers";
+import { count, eq } from "drizzle-orm";
 import logger from "@server/logger";
-import { generateAliasConfig } from "@server/lib/ip";
-import { generateRemoteSubnets } from "@server/lib/ip";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { validateSessionToken } from "@server/auth/sessions/app";
-import config from "@server/lib/config";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
@@ -54,10 +41,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!olm.clientId) {
         logger.warn("Olm client ID not found");
-        sendOlmError(
-            OlmErrorCodes.CLIENT_ID_NOT_FOUND,
-            olm.olmId
-        );
+        sendOlmError(OlmErrorCodes.CLIENT_ID_NOT_FOUND, olm.olmId);
         return;
     }
 
@@ -69,10 +53,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!client) {
         logger.warn("Client ID not found");
-        sendOlmError(
-            OlmErrorCodes.CLIENT_NOT_FOUND,
-            olm.olmId
-        );
+        sendOlmError(OlmErrorCodes.CLIENT_NOT_FOUND, olm.olmId);
         return;
     }
 
@@ -80,10 +61,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         logger.debug(
             `Client ${client.clientId} is blocked. Ignoring register.`
         );
-        sendOlmError(
-            OlmErrorCodes.CLIENT_BLOCKED,
-            olm.olmId
-        );
+        sendOlmError(OlmErrorCodes.CLIENT_BLOCKED, olm.olmId);
         return;
     }
 
@@ -91,10 +69,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         logger.debug(
             `Client ${client.clientId} approval is pending. Ignoring register.`
         );
-        sendOlmError(
-            OlmErrorCodes.CLIENT_PENDING,
-            olm.olmId
-        );
+        sendOlmError(OlmErrorCodes.CLIENT_PENDING, olm.olmId);
         return;
     }
 
@@ -106,20 +81,14 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!org) {
         logger.warn("Org not found");
-        sendOlmError(
-            OlmErrorCodes.ORG_NOT_FOUND,
-            olm.olmId
-        );
+        sendOlmError(OlmErrorCodes.ORG_NOT_FOUND, olm.olmId);
         return;
     }
 
     if (orgId) {
         if (!olm.userId) {
             logger.warn("Olm has no user ID");
-            sendOlmError(
-                OlmErrorCodes.USER_ID_NOT_FOUND,
-                olm.olmId
-            );
+            sendOlmError(OlmErrorCodes.USER_ID_NOT_FOUND, olm.olmId);
             return;
         }
 
@@ -127,18 +96,12 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             await validateSessionToken(userToken);
         if (!userSession || !user) {
             logger.warn("Invalid user session for olm register");
-            sendOlmError(
-                OlmErrorCodes.INVALID_USER_SESSION,
-                olm.olmId
-            );
+            sendOlmError(OlmErrorCodes.INVALID_USER_SESSION, olm.olmId);
             return;
         }
         if (user.userId !== olm.userId) {
             logger.warn("User ID mismatch for olm register");
-            sendOlmError(
-                OlmErrorCodes.USER_ID_MISMATCH,
-                olm.olmId
-            );
+            sendOlmError(OlmErrorCodes.USER_ID_MISMATCH, olm.olmId);
             return;
         }
 
@@ -152,14 +115,46 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             sessionId // this is the user token passed in the message
         });
 
-        if (!policyCheck.allowed) {
+        if (policyCheck?.error) {
+            logger.error(
+                `Error checking access policies for olm user ${olm.userId} in org ${orgId}: ${policyCheck?.error}`
+            );
+            sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
+            return;
+        }
+
+        if (policyCheck?.policies?.passwordAge?.compliant) {
+            logger.warn(
+                `Olm user ${olm.userId} has non-compliant password age for org ${orgId}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ORG_ACCESS_POLICY_PASSWORD_EXPIRED,
+                olm.olmId
+            );
+            return;
+        } else if (policyCheck?.policies?.maxSessionLength?.compliant) {
+            logger.warn(
+                `Olm user ${olm.userId} has non-compliant session length for org ${orgId}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ORG_ACCESS_POLICY_SESSION_EXPIRED,
+                olm.olmId
+            );
+            return;
+        } else if (policyCheck?.policies?.requiredTwoFactor) {
+            logger.warn(
+                `Olm user ${olm.userId} does not have 2FA enabled for org ${orgId}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ORG_ACCESS_POLICY_2FA_REQUIRED,
+                olm.olmId
+            );
+            return;
+        } else if (!policyCheck.allowed) {
             logger.warn(
                 `Olm user ${olm.userId} does not pass access policies for org ${orgId}: ${policyCheck.error}`
             );
-            sendOlmError(
-                OlmErrorCodes.ACCESS_POLICY_DENIED,
-                olm.olmId
-            );
+            sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
             return;
         }
     }
