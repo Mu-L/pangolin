@@ -210,6 +210,47 @@ func isDockerRunning() bool {
 	return true
 }
 
+func isPodmanRunning() bool {
+	cmd := exec.Command("podman", "info")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// detectContainerType detects whether the system is currently using Docker or Podman
+// by checking which container runtime is running and has containers
+func detectContainerType() SupportedContainer {
+	// Check if we have running containers with podman
+	if isPodmanRunning() {
+		cmd := exec.Command("podman", "ps", "-q")
+		output, err := cmd.Output()
+		if err == nil && len(strings.TrimSpace(string(output))) > 0 {
+			return Podman
+		}
+	}
+
+	// Check if we have running containers with docker
+	if isDockerRunning() {
+		cmd := exec.Command("docker", "ps", "-q")
+		output, err := cmd.Output()
+		if err == nil && len(strings.TrimSpace(string(output))) > 0 {
+			return Docker
+		}
+	}
+
+	// If no containers are running, check which one is installed and running
+	if isPodmanRunning() && isPodmanInstalled() {
+		return Podman
+	}
+
+	if isDockerRunning() && isDockerInstalled() {
+		return Docker
+	}
+
+	return Undefined
+}
+
 // executeDockerComposeCommandWithArgs executes the appropriate docker command with arguments supplied
 func executeDockerComposeCommandWithArgs(args ...string) error {
 	var cmd *exec.Cmd

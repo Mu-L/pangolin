@@ -229,7 +229,16 @@ func main() {
 					}
 				}
 
-				config.InstallationContainerType = podmanOrDocker(reader)
+				// Try to detect container type from existing installation
+				detectedType := detectContainerType()
+				if detectedType == Undefined {
+					// If detection fails, prompt the user
+					fmt.Println("Unable to detect container type from existing installation.")
+					config.InstallationContainerType = podmanOrDocker(reader)
+				} else {
+					config.InstallationContainerType = detectedType
+					fmt.Printf("Detected container type: %s\n", config.InstallationContainerType)
+				}
 
 				config.DoCrowdsecInstall = true
 				err := installCrowdsec(config)

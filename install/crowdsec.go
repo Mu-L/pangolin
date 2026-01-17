@@ -93,7 +93,7 @@ func installCrowdsec(config Config) error {
 
 	if checkIfTextInFile("config/traefik/dynamic_config.yml", "PUT_YOUR_BOUNCER_KEY_HERE_OR_IT_WILL_NOT_WORK") {
 		fmt.Println("Failed to replace bouncer key! Please retrieve the key and replace it in the config/traefik/dynamic_config.yml file using the following command:")
-		fmt.Println("	docker exec crowdsec cscli bouncers add traefik-bouncer")
+		fmt.Printf("	%s exec crowdsec cscli bouncers add traefik-bouncer\n", config.InstallationContainerType)
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func GetCrowdSecAPIKey(containerType SupportedContainer) (string, error) {
 	}
 
 	// Execute the command to get the API key
-	cmd := exec.Command("docker", "exec", "crowdsec", "cscli", "bouncers", "add", "traefik-bouncer", "-o", "raw")
+	cmd := exec.Command(string(containerType), "exec", "crowdsec", "cscli", "bouncers", "add", "traefik-bouncer", "-o", "raw")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
