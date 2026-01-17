@@ -53,7 +53,7 @@ export async function archiveUserOlm(
                     .where(eq(clients.clientId, client.clientId));
 
                 await rebuildClientAssociationsFromClient(client, trx);
-                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_ARCHIVED, "Archived", olmId);
+                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_ARCHIVED, olmId);
             }
 
             // Archive the OLM (set archived to true)

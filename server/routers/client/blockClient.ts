@@ -79,7 +79,7 @@ export async function blockClient(
 
             // Send terminate signal if there's an associated OLM and it's connected
             if (client.olmId && client.online) {
-                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_BLOCKED, "Blocked", client.olmId);
+                await sendTerminateClient(client.clientId, OlmErrorCodes.TERMINATED_BLOCKED, client.olmId);
             }
         });
 

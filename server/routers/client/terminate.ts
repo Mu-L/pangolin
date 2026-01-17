@@ -5,8 +5,7 @@ import { OlmErrorCodes } from "../olm/error";
 
 export async function sendTerminateClient(
     clientId: number,
-    code: (typeof OlmErrorCodes)[keyof typeof OlmErrorCodes],
-    message: string,
+    error: (typeof OlmErrorCodes)[keyof typeof OlmErrorCodes],
     olmId?: string | null
 ) {
     if (!olmId) {
@@ -24,8 +23,8 @@ export async function sendTerminateClient(
     await sendToClient(olmId, {
         type: `olm/terminate`,
         data: {
-            code,
-            message
+            code: error.code,
+            message: error.message
         }
     });
 }

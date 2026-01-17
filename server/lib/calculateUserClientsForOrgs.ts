@@ -307,7 +307,6 @@ async function cleanupOrphanedClients(
                 await sendTerminateClient(
                     deletedClient.clientId,
                     OlmErrorCodes.TERMINATED_DELETED,
-                    "Deleted",
                     deletedClient.olmId
                 );
             }

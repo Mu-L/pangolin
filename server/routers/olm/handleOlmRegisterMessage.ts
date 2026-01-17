@@ -56,7 +56,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         logger.warn("Olm client ID not found");
         sendOlmError(
             OlmErrorCodes.CLIENT_ID_NOT_FOUND,
-            "Olm client ID not found",
             olm.olmId
         );
         return;
@@ -72,7 +71,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         logger.warn("Client ID not found");
         sendOlmError(
             OlmErrorCodes.CLIENT_NOT_FOUND,
-            "Client not found in organization",
             olm.olmId
         );
         return;
@@ -84,7 +82,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         );
         sendOlmError(
             OlmErrorCodes.CLIENT_BLOCKED,
-            "Client is blocked",
             olm.olmId
         );
         return;
@@ -96,7 +93,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         );
         sendOlmError(
             OlmErrorCodes.CLIENT_PENDING,
-            "Client approval is pending",
             olm.olmId
         );
         return;
@@ -112,7 +108,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         logger.warn("Org not found");
         sendOlmError(
             OlmErrorCodes.ORG_NOT_FOUND,
-            "Organization not found",
             olm.olmId
         );
         return;
@@ -123,7 +118,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             logger.warn("Olm has no user ID");
             sendOlmError(
                 OlmErrorCodes.USER_ID_NOT_FOUND,
-                "User ID not found for this client",
                 olm.olmId
             );
             return;
@@ -135,7 +129,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             logger.warn("Invalid user session for olm register");
             sendOlmError(
                 OlmErrorCodes.INVALID_USER_SESSION,
-                "Invalid or expired user session token",
                 olm.olmId
             );
             return;
@@ -144,7 +137,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             logger.warn("User ID mismatch for olm register");
             sendOlmError(
                 OlmErrorCodes.USER_ID_MISMATCH,
-                "User ID does not match the authenticated session",
                 olm.olmId
             );
             return;
@@ -166,7 +158,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             );
             sendOlmError(
                 OlmErrorCodes.ACCESS_POLICY_DENIED,
-                `Access policy denied: ${policyCheck.error}`,
                 olm.olmId
             );
             return;

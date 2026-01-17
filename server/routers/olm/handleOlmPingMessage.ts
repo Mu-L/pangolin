@@ -66,7 +66,6 @@ export const startOlmOfflineChecker = (): void => {
                     await sendTerminateClient(
                         offlineClient.clientId,
                         OlmErrorCodes.TERMINATED_INACTIVITY,
-                        "Client terminated due to inactivity",
                         offlineClient.olmId
                     ); // terminate first
                     // wait a moment to ensure the message is sent

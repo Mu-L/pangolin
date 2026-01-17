@@ -78,7 +78,6 @@ export async function deleteUserOlm(
                     await sendTerminateClient(
                         deletedClient.clientId,
                         OlmErrorCodes.TERMINATED_DELETED,
-                        "Deleted",
                         olm.olmId
                     ); //  the olmId needs to be provided because it cant look it up after deletion
                 }

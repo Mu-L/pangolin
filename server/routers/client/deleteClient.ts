@@ -92,7 +92,7 @@ export async function deleteClient(
             await rebuildClientAssociationsFromClient(deletedClient, trx);
 
             if (olm) {
-                await sendTerminateClient(deletedClient.clientId, OlmErrorCodes.TERMINATED_DELETED, "Deleted", olm.olmId); //  the olmId needs to be provided because it cant look it up after deletion
+                await sendTerminateClient(deletedClient.clientId, OlmErrorCodes.TERMINATED_DELETED, olm.olmId); //  the olmId needs to be provided because it cant look it up after deletion
             }
         });
 
