@@ -48,6 +48,7 @@ import {
     TooltipTrigger
 } from "./ui/tooltip";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
+import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 
 export type AnalyticsContentProps = {
     orgId: string;
@@ -276,13 +277,32 @@ export function LogAnalyticsData(props: AnalyticsContentProps) {
                 </CardHeader>
             </Card>
 
-            <Card className="w-full h-full flex flex-col gap-8">
+            <Card className="w-full h-full flex flex-col gap-8 relative">
+                {isLoadingAnalytics && (
+                    <div className="absolute z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border border-border rounded-md bg-muted">
+                        <div className="flex items-center gap-2 p-6">
+                            <LoaderIcon className="size-4 animate-spin" />
+                            {t("loadingAnalytics")}
+                        </div>
+                    </div>
+                )}
+
                 <CardHeader>
                     <h3 className="font-semibold">{t("requestsByDay")}</h3>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="relative">
+                    {isLoadingAnalytics && (
+                        <div className="backdrop-blur-[2px] z-10 absolute inset-0"></div>
+                    )}
                     <RequestChart
-                        data={stats?.requestsPerDay ?? []}
+                        className={cn(
+                            isLoadingAnalytics &&
+                                "opacity-50 pointer-events-none"
+                        )}
+                        data={
+                            stats?.requestsPerDay ??
+                            generateSampleDailyRequests()
+                        }
                         isLoading={isLoadingAnalytics}
                     />
                 </CardContent>
@@ -323,6 +343,28 @@ export function LogAnalyticsData(props: AnalyticsContentProps) {
     );
 }
 
+function generateSampleDailyRequests(): QueryRequestAnalyticsResponse["requestsPerDay"] {
+    const today = new Date();
+
+    // generate sample data for the last 7 days
+    const requestsPerDay = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (6 - i));
+        // generate a random number of requests between 1 and 100
+        const totalCount = Math.floor(Math.random() * 100) + 1;
+        // generate a random number of requests between 1 and totalCount
+        const blockedCount = Math.floor(Math.random() * (totalCount + 1));
+        return {
+            day: date.toISOString().split("T")[0],
+            allowedCount: totalCount - blockedCount,
+            blockedCount,
+            totalCount
+        };
+    });
+
+    return requestsPerDay;
+}
+
 type RequestChartProps = {
     data: {
         day: string;
@@ -331,6 +373,7 @@ type RequestChartProps = {
         totalCount: number;
     }[];
     isLoading: boolean;
+    className?: string;
 };
 
 function RequestChart(props: RequestChartProps) {
@@ -359,7 +402,7 @@ function RequestChart(props: RequestChartProps) {
     return (
         <ChartContainer
             config={chartConfig}
-            className="min-h-[200px] w-full h-80"
+            className={cn("min-h-50 w-full h-80", props.className)}
         >
             <LineChart accessibilityLayer data={props.data}>
                 <ChartLegend content={<ChartLegendContent />} />
@@ -467,7 +510,7 @@ function TopCountriesList(props: TopCountriesListProps) {
                 </div>
             )}
             {/* `aspect-475/335` is the same aspect ratio as the world map component */}
-            <ol className="w-full overflow-auto grid gap-1 aspect-475/335">
+            <ol className="w-full overflow-auto gap-1 aspect-475/335 flex flex-col">
                 {props.countries.length === 0 && (
                     <div className="flex items-center justify-center size-full text-muted-foreground gap-1">
                         {props.isLoading ? (
@@ -485,7 +528,7 @@ function TopCountriesList(props: TopCountriesListProps) {
                     return (
                         <li
                             key={country.code}
-                            className="grid grid-cols-7 rounded-xs hover:bg-muted relative items-center text-sm"
+                            className="w-full grid grid-cols-7 rounded-xs hover:bg-muted relative items-center text-sm"
                         >
                             <div
                                 className={cn(
