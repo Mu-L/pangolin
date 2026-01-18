@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, siteResources } from "@server/db";
 import { newts, newtSessions, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -11,6 +11,7 @@ import { deletePeer } from "../gerbil/peers";
 import { fromError } from "zod-validation-error";
 import { sendToClient } from "#dynamic/routers/ws";
 import { OpenAPITags, registry } from "@server/openApi";
+import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
 
 const deleteSiteSchema = z.strictObject({
     siteId: z.string().transform(Number).pipe(z.int().positive())
@@ -63,23 +64,37 @@ export async function deleteSite(
         let deletedNewtId: string | null = null;
 
         await db.transaction(async (trx) => {
-            if (site.pubKey) {
-                if (site.type == "wireguard") {
+            if (site.type == "wireguard") {
+                if (site.pubKey) {
                     await deletePeer(site.exitNodeId!, site.pubKey);
-                } else if (site.type == "newt") {
-                    // get the newt on the site by querying the newt table for siteId
-                    const [deletedNewt] = await trx
-                        .delete(newts)
-                        .where(eq(newts.siteId, siteId))
-                        .returning();
-                    if (deletedNewt) {
-                        deletedNewtId = deletedNewt.newtId;
+                }
+            } else if (site.type == "newt") {
+                // delete all of the site resources on this site
+                const siteResourcesOnSite = trx
+                    .delete(siteResources)
+                    .where(eq(siteResources.siteId, siteId))
+                    .returning();
 
-                        // delete all of the sessions for the newt
-                        await trx
-                            .delete(newtSessions)
-                            .where(eq(newtSessions.newtId, deletedNewt.newtId));
-                    }
+                // loop through them
+                for (const removedSiteResource of await siteResourcesOnSite) {
+                    await rebuildClientAssociationsFromSiteResource(
+                        removedSiteResource,
+                        trx
+                    );
+                }
+
+                // get the newt on the site by querying the newt table for siteId
+                const [deletedNewt] = await trx
+                    .delete(newts)
+                    .where(eq(newts.siteId, siteId))
+                    .returning();
+                if (deletedNewt) {
+                    deletedNewtId = deletedNewt.newtId;
+
+                    // delete all of the sessions for the newt
+                    await trx
+                        .delete(newtSessions)
+                        .where(eq(newtSessions.newtId, deletedNewt.newtId));
                 }
             }
 
