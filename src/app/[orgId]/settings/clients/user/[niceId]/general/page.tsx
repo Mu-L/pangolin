@@ -149,12 +149,16 @@ export default function GeneralPage() {
     const [approvalId, setApprovalId] = useState<number | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [, startTransition] = useTransition();
-    
+
     const showApprovalFeatures = build !== "oss" && isPaidUser;
 
     // Fetch approval ID for this client if pending
     useEffect(() => {
-        if (showApprovalFeatures && client.approvalState === "pending" && client.clientId) {
+        if (
+            showApprovalFeatures &&
+            client.approvalState === "pending" &&
+            client.clientId
+        ) {
             api.get(`/org/${orgId}/approvals?approvalState=pending`)
                 .then((res) => {
                     const approval = res.data.data.approvals.find(
@@ -168,7 +172,13 @@ export default function GeneralPage() {
                     // Silently fail - approval might not exist
                 });
         }
-    }, [showApprovalFeatures, client.approvalState, client.clientId, orgId, api]);
+    }, [
+        showApprovalFeatures,
+        client.approvalState,
+        client.clientId,
+        orgId,
+        api
+    ]);
 
     const handleApprove = async () => {
         if (!approvalId) return;
@@ -280,7 +290,6 @@ export default function GeneralPage() {
         }
     };
 
-
     return (
         <SettingsContainer>
             {/* Pending Approval Banner */}
@@ -296,6 +305,7 @@ export default function GeneralPage() {
                                 onClick={handleApprove}
                                 disabled={isRefreshing || !approvalId}
                                 loading={isRefreshing}
+                                variant="outline"
                                 className="gap-2"
                             >
                                 <Check className="size-4" />
@@ -305,7 +315,7 @@ export default function GeneralPage() {
                                 onClick={handleDeny}
                                 disabled={isRefreshing || !approvalId}
                                 loading={isRefreshing}
-                                variant="destructive"
+                                variant="outline"
                                 className="gap-2"
                             >
                                 <Ban className="size-4" />
@@ -339,8 +349,7 @@ export default function GeneralPage() {
             )}
 
             {/* Device Information Section */}
-            {(client.fingerprint ||
-                (client.agent && client.olmVersion)) && (
+            {(client.fingerprint || (client.agent && client.olmVersion)) && (
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
@@ -360,145 +369,182 @@ export default function GeneralPage() {
                                     </InfoSectionTitle>
                                     <InfoSectionContent>
                                         <Badge variant="secondary">
-                                            {client.agent + " v" + client.olmVersion}
+                                            {client.agent +
+                                                " v" +
+                                                client.olmVersion}
                                         </Badge>
                                     </InfoSectionContent>
                                 </InfoSection>
                             </div>
                         )}
 
-                        {client.fingerprint && (() => {
-                            const platform = client.fingerprint.platform;
-                            const fieldConfig = getPlatformFieldConfig(platform);
-                            
-                            return (
-                                <InfoSections cols={3}>
-                                    {platform && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("platform")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                <div className="flex items-center gap-2">
-                                                    {getPlatformIcon(platform)}
-                                                    <span>{formatPlatform(platform)}</span>
-                                                </div>
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                        {client.fingerprint &&
+                            (() => {
+                                const platform = client.fingerprint.platform;
+                                const fieldConfig =
+                                    getPlatformFieldConfig(platform);
 
-                                    {client.fingerprint.osVersion &&
-                                        fieldConfig.osVersion.show && (
+                                return (
+                                    <InfoSections cols={3}>
+                                        {platform && (
                                             <InfoSection>
                                                 <InfoSectionTitle>
-                                                    {t(fieldConfig.osVersion.labelKey)}
+                                                    {t("platform")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {client.fingerprint.osVersion}
+                                                    <div className="flex items-center gap-2">
+                                                        {getPlatformIcon(
+                                                            platform
+                                                        )}
+                                                        <span>
+                                                            {formatPlatform(
+                                                                platform
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </InfoSectionContent>
                                             </InfoSection>
                                         )}
 
-                                    {client.fingerprint.kernelVersion &&
-                                        fieldConfig.kernelVersion.show && (
+                                        {client.fingerprint.osVersion &&
+                                            fieldConfig.osVersion.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t(
+                                                            fieldConfig
+                                                                .osVersion
+                                                                .labelKey
+                                                        )}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .osVersion
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.kernelVersion &&
+                                            fieldConfig.kernelVersion.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t("kernelVersion")}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .kernelVersion
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.arch &&
+                                            fieldConfig.arch.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t("architecture")}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .arch
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.deviceModel &&
+                                            fieldConfig.deviceModel.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t("deviceModel")}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .deviceModel
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.serialNumber &&
+                                            fieldConfig.serialNumber.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t("serialNumber")}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .serialNumber
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.username &&
+                                            fieldConfig.username.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t("username")}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .username
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.hostname &&
+                                            fieldConfig.hostname.show && (
+                                                <InfoSection>
+                                                    <InfoSectionTitle>
+                                                        {t("hostname")}
+                                                    </InfoSectionTitle>
+                                                    <InfoSectionContent>
+                                                        {
+                                                            client.fingerprint
+                                                                .hostname
+                                                        }
+                                                    </InfoSectionContent>
+                                                </InfoSection>
+                                            )}
+
+                                        {client.fingerprint.firstSeen && (
                                             <InfoSection>
                                                 <InfoSectionTitle>
-                                                    {t("kernelVersion")}
+                                                    {t("firstSeen")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {client.fingerprint.kernelVersion}
+                                                    {formatTimestamp(
+                                                        client.fingerprint
+                                                            .firstSeen
+                                                    )}
                                                 </InfoSectionContent>
                                             </InfoSection>
                                         )}
 
-                                    {client.fingerprint.arch &&
-                                        fieldConfig.arch.show && (
+                                        {client.fingerprint.lastSeen && (
                                             <InfoSection>
                                                 <InfoSectionTitle>
-                                                    {t("architecture")}
+                                                    {t("lastSeen")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {client.fingerprint.arch}
+                                                    {formatTimestamp(
+                                                        client.fingerprint
+                                                            .lastSeen
+                                                    )}
                                                 </InfoSectionContent>
                                             </InfoSection>
                                         )}
-
-                                    {client.fingerprint.deviceModel &&
-                                        fieldConfig.deviceModel.show && (
-                                            <InfoSection>
-                                                <InfoSectionTitle>
-                                                    {t("deviceModel")}
-                                                </InfoSectionTitle>
-                                                <InfoSectionContent>
-                                                    {client.fingerprint.deviceModel}
-                                                </InfoSectionContent>
-                                            </InfoSection>
-                                        )}
-
-                                    {client.fingerprint.serialNumber &&
-                                        fieldConfig.serialNumber.show && (
-                                            <InfoSection>
-                                                <InfoSectionTitle>
-                                                    {t("serialNumber")}
-                                                </InfoSectionTitle>
-                                                <InfoSectionContent>
-                                                    {client.fingerprint.serialNumber}
-                                                </InfoSectionContent>
-                                            </InfoSection>
-                                        )}
-
-                                    {client.fingerprint.username &&
-                                        fieldConfig.username.show && (
-                                            <InfoSection>
-                                                <InfoSectionTitle>
-                                                    {t("username")}
-                                                </InfoSectionTitle>
-                                                <InfoSectionContent>
-                                                    {client.fingerprint.username}
-                                                </InfoSectionContent>
-                                            </InfoSection>
-                                        )}
-
-                                    {client.fingerprint.hostname &&
-                                        fieldConfig.hostname.show && (
-                                            <InfoSection>
-                                                <InfoSectionTitle>
-                                                    {t("hostname")}
-                                                </InfoSectionTitle>
-                                                <InfoSectionContent>
-                                                    {client.fingerprint.hostname}
-                                                </InfoSectionContent>
-                                            </InfoSection>
-                                        )}
-
-                                    {client.fingerprint.firstSeen && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("firstSeen")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {formatTimestamp(
-                                                    client.fingerprint.firstSeen
-                                                )}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
-
-                                    {client.fingerprint.lastSeen && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("lastSeen")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {formatTimestamp(
-                                                    client.fingerprint.lastSeen
-                                                )}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
-                                </InfoSections>
-                            );
-                        })()}
+                                    </InfoSections>
+                                );
+                            })()}
                     </SettingsSectionBody>
                 </SettingsSection>
             )}
