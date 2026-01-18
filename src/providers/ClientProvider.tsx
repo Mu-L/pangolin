@@ -2,7 +2,7 @@
 
 import ClientContext from "@app/contexts/clientContext";
 import { GetClientResponse } from "@server/routers/client/getClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ClientProviderProps {
     children: React.ReactNode;
@@ -14,6 +14,11 @@ export function ClientProvider({
     client: serverClient
 }: ClientProviderProps) {
     const [client, setClient] = useState<GetClientResponse>(serverClient);
+
+    // Sync client state when server client changes (e.g., after router.refresh())
+    useEffect(() => {
+        setClient(serverClient);
+    }, [serverClient]);
 
     const updateClient = (updatedClient: Partial<GetClientResponse>) => {
         if (!client) {

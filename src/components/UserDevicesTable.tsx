@@ -60,7 +60,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const t = useTranslations();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
         null
     );
@@ -152,8 +151,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             .then(() => {
                 startTransition(() => {
                     router.refresh();
-                    setIsBlockModalOpen(false);
-                    setSelectedClient(null);
                 });
             });
     };
@@ -457,8 +454,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                         if (clientRow.blocked) {
                                             unblockClient(clientRow.id);
                                         } else {
-                                            setSelectedClient(clientRow);
-                                            setIsBlockModalOpen(true);
+                                            blockClient(clientRow.id);
                                         }
                                     }}
                                 >
@@ -484,7 +480,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
-                            href={`/${clientRow.orgId}/settings/clients/${clientRow.id}`}
+                            href={`/${clientRow.orgId}/settings/clients/user/${clientRow.niceId}`}
                         >
                             <Button variant={"outline"}>
                                 View
@@ -520,28 +516,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                     title="Delete Client"
                 />
             )}
-            {selectedClient && (
-                <ConfirmDeleteDialog
-                    open={isBlockModalOpen}
-                    setOpen={(val) => {
-                        setIsBlockModalOpen(val);
-                        if (!val) {
-                            setSelectedClient(null);
-                        }
-                    }}
-                    dialog={
-                        <div className="space-y-2">
-                            <p>{t("blockClientQuestion")}</p>
-                            <p>{t("blockClientMessage")}</p>
-                        </div>
-                    }
-                    buttonText={t("blockClientConfirm")}
-                    onConfirm={async () => blockClient(selectedClient!.id)}
-                    string={selectedClient.name}
-                    title={t("blockClient")}
-                />
-            )}
-
             <ClientDownloadBanner />
 
             <DataTable

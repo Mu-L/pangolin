@@ -29,9 +29,11 @@ import { ListSitesResponse } from "@server/routers/site";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import ActionBanner from "@app/components/ActionBanner";
+import { Shield, ShieldOff } from "lucide-react";
 
 const GeneralFormSchema = z.object({
     name: z.string().nonempty("Name is required"),
@@ -45,7 +47,9 @@ export default function GeneralPage() {
     const { client, updateClient } = useClientContext();
     const api = createApiClient(useEnvContext());
     const [loading, setLoading] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const router = useRouter();
+    const [, startTransition] = useTransition();
 
     const form = useForm({
         resolver: zodResolver(GeneralFormSchema),
@@ -109,8 +113,54 @@ export default function GeneralPage() {
         }
     }
 
+    const handleUnblock = async () => {
+        if (!client?.clientId) return;
+        setIsRefreshing(true);
+        try {
+            await api.post(`/client/${client.clientId}/unblock`);
+            // Optimistically update the client context
+            updateClient({ blocked: false, approvalState: null });
+            toast({
+                title: t("unblockClient"),
+                description: t("unblockClientDescription")
+            });
+            startTransition(() => {
+                router.refresh();
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("error"),
+                description: formatAxiosError(e, t("error"))
+            });
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
     return (
         <SettingsContainer>
+            {/* Blocked Device Banner */}
+            {client?.blocked && (
+                <ActionBanner
+                    variant="destructive"
+                    title={t("blocked")}
+                    titleIcon={<Shield className="w-5 h-5" />}
+                    description={t("deviceBlockedDescription")}
+                    actions={
+                        <Button
+                            onClick={handleUnblock}
+                            disabled={isRefreshing}
+                            loading={isRefreshing}
+                            variant="outline"
+                            className="gap-2"
+                        >
+                            <ShieldOff className="size-4" />
+                            {t("unblock")}
+                        </Button>
+                    }
+                />
+            )}
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
