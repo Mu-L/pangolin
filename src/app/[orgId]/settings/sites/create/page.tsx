@@ -728,26 +728,28 @@ WantedBy=default.target`
                                                 </FormItem>
                                             )}
                                         />
-                                        <div className="flex items-center justify-end md:col-start-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() =>
-                                                    setShowAdvancedSettings(
-                                                        !showAdvancedSettings
-                                                    )
-                                                }
-                                                className="flex items-center gap-2"
-                                            >
-                                                {showAdvancedSettings ? (
-                                                    <ChevronUp className="h-4 w-4" />
-                                                ) : (
-                                                    <ChevronDown className="h-4 w-4" />
-                                                )}
-                                                {t("advancedSettings")}
-                                            </Button>
-                                        </div>
+                                        {form.watch("method") === "newt" && (
+                                            <div className="flex items-center justify-end md:col-start-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setShowAdvancedSettings(
+                                                            !showAdvancedSettings
+                                                        )
+                                                    }
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    {showAdvancedSettings ? (
+                                                        <ChevronUp className="h-4 w-4" />
+                                                    ) : (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    )}
+                                                    {t("advancedSettings")}
+                                                </Button>
+                                            </div>
+                                        )}
                                         {form.watch("method") === "newt" &&
                                             showAdvancedSettings && (
                                                 <FormField
