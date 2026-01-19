@@ -82,12 +82,16 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const router = useRouter();
     const t = useTranslations();
 
-    const formatFingerprintInfo = (fingerprint: ClientRow["fingerprint"]): string => {
+    const formatFingerprintInfo = (
+        fingerprint: ClientRow["fingerprint"]
+    ): string => {
         if (!fingerprint) return "";
         const parts: string[] = [];
 
         if (fingerprint.platform) {
-            parts.push(`${t("platform")}: ${formatPlatform(fingerprint.platform)}`);
+            parts.push(
+                `${t("platform")}: ${formatPlatform(fingerprint.platform)}`
+            );
         }
         if (fingerprint.deviceModel) {
             parts.push(`${t("deviceModel")}: ${fingerprint.deviceModel}`);
@@ -562,6 +566,49 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         return baseColumns;
     }, [hasRowsWithoutUserId, t]);
 
+    const statusFilterOptions = useMemo(() => {
+        const allOptions = [
+            {
+                id: "active",
+                label: t("active"),
+                value: "active"
+            },
+            {
+                id: "pending",
+                label: t("pendingApproval"),
+                value: "pending"
+            },
+            {
+                id: "denied",
+                label: t("deniedApproval"),
+                value: "denied"
+            },
+            {
+                id: "archived",
+                label: t("archived"),
+                value: "archived"
+            },
+            {
+                id: "blocked",
+                label: t("blocked"),
+                value: "blocked"
+            }
+        ];
+
+        if (build === "oss") {
+            return allOptions.filter((option) => option.value !== "pending");
+        }
+
+        return allOptions;
+    }, [t]);
+
+    const statusFilterDefaultValues = useMemo(() => {
+        if (build === "oss") {
+            return ["active"];
+        }
+        return ["active", "pending"];
+    }, []);
+
     return (
         <>
             {selectedClient && !selectedClient.userId && (
@@ -604,33 +651,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         label: t("status") || "Status",
                         multiSelect: true,
                         displayMode: "calculated",
-                        options: [
-                            {
-                                id: "active",
-                                label: t("active"),
-                                value: "active"
-                            },
-                            {
-                                id: "pending",
-                                label: t("pendingApproval"),
-                                value: "pending"
-                            },
-                            {
-                                id: "denied",
-                                label: t("deniedApproval"),
-                                value: "denied"
-                            },
-                            {
-                                id: "archived",
-                                label: t("archived"),
-                                value: "archived"
-                            },
-                            {
-                                id: "blocked",
-                                label: t("blocked"),
-                                value: "blocked"
-                            }
-                        ],
+                        options: statusFilterOptions,
                         filterFn: (
                             row: ClientRow,
                             selectedValues: (string | number | boolean)[]
@@ -639,7 +660,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             const rowArchived = row.archived;
                             const rowBlocked = row.blocked;
                             const approvalState = row.approvalState;
-                            const isActive = !rowArchived && !rowBlocked;
+                            const isActive = !rowArchived && !rowBlocked && approvalState !== "pending" && approvalState !== "denied";
 
                             if (selectedValues.includes("active") && isActive)
                                 return true;
@@ -665,7 +686,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 return true;
                             return false;
                         },
-                        defaultValues: ["active", "pending"] // Default to showing active clients
+                        defaultValues: statusFilterDefaultValues
                     }
                 ]}
             />
