@@ -125,10 +125,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             return;
         }
 
-        if (
-            policyCheck?.policies?.passwordAge &&
-            !policyCheck.policies.passwordAge.compliant
-        ) {
+        if (!policyCheck.policies?.passwordAge?.compliant === false) {
             logger.warn(
                 `Olm user ${olm.userId} has non-compliant password age for org ${orgId}`
             );
@@ -138,8 +135,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             );
             return;
         } else if (
-            policyCheck?.policies?.maxSessionLength &&
-            !policyCheck.policies.maxSessionLength.compliant
+            !policyCheck.policies?.maxSessionLength?.compliant === false
         ) {
             logger.warn(
                 `Olm user ${olm.userId} has non-compliant session length for org ${orgId}`
@@ -149,10 +145,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 olm.olmId
             );
             return;
-        } else if (
-            policyCheck?.policies &&
-            !policyCheck.policies.requiredTwoFactor
-        ) {
+        } else if (policyCheck.policies?.requiredTwoFactor === false) {
             logger.warn(
                 `Olm user ${olm.userId} does not have 2FA enabled for org ${orgId}`
             );
