@@ -42,8 +42,8 @@ export function OrgSelectionForm() {
         ? env.branding.logo?.authPage?.width || 175
         : 175;
     const logoHeight = isUnlocked()
-        ? env.branding.logo?.authPage?.height || 58
-        : 58;
+        ? env.branding.logo?.authPage?.height || 44
+        : 44;
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();

@@ -133,6 +133,7 @@ export default function IdpLoginButtons({
                                         loginWithIdp(idp.idpId);
                                     }}
                                     disabled={loading}
+                                    loading={loading}
                                 >
                                     {effectiveType === "google" && (
                                         <Image
