@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { OpenAPITags, registry } from "@server/openApi";
 
 const updateRoleParamsSchema = z.strictObject({
     orgId: z.string(),
@@ -29,6 +30,24 @@ const updateRoleBodySchema = z
 export type UpdateRoleBody = z.infer<typeof updateRoleBodySchema>;
 
 export type UpdateRoleResponse = Role;
+
+registry.registerPath({
+    method: "post",
+    path: "/org/{orgId}/role/{roleId}",
+    description: "Update a role.",
+    tags: [OpenAPITags.Role],
+    request: {
+        params: updateRoleParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: updateRoleBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
 
 export async function updateRole(
     req: Request,
