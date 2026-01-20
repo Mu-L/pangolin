@@ -69,21 +69,36 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 platformFingerprint: fingerprint.platformFingerprint
             });
         } else {
-            await db
-                .update(fingerprints)
-                .set({
-                    lastSeen: now,
-                    username: fingerprint.username,
-                    hostname: fingerprint.hostname,
-                    platform: fingerprint.platform,
-                    osVersion: fingerprint.osVersion,
-                    kernelVersion: fingerprint.kernelVersion,
-                    arch: fingerprint.arch,
-                    deviceModel: fingerprint.deviceModel,
-                    serialNumber: fingerprint.serialNumber,
-                    platformFingerprint: fingerprint.platformFingerprint
-                })
-                .where(eq(fingerprints.olmId, olm.olmId));
+            const hasChanges =
+                existingFingerprint.username !== fingerprint.username ||
+                existingFingerprint.hostname !== fingerprint.hostname ||
+                existingFingerprint.platform !== fingerprint.platform ||
+                existingFingerprint.osVersion !== fingerprint.osVersion ||
+                existingFingerprint.kernelVersion !==
+                    fingerprint.kernelVersion ||
+                existingFingerprint.arch !== fingerprint.arch ||
+                existingFingerprint.deviceModel !== fingerprint.deviceModel ||
+                existingFingerprint.serialNumber !== fingerprint.serialNumber ||
+                existingFingerprint.platformFingerprint !==
+                    fingerprint.platformFingerprint;
+
+            if (hasChanges) {
+                await db
+                    .update(fingerprints)
+                    .set({
+                        lastSeen: now,
+                        username: fingerprint.username,
+                        hostname: fingerprint.hostname,
+                        platform: fingerprint.platform,
+                        osVersion: fingerprint.osVersion,
+                        kernelVersion: fingerprint.kernelVersion,
+                        arch: fingerprint.arch,
+                        deviceModel: fingerprint.deviceModel,
+                        serialNumber: fingerprint.serialNumber,
+                        platformFingerprint: fingerprint.platformFingerprint
+                    })
+                    .where(eq(fingerprints.olmId, olm.olmId));
+            }
         }
     }
 
@@ -108,6 +123,21 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
             collectedAt: now
         });
+    }
+
+    if (
+        (olmVersion && olm.version !== olmVersion) ||
+        (olmAgent && olm.agent !== olmAgent) ||
+        olm.archived
+    ) {
+        await db
+            .update(olms)
+            .set({
+                version: olmVersion,
+                agent: olmAgent,
+                archived: false
+            })
+            .where(eq(olms.olmId, olm.olmId));
     }
 
     const [client] = await db
@@ -235,21 +265,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     if (!publicKey) {
         logger.warn("Public key not provided");
         return;
-    }
-
-    if (
-        (olmVersion && olm.version !== olmVersion) ||
-        (olmAgent && olm.agent !== olmAgent) ||
-        olm.archived
-    ) {
-        await db
-            .update(olms)
-            .set({
-                version: olmVersion,
-                agent: olmAgent,
-                archived: false
-            })
-            .where(eq(olms.olmId, olm.olmId));
     }
 
     if (client.pubKey !== publicKey || client.archived) {
