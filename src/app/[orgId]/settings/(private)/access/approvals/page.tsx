@@ -1,6 +1,7 @@
 import { ApprovalFeed } from "@app/components/ApprovalFeed";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
+import ApprovalsBanner from "@app/components/ApprovalsBanner";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";
@@ -43,6 +44,8 @@ export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
                 title={t("accessApprovalsManage")}
                 description={t("accessApprovalsDescription")}
             />
+
+            <ApprovalsBanner />
 
             <PaidFeaturesAlert />
 
