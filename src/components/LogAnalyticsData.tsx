@@ -236,7 +236,7 @@ export function LogAnalyticsData(props: AnalyticsContentProps) {
                             variant="outline"
                             onClick={() => refreshAnalytics()}
                             disabled={isFetchingAnalytics}
-                            className=" relative top-6 lg:static gap-2"
+                            className="relative sm:top-6 lg:static gap-2"
                         >
                             <RefreshCw
                                 className={cn(
