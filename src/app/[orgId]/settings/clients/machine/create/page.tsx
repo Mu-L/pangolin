@@ -73,9 +73,10 @@ type CommandItem = string | { title: string; command: string };
 type Commands = {
     unix: Record<string, CommandItem[]>;
     windows: Record<string, CommandItem[]>;
+    docker: Record<string, CommandItem[]>;
 };
 
-const platforms = ["unix", "windows"] as const;
+const platforms = ["unix", "docker", "windows"] as const;
 
 type Platform = (typeof platforms)[number];
 
@@ -156,6 +157,27 @@ export default function Page() {
                         command: `olm.exe --id ${id} --secret ${secret} --endpoint ${endpoint}`
                     }
                 ]
+            },
+            docker: {
+                "Docker Compose": [
+                    `services:
+  olm:
+    image: fosrl/olm
+    container_name: olm
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - PANGOLIN_ENDPOINT=${endpoint}
+      - OLM_ID=${id}
+      - OLM_SECRET=${secret}`
+                ],
+                "Docker Run": [
+                    `docker run -dit --network host --cap-add NET_ADMIN --device /dev/net/tun:/dev/net/tun fosrl/olm --id ${id} --secret ${secret} --endpoint ${endpoint}`
+                ]
             }
         };
         setCommands(commands);
@@ -167,6 +189,8 @@ export default function Page() {
                 return ["All"];
             case "windows":
                 return ["x64"];
+            case "docker":
+                return ["Docker Compose", "Docker Run"];
             default:
                 return ["x64"];
         }

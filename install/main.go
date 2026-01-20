@@ -229,7 +229,16 @@ func main() {
 					}
 				}
 
-				config.InstallationContainerType = podmanOrDocker(reader)
+				// Try to detect container type from existing installation
+				detectedType := detectContainerType()
+				if detectedType == Undefined {
+					// If detection fails, prompt the user
+					fmt.Println("Unable to detect container type from existing installation.")
+					config.InstallationContainerType = podmanOrDocker(reader)
+				} else {
+					config.InstallationContainerType = detectedType
+					fmt.Printf("Detected container type: %s\n", config.InstallationContainerType)
+				}
 
 				config.DoCrowdsecInstall = true
 				err := installCrowdsec(config)
@@ -286,10 +295,10 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 			os.Exit(1)
 		}
 
-		if err := exec.Command("bash", "-c", "cat /etc/sysctl.conf | grep 'net.ipv4.ip_unprivileged_port_start='").Run(); err != nil {
+		if err := exec.Command("bash", "-c", "cat /etc/sysctl.d/99-podman.conf 2>/dev/null | grep 'net.ipv4.ip_unprivileged_port_start=' || cat /etc/sysctl.conf 2>/dev/null | grep 'net.ipv4.ip_unprivileged_port_start='").Run(); err != nil {
 			fmt.Println("Would you like to configure ports >= 80 as unprivileged ports? This enables podman containers to listen on low-range ports.")
 			fmt.Println("Pangolin will experience startup issues if this is not configured, because it needs to listen on port 80/443 by default.")
-			approved := readBool(reader, "The installer is about to execute \"echo 'net.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.conf && sysctl -p\". Approve?", true)
+			approved := readBool(reader, "The installer is about to execute \"echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system\". Approve?", true)
 			if approved {
 				if os.Geteuid() != 0 {
 					fmt.Println("You need to run the installer as root for such a configuration.")
@@ -300,7 +309,7 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 				// container low-range ports as unprivileged ports.
 				// Linux only.
 
-				if err := run("bash", "-c", "echo 'net.ipv4.ip_unprivileged_port_start=80' >> /etc/sysctl.conf && sysctl -p"); err != nil {
+				if err := run("bash", "-c", "echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system"); err != nil {
 				    fmt.Printf("Error configuring unprivileged ports: %v\n", err)
 					os.Exit(1)
 				}

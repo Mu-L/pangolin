@@ -18,6 +18,7 @@ import * as apiKeys from "./apiKeys";
 import * as logs from "./auditLogs";
 import * as newt from "./newt";
 import * as olm from "./olm";
+import * as serverInfo from "./serverInfo";
 import HttpCode from "@server/types/HttpCode";
 import {
     verifyAccessTokenAccess,
@@ -711,6 +712,8 @@ authenticated.get(
 );
 
 authenticated.get(`/org/:orgId/overview`, verifyOrgAccess, org.getOrgOverview);
+
+authenticated.get(`/server-info`, serverInfo.getServerInfo);
 
 authenticated.post(
     `/supporter-key/validate`,

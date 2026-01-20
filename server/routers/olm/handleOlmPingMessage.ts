@@ -10,6 +10,7 @@ import { sendTerminateClient } from "../client/terminate";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { sendOlmSyncMessage } from "./sync";
+import { OlmErrorCodes } from "./error";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -64,6 +65,7 @@ export const startOlmOfflineChecker = (): void => {
                 try {
                     await sendTerminateClient(
                         offlineClient.clientId,
+                        OlmErrorCodes.TERMINATED_INACTIVITY,
                         offlineClient.olmId
                     ); // terminate first
                     // wait a moment to ensure the message is sent
@@ -176,7 +178,7 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         logger.debug(`handleOlmPingMessage: Got config version: ${configVersion} (type: ${typeof configVersion})`);
 
         if (configVersion == null || configVersion === undefined) {
-            logger.debug(`handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`)
+            logger.debug(`handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`);
         }
 
         if (message.configVersion != null && configVersion != null && configVersion != message.configVersion) {

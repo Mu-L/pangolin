@@ -11,7 +11,7 @@ export function InfoSections({
 }) {
     return (
         <div
-            className={`grid md:grid-cols-(--columns) md:gap-4 gap-2 md:items-start grid-cols-1`}
+            className={`grid grid-cols-2 md:grid-cols-(--columns) md:gap-4 gap-2 md:items-start`}
             style={{
                 // @ts-expect-error dynamic props don't work with tailwind, but we can set the
                 // value of a CSS variable at runtime and tailwind will just reuse that value

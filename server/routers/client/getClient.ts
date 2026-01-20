@@ -49,6 +49,20 @@ export type GetClientResponse = NonNullable<
     Awaited<ReturnType<typeof query>>
 >["clients"] & {
     olmId: string | null;
+    agent: string | null;
+    olmVersion: string | null;
+    fingerprint: {
+        username: string | null;
+        hostname: string | null;
+        platform: string | null;
+        osVersion: string | null;
+        kernelVersion: string | null;
+        arch: string | null;
+        deviceModel: string | null;
+        serialNumber: string | null;
+        firstSeen: number | null;
+        lastSeen: number | null;
+    } | null;
 };
 
 registry.registerPath({
@@ -115,10 +129,29 @@ export async function getClient(
             clientName = getUserDeviceName(model, client.clients.name);
         }
 
+        // Build fingerprint data if available
+        const fingerprintData = client.fingerprints
+            ? {
+                  username: client.fingerprints.username || null,
+                  hostname: client.fingerprints.hostname || null,
+                  platform: client.fingerprints.platform || null,
+                  osVersion: client.fingerprints.osVersion || null,
+                  kernelVersion: client.fingerprints.kernelVersion || null,
+                  arch: client.fingerprints.arch || null,
+                  deviceModel: client.fingerprints.deviceModel || null,
+                  serialNumber: client.fingerprints.serialNumber || null,
+                  firstSeen: client.fingerprints.firstSeen || null,
+                  lastSeen: client.fingerprints.lastSeen || null
+              }
+            : null;
+
         const data: GetClientResponse = {
             ...client.clients,
             name: clientName,
-            olmId: client.olms ? client.olms.olmId : null
+            olmId: client.olms ? client.olms.olmId : null,
+            agent: client.olms?.agent || null,
+            olmVersion: client.olms?.version || null,
+            fingerprint: fingerprintData
         };
 
         return response<GetClientResponse>(res, {

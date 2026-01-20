@@ -305,7 +305,7 @@ export default async function migration() {
                     const subnets = site.remoteSubnets.split(",");
                     for (const subnet of subnets) {
                         // Generate a unique niceId for each new site resource
-                        let niceId = generateName();
+                        const niceId = generateName();
                         insertCidrResource.run(
                             site.siteId,
                             subnet.trim(),

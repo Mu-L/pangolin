@@ -8,8 +8,8 @@ import response from "@server/lib/response";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
-import { OpenAPITags, registry } from "@server/openApi";
 import { getUserDeviceName } from "@server/db/names";
+// import { OpenAPITags, registry } from "@server/openApi";
 
 const paramsSchema = z
     .object({
@@ -101,7 +101,7 @@ export async function getUserOlm(
         const model = result.fingerprints?.deviceModel || null;
         const newName = getUserDeviceName(model, olm.name);
 
-        const responseData = blocked !== undefined 
+        const responseData = blocked !== undefined
             ? { ...olm, name: newName, blocked }
             : { ...olm, name: newName };
 

@@ -24,6 +24,8 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { hashPassword } from "@server/auth/password";
 import { disconnectClient, sendToClient } from "#private/routers/ws";
+import { OlmErrorCodes, sendOlmError } from "@server/routers/olm/error";
+import { sendTerminateClient } from "@server/routers/client/terminate";
 
 const reGenerateSecretParamsSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
@@ -117,12 +119,12 @@ export async function reGenerateClientSecret(
 
         // Only disconnect if explicitly requested
         if (disconnect) {
-            const payload = {
-                type: `olm/terminate`,
-                data: {}
-            };
             // Don't await this to prevent blocking the response
-            sendToClient(existingOlms[0].olmId, payload).catch((error) => {
+            sendTerminateClient(
+                clientId,
+                OlmErrorCodes.TERMINATED_REKEYED,
+                existingOlms[0].olmId
+            ).catch((error) => {
                 logger.error(
                     "Failed to send termination message to olm:",
                     error

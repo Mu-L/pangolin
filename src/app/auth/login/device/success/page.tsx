@@ -18,8 +18,8 @@ export default function DeviceAuthSuccessPage() {
         ? env.branding.logo?.authPage?.width || 175
         : 175;
     const logoHeight = isUnlocked()
-        ? env.branding.logo?.authPage?.height || 58
-        : 58;
+        ? env.branding.logo?.authPage?.height || 44
+        : 44;
 
     useEffect(() => {
         // Detect if we're on iOS or Android

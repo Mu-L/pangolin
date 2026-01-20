@@ -19,7 +19,11 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
     return (
         <Alert>
             <AlertDescription>
-                <InfoSections cols={3}>
+                <InfoSections cols={4}>
+                    <InfoSection>
+                        <InfoSectionTitle>{t("name")}</InfoSectionTitle>
+                        <InfoSectionContent>{client.name}</InfoSectionContent>
+                    </InfoSection>
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>{client.niceId}</InfoSectionContent>

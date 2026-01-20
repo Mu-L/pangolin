@@ -161,7 +161,7 @@ export default function CreateRoleForm({
                                     )}
                                 />
                                 {build !== "oss" && (
-                                    <div className="pt-3">
+                                    <div>
                                         <PaidFeaturesAlert />
 
                                         <FormField

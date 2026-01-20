@@ -143,7 +143,14 @@ function queryClients(
             olmArchived: olms.archived,
             archived: clients.archived,
             blocked: clients.blocked,
-            deviceModel: fingerprints.deviceModel
+            deviceModel: fingerprints.deviceModel,
+            fingerprintPlatform: fingerprints.platform,
+            fingerprintOsVersion: fingerprints.osVersion,
+            fingerprintKernelVersion: fingerprints.kernelVersion,
+            fingerprintArch: fingerprints.arch,
+            fingerprintSerialNumber: fingerprints.serialNumber,
+            fingerprintUsername: fingerprints.username,
+            fingerprintHostname: fingerprints.hostname
         })
         .from(clients)
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))

@@ -27,7 +27,7 @@ import ClientDownloadBanner from "./ClientDownloadBanner";
 import { Badge } from "./ui/badge";
 import { build } from "@server/build";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { t } from "@faker-js/faker/dist/airline-DF6RqYmq";
+import { InfoPopup } from "@app/components/ui/info-popup";
 
 export type ClientRow = {
     id: number;
@@ -48,6 +48,16 @@ export type ClientRow = {
     approvalState: "approved" | "pending" | "denied" | null;
     archived?: boolean;
     blocked?: boolean;
+    fingerprint?: {
+        platform: string | null;
+        osVersion: string | null;
+        kernelVersion: string | null;
+        arch: string | null;
+        deviceModel: string | null;
+        serialNumber: string | null;
+        username: string | null;
+        hostname: string | null;
+    } | null;
 };
 
 type ClientTableProps = {
@@ -55,12 +65,57 @@ type ClientTableProps = {
     orgId: string;
 };
 
+function formatPlatform(platform: string | null | undefined): string {
+    if (!platform) return "-";
+    const platformMap: Record<string, string> = {
+        macos: "macOS",
+        windows: "Windows",
+        linux: "Linux",
+        ios: "iOS",
+        android: "Android",
+        unknown: "Unknown"
+    };
+    return platformMap[platform.toLowerCase()] || platform;
+}
+
 export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const router = useRouter();
     const t = useTranslations();
 
+    const formatFingerprintInfo = (
+        fingerprint: ClientRow["fingerprint"]
+    ): string => {
+        if (!fingerprint) return "";
+        const parts: string[] = [];
+
+        if (fingerprint.platform) {
+            parts.push(
+                `${t("platform")}: ${formatPlatform(fingerprint.platform)}`
+            );
+        }
+        if (fingerprint.deviceModel) {
+            parts.push(`${t("deviceModel")}: ${fingerprint.deviceModel}`);
+        }
+        if (fingerprint.osVersion) {
+            parts.push(`${t("osVersion")}: ${fingerprint.osVersion}`);
+        }
+        if (fingerprint.arch) {
+            parts.push(`${t("architecture")}: ${fingerprint.arch}`);
+        }
+        if (fingerprint.hostname) {
+            parts.push(`${t("hostname")}: ${fingerprint.hostname}`);
+        }
+        if (fingerprint.username) {
+            parts.push(`${t("username")}: ${fingerprint.username}`);
+        }
+        if (fingerprint.serialNumber) {
+            parts.push(`${t("serialNumber")}: ${fingerprint.serialNumber}`);
+        }
+
+        return parts.join("\n");
+    };
+
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
         null
     );
@@ -152,8 +207,6 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             .then(() => {
                 startTransition(() => {
                     router.refresh();
-                    setIsBlockModalOpen(false);
-                    setSelectedClient(null);
                 });
             });
     };
@@ -185,7 +238,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "name",
                 enableHiding: false,
-                friendlyName: "Name",
+                friendlyName: t("name"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -196,16 +249,31 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 )
                             }
                         >
-                            Name
+                            {t("name")}
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     );
                 },
                 cell: ({ row }) => {
                     const r = row.original;
+                    const fingerprintInfo = r.fingerprint
+                        ? formatFingerprintInfo(r.fingerprint)
+                        : null;
                     return (
                         <div className="flex items-center gap-2">
                             <span>{r.name}</span>
+                            {fingerprintInfo && (
+                                <InfoPopup>
+                                    <div className="space-y-1 text-sm">
+                                        <div className="font-semibold mb-2">
+                                            {t("deviceInformation")}
+                                        </div>
+                                        <div className="text-muted-foreground whitespace-pre-line">
+                                            {fingerprintInfo}
+                                        </div>
+                                    </div>
+                                </InfoPopup>
+                            )}
                             {r.archived && (
                                 <Badge variant="secondary">
                                     {t("archived")}
@@ -253,7 +321,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "userEmail",
-                friendlyName: "User",
+                friendlyName: t("users"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -264,7 +332,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 )
                             }
                         >
-                            User
+                            {t("users")}
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     );
@@ -287,7 +355,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "online",
-                friendlyName: "Connectivity",
+                friendlyName: t("online"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -298,7 +366,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 )
                             }
                         >
-                            Connectivity
+                            {t("online")}
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     );
@@ -309,14 +377,14 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         return (
                             <span className="text-green-500 flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span>Connected</span>
+                                <span>{t("online")}</span>
                             </span>
                         );
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                                <span>Disconnected</span>
+                                <span>{t("offline")}</span>
                             </span>
                         );
                     }
@@ -324,7 +392,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "mbIn",
-                friendlyName: "Data In",
+                friendlyName: t("dataIn"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -335,7 +403,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 )
                             }
                         >
-                            Data In
+                            {t("dataIn")}
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     );
@@ -343,7 +411,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "mbOut",
-                friendlyName: "Data Out",
+                friendlyName: t("dataOut"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -354,7 +422,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 )
                             }
                         >
-                            Data Out
+                            {t("dataOut")}
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     );
@@ -402,7 +470,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "subnet",
-                friendlyName: "Address",
+                friendlyName: t("address"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -413,7 +481,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 )
                             }
                         >
-                            Address
+                            {t("address")}
                             <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                     );
@@ -448,8 +516,8 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 >
                                     <span>
                                         {clientRow.archived
-                                            ? "Unarchive"
-                                            : "Archive"}
+                                            ? t("actionUnarchiveClient")
+                                            : t("actionArchiveClient")}
                                     </span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
@@ -457,15 +525,14 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                         if (clientRow.blocked) {
                                             unblockClient(clientRow.id);
                                         } else {
-                                            setSelectedClient(clientRow);
-                                            setIsBlockModalOpen(true);
+                                            blockClient(clientRow.id);
                                         }
                                     }}
                                 >
                                     <span>
                                         {clientRow.blocked
-                                            ? "Unblock"
-                                            : "Block"}
+                                            ? t("actionUnblockClient")
+                                            : t("actionBlockClient")}
                                     </span>
                                 </DropdownMenuItem>
                                 {!clientRow.userId && (
@@ -477,17 +544,17 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                         }}
                                     >
                                         <span className="text-red-500">
-                                            Delete
+                                            {t("delete")}
                                         </span>
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
-                            href={`/${clientRow.orgId}/settings/clients/${clientRow.id}`}
+                            href={`/${clientRow.orgId}/settings/clients/user/${clientRow.niceId}`}
                         >
                             <Button variant={"outline"}>
-                                View
+                                {t("viewDetails")}
                                 <ArrowRight className="ml-2 w-4 h-4" />
                             </Button>
                         </Link>
@@ -498,6 +565,49 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
 
         return baseColumns;
     }, [hasRowsWithoutUserId, t]);
+
+    const statusFilterOptions = useMemo(() => {
+        const allOptions = [
+            {
+                id: "active",
+                label: t("active"),
+                value: "active"
+            },
+            {
+                id: "pending",
+                label: t("pendingApproval"),
+                value: "pending"
+            },
+            {
+                id: "denied",
+                label: t("deniedApproval"),
+                value: "denied"
+            },
+            {
+                id: "archived",
+                label: t("archived"),
+                value: "archived"
+            },
+            {
+                id: "blocked",
+                label: t("blocked"),
+                value: "blocked"
+            }
+        ];
+
+        if (build === "oss") {
+            return allOptions.filter((option) => option.value !== "pending");
+        }
+
+        return allOptions;
+    }, [t]);
+
+    const statusFilterDefaultValues = useMemo(() => {
+        if (build === "oss") {
+            return ["active"];
+        }
+        return ["active", "pending"];
+    }, []);
 
     return (
         <>
@@ -514,34 +624,12 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             <p>{t("clientMessageRemove")}</p>
                         </div>
                     }
-                    buttonText="Confirm Delete Client"
+                    buttonText={t("actionDeleteClient")}
                     onConfirm={async () => deleteClient(selectedClient!.id)}
                     string={selectedClient.name}
-                    title="Delete Client"
+                    title={t("actionDeleteClient")}
                 />
             )}
-            {selectedClient && (
-                <ConfirmDeleteDialog
-                    open={isBlockModalOpen}
-                    setOpen={(val) => {
-                        setIsBlockModalOpen(val);
-                        if (!val) {
-                            setSelectedClient(null);
-                        }
-                    }}
-                    dialog={
-                        <div className="space-y-2">
-                            <p>{t("blockClientQuestion")}</p>
-                            <p>{t("blockClientMessage")}</p>
-                        </div>
-                    }
-                    buttonText={t("blockClientConfirm")}
-                    onConfirm={async () => blockClient(selectedClient!.id)}
-                    string={selectedClient.name}
-                    title={t("blockClient")}
-                />
-            )}
-
             <ClientDownloadBanner />
 
             <DataTable
@@ -563,33 +651,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         label: t("status") || "Status",
                         multiSelect: true,
                         displayMode: "calculated",
-                        options: [
-                            {
-                                id: "active",
-                                label: t("active"),
-                                value: "active"
-                            },
-                            {
-                                id: "pending",
-                                label: t("pendingApproval"),
-                                value: "pending"
-                            },
-                            {
-                                id: "denied",
-                                label: t("deniedApproval"),
-                                value: "denied"
-                            },
-                            {
-                                id: "archived",
-                                label: t("archived"),
-                                value: "archived"
-                            },
-                            {
-                                id: "blocked",
-                                label: t("blocked"),
-                                value: "blocked"
-                            }
-                        ],
+                        options: statusFilterOptions,
                         filterFn: (
                             row: ClientRow,
                             selectedValues: (string | number | boolean)[]
@@ -598,7 +660,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             const rowArchived = row.archived;
                             const rowBlocked = row.blocked;
                             const approvalState = row.approvalState;
-                            const isActive = !rowArchived && !rowBlocked;
+                            const isActive = !rowArchived && !rowBlocked && approvalState !== "pending" && approvalState !== "denied";
 
                             if (selectedValues.includes("active") && isActive)
                                 return true;
@@ -624,7 +686,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 return true;
                             return false;
                         },
-                        defaultValues: ["active", "pending"] // Default to showing active clients
+                        defaultValues: statusFilterDefaultValues
                     }
                 ]}
             />

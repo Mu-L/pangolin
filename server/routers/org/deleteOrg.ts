@@ -21,6 +21,8 @@ import { fromError } from "zod-validation-error";
 import { sendToClient } from "#dynamic/routers/ws";
 import { deletePeer } from "../gerbil/peers";
 import { OpenAPITags, registry } from "@server/openApi";
+import { OlmErrorCodes } from "../olm/error";
+import { sendTerminateClient } from "../client/terminate";
 
 const deleteOrgSchema = z.strictObject({
     orgId: z.string()
@@ -206,10 +208,11 @@ export async function deleteOrg(
         }
 
         for (const olmId of olmsToTerminate) {
-            sendToClient(olmId, {
-                type: "olm/terminate",
-                data: {}
-            }).catch((error) => {
+            sendTerminateClient(
+                0, // clientId not needed since we're passing olmId
+                OlmErrorCodes.TERMINATED_REKEYED,
+                olmId
+            ).catch((error) => {
                 logger.error(
                     "Failed to send termination message to olm:",
                     error

@@ -10,3 +10,4 @@ export * from "./getUserOlm";
 export * from "./handleOlmServerPeerAddMessage";
 export * from "./handleOlmUnRelayMessage";
 export * from "./recoverOlmWithFingerprint";
+export * from "./handleOlmDisconnectingMessage";

@@ -23,15 +23,10 @@ const paramsSchema = z.strictObject({
 
 const bodySchema = z.strictObject({
     email: z
+        .string()
         .email()
         .toLowerCase()
-        .optional()
-        .refine((data) => {
-            if (data) {
-                return z.email().safeParse(data).success;
-            }
-            return true;
-        }),
+        .optional(),
     username: z.string().nonempty().toLowerCase(),
     name: z.string().optional(),
     type: z.enum(["internal", "oidc"]).optional(),

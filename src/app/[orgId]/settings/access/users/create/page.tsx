@@ -361,7 +361,7 @@ export default function Page() {
         const res = await api
             .put(`/org/${orgId}/user`, {
                 username: values.email, // Use email as username for Google/Azure
-                email: values.email,
+                email: values.email || undefined,
                 name: values.name,
                 type: "oidc",
                 idpId: selectedUserOption.idpId,
@@ -403,7 +403,7 @@ export default function Page() {
         const res = await api
             .put(`/org/${orgId}/user`, {
                 username: values.username,
-                email: values.email,
+                email: values.email || undefined,
                 name: values.name,
                 type: "oidc",
                 idpId: selectedUserOption.idpId,

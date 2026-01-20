@@ -201,8 +201,8 @@ export default function SignupForm({
         ? env.branding.logo?.authPage?.width || 175
         : 175;
     const logoHeight = isUnlocked()
-        ? env.branding.logo?.authPage?.height || 58
-        : 58;
+        ? env.branding.logo?.authPage?.height || 44
+        : 44;
 
     const showOrgBanner = fromSmartLogin && (build === "saas" || env.flags.useOrgOnlyIdp);
     const orgBannerHref = redirect

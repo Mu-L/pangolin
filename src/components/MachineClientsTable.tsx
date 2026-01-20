@@ -59,7 +59,6 @@ export default function MachineClientsTable({
     const t = useTranslations();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
         null
     );
@@ -152,8 +151,6 @@ export default function MachineClientsTable({
             .then(() => {
                 startTransition(() => {
                     router.refresh();
-                    setIsBlockModalOpen(false);
-                    setSelectedClient(null);
                 });
             });
     };
@@ -421,8 +418,7 @@ export default function MachineClientsTable({
                                             if (clientRow.blocked) {
                                                 unblockClient(clientRow.id);
                                             } else {
-                                                setSelectedClient(clientRow);
-                                                setIsBlockModalOpen(true);
+                                                blockClient(clientRow.id);
                                             }
                                         }}
                                     >
@@ -482,28 +478,6 @@ export default function MachineClientsTable({
                     title="Delete Client"
                 />
             )}
-            {selectedClient && (
-                <ConfirmDeleteDialog
-                    open={isBlockModalOpen}
-                    setOpen={(val) => {
-                        setIsBlockModalOpen(val);
-                        if (!val) {
-                            setSelectedClient(null);
-                        }
-                    }}
-                    dialog={
-                        <div className="space-y-2">
-                            <p>{t("blockClientQuestion")}</p>
-                            <p>{t("blockClientMessage")}</p>
-                        </div>
-                    }
-                    buttonText={t("blockClientConfirm")}
-                    onConfirm={async () => blockClient(selectedClient!.id)}
-                    string={selectedClient.name}
-                    title={t("blockClient")}
-                />
-            )}
-
             <DataTable
                 columns={columns}
                 data={machineClients || []}

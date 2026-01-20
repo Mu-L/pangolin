@@ -11,6 +11,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 import { sendTerminateClient } from "../client/terminate";
+import { OlmErrorCodes } from "./error";
 
 const paramsSchema = z
     .object({
@@ -76,6 +77,7 @@ export async function deleteUserOlm(
                 if (olm) {
                     await sendTerminateClient(
                         deletedClient.clientId,
+                        OlmErrorCodes.TERMINATED_DELETED,
                         olm.olmId
                     ); //  the olmId needs to be provided because it cant look it up after deletion
                 }

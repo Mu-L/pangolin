@@ -77,6 +77,8 @@ COPY ./cli/wrapper.sh /usr/local/bin/pangctl
 RUN chmod +x /usr/local/bin/pangctl ./dist/cli.mjs
 
 COPY server/db/names.json ./dist/names.json
+COPY server/db/ios_models.json ./dist/ios_models.json
+COPY server/db/mac_models.json ./dist/mac_models.json
 COPY public ./public
 
 # OCI Image Labels

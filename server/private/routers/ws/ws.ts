@@ -493,7 +493,7 @@ const sendToClientLocal = async (
     }
 
     // Handle config version
-    let configVersion = await getClientConfigVersion(clientId);
+    const configVersion = await getClientConfigVersion(clientId);
 
     // Add config version to message
     const messageWithVersion = {

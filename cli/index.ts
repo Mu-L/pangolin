@@ -6,6 +6,7 @@ import { setAdminCredentials } from "@cli/commands/setAdminCredentials";
 import { resetUserSecurityKeys } from "@cli/commands/resetUserSecurityKeys";
 import { clearExitNodes } from "./commands/clearExitNodes";
 import { rotateServerSecret } from "./commands/rotateServerSecret";
+import { clearLicenseKeys } from "./commands/clearLicenseKeys";
 
 yargs(hideBin(process.argv))
     .scriptName("pangctl")
@@ -13,5 +14,6 @@ yargs(hideBin(process.argv))
     .command(resetUserSecurityKeys)
     .command(clearExitNodes)
     .command(rotateServerSecret)
+    .command(clearLicenseKeys)
     .demandCommand()
     .help().argv;

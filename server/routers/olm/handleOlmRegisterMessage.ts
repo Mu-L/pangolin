@@ -1,32 +1,20 @@
-import {
-    Client,
-    clientPostureSnapshots,
-    clientSiteResourcesAssociationsCache,
-    db,
-    fingerprints,
-    orgs,
-    siteResources
-} from "@server/db";
+import { clientPostureSnapshots, db, fingerprints, orgs } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import {
     clients,
     clientSitesAssociationsCache,
-    exitNodes,
     Olm,
     olms,
     sites
 } from "@server/db";
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
-import { addPeer, deletePeer } from "../newt/peers";
+import { count, eq } from "drizzle-orm";
 import logger from "@server/logger";
-import { generateAliasConfig } from "@server/lib/ip";
-import { generateRemoteSubnets } from "@server/lib/ip";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { validateSessionToken } from "@server/auth/sessions/app";
-import config from "@server/lib/config";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
+import { OlmErrorCodes, sendOlmError } from "./error";
 
 export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     logger.info("Handling register olm message!");
@@ -53,78 +41,88 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!olm.clientId) {
         logger.warn("Olm client ID not found");
+        sendOlmError(OlmErrorCodes.CLIENT_ID_NOT_FOUND, olm.olmId);
         return;
     }
 
-    const [client] = await db
-        .select()
-        .from(clients)
-        .where(eq(clients.clientId, olm.clientId))
-        .limit(1);
+    if (fingerprint) {
+        const [existingFingerprint] = await db
+            .select()
+            .from(fingerprints)
+            .where(eq(fingerprints.olmId, olm.olmId))
+            .limit(1);
 
-    if (!client) {
-        logger.warn("Client ID not found");
-        return;
-    }
+        if (!existingFingerprint) {
+            await db.insert(fingerprints).values({
+                olmId: olm.olmId,
+                firstSeen: now,
+                lastSeen: now,
 
-    if (client.blocked) {
-        logger.debug(`Client ${client.clientId} is blocked. Ignoring register.`);
-        return;
-    }
+                username: fingerprint.username,
+                hostname: fingerprint.hostname,
+                platform: fingerprint.platform,
+                osVersion: fingerprint.osVersion,
+                kernelVersion: fingerprint.kernelVersion,
+                arch: fingerprint.arch,
+                deviceModel: fingerprint.deviceModel,
+                serialNumber: fingerprint.serialNumber,
+                platformFingerprint: fingerprint.platformFingerprint
+            });
+        } else {
+            const hasChanges =
+                existingFingerprint.username !== fingerprint.username ||
+                existingFingerprint.hostname !== fingerprint.hostname ||
+                existingFingerprint.platform !== fingerprint.platform ||
+                existingFingerprint.osVersion !== fingerprint.osVersion ||
+                existingFingerprint.kernelVersion !==
+                    fingerprint.kernelVersion ||
+                existingFingerprint.arch !== fingerprint.arch ||
+                existingFingerprint.deviceModel !== fingerprint.deviceModel ||
+                existingFingerprint.serialNumber !== fingerprint.serialNumber ||
+                existingFingerprint.platformFingerprint !==
+                    fingerprint.platformFingerprint;
 
-    const [org] = await db
-        .select()
-        .from(orgs)
-        .where(eq(orgs.orgId, client.orgId))
-        .limit(1);
-
-    if (!org) {
-        logger.warn("Org not found");
-        return;
-    }
-
-    if (orgId) {
-        if (!olm.userId) {
-            logger.warn("Olm has no user ID");
-            return;
+            if (hasChanges) {
+                await db
+                    .update(fingerprints)
+                    .set({
+                        lastSeen: now,
+                        username: fingerprint.username,
+                        hostname: fingerprint.hostname,
+                        platform: fingerprint.platform,
+                        osVersion: fingerprint.osVersion,
+                        kernelVersion: fingerprint.kernelVersion,
+                        arch: fingerprint.arch,
+                        deviceModel: fingerprint.deviceModel,
+                        serialNumber: fingerprint.serialNumber,
+                        platformFingerprint: fingerprint.platformFingerprint
+                    })
+                    .where(eq(fingerprints.olmId, olm.olmId));
+            }
         }
+    }
 
-        const { session: userSession, user } =
-            await validateSessionToken(userToken);
-        if (!userSession || !user) {
-            logger.warn("Invalid user session for olm register");
-            return; // by returning here we just ignore the ping and the setInterval will force it to disconnect
-        }
-        if (user.userId !== olm.userId) {
-            logger.warn("User ID mismatch for olm register");
-            return;
-        }
+    if (postures) {
+        await db.insert(clientPostureSnapshots).values({
+            clientId: olm.clientId,
 
-        const sessionId = encodeHexLowerCase(
-            sha256(new TextEncoder().encode(userToken))
-        );
+            biometricsEnabled: postures?.biometricsEnabled,
+            diskEncrypted: postures?.diskEncrypted,
+            firewallEnabled: postures?.firewallEnabled,
+            autoUpdatesEnabled: postures?.autoUpdatesEnabled,
+            tpmAvailable: postures?.tpmAvailable,
 
-        const policyCheck = await checkOrgAccessPolicy({
-            orgId: orgId,
-            userId: olm.userId,
-            sessionId // this is the user token passed in the message
+            windowsDefenderEnabled: postures?.windowsDefenderEnabled,
+
+            macosSipEnabled: postures?.macosSipEnabled,
+            macosGatekeeperEnabled: postures?.macosGatekeeperEnabled,
+            macosFirewallStealthMode: postures?.macosFirewallStealthMode,
+
+            linuxAppArmorEnabled: postures?.linuxAppArmorEnabled,
+            linuxSELinuxEnabled: postures?.linuxSELinuxEnabled,
+
+            collectedAt: now
         });
-
-        if (!policyCheck.allowed) {
-            logger.warn(
-                `Olm user ${olm.userId} does not pass access policies for org ${orgId}: ${policyCheck.error}`
-            );
-            return;
-        }
-    }
-
-    logger.debug(
-        `Olm client ID: ${client.clientId}, Public Key: ${publicKey}, Relay: ${relay}`
-    );
-
-    if (!publicKey) {
-        logger.warn("Public key not provided");
-        return;
     }
 
     if (
@@ -142,6 +140,133 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             .where(eq(olms.olmId, olm.olmId));
     }
 
+    const [client] = await db
+        .select()
+        .from(clients)
+        .where(eq(clients.clientId, olm.clientId))
+        .limit(1);
+
+    if (!client) {
+        logger.warn("Client ID not found");
+        sendOlmError(OlmErrorCodes.CLIENT_NOT_FOUND, olm.olmId);
+        return;
+    }
+
+    if (client.blocked) {
+        logger.debug(
+            `Client ${client.clientId} is blocked. Ignoring register.`
+        );
+        sendOlmError(OlmErrorCodes.CLIENT_BLOCKED, olm.olmId);
+        return;
+    }
+
+    if (client.approvalState == "pending") {
+        logger.debug(
+            `Client ${client.clientId} approval is pending. Ignoring register.`
+        );
+        sendOlmError(OlmErrorCodes.CLIENT_PENDING, olm.olmId);
+        return;
+    }
+
+    const [org] = await db
+        .select()
+        .from(orgs)
+        .where(eq(orgs.orgId, client.orgId))
+        .limit(1);
+
+    if (!org) {
+        logger.warn("Org not found");
+        sendOlmError(OlmErrorCodes.ORG_NOT_FOUND, olm.olmId);
+        return;
+    }
+
+    if (orgId) {
+        if (!olm.userId) {
+            logger.warn("Olm has no user ID");
+            sendOlmError(OlmErrorCodes.USER_ID_NOT_FOUND, olm.olmId);
+            return;
+        }
+
+        const { session: userSession, user } =
+            await validateSessionToken(userToken);
+        if (!userSession || !user) {
+            logger.warn("Invalid user session for olm register");
+            sendOlmError(OlmErrorCodes.INVALID_USER_SESSION, olm.olmId);
+            return;
+        }
+        if (user.userId !== olm.userId) {
+            logger.warn("User ID mismatch for olm register");
+            sendOlmError(OlmErrorCodes.USER_ID_MISMATCH, olm.olmId);
+            return;
+        }
+
+        const sessionId = encodeHexLowerCase(
+            sha256(new TextEncoder().encode(userToken))
+        );
+
+        const policyCheck = await checkOrgAccessPolicy({
+            orgId: orgId,
+            userId: olm.userId,
+            sessionId // this is the user token passed in the message
+        });
+
+        logger.debug("Policy check result:", policyCheck);
+
+        if (policyCheck?.error) {
+            logger.error(
+                `Error checking access policies for olm user ${olm.userId} in org ${orgId}: ${policyCheck?.error}`
+            );
+            sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
+            return;
+        }
+
+        if (!policyCheck.policies?.passwordAge?.compliant === false) {
+            logger.warn(
+                `Olm user ${olm.userId} has non-compliant password age for org ${orgId}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ORG_ACCESS_POLICY_PASSWORD_EXPIRED,
+                olm.olmId
+            );
+            return;
+        } else if (
+            !policyCheck.policies?.maxSessionLength?.compliant === false
+        ) {
+            logger.warn(
+                `Olm user ${olm.userId} has non-compliant session length for org ${orgId}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ORG_ACCESS_POLICY_SESSION_EXPIRED,
+                olm.olmId
+            );
+            return;
+        } else if (policyCheck.policies?.requiredTwoFactor === false) {
+            logger.warn(
+                `Olm user ${olm.userId} does not have 2FA enabled for org ${orgId}`
+            );
+            sendOlmError(
+                OlmErrorCodes.ORG_ACCESS_POLICY_2FA_REQUIRED,
+                olm.olmId
+            );
+            return;
+        } else if (!policyCheck.allowed) {
+            logger.warn(
+                `Olm user ${olm.userId} does not pass access policies for org ${orgId}: ${policyCheck.error}`
+            );
+            sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
+            return;
+        }
+    }
+
+    logger.debug(
+        `Olm client ID: ${client.clientId}, Public Key: ${publicKey}, Relay: ${relay}`
+    );
+
+    if (!publicKey) {
+        logger.warn("Public key not provided");
+        return;
+    }
+
     if (client.pubKey !== publicKey || client.archived) {
         logger.info(
             "Public key mismatch. Updating public key and clearing session info..."
@@ -151,7 +276,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             .update(clients)
             .set({
                 pubKey: publicKey,
-                archived: false,
+                archived: false
             })
             .where(eq(clients.clientId, client.clientId));
 
@@ -197,72 +322,6 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         publicKey,
         relay
     );
-
-    if (fingerprint) {
-        const [existingFingerprint] = await db
-            .select()
-            .from(fingerprints)
-            .where(eq(fingerprints.olmId, olm.olmId))
-            .limit(1);
-
-        if (!existingFingerprint) {
-            await db.insert(fingerprints).values({
-                olmId: olm.olmId,
-                firstSeen: now,
-                lastSeen: now,
-
-                username: fingerprint.username,
-                hostname: fingerprint.hostname,
-                platform: fingerprint.platform,
-                osVersion: fingerprint.osVersion,
-                kernelVersion: fingerprint.kernelVersion,
-                arch: fingerprint.arch,
-                deviceModel: fingerprint.deviceModel,
-                serialNumber: fingerprint.serialNumber,
-                platformFingerprint: fingerprint.platformFingerprint
-            });
-        } else {
-            await db
-                .update(fingerprints)
-                .set({
-                    lastSeen: now,
-
-                    username: fingerprint.username,
-                    hostname: fingerprint.hostname,
-                    platform: fingerprint.platform,
-                    osVersion: fingerprint.osVersion,
-                    kernelVersion: fingerprint.kernelVersion,
-                    arch: fingerprint.arch,
-                    deviceModel: fingerprint.deviceModel,
-                    serialNumber: fingerprint.serialNumber,
-                    platformFingerprint: fingerprint.platformFingerprint
-                })
-                .where(eq(fingerprints.olmId, olm.olmId));
-        }
-    }
-
-    if (postures && olm.clientId) {
-        await db.insert(clientPostureSnapshots).values({
-            clientId: olm.clientId,
-
-            biometricsEnabled: postures?.biometricsEnabled,
-            diskEncrypted: postures?.diskEncrypted,
-            firewallEnabled: postures?.firewallEnabled,
-            autoUpdatesEnabled: postures?.autoUpdatesEnabled,
-            tpmAvailable: postures?.tpmAvailable,
-
-            windowsDefenderEnabled: postures?.windowsDefenderEnabled,
-
-            macosSipEnabled: postures?.macosSipEnabled,
-            macosGatekeeperEnabled: postures?.macosGatekeeperEnabled,
-            macosFirewallStealthMode: postures?.macosFirewallStealthMode,
-
-            linuxAppArmorEnabled: postures?.linuxAppArmorEnabled,
-            linuxSELinuxEnabled: postures?.linuxSELinuxEnabled,
-
-            collectedAt: now
-        });
-    }
 
     // REMOVED THIS SO IT CREATES THE INTERFACE AND JUST WAITS FOR THE SITES
     // if (siteConfigurations.length === 0) {
