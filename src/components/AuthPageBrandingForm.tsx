@@ -42,24 +42,27 @@ export type AuthPageCustomizationProps = {
 };
 
 const AuthPageFormSchema = z.object({
-    logoUrl: z.url().refine(
-        async (url) => {
-            try {
-                const response = await fetch(url);
-                return (
-                    response.status === 200 &&
-                    (response.headers.get("content-type") ?? "").startsWith(
-                        "image/"
-                    )
-                );
-            } catch (error) {
-                return false;
+    logoUrl: z.union([
+        z.string().length(0),
+        z.url().refine(
+            async (url) => {
+                try {
+                    const response = await fetch(url);
+                    return (
+                        response.status === 200 &&
+                        (response.headers.get("content-type") ?? "").startsWith(
+                            "image/"
+                        )
+                    );
+                } catch (error) {
+                    return false;
+                }
+            },
+            {
+                error: "Invalid logo URL, must be a valid image URL"
             }
-        },
-        {
-            error: "Invalid logo URL, must be a valid image URL"
-        }
-    ),
+        )
+    ]),
     logoWidth: z.coerce.number<number>().min(1),
     logoHeight: z.coerce.number<number>().min(1),
     orgTitle: z.string().optional(),
@@ -90,7 +93,6 @@ export default function AuthPageBrandingForm({
         deleteBranding,
         null
     );
-    const [setIsDeleteModalOpen] = useState(false);
 
     const t = useTranslations();
 

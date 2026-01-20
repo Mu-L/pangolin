@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 type BrandingLogoProps = {
-    logoPath?: string;
+    logoPath?: string | null;
     width: number;
     height: number;
 };
