@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import {
@@ -166,6 +166,7 @@ export default function AuthPageBrandingForm({
                     title: t("success"),
                     description: t("authPageBrandingRemoved")
                 });
+                form.reset();
             }
         } catch (error) {
             toast({
@@ -400,22 +401,23 @@ export default function AuthPageBrandingForm({
 
                 <div className="flex justify-end gap-2 mt-6 items-center">
                     {branding && (
-                        <Button
-                            variant="destructive"
-                            type="button"
-                            loading={isUpdatingBranding || isDeletingBranding}
-                            disabled={
-                                isUpdatingBranding ||
-                                isDeletingBranding ||
-                                !isPaidUser
-                            }
-                            onClick={() => {
-                                deleteFormAction();
-                            }}
-                            className="gap-1"
-                        >
-                            {t("removeAuthPageBranding")}
-                        </Button>
+                        <form action={deleteFormAction}>
+                            <Button
+                                variant="destructive"
+                                type="submit"
+                                loading={
+                                    isUpdatingBranding || isDeletingBranding
+                                }
+                                disabled={
+                                    isUpdatingBranding ||
+                                    isDeletingBranding ||
+                                    !isPaidUser
+                                }
+                                className="gap-1"
+                            >
+                                {t("removeAuthPageBranding")}
+                            </Button>
+                        </form>
                     )}
                     <Button
                         type="submit"
