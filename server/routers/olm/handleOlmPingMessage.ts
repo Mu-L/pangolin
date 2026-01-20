@@ -178,7 +178,7 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         logger.debug(`handleOlmPingMessage: Got config version: ${configVersion} (type: ${typeof configVersion})`);
 
         if (configVersion == null || configVersion === undefined) {
-            logger.debug(`handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`)
+            logger.debug(`handleOlmPingMessage: could not get config version from server for olmId: ${olm.olmId}`);
         }
 
         if (message.configVersion != null && configVersion != null && configVersion != message.configVersion) {
