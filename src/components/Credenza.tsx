@@ -83,7 +83,10 @@ const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
 
     return (
         <CredenzaContent
-            className={cn("overflow-y-auto max-h-screen", className)}
+            className={cn(
+                "overflow-y-auto max-h-[100dvh] md:max-h-screen",
+                className
+            )}
             {...props}
             side={"bottom"}
             onOpenAutoFocus={(e) => e.preventDefault()}
@@ -166,7 +169,7 @@ const CredenzaFooter = ({ className, children, ...props }: CredenzaProps) => {
     return (
         <CredenzaFooter
             className={cn(
-                "mt-8 md:mt-0 -mx-6 -mb-4 px-6 py-4 border-t border-border",
+                "mt-8 md:mt-0 -mx-6 md:-mb-4 px-6 py-4 border-t border-border gap-2 md:gap-0",
                 className
             )}
             {...props}
