@@ -342,6 +342,17 @@ export type ApprovalItem = {
         username: string;
         email: string | null;
     };
+    deviceName: string | null;
+    fingerprint: {
+        platform: string | null;
+        osVersion: string | null;
+        kernelVersion: string | null;
+        arch: string | null;
+        deviceModel: string | null;
+        serialNumber: string | null;
+        username: string | null;
+        hostname: string | null;
+    } | null;
 };
 
 export const approvalQueries = {

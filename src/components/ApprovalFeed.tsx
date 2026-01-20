@@ -4,17 +4,19 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cn } from "@app/lib/cn";
+import { formatFingerprintInfo, formatPlatform } from "@app/lib/formatDeviceFingerprint";
 import {
     approvalFiltersSchema,
     approvalQueries,
     type ApprovalItem
 } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
+import { ArrowRight, Ban, Check, Laptop, Smartphone, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useActionState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardHeader } from "./ui/card";
@@ -27,6 +29,7 @@ import {
     SelectValue
 } from "./ui/select";
 import { Separator } from "./ui/separator";
+import { InfoPopup } from "./ui/info-popup";
 
 export type ApprovalFeedProps = {
     orgId: string;
@@ -183,18 +186,50 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
     return (
         <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="inline-flex items-start md:items-center gap-2">
-                <LaptopMinimal className="size-4 text-muted-foreground flex-none relative top-2 sm:top-0" />
                 <span>
-                    <span className="text-primary">
+                    <Link
+                        href={`/${orgId}/settings/access/users/${approval.user.userId}/access-controls`}
+                        className="text-primary hover:underline cursor-pointer"
+                    >
                         {getUserDisplayName({
                             email: approval.user.email,
                             name: approval.user.name,
                             username: approval.user.username
                         })}
-                    </span>
+                    </Link>
                     &nbsp;
                     {approval.type === "user_device" && (
-                        <span>{t("requestingNewDeviceApproval")}</span>
+                        <span className="inline-flex items-center gap-1">
+                            {approval.deviceName ? (
+                                <>
+                                    {t("requestingNewDeviceApproval")}:{" "}
+                                    {approval.clientId ? (
+                                        <Link
+                                            href={`/${orgId}/settings/clients/user/${approval.clientId}/general`}
+                                            className="text-primary hover:underline cursor-pointer"
+                                        >
+                                            {approval.deviceName}
+                                        </Link>
+                                    ) : (
+                                        <span>{approval.deviceName}</span>
+                                    )}
+                                    {approval.fingerprint && (
+                                        <InfoPopup>
+                                            <div className="space-y-1 text-sm">
+                                                <div className="font-semibold mb-2">
+                                                    {t("deviceInformation")}
+                                                </div>
+                                                <div className="text-muted-foreground whitespace-pre-line">
+                                                    {formatFingerprintInfo(approval.fingerprint, t)}
+                                                </div>
+                                            </div>
+                                        </InfoPopup>
+                                    )}
+                                </>
+                            ) : (
+                                <span>{t("requestingNewDeviceApproval")}</span>
+                            )}
+                        </span>
                     )}
                 </span>
             </div>
@@ -231,17 +266,20 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                     <Badge variant="red">{t("denied")}</Badge>
                 )}
 
-                <Button
-                    variant="outline"
-                    onClick={() => {}}
-                    className="gap-2"
-                    asChild
-                >
-                    <Link href={"#"}>
-                        {t("viewDetails")}
-                        <ArrowRight className="size-4 flex-none" />
-                    </Link>
-                </Button>
+                {approval.clientId && (
+                    <Button
+                        variant="outline"
+                        className="gap-2"
+                        asChild
+                    >
+                        <Link
+                            href={`/${orgId}/settings/clients/user/${approval.clientId}/general`}
+                        >
+                            {t("viewDetails")}
+                            <ArrowRight className="size-4 flex-none" />
+                        </Link>
+                    </Button>
+                )}
             </div>
         </div>
     );

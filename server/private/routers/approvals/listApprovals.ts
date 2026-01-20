@@ -21,9 +21,10 @@ import type { Request, Response, NextFunction } from "express";
 import { build } from "@server/build";
 import { getOrgTierData } from "@server/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
-import { approvals, clients, db, users, type Approval } from "@server/db";
+import { approvals, clients, db, users, olms, fingerprints, type Approval } from "@server/db";
 import { eq, isNull, sql, not, and, desc } from "drizzle-orm";
 import response from "@server/lib/response";
+import { getUserDeviceName } from "@server/db/names";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
@@ -82,7 +83,16 @@ async function queryApprovals(
                 userId: users.userId,
                 username: users.username,
                 email: users.email
-            }
+            },
+            clientName: clients.name,
+            deviceModel: fingerprints.deviceModel,
+            fingerprintPlatform: fingerprints.platform,
+            fingerprintOsVersion: fingerprints.osVersion,
+            fingerprintKernelVersion: fingerprints.kernelVersion,
+            fingerprintArch: fingerprints.arch,
+            fingerprintSerialNumber: fingerprints.serialNumber,
+            fingerprintUsername: fingerprints.username,
+            fingerprintHostname: fingerprints.hostname
         })
         .from(approvals)
         .innerJoin(users, and(eq(approvals.userId, users.userId)))
@@ -93,6 +103,8 @@ async function queryApprovals(
                 not(isNull(clients.userId)) // only user devices
             )
         )
+        .leftJoin(olms, eq(clients.clientId, olms.clientId))
+        .leftJoin(fingerprints, eq(olms.olmId, fingerprints.olmId))
         .where(
             and(
                 eq(approvals.orgId, orgId),
@@ -105,7 +117,57 @@ async function queryApprovals(
         )
         .limit(limit)
         .offset(offset);
-    return res;
+    
+    // Process results to format device names and build fingerprint objects
+    return res.map((approval) => {
+        const model = approval.deviceModel || null;
+        const deviceName = approval.clientName 
+            ? getUserDeviceName(model, approval.clientName)
+            : null;
+        
+        // Build fingerprint object if any fingerprint data exists
+        const hasFingerprintData =
+            approval.fingerprintPlatform ||
+            approval.fingerprintOsVersion ||
+            approval.fingerprintKernelVersion ||
+            approval.fingerprintArch ||
+            approval.fingerprintSerialNumber ||
+            approval.fingerprintUsername ||
+            approval.fingerprintHostname ||
+            approval.deviceModel;
+        
+        const fingerprint = hasFingerprintData
+            ? {
+                  platform: approval.fingerprintPlatform || null,
+                  osVersion: approval.fingerprintOsVersion || null,
+                  kernelVersion: approval.fingerprintKernelVersion || null,
+                  arch: approval.fingerprintArch || null,
+                  deviceModel: approval.deviceModel || null,
+                  serialNumber: approval.fingerprintSerialNumber || null,
+                  username: approval.fingerprintUsername || null,
+                  hostname: approval.fingerprintHostname || null
+              }
+            : null;
+        
+        const {
+            clientName,
+            deviceModel,
+            fingerprintPlatform,
+            fingerprintOsVersion,
+            fingerprintKernelVersion,
+            fingerprintArch,
+            fingerprintSerialNumber,
+            fingerprintUsername,
+            fingerprintHostname,
+            ...rest
+        } = approval;
+        
+        return {
+            ...rest,
+            deviceName,
+            fingerprint
+        };
+    });
 }
 
 export type ListApprovalsResponse = {

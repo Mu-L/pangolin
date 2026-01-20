@@ -13,6 +13,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import { formatFingerprintInfo, formatPlatform } from "@app/lib/formatDeviceFingerprint";
 import {
     ArrowRight,
     ArrowUpDown,
@@ -66,55 +67,9 @@ type ClientTableProps = {
     orgId: string;
 };
 
-function formatPlatform(platform: string | null | undefined): string {
-    if (!platform) return "-";
-    const platformMap: Record<string, string> = {
-        macos: "macOS",
-        windows: "Windows",
-        linux: "Linux",
-        ios: "iOS",
-        android: "Android",
-        unknown: "Unknown"
-    };
-    return platformMap[platform.toLowerCase()] || platform;
-}
-
 export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const router = useRouter();
     const t = useTranslations();
-
-    const formatFingerprintInfo = (
-        fingerprint: ClientRow["fingerprint"]
-    ): string => {
-        if (!fingerprint) return "";
-        const parts: string[] = [];
-
-        if (fingerprint.platform) {
-            parts.push(
-                `${t("platform")}: ${formatPlatform(fingerprint.platform)}`
-            );
-        }
-        if (fingerprint.deviceModel) {
-            parts.push(`${t("deviceModel")}: ${fingerprint.deviceModel}`);
-        }
-        if (fingerprint.osVersion) {
-            parts.push(`${t("osVersion")}: ${fingerprint.osVersion}`);
-        }
-        if (fingerprint.arch) {
-            parts.push(`${t("architecture")}: ${fingerprint.arch}`);
-        }
-        if (fingerprint.hostname) {
-            parts.push(`${t("hostname")}: ${fingerprint.hostname}`);
-        }
-        if (fingerprint.username) {
-            parts.push(`${t("username")}: ${fingerprint.username}`);
-        }
-        if (fingerprint.serialNumber) {
-            parts.push(`${t("serialNumber")}: ${fingerprint.serialNumber}`);
-        }
-
-        return parts.join("\n");
-    };
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
@@ -258,7 +213,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                 cell: ({ row }) => {
                     const r = row.original;
                     const fingerprintInfo = r.fingerprint
-                        ? formatFingerprintInfo(r.fingerprint)
+                        ? formatFingerprintInfo(r.fingerprint, t)
                         : null;
                     return (
                         <div className="flex items-center gap-2">
