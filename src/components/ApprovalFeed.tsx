@@ -70,7 +70,7 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
                                     `${path}?${newSearch.toString()}`
                                 );
                             }}
-                            value={filters.approvalState ?? "all"}
+                            value={filters.approvalState ?? "pending"}
                         >
                             <SelectTrigger
                                 id="approvalState"

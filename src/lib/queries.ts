@@ -326,8 +326,8 @@ export const resourceQueries = {
 export const approvalFiltersSchema = z.object({
     approvalState: z
         .enum(["pending", "approved", "denied", "all"])
-        .optional()
-        .catch("all")
+        .default("pending")
+        .catch("pending")
 });
 
 export type ApprovalItem = {
