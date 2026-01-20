@@ -377,5 +377,17 @@ export const approvalQueries = {
                 });
                 return res.data.data;
             }
+        }),
+    pendingCount: (orgId: string) =>
+        queryOptions({
+            queryKey: ["APPROVALS", orgId, "COUNT", "pending"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<{ count: number }>
+                >(`/org/${orgId}/approvals/count?approvalState=pending`, {
+                    signal
+                });
+                return res.data.data.count;
+            }
         })
 };

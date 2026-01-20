@@ -321,6 +321,13 @@ authenticated.get(
     approval.listApprovals
 );
 
+authenticated.get(
+    "/org/:orgId/approvals/count",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listApprovals),
+    approval.countApprovals
+);
+
 authenticated.put(
     "/org/:orgId/approvals/:approvalId",
     verifyValidLicense,
