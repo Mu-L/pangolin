@@ -25,10 +25,6 @@ export function ApprovalsEmptyState({ orgId }: ApprovalsEmptyStateProps) {
             <Card>
                 <CardContent className="p-6 md:p-12">
                     <div className="flex flex-col items-center text-center gap-4 md:gap-6 max-w-2xl mx-auto">
-                        <div className="rounded-full bg-primary/10 p-3 md:p-4">
-                            <ShieldCheck className="w-8 h-8 md:w-12 md:h-12 text-primary" />
-                        </div>
-
                         <div className="space-y-2">
                             <h3 className="text-xl md:text-2xl font-semibold">
                                 {t("approvalsEmptyStateTitle")}
