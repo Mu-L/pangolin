@@ -468,8 +468,8 @@ authenticated.put(
 );
 
 authenticated.post(
-    "/org/:orgId/role/:roleId",
-    verifyApiKeyOrgAccess,
+    "/role/:roleId",
+    verifyApiKeyRoleAccess,
     verifyApiKeyHasAction(ActionsEnum.updateRole),
     logActionAudit(ActionsEnum.updateRole),
     role.updateRole

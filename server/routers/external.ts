@@ -589,8 +589,8 @@ authenticated.get(
 );
 
 authenticated.post(
-    "/org/:orgId/role/:roleId",
-    verifyOrgAccess,
+    "/role/:roleId",
+    verifyRoleAccess,
     verifyUserHasAction(ActionsEnum.updateRole),
     logActionAudit(ActionsEnum.updateRole),
     role.updateRole

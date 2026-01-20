@@ -86,7 +86,7 @@ export default function EditRoleForm({
         const res = await api
             .post<
                 AxiosResponse<UpdateRoleResponse>
-            >(`/org/${org?.org.orgId}/role/${role.roleId}`, values satisfies UpdateRoleBody)
+            >(`/role/${role.roleId}`, values satisfies UpdateRoleBody)
             .catch((e) => {
                 toast({
                     variant: "destructive",
