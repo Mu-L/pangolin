@@ -4,19 +4,18 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cn } from "@app/lib/cn";
-import { formatFingerprintInfo, formatPlatform } from "@app/lib/formatDeviceFingerprint";
+import { formatFingerprintInfo } from "@app/lib/formatDeviceFingerprint";
 import {
     approvalFiltersSchema,
     approvalQueries,
     type ApprovalItem
 } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Ban, Check, Laptop, Smartphone, RefreshCw } from "lucide-react";
+import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useActionState } from "react";
-import type { LucideIcon } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardHeader } from "./ui/card";
@@ -200,19 +199,19 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                     &nbsp;
                     {approval.type === "user_device" && (
                         <span className="inline-flex items-center gap-1">
-                            {approval.deviceName ? (
-                                <>
-                                    {t("requestingNewDeviceApproval")}:{" "}
-                                    {approval.clientId ? (
-                                        <Link
-                                            href={`/${orgId}/settings/clients/user/${approval.clientId}/general`}
-                                            className="text-primary hover:underline cursor-pointer"
-                                        >
-                                            {approval.deviceName}
-                                        </Link>
-                                    ) : (
-                                        <span>{approval.deviceName}</span>
-                                    )}
+                                    {approval.deviceName ? (
+                                        <>
+                                            {t("requestingNewDeviceApproval")}:{" "}
+                                            {approval.niceId ? (
+                                                <Link
+                                                    href={`/${orgId}/settings/clients/user/${approval.niceId}/general`}
+                                                    className="text-primary hover:underline cursor-pointer"
+                                                >
+                                                    {approval.deviceName}
+                                                </Link>
+                                            ) : (
+                                                <span>{approval.deviceName}</span>
+                                            )}
                                     {approval.fingerprint && (
                                         <InfoPopup>
                                             <div className="space-y-1 text-sm">
@@ -264,21 +263,6 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                 )}
                 {approval.decision === "denied" && (
                     <Badge variant="red">{t("denied")}</Badge>
-                )}
-
-                {approval.clientId && (
-                    <Button
-                        variant="outline"
-                        className="gap-2"
-                        asChild
-                    >
-                        <Link
-                            href={`/${orgId}/settings/clients/user/${approval.clientId}/general`}
-                        >
-                            {t("viewDetails")}
-                            <ArrowRight className="size-4 flex-none" />
-                        </Link>
-                    </Button>
                 )}
             </div>
         </div>

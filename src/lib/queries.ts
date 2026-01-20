@@ -334,6 +334,7 @@ export type ApprovalItem = {
     approvalId: number;
     orgId: string;
     clientId: number | null;
+    niceId: string | null;
     decision: "pending" | "approved" | "denied";
     type: "user_device";
     user: {

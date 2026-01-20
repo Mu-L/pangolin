@@ -85,6 +85,7 @@ async function queryApprovals(
                 email: users.email
             },
             clientName: clients.name,
+            niceId: clients.niceId,
             deviceModel: fingerprints.deviceModel,
             fingerprintPlatform: fingerprints.platform,
             fingerprintOsVersion: fingerprints.osVersion,
@@ -165,7 +166,8 @@ async function queryApprovals(
         return {
             ...rest,
             deviceName,
-            fingerprint
+            fingerprint,
+            niceId: approval.niceId || null
         };
     });
 }
