@@ -29,12 +29,17 @@ import {
 } from "./ui/select";
 import { Separator } from "./ui/separator";
 import { InfoPopup } from "./ui/info-popup";
+import { ApprovalsEmptyState } from "./ApprovalsEmptyState";
 
 export type ApprovalFeedProps = {
     orgId: string;
+    hasApprovalsEnabled: boolean;
 };
 
-export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
+export function ApprovalFeed({
+    orgId,
+    hasApprovalsEnabled
+}: ApprovalFeedProps) {
     const searchParams = useSearchParams();
     const path = usePathname();
     const t = useTranslations();
@@ -50,6 +55,11 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
     );
 
     const approvals = data?.approvals ?? [];
+
+    // Show empty state if no approvals are enabled for any role
+    if (!hasApprovalsEnabled) {
+        return <ApprovalsEmptyState orgId={orgId} />;
+    }
 
     return (
         <div className="flex flex-col gap-5">

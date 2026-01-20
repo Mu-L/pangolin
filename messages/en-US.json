@@ -2514,5 +2514,13 @@
     "deviceActionsDescription": "Manage device status and access",
     "devicePendingApprovalBannerDescription": "This device is pending approval. It won't be able to connect to resources until approved.",
     "connected": "Connected",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "approvalsEmptyStateTitle": "Device Approvals Not Enabled",
+    "approvalsEmptyStateDescription": "Enable device approvals for roles to require admin approval before users can connect new devices.",
+    "approvalsEmptyStateStep1Title": "Go to Roles",
+    "approvalsEmptyStateStep1Description": "Navigate to your organization's roles settings to configure device approvals.",
+    "approvalsEmptyStateStep2Title": "Enable Device Approvals",
+    "approvalsEmptyStateStep2Description": "Edit a role and enable the 'Require Device Approvals' option. Users with this role will need admin approval for new devices.",
+    "approvalsEmptyStatePreviewDescription": "Preview: When enabled, pending device requests will appear here for review",
+    "approvalsEmptyStateButtonText": "Manage Roles"
 }
