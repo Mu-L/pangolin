@@ -40,6 +40,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
@@ -154,7 +155,10 @@ export default function ResourceAuthenticationPage() {
     const allUsers = useMemo(() => {
         return orgUsers.map((user) => ({
             id: user.id.toString(),
-            text: `${user.email || user.username}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
+            text: `${getUserDisplayName({
+                email: user.email,
+                username: user.username
+            })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
         }));
     }, [orgUsers]);
 
@@ -229,7 +233,10 @@ export default function ResourceAuthenticationPage() {
             "users",
             resourceUsers.map((i) => ({
                 id: i.userId.toString(),
-                text: `${i.email || i.username}${i.type !== UserType.Internal ? ` (${i.idpName})` : ""}`
+                text: `${getUserDisplayName({
+                    email: i.email,
+                    username: i.username
+                })}${i.type !== UserType.Internal ? ` (${i.idpName})` : ""}`
             }))
         );
 

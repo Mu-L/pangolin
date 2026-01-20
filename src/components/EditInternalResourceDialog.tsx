@@ -36,6 +36,7 @@ import {
 import { toast } from "@app/hooks/useToast";
 import { useTranslations } from "next-intl";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { UserType } from "@server/types/UserTypes";
@@ -304,7 +305,10 @@ export default function EditInternalResourceDialog({
 
             const allUsers = (usersQuery.data ?? []).map((user) => ({
                 id: user.id.toString(),
-                text: `${user.email || user.username}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
+                text: `${getUserDisplayName({
+                    email: user.email,
+                    username: user.username
+                })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
             }));
 
             const machineClients = (clientsQuery.data ?? [])
@@ -330,7 +334,10 @@ export default function EditInternalResourceDialog({
 
             const formUsers = (resourceUsersQuery.data ?? []).map((i) => ({
                 id: i.userId.toString(),
-                text: `${i.email || i.username}${i.type !== UserType.Internal ? ` (${i.idpName})` : ""}`
+                text: `${getUserDisplayName({
+                    email: i.email,
+                    username: i.username
+                })}${i.type !== UserType.Internal ? ` (${i.idpName})` : ""}`
             }));
 
             return {

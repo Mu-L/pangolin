@@ -80,7 +80,8 @@ async function queryApprovals(
             user: {
                 name: users.name,
                 userId: users.userId,
-                username: users.username
+                username: users.username,
+                email: users.email
             }
         })
         .from(approvals)

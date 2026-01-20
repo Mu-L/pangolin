@@ -2,6 +2,7 @@
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cn } from "@app/lib/cn";
 import {
     approvalFiltersSchema,
@@ -185,7 +186,11 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                 <LaptopMinimal className="size-4 text-muted-foreground flex-none relative top-2 sm:top-0" />
                 <span>
                     <span className="text-primary">
-                        {approval.user.username}
+                        {getUserDisplayName({
+                            email: approval.user.email,
+                            name: approval.user.name,
+                            username: approval.user.username
+                        })}
                     </span>
                     &nbsp;
                     {approval.type === "user_device" && (

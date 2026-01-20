@@ -1,6 +1,7 @@
 import { verifySession } from "@app/lib/auth/verifySession";
 import { redirect } from "next/navigation";
 import DeviceLoginForm from "@/components/DeviceLoginForm";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cache } from "react";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,12 @@ export default async function DeviceLoginPage({ searchParams }: Props) {
         );
     }
 
-    const userName = user?.name || user?.username || "";
+    const userName = user
+        ? getUserDisplayName({
+              name: user.name,
+              username: user.username
+          })
+        : "";
 
     return (
         <DeviceLoginForm

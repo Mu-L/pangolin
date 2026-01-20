@@ -340,6 +340,7 @@ export type ApprovalItem = {
         name: string | null;
         userId: string;
         username: string;
+        email: string | null;
     };
 };
 

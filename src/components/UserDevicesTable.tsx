@@ -12,6 +12,7 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
     ArrowRight,
     ArrowUpDown,
@@ -344,7 +345,10 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             href={`/${r.orgId}/settings/access/users/${r.userId}`}
                         >
                             <Button variant="outline">
-                                {r.userEmail || r.username || r.userId}
+                                {getUserDisplayName({
+                                    email: r.userEmail,
+                                    username: r.username
+                                }) || r.userId}
                                 <ArrowUpRight className="ml-2 h-4 w-4" />
                             </Button>
                         </Link>
