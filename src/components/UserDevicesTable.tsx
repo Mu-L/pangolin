@@ -184,6 +184,90 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             });
     };
 
+    const approveDevice = async (clientRow: ClientRow) => {
+        try {
+            // Fetch approvalId for this client using clientId query parameter
+            const approvalsRes = await api.get<{
+                data: { approvals: Array<{ approvalId: number; clientId: number }> };
+            }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
+            
+            const approval = approvalsRes.data.data.approvals[0];
+
+            if (!approval) {
+                toast({
+                    variant: "destructive",
+                    title: t("error"),
+                    description: t("accessApprovalErrorUpdateDescription")
+                });
+                return;
+            }
+
+            await api.put(`/org/${clientRow.orgId}/approvals/${approval.approvalId}`, {
+                decision: "approved"
+            });
+
+            toast({
+                title: t("accessApprovalUpdated"),
+                description: t("accessApprovalApprovedDescription")
+            });
+
+            startTransition(() => {
+                router.refresh();
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("accessApprovalErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("accessApprovalErrorUpdateDescription")
+                )
+            });
+        }
+    };
+
+    const denyDevice = async (clientRow: ClientRow) => {
+        try {
+            // Fetch approvalId for this client using clientId query parameter
+            const approvalsRes = await api.get<{
+                data: { approvals: Array<{ approvalId: number; clientId: number }> };
+            }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
+            
+            const approval = approvalsRes.data.data.approvals[0];
+
+            if (!approval) {
+                toast({
+                    variant: "destructive",
+                    title: t("error"),
+                    description: t("accessApprovalErrorUpdateDescription")
+                });
+                return;
+            }
+
+            await api.put(`/org/${clientRow.orgId}/approvals/${approval.approvalId}`, {
+                decision: "denied"
+            });
+
+            toast({
+                title: t("accessApprovalUpdated"),
+                description: t("accessApprovalDeniedDescription")
+            });
+
+            startTransition(() => {
+                router.refresh();
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("accessApprovalErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("accessApprovalErrorUpdateDescription")
+                )
+            });
+        }
+    };
+
     // Check if there are any rows without userIds in the current view's data
     const hasRowsWithoutUserId = useMemo(() => {
         return userClients.some((client) => !client.userId);
@@ -464,6 +548,20 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                {clientRow.approvalState === "pending" && (
+                                    <>
+                                        <DropdownMenuItem
+                                            onClick={() => approveDevice(clientRow)}
+                                        >
+                                            <span>{t("approve")}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => denyDevice(clientRow)}
+                                        >
+                                            <span>{t("deny")}</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => {
                                         if (clientRow.archived) {

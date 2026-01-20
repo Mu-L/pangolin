@@ -47,14 +47,20 @@ const querySchema = z.strictObject({
         .enum(["pending", "approved", "denied", "all"])
         .optional()
         .default("all")
-        .catch("all")
+        .catch("all"),
+    clientId: z
+        .string()
+        .optional()
+        .transform((val) => (val ? Number(val) : undefined))
+        .pipe(z.number().int().positive().optional())
 });
 
 async function queryApprovals(
     orgId: string,
     limit: number,
     offset: number,
-    approvalState: z.infer<typeof querySchema>["approvalState"]
+    approvalState: z.infer<typeof querySchema>["approvalState"],
+    clientId?: number
 ) {
     let state: Array<Approval["decision"]> = [];
     switch (approvalState) {
@@ -109,7 +115,8 @@ async function queryApprovals(
         .where(
             and(
                 eq(approvals.orgId, orgId),
-                sql`${approvals.decision} in ${state}`
+                sql`${approvals.decision} in ${state}`,
+                ...(clientId ? [eq(approvals.clientId, clientId)] : [])
             )
         )
         .orderBy(
@@ -202,7 +209,7 @@ export async function listApprovals(
                 )
             );
         }
-        const { limit, offset, approvalState } = parsedQuery.data;
+        const { limit, offset, approvalState, clientId } = parsedQuery.data;
 
         const { orgId } = parsedParams.data;
 
@@ -223,7 +230,8 @@ export async function listApprovals(
             orgId.toString(),
             limit,
             offset,
-            approvalState
+            approvalState,
+            clientId
         );
 
         const [{ count }] = await db
