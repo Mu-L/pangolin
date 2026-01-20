@@ -314,7 +314,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "online",
-                friendlyName: t("online"),
+                friendlyName: t("connectivity"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -336,14 +336,14 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         return (
                             <span className="text-green-500 flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span>{t("online")}</span>
+                                <span>{t("connected")}</span>
                             </span>
                         );
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                                <span>{t("offline")}</span>
+                                <span>{t("disconnected")}</span>
                             </span>
                         );
                     }

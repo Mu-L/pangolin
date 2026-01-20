@@ -2512,5 +2512,7 @@
     "unblock": "Unblock",
     "deviceActions": "Device Actions",
     "deviceActionsDescription": "Manage device status and access",
-    "devicePendingApprovalBannerDescription": "This device is pending approval. It won't be able to connect to resources until approved."
+    "devicePendingApprovalBannerDescription": "This device is pending approval. It won't be able to connect to resources until approved.",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
 }
