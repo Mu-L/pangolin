@@ -110,9 +110,9 @@ function getPlatformPostureData(
         if (fingerprint.macosGatekeeperEnabled !== null && fingerprint.macosGatekeeperEnabled !== undefined) {
             posture.macosGatekeeperEnabled = fingerprint.macosGatekeeperEnabled;
         }
-        // if (fingerprint.macosFirewallStealthMode !== null && fingerprint.macosFirewallStealthMode !== undefined) {
-        //     posture.macosFirewallStealthMode = fingerprint.macosFirewallStealthMode;
-        // }
+        if (fingerprint.macosFirewallStealthMode !== null && fingerprint.macosFirewallStealthMode !== undefined) {
+            posture.macosFirewallStealthMode = fingerprint.macosFirewallStealthMode;
+        }
     }
     // Linux: Hard drive encryption, Firewall, AppArmor, SELinux, TPM availability
     else if (normalizedPlatform === "linux") {

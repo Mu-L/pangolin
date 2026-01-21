@@ -26,7 +26,6 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
             await authCookieHeader()
         );
         client = res.data.data;
-        console.log(client);
     } catch (error) {
         redirect(`/${params.orgId}/settings/clients/user`);
     }
