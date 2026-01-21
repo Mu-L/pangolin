@@ -11,6 +11,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
+import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -40,6 +41,7 @@ export type InternalResourceRow = {
     destination: string;
     // destinationPort: number | null;
     alias: string | null;
+    aliasAddress: string | null;
     niceId: string;
     tcpPortRangeString: string | null;
     udpPortRangeString: string | null;
@@ -229,6 +231,29 @@ export default function ClientResourcesTable({
             }
         },
         {
+            accessorKey: "aliasAddress",
+            friendlyName: t("resourcesTableAliasAddress"),
+            enableHiding: true,
+            header: () => (
+                <div className="flex items-center gap-2 p-3">
+                    <span>{t("resourcesTableAliasAddress")}</span>
+                    <InfoPopup info={t("resourcesTableAliasAddressInfo")} />
+                </div>
+            ),
+            cell: ({ row }) => {
+                const resourceRow = row.original;
+                return resourceRow.aliasAddress ? (
+                    <CopyToClipboard
+                        text={resourceRow.aliasAddress}
+                        isLink={false}
+                        displayText={resourceRow.aliasAddress}
+                    />
+                ) : (
+                    <span>-</span>
+                );
+            }
+        },
+        {
             id: "actions",
             enableHiding: false,
             header: () => <span className="p-3"></span>,
@@ -316,7 +341,8 @@ export default function ClientResourcesTable({
                 enableColumnVisibility={true}
                 persistColumnVisibility="internal-resources"
                 columnVisibility={{
-                    niceId: false
+                    niceId: false,
+                    aliasAddress: false
                 }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"

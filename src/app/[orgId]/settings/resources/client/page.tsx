@@ -67,6 +67,7 @@ export default async function ClientResourcesPage(
                 destination: siteResource.destination,
                 // destinationPort: siteResource.destinationPort,
                 alias: siteResource.alias || null,
+                aliasAddress: siteResource.aliasAddress || null,
                 siteNiceId: siteResource.siteNiceId,
                 niceId: siteResource.niceId,
                 tcpPortRangeString: siteResource.tcpPortRangeString || null,
