@@ -62,6 +62,8 @@ import { QRCodeCanvas } from "qrcode.react";
 
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
+import { NewtSiteInstallCommands } from "@app/components/newt-install-commands";
+import { id } from "date-fns/locale";
 
 type SiteType = "newt" | "wireguard" | "local";
 
@@ -189,10 +191,6 @@ export default function Page() {
 
     const [loadingPage, setLoadingPage] = useState(true);
 
-    const [platform, setPlatform] = useState<Platform>("unix");
-    const [architecture, setArchitecture] = useState("amd64");
-    const [commands, setCommands] = useState<Commands | null>(null);
-
     const [newtId, setNewtId] = useState("");
     const [newtSecret, setNewtSecret] = useState("");
     const [newtEndpoint, setNewtEndpoint] = useState("");
@@ -202,7 +200,6 @@ export default function Page() {
     const [wgConfig, setWgConfig] = useState("");
 
     const [createLoading, setCreateLoading] = useState(false);
-    const [acceptClients, setAcceptClients] = useState(true);
     const [newtVersion, setNewtVersion] = useState("latest");
     const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
@@ -215,187 +212,6 @@ export default function Page() {
     const [selectedExitNodeId, setSelectedExitNodeId] = useState<
         string | undefined
     >();
-
-    const hydrateCommands = (
-        id: string,
-        secret: string,
-        endpoint: string,
-        version: string,
-        acceptClients: boolean = true
-    ) => {
-        const acceptClientsFlag = !acceptClients ? " --disable-clients" : "";
-        const acceptClientsEnv = !acceptClients
-            ? "\n      - DISABLE_CLIENTS=true"
-            : "";
-
-        const commands = {
-            unix: {
-                All: [
-                    {
-                        title: t("install"),
-                        command: `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
-                    },
-                    {
-                        title: t("run"),
-                        command: `newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
-                    }
-                ]
-            },
-            windows: {
-                x64: [
-                    {
-                        title: t("install"),
-                        command: `curl -o newt.exe -L "https://github.com/fosrl/newt/releases/download/${version}/newt_windows_amd64.exe"`
-                    },
-                    {
-                        title: t("run"),
-                        command: `newt.exe --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
-                    }
-                ]
-            },
-            docker: {
-                "Docker Compose": [
-                    `services:
-  newt:
-    image: fosrl/newt
-    container_name: newt
-    restart: unless-stopped
-    environment:
-      - PANGOLIN_ENDPOINT=${endpoint}
-      - NEWT_ID=${id}
-      - NEWT_SECRET=${secret}${acceptClientsEnv}`
-                ],
-                "Docker Run": [
-                    `docker run -dit fosrl/newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
-                ]
-            },
-            kubernetes: {
-                "Helm Chart": [
-                    `helm repo add fossorial https://charts.fossorial.io`,
-                    `helm repo update fossorial`,
-                    `helm install newt fossorial/newt \\
-    --create-namespace \\
-    --set newtInstances[0].name="main-tunnel" \\
-    --set-string newtInstances[0].auth.keys.endpointKey="${endpoint}" \\
-    --set-string newtInstances[0].auth.keys.idKey="${id}" \\
-    --set-string newtInstances[0].auth.keys.secretKey="${secret}"`
-                ]
-            },
-            podman: {
-                "Podman Quadlet": [
-                    `[Unit]
-Description=Newt container
-
-[Container]
-ContainerName=newt
-Image=docker.io/fosrl/newt
-Environment=PANGOLIN_ENDPOINT=${endpoint}
-Environment=NEWT_ID=${id}
-Environment=NEWT_SECRET=${secret}${!acceptClients ? "\nEnvironment=DISABLE_CLIENTS=true" : ""}
-# Secret=newt-secret,type=env,target=NEWT_SECRET
-
-[Service]
-Restart=always
-
-[Install]
-WantedBy=default.target`
-                ],
-                "Podman Run": [
-                    `podman run -dit docker.io/fosrl/newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
-                ]
-            },
-            nixos: {
-                All: [
-                    `nix run 'nixpkgs#fosrl-newt' -- --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
-                ]
-            }
-        };
-        setCommands(commands);
-    };
-
-    const getArchitectures = () => {
-        switch (platform) {
-            case "unix":
-                return ["All"];
-            case "windows":
-                return ["x64"];
-            case "docker":
-                return ["Docker Compose", "Docker Run"];
-            case "kubernetes":
-                return ["Helm Chart"];
-            case "podman":
-                return ["Podman Quadlet", "Podman Run"];
-            case "nixos":
-                return ["All"];
-            default:
-                return ["x64"];
-        }
-    };
-
-    const getPlatformName = (platformName: string) => {
-        switch (platformName) {
-            case "windows":
-                return "Windows";
-            case "unix":
-                return "Unix & macOS";
-            case "docker":
-                return "Docker";
-            case "kubernetes":
-                return "Kubernetes";
-            case "podman":
-                return "Podman";
-            case "nixos":
-                return "NixOS";
-            default:
-                return "Unix / macOS";
-        }
-    };
-
-    const getCommand = (): CommandItem[] => {
-        const placeholder: CommandItem[] = [t("unknownCommand")];
-        if (!commands) {
-            return placeholder;
-        }
-        let platformCommands = commands[platform as keyof Commands];
-
-        if (!platformCommands) {
-            // get first key
-            const firstPlatform = Object.keys(commands)[0] as Platform;
-            platformCommands = commands[firstPlatform as keyof Commands];
-
-            setPlatform(firstPlatform);
-        }
-
-        let architectureCommands = platformCommands[architecture];
-        if (!architectureCommands) {
-            // get first key
-            const firstArchitecture = Object.keys(platformCommands)[0];
-            architectureCommands = platformCommands[firstArchitecture];
-
-            setArchitecture(firstArchitecture);
-        }
-
-        return architectureCommands || placeholder;
-    };
-
-    const getPlatformIcon = (platformName: string) => {
-        switch (platformName) {
-            case "windows":
-                return <FaWindows className="h-4 w-4 mr-2" />;
-            case "unix":
-                return <Terminal className="h-4 w-4 mr-2" />;
-            case "docker":
-                return <FaDocker className="h-4 w-4 mr-2" />;
-            case "kubernetes":
-                return <SiKubernetes className="h-4 w-4 mr-2" />;
-            case "podman":
-                return <FaCubes className="h-4 w-4 mr-2" />;
-            case "nixos":
-                return <SiNixos className="h-4 w-4 mr-2" />;
-            default:
-                return <Terminal className="h-4 w-4 mr-2" />;
-        }
-    };
 
     const form = useForm({
         resolver: zodResolver(createSiteFormSchema),
@@ -414,7 +230,7 @@ WantedBy=default.target`
 
         let payload: CreateSiteBody = {
             name: data.name,
-            type: data.method as "newt" | "wireguard" | "local"
+            type: data.method
         };
 
         if (data.method == "wireguard") {
@@ -568,14 +384,6 @@ WantedBy=default.target`
                         setNewtEndpoint(newtEndpoint);
                         setClientAddress(clientAddress);
 
-                        hydrateCommands(
-                            newtId,
-                            newtSecret,
-                            env.app.dashboardUrl,
-                            currentNewtVersion,
-                            acceptClients
-                        );
-
                         const wgConfig = generateWireGuardConfig(
                             privateKey,
                             data.publicKey,
@@ -630,11 +438,6 @@ WantedBy=default.target`
 
         load();
     }, []);
-
-    // Sync form acceptClients value with local state
-    useEffect(() => {
-        form.setValue("acceptClients", acceptClients);
-    }, [acceptClients, form]);
 
     // Sync form exitNodeId value with local state
     useEffect(() => {
@@ -847,214 +650,15 @@ WantedBy=default.target`
                                                 </InfoSectionContent>
                                             </InfoSection>
                                         </InfoSections>
-
-                                        {/* <Form {...form}> */}
-                                        {/*     <form */}
-                                        {/*         className="space-y-4" */}
-                                        {/*         id="create-site-form" */}
-                                        {/*     > */}
-                                        {/*         <FormField */}
-                                        {/*             control={form.control} */}
-                                        {/*             name="copied" */}
-                                        {/*             render={({ field }) => ( */}
-                                        {/*                 <FormItem> */}
-                                        {/*                     <div className="flex items-center space-x-2"> */}
-                                        {/*                         <Checkbox */}
-                                        {/*                             id="terms" */}
-                                        {/*                             defaultChecked={ */}
-                                        {/*                                 form.getValues( */}
-                                        {/*                                     "copied" */}
-                                        {/*                                 ) as boolean */}
-                                        {/*                             } */}
-                                        {/*                             onCheckedChange={( */}
-                                        {/*                                 e */}
-                                        {/*                             ) => { */}
-                                        {/*                                 form.setValue( */}
-                                        {/*                                     "copied", */}
-                                        {/*                                     e as boolean */}
-                                        {/*                                 ); */}
-                                        {/*                             }} */}
-                                        {/*                         /> */}
-                                        {/*                         <label */}
-                                        {/*                             htmlFor="terms" */}
-                                        {/*                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" */}
-                                        {/*                         > */}
-                                        {/*                             {t('siteConfirmCopy')} */}
-                                        {/*                         </label> */}
-                                        {/*                     </div> */}
-                                        {/*                     <FormMessage /> */}
-                                        {/*                 </FormItem> */}
-                                        {/*             )} */}
-                                        {/*         /> */}
-                                        {/*     </form> */}
-                                        {/* </Form> */}
                                     </SettingsSectionBody>
                                 </SettingsSection>
-                                <SettingsSection>
-                                    <SettingsSectionHeader>
-                                        <SettingsSectionTitle>
-                                            {t("siteInstallNewt")}
-                                        </SettingsSectionTitle>
-                                        <SettingsSectionDescription>
-                                            {t("siteInstallNewtDescription")}
-                                        </SettingsSectionDescription>
-                                    </SettingsSectionHeader>
-                                    <SettingsSectionBody>
-                                        <div>
-                                            <p className="font-bold mb-3">
-                                                {t("operatingSystem")}
-                                            </p>
-                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                                {platforms.map((os) => (
-                                                    <Button
-                                                        key={os}
-                                                        variant={
-                                                            platform === os
-                                                                ? "squareOutlinePrimary"
-                                                                : "squareOutline"
-                                                        }
-                                                        className={`flex-1 min-w-30 ${platform === os ? "bg-primary/10" : ""} shadow-none`}
-                                                        onClick={() => {
-                                                            setPlatform(os);
-                                                        }}
-                                                    >
-                                                        {getPlatformIcon(os)}
-                                                        {getPlatformName(os)}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </div>
 
-                                        <div>
-                                            <p className="font-bold mb-3">
-                                                {["docker", "podman"].includes(
-                                                    platform
-                                                )
-                                                    ? t("method")
-                                                    : t("architecture")}
-                                            </p>
-                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                                {getArchitectures().map(
-                                                    (arch) => (
-                                                        <Button
-                                                            key={arch}
-                                                            variant={
-                                                                architecture ===
-                                                                arch
-                                                                    ? "squareOutlinePrimary"
-                                                                    : "squareOutline"
-                                                            }
-                                                            className={`flex-1 min-w-30 ${architecture === arch ? "bg-primary/10" : ""} shadow-none`}
-                                                            onClick={() =>
-                                                                setArchitecture(
-                                                                    arch
-                                                                )
-                                                            }
-                                                        >
-                                                            {arch}
-                                                        </Button>
-                                                    )
-                                                )}
-                                            </div>
-
-                                            <div className="pt-4">
-                                                <p className="font-bold mb-3">
-                                                    {t("siteConfiguration")}
-                                                </p>
-                                                <div className="flex items-center space-x-2 mb-2">
-                                                    <CheckboxWithLabel
-                                                        id="acceptClients"
-                                                        aria-describedby="acceptClients-desc"
-                                                        checked={acceptClients}
-                                                        onCheckedChange={(
-                                                            checked
-                                                        ) => {
-                                                            const value =
-                                                                checked as boolean;
-                                                            setAcceptClients(
-                                                                value
-                                                            );
-                                                            form.setValue(
-                                                                "acceptClients",
-                                                                value
-                                                            );
-                                                            // Re-hydrate commands with new acceptClients value
-                                                            if (
-                                                                newtId &&
-                                                                newtSecret &&
-                                                                newtVersion
-                                                            ) {
-                                                                hydrateCommands(
-                                                                    newtId,
-                                                                    newtSecret,
-                                                                    env.app
-                                                                        .dashboardUrl,
-                                                                    newtVersion,
-                                                                    value
-                                                                );
-                                                            }
-                                                        }}
-                                                        label={t(
-                                                            "siteAcceptClientConnections"
-                                                        )}
-                                                    />
-                                                </div>
-                                                <p
-                                                    id="acceptClients-desc"
-                                                    className="text-sm text-muted-foreground"
-                                                >
-                                                    {t(
-                                                        "siteAcceptClientConnectionsDescription"
-                                                    )}
-                                                </p>
-                                            </div>
-
-                                            <div className="pt-4">
-                                                <p className="font-bold mb-3">
-                                                    {t("commands")}
-                                                </p>
-                                                <div className="mt-2 space-y-3">
-                                                    {getCommand().map(
-                                                        (item, index) => {
-                                                            const commandText =
-                                                                typeof item ===
-                                                                "string"
-                                                                    ? item
-                                                                    : item.command;
-                                                            const title =
-                                                                typeof item ===
-                                                                "string"
-                                                                    ? undefined
-                                                                    : item.title;
-
-                                                            return (
-                                                                <div
-                                                                    key={index}
-                                                                >
-                                                                    {title && (
-                                                                        <p className="text-sm font-medium mb-1.5">
-                                                                            {
-                                                                                title
-                                                                            }
-                                                                        </p>
-                                                                    )}
-                                                                    <CopyTextBox
-                                                                        text={
-                                                                            commandText
-                                                                        }
-                                                                        outline={
-                                                                            true
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                            );
-                                                        }
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </SettingsSectionBody>
-                                </SettingsSection>
+                                <NewtSiteInstallCommands
+                                    id={newtId}
+                                    secret={newtSecret}
+                                    endpoint={env.app.dashboardUrl}
+                                    version={newtVersion}
+                                />
                             </>
                         )}
 
