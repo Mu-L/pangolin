@@ -548,7 +548,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {clientRow.approvalState === "pending" && (
+                                {clientRow.approvalState === "pending" && build !== "oss" && (
                                     <>
                                         <DropdownMenuItem
                                             onClick={() => approveDevice(clientRow)}
@@ -653,7 +653,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         ];
 
         if (build === "oss") {
-            return allOptions.filter((option) => option.value !== "pending");
+            return allOptions.filter((option) => option.value !== "pending" && option.value !== "denied");
         }
 
         return allOptions;
