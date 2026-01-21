@@ -73,6 +73,13 @@ export async function recoverOlmWithFingerprint(
             )
             .orderBy(currentFingerprint.lastSeen);
 
+        logger.debug(`currentFingerprint = ${platformFingerprint}`);
+        logger.debug(`userId = ${userId}`);
+
+        logger.debug(
+            `recoverOlmWithFingerprint: found ${result.length} olms for userId ${userId} with provided fingerprint`
+        );
+
         if (!result || result.length == 0) {
             return next(
                 createHttpError(
