@@ -95,9 +95,9 @@ function getPlatformPostureData(
     }
     // macOS: Hard drive encryption, Biometric configuration, Firewall, System Integrity Protection (SIP), Gatekeeper, Firewall stealth mode
     else if (normalizedPlatform === "macos") {
-        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
-            posture.diskEncrypted = fingerprint.diskEncrypted;
-        }
+        // if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+        //     posture.diskEncrypted = fingerprint.diskEncrypted;
+        // }
         if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
             posture.biometricsEnabled = fingerprint.biometricsEnabled;
         }

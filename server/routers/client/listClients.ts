@@ -175,10 +175,7 @@ async function getSiteAssociations(clientIds: number[]) {
         .where(inArray(clientSitesAssociationsCache.clientId, clientIds));
 }
 
-type ClientWithSites = Omit<
-    Awaited<ReturnType<typeof queryClients>>[0],
-    "deviceModel"
-> & {
+type ClientWithSites = Awaited<ReturnType<typeof queryClients>>[0] & {
     sites: Array<{
         siteId: number;
         siteName: string | null;
@@ -324,9 +321,8 @@ export async function listClients(
         const clientsWithSites = clientsList.map((client) => {
             const model = client.deviceModel || null;
             const newName = getUserDeviceName(model, client.name);
-            const { deviceModel, ...clientWithoutDeviceModel } = client;
             return {
-                ...clientWithoutDeviceModel,
+                ...client,
                 name: newName,
                 sites: sitesByClient[client.clientId] || []
             };
