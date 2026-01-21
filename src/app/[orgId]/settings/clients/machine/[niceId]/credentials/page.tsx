@@ -32,6 +32,7 @@ import CopyToClipboard from "@app/components/CopyToClipboard";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { OlmInstallCommands } from "@app/components/olm-install-commands";
 
 export default function CredentialsPage() {
     const { env } = useEnvContext();
@@ -204,6 +205,12 @@ export default function CredentialsPage() {
                         </SettingsSectionFooter>
                     )}
                 </SettingsSection>
+
+                <OlmInstallCommands
+                    id={displayOlmId ?? "********"}
+                    endpoint={env.app.dashboardUrl}
+                    secret={displaySecret ?? "********"}
+                />
             </SettingsContainer>
 
             <ConfirmDeleteDialog

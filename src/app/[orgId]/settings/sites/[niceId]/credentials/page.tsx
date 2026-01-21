@@ -39,6 +39,7 @@ import {
 } from "@app/lib/wireguard";
 import { QRCodeCanvas } from "qrcode.react";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { NewtSiteInstallCommands } from "@app/components/newt-install-commands";
 
 export default function CredentialsPage() {
     const { env } = useEnvContext();
@@ -186,107 +187,119 @@ export default function CredentialsPage() {
         return site?.name || site?.niceId || "My site";
     };
 
-    const displayNewtId = currentNewtId || siteDefaults?.newtId || null;
-    const displaySecret = regeneratedSecret || null;
+    const displayNewtId = currentNewtId ?? siteDefaults?.newtId ?? null;
+    const displaySecret = regeneratedSecret ?? null;
 
     return (
         <>
             <SettingsContainer>
                 {site?.type === "newt" && (
-                    <SettingsSection>
-                        <SettingsSectionHeader>
-                            <SettingsSectionTitle>
-                                {t("siteNewtCredentials")}
-                            </SettingsSectionTitle>
-                            <SettingsSectionDescription>
-                                {t("siteNewtCredentialsDescription")}
-                            </SettingsSectionDescription>
-                        </SettingsSectionHeader>
+                    <>
+                        <SettingsSection>
+                            <SettingsSectionHeader>
+                                <SettingsSectionTitle>
+                                    {t("siteNewtCredentials")}
+                                </SettingsSectionTitle>
+                                <SettingsSectionDescription>
+                                    {t("siteNewtCredentialsDescription")}
+                                </SettingsSectionDescription>
+                            </SettingsSectionHeader>
 
-                        <PaidFeaturesAlert />
+                            <PaidFeaturesAlert />
 
-                        <SettingsSectionBody>
-                            <InfoSections cols={3}>
-                                <InfoSection>
-                                    <InfoSectionTitle>
-                                        {t("newtEndpoint")}
-                                    </InfoSectionTitle>
-                                    <InfoSectionContent>
-                                        <CopyToClipboard
-                                            text={env.app.dashboardUrl}
-                                        />
-                                    </InfoSectionContent>
-                                </InfoSection>
-                                <InfoSection>
-                                    <InfoSectionTitle>
-                                        {t("newtId")}
-                                    </InfoSectionTitle>
-                                    <InfoSectionContent>
-                                        {displayNewtId ? (
+                            <SettingsSectionBody>
+                                <InfoSections cols={3}>
+                                    <InfoSection>
+                                        <InfoSectionTitle>
+                                            {t("newtEndpoint")}
+                                        </InfoSectionTitle>
+                                        <InfoSectionContent>
                                             <CopyToClipboard
-                                                text={displayNewtId}
+                                                text={env.app.dashboardUrl}
                                             />
-                                        ) : (
-                                            <span>{"••••••••••••••••"}</span>
-                                        )}
-                                    </InfoSectionContent>
-                                </InfoSection>
-                                <InfoSection>
-                                    <InfoSectionTitle>
-                                        {t("newtSecretKey")}
-                                    </InfoSectionTitle>
-                                    <InfoSectionContent>
-                                        {displaySecret ? (
-                                            <CopyToClipboard
-                                                text={displaySecret}
-                                            />
-                                        ) : (
-                                            <span>
-                                                {
-                                                    "••••••••••••••••••••••••••••••••"
-                                                }
-                                            </span>
-                                        )}
-                                    </InfoSectionContent>
-                                </InfoSection>
-                            </InfoSections>
+                                        </InfoSectionContent>
+                                    </InfoSection>
+                                    <InfoSection>
+                                        <InfoSectionTitle>
+                                            {t("newtId")}
+                                        </InfoSectionTitle>
+                                        <InfoSectionContent>
+                                            {displayNewtId ? (
+                                                <CopyToClipboard
+                                                    text={displayNewtId}
+                                                />
+                                            ) : (
+                                                <span>
+                                                    {"••••••••••••••••"}
+                                                </span>
+                                            )}
+                                        </InfoSectionContent>
+                                    </InfoSection>
+                                    <InfoSection>
+                                        <InfoSectionTitle>
+                                            {t("newtSecretKey")}
+                                        </InfoSectionTitle>
+                                        <InfoSectionContent>
+                                            {displaySecret ? (
+                                                <CopyToClipboard
+                                                    text={displaySecret}
+                                                />
+                                            ) : (
+                                                <span>
+                                                    {
+                                                        "••••••••••••••••••••••••••••••••"
+                                                    }
+                                                </span>
+                                            )}
+                                        </InfoSectionContent>
+                                    </InfoSection>
+                                </InfoSections>
 
-                            {showCredentialsAlert && displaySecret && (
-                                <Alert variant="neutral" className="mt-4">
-                                    <InfoIcon className="h-4 w-4" />
-                                    <AlertTitle className="font-semibold">
-                                        {t("siteCredentialsSave")}
-                                    </AlertTitle>
-                                    <AlertDescription>
-                                        {t("siteCredentialsSaveDescription")}
-                                    </AlertDescription>
-                                </Alert>
+                                {showCredentialsAlert && displaySecret && (
+                                    <Alert variant="neutral" className="mt-4">
+                                        <InfoIcon className="h-4 w-4" />
+                                        <AlertTitle className="font-semibold">
+                                            {t("siteCredentialsSave")}
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            {t(
+                                                "siteCredentialsSaveDescription"
+                                            )}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </SettingsSectionBody>
+                            {build !== "oss" && (
+                                <SettingsSectionFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setShouldDisconnect(false);
+                                            setModalOpen(true);
+                                        }}
+                                        disabled={isSecurityFeatureDisabled()}
+                                    >
+                                        {t("regenerateCredentialsButton")}
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            setShouldDisconnect(true);
+                                            setModalOpen(true);
+                                        }}
+                                        disabled={isSecurityFeatureDisabled()}
+                                    >
+                                        {t("siteRegenerateAndDisconnect")}
+                                    </Button>
+                                </SettingsSectionFooter>
                             )}
-                        </SettingsSectionBody>
-                        {build !== "oss" && (
-                            <SettingsSectionFooter>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setShouldDisconnect(false);
-                                        setModalOpen(true);
-                                    }}
-                                    disabled={isSecurityFeatureDisabled()}
-                                >
-                                    {t("regenerateCredentialsButton")}
-                                </Button>
-                                <Button
-                                    onClick={() => {
-                                        setShouldDisconnect(true);
-                                        setModalOpen(true);
-                                    }}
-                                    disabled={isSecurityFeatureDisabled()}
-                                >
-                                    {t("siteRegenerateAndDisconnect")}
-                                </Button>
-                            </SettingsSectionFooter>
-                        )}
-                    </SettingsSection>
+                        </SettingsSection>
+
+                        <NewtSiteInstallCommands
+                            id={displayNewtId ?? "**********"}
+                            secret={displaySecret ?? "**************"}
+                            endpoint={env.app.dashboardUrl}
+                        />
+                    </>
                 )}
 
                 {site?.type === "wireguard" && (
