@@ -1,4 +1,4 @@
-import { clientPostureSnapshots, db, fingerprints, orgs } from "@server/db";
+import { db, orgs } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import {
     clients,
@@ -15,6 +15,7 @@ import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
 import { OlmErrorCodes, sendOlmError } from "./error";
+import { handleFingerprintInsertion } from "./fingerprintingUtils";
 
 export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     logger.info("Handling register olm message!");
@@ -45,85 +46,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         return;
     }
 
-    if (fingerprint) {
-        const [existingFingerprint] = await db
-            .select()
-            .from(fingerprints)
-            .where(eq(fingerprints.olmId, olm.olmId))
-            .limit(1);
-
-        if (!existingFingerprint) {
-            await db.insert(fingerprints).values({
-                olmId: olm.olmId,
-                firstSeen: now,
-                lastSeen: now,
-
-                username: fingerprint.username,
-                hostname: fingerprint.hostname,
-                platform: fingerprint.platform,
-                osVersion: fingerprint.osVersion,
-                kernelVersion: fingerprint.kernelVersion,
-                arch: fingerprint.arch,
-                deviceModel: fingerprint.deviceModel,
-                serialNumber: fingerprint.serialNumber,
-                platformFingerprint: fingerprint.platformFingerprint
-            });
-        } else {
-            const hasChanges =
-                existingFingerprint.username !== fingerprint.username ||
-                existingFingerprint.hostname !== fingerprint.hostname ||
-                existingFingerprint.platform !== fingerprint.platform ||
-                existingFingerprint.osVersion !== fingerprint.osVersion ||
-                existingFingerprint.kernelVersion !==
-                    fingerprint.kernelVersion ||
-                existingFingerprint.arch !== fingerprint.arch ||
-                existingFingerprint.deviceModel !== fingerprint.deviceModel ||
-                existingFingerprint.serialNumber !== fingerprint.serialNumber ||
-                existingFingerprint.platformFingerprint !==
-                    fingerprint.platformFingerprint;
-
-            if (hasChanges) {
-                await db
-                    .update(fingerprints)
-                    .set({
-                        lastSeen: now,
-                        username: fingerprint.username,
-                        hostname: fingerprint.hostname,
-                        platform: fingerprint.platform,
-                        osVersion: fingerprint.osVersion,
-                        kernelVersion: fingerprint.kernelVersion,
-                        arch: fingerprint.arch,
-                        deviceModel: fingerprint.deviceModel,
-                        serialNumber: fingerprint.serialNumber,
-                        platformFingerprint: fingerprint.platformFingerprint
-                    })
-                    .where(eq(fingerprints.olmId, olm.olmId));
-            }
-        }
-    }
-
-    if (postures) {
-        await db.insert(clientPostureSnapshots).values({
-            clientId: olm.clientId,
-
-            biometricsEnabled: postures?.biometricsEnabled,
-            diskEncrypted: postures?.diskEncrypted,
-            firewallEnabled: postures?.firewallEnabled,
-            autoUpdatesEnabled: postures?.autoUpdatesEnabled,
-            tpmAvailable: postures?.tpmAvailable,
-
-            windowsDefenderEnabled: postures?.windowsDefenderEnabled,
-
-            macosSipEnabled: postures?.macosSipEnabled,
-            macosGatekeeperEnabled: postures?.macosGatekeeperEnabled,
-            macosFirewallStealthMode: postures?.macosFirewallStealthMode,
-
-            linuxAppArmorEnabled: postures?.linuxAppArmorEnabled,
-            linuxSELinuxEnabled: postures?.linuxSELinuxEnabled,
-
-            collectedAt: now
-        });
-    }
+    await handleFingerprintInsertion(olm, fingerprint, postures);
 
     if (
         (olmVersion && olm.version !== olmVersion) ||

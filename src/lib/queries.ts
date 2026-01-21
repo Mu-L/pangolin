@@ -326,21 +326,34 @@ export const resourceQueries = {
 export const approvalFiltersSchema = z.object({
     approvalState: z
         .enum(["pending", "approved", "denied", "all"])
-        .optional()
-        .catch("all")
+        .default("pending")
+        .catch("pending")
 });
 
 export type ApprovalItem = {
     approvalId: number;
     orgId: string;
     clientId: number | null;
+    niceId: string | null;
     decision: "pending" | "approved" | "denied";
     type: "user_device";
     user: {
         name: string | null;
         userId: string;
         username: string;
+        email: string | null;
     };
+    deviceName: string | null;
+    fingerprint: {
+        platform: string | null;
+        osVersion: string | null;
+        kernelVersion: string | null;
+        arch: string | null;
+        deviceModel: string | null;
+        serialNumber: string | null;
+        username: string | null;
+        hostname: string | null;
+    } | null;
 };
 
 export const approvalQueries = {
@@ -363,6 +376,18 @@ export const approvalQueries = {
                     signal
                 });
                 return res.data.data;
+            }
+        }),
+    pendingCount: (orgId: string) =>
+        queryOptions({
+            queryKey: ["APPROVALS", orgId, "COUNT", "pending"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<{ count: number }>
+                >(`/org/${orgId}/approvals/count?approvalState=pending`, {
+                    signal
+                });
+                return res.data.data.count;
             }
         })
 };

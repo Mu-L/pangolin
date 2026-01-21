@@ -12,6 +12,8 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import { formatFingerprintInfo, formatPlatform } from "@app/lib/formatDeviceFingerprint";
 import {
     ArrowRight,
     ArrowUpDown,
@@ -65,55 +67,9 @@ type ClientTableProps = {
     orgId: string;
 };
 
-function formatPlatform(platform: string | null | undefined): string {
-    if (!platform) return "-";
-    const platformMap: Record<string, string> = {
-        macos: "macOS",
-        windows: "Windows",
-        linux: "Linux",
-        ios: "iOS",
-        android: "Android",
-        unknown: "Unknown"
-    };
-    return platformMap[platform.toLowerCase()] || platform;
-}
-
 export default function UserDevicesTable({ userClients }: ClientTableProps) {
     const router = useRouter();
     const t = useTranslations();
-
-    const formatFingerprintInfo = (
-        fingerprint: ClientRow["fingerprint"]
-    ): string => {
-        if (!fingerprint) return "";
-        const parts: string[] = [];
-
-        if (fingerprint.platform) {
-            parts.push(
-                `${t("platform")}: ${formatPlatform(fingerprint.platform)}`
-            );
-        }
-        if (fingerprint.deviceModel) {
-            parts.push(`${t("deviceModel")}: ${fingerprint.deviceModel}`);
-        }
-        if (fingerprint.osVersion) {
-            parts.push(`${t("osVersion")}: ${fingerprint.osVersion}`);
-        }
-        if (fingerprint.arch) {
-            parts.push(`${t("architecture")}: ${fingerprint.arch}`);
-        }
-        if (fingerprint.hostname) {
-            parts.push(`${t("hostname")}: ${fingerprint.hostname}`);
-        }
-        if (fingerprint.username) {
-            parts.push(`${t("username")}: ${fingerprint.username}`);
-        }
-        if (fingerprint.serialNumber) {
-            parts.push(`${t("serialNumber")}: ${fingerprint.serialNumber}`);
-        }
-
-        return parts.join("\n");
-    };
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<ClientRow | null>(
@@ -228,6 +184,90 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             });
     };
 
+    const approveDevice = async (clientRow: ClientRow) => {
+        try {
+            // Fetch approvalId for this client using clientId query parameter
+            const approvalsRes = await api.get<{
+                data: { approvals: Array<{ approvalId: number; clientId: number }> };
+            }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
+            
+            const approval = approvalsRes.data.data.approvals[0];
+
+            if (!approval) {
+                toast({
+                    variant: "destructive",
+                    title: t("error"),
+                    description: t("accessApprovalErrorUpdateDescription")
+                });
+                return;
+            }
+
+            await api.put(`/org/${clientRow.orgId}/approvals/${approval.approvalId}`, {
+                decision: "approved"
+            });
+
+            toast({
+                title: t("accessApprovalUpdated"),
+                description: t("accessApprovalApprovedDescription")
+            });
+
+            startTransition(() => {
+                router.refresh();
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("accessApprovalErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("accessApprovalErrorUpdateDescription")
+                )
+            });
+        }
+    };
+
+    const denyDevice = async (clientRow: ClientRow) => {
+        try {
+            // Fetch approvalId for this client using clientId query parameter
+            const approvalsRes = await api.get<{
+                data: { approvals: Array<{ approvalId: number; clientId: number }> };
+            }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
+            
+            const approval = approvalsRes.data.data.approvals[0];
+
+            if (!approval) {
+                toast({
+                    variant: "destructive",
+                    title: t("error"),
+                    description: t("accessApprovalErrorUpdateDescription")
+                });
+                return;
+            }
+
+            await api.put(`/org/${clientRow.orgId}/approvals/${approval.approvalId}`, {
+                decision: "denied"
+            });
+
+            toast({
+                title: t("accessApprovalUpdated"),
+                description: t("accessApprovalDeniedDescription")
+            });
+
+            startTransition(() => {
+                router.refresh();
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("accessApprovalErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("accessApprovalErrorUpdateDescription")
+                )
+            });
+        }
+    };
+
     // Check if there are any rows without userIds in the current view's data
     const hasRowsWithoutUserId = useMemo(() => {
         return userClients.some((client) => !client.userId);
@@ -257,7 +297,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                 cell: ({ row }) => {
                     const r = row.original;
                     const fingerprintInfo = r.fingerprint
-                        ? formatFingerprintInfo(r.fingerprint)
+                        ? formatFingerprintInfo(r.fingerprint, t)
                         : null;
                     return (
                         <div className="flex items-center gap-2">
@@ -344,7 +384,10 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             href={`/${r.orgId}/settings/access/users/${r.userId}`}
                         >
                             <Button variant="outline">
-                                {r.userEmail || r.username || r.userId}
+                                {getUserDisplayName({
+                                    email: r.userEmail,
+                                    username: r.username
+                                }) || r.userId}
                                 <ArrowUpRight className="ml-2 h-4 w-4" />
                             </Button>
                         </Link>
@@ -355,7 +398,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "online",
-                friendlyName: t("online"),
+                friendlyName: t("connectivity"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -377,14 +420,14 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                         return (
                             <span className="text-green-500 flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span>{t("online")}</span>
+                                <span>{t("connected")}</span>
                             </span>
                         );
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                                <span>{t("offline")}</span>
+                                <span>{t("disconnected")}</span>
                             </span>
                         );
                     }
@@ -505,6 +548,20 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                {clientRow.approvalState === "pending" && (
+                                    <>
+                                        <DropdownMenuItem
+                                            onClick={() => approveDevice(clientRow)}
+                                        >
+                                            <span>{t("approve")}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => denyDevice(clientRow)}
+                                        >
+                                            <span>{t("deny")}</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
                                 <DropdownMenuItem
                                     onClick={() => {
                                         if (clientRow.archived) {

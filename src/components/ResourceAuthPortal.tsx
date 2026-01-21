@@ -88,7 +88,7 @@ type ResourceAuthPortalProps = {
     idps?: LoginFormIDP[];
     orgId?: string;
     branding?: {
-        logoUrl: string;
+        logoUrl?: string | null;
         logoWidth: number;
         logoHeight: number;
         primaryColor: string | null;

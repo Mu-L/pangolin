@@ -214,7 +214,7 @@ export const loginPageOrg = pgTable("loginPageOrg", {
 
 export const loginPageBranding = pgTable("loginPageBranding", {
     loginPageBrandingId: serial("loginPageBrandingId").primaryKey(),
-    logoUrl: text("logoUrl").notNull(),
+    logoUrl: text("logoUrl"),
     logoWidth: integer("logoWidth").notNull(),
     logoHeight: integer("logoHeight").notNull(),
     primaryColor: text("primaryColor"),

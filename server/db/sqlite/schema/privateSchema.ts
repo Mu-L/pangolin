@@ -206,7 +206,7 @@ export const loginPageBranding = sqliteTable("loginPageBranding", {
     loginPageBrandingId: integer("loginPageBrandingId").primaryKey({
         autoIncrement: true
     }),
-    logoUrl: text("logoUrl").notNull(),
+    logoUrl: text("logoUrl"),
     logoWidth: integer("logoWidth").notNull(),
     logoHeight: integer("logoHeight").notNull(),
     primaryColor: text("primaryColor"),

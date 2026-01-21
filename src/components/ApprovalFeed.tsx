@@ -2,7 +2,9 @@
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cn } from "@app/lib/cn";
+import { formatFingerprintInfo } from "@app/lib/formatDeviceFingerprint";
 import {
     approvalFiltersSchema,
     approvalQueries,
@@ -26,12 +28,18 @@ import {
     SelectValue
 } from "./ui/select";
 import { Separator } from "./ui/separator";
+import { InfoPopup } from "./ui/info-popup";
+import { ApprovalsEmptyState } from "./ApprovalsEmptyState";
 
 export type ApprovalFeedProps = {
     orgId: string;
+    hasApprovalsEnabled: boolean;
 };
 
-export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
+export function ApprovalFeed({
+    orgId,
+    hasApprovalsEnabled
+}: ApprovalFeedProps) {
     const searchParams = useSearchParams();
     const path = usePathname();
     const t = useTranslations();
@@ -47,6 +55,11 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
     );
 
     const approvals = data?.approvals ?? [];
+
+    // Show empty state if no approvals are enabled for any role
+    if (!hasApprovalsEnabled) {
+        return <ApprovalsEmptyState orgId={orgId} />;
+    }
 
     return (
         <div className="flex flex-col gap-5">
@@ -67,7 +80,7 @@ export function ApprovalFeed({ orgId }: ApprovalFeedProps) {
                                     `${path}?${newSearch.toString()}`
                                 );
                             }}
-                            value={filters.approvalState ?? "all"}
+                            value={filters.approvalState ?? "pending"}
                         >
                             <SelectTrigger
                                 id="approvalState"
@@ -182,14 +195,50 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
     return (
         <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="inline-flex items-start md:items-center gap-2">
-                <LaptopMinimal className="size-4 text-muted-foreground flex-none relative top-2 sm:top-0" />
                 <span>
-                    <span className="text-primary">
-                        {approval.user.username}
-                    </span>
+                    <Link
+                        href={`/${orgId}/settings/access/users/${approval.user.userId}/access-controls`}
+                        className="text-primary hover:underline cursor-pointer"
+                    >
+                        {getUserDisplayName({
+                            email: approval.user.email,
+                            name: approval.user.name,
+                            username: approval.user.username
+                        })}
+                    </Link>
                     &nbsp;
                     {approval.type === "user_device" && (
-                        <span>{t("requestingNewDeviceApproval")}</span>
+                        <span className="inline-flex items-center gap-1">
+                                    {approval.deviceName ? (
+                                        <>
+                                            {t("requestingNewDeviceApproval")}:{" "}
+                                            {approval.niceId ? (
+                                                <Link
+                                                    href={`/${orgId}/settings/clients/user/${approval.niceId}/general`}
+                                                    className="text-primary hover:underline cursor-pointer"
+                                                >
+                                                    {approval.deviceName}
+                                                </Link>
+                                            ) : (
+                                                <span>{approval.deviceName}</span>
+                                            )}
+                                    {approval.fingerprint && (
+                                        <InfoPopup>
+                                            <div className="space-y-1 text-sm">
+                                                <div className="font-semibold mb-2">
+                                                    {t("deviceInformation")}
+                                                </div>
+                                                <div className="text-muted-foreground whitespace-pre-line">
+                                                    {formatFingerprintInfo(approval.fingerprint, t)}
+                                                </div>
+                                            </div>
+                                        </InfoPopup>
+                                    )}
+                                </>
+                            ) : (
+                                <span>{t("requestingNewDeviceApproval")}</span>
+                            )}
+                        </span>
                     )}
                 </span>
             </div>
@@ -225,18 +274,6 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                 {approval.decision === "denied" && (
                     <Badge variant="red">{t("denied")}</Badge>
                 )}
-
-                <Button
-                    variant="outline"
-                    onClick={() => {}}
-                    className="gap-2"
-                    asChild
-                >
-                    <Link href={"#"}>
-                        {t("viewDetails")}
-                        <ArrowRight className="size-4 flex-none" />
-                    </Link>
-                </Button>
             </div>
         </div>
     );

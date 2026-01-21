@@ -14,6 +14,7 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { Laptop, LogOut, Moon, Sun, Smartphone } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -49,9 +50,8 @@ export default function ProfileIcon() {
     const t = useTranslations();
 
     function getInitials() {
-        return (user.email || user.name || user.username)
-            .substring(0, 1)
-            .toUpperCase();
+        const displayName = getUserDisplayName({ user });
+        return displayName.substring(0, 1).toUpperCase();
     }
 
     function handleThemeChange(theme: "light" | "dark" | "system") {
@@ -109,7 +109,7 @@ export default function ProfileIcon() {
                                 {t("signingAs")}
                             </p>
                             <p className="text-xs leading-none text-muted-foreground">
-                                {user.email || user.name || user.username}
+                                {getUserDisplayName({ user })}
                             </p>
                         </div>
                         {user.serverAdmin ? (

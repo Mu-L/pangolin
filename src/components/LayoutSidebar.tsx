@@ -14,7 +14,9 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { cn } from "@app/lib/cn";
+import { approvalQueries } from "@app/lib/queries";
 import { build } from "@server/build";
+import { useQuery } from "@tanstack/react-query";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { ExternalLink, Server } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -56,6 +58,26 @@ export function LayoutSidebar({
     const { isUnlocked, licenseStatus } = useLicenseStatusContext();
     const { env } = useEnvContext();
     const t = useTranslations();
+
+    // Fetch pending approval count if we have an orgId and it's not an admin page
+    const shouldFetchApprovalCount =
+        Boolean(orgId) && !isAdminPage && build !== "oss";
+    const approvalCountQuery = orgId
+        ? approvalQueries.pendingCount(orgId)
+        : {
+              queryKey: ["APPROVALS", "", "COUNT", "pending"] as const,
+              queryFn: async () => 0
+          };
+    const { data: pendingApprovalCount } = useQuery({
+        ...approvalCountQuery,
+        enabled: shouldFetchApprovalCount
+    });
+
+    // Map notification counts by navigation item title
+    const notificationCounts: Record<string, number | undefined> = {};
+    if (pendingApprovalCount !== undefined && pendingApprovalCount > 0) {
+        notificationCounts["sidebarApprovals"] = pendingApprovalCount;
+    }
 
     const setSidebarStateCookie = (collapsed: boolean) => {
         if (typeof window !== "undefined") {
@@ -157,6 +179,7 @@ export function LayoutSidebar({
                     <SidebarNav
                         sections={navItems}
                         isCollapsed={isSidebarCollapsed}
+                        notificationCounts={notificationCounts}
                     />
                 </div>
                 {/* Fade gradient at bottom to indicate scrollable content */}

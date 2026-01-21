@@ -61,15 +61,13 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                     {
                         title: "sidebarClientResources",
                         href: "/{orgId}/settings/resources/client",
-                        icon: <GlobeLock className="size-4 flex-none" />,
-                        isBeta: true
+                        icon: <GlobeLock className="size-4 flex-none" />
                     }
                 ]
             },
             {
                 title: "sidebarClients",
                 icon: <MonitorUp className="size-4 flex-none" />,
-                isBeta: true,
                 items: [
                     {
                         href: "/{orgId}/settings/clients/user",

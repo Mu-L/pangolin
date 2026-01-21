@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
@@ -271,10 +272,13 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                 buttonText={t("userRemoveOrgConfirm")}
                 onConfirm={removeUser}
                 string={
-                    selectedUser?.email ||
-                    selectedUser?.name ||
-                    selectedUser?.username ||
-                    ""
+                    selectedUser
+                        ? getUserDisplayName({
+                              email: selectedUser.email,
+                              name: selectedUser.name,
+                              username: selectedUser.username
+                          })
+                        : ""
                 }
                 title={t("userRemoveOrg")}
             />

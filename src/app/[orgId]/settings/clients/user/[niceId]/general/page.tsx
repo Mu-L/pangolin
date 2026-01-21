@@ -22,12 +22,13 @@ import {
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import ActionBanner from "@app/components/ActionBanner";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { toast } from "@app/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
-import { Check, Ban, Shield, ShieldOff, Clock } from "lucide-react";
+import { Check, Ban, Shield, ShieldOff, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { useParams } from "next/navigation";
 import { FaApple, FaWindows, FaLinux } from "react-icons/fa";
 import { SiAndroid } from "react-icons/si";
@@ -111,18 +112,12 @@ function getPlatformFieldConfig(
             kernelVersion: { show: false, labelKey: "kernelVersion" },
             arch: { show: true, labelKey: "architecture" },
             deviceModel: { show: true, labelKey: "deviceModel" },
-            serialNumber: { show: true, labelKey: "serialNumber" },
-            username: { show: true, labelKey: "username" },
-            hostname: { show: true, labelKey: "hostname" }
         },
         android: {
             osVersion: { show: true, labelKey: "androidVersion" },
             kernelVersion: { show: true, labelKey: "kernelVersion" },
             arch: { show: true, labelKey: "architecture" },
             deviceModel: { show: true, labelKey: "deviceModel" },
-            serialNumber: { show: true, labelKey: "serialNumber" },
-            username: { show: true, labelKey: "username" },
-            hostname: { show: true, labelKey: "hostname" }
         },
         unknown: {
             osVersion: { show: true, labelKey: "osVersion" },
@@ -138,6 +133,7 @@ function getPlatformFieldConfig(
     return configs[normalizedPlatform] || configs.unknown;
 }
 
+
 export default function GeneralPage() {
     const { client, updateClient } = useClientContext();
     const { isPaidUser } = usePaidStatus();
@@ -151,6 +147,20 @@ export default function GeneralPage() {
     const [, startTransition] = useTransition();
 
     const showApprovalFeatures = build !== "oss" && isPaidUser;
+
+    const formatPostureValue = (value: boolean | null | undefined) => {
+        if (value === null || value === undefined) return "-";
+        return (
+            <div className="flex items-center gap-2">
+                {value ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                ) : (
+                    <XCircle className="h-4 w-4 text-red-600" />
+                )}
+                <span>{value ? t("enabled") : t("disabled")}</span>
+            </div>
+        );
+    };
 
     // Fetch approval ID for this client if pending
     useEffect(() => {
@@ -407,13 +417,13 @@ export default function GeneralPage() {
                                         )}
 
                                         {client.fingerprint.osVersion &&
-                                            fieldConfig.osVersion.show && (
+                                            fieldConfig.osVersion?.show && (
                                                 <InfoSection>
                                                     <InfoSectionTitle>
                                                         {t(
                                                             fieldConfig
                                                                 .osVersion
-                                                                .labelKey
+                                                                ?.labelKey || "osVersion"
                                                         )}
                                                     </InfoSectionTitle>
                                                     <InfoSectionContent>
@@ -426,7 +436,7 @@ export default function GeneralPage() {
                                             )}
 
                                         {client.fingerprint.kernelVersion &&
-                                            fieldConfig.kernelVersion.show && (
+                                            fieldConfig.kernelVersion?.show && (
                                                 <InfoSection>
                                                     <InfoSectionTitle>
                                                         {t("kernelVersion")}
@@ -456,7 +466,7 @@ export default function GeneralPage() {
                                             )}
 
                                         {client.fingerprint.deviceModel &&
-                                            fieldConfig.deviceModel.show && (
+                                            fieldConfig.deviceModel?.show && (
                                                 <InfoSection>
                                                     <InfoSectionTitle>
                                                         {t("deviceModel")}
@@ -486,7 +496,7 @@ export default function GeneralPage() {
                                             )}
 
                                         {client.fingerprint.username &&
-                                            fieldConfig.username.show && (
+                                            fieldConfig.username?.show && (
                                                 <InfoSection>
                                                     <InfoSectionTitle>
                                                         {t("username")}
@@ -501,7 +511,7 @@ export default function GeneralPage() {
                                             )}
 
                                         {client.fingerprint.hostname &&
-                                            fieldConfig.hostname.show && (
+                                            fieldConfig.hostname?.show && (
                                                 <InfoSection>
                                                     <InfoSectionTitle>
                                                         {t("hostname")}
@@ -545,6 +555,218 @@ export default function GeneralPage() {
                                     </InfoSections>
                                 );
                             })()}
+                    </SettingsSectionBody>
+                </SettingsSection>
+            )}
+
+            {/* Device Security Section */}
+            {build !== "oss" && (
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("deviceSecurity")}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            {t("deviceSecurityDescription")}
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+
+                    <SettingsSectionBody>
+                        {client.posture && Object.keys(client.posture).length > 0 ? (
+                            <>
+                                {!isPaidUser && <PaidFeaturesAlert />}
+                                <InfoSections cols={3}>
+                                    {client.posture.biometricsEnabled !== null &&
+                                        client.posture.biometricsEnabled !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("biometricsEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture.biometricsEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.diskEncrypted !== null &&
+                                        client.posture.diskEncrypted !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("diskEncrypted")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture.diskEncrypted
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.firewallEnabled !== null &&
+                                        client.posture.firewallEnabled !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("firewallEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture.firewallEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.autoUpdatesEnabled !== null &&
+                                        client.posture.autoUpdatesEnabled !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("autoUpdatesEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture.autoUpdatesEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.tpmAvailable !== null &&
+                                        client.posture.tpmAvailable !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("tpmAvailable")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture.tpmAvailable
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.windowsDefenderEnabled !== null &&
+                                        client.posture.windowsDefenderEnabled !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("windowsDefenderEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .windowsDefenderEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.macosSipEnabled !== null &&
+                                        client.posture.macosSipEnabled !== undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("macosSipEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture.macosSipEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.macosGatekeeperEnabled !== null &&
+                                        client.posture.macosGatekeeperEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("macosGatekeeperEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .macosGatekeeperEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.macosFirewallStealthMode !== null &&
+                                        client.posture.macosFirewallStealthMode !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("macosFirewallStealthMode")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .macosFirewallStealthMode
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.linuxAppArmorEnabled !== null &&
+                                        client.posture.linuxAppArmorEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("linuxAppArmorEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .linuxAppArmorEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+
+                                    {client.posture.linuxSELinuxEnabled !== null &&
+                                        client.posture.linuxSELinuxEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("linuxSELinuxEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .linuxSELinuxEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+                                </InfoSections>
+                            </>
+                        ) : (
+                            <div className="text-muted-foreground">
+                                {t("noData")}
+                            </div>
+                        )}
                     </SettingsSectionBody>
                 </SettingsSection>
             )}

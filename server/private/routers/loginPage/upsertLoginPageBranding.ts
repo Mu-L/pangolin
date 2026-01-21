@@ -35,7 +35,29 @@ const paramsSchema = z.strictObject({
 });
 
 const bodySchema = z.strictObject({
-    logoUrl: z.url(),
+    logoUrl: z
+        .union([
+            z.string().length(0),
+            z.url().refine(
+                async (url) => {
+                    try {
+                        const response = await fetch(url);
+                        return (
+                            response.status === 200 &&
+                            (
+                                response.headers.get("content-type") ?? ""
+                            ).startsWith("image/")
+                        );
+                    } catch (error) {
+                        return false;
+                    }
+                },
+                {
+                    error: "Invalid logo URL, must be a valid image URL"
+                }
+            )
+        ])
+        .optional(),
     logoWidth: z.coerce.number<number>().min(1),
     logoHeight: z.coerce.number<number>().min(1),
     resourceTitle: z.string(),
@@ -94,6 +116,10 @@ export async function upsertLoginPageBranding(
         let updateData = parsedBody.data satisfies InferInsertModel<
             typeof loginPageBranding
         >;
+
+        if ((updateData.logoUrl ?? "").trim().length === 0) {
+            updateData.logoUrl = undefined;
+        }
 
         if (
             build !== "saas" &&

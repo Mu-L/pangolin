@@ -46,6 +46,7 @@ export interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
     disabled?: boolean;
     onItemClick?: () => void;
     isCollapsed?: boolean;
+    notificationCounts?: Record<string, number | undefined>;
 }
 
 type CollapsibleNavItemProps = {
@@ -59,6 +60,7 @@ type CollapsibleNavItemProps = {
     t: (key: string) => string;
     build: string;
     isUnlocked: () => boolean;
+    getNotificationCount: (item: SidebarNavItem) => number | undefined;
 };
 
 function CollapsibleNavItem({
@@ -71,8 +73,10 @@ function CollapsibleNavItem({
     renderNavItem,
     t,
     build,
-    isUnlocked
+    isUnlocked,
+    getNotificationCount
 }: CollapsibleNavItemProps) {
+    const notificationCount = getNotificationCount(item);
     const storageKey = `pangolin-sidebar-expanded-${item.title}`;
 
     // Get initial state from localStorage or use isChildActive
@@ -139,6 +143,14 @@ function CollapsibleNavItem({
                         )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                        {notificationCount !== undefined &&
+                            notificationCount > 0 && (
+                                <Badge variant="secondary">
+                                    {notificationCount > 99
+                                        ? "99+"
+                                        : notificationCount}
+                                </Badge>
+                            )}
                         {build === "enterprise" &&
                             item.showEE &&
                             !isUnlocked() && (
@@ -177,6 +189,7 @@ export function SidebarNav({
     disabled = false,
     onItemClick,
     isCollapsed = false,
+    notificationCounts,
     ...props
 }: SidebarNavProps) {
     const pathname = usePathname();
@@ -190,6 +203,11 @@ export function SidebarNav({
     const { licenseStatus, isUnlocked } = useLicenseStatusContext();
     const { user } = useUserContext();
     const t = useTranslations();
+
+    function getNotificationCount(item: SidebarNavItem): number | undefined {
+        if (!notificationCounts) return undefined;
+        return notificationCounts[item.title];
+    }
 
     function hydrateHref(val?: string): string | undefined {
         if (!val) return undefined;
@@ -247,16 +265,19 @@ export function SidebarNav({
                     t={t}
                     build={build}
                     isUnlocked={isUnlocked}
+                    getNotificationCount={getNotificationCount}
                 />
             );
         }
+
+        const notificationCount = getNotificationCount(item);
 
         // Regular item without nested items
         const itemContent = hydratedHref ? (
             <Link
                 href={isDisabled ? "#" : hydratedHref}
                 className={cn(
-                    "flex items-center rounded-md transition-colors",
+                    "flex items-center rounded-md transition-colors relative",
                     isCollapsed
                         ? "px-2 py-2 justify-center"
                         : level === 0
@@ -297,18 +318,38 @@ export function SidebarNav({
                                 </span>
                             )}
                         </div>
-                        {build === "enterprise" &&
-                            item.showEE &&
-                            !isUnlocked() && (
-                                <Badge
-                                    variant="outlinePrimary"
-                                    className="flex-shrink-0"
-                                >
-                                    {t("licenseBadge")}
-                                </Badge>
-                            )}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {notificationCount !== undefined &&
+                                notificationCount > 0 && (
+                                    <Badge variant="secondary">
+                                        {notificationCount > 99
+                                            ? "99+"
+                                            : notificationCount}
+                                    </Badge>
+                                )}
+                            {build === "enterprise" &&
+                                item.showEE &&
+                                !isUnlocked() && (
+                                    <Badge
+                                        variant="outlinePrimary"
+                                        className="flex-shrink-0"
+                                    >
+                                        {t("licenseBadge")}
+                                    </Badge>
+                                )}
+                        </div>
                     </>
                 )}
+                {isCollapsed &&
+                    notificationCount !== undefined &&
+                    notificationCount > 0 && (
+                        <Badge
+                            variant="secondary"
+                            className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 flex items-center justify-center text-xs"
+                        >
+                            {notificationCount > 99 ? "99+" : notificationCount}
+                        </Badge>
+                    )}
             </Link>
         ) : (
             <div
@@ -332,14 +373,27 @@ export function SidebarNav({
                         </span>
                     )}
                 </div>
-                {build === "enterprise" && item.showEE && !isUnlocked() && (
-                    <Badge
-                        variant="outlinePrimary"
-                        className="flex-shrink-0 ml-2"
-                    >
-                        {t("licenseBadge")}
-                    </Badge>
-                )}
+                <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                    {notificationCount !== undefined &&
+                        notificationCount > 0 && (
+                            <Badge
+                                variant="secondary"
+                                className="flex-shrink-0 bg-primary text-primary-foreground"
+                            >
+                                {notificationCount > 99
+                                    ? "99+"
+                                    : notificationCount}
+                            </Badge>
+                        )}
+                    {build === "enterprise" && item.showEE && !isUnlocked() && (
+                        <Badge
+                            variant="outlinePrimary"
+                            className="flex-shrink-0"
+                        >
+                            {t("licenseBadge")}
+                        </Badge>
+                    )}
+                </div>
             </div>
         );
 

@@ -46,6 +46,7 @@ import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cn } from "@app/lib/cn";
 import { orgQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -270,7 +271,10 @@ export default function CreateInternalResourceDialog({
 
     const allUsers = usersResponse.map((user) => ({
         id: user.id.toString(),
-        text: `${user.email || user.username}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
+        text: `${getUserDisplayName({
+            email: user.email,
+            username: user.username
+        })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
     }));
 
     const allClients = clientsResponse

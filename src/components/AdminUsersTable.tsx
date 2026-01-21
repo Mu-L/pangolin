@@ -11,6 +11,7 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { toast } from "@app/hooks/useToast";
 import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
 import {
@@ -321,10 +322,13 @@ export default function UsersTable({ users }: Props) {
                         <div className="space-y-2">
                             <p>
                                 {t("userQuestionRemove", {
-                                    selectedUser:
-                                        selected?.email ||
-                                        selected?.name ||
-                                        selected?.username
+                                    selectedUser: selected
+                                        ? getUserDisplayName({
+                                              email: selected.email,
+                                              name: selected.name,
+                                              username: selected.username
+                                          })
+                                        : ""
                                 })}
                             </p>
 
@@ -337,9 +341,11 @@ export default function UsersTable({ users }: Props) {
                     }
                     buttonText={t("userDeleteConfirm")}
                     onConfirm={async () => deleteUser(selected!.id)}
-                    string={
-                        selected.email || selected.name || selected.username
-                    }
+                    string={getUserDisplayName({
+                        email: selected.email,
+                        name: selected.name,
+                        username: selected.username
+                    })}
                     title={t("userDeleteServer")}
                 />
             )}

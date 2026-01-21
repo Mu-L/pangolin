@@ -2,6 +2,7 @@ import { internal } from "@app/lib/api";
 import { AxiosResponse } from "axios";
 import { redirect } from "next/navigation";
 import { authCookieHeader } from "@app/lib/api/cookies";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { AdminGetUserResponse } from "@server/routers/user/adminGetUser";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { cache } from "react";
@@ -44,7 +45,15 @@ export default async function UserLayoutProps(props: UserLayoutProps) {
     return (
         <>
             <SettingsSectionTitle
-                title={`${user?.email || user?.name || user?.username}`}
+                title={
+                    user
+                        ? getUserDisplayName({
+                              email: user.email,
+                              name: user.name,
+                              username: user.username
+                          })
+                        : ""
+                }
                 description={t("userDescription2")}
             />
             <HorizontalTabs items={navItems}>{children}</HorizontalTabs>

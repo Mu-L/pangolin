@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, orgs, type Role } from "@server/db";
+import { db, type Role } from "@server/db";
 import { roles } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -10,9 +10,9 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { OpenAPITags, registry } from "@server/openApi";
 
 const updateRoleParamsSchema = z.strictObject({
-    orgId: z.string(),
     roleId: z.string().transform(Number).pipe(z.int().positive())
 });
 
@@ -29,6 +29,24 @@ const updateRoleBodySchema = z
 export type UpdateRoleBody = z.infer<typeof updateRoleBodySchema>;
 
 export type UpdateRoleResponse = Role;
+
+registry.registerPath({
+    method: "post",
+    path: "/role/{roleId}",
+    description: "Update a role.",
+    tags: [OpenAPITags.Role],
+    request: {
+        params: updateRoleParamsSchema,
+        body: {
+            content: {
+                "application/json": {
+                    schema: updateRoleBodySchema
+                }
+            }
+        }
+    },
+    responses: {}
+});
 
 export async function updateRole(
     req: Request,
@@ -56,14 +74,13 @@ export async function updateRole(
             );
         }
 
-        const { roleId, orgId } = parsedParams.data;
+        const { roleId } = parsedParams.data;
         const updateData = parsedBody.data;
 
         const role = await db
             .select()
             .from(roles)
             .where(eq(roles.roleId, roleId))
-            .innerJoin(orgs, eq(roles.orgId, orgs.orgId))
             .limit(1);
 
         if (role.length === 0) {
@@ -75,11 +92,21 @@ export async function updateRole(
             );
         }
 
-        if (role[0].roles.isAdmin) {
+        if (role[0].isAdmin) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
                     `Cannot update a Admin role`
+                )
+            );
+        }
+
+        const orgId = role[0].orgId;
+        if (!orgId) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Role does not have an organization ID"
                 )
             );
         }
