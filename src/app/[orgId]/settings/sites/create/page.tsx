@@ -673,7 +673,7 @@ export default function Page() {
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-col sm:flex-row items-center gap-4">
                                         <CopyTextBox text={wgConfig} />
                                         <div
                                             className={`relative w-fit border rounded-md`}

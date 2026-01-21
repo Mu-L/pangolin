@@ -319,7 +319,7 @@ export default function CredentialsPage() {
                             {!loadingDefaults && (
                                 <>
                                     {wgConfig ? (
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex flex-col sm:flex-row items-center gap-4">
                                             <CopyTextBox
                                                 text={wgConfig}
                                                 outline={true}

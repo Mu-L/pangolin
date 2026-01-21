@@ -29,7 +29,7 @@ jobs:
         permissions: write-all
         steps:
             - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v2
+              uses: aws-actions/configure-aws-credentials@v5
               with:
                   role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
                   role-duration-seconds: 3600
@@ -264,7 +264,7 @@ jobs:
               shell: bash
 
             - name: Install Go
-              uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
               with:
                   go-version: 1.24
 
@@ -513,7 +513,7 @@ jobs:
         permissions: write-all
         steps:
             - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v2
+              uses: aws-actions/configure-aws-credentials@v5
               with:
                   role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
                   role-duration-seconds: 3600

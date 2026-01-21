@@ -21,9 +21,8 @@ http:
 
     # Next.js router (handles everything except API and WebSocket paths)
     next-router:
-      rule: "Host(`{{.DashboardDomain}}`)"
+      rule: "Host(`{{.DashboardDomain}}`) && !PathPrefix(`/api/v1`)"
       service: next-service
-      priority: 10
       entryPoints:
         - websecure
       middlewares:
@@ -35,7 +34,6 @@ http:
     api-router:
       rule: "Host(`{{.DashboardDomain}}`) && PathPrefix(`/api/v1`)"
       service: api-service
-      priority: 100
       entryPoints:
         - websecure
       middlewares:
@@ -53,3 +51,12 @@ http:
       loadBalancer:
         servers:
           - url: "http://pangolin:3000"  # API/WebSocket server
+
+tcp:
+  serversTransports:
+    pp-transport-v1:
+      proxyProtocol:
+        version: 1
+    pp-transport-v2:
+      proxyProtocol:
+        version: 2
