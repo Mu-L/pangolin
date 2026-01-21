@@ -65,7 +65,6 @@ export async function recoverOlmWithFingerprint(
             .where(
                 and(
                     eq(olms.userId, userId),
-                    eq(olms.archived, false),
                     eq(
                         currentFingerprint.platformFingerprint,
                         platformFingerprint
