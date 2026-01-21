@@ -145,10 +145,10 @@ function CollapsibleNavItem({
                     <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                         {notificationCount !== undefined &&
                             notificationCount > 0 && (
-                                <Badge
-                                    variant="secondary"
-                                >
-                                    {notificationCount > 99 ? "99+" : notificationCount}
+                                <Badge variant="secondary">
+                                    {notificationCount > 99
+                                        ? "99+"
+                                        : notificationCount}
                                 </Badge>
                             )}
                         {build === "enterprise" &&
@@ -321,9 +321,7 @@ export function SidebarNav({
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                             {notificationCount !== undefined &&
                                 notificationCount > 0 && (
-                                    <Badge
-                                        variant="secondary"
-                                    >
+                                    <Badge variant="secondary">
                                         {notificationCount > 99
                                             ? "99+"
                                             : notificationCount}
@@ -346,8 +344,8 @@ export function SidebarNav({
                     notificationCount !== undefined &&
                     notificationCount > 0 && (
                         <Badge
-                            variant="default"
-                            className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 flex items-center justify-center text-xs bg-primary text-primary-foreground"
+                            variant="secondary"
+                            className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 flex items-center justify-center text-xs"
                         >
                             {notificationCount > 99 ? "99+" : notificationCount}
                         </Badge>
@@ -379,7 +377,7 @@ export function SidebarNav({
                     {notificationCount !== undefined &&
                         notificationCount > 0 && (
                             <Badge
-                                variant="default"
+                                variant="secondary"
                                 className="flex-shrink-0 bg-primary text-primary-foreground"
                             >
                                 {notificationCount > 99

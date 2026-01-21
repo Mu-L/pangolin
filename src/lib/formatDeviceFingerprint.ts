@@ -38,6 +38,7 @@ export function formatFingerprintInfo(
 ): string {
     if (!fingerprint) return "";
     const parts: string[] = [];
+    const normalizedPlatform = fingerprint.platform?.toLowerCase() || "unknown";
 
     if (fingerprint.platform) {
         parts.push(
@@ -53,14 +54,17 @@ export function formatFingerprintInfo(
     if (fingerprint.arch) {
         parts.push(`${t("architecture")}: ${fingerprint.arch}`);
     }
-    if (fingerprint.hostname) {
-        parts.push(`${t("hostname")}: ${fingerprint.hostname}`);
-    }
-    if (fingerprint.username) {
-        parts.push(`${t("username")}: ${fingerprint.username}`);
-    }
-    if (fingerprint.serialNumber) {
-        parts.push(`${t("serialNumber")}: ${fingerprint.serialNumber}`);
+    
+    if (normalizedPlatform !== "ios" && normalizedPlatform !== "android") {
+        if (fingerprint.hostname) {
+            parts.push(`${t("hostname")}: ${fingerprint.hostname}`);
+        }
+        if (fingerprint.username) {
+            parts.push(`${t("username")}: ${fingerprint.username}`);
+        }
+        if (fingerprint.serialNumber) {
+            parts.push(`${t("serialNumber")}: ${fingerprint.serialNumber}`);
+        }
     }
 
     return parts.join("\n");

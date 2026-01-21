@@ -11,6 +11,7 @@ import stoi from "@server/lib/stoi";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { getUserDeviceName } from "@server/db/names";
+import { build } from "@server/build";
 
 const getClientSchema = z.strictObject({
     clientId: z
@@ -51,6 +52,106 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
     }
 }
 
+type PostureData = {
+    biometricsEnabled?: boolean | null;
+    diskEncrypted?: boolean | null;
+    firewallEnabled?: boolean | null;
+    autoUpdatesEnabled?: boolean | null;
+    tpmAvailable?: boolean | null;
+    windowsDefenderEnabled?: boolean | null;
+    macosSipEnabled?: boolean | null;
+    macosGatekeeperEnabled?: boolean | null;
+    macosFirewallStealthMode?: boolean | null;
+    linuxAppArmorEnabled?: boolean | null;
+    linuxSELinuxEnabled?: boolean | null;
+};
+
+function getPlatformPostureData(
+    platform: string | null | undefined,
+    fingerprint: typeof currentFingerprint.$inferSelect | null
+): PostureData | null {
+    if (!fingerprint) return null;
+
+    const normalizedPlatform = platform?.toLowerCase() || "unknown";
+    const posture: PostureData = {};
+
+    // Windows: Hard drive encryption, Firewall, Auto updates, TPM availability, Windows Defender
+    if (normalizedPlatform === "windows") {
+        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+            posture.diskEncrypted = fingerprint.diskEncrypted;
+        }
+        if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
+            posture.firewallEnabled = fingerprint.firewallEnabled;
+        }
+        if (fingerprint.autoUpdatesEnabled !== null && fingerprint.autoUpdatesEnabled !== undefined) {
+            posture.autoUpdatesEnabled = fingerprint.autoUpdatesEnabled;
+        }
+        if (fingerprint.tpmAvailable !== null && fingerprint.tpmAvailable !== undefined) {
+            posture.tpmAvailable = fingerprint.tpmAvailable;
+        }
+        if (fingerprint.windowsDefenderEnabled !== null && fingerprint.windowsDefenderEnabled !== undefined) {
+            posture.windowsDefenderEnabled = fingerprint.windowsDefenderEnabled;
+        }
+    }
+    // macOS: Hard drive encryption, Biometric configuration, Firewall, System Integrity Protection (SIP), Gatekeeper, Firewall stealth mode
+    else if (normalizedPlatform === "macos") {
+        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+            posture.diskEncrypted = fingerprint.diskEncrypted;
+        }
+        if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
+            posture.biometricsEnabled = fingerprint.biometricsEnabled;
+        }
+        if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
+            posture.firewallEnabled = fingerprint.firewallEnabled;
+        }
+        if (fingerprint.macosSipEnabled !== null && fingerprint.macosSipEnabled !== undefined) {
+            posture.macosSipEnabled = fingerprint.macosSipEnabled;
+        }
+        if (fingerprint.macosGatekeeperEnabled !== null && fingerprint.macosGatekeeperEnabled !== undefined) {
+            posture.macosGatekeeperEnabled = fingerprint.macosGatekeeperEnabled;
+        }
+        if (fingerprint.macosFirewallStealthMode !== null && fingerprint.macosFirewallStealthMode !== undefined) {
+            posture.macosFirewallStealthMode = fingerprint.macosFirewallStealthMode;
+        }
+    }
+    // Linux: Hard drive encryption, Firewall, AppArmor, SELinux, TPM availability
+    else if (normalizedPlatform === "linux") {
+        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+            posture.diskEncrypted = fingerprint.diskEncrypted;
+        }
+        if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
+            posture.firewallEnabled = fingerprint.firewallEnabled;
+        }
+        if (fingerprint.linuxAppArmorEnabled !== null && fingerprint.linuxAppArmorEnabled !== undefined) {
+            posture.linuxAppArmorEnabled = fingerprint.linuxAppArmorEnabled;
+        }
+        if (fingerprint.linuxSELinuxEnabled !== null && fingerprint.linuxSELinuxEnabled !== undefined) {
+            posture.linuxSELinuxEnabled = fingerprint.linuxSELinuxEnabled;
+        }
+        if (fingerprint.tpmAvailable !== null && fingerprint.tpmAvailable !== undefined) {
+            posture.tpmAvailable = fingerprint.tpmAvailable;
+        }
+    }
+    // iOS: Biometric configuration
+    else if (normalizedPlatform === "ios") {
+        if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
+            posture.biometricsEnabled = fingerprint.biometricsEnabled;
+        }
+    }
+    // Android: Screen lock, Biometric configuration, Hard drive encryption
+    else if (normalizedPlatform === "android") {
+        if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
+            posture.biometricsEnabled = fingerprint.biometricsEnabled;
+        }
+        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+            posture.diskEncrypted = fingerprint.diskEncrypted;
+        }
+    }
+
+    // Only return if we have at least one posture field
+    return Object.keys(posture).length > 0 ? posture : null;
+}
+
 export type GetClientResponse = NonNullable<
     Awaited<ReturnType<typeof query>>
 >["clients"] & {
@@ -69,6 +170,7 @@ export type GetClientResponse = NonNullable<
         firstSeen: number | null;
         lastSeen: number | null;
     } | null;
+    posture: PostureData | null;
 };
 
 registry.registerPath({
@@ -152,13 +254,23 @@ export async function getClient(
             }
             : null;
 
+        // Build posture data if available (platform-specific)
+        let postureData: PostureData | null = null;
+        if (build !== "oss") {
+            postureData = getPlatformPostureData(
+                client.currentFingerprint?.platform || null,
+                client.currentFingerprint
+            ); 
+        }
+
         const data: GetClientResponse = {
             ...client.clients,
             name: clientName,
             olmId: client.olms ? client.olms.olmId : null,
             agent: client.olms?.agent || null,
             olmVersion: client.olms?.version || null,
-            fingerprint: fingerprintData
+            fingerprint: fingerprintData,
+            posture: postureData
         };
 
         return response<GetClientResponse>(res, {
