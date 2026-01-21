@@ -339,37 +339,37 @@ jobs:
                   TAG=${{ env.TAG }}
                   MAJOR_TAG=$(echo $TAG | cut -d. -f1)
                   MINOR_TAG=$(echo $TAG | cut -d. -f1,2)
-                  
+
                   echo "Waiting for multi-arch manifests to be ready..."
                   sleep 30
-                  
+
                   # Determine if this is an RC release
                   IS_RC="false"
-                  if echo "$TAG" | grep -qE "rc[0-9]+$"; then
+                  if [[ "$TAG" == *"-rc."* ]]; then
                       IS_RC="true"
                   fi
-                  
+
                   if [ "$IS_RC" = "true" ]; then
                       echo "RC release detected - copying version-specific tags only"
-                      
+
                       # SQLite OSS
                       echo "Copying ${{ env.DOCKERHUB_IMAGE }}:${TAG} -> ${{ env.GHCR_IMAGE }}:${TAG}"
                       skopeo copy --all --retry-times 3 \
                         docker://$DOCKERHUB_IMAGE:$TAG \
                         docker://$GHCR_IMAGE:$TAG
-                      
+
                       # PostgreSQL OSS
                       echo "Copying ${{ env.DOCKERHUB_IMAGE }}:postgresql-${TAG} -> ${{ env.GHCR_IMAGE }}:postgresql-${TAG}"
                       skopeo copy --all --retry-times 3 \
                         docker://$DOCKERHUB_IMAGE:postgresql-$TAG \
                         docker://$GHCR_IMAGE:postgresql-$TAG
-                      
+
                       # SQLite Enterprise
                       echo "Copying ${{ env.DOCKERHUB_IMAGE }}:ee-${TAG} -> ${{ env.GHCR_IMAGE }}:ee-${TAG}"
                       skopeo copy --all --retry-times 3 \
                         docker://$DOCKERHUB_IMAGE:ee-$TAG \
                         docker://$GHCR_IMAGE:ee-$TAG
-                      
+
                       # PostgreSQL Enterprise
                       echo "Copying ${{ env.DOCKERHUB_IMAGE }}:ee-postgresql-${TAG} -> ${{ env.GHCR_IMAGE }}:ee-postgresql-${TAG}"
                       skopeo copy --all --retry-times 3 \
@@ -377,7 +377,7 @@ jobs:
                         docker://$GHCR_IMAGE:ee-postgresql-$TAG
                   else
                       echo "Regular release detected - copying all tags (latest, major, minor, full version)"
-                      
+
                       # SQLite OSS - all tags
                       for TAG_SUFFIX in "latest" "$MAJOR_TAG" "$MINOR_TAG" "$TAG"; do
                           echo "Copying ${{ env.DOCKERHUB_IMAGE }}:${TAG_SUFFIX} -> ${{ env.GHCR_IMAGE }}:${TAG_SUFFIX}"
@@ -385,7 +385,7 @@ jobs:
                             docker://$DOCKERHUB_IMAGE:$TAG_SUFFIX \
                             docker://$GHCR_IMAGE:$TAG_SUFFIX
                       done
-                      
+
                       # PostgreSQL OSS - all tags
                       for TAG_SUFFIX in "latest" "$MAJOR_TAG" "$MINOR_TAG" "$TAG"; do
                           echo "Copying ${{ env.DOCKERHUB_IMAGE }}:postgresql-${TAG_SUFFIX} -> ${{ env.GHCR_IMAGE }}:postgresql-${TAG_SUFFIX}"
@@ -393,7 +393,7 @@ jobs:
                             docker://$DOCKERHUB_IMAGE:postgresql-$TAG_SUFFIX \
                             docker://$GHCR_IMAGE:postgresql-$TAG_SUFFIX
                       done
-                      
+
                       # SQLite Enterprise - all tags
                       for TAG_SUFFIX in "latest" "$MAJOR_TAG" "$MINOR_TAG" "$TAG"; do
                           echo "Copying ${{ env.DOCKERHUB_IMAGE }}:ee-${TAG_SUFFIX} -> ${{ env.GHCR_IMAGE }}:ee-${TAG_SUFFIX}"
@@ -401,7 +401,7 @@ jobs:
                             docker://$DOCKERHUB_IMAGE:ee-$TAG_SUFFIX \
                             docker://$GHCR_IMAGE:ee-$TAG_SUFFIX
                       done
-                      
+
                       # PostgreSQL Enterprise - all tags
                       for TAG_SUFFIX in "latest" "$MAJOR_TAG" "$MINOR_TAG" "$TAG"; do
                           echo "Copying ${{ env.DOCKERHUB_IMAGE }}:ee-postgresql-${TAG_SUFFIX} -> ${{ env.GHCR_IMAGE }}:ee-postgresql-${TAG_SUFFIX}"
@@ -410,7 +410,7 @@ jobs:
                             docker://$GHCR_IMAGE:ee-postgresql-$TAG_SUFFIX
                       done
                   fi
-                  
+
                   echo "All images copied successfully to GHCR!"
               shell: bash
 
@@ -442,7 +442,7 @@ jobs:
 
                   # Determine if this is an RC release
                   IS_RC="false"
-                  if echo "$TAG" | grep -qE "rc[0-9]+$"; then
+                  if [[ "$TAG" == *"-rc."* ]]; then
                       IS_RC="true"
                   fi
 
@@ -490,11 +490,11 @@ jobs:
                         --certificate-oidc-issuer "${issuer}" \
                         --certificate-identity-regexp "${id_regex}" \
                         "${REF}" -o text
-                      
+
                       echo "✓ Successfully signed and verified ${BASE_IMAGE}:${IMAGE_TAG}"
                     done
                   done
-                  
+
                   echo "All images signed and verified successfully!"
               shell: bash
 
