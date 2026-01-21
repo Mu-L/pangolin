@@ -7,6 +7,7 @@ import { resetUserSecurityKeys } from "@cli/commands/resetUserSecurityKeys";
 import { clearExitNodes } from "./commands/clearExitNodes";
 import { rotateServerSecret } from "./commands/rotateServerSecret";
 import { clearLicenseKeys } from "./commands/clearLicenseKeys";
+import { deleteClient } from "./commands/deleteClient";
 
 yargs(hideBin(process.argv))
     .scriptName("pangctl")
@@ -15,5 +16,6 @@ yargs(hideBin(process.argv))
     .command(clearExitNodes)
     .command(rotateServerSecret)
     .command(clearLicenseKeys)
+    .command(deleteClient)
     .demandCommand()
     .help().argv;
