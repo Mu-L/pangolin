@@ -113,6 +113,9 @@ function getPlatformPostureData(
         if (fingerprint.macosFirewallStealthMode !== null && fingerprint.macosFirewallStealthMode !== undefined) {
             posture.macosFirewallStealthMode = fingerprint.macosFirewallStealthMode;
         }
+        if (fingerprint.autoUpdatesEnabled !== null && fingerprint.autoUpdatesEnabled !== undefined) {
+            posture.autoUpdatesEnabled = fingerprint.autoUpdatesEnabled;
+        }
     }
     // Linux: Hard drive encryption, Firewall, AppArmor, SELinux, TPM availability
     else if (normalizedPlatform === "linux") {
@@ -260,7 +263,7 @@ export async function getClient(
             postureData = getPlatformPostureData(
                 client.currentFingerprint?.platform || null,
                 client.currentFingerprint
-            ); 
+            );
         }
 
         const data: GetClientResponse = {
