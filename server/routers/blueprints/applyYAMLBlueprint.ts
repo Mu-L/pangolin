@@ -26,7 +26,8 @@ const applyBlueprintSchema = z
                         message: `Invalid YAML: ${error instanceof Error ? error.message : "Unknown error"}`
                     });
                 }
-            })
+            }),
+        source: z.enum(["API", "UI", "CLI"]).optional()
     })
     .strict();
 
@@ -84,7 +85,7 @@ export async function applyYAMLBlueprint(
             );
         }
 
-        const { blueprint: contents, name } = parsedBody.data;
+        const { blueprint: contents, name, source = "UI" } = parsedBody.data;
 
         logger.debug(`Received blueprint:`, contents);
 
@@ -107,7 +108,7 @@ export async function applyYAMLBlueprint(
             blueprint = await applyBlueprint({
                 orgId,
                 name,
-                source: "UI",
+                source,
                 configData: parsedConfig
             });
         } catch (err) {
