@@ -23,7 +23,7 @@ import { OpenAPITags } from "@server/openApi";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import { build } from "@server/build";
-import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 
 const updateResourceParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -342,11 +342,7 @@ async function updateHttpResource(
     }
 
     const isLicensed = await isLicensedOrSubscribed(resource.orgId);
-    if (build == "enterprise" && !isLicensed) {
-        logger.warn(
-            "Server is not licensed! Clearing set maintenance screen values"
-        );
-        // null the maintenance mode fields if not licensed
+    if (!isLicensed) {
         updateData.maintenanceModeEnabled = undefined;
         updateData.maintenanceModeType = undefined;
         updateData.maintenanceTitle = undefined;

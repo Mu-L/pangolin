@@ -12,7 +12,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { getUserDeviceName } from "@server/db/names";
 import { build } from "@server/build";
-import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 
 const getClientSchema = z.strictObject({
     clientId: z
@@ -78,58 +78,108 @@ function getPlatformPostureData(
 
     // Windows: Hard drive encryption, Firewall, Auto updates, TPM availability, Windows Antivirus status
     if (normalizedPlatform === "windows") {
-        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+        if (
+            fingerprint.diskEncrypted !== null &&
+            fingerprint.diskEncrypted !== undefined
+        ) {
             posture.diskEncrypted = fingerprint.diskEncrypted;
         }
-        if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
+        if (
+            fingerprint.firewallEnabled !== null &&
+            fingerprint.firewallEnabled !== undefined
+        ) {
             posture.firewallEnabled = fingerprint.firewallEnabled;
         }
-        if (fingerprint.tpmAvailable !== null && fingerprint.tpmAvailable !== undefined) {
+        if (
+            fingerprint.tpmAvailable !== null &&
+            fingerprint.tpmAvailable !== undefined
+        ) {
             posture.tpmAvailable = fingerprint.tpmAvailable;
         }
-        if (fingerprint.windowsAntivirusEnabled !== null && fingerprint.windowsAntivirusEnabled !== undefined) {
-            posture.windowsAntivirusEnabled = fingerprint.windowsAntivirusEnabled;
+        if (
+            fingerprint.windowsAntivirusEnabled !== null &&
+            fingerprint.windowsAntivirusEnabled !== undefined
+        ) {
+            posture.windowsAntivirusEnabled =
+                fingerprint.windowsAntivirusEnabled;
         }
     }
     // macOS: Hard drive encryption, Biometric configuration, Firewall, System Integrity Protection (SIP), Gatekeeper, Firewall stealth mode
     else if (normalizedPlatform === "macos") {
-        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+        if (
+            fingerprint.diskEncrypted !== null &&
+            fingerprint.diskEncrypted !== undefined
+        ) {
             posture.diskEncrypted = fingerprint.diskEncrypted;
         }
-        if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
+        if (
+            fingerprint.biometricsEnabled !== null &&
+            fingerprint.biometricsEnabled !== undefined
+        ) {
             posture.biometricsEnabled = fingerprint.biometricsEnabled;
         }
-        if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
+        if (
+            fingerprint.firewallEnabled !== null &&
+            fingerprint.firewallEnabled !== undefined
+        ) {
             posture.firewallEnabled = fingerprint.firewallEnabled;
         }
-        if (fingerprint.macosSipEnabled !== null && fingerprint.macosSipEnabled !== undefined) {
+        if (
+            fingerprint.macosSipEnabled !== null &&
+            fingerprint.macosSipEnabled !== undefined
+        ) {
             posture.macosSipEnabled = fingerprint.macosSipEnabled;
         }
-        if (fingerprint.macosGatekeeperEnabled !== null && fingerprint.macosGatekeeperEnabled !== undefined) {
+        if (
+            fingerprint.macosGatekeeperEnabled !== null &&
+            fingerprint.macosGatekeeperEnabled !== undefined
+        ) {
             posture.macosGatekeeperEnabled = fingerprint.macosGatekeeperEnabled;
         }
-        if (fingerprint.macosFirewallStealthMode !== null && fingerprint.macosFirewallStealthMode !== undefined) {
-            posture.macosFirewallStealthMode = fingerprint.macosFirewallStealthMode;
+        if (
+            fingerprint.macosFirewallStealthMode !== null &&
+            fingerprint.macosFirewallStealthMode !== undefined
+        ) {
+            posture.macosFirewallStealthMode =
+                fingerprint.macosFirewallStealthMode;
         }
-        if (fingerprint.autoUpdatesEnabled !== null && fingerprint.autoUpdatesEnabled !== undefined) {
+        if (
+            fingerprint.autoUpdatesEnabled !== null &&
+            fingerprint.autoUpdatesEnabled !== undefined
+        ) {
             posture.autoUpdatesEnabled = fingerprint.autoUpdatesEnabled;
         }
     }
     // Linux: Hard drive encryption, Firewall, AppArmor, SELinux, TPM availability
     else if (normalizedPlatform === "linux") {
-        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+        if (
+            fingerprint.diskEncrypted !== null &&
+            fingerprint.diskEncrypted !== undefined
+        ) {
             posture.diskEncrypted = fingerprint.diskEncrypted;
         }
-        if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
+        if (
+            fingerprint.firewallEnabled !== null &&
+            fingerprint.firewallEnabled !== undefined
+        ) {
             posture.firewallEnabled = fingerprint.firewallEnabled;
         }
-        if (fingerprint.linuxAppArmorEnabled !== null && fingerprint.linuxAppArmorEnabled !== undefined) {
+        if (
+            fingerprint.linuxAppArmorEnabled !== null &&
+            fingerprint.linuxAppArmorEnabled !== undefined
+        ) {
             posture.linuxAppArmorEnabled = fingerprint.linuxAppArmorEnabled;
         }
-        if (fingerprint.linuxSELinuxEnabled !== null && fingerprint.linuxSELinuxEnabled !== undefined) {
+        if (
+            fingerprint.linuxSELinuxEnabled !== null &&
+            fingerprint.linuxSELinuxEnabled !== undefined
+        ) {
             posture.linuxSELinuxEnabled = fingerprint.linuxSELinuxEnabled;
         }
-        if (fingerprint.tpmAvailable !== null && fingerprint.tpmAvailable !== undefined) {
+        if (
+            fingerprint.tpmAvailable !== null &&
+            fingerprint.tpmAvailable !== undefined
+        ) {
             posture.tpmAvailable = fingerprint.tpmAvailable;
         }
     }
@@ -139,7 +189,10 @@ function getPlatformPostureData(
     }
     // Android: Screen lock, Biometric configuration, Hard drive encryption
     else if (normalizedPlatform === "android") {
-        if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
+        if (
+            fingerprint.diskEncrypted !== null &&
+            fingerprint.diskEncrypted !== undefined
+        ) {
             posture.diskEncrypted = fingerprint.diskEncrypted;
         }
     }
@@ -236,33 +289,31 @@ export async function getClient(
         // Build fingerprint data if available
         const fingerprintData = client.currentFingerprint
             ? {
-                username: client.currentFingerprint.username || null,
-                hostname: client.currentFingerprint.hostname || null,
-                platform: client.currentFingerprint.platform || null,
-                osVersion: client.currentFingerprint.osVersion || null,
-                kernelVersion:
-                    client.currentFingerprint.kernelVersion || null,
-                arch: client.currentFingerprint.arch || null,
-                deviceModel: client.currentFingerprint.deviceModel || null,
-                serialNumber: client.currentFingerprint.serialNumber || null,
-                firstSeen: client.currentFingerprint.firstSeen || null,
-                lastSeen: client.currentFingerprint.lastSeen || null
-            }
+                  username: client.currentFingerprint.username || null,
+                  hostname: client.currentFingerprint.hostname || null,
+                  platform: client.currentFingerprint.platform || null,
+                  osVersion: client.currentFingerprint.osVersion || null,
+                  kernelVersion:
+                      client.currentFingerprint.kernelVersion || null,
+                  arch: client.currentFingerprint.arch || null,
+                  deviceModel: client.currentFingerprint.deviceModel || null,
+                  serialNumber: client.currentFingerprint.serialNumber || null,
+                  firstSeen: client.currentFingerprint.firstSeen || null,
+                  lastSeen: client.currentFingerprint.lastSeen || null
+              }
             : null;
 
         // Build posture data if available (platform-specific)
         // Only return posture data if org is licensed/subscribed
         let postureData: PostureData | null = null;
-        if (build !== "oss") {
-            const isOrgLicensed = await isLicensedOrSubscribed(
-                client.clients.orgId
+        const isOrgLicensed = await isLicensedOrSubscribed(
+            client.clients.orgId
+        );
+        if (isOrgLicensed) {
+            postureData = getPlatformPostureData(
+                client.currentFingerprint?.platform || null,
+                client.currentFingerprint
             );
-            if (isOrgLicensed) {
-                postureData = getPlatformPostureData(
-                    client.currentFingerprint?.platform || null,
-                    client.currentFingerprint
-                );
-            }
         }
 
         const data: GetClientResponse = {

@@ -31,7 +31,7 @@ import { pickPort } from "@server/routers/target/helpers";
 import { resourcePassword } from "@server/db";
 import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
-import { isLicensedOrSubscribed } from "../isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { build } from "@server/build";
 
 export type ProxyResourcesResults = {
@@ -213,11 +213,7 @@ export async function updateProxyResources(
                 // Update existing resource
 
                 const isLicensed = await isLicensedOrSubscribed(orgId);
-                if (build == "enterprise" && !isLicensed) {
-                    logger.warn(
-                        "Server is not licensed! Clearing set maintenance screen values"
-                    );
-                    // null the maintenance mode fields if not licensed
+                if (!isLicensed) {
                     resourceData.maintenance = undefined;
                 }
 
@@ -594,7 +590,7 @@ export async function updateProxyResources(
                         existingRule.action !== getRuleAction(rule.action) ||
                         existingRule.match !== rule.match.toUpperCase() ||
                         existingRule.value !==
-                            getRuleValue(rule.match.toUpperCase(), rule.value) ||
+                        getRuleValue(rule.match.toUpperCase(), rule.value) ||
                         existingRule.priority !== intendedPriority
                     ) {
                         validateRule(rule);
@@ -653,11 +649,7 @@ export async function updateProxyResources(
             }
 
             const isLicensed = await isLicensedOrSubscribed(orgId);
-            if (build == "enterprise" && !isLicensed) {
-                logger.warn(
-                    "Server is not licensed! Clearing set maintenance screen values"
-                );
-                // null the maintenance mode fields if not licensed
+            if (!isLicensed) {
                 resourceData.maintenance = undefined;
             }
 

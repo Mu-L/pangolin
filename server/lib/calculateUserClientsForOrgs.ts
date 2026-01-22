@@ -14,7 +14,7 @@ import {
 } from "@server/db";
 import { getUniqueClientName } from "@server/db/names";
 import { getNextAvailableClientSubnet } from "@server/lib/ip";
-import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import logger from "@server/logger";
 import { sendTerminateClient } from "@server/routers/client/terminate";
 import { and, eq, notInArray, type InferInsertModel } from "drizzle-orm";

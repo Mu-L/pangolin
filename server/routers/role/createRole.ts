@@ -11,7 +11,7 @@ import { ActionsEnum } from "@server/auth/actions";
 import { eq, and } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
-import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 
 const createRoleParamsSchema = z.strictObject({
     orgId: z.string()
@@ -101,7 +101,7 @@ export async function createRole(
         }
 
         const isLicensed = await isLicensedOrSubscribed(orgId);
-        if (build === "oss" || !isLicensed) {
+        if (!isLicensed) {
             roleData.requireDeviceApproval = undefined;
         }
 
