@@ -80,6 +80,8 @@ Download the Pangolin client for your platform:
 - [Mac](https://pangolin.net/downloads/mac)
 - [Windows](https://pangolin.net/downloads/windows)
 - [Linux](https://pangolin.net/downloads/linux)
+- [iOS](https://pangolin.net/downloads/ios)
+- [Android](https://pangolin.net/downloads/android)
 
 ## Get Started
 
