@@ -12,6 +12,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { getUserDeviceName } from "@server/db/names";
 import { build } from "@server/build";
+import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
 
 const getClientSchema = z.strictObject({
     clientId: z
@@ -250,12 +251,18 @@ export async function getClient(
             : null;
 
         // Build posture data if available (platform-specific)
+        // Only return posture data if org is licensed/subscribed
         let postureData: PostureData | null = null;
         if (build !== "oss") {
-            postureData = getPlatformPostureData(
-                client.currentFingerprint?.platform || null,
-                client.currentFingerprint
+            const isOrgLicensed = await isLicensedOrSubscribed(
+                client.clients.orgId
             );
+            if (isOrgLicensed) {
+                postureData = getPlatformPostureData(
+                    client.currentFingerprint?.platform || null,
+                    client.currentFingerprint
+                );
+            }
         }
 
         const data: GetClientResponse = {
