@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "@app/components/ui/button";
 import { Download } from "lucide-react";
 import { FaApple, FaWindows, FaLinux } from "react-icons/fa";
+import { SiAndroid } from "react-icons/si";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import DismissableBanner from "./DismissableBanner";
@@ -59,6 +60,34 @@ export const ClientDownloadBanner = () => {
                 >
                     <FaLinux className="w-4 h-4" />
                     Linux
+                </Button>
+            </Link>
+            <Link
+                href="https://pangolin.net/downloads/ios"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                >
+                    <FaApple className="w-4 h-4" />
+                    iOS
+                </Button>
+            </Link>
+            <Link
+                href="https://pangolin.net/downloads/android"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                >
+                    <SiAndroid className="w-4 h-4" />
+                    Android
                 </Button>
             </Link>
         </DismissableBanner>
