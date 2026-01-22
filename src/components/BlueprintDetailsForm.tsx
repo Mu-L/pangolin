@@ -110,6 +110,15 @@ export default function BlueprintDetailsForm({
                                             Dashboard
                                         </Badge>
                                     )}{" "}
+                                    {blueprint.source === "CLI" && (
+                                        <Badge
+                                            variant="secondary"
+                                            className="inline-flex items-center gap-1 "
+                                        >
+                                            <Terminal className="w-3 h-3 flex-none" />
+                                            CLI
+                                        </Badge>
+                                    )}{" "}
                                 </InfoSectionContent>
                             </InfoSection>
                             <InfoSection>

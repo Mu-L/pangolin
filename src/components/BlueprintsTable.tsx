@@ -128,6 +128,19 @@ export default function BlueprintsTable({ blueprints, orgId }: Props) {
                             </Badge>
                         );
                     }
+                    case "CLI": {
+                        return (
+                            <Badge
+                                variant="secondary"
+                                className="inline-flex items-center gap-1"
+                            >
+                                <span className="inline-flex items-center gap-1 ">
+                                    <Terminal className="w-3 h-3" />
+                                    CLI
+                                </span>
+                            </Badge>
+                        );
+                    }
                 }
             }
         },
