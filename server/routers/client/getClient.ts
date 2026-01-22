@@ -143,9 +143,6 @@ function getPlatformPostureData(
     }
     // Android: Screen lock, Biometric configuration, Hard drive encryption
     else if (normalizedPlatform === "android") {
-        if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
-            posture.biometricsEnabled = fingerprint.biometricsEnabled;
-        }
         if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
             posture.diskEncrypted = fingerprint.diskEncrypted;
         }
