@@ -8,8 +8,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import { build } from "@server/build";
-import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const updateRoleParamsSchema = z.strictObject({
@@ -112,7 +111,7 @@ export async function updateRole(
         }
 
         const isLicensed = await isLicensedOrSubscribed(orgId);
-        if (build === "oss" || !isLicensed) {
+        if (!isLicensed) {
             updateData.requireDeviceApproval = undefined;
         }
 

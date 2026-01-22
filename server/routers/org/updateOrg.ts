@@ -13,7 +13,7 @@ import { build } from "@server/build";
 import { getOrgTierData } from "#dynamic/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import { cache } from "@server/lib/cache";
-import { isLicensedOrSubscribed } from "@server/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 
 const updateOrgParamsSchema = z.strictObject({
     orgId: z.string()
@@ -89,7 +89,7 @@ export async function updateOrg(
         const { orgId } = parsedParams.data;
 
         const isLicensed = await isLicensedOrSubscribed(orgId);
-        if (build == "enterprise" && !isLicensed) {
+        if (!isLicensed) {
             parsedBody.data.requireTwoFactor = undefined;
             parsedBody.data.maxSessionLengthHours = undefined;
             parsedBody.data.passwordExpiryDays = undefined;
