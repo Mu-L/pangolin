@@ -134,9 +134,7 @@ function getPlatformPostureData(
     }
     // iOS: Biometric configuration
     else if (normalizedPlatform === "ios") {
-        if (fingerprint.biometricsEnabled !== null && fingerprint.biometricsEnabled !== undefined) {
-            posture.biometricsEnabled = fingerprint.biometricsEnabled;
-        }
+        // none supported yet
     }
     // Android: Screen lock, Biometric configuration, Hard drive encryption
     else if (normalizedPlatform === "android") {
