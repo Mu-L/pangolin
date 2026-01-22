@@ -22,7 +22,7 @@ function fingerprintSnapshotHash(fingerprint: any, postures: any): string {
         autoUpdatesEnabled: postures.autoUpdatesEnabled ?? false,
         tpmAvailable: postures.tpmAvailable ?? false,
 
-        windowsDefenderEnabled: postures.windowsDefenderEnabled ?? false,
+        windowsAntivirusEnabled: postures.windowsAntivirusEnabled ?? false,
 
         macosSipEnabled: postures.macosSipEnabled ?? false,
         macosGatekeeperEnabled: postures.macosGatekeeperEnabled ?? false,
@@ -87,7 +87,7 @@ export async function handleFingerprintInsertion(
                 autoUpdatesEnabled: postures.autoUpdatesEnabled,
                 tpmAvailable: postures.tpmAvailable,
 
-                windowsDefenderEnabled: postures.windowsDefenderEnabled,
+                windowsAntivirusEnabled: postures.windowsAntivirusEnabled,
 
                 macosSipEnabled: postures.macosSipEnabled,
                 macosGatekeeperEnabled: postures.macosGatekeeperEnabled,
@@ -117,7 +117,7 @@ export async function handleFingerprintInsertion(
             autoUpdatesEnabled: postures.autoUpdatesEnabled,
             tpmAvailable: postures.tpmAvailable,
 
-            windowsDefenderEnabled: postures.windowsDefenderEnabled,
+            windowsAntivirusEnabled: postures.windowsAntivirusEnabled,
 
             macosSipEnabled: postures.macosSipEnabled,
             macosGatekeeperEnabled: postures.macosGatekeeperEnabled,
@@ -162,7 +162,7 @@ export async function handleFingerprintInsertion(
             autoUpdatesEnabled: postures.autoUpdatesEnabled,
             tpmAvailable: postures.tpmAvailable,
 
-            windowsDefenderEnabled: postures.windowsDefenderEnabled,
+            windowsAntivirusEnabled: postures.windowsAntivirusEnabled,
 
             macosSipEnabled: postures.macosSipEnabled,
             macosGatekeeperEnabled: postures.macosGatekeeperEnabled,
@@ -197,7 +197,7 @@ export async function handleFingerprintInsertion(
                 autoUpdatesEnabled: postures.autoUpdatesEnabled,
                 tpmAvailable: postures.tpmAvailable,
 
-                windowsDefenderEnabled: postures.windowsDefenderEnabled,
+                windowsAntivirusEnabled: postures.windowsAntivirusEnabled,
 
                 macosSipEnabled: postures.macosSipEnabled,
                 macosGatekeeperEnabled: postures.macosGatekeeperEnabled,

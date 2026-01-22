@@ -778,7 +778,7 @@ export const currentFingerprint = pgTable("currentFingerprint", {
 
     // Windows-specific posture check information
 
-    windowsDefenderEnabled: boolean("windowsDefenderEnabled")
+    windowsAntivirusEnabled: boolean("windowsAntivirusEnabled")
         .notNull()
         .default(false),
 
@@ -830,7 +830,7 @@ export const fingerprintSnapshots = pgTable("fingerprintSnapshots", {
 
     // Windows-specific posture check information
 
-    windowsDefenderEnabled: boolean("windowsDefenderEnabled")
+    windowsAntivirusEnabled: boolean("windowsAntivirusEnabled")
         .notNull()
         .default(false),
 

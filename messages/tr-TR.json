@@ -2510,7 +2510,6 @@
     "firewallEnabled": "Güvenlik Duvarı Etkin",
     "autoUpdatesEnabled": "Otomatik Güncellemeler Etkin",
     "tpmAvailable": "TPM Mevcut",
-    "windowsDefenderEnabled": "Windows Defender Etkin",
     "macosSipEnabled": "Sistem Bütünlüğü Koruması (SIP)",
     "macosGatekeeperEnabled": "Gatekeeper",
     "macosFirewallStealthMode": "Güvenlik Duvarı Gizlilik Modu",

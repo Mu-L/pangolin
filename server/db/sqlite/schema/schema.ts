@@ -475,7 +475,7 @@ export const currentFingerprint = sqliteTable("currentFingerprint", {
 
     // Windows-specific posture check information
 
-    windowsDefenderEnabled: integer("windowsDefenderEnabled", {
+    windowsAntivirusEnabled: integer("windowsAntivirusEnabled", {
         mode: "boolean"
     })
         .notNull()
@@ -549,7 +549,7 @@ export const fingerprintSnapshots = sqliteTable("fingerprintSnapshots", {
 
     // Windows-specific posture check information
 
-    windowsDefenderEnabled: integer("windowsDefenderEnabled", {
+    windowsAntivirusEnabled: integer("windowsAntivirusEnabled", {
         mode: "boolean"
     })
         .notNull()

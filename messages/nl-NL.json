@@ -2510,7 +2510,6 @@
     "firewallEnabled": "Firewall ingeschakeld",
     "autoUpdatesEnabled": "Auto Updates Ingeschakeld",
     "tpmAvailable": "TPM beschikbaar",
-    "windowsDefenderEnabled": "Windows Verdediger ingeschakeld",
     "macosSipEnabled": "Systeemintegriteitsbescherming (SIP)",
     "macosGatekeeperEnabled": "Gatekeeper",
     "macosFirewallStealthMode": "Firewall Verberg Modus",
