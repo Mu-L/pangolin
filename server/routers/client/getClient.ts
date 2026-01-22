@@ -58,7 +58,7 @@ type PostureData = {
     firewallEnabled?: boolean | null;
     autoUpdatesEnabled?: boolean | null;
     tpmAvailable?: boolean | null;
-    windowsDefenderEnabled?: boolean | null;
+    windowsAntivirusEnabled?: boolean | null;
     macosSipEnabled?: boolean | null;
     macosGatekeeperEnabled?: boolean | null;
     macosFirewallStealthMode?: boolean | null;
@@ -75,7 +75,7 @@ function getPlatformPostureData(
     const normalizedPlatform = platform?.toLowerCase() || "unknown";
     const posture: PostureData = {};
 
-    // Windows: Hard drive encryption, Firewall, Auto updates, TPM availability, Windows Defender
+    // Windows: Hard drive encryption, Firewall, Auto updates, TPM availability, Windows Antivirus status
     if (normalizedPlatform === "windows") {
         if (fingerprint.diskEncrypted !== null && fingerprint.diskEncrypted !== undefined) {
             posture.diskEncrypted = fingerprint.diskEncrypted;
@@ -83,14 +83,11 @@ function getPlatformPostureData(
         if (fingerprint.firewallEnabled !== null && fingerprint.firewallEnabled !== undefined) {
             posture.firewallEnabled = fingerprint.firewallEnabled;
         }
-        if (fingerprint.autoUpdatesEnabled !== null && fingerprint.autoUpdatesEnabled !== undefined) {
-            posture.autoUpdatesEnabled = fingerprint.autoUpdatesEnabled;
-        }
         if (fingerprint.tpmAvailable !== null && fingerprint.tpmAvailable !== undefined) {
             posture.tpmAvailable = fingerprint.tpmAvailable;
         }
-        if (fingerprint.windowsDefenderEnabled !== null && fingerprint.windowsDefenderEnabled !== undefined) {
-            posture.windowsDefenderEnabled = fingerprint.windowsDefenderEnabled;
+        if (fingerprint.windowsAntivirusEnabled !== null && fingerprint.windowsAntivirusEnabled !== undefined) {
+            posture.windowsAntivirusEnabled = fingerprint.windowsAntivirusEnabled;
         }
     }
     // macOS: Hard drive encryption, Biometric configuration, Firewall, System Integrity Protection (SIP), Gatekeeper, Firewall stealth mode

@@ -46,6 +46,12 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         return;
     }
 
+    logger.debug("Handling fingerprint insertion for olm register...", {
+        olmId: olm.olmId,
+        fingerprint,
+        postures
+    });
+
     await handleFingerprintInsertion(olm, fingerprint, postures);
 
     if (

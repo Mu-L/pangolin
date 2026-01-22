@@ -656,17 +656,17 @@ export default function GeneralPage() {
                                             </InfoSection>
                                         )}
 
-                                    {client.posture.windowsDefenderEnabled !== null &&
-                                        client.posture.windowsDefenderEnabled !== undefined && (
+                                    {client.posture.windowsAntivirusEnabled !== null &&
+                                        client.posture.windowsAntivirusEnabled !== undefined && (
                                             <InfoSection>
                                                 <InfoSectionTitle>
-                                                    {t("windowsDefenderEnabled")}
+                                                    {t("windowsAntivirusEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
                                                     {isPaidUser
                                                         ? formatPostureValue(
                                                               client.posture
-                                                                  .windowsDefenderEnabled
+                                                                  .windowsAntivirusEnabled
                                                           )
                                                         : "-"}
                                                 </InfoSectionContent>
