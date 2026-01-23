@@ -1,26 +1,25 @@
 import { cn } from "@app/lib/cn";
+import type { DockerState } from "@app/lib/docker";
 import { parseHostTarget } from "@app/lib/parseHostTarget";
 import { CaretSortIcon } from "@radix-ui/react-icons";
-import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
-import { SelectTrigger, SelectContent, SelectItem, Select } from "./ui/select";
+import type { ListSitesResponse } from "@server/routers/site";
 import { type ListTargetsResponse } from "@server/routers/target";
+import type { ArrayElement } from "@server/types/ArrayElement";
+import { CheckIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { ContainersSelector } from "./ContainersSelector";
+import { Button } from "./ui/button";
 import {
     Command,
-    CommandInput,
-    CommandList,
     CommandEmpty,
     CommandGroup,
-    CommandItem
+    CommandInput,
+    CommandItem,
+    CommandList
 } from "./ui/command";
-import { CheckIcon } from "lucide-react";
-import { ContainersSelector } from "./ContainersSelector";
-import type { ListSitesResponse } from "@server/routers/site";
-import type { DockerState } from "@app/lib/docker";
-import { useTranslations } from "next-intl";
-import type { ArrayElement } from "@server/types/ArrayElement";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { useEffect } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "./ui/select";
 
 type SiteWithUpdateAvailable = ListSitesResponse["sites"][number];
 
@@ -66,20 +65,6 @@ export function ResourceTargetAddressItem({
             ...(port && { port: port })
         });
     };
-
-    useEffect(() => {
-        console.log("onMount");
-        return () => console.log("onUnMount");
-    }, []);
-
-    useEffect(() => {
-        console.log("onChange [sites]", { sites });
-        // return () => console.log("onUnMount");
-    }, [sites]);
-
-    useEffect(() => {
-        console.log("onChange [proxyTarget]", { proxyTarget });
-    }, [proxyTarget]);
 
     return (
         <div className="flex items-center w-full" key={proxyTarget.targetId}>
