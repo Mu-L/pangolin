@@ -19,17 +19,6 @@ export interface ApprovalFeedPageProps {
 export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
     const params = await props.params;
 
-    let approvals: ApprovalItem[] = [];
-    const res = await internal
-        .get<
-            AxiosResponse<{ approvals: ApprovalItem[] }>
-        >(`/org/${params.orgId}/approvals`, await authCookieHeader())
-        .catch((e) => {});
-
-    if (res && res.status === 200) {
-        approvals = res.data.data.approvals;
-    }
-
     let org: GetOrgResponse | null = null;
     const orgRes = await getCachedOrg(params.orgId);
 
