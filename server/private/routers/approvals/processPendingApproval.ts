@@ -19,7 +19,7 @@ import { fromError } from "zod-validation-error";
 
 import { build } from "@server/build";
 import { approvals, clients, db, orgs, type Approval } from "@server/db";
-import { getOrgTierData } from "@server/lib/billing";
+import { getOrgTierData } from "#private/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import response from "@server/lib/response";
 import { and, eq, type InferInsertModel } from "drizzle-orm";
