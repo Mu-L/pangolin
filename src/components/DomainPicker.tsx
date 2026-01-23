@@ -94,12 +94,6 @@ export default function DomainPicker({
     const api = createApiClient({ env });
     const t = useTranslations();
 
-    console.log({
-        defaultFullDomain,
-        defaultSubdomain,
-        defaultDomainId
-    });
-
     const { data = [], isLoading: loadingDomains } = useQuery(
         orgQueries.domains({ orgId })
     );
@@ -369,9 +363,6 @@ export default function DomainPicker({
             setSelectedProvidedDomain(null);
         }
 
-        console.log({
-            setSelectedBaseDomain: option
-        });
         setSelectedBaseDomain(option);
         setOpen(false);
 
@@ -442,9 +433,6 @@ export default function DomainPicker({
         0,
         providedDomainsShown
     );
-    console.log({
-        displayedProvidedOptions
-    });
 
     const selectedDomainNamespaceId =
         selectedProvidedDomain?.domainNamespaceId ??
