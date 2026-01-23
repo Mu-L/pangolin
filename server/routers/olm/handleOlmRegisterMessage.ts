@@ -149,7 +149,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             return;
         }
 
-        if (!policyCheck.policies?.passwordAge?.compliant === false) {
+        if (policyCheck.policies?.passwordAge?.compliant === false) {
             logger.warn(
                 `Olm user ${olm.userId} has non-compliant password age for org ${orgId}`
             );
@@ -159,7 +159,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             );
             return;
         } else if (
-            !policyCheck.policies?.maxSessionLength?.compliant === false
+            policyCheck.policies?.maxSessionLength?.compliant === false
         ) {
             logger.warn(
                 `Olm user ${olm.userId} has non-compliant session length for org ${orgId}`
