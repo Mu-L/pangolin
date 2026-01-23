@@ -1,5 +1,14 @@
 "use client";
 
+import CopyTextBox from "@app/components/CopyTextBox";
+import DomainPicker from "@app/components/DomainPicker";
+import HealthCheckDialog from "@app/components/HealthCheckDialog";
+import {
+    PathMatchDisplay,
+    PathMatchModal,
+    PathRewriteDisplay,
+    PathRewriteModal
+} from "@app/components/PathMatchRenameModal";
 import {
     SettingsContainer,
     SettingsSection,
@@ -9,6 +18,10 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
+import HeaderTitle from "@app/components/SettingsSectionTitle";
+import { StrategySelect } from "@app/components/StrategySelect";
+import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
+import { Button } from "@app/components/ui/button";
 import {
     Form,
     FormControl,
@@ -18,22 +31,7 @@ import {
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
-import HeaderTitle from "@app/components/SettingsSectionTitle";
-import { z } from "zod";
-import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@app/components/ui/input";
-import { Button } from "@app/components/ui/button";
-import { useParams, useRouter } from "next/navigation";
-import { ListSitesResponse } from "@server/routers/site";
-import { formatAxiosError } from "@app/lib/api";
-import { createApiClient } from "@app/lib/api";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { toast } from "@app/hooks/useToast";
-import { AxiosResponse } from "axios";
-import { Resource } from "@server/db";
-import { StrategySelect } from "@app/components/StrategySelect";
 import {
     Select,
     SelectContent,
@@ -41,48 +39,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
-import { ListDomainsResponse } from "@server/routers/domain";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "@app/components/ui/command";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger
-} from "@app/components/ui/popover";
-import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
-import { cn } from "@app/lib/cn";
-import {
-    ArrowRight,
-    CircleCheck,
-    CircleX,
-    Info,
-    MoveRight,
-    Plus,
-    Settings,
-    SquareArrowOutUpRight
-} from "lucide-react";
-import CopyTextBox from "@app/components/CopyTextBox";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
-import DomainPicker from "@app/components/DomainPicker";
-import { build } from "@server/build";
-import { ContainersSelector } from "@app/components/ContainersSelector";
-import {
-    ColumnDef,
-    getFilteredRowModel,
-    getSortedRowModel,
-    getPaginationRowModel,
-    getCoreRowModel,
-    useReactTable,
-    flexRender,
-    Row
-} from "@tanstack/react-table";
+import { Switch } from "@app/components/ui/switch";
 import {
     Table,
     TableBody,
@@ -91,30 +48,49 @@ import {
     TableHeader,
     TableRow
 } from "@app/components/ui/table";
-import { Switch } from "@app/components/ui/switch";
-import { ArrayElement } from "@server/types/ArrayElement";
-import { isTargetValid } from "@server/lib/validators";
-import { ListTargetsResponse } from "@server/routers/target";
-import { DockerManager, DockerState } from "@app/lib/docker";
-import { parseHostTarget } from "@app/lib/parseHostTarget";
-import { toASCII, toUnicode } from "punycode";
-import { DomainRow } from "@app/components/DomainsTable";
-import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger
 } from "@app/components/ui/tooltip";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { DockerManager, DockerState } from "@app/lib/docker";
+import { orgQueries } from "@app/lib/queries";
+import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Resource } from "@server/db";
+import { isTargetValid } from "@server/lib/validators";
+import { ListTargetsResponse } from "@server/routers/target";
+import { ArrayElement } from "@server/types/ArrayElement";
+import { useQuery } from "@tanstack/react-query";
 import {
-    PathMatchDisplay,
-    PathMatchModal,
-    PathRewriteDisplay,
-    PathRewriteModal
-} from "@app/components/PathMatchRenameModal";
-import { Badge } from "@app/components/ui/badge";
-import HealthCheckDialog from "@app/components/HealthCheckDialog";
-import { SwitchInput } from "@app/components/SwitchInput";
+    ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable
+} from "@tanstack/react-table";
+import { AxiosResponse } from "axios";
+import {
+    CircleCheck,
+    CircleX,
+    Info,
+    Plus,
+    Settings,
+    SquareArrowOutUpRight
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { toASCII } from "punycode";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
@@ -204,10 +180,6 @@ const addTargetSchema = z
         }
     );
 
-type BaseResourceFormValues = z.infer<typeof baseResourceFormSchema>;
-type HttpResourceFormValues = z.infer<typeof httpResourceFormSchema>;
-type TcpUdpResourceFormValues = z.infer<typeof tcpUdpResourceFormSchema>;
-
 type ResourceType = "http" | "raw";
 
 interface ResourceTypeOption {
@@ -217,7 +189,7 @@ interface ResourceTypeOption {
     disabled?: boolean;
 }
 
-type LocalTarget = Omit<
+export type LocalTarget = Omit<
     ArrayElement<ListTargetsResponse["targets"]> & {
         new?: boolean;
         updated?: boolean;
@@ -233,18 +205,16 @@ export default function Page() {
     const router = useRouter();
     const t = useTranslations();
 
-    const [loadingPage, setLoadingPage] = useState(true);
-    const [sites, setSites] = useState<ListSitesResponse["sites"]>([]);
-    const [baseDomains, setBaseDomains] = useState<
-        { domainId: string; baseDomain: string }[]
-    >([]);
+    const { data: sites = [], isLoading: loadingPage } = useQuery(
+        orgQueries.sites({ orgId: orgId as string })
+    );
+
     const [createLoading, setCreateLoading] = useState(false);
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
 
     // Target management state
     const [targets, setTargets] = useState<LocalTarget[]>([]);
-    const [targetsToRemove, setTargetsToRemove] = useState<number[]>([]);
     const [dockerStates, setDockerStates] = useState<Map<number, DockerState>>(
         new Map()
     );
@@ -405,102 +375,60 @@ export default function Page() {
         setDockerStates((prev) => new Map(prev.set(siteId, dockerState)));
     };
 
-    const refreshContainersForSite = async (siteId: number) => {
-        const dockerManager = new DockerManager(api, siteId);
-        const containers = await dockerManager.fetchContainers();
+    const refreshContainersForSite = useCallback(
+        async (siteId: number) => {
+            const dockerManager = new DockerManager(api, siteId);
+            const containers = await dockerManager.fetchContainers();
 
-        setDockerStates((prev) => {
-            const newMap = new Map(prev);
-            const existingState = newMap.get(siteId);
-            if (existingState) {
-                newMap.set(siteId, { ...existingState, containers });
-            }
-            return newMap;
+            setDockerStates((prev) => {
+                const newMap = new Map(prev);
+                const existingState = newMap.get(siteId);
+                if (existingState) {
+                    newMap.set(siteId, { ...existingState, containers });
+                }
+                return newMap;
+            });
+        },
+        [api]
+    );
+
+    const getDockerStateForSite = useCallback(
+        (siteId: number): DockerState => {
+            return (
+                dockerStates.get(siteId) || {
+                    isEnabled: false,
+                    isAvailable: false,
+                    containers: []
+                }
+            );
+        },
+        [dockerStates]
+    );
+
+    const removeTarget = useCallback((targetId: number) => {
+        setTargets((prevTargets) => {
+            return prevTargets.filter((target) => target.targetId !== targetId);
         });
-    };
+    }, []);
 
-    const getDockerStateForSite = (siteId: number): DockerState => {
-        return (
-            dockerStates.get(siteId) || {
-                isEnabled: false,
-                isAvailable: false,
-                containers: []
-            }
-        );
-    };
-
-    async function addTarget(data: z.infer<typeof addTargetSchema>) {
-        const site = sites.find((site) => site.siteId === data.siteId);
-
-        const isHttp = baseForm.watch("http");
-
-        const newTarget: LocalTarget = {
-            ...data,
-            path: isHttp ? data.path || null : null,
-            pathMatchType: isHttp ? data.pathMatchType || null : null,
-            rewritePath: isHttp ? data.rewritePath || null : null,
-            rewritePathType: isHttp ? data.rewritePathType || null : null,
-            siteType: site?.type || null,
-            enabled: true,
-            targetId: new Date().getTime(),
-            new: true,
-            resourceId: 0, // Will be set when resource is created
-            priority: isHttp ? data.priority || 100 : 100, // Default priority
-            hcEnabled: false,
-            hcPath: null,
-            hcMethod: null,
-            hcInterval: null,
-            hcTimeout: null,
-            hcHeaders: null,
-            hcScheme: null,
-            hcHostname: null,
-            hcPort: null,
-            hcFollowRedirects: null,
-            hcHealth: "unknown",
-            hcStatus: null,
-            hcMode: null,
-            hcUnhealthyInterval: null,
-            hcTlsServerName: null
-        };
-
-        setTargets([...targets, newTarget]);
-        addTargetForm.reset({
-            ip: "",
-            method: baseForm.watch("http") ? "http" : null,
-            port: "" as any as number,
-            path: null,
-            pathMatchType: null,
-            rewritePath: null,
-            rewritePathType: null,
-            priority: isHttp ? 100 : undefined
-        });
-    }
-
-    const removeTarget = (targetId: number) => {
-        setTargets([
-            ...targets.filter((target) => target.targetId !== targetId)
-        ]);
-
-        if (!targets.find((target) => target.targetId === targetId)?.new) {
-            setTargetsToRemove([...targetsToRemove, targetId]);
-        }
-    };
-
-    async function updateTarget(targetId: number, data: Partial<LocalTarget>) {
-        const site = sites.find((site) => site.siteId === data.siteId);
-        setTargets(
-            targets.map((target) =>
-                target.targetId === targetId
-                    ? {
-                          ...target,
-                          ...data,
-                          updated: true,
-                          siteType: site ? site.type : target.siteType
-                      }
-                    : target
-            )
-        );
-    }
+    const updateTarget = useCallback(
+        (targetId: number, data: Partial<LocalTarget>) => {
+            setTargets((prevTargets) => {
+                const site = sites.find((site) => site.siteId === data.siteId);
+                return prevTargets.map((target) =>
+                    target.targetId === targetId
+                        ? {
+                              ...target,
+                              ...data,
+                              updated: true,
+                              siteType: site ? site.type : target.siteType
+                          }
+                        : target
+                );
+            });
+        },
+        [sites]
+    );
 
     async function onSubmit() {
         setCreateLoading(true);
@@ -638,82 +566,18 @@ export default function Page() {
     }
 
     useEffect(() => {
-        const load = async () => {
-            setLoadingPage(true);
+        // Initialize Docker for newt sites
+        for (const site of sites) {
+            if (site.type === "newt") {
+                initializeDockerForSite(site.siteId);
+            }
+        }
 
-            const fetchSites = async () => {
-                const res = await api
-                    .get<
-                        AxiosResponse<ListSitesResponse>
-                    >(`/org/${orgId}/sites/`)
-                    .catch((e) => {
-                        toast({
-                            variant: "destructive",
-                            title: t("sitesErrorFetch"),
-                            description: formatAxiosError(
-                                e,
-                                t("sitesErrorFetchDescription")
-                            )
-                        });
-                    });
-
-                if (res?.status === 200) {
-                    setSites(res.data.data.sites);
-
-                    // Initialize Docker for newt sites
-                    for (const site of res.data.data.sites) {
-                        if (site.type === "newt") {
-                            initializeDockerForSite(site.siteId);
-                        }
-                    }
-
-                    // If there's only one site, set it as the default in the form
-                    if (res.data.data.sites.length) {
-                        addTargetForm.setValue(
-                            "siteId",
-                            res.data.data.sites[0].siteId
-                        );
-                    }
-                }
-            };
-
-            const fetchDomains = async () => {
-                const res = await api
-                    .get<
-                        AxiosResponse<ListDomainsResponse>
-                    >(`/org/${orgId}/domains/`)
-                    .catch((e) => {
-                        toast({
-                            variant: "destructive",
-                            title: t("domainsErrorFetch"),
-                            description: formatAxiosError(
-                                e,
-                                t("domainsErrorFetchDescription")
-                            )
-                        });
-                    });
-
-                if (res?.status === 200) {
-                    const rawDomains = res.data.data.domains as DomainRow[];
-                    const domains = rawDomains.map((domain) => ({
-                        ...domain,
-                        baseDomain: toUnicode(domain.baseDomain)
-                    }));
-                    setBaseDomains(domains);
-                    // if (domains.length) {
-                    //     httpForm.setValue("domainId", domains[0].domainId);
-                    // }
-                }
-            };
-
-            await fetchSites();
-            await fetchDomains();
-
-            setLoadingPage(false);
-        };
-
-        load();
-    }, []);
+        // If there's at least one site, set it as the default in the form
+        if (sites.length > 0) {
+            addTargetForm.setValue("siteId", sites[0].siteId);
+        }
+    }, [sites]);
 
     function TargetHealthCheck(targetId: number, config: any) {
         setTargets(
@@ -729,16 +593,15 @@ export default function Page() {
         );
     }
 
-    const openHealthCheckDialog = (target: LocalTarget) => {
+    const openHealthCheckDialog = useCallback((target: LocalTarget) => {
         console.log(target);
         setSelectedTargetForHealthCheck(target);
         setHealthCheckDialogOpen(true);
-    };
+    }, []);
 
-    const getColumns = (): ColumnDef<LocalTarget>[] => {
-        const baseColumns: ColumnDef<LocalTarget>[] = [];
-        const isHttp = baseForm.watch("http");
+    const isHttp = baseForm.watch("http");
 
+    const columns = useMemo((): ColumnDef<LocalTarget>[] => {
         const priorityColumn: ColumnDef<LocalTarget> = {
             id: "priority",
             header: () => (
@@ -875,7 +738,7 @@ export default function Page() {
                                 trigger={
                                     <Button
                                         variant="outline"
-                                        className="flex items-center gap-2 p-2 w-full text-left cursor-pointer max-w-[200px]"
+                                        className="flex items-center gap-2 p-2 w-full text-left cursor-pointer max-w-50"
                                     >
                                         <PathMatchDisplay
                                             value={{
@@ -899,7 +762,7 @@ export default function Page() {
                                 trigger={
                                     <Button
                                         variant="outline"
-                                        className="w-full max-w-[200px]"
+                                        className="w-full max-w-50"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
                                         {t("matchPath")}
@@ -918,216 +781,16 @@ export default function Page() {
         const addressColumn: ColumnDef<LocalTarget> = {
             accessorKey: "address",
             header: () => <span className="p-3">{t("address")}</span>,
-            cell: ({ row }) => {
-                const selectedSite = sites.find(
-                    (site) => site.siteId === row.original.siteId
-                );
-
-                const handleContainerSelectForTarget = (
-                    hostname: string,
-                    port?: number
-                ) => {
-                    updateTarget(row.original.targetId, {
-                        ...row.original,
-                        ip: hostname,
-                        ...(port && { port: port })
-                    });
-                };
-
-                return (
-                    <div className="flex items-center w-full">
-                        <div className="flex items-center w-full justify-start py-0 space-x-2 px-0 cursor-default border border-input rounded-md">
-                            {selectedSite &&
-                                selectedSite.type === "newt" &&
-                                (() => {
-                                    const dockerState = getDockerStateForSite(
-                                        selectedSite.siteId
-                                    );
-                                    return (
-                                        <ContainersSelector
-                                            site={selectedSite}
-                                            containers={dockerState.containers}
-                                            isAvailable={
-                                                dockerState.isAvailable
-                                            }
-                                            onContainerSelect={
-                                                handleContainerSelectForTarget
-                                            }
-                                            onRefresh={() =>
-                                                refreshContainersForSite(
-                                                    selectedSite.siteId
-                                                )
-                                            }
-                                        />
-                                    );
-                                })()}
-
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        role="combobox"
-                                        className={cn(
-                                            "w-[180px] justify-between text-sm border-r pr-4 rounded-none h-8 hover:bg-transparent",
-                                            !row.original.siteId &&
-                                                "text-muted-foreground"
-                                        )}
-                                    >
-                                        <span className="truncate max-w-[150px]">
-                                            {row.original.siteId
-                                                ? selectedSite?.name
-                                                : t("siteSelect")}
-                                        </span>
-                                        <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="p-0 w-[180px]">
-                                    <Command>
-                                        <CommandInput
-                                            placeholder={t("siteSearch")}
-                                        />
-                                        <CommandList>
-                                            <CommandEmpty>
-                                                {t("siteNotFound")}
-                                            </CommandEmpty>
-                                            <CommandGroup>
-                                                {sites.map((site) => (
-                                                    <CommandItem
-                                                        key={site.siteId}
-                                                        value={`${site.siteId}:${site.name}`}
-                                                        onSelect={() =>
-                                                            updateTarget(
-                                                                row.original
-                                                                    .targetId,
-                                                                {
-                                                                    siteId: site.siteId
-                                                                }
-                                                            )
-                                                        }
-                                                    >
-                                                        <CheckIcon
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                site.siteId ===
-                                                                    row.original
-                                                                        .siteId
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {site.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-
-                            {isHttp && (
-                                <Select
-                                    defaultValue={row.original.method ?? "http"}
-                                    onValueChange={(value) =>
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            method: value
-                                        })
-                                    }
-                                >
-                                    <SelectTrigger className="h-8 px-2 w-[70px] border-none bg-transparent shadow-none focus:ring-0 focus:outline-none focus-visible:ring-0 data-[state=open]:bg-transparent">
-                                        {row.original.method || "http"}
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="http">
-                                            http
-                                        </SelectItem>
-                                        <SelectItem value="https">
-                                            https
-                                        </SelectItem>
-                                        <SelectItem value="h2c">h2c</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
-
-                            {isHttp && (
-                                <div className="flex items-center justify-center px-2 h-9">
-                                    {"://"}
-                                </div>
-                            )}
-
-                            <Input
-                                defaultValue={row.original.ip}
-                                placeholder="Host"
-                                className="flex-1 min-w-[120px] pl-0 border-none placeholder-gray-400"
-                                onBlur={(e) => {
-                                    const input = e.target.value.trim();
-                                    const hasProtocol =
-                                        /^(https?|h2c):\/\//.test(input);
-                                    const hasPort = /:\d+(?:\/|$)/.test(input);
-
-                                    if (hasProtocol || hasPort) {
-                                        const parsed = parseHostTarget(input);
-                                        if (parsed) {
-                                            updateTarget(
-                                                row.original.targetId,
-                                                {
-                                                    ...row.original,
-                                                    method: hasProtocol
-                                                        ? parsed.protocol
-                                                        : row.original.method,
-                                                    ip: parsed.host,
-                                                    port: hasPort
-                                                        ? parsed.port
-                                                        : row.original.port
-                                                }
-                                            );
-                                        } else {
-                                            updateTarget(
-                                                row.original.targetId,
-                                                {
-                                                    ...row.original,
-                                                    ip: input
-                                                }
-                                            );
-                                        }
-                                    } else {
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            ip: input
-                                        });
-                                    }
-                                }}
-                            />
-                            <div className="flex items-center justify-center px-2 h-9">
-                                {":"}
-                            </div>
-                            <Input
-                                placeholder="Port"
-                                defaultValue={
-                                    row.original.port === 0
-                                        ? ""
-                                        : row.original.port
-                                }
-                                className="w-[75px] pl-0 border-none placeholder-gray-400"
-                                onBlur={(e) => {
-                                    const value = parseInt(e.target.value, 10);
-                                    if (!isNaN(value) && value > 0) {
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            port: value
-                                        });
-                                    } else {
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            port: 0
-                                        });
-                                    }
-                                }}
-                            />
-                        </div>
-                    </div>
-                );
-            },
+            cell: ({ row }) => (
+                <ResourceTargetAddressItem
+                    isHttp={isHttp}
+                    sites={sites}
+                    getDockerStateForSite={getDockerStateForSite}
+                    proxyTarget={row.original}
+                    refreshContainersForSite={refreshContainersForSite}
+                    updateTarget={updateTarget}
+                />
+            ),
             size: 400,
             minSize: 350,
             maxSize: 500
@@ -1186,7 +849,7 @@ export default function Page() {
                                     <Button
                                         variant="outline"
                                         disabled={noPathMatch}
-                                        className="w-full max-w-[200px]"
+                                        className="w-full max-w-50"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
                                         {t("rewritePath")}
@@ -1265,9 +928,17 @@ export default function Page() {
                 actionsColumn
             ];
         }
-    };
-
-    const columns = getColumns();
+    }, [
+        isAdvancedMode,
+        isHttp,
+        sites,
+        updateTarget,
+        getDockerStateForSite,
+        refreshContainersForSite,
+        openHealthCheckDialog,
+        removeTarget,
+        t
+    ]);
 
     const table = useReactTable({
         data: targets,
@@ -1649,9 +1320,6 @@ export default function Page() {
                                                             </TableRow>
                                                         )}
                                                     </TableBody>
-                                                    {/* <TableCaption> */}
-                                                    {/*     {t('targetNoOneDescription')} */}
-                                                    {/* </TableCaption> */}
                                                 </Table>
                                             </div>
                                             <div className="flex items-center justify-between mb-4">
