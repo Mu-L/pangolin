@@ -19,7 +19,7 @@ import { fromError } from "zod-validation-error";
 
 import type { Request, Response, NextFunction } from "express";
 import { build } from "@server/build";
-import { getOrgTierData } from "@server/lib/billing";
+import { getOrgTierData } from "#private/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import {
     approvals,

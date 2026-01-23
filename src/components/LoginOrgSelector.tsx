@@ -143,7 +143,6 @@ export default function LoginOrgSelector({
                                 <IdpLoginButtons
                                     idps={idps}
                                     redirect={redirect}
-                                    orgId={org.orgId}
                                 />
                             </div>
                         </div>
