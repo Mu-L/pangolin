@@ -11,7 +11,6 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ContainersSelector } from "@app/components/ContainersSelector";
 import { HeadersInput } from "@app/components/HeadersInput";
 import {
     PathMatchDisplay,
@@ -19,6 +18,7 @@ import {
     PathRewriteDisplay,
     PathRewriteModal
 } from "@app/components/PathMatchRenameModal";
+import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
 import {
     SettingsContainer,
     SettingsSection,
@@ -30,15 +30,6 @@ import {
 } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
-import { Badge } from "@app/components/ui/badge";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "@app/components/ui/command";
 import {
     Form,
     FormControl,
@@ -48,11 +39,6 @@ import {
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger
-} from "@app/components/ui/popover";
 import {
     Table,
     TableBody,
@@ -73,12 +59,9 @@ import { useResourceContext } from "@app/hooks/useResourceContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { formatAxiosError } from "@app/lib/api/formatAxiosError";
-import { cn } from "@app/lib/cn";
 import { DockerManager, DockerState } from "@app/lib/docker";
-import { parseHostTarget } from "@app/lib/parseHostTarget";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CaretSortIcon } from "@radix-ui/react-icons";
 import { tlsNameSchema } from "@server/lib/schemas";
 import { type GetResourceResponse } from "@server/routers/resource";
 import type { ListSitesResponse } from "@server/routers/site";
@@ -98,7 +81,6 @@ import {
 import { AxiosResponse } from "axios";
 import {
     AlertTriangle,
-    CheckIcon,
     CircleCheck,
     CircleX,
     Info,
@@ -107,7 +89,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { use, useActionState, useEffect, useState } from "react";
+import { use, useActionState, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -202,7 +184,7 @@ function ProxyResourceTargetsForm({
         setDockerStates((prev) => new Map(prev.set(siteId, dockerState)));
     };
 
-    const refreshContainersForSite = async (siteId: number) => {
+    const refreshContainersForSite = useCallback(async (siteId: number) => {
         const dockerManager = new DockerManager(api, siteId);
         const containers = await dockerManager.fetchContainers();
 
@@ -214,9 +196,9 @@ function ProxyResourceTargetsForm({
             }
             return newMap;
         });
-    };
+    }, [api]);
 
-    const getDockerStateForSite = (siteId: number): DockerState => {
+    const getDockerStateForSite = useCallback((siteId: number): DockerState => {
         return (
             dockerStates.get(siteId) || {
                 isEnabled: false,
@@ -224,7 +206,7 @@ function ProxyResourceTargetsForm({
                 containers: []
             }
         );
-    };
+    }, [dockerStates]);
 
     const [isAdvancedMode, setIsAdvancedMode] = useState(() => {
         if (typeof window !== "undefined") {
@@ -234,8 +216,40 @@ function ProxyResourceTargetsForm({
         return false;
     });
 
-    const getColumns = (): ColumnDef<LocalTarget>[] => {
-        const isHttp = resource.http;
+    const isHttp = resource.http;
+
+    const removeTarget = useCallback((targetId: number) => {
+        setTargets((prevTargets) => {
+            const targetToRemove = prevTargets.find((target) => target.targetId === targetId);
+            if (targetToRemove && !targetToRemove.new) {
+                setTargetsToRemove((prev) => [...prev, targetId]);
+            }
+            return prevTargets.filter((target) => target.targetId !== targetId);
+        });
+    }, []);
+
+    const updateTarget = useCallback((targetId: number, data: Partial<LocalTarget>) => {
+        setTargets((prevTargets) => {
+            const site = sites.find((site) => site.siteId === data.siteId);
+            return prevTargets.map((target) =>
+                target.targetId === targetId
+                    ? {
+                          ...target,
+                          ...data,
+                          updated: true,
+                          siteType: site ? site.type : target.siteType
+                      }
+                    : target
+            );
+        });
+    }, [sites]);
+
+    const openHealthCheckDialog = useCallback((target: LocalTarget) => {
+        setSelectedTargetForHealthCheck(target);
+        setHealthCheckDialogOpen(true);
+    }, []);
+
+    const columns = useMemo((): ColumnDef<LocalTarget>[] => {
 
         const priorityColumn: ColumnDef<LocalTarget> = {
             id: "priority",
@@ -419,213 +433,15 @@ function ProxyResourceTargetsForm({
             accessorKey: "address",
             header: () => <span className="p-3">{t("address")}</span>,
             cell: ({ row }) => {
-                const selectedSite = sites.find(
-                    (site) => site.siteId === row.original.siteId
-                );
-
-                const handleContainerSelectForTarget = (
-                    hostname: string,
-                    port?: number
-                ) => {
-                    updateTarget(row.original.targetId, {
-                        ...row.original,
-                        ip: hostname,
-                        ...(port && { port: port })
-                    });
-                };
-
                 return (
-                    <div className="flex items-center w-full">
-                        <div className="flex items-center w-full justify-start py-0 space-x-2 px-0 cursor-default border border-input rounded-md">
-                            {selectedSite &&
-                                selectedSite.type === "newt" &&
-                                (() => {
-                                    const dockerState = getDockerStateForSite(
-                                        selectedSite.siteId
-                                    );
-                                    return (
-                                        <ContainersSelector
-                                            site={selectedSite}
-                                            containers={dockerState.containers}
-                                            isAvailable={
-                                                dockerState.isAvailable
-                                            }
-                                            onContainerSelect={
-                                                handleContainerSelectForTarget
-                                            }
-                                            onRefresh={() =>
-                                                refreshContainersForSite(
-                                                    selectedSite.siteId
-                                                )
-                                            }
-                                        />
-                                    );
-                                })()}
-
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        role="combobox"
-                                        className={cn(
-                                            "w-[180px] justify-between text-sm border-r pr-4 rounded-none h-8 hover:bg-transparent",
-                                            !row.original.siteId &&
-                                                "text-muted-foreground"
-                                        )}
-                                    >
-                                        <span className="truncate max-w-[150px]">
-                                            {row.original.siteId
-                                                ? selectedSite?.name
-                                                : t("siteSelect")}
-                                        </span>
-                                        <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="p-0 w-[180px]">
-                                    <Command>
-                                        <CommandInput
-                                            placeholder={t("siteSearch")}
-                                        />
-                                        <CommandList>
-                                            <CommandEmpty>
-                                                {t("siteNotFound")}
-                                            </CommandEmpty>
-                                            <CommandGroup>
-                                                {sites.map((site) => (
-                                                    <CommandItem
-                                                        key={site.siteId}
-                                                        value={`${site.siteId}:${site.name}`}
-                                                        onSelect={() =>
-                                                            updateTarget(
-                                                                row.original
-                                                                    .targetId,
-                                                                {
-                                                                    siteId: site.siteId
-                                                                }
-                                                            )
-                                                        }
-                                                    >
-                                                        <CheckIcon
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                site.siteId ===
-                                                                    row.original
-                                                                        .siteId
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {site.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-
-                            {resource.http && (
-                                <Select
-                                    defaultValue={row.original.method ?? "http"}
-                                    onValueChange={(value) =>
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            method: value
-                                        })
-                                    }
-                                >
-                                    <SelectTrigger className="h-8 px-2 w-[70px] text-sm font-normal border-none bg-transparent shadow-none focus:ring-0 focus:outline-none focus-visible:ring-0 data-[state=open]:bg-transparent">
-                                        {row.original.method || "http"}
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="http">
-                                            http
-                                        </SelectItem>
-                                        <SelectItem value="https">
-                                            https
-                                        </SelectItem>
-                                        <SelectItem value="h2c">h2c</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
-
-                            {resource.http && (
-                                <div className="flex items-center justify-center px-2 h-9">
-                                    {"://"}
-                                </div>
-                            )}
-
-                            <Input
-                                defaultValue={row.original.ip}
-                                placeholder="Host"
-                                className="flex-1 min-w-[120px] pl-0 border-none placeholder-gray-400"
-                                onBlur={(e) => {
-                                    const input = e.target.value.trim();
-                                    const hasProtocol =
-                                        /^(https?|h2c):\/\//.test(input);
-                                    const hasPort = /:\d+(?:\/|$)/.test(input);
-
-                                    if (hasProtocol || hasPort) {
-                                        const parsed = parseHostTarget(input);
-                                        if (parsed) {
-                                            updateTarget(
-                                                row.original.targetId,
-                                                {
-                                                    ...row.original,
-                                                    method: hasProtocol
-                                                        ? parsed.protocol
-                                                        : row.original.method,
-                                                    ip: parsed.host,
-                                                    port: hasPort
-                                                        ? parsed.port
-                                                        : row.original.port
-                                                }
-                                            );
-                                        } else {
-                                            updateTarget(
-                                                row.original.targetId,
-                                                {
-                                                    ...row.original,
-                                                    ip: input
-                                                }
-                                            );
-                                        }
-                                    } else {
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            ip: input
-                                        });
-                                    }
-                                }}
-                            />
-                            <div className="flex items-center justify-center px-2 h-9">
-                                {":"}
-                            </div>
-                            <Input
-                                placeholder="Port"
-                                defaultValue={
-                                    row.original.port === 0
-                                        ? ""
-                                        : row.original.port
-                                }
-                                className="w-[75px] pl-0 border-none placeholder-gray-400"
-                                onBlur={(e) => {
-                                    const value = parseInt(e.target.value, 10);
-                                    if (!isNaN(value) && value > 0) {
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            port: value
-                                        });
-                                    } else {
-                                        updateTarget(row.original.targetId, {
-                                            ...row.original,
-                                            port: 0
-                                        });
-                                    }
-                                }}
-                            />
-                        </div>
-                    </div>
+                    <ResourceTargetAddressItem
+                        isHttp={isHttp}
+                        sites={sites}
+                        getDockerStateForSite={getDockerStateForSite}
+                        proxyTarget={row.original}
+                        refreshContainersForSite={refreshContainersForSite}
+                        updateTarget={updateTarget}
+                    />
                 );
             },
             size: 400,
@@ -765,7 +581,7 @@ function ProxyResourceTargetsForm({
                 actionsColumn
             ];
         }
-    };
+    }, [isAdvancedMode, isHttp, sites, updateTarget, getDockerStateForSite, refreshContainersForSite, openHealthCheckDialog, removeTarget, t]);
 
     function addNewTarget() {
         const isHttp = resource.http;
@@ -806,32 +622,6 @@ function ProxyResourceTargetsForm({
         setTargets((prev) => [...prev, newTarget]);
     }
 
-    const removeTarget = (targetId: number) => {
-        setTargets([
-            ...targets.filter((target) => target.targetId !== targetId)
-        ]);
-
-        if (!targets.find((target) => target.targetId === targetId)?.new) {
-            setTargetsToRemove([...targetsToRemove, targetId]);
-        }
-    };
-
-    async function updateTarget(targetId: number, data: Partial<LocalTarget>) {
-        const site = sites.find((site) => site.siteId === data.siteId);
-        setTargets(
-            targets.map((target) =>
-                target.targetId === targetId
-                    ? {
-                          ...target,
-                          ...data,
-                          updated: true,
-                          siteType: site ? site.type : target.siteType
-                      }
-                    : target
-            )
-        );
-    }
-
     function updateTargetHealthCheck(targetId: number, config: any) {
         setTargets(
             targets.map((target) =>
@@ -845,14 +635,6 @@ function ProxyResourceTargetsForm({
             )
         );
     }
-
-    const openHealthCheckDialog = (target: LocalTarget) => {
-        console.log(target);
-        setSelectedTargetForHealthCheck(target);
-        setHealthCheckDialogOpen(true);
-    };
-
-    const columns = getColumns();
 
     const table = useReactTable({
         data: targets,
