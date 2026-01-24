@@ -78,7 +78,7 @@ export async function upsertLoginPageBranding(
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedBody = bodySchema.safeParse(req.body);
+        const parsedBody = await bodySchema.safeParseAsync(req.body);
         if (!parsedBody.success) {
             return next(
                 createHttpError(
