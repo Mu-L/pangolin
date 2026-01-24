@@ -482,14 +482,32 @@ jobs:
                       echo "==> cosign sign (key) --recursive ${REF}"
                       cosign sign --key env://COSIGN_PRIVATE_KEY --recursive "${REF}"
 
+                      # Retry wrapper for verification to handle registry propagation delays
+                      retry_verify() {
+                        local cmd="$1"
+                        local attempts=6
+                        local delay=5
+                        local i=1
+                        until eval "$cmd"; do
+                          if [ $i -ge $attempts ]; then
+                            echo "Verification failed after $attempts attempts"
+                            return 1
+                          fi
+                          echo "Verification not yet available. Retry $i/$attempts after ${delay}s..."
+                          sleep $delay
+                          i=$((i+1))
+                          delay=$((delay*2))
+                          # Cap the delay to avoid very long waits
+                          if [ $delay -gt 60 ]; then delay=60; fi
+                        done
+                        return 0
+                      }
+
                       echo "==> cosign verify (public key) ${REF}"
-                      cosign verify --key env://COSIGN_PUBLIC_KEY "${REF}" -o text
+                      retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${REF}' -o text"
 
                       echo "==> cosign verify (keyless policy) ${REF}"
-                      cosign verify \
-                        --certificate-oidc-issuer "${issuer}" \
-                        --certificate-identity-regexp "${id_regex}" \
-                        "${REF}" -o text
+                      retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${REF}' -o text"
 
                       echo "✓ Successfully signed and verified ${BASE_IMAGE}:${IMAGE_TAG}"
                     done
