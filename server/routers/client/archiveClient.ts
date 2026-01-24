@@ -9,9 +9,6 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
-import { sendTerminateClient } from "./terminate";
-import { OlmErrorCodes } from "../olm/error";
 
 const archiveClientSchema = z.strictObject({
     clientId: z.string().transform(Number).pipe(z.int().positive())
@@ -77,9 +74,6 @@ export async function archiveClient(
                 .update(clients)
                 .set({ archived: true })
                 .where(eq(clients.clientId, clientId));
-
-            // Rebuild associations to clean up related data
-            await rebuildClientAssociationsFromClient(client, trx);
         });
 
         return response(res, {
