@@ -84,7 +84,7 @@ const AuthPageFormSchema = z.object({
                 }
 
                 ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                     message: errorMessage
                 });
             }
