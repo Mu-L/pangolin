@@ -24,13 +24,13 @@
         "set:enterprise": "echo 'export const build = \"enterprise\" as \"saas\" | \"enterprise\" | \"oss\";' > server/build.ts && cp tsconfig.enterprise.json tsconfig.json",
         "set:sqlite": "echo 'export * from \"./sqlite\";\nexport const driver: \"pg\" | \"sqlite\" = \"sqlite\";' > server/db/index.ts",
         "set:pg": "echo 'export * from \"./pg\";\nexport const driver: \"pg\" | \"sqlite\" = \"pg\";' > server/db/index.ts",
-        "next:build": "next build",
+        "build:next": "next build",
         "build:sqlite": "mkdir -p dist && next build && node esbuild.mjs -e server/index.ts -o dist/server.mjs && node esbuild.mjs -e server/setup/migrationsSqlite.ts -o dist/migrations.mjs",
         "build:pg": "mkdir -p dist && next build && node esbuild.mjs -e server/index.ts -o dist/server.mjs && node esbuild.mjs -e server/setup/migrationsPg.ts -o dist/migrations.mjs",
         "start": "ENVIRONMENT=prod node dist/migrations.mjs && ENVIRONMENT=prod NODE_ENV=development node --enable-source-maps dist/server.mjs",
         "email": "email dev --dir server/emails/templates --port 3005",
         "build:cli": "node esbuild.mjs -e cli/index.ts -o dist/cli.mjs",
-        "format": "prettier --write ."
+        "format:write": "prettier --write ."
     },
     "dependencies": {
         "@asteasolutions/zod-to-openapi": "8.4.0",
