@@ -29,6 +29,7 @@ import { getOrgTierData } from "#private/lib/billing";
 import { TierId } from "@server/lib/billing/tiers";
 import { build } from "@server/build";
 import config from "@server/private/lib/config";
+import { validateLocalPath } from "@app/lib/validateLocalPath";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
@@ -39,14 +40,36 @@ const bodySchema = z.strictObject({
         .union([
             z.literal(""),
             z
-                .url("Must be a valid URL")
-                .superRefine(async (url, ctx) => {
+                .string()
+                .superRefine(async (urlOrPath, ctx) => {
+                    const parseResult = z.url().safeParse(urlOrPath);
+                    if (!parseResult.success) {
+                        if (build !== "enterprise") {
+                            ctx.addIssue({
+                                code: "custom",
+                                message: "Must be a valid URL"
+                            });
+                            return;
+                        } else {
+                            try {
+                                validateLocalPath(urlOrPath);
+                            } catch (error) {
+                                ctx.addIssue({
+                                    code: "custom",
+                                    message: "Must be either a valid image URL or a valid pathname starting with `/` and not containing query parameters, `..` or `*`"
+                                });
+                            } finally {
+                                return;
+                            }
+                        }
+                    }
+
                     try {
-                        const response = await fetch(url, {
+                        const response = await fetch(urlOrPath, {
                             method: "HEAD"
                         }).catch(() => {
                             // If HEAD fails (CORS or method not allowed), try GET
-                            return fetch(url, { method: "GET" });
+                            return fetch(urlOrPath, { method: "GET" });
                         });
 
                         if (response.status !== 200) {
