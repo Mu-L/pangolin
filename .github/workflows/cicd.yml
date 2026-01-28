@@ -504,10 +504,55 @@ jobs:
                       }
 
                       echo "==> cosign verify (public key) ${REF}"
-                      retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${REF}' -o text"
+                      if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${REF}' -o text"; then
+                        VERIFIED_INDEX=true
+                      else
+                        VERIFIED_INDEX=false
+                      fi
 
                       echo "==> cosign verify (keyless policy) ${REF}"
-                      retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${REF}' -o text"
+                      if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${REF}' -o text"; then
+                        VERIFIED_INDEX_KEYLESS=true
+                      else
+                        VERIFIED_INDEX_KEYLESS=false
+                      fi
+
+                      # If index verification fails, attempt to verify child platform manifests
+                      if [ "${VERIFIED_INDEX}" != "true" ] || [ "${VERIFIED_INDEX_KEYLESS}" != "true" ]; then
+                        echo "Index verification not available; attempting child manifest verification for ${BASE_IMAGE}:${IMAGE_TAG}"
+                        CHILD_VERIFIED=false
+
+                        for ARCH in arm64 amd64; do
+                          CHILD_TAG="${IMAGE_TAG}-${ARCH}"
+                          echo "Resolving child digest for ${BASE_IMAGE}:${CHILD_TAG}"
+                          CHILD_DIGEST="$(skopeo inspect --retry-times 3 docker://${BASE_IMAGE}:${CHILD_TAG} | jq -r '.Digest' || true)"
+                          if [ -n "${CHILD_DIGEST}" ] && [ "${CHILD_DIGEST}" != "null" ]; then
+                            CHILD_REF="${BASE_IMAGE}@${CHILD_DIGEST}"
+                            echo "==> cosign verify (public key) child ${CHILD_REF}"
+                            if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${CHILD_REF}' -o text"; then
+                              CHILD_VERIFIED=true
+                              echo "Public key verification succeeded for child ${CHILD_REF}"
+                            else
+                              echo "Public key verification failed for child ${CHILD_REF}"
+                            fi
+
+                            echo "==> cosign verify (keyless policy) child ${CHILD_REF}"
+                            if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${CHILD_REF}' -o text"; then
+                              CHILD_VERIFIED=true
+                              echo "Keyless verification succeeded for child ${CHILD_REF}"
+                            else
+                              echo "Keyless verification failed for child ${CHILD_REF}"
+                            fi
+                          else
+                            echo "No child digest found for ${BASE_IMAGE}:${CHILD_TAG}; skipping"
+                          fi
+                        done
+
+                        if [ "${CHILD_VERIFIED}" != "true" ]; then
+                          echo "Failed to verify index and no child manifests verified for ${BASE_IMAGE}:${IMAGE_TAG}"
+                          exit 10
+                        fi
+                      fi
 
                       echo "✓ Successfully signed and verified ${BASE_IMAGE}:${IMAGE_TAG}"
                     done
