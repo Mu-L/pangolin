@@ -60,8 +60,6 @@ export default async function SitesPage(props: SitesPageProps) {
 
     return (
         <>
-            {/* <SitesSplashCard /> */}
-
             <SettingsSectionTitle
                 title={t("siteManageSites")}
                 description={t("siteDescription")}

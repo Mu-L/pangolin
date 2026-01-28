@@ -77,7 +77,7 @@ const listSitesSchema = z.object({
     limit: z
         .string()
         .optional()
-        .default("1000")
+        .default("1")
         .transform(Number)
         .pipe(z.int().positive()),
     offset: z
@@ -130,7 +130,7 @@ type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySites>>[0] & {
 
 export type ListSitesResponse = {
     sites: SiteWithUpdateAvailable[];
-    pagination: { total: number; limit: number; offset: number };
+    pagination: { total: number; limit: number; offset: number; };
 };
 
 registry.registerPath({

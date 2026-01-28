@@ -1,37 +1,33 @@
 "use client";
 
-import { Column, ColumnDef } from "@tanstack/react-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { SitesDataTable } from "@app/components/SitesDataTable";
+import { Badge } from "@app/components/ui/badge";
+import { Button } from "@app/components/ui/button";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
-import { Button } from "@app/components/ui/button";
+import { InfoPopup } from "@app/components/ui/info-popup";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { parseDataSize } from "@app/lib/dataSize";
+import { build } from "@server/build";
+import { Column } from "@tanstack/react-table";
 import {
     ArrowRight,
     ArrowUpDown,
     ArrowUpRight,
-    Check,
-    MoreHorizontal,
-    X
+    MoreHorizontal
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AxiosResponse } from "axios";
-import { useState, useEffect } from "react";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { toast } from "@app/hooks/useToast";
-import { formatAxiosError } from "@app/lib/api";
-import { createApiClient } from "@app/lib/api";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useTranslations } from "next-intl";
-import { parseDataSize } from "@app/lib/dataSize";
-import { Badge } from "@app/components/ui/badge";
-import { InfoPopup } from "@app/components/ui/info-popup";
-import { build } from "@server/build";
+import { useEffect, useState, useTransition } from "react";
 
 export type SiteRow = {
     id: number;
@@ -61,22 +57,13 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [rows, setRows] = useState<SiteRow[]>(sites);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isRefreshing, startTransition] = useTransition();
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
-    const { env } = useEnvContext();
-
-    // Update local state when props change (e.g., after refresh)
-    useEffect(() => {
-        setRows(sites);
-    }, [sites]);
 
     const refreshData = async () => {
-        console.log("Data refreshed");
-        setIsRefreshing(true);
         try {
-            await new Promise((resolve) => setTimeout(resolve, 200));
             router.refresh();
         } catch (error) {
             toast({
@@ -84,8 +71,6 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
                 description: t("refreshError"),
                 variant: "destructive"
             });
-        } finally {
-            setIsRefreshing(false);
         }
     };
 
@@ -456,7 +441,7 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
                 createSite={() =>
                     router.push(`/${orgId}/settings/sites/create`)
                 }
-                onRefresh={refreshData}
+                onRefresh={() => startTransition(refreshData)}
                 isRefreshing={isRefreshing}
                 columnVisibility={{
                     niceId: false,
