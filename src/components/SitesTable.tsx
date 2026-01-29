@@ -21,7 +21,7 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { parseDataSize } from "@app/lib/dataSize";
 import { build } from "@server/build";
-import { Column } from "@tanstack/react-table";
+import { Column, type PaginationState } from "@tanstack/react-table";
 import {
     ArrowRight,
     ArrowUpDown,
@@ -31,7 +31,8 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useDebouncedCallback } from "use-debounce";
 
 export type SiteRow = {
     id: number;
@@ -419,10 +420,20 @@ export default function SitesTable({
         }
     ];
 
-    console.log({
-        sites,
-        pagination
-    });
+    const handlePaginationChange = (newPage: PaginationState) => {
+        const sp = new URLSearchParams(searchParams);
+        sp.set("page", (newPage.pageIndex + 1).toString());
+        sp.set("pageSize", newPage.pageSize.toString());
+        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+    };
+
+    // const = useDebouncedCallback()
+
+    const handleSearchChange = useDebouncedCallback((query: string) => {
+        const sp = new URLSearchParams(searchParams);
+        sp.set("query", query);
+        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+    }, 300);
 
     return (
         <>
@@ -456,15 +467,10 @@ export default function SitesTable({
                 searchPlaceholder={t("searchSitesProgress")}
                 manualFiltering
                 pagination={pagination}
-                onPaginationChange={(newPage) => {
-                    const sp = new URLSearchParams(searchParams);
-                    sp.set("page", (newPage.pageIndex + 1).toString());
-                    sp.set("pageSize", newPage.pageSize.toString());
-                    startTransition(() =>
-                        router.push(`${pathname}?${sp.toString()}`)
-                    );
-                }}
+                onPaginationChange={handlePaginationChange}
                 onAdd={() => router.push(`/${orgId}/settings/sites/create`)}
+                searchQuery={searchParams.get("query")?.toString()}
+                onSearch={handleSearchChange}
                 addButtonText={t("siteAdd")}
                 onRefresh={() => startTransition(refreshData)}
                 isRefreshing={isRefreshing}

@@ -4,7 +4,7 @@ import { remoteExitNodes } from "@server/db";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
-import { and, count, eq, inArray, or, sql } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -87,10 +87,29 @@ const listSitesSchema = z.object({
         .min(0)
         .optional()
         .catch(1)
-        .default(1)
+        .default(1),
+    query: z.string().optional()
 });
 
-function querySites(orgId: string, accessibleSiteIds: number[]) {
+function querySites(
+    orgId: string,
+    accessibleSiteIds: number[],
+    query: string = ""
+) {
+    let conditions = and(
+        inArray(sites.siteId, accessibleSiteIds),
+        eq(sites.orgId, orgId)
+    );
+
+    if (query) {
+        conditions = and(
+            conditions,
+            or(
+                ilike(sites.name, "%" + query + "%"),
+                ilike(sites.niceId, "%" + query + "%")
+            )
+        );
+    }
     return db
         .select({
             siteId: sites.siteId,
@@ -118,12 +137,7 @@ function querySites(orgId: string, accessibleSiteIds: number[]) {
             remoteExitNodes,
             eq(remoteExitNodes.exitNodeId, sites.exitNodeId)
         )
-        .where(
-            and(
-                inArray(sites.siteId, accessibleSiteIds),
-                eq(sites.orgId, orgId)
-            )
-        );
+        .where(conditions);
 }
 
 type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySites>>[0] & {
@@ -162,7 +176,7 @@ export async function listSites(
                 )
             );
         }
-        const { pageSize, page } = parsedQuery.data;
+        const { pageSize, page, query } = parsedQuery.data;
 
         const parsedParams = listSitesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -206,7 +220,7 @@ export async function listSites(
         }
 
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
-        const baseQuery = querySites(orgId, accessibleSiteIds);
+        const baseQuery = querySites(orgId, accessibleSiteIds, query);
 
         const countQuery = db
             .select({ count: count() })

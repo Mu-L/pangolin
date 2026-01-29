@@ -189,7 +189,7 @@ type DataTableProps<TData, TValue> = {
     enableColumnVisibility?: boolean;
     manualFiltering?: boolean;
     onSearch?: (input: string) => void;
-    searchValue?: string;
+    searchQuery?: string;
     pagination?: DataTablePaginationState;
     onPaginationChange?: DataTablePaginationUpdateFn;
     persistColumnVisibility?: boolean | string;
@@ -221,7 +221,7 @@ export function DataTable<TData, TValue>({
     pagination: paginationState,
     stickyLeftColumn,
     onSearch,
-    searchValue,
+    searchQuery,
     onPaginationChange,
     stickyRightColumn
 }: DataTableProps<TData, TValue>) {
@@ -508,7 +508,8 @@ export function DataTable<TData, TValue>({
                         <div className="relative w-full sm:max-w-sm">
                             <Input
                                 placeholder={searchPlaceholder}
-                                value={searchValue ?? globalFilter ?? ""}
+                                defaultValue={searchQuery}
+                                value={onSearch ? undefined : globalFilter}
                                 onChange={(e) => {
                                     onSearch
                                         ? onSearch(e.currentTarget.value)
