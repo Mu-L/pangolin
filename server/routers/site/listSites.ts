@@ -74,18 +74,20 @@ const listSitesParamsSchema = z.strictObject({
 });
 
 const listSitesSchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1")
-        .transform(Number)
-        .pipe(z.int().positive()),
-    offset: z
-        .string()
+        .catch(20)
+        .default(20),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative())
+        .catch(1)
+        .default(1)
 });
 
 function querySites(orgId: string, accessibleSiteIds: number[]) {
@@ -130,7 +132,7 @@ type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySites>>[0] & {
 
 export type ListSitesResponse = {
     sites: SiteWithUpdateAvailable[];
-    pagination: { total: number; limit: number; offset: number; };
+    pagination: { total: number; pageSize: number; page: number };
 };
 
 registry.registerPath({
@@ -160,7 +162,7 @@ export async function listSites(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { pageSize, page } = parsedQuery.data;
 
         const parsedParams = listSitesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -216,7 +218,9 @@ export async function listSites(
                 )
             );
 
-        const sitesList = await baseQuery.limit(limit).offset(offset);
+        const sitesList = await baseQuery
+            .limit(pageSize)
+            .offset(pageSize * (page - 1));
         const totalCountResult = await countQuery;
         const totalCount = totalCountResult[0].count;
 
@@ -267,8 +271,8 @@ export async function listSites(
                 sites: sitesWithUpdates,
                 pagination: {
                     total: totalCount,
-                    limit,
-                    offset
+                    pageSize,
+                    page
                 }
             },
             success: true,

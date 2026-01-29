@@ -1,10 +1,14 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { SitesDataTable } from "@app/components/SitesDataTable";
+
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import {
+    DataTable,
+    ExtendedColumnDef,
+    type DataTablePaginationState
+} from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -26,7 +30,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 export type SiteRow = {
@@ -48,15 +52,21 @@ export type SiteRow = {
 
 type SitesTableProps = {
     sites: SiteRow[];
+    pagination: DataTablePaginationState;
     orgId: string;
 };
 
-export default function SitesTable({ sites, orgId }: SitesTableProps) {
+export default function SitesTable({
+    sites,
+    orgId,
+    pagination
+}: SitesTableProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
-    const [rows, setRows] = useState<SiteRow[]>(sites);
     const [isRefreshing, startTransition] = useTransition();
 
     const api = createApiClient(useEnvContext());
@@ -87,10 +97,6 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
             .then(() => {
                 router.refresh();
                 setIsDeleteModalOpen(false);
-
-                const newRows = rows.filter((row) => row.id !== siteId);
-
-                setRows(newRows);
             });
     };
 
@@ -413,6 +419,11 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
         }
     ];
 
+    console.log({
+        sites,
+        pagination
+    });
+
     return (
         <>
             {selectedSite && (
@@ -429,27 +440,50 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
                         </div>
                     }
                     buttonText={t("siteConfirmDelete")}
-                    onConfirm={async () => deleteSite(selectedSite!.id)}
+                    onConfirm={async () =>
+                        startTransition(() => deleteSite(selectedSite!.id))
+                    }
                     string={selectedSite.name}
                     title={t("siteDelete")}
                 />
             )}
 
-            <SitesDataTable
+            <DataTable
                 columns={columns}
-                data={rows}
-                createSite={() =>
-                    router.push(`/${orgId}/settings/sites/create`)
-                }
+                data={sites}
+                persistPageSize="sites-table"
+                title={t("sites")}
+                searchPlaceholder={t("searchSitesProgress")}
+                manualFiltering
+                pagination={pagination}
+                onPaginationChange={(newPage) => {
+                    console.log({
+                        newPage
+                    });
+                    const sp = new URLSearchParams(searchParams);
+                    sp.set("page", (newPage.pageIndex + 1).toString());
+                    sp.set("pageSize", newPage.pageSize.toString());
+                    startTransition(() =>
+                        router.push(`${pathname}?${sp.toString()}`)
+                    );
+                }}
+                onAdd={() => router.push(`/${orgId}/settings/sites/create`)}
+                addButtonText={t("siteAdd")}
                 onRefresh={() => startTransition(refreshData)}
                 isRefreshing={isRefreshing}
+                defaultSort={{
+                    id: "name",
+                    desc: false
+                }}
                 columnVisibility={{
                     niceId: false,
                     nice: false,
                     exitNode: false,
                     address: false
                 }}
-                enableColumnVisibility={true}
+                enableColumnVisibility
+                stickyLeftColumn="name"
+                stickyRightColumn="actions"
             />
         </>
     );
