@@ -457,9 +457,6 @@ export default function SitesTable({
                 manualFiltering
                 pagination={pagination}
                 onPaginationChange={(newPage) => {
-                    console.log({
-                        newPage
-                    });
                     const sp = new URLSearchParams(searchParams);
                     sp.set("page", (newPage.pageIndex + 1).toString());
                     sp.set("pageSize", newPage.pageSize.toString());
