@@ -5,11 +5,6 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
-    DataTable,
-    ExtendedColumnDef,
-    type DataTablePaginationState
-} from "@app/components/ui/data-table";
-import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -33,6 +28,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import {
+    ManualDataTable,
+    type ExtendedColumnDef
+} from "./ui/manual-data-table";
 
 export type SiteRow = {
     id: number;
@@ -53,14 +52,16 @@ export type SiteRow = {
 
 type SitesTableProps = {
     sites: SiteRow[];
-    pagination: DataTablePaginationState;
+    pagination: PaginationState;
     orgId: string;
+    rowCount: number;
 };
 
 export default function SitesTable({
     sites,
     orgId,
-    pagination
+    pagination,
+    rowCount
 }: SitesTableProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -427,13 +428,17 @@ export default function SitesTable({
         startTransition(() => router.push(`${pathname}?${sp.toString()}`));
     };
 
-    // const = useDebouncedCallback()
-
     const handleSearchChange = useDebouncedCallback((query: string) => {
         const sp = new URLSearchParams(searchParams);
         sp.set("query", query);
+        sp.delete("page");
         startTransition(() => router.push(`${pathname}?${sp.toString()}`));
     }, 300);
+
+    console.log({
+        pagination,
+        rowCount
+    });
 
     return (
         <>
@@ -459,13 +464,11 @@ export default function SitesTable({
                 />
             )}
 
-            <DataTable
+            <ManualDataTable
                 columns={columns}
-                data={sites}
-                persistPageSize="sites-table"
-                title={t("sites")}
+                rows={sites}
+                tableId="sites-table"
                 searchPlaceholder={t("searchSitesProgress")}
-                manualFiltering
                 pagination={pagination}
                 onPaginationChange={handlePaginationChange}
                 onAdd={() => router.push(`/${orgId}/settings/sites/create`)}
@@ -474,10 +477,7 @@ export default function SitesTable({
                 addButtonText={t("siteAdd")}
                 onRefresh={() => startTransition(refreshData)}
                 isRefreshing={isRefreshing}
-                defaultSort={{
-                    id: "name",
-                    desc: false
-                }}
+                rowCount={rowCount}
                 columnVisibility={{
                     niceId: false,
                     nice: false,

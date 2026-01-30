@@ -81,10 +81,8 @@ export default async function SitesPage(props: SitesPageProps) {
             <SitesTable
                 sites={siteRows}
                 orgId={params.orgId}
+                rowCount={pagination.total}
                 pagination={{
-                    pageCount: Math.ceil(
-                        pagination.total / pagination.pageSize
-                    ),
                     pageIndex: pagination.page - 1,
                     pageSize: pagination.pageSize
                 }}

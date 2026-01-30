@@ -13,7 +13,10 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { formatFingerprintInfo, formatPlatform } from "@app/lib/formatDeviceFingerprint";
+import {
+    formatFingerprintInfo,
+    formatPlatform
+} from "@app/lib/formatDeviceFingerprint";
 import {
     ArrowRight,
     ArrowUpDown,
@@ -188,9 +191,13 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         try {
             // Fetch approvalId for this client using clientId query parameter
             const approvalsRes = await api.get<{
-                data: { approvals: Array<{ approvalId: number; clientId: number }> };
-            }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
-            
+                data: {
+                    approvals: Array<{ approvalId: number; clientId: number }>;
+                };
+            }>(
+                `/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`
+            );
+
             const approval = approvalsRes.data.data.approvals[0];
 
             if (!approval) {
@@ -202,9 +209,12 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                 return;
             }
 
-            await api.put(`/org/${clientRow.orgId}/approvals/${approval.approvalId}`, {
-                decision: "approved"
-            });
+            await api.put(
+                `/org/${clientRow.orgId}/approvals/${approval.approvalId}`,
+                {
+                    decision: "approved"
+                }
+            );
 
             toast({
                 title: t("accessApprovalUpdated"),
@@ -230,9 +240,13 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         try {
             // Fetch approvalId for this client using clientId query parameter
             const approvalsRes = await api.get<{
-                data: { approvals: Array<{ approvalId: number; clientId: number }> };
-            }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
-            
+                data: {
+                    approvals: Array<{ approvalId: number; clientId: number }>;
+                };
+            }>(
+                `/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`
+            );
+
             const approval = approvalsRes.data.data.approvals[0];
 
             if (!approval) {
@@ -244,9 +258,12 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                 return;
             }
 
-            await api.put(`/org/${clientRow.orgId}/approvals/${approval.approvalId}`, {
-                decision: "denied"
-            });
+            await api.put(
+                `/org/${clientRow.orgId}/approvals/${approval.approvalId}`,
+                {
+                    decision: "denied"
+                }
+            );
 
             toast({
                 title: t("accessApprovalUpdated"),
@@ -398,7 +415,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             },
             {
                 accessorKey: "online",
-                friendlyName: t("connectivity"),
+                friendlyName: t("online"),
                 header: ({ column }) => {
                     return (
                         <Button
@@ -548,20 +565,25 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {clientRow.approvalState === "pending" && build !== "oss" && (
-                                    <>
-                                        <DropdownMenuItem
-                                            onClick={() => approveDevice(clientRow)}
-                                        >
-                                            <span>{t("approve")}</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => denyDevice(clientRow)}
-                                        >
-                                            <span>{t("deny")}</span>
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
+                                {clientRow.approvalState === "pending" &&
+                                    build !== "oss" && (
+                                        <>
+                                            <DropdownMenuItem
+                                                onClick={() =>
+                                                    approveDevice(clientRow)
+                                                }
+                                            >
+                                                <span>{t("approve")}</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() =>
+                                                    denyDevice(clientRow)
+                                                }
+                                            >
+                                                <span>{t("deny")}</span>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
                                 <DropdownMenuItem
                                     onClick={() => {
                                         if (clientRow.archived) {
@@ -653,7 +675,10 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         ];
 
         if (build === "oss") {
-            return allOptions.filter((option) => option.value !== "pending" && option.value !== "denied");
+            return allOptions.filter(
+                (option) =>
+                    option.value !== "pending" && option.value !== "denied"
+            );
         }
 
         return allOptions;
@@ -717,7 +742,11 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                             const rowArchived = row.archived;
                             const rowBlocked = row.blocked;
                             const approvalState = row.approvalState;
-                            const isActive = !rowArchived && !rowBlocked && approvalState !== "pending" && approvalState !== "denied";
+                            const isActive =
+                                !rowArchived &&
+                                !rowBlocked &&
+                                approvalState !== "pending" &&
+                                approvalState !== "denied";
 
                             if (selectedValues.includes("active") && isActive)
                                 return true;

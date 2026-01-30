@@ -222,15 +222,24 @@ export async function listSites(
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
         const baseQuery = querySites(orgId, accessibleSiteIds, query);
 
+        let conditions = and(
+            inArray(sites.siteId, accessibleSiteIds),
+            eq(sites.orgId, orgId)
+        );
+        if (query) {
+            conditions = and(
+                conditions,
+                or(
+                    ilike(sites.name, "%" + query + "%"),
+                    ilike(sites.niceId, "%" + query + "%")
+                )
+            );
+        }
+
         const countQuery = db
             .select({ count: count() })
             .from(sites)
-            .where(
-                and(
-                    inArray(sites.siteId, accessibleSiteIds),
-                    eq(sites.orgId, orgId)
-                )
-            );
+            .where(conditions);
 
         const sitesList = await baseQuery
             .limit(pageSize)
