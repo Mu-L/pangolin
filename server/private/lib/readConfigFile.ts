@@ -161,7 +161,7 @@ export const privateConfigSchema = z.object({
             webhook_secret: z.string(),
             s3Bucket: z.string(),
             s3Region: z.string().default("us-east-1"),
-            localFilePath: z.string()
+            localFilePath: z.string().optional()
         })
         .optional()
 });
