@@ -12,15 +12,18 @@ import {
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useSortColumn } from "@app/hooks/useSortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { parseDataSize } from "@app/lib/dataSize";
 import { build } from "@server/build";
-import { Column, type PaginationState } from "@tanstack/react-table";
+import { type PaginationState } from "@tanstack/react-table";
 import {
+    ArrowDown01Icon,
     ArrowRight,
-    ArrowUpDown,
+    ArrowUp10Icon,
     ArrowUpRight,
+    ChevronsUpDownIcon,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -71,6 +74,8 @@ export default function SitesTable({
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [isRefreshing, startTransition] = useTransition();
 
+    const [getSortDirection, toggleSorting] = useSortColumn();
+
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
 
@@ -102,22 +107,15 @@ export default function SitesTable({
             });
     };
 
+    const dataInOrder = getSortDirection("megabytesIn");
+    const dataOutOrder = getSortDirection("megabytesOut");
+
     const columns: ExtendedColumnDef<SiteRow>[] = [
         {
             accessorKey: "name",
             enableHiding: false,
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("name")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("name")}</span>;
             }
         },
         {
@@ -125,18 +123,8 @@ export default function SitesTable({
             accessorKey: "nice",
             friendlyName: t("identifier"),
             enableHiding: true,
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("identifier")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("identifier")}</span>;
             },
             cell: ({ row }) => {
                 return <span>{row.original.nice || "-"}</span>;
@@ -145,18 +133,8 @@ export default function SitesTable({
         {
             accessorKey: "online",
             friendlyName: t("online"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("online")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("online")}</span>;
             },
             cell: ({ row }) => {
                 const originalRow = row.original;
@@ -187,16 +165,20 @@ export default function SitesTable({
         {
             accessorKey: "mbIn",
             friendlyName: t("dataIn"),
-            header: ({ column }) => {
+            header: () => {
+                const Icon =
+                    dataInOrder === "asc"
+                        ? ArrowDown01Icon
+                        : dataInOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
+                        onClick={() => toggleSorting("megabytesIn")}
                     >
                         {t("dataIn")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
             },
@@ -207,16 +189,20 @@ export default function SitesTable({
         {
             accessorKey: "mbOut",
             friendlyName: t("dataOut"),
-            header: ({ column }) => {
+            header: () => {
+                const Icon =
+                    dataOutOrder === "asc"
+                        ? ArrowDown01Icon
+                        : dataOutOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
+                        onClick={() => toggleSorting("megabytesOut")}
                     >
                         {t("dataOut")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
             },
@@ -227,18 +213,8 @@ export default function SitesTable({
         {
             accessorKey: "type",
             friendlyName: t("type"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("type")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("type")}</span>;
             },
             cell: ({ row }) => {
                 const originalRow = row.original;
@@ -283,18 +259,8 @@ export default function SitesTable({
         {
             accessorKey: "exitNode",
             friendlyName: t("exitNode"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("exitNode")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("exitNode")}</span>;
             },
             cell: ({ row }) => {
                 const originalRow = row.original;
@@ -347,18 +313,8 @@ export default function SitesTable({
         },
         {
             accessorKey: "address",
-            header: ({ column }: { column: Column<SiteRow, unknown> }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        Address
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("address")}</span>;
             },
             cell: ({ row }: { row: any }) => {
                 const originalRow = row.original;
@@ -434,11 +390,6 @@ export default function SitesTable({
         sp.delete("page");
         startTransition(() => router.push(`${pathname}?${sp.toString()}`));
     }, 300);
-
-    console.log({
-        pagination,
-        rowCount
-    });
 
     return (
         <>

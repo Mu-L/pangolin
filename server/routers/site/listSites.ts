@@ -4,7 +4,17 @@ import { remoteExitNodes } from "@server/db";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
-import { and, count, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import {
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    ilike,
+    inArray,
+    or,
+    sql
+} from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -88,28 +98,15 @@ const listSitesSchema = z.object({
         .optional()
         .catch(1)
         .default(1),
-    query: z.string().optional()
+    query: z.string().optional(),
+    sort_by: z
+        .enum(["megabytesIn", "megabytesOut"])
+        .optional()
+        .catch(undefined),
+    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc")
 });
 
-function querySites(
-    orgId: string,
-    accessibleSiteIds: number[],
-    query: string = ""
-) {
-    let conditions = and(
-        inArray(sites.siteId, accessibleSiteIds),
-        eq(sites.orgId, orgId)
-    );
-
-    if (query) {
-        conditions = and(
-            conditions,
-            or(
-                ilike(sites.name, "%" + query + "%"),
-                ilike(sites.niceId, "%" + query + "%")
-            )
-        );
-    }
+function querySitesBase() {
     return db
         .select({
             siteId: sites.siteId,
@@ -136,11 +133,10 @@ function querySites(
         .leftJoin(
             remoteExitNodes,
             eq(remoteExitNodes.exitNodeId, sites.exitNodeId)
-        )
-        .where(conditions);
+        );
 }
 
-type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySites>>[0] & {
+type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySitesBase>>[0] & {
     newtUpdateAvailable?: boolean;
 };
 
@@ -176,7 +172,7 @@ export async function listSites(
                 )
             );
         }
-        const { pageSize, page, query } = parsedQuery.data;
+        const { pageSize, page, query, sort_by, order } = parsedQuery.data;
 
         const parsedParams = listSitesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -220,7 +216,7 @@ export async function listSites(
         }
 
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
-        const baseQuery = querySites(orgId, accessibleSiteIds, query);
+        const baseQuery = querySitesBase();
 
         let conditions = and(
             inArray(sites.siteId, accessibleSiteIds),
@@ -241,23 +237,30 @@ export async function listSites(
             .from(sites)
             .where(conditions);
 
-        const sitesList = await baseQuery
+        const siteListQuery = baseQuery
+            .where(conditions)
             .limit(pageSize)
             .offset(pageSize * (page - 1));
+
+        if (sort_by) {
+            siteListQuery.orderBy(
+                order === "asc" ? asc(sites[sort_by]) : desc(sites[sort_by])
+            );
+        }
         const totalCountResult = await countQuery;
         const totalCount = totalCountResult[0].count;
 
         // Get latest version asynchronously without blocking the response
         const latestNewtVersionPromise = getLatestNewtVersion();
 
-        const sitesWithUpdates: SiteWithUpdateAvailable[] = sitesList.map(
-            (site) => {
-                const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
-                // Initially set to false, will be updated if version check succeeds
-                siteWithUpdate.newtUpdateAvailable = false;
-                return siteWithUpdate;
-            }
-        );
+        const sitesWithUpdates: SiteWithUpdateAvailable[] = (
+            await siteListQuery
+        ).map((site) => {
+            const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
+            // Initially set to false, will be updated if version check succeeds
+            siteWithUpdate.newtUpdateAvailable = false;
+            return siteWithUpdate;
+        });
 
         // Try to get the latest version, but don't block if it fails
         try {
