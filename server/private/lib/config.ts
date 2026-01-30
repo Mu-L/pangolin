@@ -128,10 +128,7 @@ export class PrivateConfig {
         if (this.rawPrivateConfig.stripe?.s3Bucket) {
             process.env.S3_BUCKET = this.rawPrivateConfig.stripe.s3Bucket;
         }
-        if (this.rawPrivateConfig.stripe?.localFilePath) {
-            process.env.LOCAL_FILE_PATH =
-                this.rawPrivateConfig.stripe.localFilePath;
-        }
+
         if (this.rawPrivateConfig.stripe?.s3Region) {
             process.env.S3_REGION = this.rawPrivateConfig.stripe.s3Region;
         }
