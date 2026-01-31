@@ -24,6 +24,7 @@ import {
     ArrowUp10Icon,
     ArrowUpRight,
     ChevronsUpDownIcon,
+    Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -35,6 +36,9 @@ import {
     ManualDataTable,
     type ExtendedColumnDef
 } from "./ui/manual-data-table";
+import { ColumnFilter } from "./ColumnFilter";
+import { ColumnFilterButton } from "./ColumnFilterButton";
+import z from "zod";
 
 export type SiteRow = {
     id: number;
@@ -79,33 +83,57 @@ export default function SitesTable({
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
 
-    const refreshData = async () => {
-        try {
-            router.refresh();
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        }
-    };
+    const booleanSearchFilterSchema = z
+        .enum(["true", "false"])
+        .optional()
+        .catch(undefined);
 
-    const deleteSite = (siteId: number) => {
-        api.delete(`/site/${siteId}`)
-            .catch((e) => {
-                console.error(t("siteErrorDelete"), e);
-                toast({
-                    variant: "destructive",
-                    title: t("siteErrorDelete"),
-                    description: formatAxiosError(e, t("siteErrorDelete"))
-                });
-            })
-            .then(() => {
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null
+    ) {
+        const sp = new URLSearchParams(searchParams);
+        sp.delete(column);
+        sp.delete("page");
+
+        if (value) {
+            sp.set(column, value);
+        }
+        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+    }
+
+    function refreshData() {
+        startTransition(async () => {
+            try {
                 router.refresh();
-                setIsDeleteModalOpen(false);
-            });
-    };
+            } catch (error) {
+                toast({
+                    title: t("error"),
+                    description: t("refreshError"),
+                    variant: "destructive"
+                });
+            }
+        });
+    }
+
+    function deleteSite(siteId: number) {
+        startTransition(async () => {
+            await api
+                .delete(`/site/${siteId}`)
+                .catch((e) => {
+                    console.error(t("siteErrorDelete"), e);
+                    toast({
+                        variant: "destructive",
+                        title: t("siteErrorDelete"),
+                        description: formatAxiosError(e, t("siteErrorDelete"))
+                    });
+                })
+                .then(() => {
+                    router.refresh();
+                    setIsDeleteModalOpen(false);
+                });
+        });
+    }
 
     const dataInOrder = getSortDirection("megabytesIn");
     const dataOutOrder = getSortDirection("megabytesOut");
@@ -134,7 +162,24 @@ export default function SitesTable({
             accessorKey: "online",
             friendlyName: t("online"),
             header: () => {
-                return <span className="p-3">{t("online")}</span>;
+                return (
+                    <ColumnFilterButton
+                        options={[
+                            { value: "true", label: t("online") },
+                            { value: "false", label: t("offline") }
+                        ]}
+                        selectedValue={booleanSearchFilterSchema.parse(
+                            searchParams.get("online")
+                        )}
+                        onValueChange={(value) =>
+                            handleFilterChange("online", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("online")}
+                        className="p-3"
+                    />
+                );
             },
             cell: ({ row }) => {
                 const originalRow = row.original;
@@ -426,7 +471,7 @@ export default function SitesTable({
                 searchQuery={searchParams.get("query")?.toString()}
                 onSearch={handleSearchChange}
                 addButtonText={t("siteAdd")}
-                onRefresh={() => startTransition(refreshData)}
+                onRefresh={refreshData}
                 isRefreshing={isRefreshing}
                 rowCount={rowCount}
                 columnVisibility={{

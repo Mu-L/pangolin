@@ -103,7 +103,12 @@ const listSitesSchema = z.object({
         .enum(["megabytesIn", "megabytesOut"])
         .optional()
         .catch(undefined),
-    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc")
+    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc"),
+    online: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined)
 });
 
 function querySitesBase() {
@@ -172,7 +177,6 @@ export async function listSites(
                 )
             );
         }
-        const { pageSize, page, query, sort_by, order } = parsedQuery.data;
 
         const parsedParams = listSitesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -215,6 +219,9 @@ export async function listSites(
                 .where(eq(sites.orgId, orgId));
         }
 
+        const { pageSize, page, query, sort_by, order, online } =
+            parsedQuery.data;
+
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
         const baseQuery = querySitesBase();
 
@@ -230,6 +237,9 @@ export async function listSites(
                     ilike(sites.niceId, "%" + query + "%")
                 )
             );
+        }
+        if (typeof online !== "undefined") {
+            conditions = and(conditions, eq(sites.online, online));
         }
 
         const countQuery = db
