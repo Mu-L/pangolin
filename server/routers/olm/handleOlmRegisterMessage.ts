@@ -13,6 +13,7 @@ import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { validateSessionToken } from "@server/auth/sessions/app";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
+import { getUserDeviceName } from "@server/db/names";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
 import { OlmErrorCodes, sendOlmError } from "./error";
 import { handleFingerprintInsertion } from "./fingerprintingUtils";
@@ -95,6 +96,21 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         );
         sendOlmError(OlmErrorCodes.CLIENT_PENDING, olm.olmId);
         return;
+    }
+
+    const deviceModel = fingerprint?.deviceModel ?? null;
+    const computedName = getUserDeviceName(deviceModel, client.name);
+    if (computedName && computedName !== client.name) {
+        await db
+            .update(clients)
+            .set({ name: computedName })
+            .where(eq(clients.clientId, client.clientId));
+    }
+    if (computedName && computedName !== olm.name) {
+        await db
+            .update(olms)
+            .set({ name: computedName })
+            .where(eq(olms.olmId, olm.olmId));
     }
 
     const [org] = await db
