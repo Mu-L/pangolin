@@ -17,7 +17,6 @@ import { hashPassword } from "@server/auth/password";
 import { isValidIP } from "@server/lib/validators";
 import { isIpInCidr } from "@server/lib/ip";
 import { verifyExitNodeOrgAccess } from "#dynamic/lib/exitNodes";
-import { build } from "@server/build";
 
 const createSiteParamsSchema = z.strictObject({
     orgId: z.string()
@@ -259,7 +258,19 @@ export async function createSite(
         let newSite: Site;
 
         await db.transaction(async (trx) => {
-            if (type == "wireguard" || type == "newt") {
+            if (type == "newt") {
+                [newSite] = await trx
+                    .insert(sites)
+                    .values({
+                        orgId,
+                        name,
+                        niceId,
+                        address: updatedAddress || null,
+                        type,
+                        dockerSocketEnabled: true
+                    })
+                    .returning();
+            } else if (type == "wireguard") {
                 // we are creating a site with an exit node (tunneled)
                 if (!subnet) {
                     return next(
@@ -311,11 +322,9 @@ export async function createSite(
                         exitNodeId,
                         name,
                         niceId,
-                        address: updatedAddress || null,
                         subnet,
                         type,
-                        dockerSocketEnabled: type == "newt",
-                        ...(pubKey && type == "wireguard" && { pubKey })
+                        pubKey: pubKey || null
                     })
                     .returning();
             } else if (type == "local") {
