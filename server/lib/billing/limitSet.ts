@@ -40,7 +40,7 @@ export const subscribedLimitSet: LimitSet = {
         description: "Contact us to increase soft limit."
     }, // 12000 GB
     [FeatureId.DOMAINS]: {
-        value: 25,
+        value: 250,
         description: "Contact us to increase soft limit."
     },
     [FeatureId.REMOTE_EXIT_NODES]: {
