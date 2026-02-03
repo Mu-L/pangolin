@@ -19,7 +19,6 @@ import * as fs from "fs";
 import logger from "@server/logger";
 import cache from "@server/lib/cache";
 
-let encryptionKeyPath = "";
 let encryptionKeyHex = "";
 let encryptionKey: Buffer;
 function loadEncryptData() {
@@ -27,15 +26,7 @@ function loadEncryptData() {
         return; // already loaded
     }
 
-    encryptionKeyPath = config.getRawPrivateConfig().server.encryption_key_path;
-
-    if (!fs.existsSync(encryptionKeyPath)) {
-        throw new Error(
-            "Encryption key file not found. Please generate one first."
-        );
-    }
-
-    encryptionKeyHex = fs.readFileSync(encryptionKeyPath, "utf8").trim();
+    encryptionKeyHex = config.getRawPrivateConfig().server.encryption_key;
     encryptionKey = Buffer.from(encryptionKeyHex, "hex");
 }
 

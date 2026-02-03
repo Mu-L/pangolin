@@ -186,7 +186,7 @@ export type ResourceWithAuth = {
     password: ResourcePassword | null;
     headerAuth: ResourceHeaderAuth | null;
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
-    org: Org
+    org: Org;
 };
 
 export type UserSessionWithUser = {
@@ -270,7 +270,6 @@ hybridRouter.get(
     }
 );
 
-let encryptionKeyPath = "";
 let encryptionKeyHex = "";
 let encryptionKey: Buffer;
 function loadEncryptData() {
@@ -278,16 +277,8 @@ function loadEncryptData() {
         return; // already loaded
     }
 
-    encryptionKeyPath =
-        privateConfig.getRawPrivateConfig().server.encryption_key_path;
-
-    if (!fs.existsSync(encryptionKeyPath)) {
-        throw new Error(
-            "Encryption key file not found. Please generate one first."
-        );
-    }
-
-    encryptionKeyHex = fs.readFileSync(encryptionKeyPath, "utf8").trim();
+    encryptionKeyHex =
+        privateConfig.getRawPrivateConfig().server.encryption_key;
     encryptionKey = Buffer.from(encryptionKeyHex, "hex");
 }
 
