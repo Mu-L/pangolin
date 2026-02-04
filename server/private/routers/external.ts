@@ -159,11 +159,19 @@ if (build === "saas") {
     );
 
     authenticated.post(
-        "/org/:orgId/billing/create-checkout-session",
+        "/org/:orgId/billing/create-checkout-session-saas",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),
-        billing.createCheckoutSession
+        billing.createCheckoutSessionSAAS
+    );
+
+    authenticated.post(
+        "/org/:orgId/billing/create-checkout-session-license",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        logActionAudit(ActionsEnum.billing),
+        billing.createCheckoutSessionoLicense
     );
 
     authenticated.post(

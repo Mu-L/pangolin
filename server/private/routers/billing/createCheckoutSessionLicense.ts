@@ -22,20 +22,23 @@ import logger from "@server/logger";
 import config from "@server/lib/config";
 import { fromError } from "zod-validation-error";
 import stripe from "#private/lib/stripe";
-import { getLineItems, getStandardFeaturePriceSet } from "@server/lib/billing";
-import { getTierPriceSet, TierId } from "@server/lib/billing/tiers";
+import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
 
-const createCheckoutSessionSchema = z.strictObject({
-    orgId: z.string()
+const createCheckoutSessionParamsSchema = z.strictObject({
+    orgId: z.string(),
 });
 
-export async function createCheckoutSession(
+const createCheckoutSessionBodySchema = z.strictObject({
+    tier: z.enum([LicenseId.BIG_LICENSE, LicenseId.SMALL_LICENSE]),
+});
+
+export async function createCheckoutSessionoLicense(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = createCheckoutSessionSchema.safeParse(req.params);
+        const parsedParams = createCheckoutSessionParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -46,6 +49,18 @@ export async function createCheckoutSession(
         }
 
         const { orgId } = parsedParams.data;
+
+        const parsedBody = createCheckoutSessionBodySchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedBody.error).toString()
+                )
+            );
+        }
+
+        const { tier } = parsedBody.data;
 
         // check if we already have a customer for this org
         const [customer] = await db
@@ -65,29 +80,28 @@ export async function createCheckoutSession(
             );
         }
 
-        const standardTierPrice = getTierPriceSet()[TierId.STANDARD];
+        const tierPrice = getLicensePriceSet()[tier]
 
         const session = await stripe!.checkout.sessions.create({
             client_reference_id: orgId, // So we can look it up the org later on the webhook
             billing_address_collection: "required",
             line_items: [
                 {
-                    price: standardTierPrice, // Use the standard tier
+                    price: tierPrice, // Use the standard tier
                     quantity: 1
                 },
-                ...getLineItems(getStandardFeaturePriceSet())
             ], // Start with the standard feature set that matches the free limits
             customer: customer.customerId,
             mode: "subscription",
-            success_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing?canceled=true`
+            success_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/license?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/license?canceled=true`
         });
 
         return response<string>(res, {
             data: session.url,
             success: true,
             error: false,
-            message: "Organization created successfully",
+            message: "Checkout session created successfully",
             status: HttpCode.CREATED
         });
     } catch (error) {

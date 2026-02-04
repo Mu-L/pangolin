@@ -345,6 +345,37 @@ export default function GenerateLicenseKeyForm({
         resetForm();
     };
 
+    const handleTestCheckout = async () => {
+        setLoading(true);
+        try {
+            const response = await api.post<AxiosResponse<string>>(
+                `/org/${orgId}/billing/create-checkout-session-license`,
+                {
+                    tier: "big_license"
+                }
+            );
+            console.log("Checkout session response:", response.data);
+            const checkoutUrl = response.data.data;
+            if (checkoutUrl) {
+                window.location.href = checkoutUrl;
+            } else {
+                toast({
+                    title: "Failed to get checkout URL",
+                    description: "Please try again later",
+                    variant: "destructive"
+                });
+                setLoading(false);
+            }
+        } catch (error) {
+            toast({
+                title: "Checkout error",
+                description: formatAxiosError(error),
+                variant: "destructive"
+            });
+            setLoading(false);
+        }
+    };
+
     return (
         <Credenza open={open} onOpenChange={handleClose}>
             <CredenzaContent className="max-w-4xl">
@@ -1066,16 +1097,26 @@ export default function GenerateLicenseKeyForm({
                     )}
 
                     {!generatedKey && useCaseType === "business" && (
-                        <Button
-                            type="submit"
-                            form="generate-license-business-form"
-                            disabled={loading}
-                            loading={loading}
-                        >
-                            {t(
-                                "generateLicenseKeyForm.buttons.generateLicenseKey"
-                            )}
-                        </Button>
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={handleTestCheckout}
+                                disabled={loading}
+                                loading={loading}
+                            >
+                                TEST: Go to Checkout
+                            </Button>
+                            <Button
+                                type="submit"
+                                form="generate-license-business-form"
+                                disabled={loading}
+                                loading={loading}
+                            >
+                                {t(
+                                    "generateLicenseKeyForm.buttons.generateLicenseKey"
+                                )}
+                            </Button>
+                        </>
                     )}
                 </CredenzaFooter>
             </CredenzaContent>
