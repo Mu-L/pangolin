@@ -185,23 +185,24 @@ export default function ProxyResourcesTable({
     };
 
     async function toggleResourceEnabled(val: boolean, resourceId: number) {
-        await api
-            .post<AxiosResponse<UpdateResourceResponse>>(
+        try {
+            await api.post<AxiosResponse<UpdateResourceResponse>>(
                 `resource/${resourceId}`,
                 {
                     enabled: val
                 }
-            )
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("resourcesErrorUpdate"),
-                    description: formatAxiosError(
-                        e,
-                        t("resourcesErrorUpdateDescription")
-                    )
-                });
+            );
+            router.refresh();
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("resourcesErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("resourcesErrorUpdateDescription")
+                )
             });
+        }
     }
 
     function TargetStatusCell({ targets }: { targets?: TargetHealth[] }) {
@@ -313,38 +314,14 @@ export default function ProxyResourcesTable({
             accessorKey: "name",
             enableHiding: false,
             friendlyName: t("name"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("name")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
+            header: () => <span className="p-3">{t("name")}</span>
         },
         {
             id: "niceId",
             accessorKey: "nice",
             friendlyName: t("identifier"),
             enableHiding: true,
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("identifier")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            },
+            header: () => <span className="p-3">{t("identifier")}</span>,
             cell: ({ row }) => {
                 return <span>{row.original.nice || "-"}</span>;
             }
@@ -370,19 +347,7 @@ export default function ProxyResourcesTable({
             id: "status",
             accessorKey: "status",
             friendlyName: t("status"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("status")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            },
+            header: () => <span className="p-3">{t("status")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return <TargetStatusCell targets={resourceRow.targets} />;
@@ -430,19 +395,23 @@ export default function ProxyResourcesTable({
         {
             accessorKey: "authState",
             friendlyName: t("authentication"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("authentication")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            },
+            header: () => (
+                <ColumnFilterButton
+                    options={[
+                        { value: "protected", label: t("protected") },
+                        { value: "not_protected", label: t("notProtected") },
+                        { value: "none", label: t("none") }
+                    ]}
+                    selectedValue={searchParams.get("authState") ?? undefined}
+                    onValueChange={(value) =>
+                        handleFilterChange("authState", value)
+                    }
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("authentication")}
+                    className="p-3"
+                />
+            ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
@@ -487,16 +456,16 @@ export default function ProxyResourcesTable({
             ),
             cell: ({ row }) => (
                 <Switch
-                    defaultChecked={
+                    checked={
                         row.original.http
                             ? !!row.original.domainId && row.original.enabled
                             : row.original.enabled
                     }
-                    disabled={
-                        row.original.http ? !row.original.domainId : false
-                    }
+                    disabled={row.original.http && !row.original.domainId}
                     onCheckedChange={(val) =>
-                        toggleResourceEnabled(val, row.original.id)
+                        startTransition(() =>
+                            toggleResourceEnabled(val, row.original.id)
+                        )
                     }
                 />
             )

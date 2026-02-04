@@ -17,7 +17,18 @@ import {
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { sql, eq, or, inArray, and, count, ilike } from "drizzle-orm";
+import {
+    sql,
+    eq,
+    or,
+    inArray,
+    and,
+    count,
+    ilike,
+    asc,
+    not,
+    isNull
+} from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -48,7 +59,7 @@ const listResourcesSchema = z.object({
         .optional()
         .catch(undefined),
     authState: z
-        .enum(["protected", "not_protected"])
+        .enum(["protected", "not_protected", "none"])
         .optional()
         .catch(undefined)
 });
@@ -277,9 +288,63 @@ export async function listResources(
             conditions = and(conditions, eq(resources.enabled, enabled));
         }
 
+        if (typeof authState !== "undefined") {
+            switch (authState) {
+                case "none":
+                    conditions = and(conditions, eq(resources.http, false));
+                    break;
+                case "protected":
+                    conditions = and(
+                        conditions,
+                        or(
+                            eq(resources.sso, true),
+                            eq(resources.emailWhitelistEnabled, true),
+                            not(isNull(resourceHeaderAuth.headerAuthId)),
+                            not(isNull(resourcePincode.pincodeId)),
+                            not(isNull(resourcePassword.passwordId))
+                        )
+                    );
+                    break;
+                case "not_protected":
+                    conditions = and(
+                        conditions,
+                        not(eq(resources.sso, true)),
+                        not(eq(resources.emailWhitelistEnabled, true)),
+                        isNull(resourceHeaderAuth.headerAuthId),
+                        isNull(resourcePincode.pincodeId),
+                        isNull(resourcePassword.passwordId)
+                    );
+                    break;
+            }
+        }
+
         const countQuery: any = db
             .select({ count: count() })
             .from(resources)
+            .leftJoin(
+                resourcePassword,
+                eq(resourcePassword.resourceId, resources.resourceId)
+            )
+            .leftJoin(
+                resourcePincode,
+                eq(resourcePincode.resourceId, resources.resourceId)
+            )
+            .leftJoin(
+                resourceHeaderAuth,
+                eq(resourceHeaderAuth.resourceId, resources.resourceId)
+            )
+            .leftJoin(
+                resourceHeaderAuthExtendedCompatibility,
+                eq(
+                    resourceHeaderAuthExtendedCompatibility.resourceId,
+                    resources.resourceId
+                )
+            )
+            .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+            .leftJoin(
+                targetHealthCheck,
+                eq(targetHealthCheck.targetId, targets.targetId)
+            )
             .where(conditions);
 
         const baseQuery = queryResourcesBase();
@@ -287,7 +352,8 @@ export async function listResources(
         const rows: JoinedRow[] = await baseQuery
             .where(conditions)
             .limit(pageSize)
-            .offset(pageSize * (page - 1));
+            .offset(pageSize * (page - 1))
+            .orderBy(asc(resources.resourceId));
 
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
