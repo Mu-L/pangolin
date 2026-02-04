@@ -19,6 +19,7 @@ export type NewLicenseKey = {
         tier: string;
         type: string;
         quantity: number;
+        quantity_2: number;
         isValid: boolean;
         updatedAt: string;
         createdAt: string;
