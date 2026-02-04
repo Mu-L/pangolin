@@ -17,7 +17,7 @@ import {
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { sql, eq, or, inArray, and, count } from "drizzle-orm";
+import { sql, eq, or, inArray, and, count, ilike } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -27,19 +27,30 @@ const listResourcesParamsSchema = z.strictObject({
 });
 
 const listResourcesSchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().nonnegative()),
-
-    offset: z
-        .string()
+        .catch(20)
+        .default(20),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative())
+        .catch(1)
+        .default(1),
+    query: z.string().optional(),
+    enabled: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined),
+    authState: z
+        .enum(["protected", "not_protected"])
+        .optional()
+        .catch(undefined)
 });
 
 // (resource fields + a single joined target)
@@ -95,7 +106,7 @@ export type ResourceWithTargets = {
     }>;
 };
 
-function queryResources(accessibleResourceIds: number[], orgId: string) {
+function queryResourcesBase() {
     return db
         .select({
             resourceId: resources.resourceId,
@@ -147,18 +158,12 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
         .leftJoin(
             targetHealthCheck,
             eq(targetHealthCheck.targetId, targets.targetId)
-        )
-        .where(
-            and(
-                inArray(resources.resourceId, accessibleResourceIds),
-                eq(resources.orgId, orgId)
-            )
         );
 }
 
 export type ListResourcesResponse = {
     resources: ResourceWithTargets[];
-    pagination: { total: number; limit: number; offset: number };
+    pagination: { total: number; pageSize: number; page: number };
 };
 
 registry.registerPath({
@@ -190,7 +195,7 @@ export async function listResources(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { page, pageSize, authState, enabled, query } = parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -252,14 +257,37 @@ export async function listResources(
             (resource) => resource.resourceId
         );
 
+        let conditions = and(
+            and(
+                inArray(resources.resourceId, accessibleResourceIds),
+                eq(resources.orgId, orgId)
+            )
+        );
+
+        if (query) {
+            conditions = and(
+                conditions,
+                or(
+                    ilike(resources.name, "%" + query + "%"),
+                    ilike(resources.fullDomain, "%" + query + "%")
+                )
+            );
+        }
+        if (typeof enabled !== "undefined") {
+            conditions = and(conditions, eq(resources.enabled, enabled));
+        }
+
         const countQuery: any = db
             .select({ count: count() })
             .from(resources)
-            .where(inArray(resources.resourceId, accessibleResourceIds));
+            .where(conditions);
 
-        const baseQuery = queryResources(accessibleResourceIds, orgId);
+        const baseQuery = queryResourcesBase();
 
-        const rows: JoinedRow[] = await baseQuery.limit(limit).offset(offset);
+        const rows: JoinedRow[] = await baseQuery
+            .where(conditions)
+            .limit(pageSize)
+            .offset(pageSize * (page - 1));
 
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
@@ -324,8 +352,8 @@ export async function listResources(
                 resources: resourcesList,
                 pagination: {
                     total: totalCount,
-                    limit,
-                    offset
+                    pageSize,
+                    page
                 }
             },
             success: true,

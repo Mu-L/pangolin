@@ -31,8 +31,14 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { ControlledDataTable } from "./ui/controlled-data-table";
+import type { PaginationState } from "@tanstack/react-table";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useDebouncedCallback } from "use-debounce";
+import z from "zod";
+import { ColumnFilterButton } from "./ColumnFilterButton";
 
 export type TargetHealth = {
     targetId: number;
@@ -117,18 +123,22 @@ function StatusIcon({
 type ProxyResourcesTableProps = {
     resources: ResourceRow[];
     orgId: string;
-    defaultSort?: {
-        id: string;
-        desc: boolean;
-    };
+    pagination: PaginationState;
+    rowCount: number;
 };
 
 export default function ProxyResourcesTable({
     resources,
     orgId,
-    defaultSort
+    pagination,
+    rowCount
 }: ProxyResourcesTableProps) {
     const router = useRouter();
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
     const t = useTranslations();
 
     const { env } = useEnvContext();
@@ -140,6 +150,7 @@ export default function ProxyResourcesTable({
         useState<ResourceRow | null>();
 
     const [isRefreshing, startTransition] = useTransition();
+    const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const refreshData = () => {
         startTransition(() => {
@@ -236,7 +247,7 @@ export default function ProxyResourcesTable({
                         <ChevronDown className="h-3 w-3" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[280px]">
+                <DropdownMenuContent align="start" className="min-w-70">
                     {monitoredTargets.length > 0 && (
                         <>
                             {monitoredTargets.map((target) => (
@@ -456,7 +467,24 @@ export default function ProxyResourcesTable({
         {
             accessorKey: "enabled",
             friendlyName: t("enabled"),
-            header: () => <span className="p-3">{t("enabled")}</span>,
+            header: () => (
+                <ColumnFilterButton
+                    options={[
+                        { value: "true", label: t("enabled") },
+                        { value: "false", label: t("disabled") }
+                    ]}
+                    selectedValue={booleanSearchFilterSchema.parse(
+                        searchParams.get("enabled")
+                    )}
+                    onValueChange={(value) =>
+                        handleFilterChange("enabled", value)
+                    }
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("enabled")}
+                    className="p-3"
+                />
+            ),
             cell: ({ row }) => (
                 <Switch
                     defaultChecked={
@@ -525,6 +553,42 @@ export default function ProxyResourcesTable({
         }
     ];
 
+    const booleanSearchFilterSchema = z
+        .enum(["true", "false"])
+        .optional()
+        .catch(undefined);
+
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null
+    ) {
+        searchParams.delete(column);
+        searchParams.delete("page");
+
+        if (value) {
+            searchParams.set(column, value);
+        }
+        filter({
+            searchParams
+        });
+    }
+
+    const handlePaginationChange = (newPage: PaginationState) => {
+        searchParams.set("page", (newPage.pageIndex + 1).toString());
+        searchParams.set("pageSize", newPage.pageSize.toString());
+        filter({
+            searchParams
+        });
+    };
+
+    const handleSearchChange = useDebouncedCallback((query: string) => {
+        searchParams.set("query", query);
+        searchParams.delete("page");
+        filter({
+            searchParams
+        });
+    }, 300);
+
     return (
         <>
             {selectedResource && (
@@ -547,21 +611,27 @@ export default function ProxyResourcesTable({
                 />
             )}
 
-            <DataTable
+            <ControlledDataTable
                 columns={proxyColumns}
-                data={resources}
-                persistPageSize="proxy-resources"
+                rows={resources}
+                tableId="proxy-resources"
                 searchPlaceholder={t("resourcesSearch")}
-                searchColumn="name"
+                pagination={pagination}
+                rowCount={rowCount}
+                onSearch={handleSearchChange}
+                onPaginationChange={handlePaginationChange}
                 onAdd={() =>
-                    router.push(`/${orgId}/settings/resources/proxy/create`)
+                    startNavigation(() => {
+                        router.push(
+                            `/${orgId}/settings/resources/proxy/create`
+                        );
+                    })
                 }
                 addButtonText={t("resourceAdd")}
                 onRefresh={refreshData}
-                isRefreshing={isRefreshing}
-                defaultSort={defaultSort}
-                enableColumnVisibility={true}
-                persistColumnVisibility="proxy-resources"
+                isRefreshing={isRefreshing || isFiltering}
+                isNavigatingToAddPage={isNavigatingToAddPage}
+                enableColumnVisibility
                 columnVisibility={{ niceId: false }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"

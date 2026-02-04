@@ -64,7 +64,7 @@ type DataTableFilter = {
 
 export type DataTablePaginationUpdateFn = (newPage: PaginationState) => void;
 
-type ManualDataTableProps<TData, TValue> = {
+type ControlledDataTableProps<TData, TValue> = {
     columns: ExtendedColumnDef<TData, TValue>[];
     rows: TData[];
     tableId: string;
@@ -72,12 +72,13 @@ type ManualDataTableProps<TData, TValue> = {
     onAdd?: () => void;
     onRefresh?: () => void;
     isRefreshing?: boolean;
+    isNavigatingToAddPage?: boolean;
     searchPlaceholder?: string;
     filters?: DataTableFilter[];
     filterDisplayMode?: "label" | "calculated"; // Global filter display mode (can be overridden per filter)
     columnVisibility?: Record<string, boolean>;
     enableColumnVisibility?: boolean;
-    onSearch: (input: string) => void;
+    onSearch?: (input: string) => void;
     searchQuery?: string;
     onPaginationChange: DataTablePaginationUpdateFn;
     stickyLeftColumn?: string; // Column ID or accessorKey for left sticky column
@@ -86,7 +87,7 @@ type ManualDataTableProps<TData, TValue> = {
     pagination: PaginationState;
 };
 
-export function ManualDataTable<TData, TValue>({
+export function ControlledDataTable<TData, TValue>({
     columns,
     rows,
     addButtonText,
@@ -105,8 +106,9 @@ export function ManualDataTable<TData, TValue>({
     searchQuery,
     onPaginationChange,
     stickyRightColumn,
-    rowCount
-}: ManualDataTableProps<TData, TValue>) {
+    rowCount,
+    isNavigatingToAddPage
+}: ControlledDataTableProps<TData, TValue>) {
     const t = useTranslations();
 
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -217,17 +219,20 @@ export function ManualDataTable<TData, TValue>({
             <Card>
                 <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-4">
                     <div className="flex flex-row space-y-3 w-full sm:mr-2 gap-2">
-                        <div className="relative w-full sm:max-w-sm">
-                            <Input
-                                placeholder={searchPlaceholder}
-                                defaultValue={searchQuery}
-                                onChange={(e) =>
-                                    onSearch(e.currentTarget.value)
-                                }
-                                className="w-full pl-8"
-                            />
-                            <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                        </div>
+                        {onSearch && (
+                            <div className="relative w-full sm:max-w-sm">
+                                <Input
+                                    placeholder={searchPlaceholder}
+                                    defaultValue={searchQuery}
+                                    onChange={(e) =>
+                                        onSearch(e.currentTarget.value)
+                                    }
+                                    className="w-full pl-8"
+                                />
+                                <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                            </div>
+                        )}
+
                         {filters && filters.length > 0 && (
                             <div className="flex gap-2">
                                 {filters.map((filter) => {
@@ -326,7 +331,10 @@ export function ManualDataTable<TData, TValue>({
                         )}
                         {onAdd && addButtonText && (
                             <div>
-                                <Button onClick={onAdd}>
+                                <Button
+                                    onClick={onAdd}
+                                    loading={isNavigatingToAddPage}
+                                >
                                     <Plus className="mr-2 h-4 w-4" />
                                     {addButtonText}
                                 </Button>

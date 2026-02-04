@@ -33,9 +33,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import {
-    ManualDataTable,
+    ControlledDataTable,
     type ExtendedColumnDef
-} from "./ui/manual-data-table";
+} from "./ui/controlled-data-table";
 import { ColumnFilter } from "./ColumnFilter";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import z from "zod";
@@ -77,6 +77,7 @@ export default function SitesTable({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [isRefreshing, startTransition] = useTransition();
+    const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const [getSortDirection, toggleSorting] = useSortColumn();
 
@@ -460,14 +461,19 @@ export default function SitesTable({
                 />
             )}
 
-            <ManualDataTable
+            <ControlledDataTable
                 columns={columns}
                 rows={sites}
                 tableId="sites-table"
                 searchPlaceholder={t("searchSitesProgress")}
                 pagination={pagination}
                 onPaginationChange={handlePaginationChange}
-                onAdd={() => router.push(`/${orgId}/settings/sites/create`)}
+                onAdd={() =>
+                    startNavigation(() =>
+                        router.push(`/${orgId}/settings/sites/create`)
+                    )
+                }
+                isNavigatingToAddPage={isNavigatingToAddPage}
                 searchQuery={searchParams.get("query")?.toString()}
                 onSearch={handleSearchChange}
                 addButtonText={t("siteAdd")}
