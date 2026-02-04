@@ -61,6 +61,10 @@ const listResourcesSchema = z.object({
     authState: z
         .enum(["protected", "not_protected", "none"])
         .optional()
+        .catch(undefined),
+    healthStatus: z
+        .enum(["online", "degraded", "offline", "unknown"])
+        .optional()
         .catch(undefined)
 });
 
@@ -206,7 +210,8 @@ export async function listResources(
                 )
             );
         }
-        const { page, pageSize, authState, enabled, query } = parsedQuery.data;
+        const { page, pageSize, authState, enabled, query, healthStatus } =
+            parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -314,6 +319,15 @@ export async function listResources(
                         isNull(resourcePincode.pincodeId),
                         isNull(resourcePassword.passwordId)
                     );
+                    break;
+            }
+        }
+
+        if (typeof healthStatus !== "undefined") {
+            switch (healthStatus) {
+                case "online":
+                    break;
+                default:
                     break;
             }
         }
