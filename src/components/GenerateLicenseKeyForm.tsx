@@ -250,20 +250,41 @@ export default function GenerateLicenseKeyForm({
     const submitLicenseRequest = async (payload: any) => {
         setLoading(true);
         try {
-            const response = await api.put<
-                AxiosResponse<GenerateNewLicenseResponse>
-            >(`/org/${orgId}/license`, payload);
+            // Check if this is a business/enterprise license request
+            if (payload.useCaseType === "business") {
+                const response = await api.put<
+                    AxiosResponse<string>
+                    >(`/org/${orgId}/license/enterprise`, { ...payload, tier: "big_license" } );
 
-            if (response.data.data?.licenseKey?.licenseKey) {
-                setGeneratedKey(response.data.data.licenseKey.licenseKey);
-                onGenerated?.();
-                toast({
-                    title: t("generateLicenseKeyForm.toasts.success.title"),
-                    description: t(
-                        "generateLicenseKeyForm.toasts.success.description"
-                    ),
-                    variant: "default"
-                });
+                console.log("Checkout session response:", response.data);
+                const checkoutUrl = response.data.data;
+                if (checkoutUrl) {
+                    window.location.href = checkoutUrl;
+                } else {
+                    toast({
+                        title: "Failed to get checkout URL",
+                        description: "Please try again later",
+                        variant: "destructive"
+                    });
+                    setLoading(false);
+                }
+            } else {
+                // Personal license flow
+                const response = await api.put<
+                    AxiosResponse<GenerateNewLicenseResponse>
+                >(`/org/${orgId}/license`, payload);
+
+                if (response.data.data?.licenseKey?.licenseKey) {
+                    setGeneratedKey(response.data.data.licenseKey.licenseKey);
+                    onGenerated?.();
+                    toast({
+                        title: t("generateLicenseKeyForm.toasts.success.title"),
+                        description: t(
+                            "generateLicenseKeyForm.toasts.success.description"
+                        ),
+                        variant: "default"
+                    });
+                }
             }
         } catch (e) {
             console.error(e);
@@ -343,37 +364,6 @@ export default function GenerateLicenseKeyForm({
         setOpen(false);
         setGeneratedKey(null);
         resetForm();
-    };
-
-    const handleTestCheckout = async () => {
-        setLoading(true);
-        try {
-            const response = await api.post<AxiosResponse<string>>(
-                `/org/${orgId}/billing/create-checkout-session-license`,
-                {
-                    tier: "big_license"
-                }
-            );
-            console.log("Checkout session response:", response.data);
-            const checkoutUrl = response.data.data;
-            if (checkoutUrl) {
-                window.location.href = checkoutUrl;
-            } else {
-                toast({
-                    title: "Failed to get checkout URL",
-                    description: "Please try again later",
-                    variant: "destructive"
-                });
-                setLoading(false);
-            }
-        } catch (error) {
-            toast({
-                title: "Checkout error",
-                description: formatAxiosError(error),
-                variant: "destructive"
-            });
-            setLoading(false);
-        }
     };
 
     return (
@@ -1097,15 +1087,6 @@ export default function GenerateLicenseKeyForm({
                     )}
 
                     {!generatedKey && useCaseType === "business" && (
-                        <>
-                            <Button
-                                variant="secondary"
-                                onClick={handleTestCheckout}
-                                disabled={loading}
-                                loading={loading}
-                            >
-                                TEST: Go to Checkout
-                            </Button>
                             <Button
                                 type="submit"
                                 form="generate-license-business-form"
@@ -1116,7 +1097,6 @@ export default function GenerateLicenseKeyForm({
                                     "generateLicenseKeyForm.buttons.generateLicenseKey"
                                 )}
                             </Button>
-                        </>
                     )}
                 </CredenzaFooter>
             </CredenzaContent>

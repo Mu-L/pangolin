@@ -45,6 +45,10 @@ export const privateConfigSchema = z.object({
                 .string()
                 .optional()
                 .transform(getEnvOrYaml("REO_CLIENT_ID")),
+            fossorial_api: z
+                .string()
+                .optional()
+                .default("https://api.fossorial.io"),
             fossorial_api_key: z
                 .string()
                 .optional()
@@ -164,7 +168,10 @@ export const privateConfigSchema = z.object({
         .optional(),
     stripe: z
         .object({
-            secret_key: z.string().optional().transform(getEnvOrYaml("STRIPE_SECRET_KEY")),
+            secret_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("STRIPE_SECRET_KEY")),
             webhook_secret: z
                 .string()
                 .optional()

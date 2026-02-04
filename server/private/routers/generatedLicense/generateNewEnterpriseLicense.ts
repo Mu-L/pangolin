@@ -12,33 +12,33 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { customers, db } from "@server/db";
-import { eq } from "drizzle-orm";
-import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
+import { response as sendResponse } from "@server/lib/response";
+import privateConfig from "#private/lib/config";
+import { createNewLicense } from "./generateNewLicense";
 import config from "@server/lib/config";
-import { fromError } from "zod-validation-error";
-import stripe from "#private/lib/stripe";
 import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
+import stripe from "#private/lib/stripe";
+import { customers, db } from "@server/db";
+import { fromError } from "zod-validation-error";
+import z from "zod";
+import { eq } from "drizzle-orm";
+import { log } from "winston";
 
-const createCheckoutSessionParamsSchema = z.strictObject({
-    orgId: z.string(),
+const generateNewEnterpriseLicenseParamsSchema = z.strictObject({
+    orgId: z.string()
 });
 
-const createCheckoutSessionBodySchema = z.strictObject({
-    tier: z.enum([LicenseId.BIG_LICENSE, LicenseId.SMALL_LICENSE]),
-});
-
-export async function createCheckoutSessionoLicense(
+export async function generateNewEnterpriseLicense(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = createCheckoutSessionParamsSchema.safeParse(req.params);
+
+        const parsedParams = generateNewEnterpriseLicenseParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -50,17 +50,49 @@ export async function createCheckoutSessionoLicense(
 
         const { orgId } = parsedParams.data;
 
-        const parsedBody = createCheckoutSessionBodySchema.safeParse(req.body);
-        if (!parsedBody.success) {
+        if (!orgId) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    fromError(parsedBody.error).toString()
+                    "Organization ID is required"
                 )
             );
         }
 
-        const { tier } = parsedBody.data;
+        logger.debug(`Generating new license for orgId: ${orgId}`);
+
+        const licenseData = req.body;
+
+        if (licenseData.tier != "big_license" && licenseData.tier != "small_license") {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Invalid tier specified. Must be either 'big_license' or 'small_license'."
+                )
+            );
+        }
+
+        const apiResponse = await createNewLicense(orgId, licenseData);
+
+        // Check if the API call was successful
+        if (!apiResponse.success || apiResponse.error) {
+            return next(
+                createHttpError(
+                    apiResponse.status || HttpCode.BAD_REQUEST,
+                    apiResponse.message || "Failed to create license from Fossorial API"
+                )
+            );
+        }
+
+        const keyId = apiResponse?.data?.licenseKey?.id;
+        if (!keyId) {
+            return next(
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Fossorial API did not return a valid license key ID"
+                )
+            );
+        }
 
         // check if we already have a customer for this org
         const [customer] = await db
@@ -80,10 +112,11 @@ export async function createCheckoutSessionoLicense(
             );
         }
 
+        const tier = licenseData.tier === "big_license" ? LicenseId.BIG_LICENSE : LicenseId.SMALL_LICENSE;
         const tierPrice = getLicensePriceSet()[tier]
 
         const session = await stripe!.checkout.sessions.create({
-            client_reference_id: orgId, // So we can look it up the org later on the webhook
+            client_reference_id: keyId.toString(),
             billing_address_collection: "required",
             line_items: [
                 {
@@ -97,17 +130,20 @@ export async function createCheckoutSessionoLicense(
             cancel_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/license?canceled=true`
         });
 
-        return response<string>(res, {
+        return sendResponse<string>(res, {
             data: session.url,
             success: true,
             error: false,
-            message: "Checkout session created successfully",
+            message: "License and checkout session created successfully",
             status: HttpCode.CREATED
         });
     } catch (error) {
         logger.error(error);
         return next(
-            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
+            createHttpError(
+                HttpCode.INTERNAL_SERVER_ERROR,
+                "An error occurred while generating new license."
+            )
         );
     }
 }

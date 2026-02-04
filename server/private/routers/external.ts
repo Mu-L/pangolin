@@ -167,14 +167,6 @@ if (build === "saas") {
     );
 
     authenticated.post(
-        "/org/:orgId/billing/create-checkout-session-license",
-        verifyOrgAccess,
-        verifyUserHasAction(ActionsEnum.billing),
-        logActionAudit(ActionsEnum.billing),
-        billing.createCheckoutSessionoLicense
-    );
-
-    authenticated.post(
         "/org/:orgId/billing/create-portal-session",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
@@ -206,6 +198,14 @@ if (build === "saas") {
         "/org/:orgId/license",
         verifyOrgAccess,
         generateLicense.generateNewLicense
+    );
+
+    authenticated.put(
+        "/org/:orgId/license/enterprise",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        logActionAudit(ActionsEnum.billing),
+        generateLicense.generateNewEnterpriseLicense
     );
 
     authenticated.post(

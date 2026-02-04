@@ -19,10 +19,40 @@ import { response as sendResponse } from "@server/lib/response";
 import privateConfig from "#private/lib/config";
 import { GenerateNewLicenseResponse } from "@server/routers/generatedLicense/types";
 
-async function createNewLicense(orgId: string, licenseData: any): Promise<any> {
+export interface CreateNewLicenseResponse {
+  data: Data
+  success: boolean
+  error: boolean
+  message: string
+  status: number
+}
+
+export interface Data {
+  licenseKey: LicenseKey
+}
+
+export interface LicenseKey {
+  id: number
+  instanceName: any
+  instanceId: string
+  licenseKey: string
+  tier: string
+  type: string
+  quantity: number
+  quantity_2: number
+  isValid: boolean
+  updatedAt: string
+  createdAt: string
+  expiresAt: string
+  paidFor: boolean
+  orgId: string
+  metadata: string
+}
+
+export async function createNewLicense(orgId: string, licenseData: any): Promise<CreateNewLicenseResponse> {
     try {
         const response = await fetch(
-            `https://api.fossorial.io/api/v1/license-internal/enterprise/${orgId}/create`,
+            `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/${orgId}/create`, // this says enterprise but it does both
             {
                 method: "PUT",
                 headers: {
@@ -35,9 +65,8 @@ async function createNewLicense(orgId: string, licenseData: any): Promise<any> {
             }
         );
 
-        const data = await response.json();
+        const data: CreateNewLicenseResponse = await response.json();
 
-        logger.debug("Fossorial API response:", { data });
         return data;
     } catch (error) {
         console.error("Error creating new license:", error);

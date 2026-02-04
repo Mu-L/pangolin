@@ -16,4 +16,3 @@ export * from "./createPortalSession";
 export * from "./getOrgSubscription";
 export * from "./getOrgUsage";
 export * from "./internalGetOrgTier";
-export * from "./createCheckoutSessionLicense";
