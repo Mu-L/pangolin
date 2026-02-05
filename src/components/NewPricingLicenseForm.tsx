@@ -178,20 +178,42 @@ export default function NewPricingLicenseForm({
     ): Promise<void> => {
         setLoading(true);
         try {
-            const response = await api.put<
-                AxiosResponse<GenerateNewLicenseResponse>
-            >(`/org/${orgId}/license`, payload);
+            // Check if this is a business/enterprise license request
+            if (!personalUseOnly) {
+                const response = await api.put<AxiosResponse<string>>(
+                    `/org/${orgId}/license/enterprise`,
+                    { ...payload, tier: TIER_TO_LICENSE_ID[selectedTier] }
+                );
 
-            if (response.data.data?.licenseKey?.licenseKey) {
-                setGeneratedKey(response.data.data.licenseKey.licenseKey);
-                onGenerated?.();
-                toast({
-                    title: t("generateLicenseKeyForm.toasts.success.title"),
-                    description: t(
-                        "generateLicenseKeyForm.toasts.success.description"
-                    ),
-                    variant: "default"
-                });
+                console.log("Checkout session response:", response.data);
+                const checkoutUrl = response.data.data;
+                if (checkoutUrl) {
+                    window.location.href = checkoutUrl;
+                } else {
+                    toast({
+                        title: "Failed to get checkout URL",
+                        description: "Please try again later",
+                        variant: "destructive"
+                    });
+                    setLoading(false);
+                }
+            } else {
+                // Personal license flow
+                const response = await api.put<
+                    AxiosResponse<GenerateNewLicenseResponse>
+                >(`/org/${orgId}/license`, payload);
+
+                if (response.data.data?.licenseKey?.licenseKey) {
+                    setGeneratedKey(response.data.data.licenseKey.licenseKey);
+                    onGenerated?.();
+                    toast({
+                        title: t("generateLicenseKeyForm.toasts.success.title"),
+                        description: t(
+                            "generateLicenseKeyForm.toasts.success.description"
+                        ),
+                        variant: "default"
+                    });
+                }
             }
         } catch (e) {
             console.error(e);
@@ -229,44 +251,38 @@ export default function NewPricingLicenseForm({
         });
     };
 
-    const handleContinueToCheckout = async () => {
-        const valid = await businessForm.trigger();
-        if (!valid) return;
-
-        const values = businessForm.getValues();
-        setLoading(true);
-        try {
-            const tier = TIER_TO_LICENSE_ID[selectedTier];
-            const response = await api.post<AxiosResponse<string>>(
-                `/org/${orgId}/billing/create-checkout-session-license`,
-                { tier }
-            );
-            const checkoutUrl = response.data.data;
-            if (checkoutUrl) {
-                window.location.href = checkoutUrl;
-            } else {
-                toast({
-                    title: t(
-                        "newPricingLicenseForm.toasts.checkoutError.title"
-                    ),
-                    description: t(
-                        "newPricingLicenseForm.toasts.checkoutError.description"
-                    ),
-                    variant: "destructive"
-                });
-                setLoading(false);
+    const onSubmitBusiness = async (values: BusinessFormData) => {
+        const payload = {
+            email: values.email,
+            useCaseType: "business",
+            personal: undefined,
+            business: {
+                firstName: values.firstName,
+                lastName: values.lastName,
+                jobTitle: "N/A",
+                aboutYou: {
+                    primaryUse: values.primaryUse,
+                    industry: values.industry,
+                    prospectiveUsers: 100,
+                    prospectiveSites: 100
+                },
+                companyInfo: {
+                    companyName: values.companyName,
+                    countryOfResidence: "N/A",
+                    stateProvinceRegion: "N/A",
+                    postalZipCode: "N/A",
+                    companyWebsite: values.companyWebsite || "",
+                    companyPhoneNumber: values.companyPhoneNumber || ""
+                }
+            },
+            consent: {
+                agreedToTerms: values.agreedToTerms,
+                acknowledgedPrivacyPolicy: values.agreedToTerms,
+                complianceConfirmed: values.complianceConfirmed
             }
-        } catch (error) {
-            toast({
-                title: t("newPricingLicenseForm.toasts.checkoutError.title"),
-                description: formatAxiosError(
-                    error,
-                    t("newPricingLicenseForm.toasts.checkoutError.description")
-                ),
-                variant: "destructive"
-            });
-            setLoading(false);
-        }
+        };
+
+        await submitLicenseRequest(payload);
     };
 
     const handleClose = () => {
@@ -608,6 +624,9 @@ export default function NewPricingLicenseForm({
                                 {!personalUseOnly && (
                                     <Form {...businessForm}>
                                         <form
+                                            onSubmit={businessForm.handleSubmit(
+                                                onSubmitBusiness
+                                            )}
                                             className="space-y-4"
                                             id="new-pricing-license-business-form"
                                         >
@@ -877,7 +896,8 @@ export default function NewPricingLicenseForm({
 
                     {!generatedKey && !personalUseOnly && (
                         <Button
-                            onClick={handleContinueToCheckout}
+                            type="submit"
+                            form="new-pricing-license-business-form"
                             disabled={loading}
                             loading={loading}
                         >

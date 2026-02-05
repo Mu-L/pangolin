@@ -28,6 +28,9 @@ import { AudienceIds, moveEmailToAudience } from "#private/lib/resend";
 import { getSubType } from "./getSubType";
 import privateConfig from "#private/lib/config";
 import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
+import { sendEmail } from "@server/emails";
+import EnterpriseEditionKeyGenerated from "@server/emails/templates/EnterpriseEditionKeyGenerated";
+import config from "@server/lib/config";
 
 export async function handleSubscriptionCreated(
     subscription: Stripe.Subscription
@@ -211,7 +214,7 @@ export async function handleSubscriptionCreated(
                 );
 
                 const response = await fetch(
-                    `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/paid-for`, // this says enterprise but it does both
+                    `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/paid-for`,
                     {
                         method: "POST",
                         headers: {
@@ -231,7 +234,32 @@ export async function handleSubscriptionCreated(
 
                 const data = await response.json();
 
-                logger.debug("Fossorial API response:", { data });
+                logger.debug(`Fossorial API response: ${JSON.stringify(data)}`);
+
+                if (customer.email) {
+                    logger.debug(
+                        `Sending license key email to ${customer.email} for subscription ${subscription.id}`
+                    );
+                    await sendEmail(
+                        EnterpriseEditionKeyGenerated({
+                            keyValue: data.data.licenseKey,
+                            personalUseOnly: false,
+                            users: numUsers,
+                            sites: numSites,
+                        }),
+                        {
+                            to: customer.email,
+                            from: config.getNoReplyEmail(),
+                            subject:
+                                "Your Enterprise Edition license key is ready"
+                        }
+                    );
+                } else {
+                    logger.error(
+                        `No email found for customer ${customer.customerId} to send license key.`
+                    );
+                }
+
                 return data;
             } catch (error) {
                 console.error("Error creating new license:", error);
