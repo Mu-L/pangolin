@@ -43,25 +43,52 @@ export type AuthPageCustomizationProps = {
 
 const AuthPageFormSchema = z.object({
     logoUrl: z.union([
-        z.string().length(0),
-        z.url().refine(
-            async (url) => {
-                try {
-                    const response = await fetch(url);
-                    return (
-                        response.status === 200 &&
-                        (response.headers.get("content-type") ?? "").startsWith(
-                            "image/"
-                        )
-                    );
-                } catch (error) {
-                    return false;
+        z.literal(""),
+        z.url("Must be a valid URL").superRefine(async (url, ctx) => {
+            try {
+                const response = await fetch(url, {
+                    method: "HEAD"
+                }).catch(() => {
+                    // If HEAD fails (CORS or method not allowed), try GET
+                    return fetch(url, { method: "GET" });
+                });
+
+                if (response.status !== 200) {
+                    ctx.addIssue({
+                        code: "custom",
+                        message: `Failed to load image. Please check that the URL is accessible.`
+                    });
+                    return;
                 }
-            },
-            {
-                error: "Invalid logo URL, must be a valid image URL"
+
+                const contentType = response.headers.get("content-type") ?? "";
+                if (!contentType.startsWith("image/")) {
+                    ctx.addIssue({
+                        code: "custom",
+                        message: `URL does not point to an image. Please provide a URL to an image file (e.g., .png, .jpg, .svg).`
+                    });
+                    return;
+                }
+            } catch (error) {
+                let errorMessage =
+                    "Unable to verify image URL. Please check that the URL is accessible and points to an image file.";
+
+                if (
+                    error instanceof TypeError &&
+                    error.message.includes("fetch")
+                ) {
+                    errorMessage =
+                        "Network error: Unable to reach the URL. Please check your internet connection and verify the URL is correct.";
+                } else if (error instanceof Error) {
+                    errorMessage = `Error verifying URL: ${error.message}`;
+                }
+
+                ctx.addIssue({
+                    code: "custom",
+                    message: errorMessage
+                });
             }
-        )
+        })
     ]),
     logoWidth: z.coerce.number<number>().min(1),
     logoHeight: z.coerce.number<number>().min(1),
@@ -405,9 +432,7 @@ export default function AuthPageBrandingForm({
                             <Button
                                 variant="destructive"
                                 type="submit"
-                                loading={
-                                    isUpdatingBranding || isDeletingBranding
-                                }
+                                loading={isDeletingBranding}
                                 disabled={
                                     isUpdatingBranding ||
                                     isDeletingBranding ||
@@ -422,7 +447,7 @@ export default function AuthPageBrandingForm({
                     <Button
                         type="submit"
                         form="auth-page-branding-form"
-                        loading={isUpdatingBranding || isDeletingBranding}
+                        loading={isUpdatingBranding}
                         disabled={
                             isUpdatingBranding ||
                             isDeletingBranding ||

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, olms } from "@server/db";
+import { db, olms, users } from "@server/db";
 import { clients, currentFingerprint } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -36,6 +36,7 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
                 currentFingerprint,
                 eq(olms.olmId, currentFingerprint.olmId)
             )
+            .leftJoin(users, eq(clients.userId, users.userId))
             .limit(1);
         return res;
     } else if (niceId && orgId) {
@@ -48,6 +49,7 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
                 currentFingerprint,
                 eq(olms.olmId, currentFingerprint.olmId)
             )
+            .leftJoin(users, eq(clients.userId, users.userId))
             .limit(1);
         return res;
     }
@@ -207,6 +209,9 @@ export type GetClientResponse = NonNullable<
     olmId: string | null;
     agent: string | null;
     olmVersion: string | null;
+    userEmail: string | null;
+    userName: string | null;
+    userUsername: string | null;
     fingerprint: {
         username: string | null;
         hostname: string | null;
@@ -322,6 +327,9 @@ export async function getClient(
             olmId: client.olms ? client.olms.olmId : null,
             agent: client.olms?.agent || null,
             olmVersion: client.olms?.version || null,
+            userEmail: client.user?.email ?? null,
+            userName: client.user?.name ?? null,
+            userUsername: client.user?.username ?? null,
             fingerprint: fingerprintData,
             posture: postureData
         };
