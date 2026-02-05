@@ -26,6 +26,7 @@ import logger from "@server/logger";
 import { getFeatureIdByMetricId } from "@server/lib/billing/features";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
+import { getSubType } from "./getSubType";
 
 export async function handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
@@ -73,11 +74,6 @@ export async function handleSubscriptionUpdated(
                 billingCycleAnchor: subscription.billing_cycle_anchor
             })
             .where(eq(subscriptions.subscriptionId, subscription.id));
-
-        await handleSubscriptionLifesycle(
-            existingCustomer.orgId,
-            subscription.status
-        );
 
         // Upsert subscription items
         if (Array.isArray(fullSubscription.items?.data)) {
@@ -141,14 +137,14 @@ export async function handleSubscriptionUpdated(
                             // This item has cycled
                             const meterId = item.plan.meter;
                             if (!meterId) {
-                                logger.warn(
+                                logger.debug(
                                     `No meterId found for subscription item ${item.id}. Skipping usage reset.`
                                 );
                                 continue;
                             }
                             const featureId = getFeatureIdByMetricId(meterId);
                             if (!featureId) {
-                                logger.warn(
+                                logger.debug(
                                     `No featureId found for meterId ${meterId}. Skipping usage reset.`
                                 );
                                 continue;
@@ -236,6 +232,20 @@ export async function handleSubscriptionUpdated(
                 }
             }
             // --- end usage update ---
+
+            const type = getSubType(fullSubscription);
+            if (type === "saas") {
+                logger.debug(`Handling SAAS subscription lifecycle for org ${existingCustomer.orgId}`);
+                // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
+                await handleSubscriptionLifesycle(
+                    existingCustomer.orgId,
+                    subscription.status
+                );
+            } else {
+                logger.debug(
+                    `Subscription ${subscription.id} is of type ${type}. No lifecycle handling needed.`
+                );
+            }
         }
     } catch (error) {
         logger.error(

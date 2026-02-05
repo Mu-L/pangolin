@@ -27,6 +27,7 @@ import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
 import { AudienceIds, moveEmailToAudience } from "#private/lib/resend";
 import { getSubType } from "./getSubType";
 import privateConfig from "#private/lib/config";
+import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
 
 export async function handleSubscriptionCreated(
     subscription: Stripe.Subscription
@@ -182,6 +183,33 @@ export async function handleSubscriptionCreated(
                     `Retrieved licenseId ${licenseId} from checkout session for subscription ${subscription.id}`
                 );
 
+                // Determine users and sites based on license type
+                const priceSet = getLicensePriceSet();
+                const subscriptionPriceId =
+                    fullSubscription.items.data[0]?.price.id;
+
+                let numUsers: number;
+                let numSites: number;
+
+                if (subscriptionPriceId === priceSet[LicenseId.SMALL_LICENSE]) {
+                    numUsers = 25;
+                    numSites = 25;
+                } else if (
+                    subscriptionPriceId === priceSet[LicenseId.BIG_LICENSE]
+                ) {
+                    numUsers = 50;
+                    numSites = 50;
+                } else {
+                    logger.error(
+                        `Unknown price ID ${subscriptionPriceId} for subscription ${subscription.id}`
+                    );
+                    return;
+                }
+
+                logger.debug(
+                    `License type determined: ${numUsers} users, ${numSites} sites for subscription ${subscription.id}`
+                );
+
                 const response = await fetch(
                     `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/paid-for`, // this says enterprise but it does both
                     {
@@ -193,7 +221,10 @@ export async function handleSubscriptionCreated(
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
-                            licenseId: parseInt(licenseId)
+                            licenseId: parseInt(licenseId),
+                            paidFor: true,
+                            users: numUsers,
+                            sites: numSites
                         })
                     }
                 );

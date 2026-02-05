@@ -159,6 +159,48 @@ export default function GenerateLicenseKeysTable({
             }
         },
         {
+            accessorKey: "users",
+            friendlyName: t("users"),
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === "asc")
+                        }
+                    >
+                        {t("users")}
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const users = row.original.users;
+                return users === -1 ? "∞" : users;
+            }
+        },
+        {
+            accessorKey: "sites",
+            friendlyName: t("sites"),
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === "asc")
+                        }
+                    >
+                        {t("sites")}
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const sites = row.original.sites;
+                return sites === -1 ? "∞" : sites;
+            }
+        },
+        {
             accessorKey: "terminateAt",
             friendlyName: t("licenseTableValidUntil"),
             header: ({ column }) => {
