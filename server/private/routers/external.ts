@@ -175,10 +175,10 @@ if (build === "saas") {
     );
 
     authenticated.get(
-        "/org/:orgId/billing/subscription",
+        "/org/:orgId/billing/subscriptions",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
-        billing.getOrgSubscription
+        billing.getOrgSubscriptions
     );
 
     authenticated.get(

@@ -12,7 +12,7 @@
  */
 
 import { getTierPriceSet } from "@server/lib/billing/tiers";
-import { getOrgSubscriptionData } from "#private/routers/billing/getOrgSubscription";
+import { getOrgSubscriptionsData } from "@server/private/routers/billing/getOrgSubscriptions";
 import { build } from "@server/build";
 
 export async function getOrgTierData(
@@ -25,22 +25,32 @@ export async function getOrgTierData(
         return { tier, active };
     }
 
-    const { subscription, items } = await getOrgSubscriptionData(orgId);
+    // TODO: THIS IS INEFFICIENT!!! WE SHOULD IMPROVE HOW WE STORE TIERS WITH SUBSCRIPTIONS AND RETRIEVE THEM
 
-    if (items && items.length > 0) {
-        const tierPriceSet = getTierPriceSet();
-        // Iterate through tiers in order (earlier keys are higher tiers)
-        for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
-            // Check if any subscription item matches this tier's price ID
-            const matchingItem = items.find((item) => item.priceId === priceId);
-            if (matchingItem) {
-                tier = tierId;
-                break;
+    const subscriptionsWithItems = await getOrgSubscriptionsData(orgId);
+
+    for (const { subscription, items } of subscriptionsWithItems) {
+        if (items && items.length > 0) {
+            const tierPriceSet = getTierPriceSet();
+            // Iterate through tiers in order (earlier keys are higher tiers)
+            for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
+                // Check if any subscription item matches this tier's price ID
+                const matchingItem = items.find((item) => item.priceId === priceId);
+                if (matchingItem) {
+                    tier = tierId;
+                    break;
+                }
             }
         }
-    }
-    if (subscription && subscription.status === "active") {
-        active = true;
+
+        if (subscription && subscription.status === "active") {
+            active = true;
+        }
+
+        // If we found a tier and active subscription, we can stop
+        if (tier && active) {
+            break;
+        }
     }
     return { tier, active };
 }

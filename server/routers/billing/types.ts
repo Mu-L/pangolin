@@ -1,8 +1,7 @@
 import { Limit, Subscription, SubscriptionItem, Usage } from "@server/db";
 
 export type GetOrgSubscriptionResponse = {
-    subscription: Subscription | null;
-    items: SubscriptionItem[];
+    subscriptions: Array<{ subscription: Subscription; items: SubscriptionItem[] }>;
 };
 
 export type GetOrgUsageResponse = {

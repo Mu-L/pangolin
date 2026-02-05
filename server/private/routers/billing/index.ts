@@ -13,6 +13,6 @@
 
 export * from "./createCheckoutSessionSAAS";
 export * from "./createPortalSession";
-export * from "./getOrgSubscription";
+export * from "./getOrgSubscriptions";
 export * from "./getOrgUsage";
 export * from "./internalGetOrgTier";
