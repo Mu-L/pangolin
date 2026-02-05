@@ -96,10 +96,10 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         fetchContainers(newt.newtId);
     }
 
-    const rejectSiteUptime = await usageService.checkLimitSet(
+    const rejectSites = await usageService.checkLimitSet(
         oldSite.orgId,
         false,
-        FeatureId.SITE_UPTIME
+        FeatureId.SITES
     );
     const rejectEgressDataMb = await usageService.checkLimitSet(
         oldSite.orgId,
@@ -111,8 +111,8 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
     // const rejectUsers = await usageService.checkLimitSet(oldSite.orgId, false, FeatureId.USERS);
     // const rejectDomains = await usageService.checkLimitSet(oldSite.orgId, false, FeatureId.DOMAINS);
 
-    // if (rejectEgressDataMb || rejectSiteUptime || rejectUsers || rejectDomains) {
-    if (rejectEgressDataMb || rejectSiteUptime) {
+    // if (rejectEgressDataMb || rejectSites || rejectUsers || rejectDomains) {
+    if (rejectEgressDataMb || rejectSites) {
         logger.info(
             `Usage limits exceeded for org ${oldSite.orgId}. Rejecting newt registration.`
         );
