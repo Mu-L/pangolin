@@ -138,6 +138,7 @@
     "devDependencies": {
         "@dotenvx/dotenvx": "1.52.0",
         "@esbuild-plugins/tsconfig-paths": "0.1.2",
+        "@react-email/preview-server": "5.2.7",
         "@tailwindcss/postcss": "4.1.18",
         "@tanstack/react-query-devtools": "5.91.3",
         "@types/better-sqlite3": "7.6.13",
@@ -148,6 +149,7 @@
         "@types/express": "5.0.6",
         "@types/express-session": "1.18.2",
         "@types/jmespath": "0.15.2",
+        "@types/js-yaml": "4.0.9",
         "@types/jsonwebtoken": "9.0.10",
         "@types/node": "25.2.1",
         "@types/nodemailer": "7.0.9",
@@ -160,7 +162,6 @@
         "@types/topojson-client": "3.1.5",
         "@types/ws": "8.18.1",
         "@types/yargs": "17.0.35",
-        "@types/js-yaml": "4.0.9",
         "babel-plugin-react-compiler": "1.0.0",
         "drizzle-kit": "0.31.8",
         "esbuild": "0.27.2",
