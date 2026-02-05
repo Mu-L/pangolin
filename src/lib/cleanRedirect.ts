@@ -1,6 +1,8 @@
 type CleanRedirectOptions = {
     fallback?: string;
     maxRedirectDepth?: number;
+    /** When true, preserve all query params on the path (for internal redirects). Default false. */
+    allowAllQueryParams?: boolean;
 };
 
 const ALLOWED_QUERY_PARAMS = new Set([
@@ -16,14 +18,18 @@ export function cleanRedirect(
     input: string,
     options: CleanRedirectOptions = {}
 ): string {
-    const { fallback = "/", maxRedirectDepth = 2 } = options;
+    const {
+        fallback = "/",
+        maxRedirectDepth = 2,
+        allowAllQueryParams = false
+    } = options;
 
     if (!input || typeof input !== "string") {
         return fallback;
     }
 
     try {
-        return sanitizeUrl(input, fallback, maxRedirectDepth);
+        return sanitizeUrl(input, fallback, maxRedirectDepth, allowAllQueryParams);
     } catch {
         return fallback;
     }
@@ -32,7 +38,8 @@ export function cleanRedirect(
 function sanitizeUrl(
     input: string,
     fallback: string,
-    remainingRedirectDepth: number
+    remainingRedirectDepth: number,
+    allowAllQueryParams: boolean = false
 ): string {
     if (
         input.startsWith("javascript:") ||
@@ -56,7 +63,7 @@ function sanitizeUrl(
     const cleanParams = new URLSearchParams();
 
     for (const [key, value] of url.searchParams.entries()) {
-        if (!ALLOWED_QUERY_PARAMS.has(key)) {
+        if (!allowAllQueryParams && !ALLOWED_QUERY_PARAMS.has(key)) {
             continue;
         }
 
@@ -68,7 +75,8 @@ function sanitizeUrl(
             const cleanedRedirect = sanitizeUrl(
                 value,
                 "",
-                remainingRedirectDepth - 1
+                remainingRedirectDepth - 1,
+                allowAllQueryParams
             );
 
             if (cleanedRedirect) {

@@ -28,7 +28,10 @@ export function consumeInternalRedirectPath(): string | null {
             return null;
         }
 
-        const cleaned = cleanRedirect(storedPath, { fallback: "" });
+        const cleaned = cleanRedirect(storedPath, {
+            fallback: "",
+            allowAllQueryParams: true
+        });
         if (!cleaned) return null;
 
         return cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
