@@ -105,7 +105,10 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
             await db
                 .update(targetHealthCheck)
                 .set({
-                    hcHealth: healthStatus.status
+                    hcHealth: healthStatus.status as
+                        | "unknown"
+                        | "healthy"
+                        | "unhealthy"
                 })
                 .where(eq(targetHealthCheck.targetId, targetIdNum))
                 .execute();
