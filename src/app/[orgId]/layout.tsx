@@ -86,7 +86,7 @@ export default async function OrgLayout(props: {
         try {
             const getSubscription = cache(() =>
                 internal.get<AxiosResponse<GetOrgSubscriptionResponse>>(
-                    `/org/${orgId}/billing/subscription`,
+                    `/org/${orgId}/billing/subscriptions`,
                     cookie
                 )
             );

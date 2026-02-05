@@ -37,17 +37,6 @@ const getOrgSchema = z.strictObject({
     orgId: z.string()
 });
 
-registry.registerPath({
-    method: "get",
-    path: "/org/{orgId}/billing/subscription",
-    description: "Get an organization",
-    tags: [OpenAPITags.Org],
-    request: {
-        params: getOrgSchema
-    },
-    responses: {}
-});
-
 export async function getOrgSubscriptions(
     req: Request,
     res: Response,
