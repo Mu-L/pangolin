@@ -148,43 +148,6 @@ const unhealthy_targets = sql<number>`SUM(
                     END
                 ) `;
 
-function countResourcesBase() {
-    return db
-        .select({ count: count() })
-        .from(resources)
-        .leftJoin(
-            resourcePassword,
-            eq(resourcePassword.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourcePincode,
-            eq(resourcePincode.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourceHeaderAuth,
-            eq(resourceHeaderAuth.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourceHeaderAuthExtendedCompatibility,
-            eq(
-                resourceHeaderAuthExtendedCompatibility.resourceId,
-                resources.resourceId
-            )
-        )
-        .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
-        .leftJoin(
-            targetHealthCheck,
-            eq(targetHealthCheck.targetId, targets.targetId)
-        )
-        .groupBy(
-            resources.resourceId,
-            resourcePassword.passwordId,
-            resourcePincode.pincodeId,
-            resourceHeaderAuth.headerAuthId,
-            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
-        );
-}
-
 function queryResourcesBase() {
     return db
         .select({
@@ -422,23 +385,20 @@ export async function listResources(
             }
         }
 
-        let baseQuery = queryResourcesBase();
-        let countQuery = countResourcesBase().where(conditions);
-
-        if (aggregateFilters) {
-            // @ts-expect-error idk why this is causing a type error
-            baseQuery = baseQuery.having(aggregateFilters);
-        }
-        if (aggregateFilters) {
-            // @ts-expect-error idk why this is causing a type error
-            countQuery = countQuery.having(aggregateFilters);
-        }
-
-        const rows: JoinedRow[] = await baseQuery
+        const baseQuery = queryResourcesBase()
             .where(conditions)
-            .limit(pageSize)
-            .offset(pageSize * (page - 1))
-            .orderBy(asc(resources.resourceId));
+            .having(aggregateFilters ?? sql`1 = 1`);
+
+        // we need to add `as` so that drizzle filters the result as a subquery
+        const countQuery = db.$count(baseQuery.as("filtered_resources"));
+
+        const [rows, totalCount] = await Promise.all([
+            baseQuery
+                .limit(pageSize)
+                .offset(pageSize * (page - 1))
+                .orderBy(asc(resources.resourceId)),
+            countQuery
+        ]);
 
         const resourceIdList = rows.map((row) => row.resourceId);
         const allResourceTargets =
@@ -494,9 +454,6 @@ export async function listResources(
         }
 
         const resourcesList: ResourceWithTargets[] = Array.from(map.values());
-
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0]?.count ?? 0;
 
         return response<ListResourcesResponse>(res, {
             data: {

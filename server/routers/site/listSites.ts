@@ -226,7 +226,6 @@ export async function listSites(
             parsedQuery.data;
 
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
-        const baseQuery = querySitesBase();
 
         let conditions = and(
             inArray(sites.siteId, accessibleSiteIds),
@@ -245,27 +244,31 @@ export async function listSites(
             conditions = and(conditions, eq(sites.online, online));
         }
 
-        const countQuery = countSitesBase().where(conditions);
+        const baseQuery = querySitesBase().where(conditions);
+
+        // we need to add `as` so that drizzle filters the result as a subquery
+        const countQuery = db.$count(baseQuery.as("filtered_sites"));
 
         const siteListQuery = baseQuery
-            .where(conditions)
             .limit(pageSize)
-            .offset(pageSize * (page - 1));
-
-        if (sort_by) {
-            siteListQuery.orderBy(
-                order === "asc" ? asc(sites[sort_by]) : desc(sites[sort_by])
+            .offset(pageSize * (page - 1))
+            .orderBy(
+                sort_by
+                    ? order === "asc"
+                        ? asc(sites[sort_by])
+                        : desc(sites[sort_by])
+                    : asc(sites.siteId)
             );
-        }
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0].count;
+
+        const [totalCount, rows] = await Promise.all([
+            countQuery,
+            siteListQuery
+        ]);
 
         // Get latest version asynchronously without blocking the response
         const latestNewtVersionPromise = getLatestNewtVersion();
 
-        const sitesWithUpdates: SiteWithUpdateAvailable[] = (
-            await siteListQuery
-        ).map((site) => {
+        const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
             const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
             // Initially set to false, will be updated if version check succeeds
             siteWithUpdate.newtUpdateAvailable = false;
