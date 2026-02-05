@@ -17,6 +17,7 @@ import { privateConfigFilePath1 } from "@server/lib/consts";
 import { z } from "zod";
 import { colorsSchema } from "@server/lib/colorsSchema";
 import { build } from "@server/build";
+import { getEnvOrYaml } from "@server/lib/getEnvOrYaml";
 
 const portSchema = z.number().positive().gt(0).lte(65535);
 
@@ -32,19 +33,29 @@ export const privateConfigSchema = z.object({
         }),
     server: z
         .object({
-            encryption_key_path: z
+            encryption_key: z
                 .string()
                 .optional()
-                .default("./config/encryption.pem")
-                .pipe(z.string().min(8)),
-            resend_api_key: z.string().optional(),
-            reo_client_id: z.string().optional(),
-            fossorial_api_key: z.string().optional()
+                .transform(getEnvOrYaml("SERVER_ENCRYPTION_KEY")),
+            resend_api_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("RESEND_API_KEY")),
+            reo_client_id: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("REO_CLIENT_ID")),
+            fossorial_api: z
+                .string()
+                .optional()
+                .default("https://api.fossorial.io"),
+            fossorial_api_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("FOSSORIAL_API_KEY"))
         })
         .optional()
-        .default({
-            encryption_key_path: "./config/encryption.pem"
-        }),
+        .prefault({}),
     redis: z
         .object({
             host: z.string(),
@@ -157,8 +168,14 @@ export const privateConfigSchema = z.object({
         .optional(),
     stripe: z
         .object({
-            secret_key: z.string(),
-            webhook_secret: z.string(),
+            secret_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("STRIPE_SECRET_KEY")),
+            webhook_secret: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("STRIPE_WEBHOOK_SECRET")),
             s3Bucket: z.string(),
             s3Region: z.string().default("us-east-1"),
             localFilePath: z.string()

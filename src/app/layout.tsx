@@ -23,6 +23,7 @@ import Script from "next/script";
 import { TanstackQueryProvider } from "@app/components/TanstackQueryProvider";
 import { TailwindIndicator } from "@app/components/TailwindIndicator";
 import { ViewportHeightFix } from "@app/components/ViewportHeightFix";
+import StoreInternalRedirect from "@app/components/StoreInternalRedirect";
 
 export const metadata: Metadata = {
     title: `Dashboard - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
@@ -79,6 +80,7 @@ export default async function RootLayout({
     return (
         <html suppressHydrationWarning lang={locale}>
             <body className={`${font.className} h-screen-safe overflow-hidden`}>
+                <StoreInternalRedirect />
                 <TopLoader />
                 {build === "saas" && (
                     <Script

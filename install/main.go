@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
+	"crypto/rand"
+	"encoding/base64"
 	"net"
 	"net/http"
 	"net/url"
@@ -592,17 +593,12 @@ func showSetupTokenInstructions(containerType SupportedContainer, dashboardDomai
 }
 
 func generateRandomSecretKey() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 32
-
-	var seededRand *rand.Rand = rand.New(
-		rand.NewSource(time.Now().UnixNano()))
-
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
+	secret := make([]byte, 32)
+	_, err := rand.Read(secret)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to generate random secret key: %v", err))
 	}
-	return string(b)
+	return base64.StdEncoding.EncodeToString(secret)
 }
 
 func getPublicIP() string {

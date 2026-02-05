@@ -18,6 +18,7 @@ import { build } from "@server/build";
 import OrgPolicyResult from "@app/components/OrgPolicyResult";
 import UserProvider from "@app/providers/UserProvider";
 import { Layout } from "@app/components/Layout";
+import ApplyInternalRedirect from "@app/components/ApplyInternalRedirect";
 
 export default async function OrgLayout(props: {
     children: React.ReactNode;
@@ -70,6 +71,7 @@ export default async function OrgLayout(props: {
         } catch (e) {}
         return (
             <UserProvider user={user}>
+                <ApplyInternalRedirect orgId={orgId} />
                 <Layout orgId={orgId} navItems={[]} orgs={orgs}>
                     <OrgPolicyResult
                         orgId={orgId}
@@ -86,7 +88,7 @@ export default async function OrgLayout(props: {
         try {
             const getSubscription = cache(() =>
                 internal.get<AxiosResponse<GetOrgSubscriptionResponse>>(
-                    `/org/${orgId}/billing/subscription`,
+                    `/org/${orgId}/billing/subscriptions`,
                     cookie
                 )
             );
@@ -104,6 +106,7 @@ export default async function OrgLayout(props: {
             env={env.app.environment}
             sandbox_mode={env.app.sandbox_mode}
         >
+            <ApplyInternalRedirect orgId={orgId} />
             {props.children}
             <SetLastOrgCookie orgId={orgId} />
         </SubscriptionStatusProvider>

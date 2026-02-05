@@ -28,7 +28,6 @@ import {
     TableRow
 } from "@app/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@app/components/ui/tabs";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Loader2, RefreshCw } from "lucide-react";
 import moment from "moment";
 import { useUserContext } from "@app/hooks/useUserContext";
@@ -59,8 +58,6 @@ export default function ViewDevicesDialog({
 
     const [devices, setDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(false);
-    const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
-    const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [activeTab, setActiveTab] = useState<"available" | "archived">("available");
 
     const fetchDevices = async () => {
@@ -108,8 +105,6 @@ export default function ViewDevicesDialog({
                     d.olmId === olmId ? { ...d, archived: true } : d
                 )
             );
-            setIsArchiveModalOpen(false);
-            setSelectedDevice(null);
         } catch (error: any) {
             console.error("Error archiving device:", error);
             toast({
@@ -153,8 +148,6 @@ export default function ViewDevicesDialog({
 
     function reset() {
         setDevices([]);
-        setSelectedDevice(null);
-        setIsArchiveModalOpen(false);
     }
 
     return (
@@ -263,12 +256,7 @@ export default function ViewDevicesDialog({
                                                     <Button
                                                         variant="outline"
                                                         onClick={() => {
-                                                            setSelectedDevice(
-                                                                device
-                                                            );
-                                                                            setIsArchiveModalOpen(
-                                                                true
-                                                            );
+                                                            archiveDevice(device.olmId);
                                                         }}
                                                     >
                                                                         {t(
@@ -361,34 +349,6 @@ export default function ViewDevicesDialog({
                     </CredenzaFooter>
                 </CredenzaContent>
             </Credenza>
-
-            {selectedDevice && (
-                <ConfirmDeleteDialog
-                    open={isArchiveModalOpen}
-                    setOpen={(val) => {
-                        setIsArchiveModalOpen(val);
-                        if (!val) {
-                            setSelectedDevice(null);
-                        }
-                    }}
-                    dialog={
-                        <div className="space-y-2">
-                            <p>
-                                {t("deviceQuestionArchive") ||
-                                    "Are you sure you want to archive this device?"}
-                            </p>
-                            <p>
-                                {t("deviceMessageArchive") ||
-                                    "The device will be archived and removed from your active devices list."}
-                            </p>
-                        </div>
-                    }
-                    buttonText={t("deviceArchiveConfirm") || "Archive Device"}
-                    onConfirm={async () => archiveDevice(selectedDevice.olmId)}
-                    string={selectedDevice.name || selectedDevice.olmId}
-                    title={t("archiveDevice") || "Archive Device"}
-                />
-            )}
         </>
     );
 }
