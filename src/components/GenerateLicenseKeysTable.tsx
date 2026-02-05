@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import GenerateLicenseKeyForm from "./GenerateLicenseKeyForm";
+import NewPricingLicenseForm from "./NewPricingLicenseForm";
 
 type GnerateLicenseKeysTableProps = {
     licenseKeys: GeneratedLicenseKey[];
@@ -198,7 +198,7 @@ export default function GenerateLicenseKeysTable({
                 }}
             />
 
-            <GenerateLicenseKeyForm
+            <NewPricingLicenseForm
                 open={showGenerateForm}
                 setOpen={setShowGenerateForm}
                 orgId={orgId}

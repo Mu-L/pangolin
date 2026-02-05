@@ -2113,6 +2113,32 @@
             }
         }
     },
+    "newPricingLicenseForm": {
+        "title": "Get a license",
+        "description": "Choose a plan and tell us how you plan to use Pangolin.",
+        "chooseTier": "Choose your plan",
+        "viewPricingLink": "See pricing, features, and limits",
+        "tiers": {
+            "starter": {
+                "title": "Starter",
+                "description": "Ideal for small teams and getting started. Includes core features and support."
+            },
+            "scale": {
+                "title": "Scale",
+                "description": "For growing teams and production use. Higher limits and priority support."
+            }
+        },
+        "personalUseOnly": "Personal use only (free license — no checkout)",
+        "buttons": {
+            "continueToCheckout": "Continue to checkout"
+        },
+        "toasts": {
+            "checkoutError": {
+                "title": "Checkout error",
+                "description": "Could not start checkout. Please try again."
+            }
+        }
+    },
     "priority": "Priority",
     "priorityDescription": "Higher priority routes are evaluated first. Priority = 100 means automatic ordering (system decides). Use another number to enforce manual priority.",
     "instanceName": "Instance Name",
