@@ -246,6 +246,7 @@ export async function handleSubscriptionCreated(
                             personalUseOnly: false,
                             users: numUsers,
                             sites: numSites,
+                            modifySubscriptionLink: `${config.getRawConfig().app.dashboard_url}/${customer.orgId}/settings/billing`
                         }),
                         {
                             to: customer.email,
