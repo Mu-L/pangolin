@@ -111,6 +111,9 @@ const listSitesSchema = z.object({
         .catch(undefined)
 });
 
+function countSitesBase() {
+    return db.select({ count: count() }).from(sites);
+}
 function querySitesBase() {
     return db
         .select({
@@ -242,10 +245,7 @@ export async function listSites(
             conditions = and(conditions, eq(sites.online, online));
         }
 
-        const countQuery = db
-            .select({ count: count() })
-            .from(sites)
-            .where(conditions);
+        const countQuery = countSitesBase().where(conditions);
 
         const siteListQuery = baseQuery
             .where(conditions)

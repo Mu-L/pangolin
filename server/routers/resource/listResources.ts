@@ -27,7 +27,8 @@ import {
     ilike,
     asc,
     not,
-    isNull
+    isNull,
+    type SQL
 } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
@@ -63,7 +64,7 @@ const listResourcesSchema = z.object({
         .optional()
         .catch(undefined),
     healthStatus: z
-        .enum(["online", "degraded", "offline", "unknown"])
+        .enum(["no_targets", "healthy", "degraded", "offline", "unknown"])
         .optional()
         .catch(undefined)
 });
@@ -86,13 +87,18 @@ type JoinedRow = {
     domainId: string | null;
     headerAuthId: number | null;
 
-    targetId: number | null;
-    targetIp: string | null;
-    targetPort: number | null;
-    targetEnabled: boolean | null;
+    // total_targets: number;
+    // healthy_targets: number;
+    // unhealthy_targets: number;
+    // unknown_targets: number;
 
-    hcHealth: string | null;
-    hcEnabled: boolean | null;
+    // targetId: number | null;
+    // targetIp: string | null;
+    // targetPort: number | null;
+    // targetEnabled: boolean | null;
+
+    // hcHealth: string | null;
+    // hcEnabled: boolean | null;
 };
 
 // grouped by resource with targets[])
@@ -117,9 +123,67 @@ export type ResourceWithTargets = {
         ip: string;
         port: number;
         enabled: boolean;
-        healthStatus?: "healthy" | "unhealthy" | "unknown";
+        healthStatus: "healthy" | "unhealthy" | "unknown" | null;
     }>;
 };
+
+// Aggregate filters
+const total_targets = count(targets.targetId);
+const healthy_targets = sql<number>`SUM(
+                    CASE
+                    WHEN ${targetHealthCheck.hcHealth} = 'healthy' THEN 1
+                    ELSE 0
+                    END
+                ) `;
+const unknown_targets = sql<number>`SUM(
+                    CASE
+                    WHEN ${targetHealthCheck.hcHealth} = 'unknown' THEN 1
+                    ELSE 0
+                    END
+                ) `;
+const unhealthy_targets = sql<number>`SUM(
+                    CASE
+                    WHEN ${targetHealthCheck.hcHealth} = 'unhealthy' THEN 1
+                    ELSE 0
+                    END
+                ) `;
+
+function countResourcesBase() {
+    return db
+        .select({ count: count() })
+        .from(resources)
+        .leftJoin(
+            resourcePassword,
+            eq(resourcePassword.resourceId, resources.resourceId)
+        )
+        .leftJoin(
+            resourcePincode,
+            eq(resourcePincode.resourceId, resources.resourceId)
+        )
+        .leftJoin(
+            resourceHeaderAuth,
+            eq(resourceHeaderAuth.resourceId, resources.resourceId)
+        )
+        .leftJoin(
+            resourceHeaderAuthExtendedCompatibility,
+            eq(
+                resourceHeaderAuthExtendedCompatibility.resourceId,
+                resources.resourceId
+            )
+        )
+        .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+        .leftJoin(
+            targetHealthCheck,
+            eq(targetHealthCheck.targetId, targets.targetId)
+        )
+        .groupBy(
+            resources.resourceId,
+            resourcePassword.passwordId,
+            resourcePincode.pincodeId,
+            resourceHeaderAuth.headerAuthId,
+            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
+        );
+}
 
 function queryResourcesBase() {
     return db
@@ -140,14 +204,7 @@ function queryResourcesBase() {
             niceId: resources.niceId,
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
-            targetId: targets.targetId,
-            targetIp: targets.ip,
-            targetPort: targets.port,
-            targetEnabled: targets.enabled,
-
-            hcHealth: targetHealthCheck.hcHealth,
-            hcEnabled: targetHealthCheck.hcEnabled
+                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
         })
         .from(resources)
         .leftJoin(
@@ -173,6 +230,13 @@ function queryResourcesBase() {
         .leftJoin(
             targetHealthCheck,
             eq(targetHealthCheck.targetId, targets.targetId)
+        )
+        .groupBy(
+            resources.resourceId,
+            resourcePassword.passwordId,
+            resourcePincode.pincodeId,
+            resourceHeaderAuth.headerAuthId,
+            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
         );
 }
 
@@ -323,51 +387,79 @@ export async function listResources(
             }
         }
 
+        let aggregateFilters: SQL<any> | null | undefined = null;
+
         if (typeof healthStatus !== "undefined") {
             switch (healthStatus) {
-                case "online":
+                case "healthy":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${healthy_targets} = ${total_targets}`
+                    );
                     break;
-                default:
+                case "degraded":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${unhealthy_targets} > 0`
+                    );
+                    break;
+                case "no_targets":
+                    aggregateFilters = sql`${total_targets} = 0`;
+                    break;
+                case "offline":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${healthy_targets} = 0`,
+                        sql`${unhealthy_targets} = ${total_targets}`
+                    );
+                    break;
+                case "unknown":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${unknown_targets} = ${total_targets}`
+                    );
                     break;
             }
         }
 
-        const countQuery: any = db
-            .select({ count: count() })
-            .from(resources)
-            .leftJoin(
-                resourcePassword,
-                eq(resourcePassword.resourceId, resources.resourceId)
-            )
-            .leftJoin(
-                resourcePincode,
-                eq(resourcePincode.resourceId, resources.resourceId)
-            )
-            .leftJoin(
-                resourceHeaderAuth,
-                eq(resourceHeaderAuth.resourceId, resources.resourceId)
-            )
-            .leftJoin(
-                resourceHeaderAuthExtendedCompatibility,
-                eq(
-                    resourceHeaderAuthExtendedCompatibility.resourceId,
-                    resources.resourceId
-                )
-            )
-            .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
-            .leftJoin(
-                targetHealthCheck,
-                eq(targetHealthCheck.targetId, targets.targetId)
-            )
-            .where(conditions);
+        let baseQuery = queryResourcesBase();
+        let countQuery = countResourcesBase().where(conditions);
 
-        const baseQuery = queryResourcesBase();
+        if (aggregateFilters) {
+            // @ts-expect-error idk why this is causing a type error
+            baseQuery = baseQuery.having(aggregateFilters);
+        }
+        if (aggregateFilters) {
+            // @ts-expect-error idk why this is causing a type error
+            countQuery = countQuery.having(aggregateFilters);
+        }
 
         const rows: JoinedRow[] = await baseQuery
             .where(conditions)
             .limit(pageSize)
             .offset(pageSize * (page - 1))
             .orderBy(asc(resources.resourceId));
+
+        const resourceIdList = rows.map((row) => row.resourceId);
+        const allResourceTargets =
+            resourceIdList.length === 0
+                ? []
+                : await db
+                      .select({
+                          targetId: targets.targetId,
+                          resourceId: targets.resourceId,
+                          ip: targets.ip,
+                          port: targets.port,
+                          enabled: targets.enabled,
+                          healthStatus: targetHealthCheck.hcHealth,
+                          hcEnabled: targetHealthCheck.hcEnabled
+                      })
+                      .from(targets)
+                      .where(sql`${targets.resourceId} in ${resourceIdList}`)
+                      .leftJoin(
+                          targetHealthCheck,
+                          eq(targetHealthCheck.targetId, targets.targetId)
+                      );
 
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
@@ -396,30 +488,9 @@ export async function listResources(
                 map.set(row.resourceId, entry);
             }
 
-            if (
-                row.targetId != null &&
-                row.targetIp &&
-                row.targetPort != null &&
-                row.targetEnabled != null
-            ) {
-                let healthStatus: "healthy" | "unhealthy" | "unknown" =
-                    "unknown";
-
-                if (row.hcEnabled && row.hcHealth) {
-                    healthStatus = row.hcHealth as
-                        | "healthy"
-                        | "unhealthy"
-                        | "unknown";
-                }
-
-                entry.targets.push({
-                    targetId: row.targetId,
-                    ip: row.targetIp,
-                    port: row.targetPort,
-                    enabled: row.targetEnabled,
-                    healthStatus: healthStatus
-                });
-            }
+            entry.targets = allResourceTargets.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
         }
 
         const resourcesList: ResourceWithTargets[] = Array.from(map.values());

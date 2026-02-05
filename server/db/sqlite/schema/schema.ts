@@ -213,7 +213,9 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     }).default(true),
     hcMethod: text("hcMethod").default("GET"),
     hcStatus: integer("hcStatus"), // http code
-    hcHealth: text("hcHealth").default("unknown"), // "unknown", "healthy", "unhealthy"
+    hcHealth: text("hcHealth")
+        .$type<"unknown" | "healthy" | "unhealthy">()
+        .default("unknown"), // "unknown", "healthy", "unhealthy"
     hcTlsServerName: text("hcTlsServerName")
 });
 

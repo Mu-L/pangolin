@@ -45,7 +45,7 @@ export type TargetHealth = {
     ip: string;
     port: number;
     enabled: boolean;
-    healthStatus?: "healthy" | "unhealthy" | "unknown";
+    healthStatus: "healthy" | "unhealthy" | "unknown" | null;
 };
 
 export type ResourceRow = {
@@ -347,7 +347,33 @@ export default function ProxyResourcesTable({
             id: "status",
             accessorKey: "status",
             friendlyName: t("status"),
-            header: () => <span className="p-3">{t("status")}</span>,
+            header: () => (
+                <ColumnFilterButton
+                    options={[
+                        { value: "healthy", label: t("resourcesTableHealthy") },
+                        {
+                            value: "degraded",
+                            label: t("resourcesTableDegraded")
+                        },
+                        { value: "offline", label: t("resourcesTableOffline") },
+                        {
+                            value: "no_targets",
+                            label: t("resourcesTableNoTargets")
+                        },
+                        { value: "unknown", label: t("resourcesTableUnknown") }
+                    ]}
+                    selectedValue={
+                        searchParams.get("healthStatus") ?? undefined
+                    }
+                    onValueChange={(value) =>
+                        handleFilterChange("healthStatus", value)
+                    }
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("status")}
+                    className="p-3"
+                />
+            ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return <TargetStatusCell targets={resourceRow.targets} />;
@@ -557,6 +583,10 @@ export default function ProxyResourcesTable({
             searchParams
         });
     }, 300);
+
+    console.log({
+        rowCount
+    });
 
     return (
         <>
