@@ -33,8 +33,11 @@ export function SubscriptionStatusProvider({
     };
 
     const isActive = () => {
-        if (subscriptionStatus?.subscription?.status === "active") {
-            return true;
+        if (subscriptionStatus?.subscriptions) {
+            // Check if any subscription is active
+            return subscriptionStatus.subscriptions.some(
+                (sub) => sub.subscription?.status === "active"
+            );
         }
         return false;
     };
@@ -42,15 +45,20 @@ export function SubscriptionStatusProvider({
     const getTier = () => {
         const tierPriceSet = getTierPriceSet(env, sandbox_mode);
 
-        if (subscriptionStatus?.items && subscriptionStatus.items.length > 0) {
-            // Iterate through tiers in order (earlier keys are higher tiers)
-            for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
-                // Check if any subscription item matches this tier's price ID
-                const matchingItem = subscriptionStatus.items.find(
-                    (item) => item.priceId === priceId
-                );
-                if (matchingItem) {
-                    return tierId;
+        if (subscriptionStatus?.subscriptions) {
+            // Iterate through all subscriptions
+            for (const { subscription, items } of subscriptionStatus.subscriptions) {
+                if (items && items.length > 0) {
+                    // Iterate through tiers in order (earlier keys are higher tiers)
+                    for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
+                        // Check if any subscription item matches this tier's price ID
+                        const matchingItem = items.find(
+                            (item) => item.priceId === priceId
+                        );
+                        if (matchingItem) {
+                            return tierId;
+                        }
+                    }
                 }
             }
         }

@@ -26,6 +26,8 @@ import logger from "@server/logger";
 import { getFeatureIdByMetricId } from "@server/lib/billing/features";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
+import { getSubType } from "./getSubType";
+import privateConfig from "#private/lib/config";
 
 export async function handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
@@ -56,7 +58,7 @@ export async function handleSubscriptionUpdated(
         }
 
         // get the customer
-        const [existingCustomer] = await db
+        const [customer] = await db
             .select()
             .from(customers)
             .where(eq(customers.customerId, subscription.customer as string))
@@ -73,11 +75,6 @@ export async function handleSubscriptionUpdated(
                 billingCycleAnchor: subscription.billing_cycle_anchor
             })
             .where(eq(subscriptions.subscriptionId, subscription.id));
-
-        await handleSubscriptionLifesycle(
-            existingCustomer.orgId,
-            subscription.status
-        );
 
         // Upsert subscription items
         if (Array.isArray(fullSubscription.items?.data)) {
@@ -141,20 +138,20 @@ export async function handleSubscriptionUpdated(
                             // This item has cycled
                             const meterId = item.plan.meter;
                             if (!meterId) {
-                                logger.warn(
+                                logger.debug(
                                     `No meterId found for subscription item ${item.id}. Skipping usage reset.`
                                 );
                                 continue;
                             }
                             const featureId = getFeatureIdByMetricId(meterId);
                             if (!featureId) {
-                                logger.warn(
+                                logger.debug(
                                     `No featureId found for meterId ${meterId}. Skipping usage reset.`
                                 );
                                 continue;
                             }
 
-                            const orgId = existingCustomer.orgId;
+                            const orgId = customer.orgId;
 
                             if (!orgId) {
                                 logger.warn(
@@ -236,6 +233,45 @@ export async function handleSubscriptionUpdated(
                 }
             }
             // --- end usage update ---
+
+            const type = getSubType(fullSubscription);
+            if (type === "saas") {
+                logger.debug(
+                    `Handling SAAS subscription lifecycle for org ${customer.orgId}`
+                );
+                // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
+                await handleSubscriptionLifesycle(
+                    customer.orgId,
+                    subscription.status
+                );
+            } else {
+                if (subscription.status === "canceled" || subscription.status == "unpaid" || subscription.status == "incomplete_expired") {
+                    try {
+                        // WARNING:
+                        // this invalidates ALL OF THE ENTERPRISE LICENSES for this orgId
+                        await fetch(
+                            `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    "api-key":
+                                        privateConfig.getRawPrivateConfig()
+                                            .server.fossorial_api_key!,
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    orgId: customer.orgId
+                                })
+                            }
+                        );
+                    } catch (error) {
+                        logger.error(
+                            `Error notifying Fossorial API of license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}:`,
+                            error
+                        );
+                    }
+                }
+            }
         }
     } catch (error) {
         logger.error(

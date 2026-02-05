@@ -24,11 +24,22 @@ import { eq, and } from "drizzle-orm";
 import logger from "@server/logger";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
 import { AudienceIds, moveEmailToAudience } from "#private/lib/resend";
+import { getSubType } from "./getSubType";
+import stripe from "#private/lib/stripe";
+import privateConfig from "#private/lib/config";
 
 export async function handleSubscriptionDeleted(
     subscription: Stripe.Subscription
 ): Promise<void> {
     try {
+        // Fetch the subscription from Stripe with expanded price.tiers
+        const fullSubscription = await stripe!.subscriptions.retrieve(
+            subscription.id,
+            {
+                expand: ["items.data.price.tiers"]
+            }
+        );
+
         const [existingSubscription] = await db
             .select()
             .from(subscriptions)
@@ -64,24 +75,62 @@ export async function handleSubscriptionDeleted(
             return;
         }
 
-        await handleSubscriptionLifesycle(customer.orgId, subscription.status);
+        const type = getSubType(fullSubscription);
+        if (type === "saas") {
+            logger.debug(
+                `Handling SaaS subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
+            );
 
-        const [orgUserRes] = await db
-            .select()
-            .from(userOrgs)
-            .where(
-                and(
-                    eq(userOrgs.orgId, customer.orgId),
-                    eq(userOrgs.isOwner, true)
+            await handleSubscriptionLifesycle(
+                customer.orgId,
+                subscription.status
+            );
+
+            const [orgUserRes] = await db
+                .select()
+                .from(userOrgs)
+                .where(
+                    and(
+                        eq(userOrgs.orgId, customer.orgId),
+                        eq(userOrgs.isOwner, true)
+                    )
                 )
-            )
-            .innerJoin(users, eq(userOrgs.userId, users.userId));
+                .innerJoin(users, eq(userOrgs.userId, users.userId));
 
-        if (orgUserRes) {
-            const email = orgUserRes.user.email;
+            if (orgUserRes) {
+                const email = orgUserRes.user.email;
 
-            if (email) {
-                moveEmailToAudience(email, AudienceIds.Churned);
+                if (email) {
+                    moveEmailToAudience(email, AudienceIds.Churned);
+                }
+            }
+        } else if (type === "license") {
+            logger.debug(
+                `Handling license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
+            );
+            try {
+                // WARNING:
+                // this invalidates ALL OF THE ENTERPRISE LICENSES for this orgId
+                await fetch(
+                    `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/invalidate`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "api-key":
+                                privateConfig.getRawPrivateConfig().server
+                                    .fossorial_api_key!,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            orgId: customer.orgId,
+                        })
+                    }
+                );
+            } catch (error) {
+                logger.error(
+                    `Error notifying Fossorial API of license subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}:`,
+                    error
+                );
             }
         }
     } catch (error) {

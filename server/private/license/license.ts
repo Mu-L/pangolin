@@ -11,12 +11,12 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, HostMeta } from "@server/db";
+import { db, HostMeta, sites, users } from "@server/db";
 import { hostMeta, licenseKey } from "@server/db";
 import logger from "@server/logger";
 import NodeCache from "node-cache";
 import { validateJWT } from "./licenseJwt";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import moment from "moment";
 import { encrypt, decrypt } from "@server/lib/crypto";
 import {
@@ -54,6 +54,7 @@ type TokenPayload = {
     type: LicenseKeyType;
     tier: LicenseKeyTier;
     quantity: number;
+    quantity_2: number;
     terminateAt: string; // ISO
     iat: number; // Issued at
 };
@@ -140,10 +141,20 @@ LQIDAQAB
             };
         }
 
+        // Count used sites and users for license comparison
+        const [siteCountRes] = await db
+            .select({ value: count() })
+            .from(sites);
+        const [userCountRes] = await db
+            .select({ value: count() })
+            .from(users);
+
         const status: LicenseStatus = {
             hostId: this.hostMeta.hostMetaId,
             isHostLicensed: true,
-            isLicenseValid: false
+            isLicenseValid: false,
+            usedSites: siteCountRes?.value ?? 0,
+            usedUsers: userCountRes?.value ?? 0
         };
 
         this.checkInProgress = true;
@@ -151,6 +162,8 @@ LQIDAQAB
         try {
             if (!this.doRecheck && this.statusCache.has(this.statusKey)) {
                 const res = this.statusCache.get("status") as LicenseStatus;
+                res.usedSites = status.usedSites;
+                res.usedUsers = status.usedUsers;
                 return res;
             }
             logger.debug("Checking license status...");
@@ -193,7 +206,9 @@ LQIDAQAB
                         type: payload.type,
                         tier: payload.tier,
                         iat: new Date(payload.iat * 1000),
-                        terminateAt: new Date(payload.terminateAt)
+                        terminateAt: new Date(payload.terminateAt),
+                        quantity: payload.quantity,
+                        quantity_2: payload.quantity_2
                     });
 
                     if (payload.type === "host") {
@@ -292,6 +307,8 @@ LQIDAQAB
                     cached.tier = payload.tier;
                     cached.iat = new Date(payload.iat * 1000);
                     cached.terminateAt = new Date(payload.terminateAt);
+                    cached.quantity = payload.quantity;
+                    cached.quantity_2 = payload.quantity_2;
 
                     // Encrypt the updated token before storing
                     const encryptedKey = encrypt(
@@ -317,7 +334,7 @@ LQIDAQAB
                 }
             }
 
-            // Compute host status
+            // Compute host status: quantity = users, quantity_2 = sites
             for (const key of keys) {
                 const cached = newCache.get(key.licenseKey)!;
 
@@ -329,6 +346,28 @@ LQIDAQAB
                 if (!cached.valid) {
                     continue;
                 }
+
+                // Only consider quantity if defined and >= 0 (quantity = users, quantity_2 = sites)
+                if (
+                    cached.quantity_2 !== undefined &&
+                    cached.quantity_2 >= 0
+                ) {
+                    status.maxSites =
+                        (status.maxSites ?? 0) + cached.quantity_2;
+                }
+                if (cached.quantity !== undefined && cached.quantity >= 0) {
+                    status.maxUsers = (status.maxUsers ?? 0) + cached.quantity;
+                }
+            }
+
+            // Invalidate license if over user or site limits
+            if (
+                (status.maxSites !== undefined &&
+                    (status.usedSites ?? 0) > status.maxSites) ||
+                (status.maxUsers !== undefined &&
+                    (status.usedUsers ?? 0) > status.maxUsers)
+            ) {
+                status.isLicenseValid = false;
             }
 
             // Invalidate old cache and set new cache
@@ -502,7 +541,7 @@ LQIDAQAB
                     // Calculate exponential backoff delay
                     const retryDelay = Math.floor(
                         initialRetryDelay *
-                            Math.pow(exponentialFactor, attempt - 1)
+                        Math.pow(exponentialFactor, attempt - 1)
                     );
 
                     logger.debug(

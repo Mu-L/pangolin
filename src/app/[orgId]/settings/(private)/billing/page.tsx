@@ -43,15 +43,18 @@ import Link from "next/link";
 
 export default function GeneralPage() {
     const { org } = useOrgContext();
-    const api = createApiClient(useEnvContext());
+    const envContext = useEnvContext();
+    const api = createApiClient(envContext);
     const t = useTranslations();
 
-    // Subscription state
-    const [subscription, setSubscription] =
-        useState<GetOrgSubscriptionResponse["subscription"]>(null);
-    const [subscriptionItems, setSubscriptionItems] = useState<
-        GetOrgSubscriptionResponse["items"]
+    // Subscription state - now handling multiple subscriptions
+    const [allSubscriptions, setAllSubscriptions] = useState<
+        GetOrgSubscriptionResponse["subscriptions"]
     >([]);
+    const [tierSubscription, setTierSubscription] =
+        useState<GetOrgSubscriptionResponse["subscriptions"][0] | null>(null);
+    const [licenseSubscription, setLicenseSubscription] =
+        useState<GetOrgSubscriptionResponse["subscriptions"][0] | null>(null);
     const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
     // Example usage data (replace with real usage data if available)
@@ -68,12 +71,41 @@ export default function GeneralPage() {
             try {
                 const res = await api.get<
                     AxiosResponse<GetOrgSubscriptionResponse>
-                >(`/org/${org.org.orgId}/billing/subscription`);
-                const { subscription, items } = res.data.data;
-                setSubscription(subscription);
-                setSubscriptionItems(items);
+                >(`/org/${org.org.orgId}/billing/subscriptions`);
+                const { subscriptions } = res.data.data;
+                setAllSubscriptions(subscriptions);
+
+                // Import tier and license price sets
+                const { getTierPriceSet } = await import("@server/lib/billing/tiers");
+                const { getLicensePriceSet } = await import("@server/lib/billing/licenses");
+
+                const tierPriceSet = getTierPriceSet(
+                    envContext.env.app.environment,
+                    envContext.env.app.sandbox_mode
+                );
+                const licensePriceSet = getLicensePriceSet(
+                    envContext.env.app.environment,
+                    envContext.env.app.sandbox_mode
+                );
+
+                // Find tier subscription (subscription with items matching tier prices)
+                const tierSub = subscriptions.find(({ items }) =>
+                    items.some((item) =>
+                        item.priceId && Object.values(tierPriceSet).includes(item.priceId)
+                    )
+                );
+                setTierSubscription(tierSub || null);
+
+                // Find license subscription (subscription with items matching license prices)
+                const licenseSub = subscriptions.find(({ items }) =>
+                    items.some((item) =>
+                        item.priceId && Object.values(licensePriceSet).includes(item.priceId)
+                    )
+                );
+                setLicenseSubscription(licenseSub || null);
+
                 setHasSubscription(
-                    !!subscription && subscription.status === "active"
+                    !!tierSub?.subscription && tierSub.subscription.status === "active"
                 );
             } catch (error) {
                 toast({
@@ -121,7 +153,7 @@ export default function GeneralPage() {
         setIsLoading(true);
         try {
             const response = await api.post<AxiosResponse<string>>(
-                `/org/${org.org.orgId}/billing/create-checkout-session`,
+                `/org/${org.org.orgId}/billing/create-checkout-session-saas`,
                 {}
             );
             console.log("Checkout session response:", response.data);
@@ -302,6 +334,10 @@ export default function GeneralPage() {
         return { usage: usage ?? 0, item, limit };
     }
 
+    // Get tier subscription items
+    const tierSubscriptionItems = tierSubscription?.items || [];
+    const tierSubscriptionData = tierSubscription?.subscription || null;
+
     // Helper to check if usage exceeds limit
     function isOverLimit(usage: any, limit: any, usageType: any) {
         if (!limit || !usage) return false;
@@ -388,15 +424,15 @@ export default function GeneralPage() {
             <div className="flex items-center justify-between mb-6">
                 <Badge
                     variant={
-                        subscription?.status === "active" ? "green" : "outline"
+                        tierSubscriptionData?.status === "active" ? "green" : "outline"
                     }
                 >
-                    {subscription?.status === "active" && (
+                    {tierSubscriptionData?.status === "active" && (
                         <CheckCircle className="h-3 w-3 mr-1" />
                     )}
-                    {subscription
-                        ? subscription.status.charAt(0).toUpperCase() +
-                          subscription.status.slice(1)
+                    {tierSubscriptionData
+                        ? tierSubscriptionData.status.charAt(0).toUpperCase() +
+                          tierSubscriptionData.status.slice(1)
                         : t("billingFreeTier")}
                 </Badge>
                 <Link
@@ -413,7 +449,7 @@ export default function GeneralPage() {
             {usageTypes.some((type) => {
                 const { usage, limit } = getUsageItemAndLimit(
                     usageData,
-                    subscriptionItems,
+                    tierSubscriptionItems,
                     limitsData,
                     type.id
                 );
@@ -441,7 +477,7 @@ export default function GeneralPage() {
                         {usageTypes.map((type) => {
                             const { usage, limit } = getUsageItemAndLimit(
                                 usageData,
-                                subscriptionItems,
+                                tierSubscriptionItems,
                                 limitsData,
                                 type.id
                             );
@@ -530,7 +566,7 @@ export default function GeneralPage() {
                             {usageTypes.map((type) => {
                                 const { item, limit } = getUsageItemAndLimit(
                                     usageData,
-                                    subscriptionItems,
+                                    tierSubscriptionItems,
                                     limitsData,
                                     type.id
                                 );
@@ -614,7 +650,7 @@ export default function GeneralPage() {
                                     const { usage, item } =
                                         getUsageItemAndLimit(
                                             usageData,
-                                            subscriptionItems,
+                                            tierSubscriptionItems,
                                             limitsData,
                                             type.id
                                         );
@@ -636,7 +672,7 @@ export default function GeneralPage() {
                                     );
                                 })}
                                 {/* Show recurring charges (items with unitAmount but no tiers/meterId) */}
-                                {subscriptionItems
+                                {tierSubscriptionItems
                                     .filter(
                                         (item) =>
                                             item.unitAmount &&
@@ -672,7 +708,7 @@ export default function GeneralPage() {
                                                 const { usage, item } =
                                                     getUsageItemAndLimit(
                                                         usageData,
-                                                        subscriptionItems,
+                                                        tierSubscriptionItems,
                                                         limitsData,
                                                         type.id
                                                     );
@@ -687,7 +723,7 @@ export default function GeneralPage() {
                                                 return sum + cost;
                                             }, 0) +
                                             // Add recurring charges
-                                            subscriptionItems
+                                            tierSubscriptionItems
                                                 .filter(
                                                     (item) =>
                                                         item.unitAmount &&
@@ -746,6 +782,56 @@ export default function GeneralPage() {
                                 {t("billingStartSubscription")}
                             </Button>
                         </div>
+                    </SettingsSectionBody>
+                </SettingsSection>
+            )}
+
+            {/* License Keys Section */}
+            {licenseSubscription && (
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("billingLicenseKeys") || "License Keys"}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            {t("billingLicenseKeysDescription") || "Manage your license key subscriptions"}
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+                    <SettingsSectionBody>
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                                <CreditCard className="h-5 w-5 text-primary" />
+                                <span className="font-semibold">
+                                    {t("billingLicenseSubscription") || "License Subscription"}
+                                </span>
+                            </div>
+                            <Badge
+                                variant={
+                                    licenseSubscription.subscription?.status === "active"
+                                        ? "green"
+                                        : "outline"
+                                }
+                            >
+                                {licenseSubscription.subscription?.status === "active" && (
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                )}
+                                {licenseSubscription.subscription?.status
+                                    ? licenseSubscription.subscription.status
+                                          .charAt(0)
+                                          .toUpperCase() +
+                                      licenseSubscription.subscription.status.slice(1)
+                                    : t("billingInactive") || "Inactive"}
+                            </Badge>
+                        </div>
+                        <SettingsSectionFooter>
+                            <Button
+                                variant="secondary"
+                                onClick={() => handleModifySubscription()}
+                                disabled={isLoading}
+                            >
+                                {t("billingModifyLicenses") || "Modify License Subscription"}
+                            </Button>
+                        </SettingsSectionFooter>
                     </SettingsSectionBody>
                 </SettingsSection>
             )}
