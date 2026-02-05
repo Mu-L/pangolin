@@ -2130,16 +2130,16 @@
         "tiers": {
             "starter": {
                 "title": "Starter",
-                "description": "Ideal for small teams and getting started. Includes core features and support."
+                "description": "Enterprise features, 25 users, 25 sites, and community support."
             },
             "scale": {
                 "title": "Scale",
-                "description": "For growing teams and production use. Higher limits and priority support."
+                "description": "Enterprise features, 50 users, 50 sites, and priority support."
             }
         },
         "personalUseOnly": "Personal use only (free license — no checkout)",
         "buttons": {
-            "continueToCheckout": "Continue to checkout"
+            "continueToCheckout": "Continue to Checkout"
         },
         "toasts": {
             "checkoutError": {
