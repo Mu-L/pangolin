@@ -159,11 +159,11 @@ if (build === "saas") {
     );
 
     authenticated.post(
-        "/org/:orgId/billing/create-checkout-session",
+        "/org/:orgId/billing/create-checkout-session-saas",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),
-        billing.createCheckoutSession
+        billing.createCheckoutSessionSAAS
     );
 
     authenticated.post(
@@ -175,10 +175,10 @@ if (build === "saas") {
     );
 
     authenticated.get(
-        "/org/:orgId/billing/subscription",
+        "/org/:orgId/billing/subscriptions",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
-        billing.getOrgSubscription
+        billing.getOrgSubscriptions
     );
 
     authenticated.get(
@@ -198,6 +198,14 @@ if (build === "saas") {
         "/org/:orgId/license",
         verifyOrgAccess,
         generateLicense.generateNewLicense
+    );
+
+    authenticated.put(
+        "/org/:orgId/license/enterprise",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        logActionAudit(ActionsEnum.billing),
+        generateLicense.generateNewEnterpriseLicense
     );
 
     authenticated.post(

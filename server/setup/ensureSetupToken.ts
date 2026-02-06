@@ -64,16 +64,20 @@ export async function ensureSetupToken() {
                 );
             }
 
-            if (existingToken?.token !== envSetupToken) {
-                console.warn(
-                    "Overwriting existing token in DB since PANGOLIN_SETUP_TOKEN is set"
-                );
+            if (existingToken) {
+                // Token exists in DB - update it if different
+                if (existingToken.token !== envSetupToken) {
+                    console.warn(
+                        "Overwriting existing token in DB since PANGOLIN_SETUP_TOKEN is set"
+                    );
 
-                await db
-                    .update(setupTokens)
-                    .set({ token: envSetupToken })
-                    .where(eq(setupTokens.tokenId, existingToken.tokenId));
+                    await db
+                        .update(setupTokens)
+                        .set({ token: envSetupToken })
+                        .where(eq(setupTokens.tokenId, existingToken.tokenId));
+                }
             } else {
+                // No existing token - insert new one
                 const tokenId = generateId(15);
 
                 await db.insert(setupTokens).values({

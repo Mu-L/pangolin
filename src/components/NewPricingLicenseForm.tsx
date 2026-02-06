@@ -15,7 +15,7 @@ import { toast } from "@app/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosResponse } from "axios";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import CopyTextBox from "@app/components/CopyTextBox";
 import {
@@ -36,8 +36,13 @@ import { useTranslations } from "next-intl";
 import React from "react";
 import { StrategySelect, StrategyOption } from "./StrategySelect";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { InfoIcon, Check } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { useUserContext } from "@app/hooks/useUserContext";
+
+const TIER_TO_LICENSE_ID = {
+    starter: "small_license",
+    scale: "big_license"
+} as const;
 
 type FormProps = {
     open: boolean;
@@ -46,7 +51,7 @@ type FormProps = {
     onGenerated?: () => void;
 };
 
-export default function GenerateLicenseKeyForm({
+export default function NewPricingLicenseForm({
     open,
     setOpen,
     orgId,
@@ -55,13 +60,15 @@ export default function GenerateLicenseKeyForm({
     const t = useTranslations();
     const { env } = useEnvContext();
     const api = createApiClient({ env });
-
     const { user } = useUserContext();
 
     const [loading, setLoading] = useState(false);
     const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+    const [personalUseOnly, setPersonalUseOnly] = useState(false);
+    const [selectedTier, setSelectedTier] = useState<"starter" | "scale">(
+        "starter"
+    );
 
-    // Personal form schema
     const personalFormSchema = z.object({
         email: z.email(),
         firstName: z.string().min(1),
@@ -73,20 +80,13 @@ export default function GenerateLicenseKeyForm({
         complianceConfirmed: z.boolean().refine((val) => val === true)
     });
 
-    // Business form schema
     const businessFormSchema = z.object({
         email: z.email(),
         firstName: z.string().min(1),
         lastName: z.string().min(1),
-        jobTitle: z.string().min(1),
         primaryUse: z.string().min(1),
         industry: z.string().min(1),
-        prospectiveUsers: z.coerce.number<number>().optional(),
-        prospectiveSites: z.coerce.number<number>().optional(),
         companyName: z.string().min(1),
-        countryOfResidence: z.string().min(1),
-        stateProvinceRegion: z.string().min(1),
-        postalZipCode: z.string().min(1),
         companyWebsite: z.string().optional(),
         companyPhoneNumber: z.string().optional(),
         agreedToTerms: z.boolean().refine((val) => val === true),
@@ -96,13 +96,8 @@ export default function GenerateLicenseKeyForm({
     type PersonalFormData = z.infer<typeof personalFormSchema>;
     type BusinessFormData = z.infer<typeof businessFormSchema>;
 
-    const [useCaseType, setUseCaseType] = useState<string | undefined>(
-        undefined
-    );
-
-    // Personal form
     const personalForm = useForm<PersonalFormData>({
-        resolver: zodResolver(personalFormSchema),
+        resolver: zodResolver(personalFormSchema) as Resolver<PersonalFormData>,
         defaultValues: {
             email: user?.email || "",
             firstName: "",
@@ -115,22 +110,15 @@ export default function GenerateLicenseKeyForm({
         }
     });
 
-    // Business form
     const businessForm = useForm<BusinessFormData>({
-        resolver: zodResolver(businessFormSchema),
+        resolver: zodResolver(businessFormSchema) as Resolver<BusinessFormData>,
         defaultValues: {
             email: user?.email || "",
             firstName: "",
             lastName: "",
-            jobTitle: "",
             primaryUse: "",
             industry: "",
-            prospectiveUsers: undefined,
-            prospectiveSites: undefined,
             companyName: "",
-            countryOfResidence: "",
-            stateProvinceRegion: "",
-            postalZipCode: "",
             companyWebsite: "",
             companyPhoneNumber: "",
             agreedToTerms: false,
@@ -138,11 +126,12 @@ export default function GenerateLicenseKeyForm({
         }
     });
 
-    // Reset form when dialog opens
     React.useEffect(() => {
         if (open) {
             resetForm();
             setGeneratedKey(null);
+            setPersonalUseOnly(false);
+            setSelectedTier("starter");
         }
     }, [open]);
 
@@ -157,20 +146,13 @@ export default function GenerateLicenseKeyForm({
             agreedToTerms: false,
             complianceConfirmed: false
         });
-
         businessForm.reset({
             email: user?.email || "",
             firstName: "",
             lastName: "",
-            jobTitle: "",
             primaryUse: "",
             industry: "",
-            prospectiveUsers: undefined,
-            prospectiveSites: undefined,
             companyName: "",
-            countryOfResidence: "",
-            stateProvinceRegion: "",
-            postalZipCode: "",
             companyWebsite: "",
             companyPhoneNumber: "",
             agreedToTerms: false,
@@ -178,83 +160,30 @@ export default function GenerateLicenseKeyForm({
         });
     }
 
-    const useCaseOptions: StrategyOption<"personal" | "business">[] = [
+    const tierOptions: StrategyOption<"starter" | "scale">[] = [
         {
-            id: "personal",
-            title: t("generateLicenseKeyForm.useCaseOptions.personal.title"),
-            description: (
-                <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground mb-2">
-                        {t(
-                            "generateLicenseKeyForm.useCaseOptions.personal.description"
-                        )}
-                    </p>
-                    <ul className="space-y-2">
-                        <li className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-muted-foreground break-words">
-                                Home-lab enthusiasts and self-hosting hobbyists
-                            </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-muted-foreground break-words">
-                                Personal projects, learning, and experimentation
-                            </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-muted-foreground break-words">
-                                Individual developers and tech enthusiasts
-                            </span>
-                        </li>
-                    </ul>
-                </div>
-            )
+            id: "starter",
+            title: t("newPricingLicenseForm.tiers.starter.title"),
+            description: t("newPricingLicenseForm.tiers.starter.description")
         },
         {
-            id: "business",
-            title: t("generateLicenseKeyForm.useCaseOptions.business.title"),
-            description: (
-                <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground mb-2">
-                        {t(
-                            "generateLicenseKeyForm.useCaseOptions.business.description"
-                        )}
-                    </p>
-                    <ul className="space-y-2">
-                        <li className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-muted-foreground break-words">
-                                Companies, startups, and organizations
-                            </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-muted-foreground break-words">
-                                Professional services and client work
-                            </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-muted-foreground break-words">
-                                Revenue-generating or commercial use cases
-                            </span>
-                        </li>
-                    </ul>
-                </div>
-            )
+            id: "scale",
+            title: t("newPricingLicenseForm.tiers.scale.title"),
+            description: t("newPricingLicenseForm.tiers.scale.description")
         }
     ];
 
-    const submitLicenseRequest = async (payload: any) => {
+    const submitLicenseRequest = async (
+        payload: Record<string, unknown>
+    ): Promise<void> => {
         setLoading(true);
         try {
             // Check if this is a business/enterprise license request
-            if (payload.useCaseType === "business") {
-                const response = await api.put<
-                    AxiosResponse<string>
-                    >(`/org/${orgId}/license/enterprise`, { ...payload, tier: "big_license" } );
+            if (!personalUseOnly) {
+                const response = await api.put<AxiosResponse<string>>(
+                    `/org/${orgId}/license/enterprise`,
+                    { ...payload, tier: TIER_TO_LICENSE_ID[selectedTier] }
+                );
 
                 console.log("Checkout session response:", response.data);
                 const checkoutUrl = response.data.data;
@@ -301,15 +230,13 @@ export default function GenerateLicenseKeyForm({
     };
 
     const onSubmitPersonal = async (values: PersonalFormData) => {
-        const payload = {
+        await submitLicenseRequest({
             email: values.email,
             useCaseType: "personal",
             personal: {
                 firstName: values.firstName,
                 lastName: values.lastName,
-                aboutYou: {
-                    primaryUse: values.primaryUse
-                },
+                aboutYou: { primaryUse: values.primaryUse },
                 personalInfo: {
                     country: values.country,
                     phoneNumber: values.phoneNumber || ""
@@ -321,9 +248,7 @@ export default function GenerateLicenseKeyForm({
                 acknowledgedPrivacyPolicy: values.agreedToTerms,
                 complianceConfirmed: values.complianceConfirmed
             }
-        };
-
-        await submitLicenseRequest(payload);
+        });
     };
 
     const onSubmitBusiness = async (values: BusinessFormData) => {
@@ -334,18 +259,18 @@ export default function GenerateLicenseKeyForm({
             business: {
                 firstName: values.firstName,
                 lastName: values.lastName,
-                jobTitle: values.jobTitle,
+                jobTitle: "N/A",
                 aboutYou: {
                     primaryUse: values.primaryUse,
                     industry: values.industry,
-                    prospectiveUsers: values.prospectiveUsers || undefined,
-                    prospectiveSites: values.prospectiveSites || undefined
+                    prospectiveUsers: 100,
+                    prospectiveSites: 100
                 },
                 companyInfo: {
                     companyName: values.companyName,
-                    countryOfResidence: values.countryOfResidence,
-                    stateProvinceRegion: values.stateProvinceRegion,
-                    postalZipCode: values.postalZipCode,
+                    countryOfResidence: "N/A",
+                    stateProvinceRegion: "N/A",
+                    postalZipCode: "N/A",
                     companyWebsite: values.companyWebsite || "",
                     companyPhoneNumber: values.companyPhoneNumber || ""
                 }
@@ -370,32 +295,17 @@ export default function GenerateLicenseKeyForm({
         <Credenza open={open} onOpenChange={handleClose}>
             <CredenzaContent className="max-w-4xl">
                 <CredenzaHeader>
-                    <CredenzaTitle>{t("generateLicenseKey")}</CredenzaTitle>
+                    <CredenzaTitle>
+                        {t("newPricingLicenseForm.title")}
+                    </CredenzaTitle>
                     <CredenzaDescription>
-                        {t(
-                            "generateLicenseKeyForm.steps.emailLicenseType.description"
-                        )}
+                        {t("newPricingLicenseForm.description")}
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
                     <div className="space-y-6">
                         {generatedKey ? (
                             <div className="space-y-4">
-                                {useCaseType === "business" && (
-                                    <Alert variant="neutral">
-                                        <AlertTitle>
-                                            {t(
-                                                "generateLicenseKeyForm.alerts.trialPeriodInformation.title"
-                                            )}
-                                        </AlertTitle>
-                                        <AlertDescription>
-                                            {t(
-                                                "generateLicenseKeyForm.alerts.trialPeriodInformation.description"
-                                            )}
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-
                                 <CopyTextBox
                                     text={generatedKey}
                                     wrapText={false}
@@ -403,66 +313,107 @@ export default function GenerateLicenseKeyForm({
                             </div>
                         ) : (
                             <>
-                                <Alert variant="neutral">
-                                    <InfoIcon className="h-4 w-4" />
-                                    <AlertTitle>
-                                        {t(
-                                            "generateLicenseKeyForm.alerts.commercialUseDisclosure.title"
-                                        )}
-                                    </AlertTitle>
-                                    <AlertDescription>
-                                        {t(
-                                            "generateLicenseKeyForm.alerts.commercialUseDisclosure.description"
-                                        )
-                                            .split(
-                                                "Fossorial Commercial License Terms"
-                                            )
-                                            .map((part, index) => (
-                                                <span key={index}>
-                                                    {part}
-                                                    {index === 0 && (
-                                                        <a
-                                                            href="https://pangolin.net/fcl.html"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            Fossorial Commercial
-                                                            License Terms
-                                                        </a>
-                                                    )}
-                                                </span>
-                                            ))}
-                                    </AlertDescription>
-                                </Alert>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">
-                                        {t(
-                                            "generateLicenseKeyForm.form.useCaseQuestion"
-                                        )}
-                                    </label>
-                                    <div className="mt-2">
+                                {/* Tier selection - required when not personal use */}
+                                {!personalUseOnly && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">
+                                            {t(
+                                                "newPricingLicenseForm.chooseTier"
+                                            )}
+                                        </label>
                                         <StrategySelect
-                                            options={useCaseOptions}
-                                            defaultValue={useCaseType}
-                                            onChange={(value) => {
-                                                setUseCaseType(value);
-                                                resetForm();
-                                            }}
+                                            options={tierOptions}
+                                            defaultValue={selectedTier}
+                                            onChange={(value) =>
+                                                setSelectedTier(value)
+                                            }
                                             cols={2}
                                         />
+                                        <a
+                                            href="https://pangolin.net/pricing"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-primary hover:underline"
+                                        >
+                                            {t(
+                                                "newPricingLicenseForm.viewPricingLink"
+                                            )}
+                                        </a>
                                     </div>
+                                )}
+
+                                {/* Personal use only checkbox at the bottom of options */}
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="personal-use-only"
+                                        checked={personalUseOnly}
+                                        onCheckedChange={(checked) => {
+                                            setPersonalUseOnly(
+                                                checked === true
+                                            );
+                                            if (checked) {
+                                                businessForm.reset();
+                                            } else {
+                                                personalForm.reset();
+                                            }
+                                        }}
+                                    />
+                                    <label
+                                        htmlFor="personal-use-only"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                        {t(
+                                            "newPricingLicenseForm.personalUseOnly"
+                                        )}
+                                    </label>
                                 </div>
 
-                                {useCaseType === "personal" && (
+                                {/* License disclosure - only when personal use */}
+                                {personalUseOnly && (
+                                    <Alert variant="neutral">
+                                        <InfoIcon className="h-4 w-4" />
+                                        <AlertTitle>
+                                            {t(
+                                                "generateLicenseKeyForm.alerts.commercialUseDisclosure.title"
+                                            )}
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            {t(
+                                                "generateLicenseKeyForm.alerts.commercialUseDisclosure.description"
+                                            )
+                                                .split(
+                                                    "Fossorial Commercial License Terms"
+                                                )
+                                                .map((part, index) => (
+                                                    <span key={index}>
+                                                        {part}
+                                                        {index === 0 && (
+                                                            <a
+                                                                href="https://pangolin.net/fcl.html"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-primary hover:underline"
+                                                            >
+                                                                Fossorial
+                                                                Commercial
+                                                                License Terms
+                                                            </a>
+                                                        )}
+                                                    </span>
+                                                ))}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
+                                {/* Personal form: only when personal use only is checked */}
+                                {personalUseOnly && (
                                     <Form {...personalForm}>
                                         <form
                                             onSubmit={personalForm.handleSubmit(
                                                 onSubmitPersonal
                                             )}
                                             className="space-y-4"
-                                            id="generate-license-personal-form"
+                                            id="new-pricing-license-personal-form"
                                         >
                                             <div className="grid grid-cols-2 gap-4">
                                                 <FormField
@@ -486,7 +437,6 @@ export default function GenerateLicenseKeyForm({
                                                         </FormItem>
                                                     )}
                                                 />
-
                                                 <FormField
                                                     control={
                                                         personalForm.control
@@ -528,52 +478,49 @@ export default function GenerateLicenseKeyForm({
                                                 )}
                                             />
 
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={
-                                                            personalForm.control
-                                                        }
-                                                        name="country"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t(
-                                                                        "generateLicenseKeyForm.form.country"
-                                                                    )}
-                                                                </FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={
-                                                            personalForm.control
-                                                        }
-                                                        name="phoneNumber"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t(
-                                                                        "generateLicenseKeyForm.form.phoneNumberOptional"
-                                                                    )}
-                                                                </FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={
+                                                        personalForm.control
+                                                    }
+                                                    name="country"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t(
+                                                                    "generateLicenseKeyForm.form.country"
+                                                                )}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={
+                                                        personalForm.control
+                                                    }
+                                                    name="phoneNumber"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t(
+                                                                    "generateLicenseKeyForm.form.phoneNumberOptional"
+                                                                )}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             </div>
 
                                             <div className="space-y-4 pt-4">
@@ -630,7 +577,6 @@ export default function GenerateLicenseKeyForm({
                                                         </FormItem>
                                                     )}
                                                 />
-
                                                 <FormField
                                                     control={
                                                         personalForm.control
@@ -654,9 +600,6 @@ export default function GenerateLicenseKeyForm({
                                                                         {t(
                                                                             "generateLicenseKeyForm.form.complianceConfirmation"
                                                                         )}{" "}
-                                                                        See
-                                                                        license
-                                                                        details:{" "}
                                                                         <a
                                                                             href="https://pangolin.net/fcl.html"
                                                                             target="_blank"
@@ -677,14 +620,15 @@ export default function GenerateLicenseKeyForm({
                                     </Form>
                                 )}
 
-                                {useCaseType === "business" && (
+                                {/* Business form: when not personal use - enter business info then continue to checkout */}
+                                {!personalUseOnly && (
                                     <Form {...businessForm}>
                                         <form
                                             onSubmit={businessForm.handleSubmit(
                                                 onSubmitBusiness
                                             )}
                                             className="space-y-4"
-                                            id="generate-license-business-form"
+                                            id="new-pricing-license-business-form"
                                         >
                                             <div className="grid grid-cols-2 gap-4">
                                                 <FormField
@@ -708,7 +652,6 @@ export default function GenerateLicenseKeyForm({
                                                         </FormItem>
                                                     )}
                                                 />
-
                                                 <FormField
                                                     control={
                                                         businessForm.control
@@ -731,24 +674,6 @@ export default function GenerateLicenseKeyForm({
                                                     )}
                                                 />
                                             </div>
-
-                                            <FormField
-                                                control={businessForm.control}
-                                                name="jobTitle"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>
-                                                            {t(
-                                                                "generateLicenseKeyForm.form.jobTitle"
-                                                            )}
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <Input {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
 
                                             <FormField
                                                 control={businessForm.control}
@@ -786,54 +711,6 @@ export default function GenerateLicenseKeyForm({
                                                 )}
                                             />
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <FormField
-                                                    control={
-                                                        businessForm.control
-                                                    }
-                                                    name="prospectiveUsers"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t(
-                                                                    "generateLicenseKeyForm.form.prospectiveUsersQuestion"
-                                                                )}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    type="number"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-
-                                                <FormField
-                                                    control={
-                                                        businessForm.control
-                                                    }
-                                                    name="prospectiveSites"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t(
-                                                                    "generateLicenseKeyForm.form.prospectiveSitesQuestion"
-                                                                )}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    type="number"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
-
                                             <FormField
                                                 control={businessForm.control}
                                                 name="companyName"
@@ -851,70 +728,6 @@ export default function GenerateLicenseKeyForm({
                                                     </FormItem>
                                                 )}
                                             />
-
-                                            <FormField
-                                                control={businessForm.control}
-                                                name="countryOfResidence"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>
-                                                            {t(
-                                                                "generateLicenseKeyForm.form.countryOfResidence"
-                                                            )}
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <Input {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <FormField
-                                                    control={
-                                                        businessForm.control
-                                                    }
-                                                    name="stateProvinceRegion"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t(
-                                                                    "generateLicenseKeyForm.form.stateProvinceRegion"
-                                                                )}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-
-                                                <FormField
-                                                    control={
-                                                        businessForm.control
-                                                    }
-                                                    name="postalZipCode"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t(
-                                                                    "generateLicenseKeyForm.form.postalZipCode"
-                                                                )}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <FormField
@@ -938,7 +751,6 @@ export default function GenerateLicenseKeyForm({
                                                         </FormItem>
                                                     )}
                                                 />
-
                                                 <FormField
                                                     control={
                                                         businessForm.control
@@ -1016,7 +828,6 @@ export default function GenerateLicenseKeyForm({
                                                         </FormItem>
                                                     )}
                                                 />
-
                                                 <FormField
                                                     control={
                                                         businessForm.control
@@ -1040,9 +851,6 @@ export default function GenerateLicenseKeyForm({
                                                                         {t(
                                                                             "generateLicenseKeyForm.form.complianceConfirmation"
                                                                         )}{" "}
-                                                                        See
-                                                                        license
-                                                                        details:{" "}
                                                                         <a
                                                                             href="https://pangolin.net/fcl.html"
                                                                             target="_blank"
@@ -1073,10 +881,10 @@ export default function GenerateLicenseKeyForm({
                         </Button>
                     </CredenzaClose>
 
-                    {!generatedKey && useCaseType === "personal" && (
+                    {!generatedKey && personalUseOnly && (
                         <Button
                             type="submit"
-                            form="generate-license-personal-form"
+                            form="new-pricing-license-personal-form"
                             disabled={loading}
                             loading={loading}
                         >
@@ -1086,17 +894,17 @@ export default function GenerateLicenseKeyForm({
                         </Button>
                     )}
 
-                    {!generatedKey && useCaseType === "business" && (
-                            <Button
-                                type="submit"
-                                form="generate-license-business-form"
-                                disabled={loading}
-                                loading={loading}
-                            >
-                                {t(
-                                    "generateLicenseKeyForm.buttons.generateLicenseKey"
-                                )}
-                            </Button>
+                    {!generatedKey && !personalUseOnly && (
+                        <Button
+                            type="submit"
+                            form="new-pricing-license-business-form"
+                            disabled={loading}
+                            loading={loading}
+                        >
+                            {t(
+                                "newPricingLicenseForm.buttons.continueToCheckout"
+                            )}
+                        </Button>
                     )}
                 </CredenzaFooter>
             </CredenzaContent>

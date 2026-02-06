@@ -25,7 +25,7 @@ import {
 async function fetchLicenseKeys(orgId: string): Promise<any> {
     try {
         const response = await fetch(
-            `https://api.fossorial.io/api/v1/license-internal/enterprise/${orgId}/list`,
+            `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/${orgId}/list`,
             {
                 method: "GET",
                 headers: {

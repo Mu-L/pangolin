@@ -72,6 +72,8 @@ export default async function Page(props: {
         searchParams.redirect = redirectUrl;
     }
 
+    const defaultUser = searchParams.user as string | undefined;
+
     // Only use SmartLoginForm if NOT (OSS build OR org-only IdP enabled)
     const useSmartLogin =
         build === "saas" || (build === "enterprise" && env.flags.useOrgOnlyIdp);
@@ -151,6 +153,7 @@ export default async function Page(props: {
                             <SmartLoginForm
                                 redirect={redirectUrl}
                                 forceLogin={forceLogin}
+                                defaultUser={defaultUser}
                             />
                         </CardContent>
                     </Card>
@@ -165,6 +168,7 @@ export default async function Page(props: {
                         (build === "saas" || env.flags.useOrgOnlyIdp)
                     }
                     searchParams={searchParams}
+                    defaultUser={defaultUser}
                 />
             )}
 

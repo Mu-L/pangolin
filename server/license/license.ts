@@ -12,6 +12,10 @@ export type LicenseStatus = {
     isLicenseValid: boolean; // Is the license key valid?
     hostId: string; // Host ID
     tier?: LicenseKeyTier;
+    maxSites?: number;
+    usedSites?: number;
+    maxUsers?: number;
+    usedUsers?: number;
 };
 
 export type LicenseKeyCache = {
@@ -22,12 +26,14 @@ export type LicenseKeyCache = {
     type?: LicenseKeyType;
     tier?: LicenseKeyTier;
     terminateAt?: Date;
+    quantity?: number;
+    quantity_2?: number;
 };
 
 export class License {
     private serverSecret!: string;
 
-    constructor(private hostMeta: HostMeta) {}
+    constructor(private hostMeta: HostMeta) { }
 
     public async check(): Promise<LicenseStatus> {
         return {

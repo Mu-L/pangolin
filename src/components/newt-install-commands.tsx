@@ -91,7 +91,7 @@ export function NewtSiteInstallCommands({
       - NEWT_SECRET=${secret}${acceptClientsEnv}`
             ],
             "Docker Run": [
-                `docker run -dit fosrl/newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                `docker run -dit --network host fosrl/newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
             ]
         },
         kubernetes: {
