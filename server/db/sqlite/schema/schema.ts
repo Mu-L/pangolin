@@ -247,7 +247,7 @@ export const siteResources = sqliteTable("siteResources", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
-    mode: text("mode").notNull(), // "host" | "cidr" | "port"
+    mode: text("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
     protocol: text("protocol"), // only for port mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
