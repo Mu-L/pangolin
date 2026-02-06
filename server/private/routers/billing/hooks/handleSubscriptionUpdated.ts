@@ -64,6 +64,8 @@ export async function handleSubscriptionUpdated(
             .where(eq(customers.customerId, subscription.customer as string))
             .limit(1);
 
+        const type = getSubType(fullSubscription);
+
         await db
             .update(subscriptions)
             .set({
@@ -72,7 +74,8 @@ export async function handleSubscriptionUpdated(
                     ? subscription.canceled_at
                     : null,
                 updatedAt: Math.floor(Date.now() / 1000),
-                billingCycleAnchor: subscription.billing_cycle_anchor
+                billingCycleAnchor: subscription.billing_cycle_anchor,
+                type: type
             })
             .where(eq(subscriptions.subscriptionId, subscription.id));
 
@@ -234,17 +237,16 @@ export async function handleSubscriptionUpdated(
             }
             // --- end usage update ---
 
-            const type = getSubType(fullSubscription);
-            if (type === "saas") {
+            if (type === "home_lab" || type === "starter" || type === "scale") {
                 logger.debug(
-                    `Handling SAAS subscription lifecycle for org ${customer.orgId}`
+                    `Handling SAAS subscription lifecycle for org ${customer.orgId} with type ${type}`
                 );
                 // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
                 await handleSubscriptionLifesycle(
                     customer.orgId,
                     subscription.status
                 );
-            } else {
+            } else if (type === "license") {
                 if (subscription.status === "canceled" || subscription.status == "unpaid" || subscription.status == "incomplete_expired") {
                     try {
                         // WARNING:

@@ -26,48 +26,59 @@ export const freeLimitSet: LimitSet = {
     [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Free tier limit" }
 };
 
+export const homeLabLimitSet: LimitSet = {
+    [FeatureId.SITES]: { value: 3, description: "Home lab limit" }, // 1 site up for 32 days
+    [FeatureId.USERS]: { value: 3, description: "Home lab limit" },
+    [FeatureId.EGRESS_DATA_MB]: {
+        value: 25000,
+        description: "Home lab limit"
+    }, // 25 GB
+    [FeatureId.DOMAINS]: { value: 3, description: "Home lab limit" },
+    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Home lab limit" }
+};
+
 export const starterLimitSet: LimitSet = {
     [FeatureId.SITES]: {
         value: 10,
-        description: "Contact us to increase soft limit."
+        description: "Starter limit"
     }, // 50 sites up for 31 days
     [FeatureId.USERS]: {
         value: 150,
-        description: "Contact us to increase soft limit."
+        description: "Starter limit"
     },
     [FeatureId.EGRESS_DATA_MB]: {
         value: 12000000,
-        description: "Contact us to increase soft limit."
+        description: "Starter limit"
     }, // 12000 GB
     [FeatureId.DOMAINS]: {
         value: 250,
-        description: "Contact us to increase soft limit."
+        description: "Starter limit"
     },
     [FeatureId.REMOTE_EXIT_NODES]: {
         value: 5,
-        description: "Contact us to increase soft limit."
+        description: "Starter limit"
     }
 };
 
 export const scaleLimitSet: LimitSet = {
     [FeatureId.SITES]: {
         value: 10,
-        description: "Contact us to increase soft limit."
+        description: "Scale limit"
     }, // 50 sites up for 31 days
     [FeatureId.USERS]: {
         value: 150,
-        description: "Contact us to increase soft limit."
+        description: "Scale limit"
     },
     [FeatureId.EGRESS_DATA_MB]: {
         value: 12000000,
-        description: "Contact us to increase soft limit."
+        description: "Scale limit"
     }, // 12000 GB
     [FeatureId.DOMAINS]: {
         value: 250,
-        description: "Contact us to increase soft limit."
+        description: "Scale limit"
     },
     [FeatureId.REMOTE_EXIT_NODES]: {
         value: 5,
-        description: "Contact us to increase soft limit."
+        description: "Scale limit"
     }
 };
