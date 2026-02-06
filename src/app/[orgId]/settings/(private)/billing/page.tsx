@@ -153,7 +153,7 @@ export default function GeneralPage() {
         setIsLoading(true);
         try {
             const response = await api.post<AxiosResponse<string>>(
-                `/org/${org.org.orgId}/billing/create-checkout-session-saas`,
+                `/org/${org.org.orgId}/billing/create-checkout-session`,
                 {}
             );
             console.log("Checkout session response:", response.data);

@@ -59,6 +59,8 @@ export async function handleSubscriptionCreated(
             return;
         }
 
+        const type = getSubType(fullSubscription);
+
         const newSubscription = {
             subscriptionId: subscription.id,
             customerId: subscription.customer as string,
@@ -66,7 +68,8 @@ export async function handleSubscriptionCreated(
             canceledAt: subscription.canceled_at
                 ? subscription.canceled_at
                 : null,
-            createdAt: subscription.created
+            createdAt: subscription.created,
+            type: type
         };
 
         await db.insert(subscriptions).values(newSubscription);
@@ -129,10 +132,9 @@ export async function handleSubscriptionCreated(
             return;
         }
 
-        const type = getSubType(fullSubscription);
-        if (type === "saas") {
+        if (type === "home_lab" || type === "starter" || type === "scale") {
             logger.debug(
-                `Handling SAAS subscription lifecycle for org ${customer.orgId}`
+                `Handling SAAS subscription lifecycle for org ${customer.orgId} with type ${type}`
             );
             // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
             await handleSubscriptionLifesycle(

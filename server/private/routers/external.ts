@@ -141,25 +141,8 @@ authenticated.post(
 );
 
 if (build === "saas") {
-    unauthenticated.post(
-        "/quick-start",
-        rateLimit({
-            windowMs: 15 * 60 * 1000,
-            max: 100,
-            keyGenerator: (req) => req.path,
-            handler: (req, res, next) => {
-                const message = `We're too busy right now. Please try again later.`;
-                return next(
-                    createHttpError(HttpCode.TOO_MANY_REQUESTS, message)
-                );
-            },
-            store: createStore()
-        }),
-        auth.quickStart
-    );
-
     authenticated.post(
-        "/org/:orgId/billing/create-checkout-session-saas",
+        "/org/:orgId/billing/create-checkout-session",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),

@@ -13,4 +13,3 @@
 
 export * from "./transferSession";
 export * from "./getSessionTransferToken";
-export * from "./quickStart";

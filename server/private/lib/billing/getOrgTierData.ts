@@ -29,28 +29,5 @@ export async function getOrgTierData(
 
     const subscriptionsWithItems = await getOrgSubscriptionsData(orgId);
 
-    for (const { subscription, items } of subscriptionsWithItems) {
-        if (items && items.length > 0) {
-            const tierPriceSet = getTierPriceSet();
-            // Iterate through tiers in order (earlier keys are higher tiers)
-            for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
-                // Check if any subscription item matches this tier's price ID
-                const matchingItem = items.find((item) => item.priceId === priceId);
-                if (matchingItem) {
-                    tier = tierId;
-                    break;
-                }
-            }
-        }
-
-        if (subscription && subscription.status === "active") {
-            active = true;
-        }
-
-        // If we found a tier and active subscription, we can stop
-        if (tier && active) {
-            break;
-        }
-    }
     return { tier, active };
 }

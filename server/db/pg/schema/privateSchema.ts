@@ -82,7 +82,8 @@ export const subscriptions = pgTable("subscriptions", {
     canceledAt: bigint("canceledAt", { mode: "number" }),
     createdAt: bigint("createdAt", { mode: "number" }).notNull(),
     updatedAt: bigint("updatedAt", { mode: "number" }),
-    billingCycleAnchor: bigint("billingCycleAnchor", { mode: "number" })
+    billingCycleAnchor: bigint("billingCycleAnchor", { mode: "number" }),
+    type: varchar("type", { length: 50 }) // home_lab, starter, scale, or license
 });
 
 export const subscriptionItems = pgTable("subscriptionItems", {
