@@ -9,6 +9,7 @@ import { eq, and, asc, ilike, or } from "drizzle-orm";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
+import type { PaginatedResponse } from "@server/types/Pagination";
 
 const listAllSiteResourcesByOrgParamsSchema = z.strictObject({
     orgId: z.string()
@@ -33,14 +34,13 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
     mode: z.enum(["host", "cidr"]).optional().catch(undefined)
 });
 
-export type ListAllSiteResourcesByOrgResponse = {
+export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
     siteResources: (SiteResource & {
         siteName: string;
         siteNiceId: string;
         siteAddress: string | null;
     })[];
-    pagination: { total: number; pageSize: number; page: number };
-};
+}>;
 
 function querySiteResourcesBase() {
     return db
@@ -114,10 +114,9 @@ export async function listAllSiteResourcesByOrg(
         const { orgId } = parsedParams.data;
         const { page, pageSize, query, mode } = parsedQuery.data;
 
-        let conditions = and(eq(siteResources.orgId, orgId));
+        const conditions = [and(eq(siteResources.orgId, orgId))];
         if (query) {
-            conditions = and(
-                conditions,
+            conditions.push(
                 or(
                     ilike(siteResources.name, "%" + query + "%"),
                     ilike(siteResources.destination, "%" + query + "%"),
@@ -129,16 +128,15 @@ export async function listAllSiteResourcesByOrg(
         }
 
         if (mode) {
-            conditions = and(conditions, eq(siteResources.mode, mode));
+            conditions.push(eq(siteResources.mode, mode));
         }
 
-        const baseQuery = querySiteResourcesBase().where(conditions);
+        const baseQuery = querySiteResourcesBase().where(and(...conditions));
 
         const countQuery = db.$count(
-            querySiteResourcesBase().where(conditions)
+            querySiteResourcesBase().where(and(...conditions))
         );
 
-        // Get all site resources for the org with site names
         const [siteResourcesList, totalCount] = await Promise.all([
             baseQuery
                 .limit(pageSize)

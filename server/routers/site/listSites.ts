@@ -22,6 +22,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import semver from "semver";
 import cache from "@server/lib/cache";
+import type { PaginatedResponse } from "@server/types/Pagination";
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
@@ -111,9 +112,6 @@ const listSitesSchema = z.object({
         .catch(undefined)
 });
 
-function countSitesBase() {
-    return db.select({ count: count() }).from(sites);
-}
 function querySitesBase() {
     return db
         .select({
@@ -148,10 +146,9 @@ type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySitesBase>>[0] & {
     newtUpdateAvailable?: boolean;
 };
 
-export type ListSitesResponse = {
+export type ListSitesResponse = PaginatedResponse<{
     sites: SiteWithUpdateAvailable[];
-    pagination: { total: number; pageSize: number; page: number };
-};
+}>;
 
 registry.registerPath({
     method: "get",
@@ -227,13 +224,14 @@ export async function listSites(
 
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
 
-        let conditions = and(
-            inArray(sites.siteId, accessibleSiteIds),
-            eq(sites.orgId, orgId)
-        );
+        const conditions = [
+            and(
+                inArray(sites.siteId, accessibleSiteIds),
+                eq(sites.orgId, orgId)
+            )
+        ];
         if (query) {
-            conditions = and(
-                conditions,
+            conditions.push(
                 or(
                     ilike(sites.name, "%" + query + "%"),
                     ilike(sites.niceId, "%" + query + "%")
@@ -241,13 +239,15 @@ export async function listSites(
             );
         }
         if (typeof online !== "undefined") {
-            conditions = and(conditions, eq(sites.online, online));
+            conditions.push(eq(sites.online, online));
         }
 
-        const baseQuery = querySitesBase().where(conditions);
+        const baseQuery = querySitesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
-        const countQuery = db.$count(querySitesBase().where(conditions));
+        const countQuery = db.$count(
+            querySitesBase().where(and(...conditions))
+        );
 
         const siteListQuery = baseQuery
             .limit(pageSize)

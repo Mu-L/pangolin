@@ -33,6 +33,7 @@ import {
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import type { PaginatedResponse } from "@server/types/Pagination";
 
 const listResourcesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -171,10 +172,9 @@ function queryResourcesBase() {
         );
 }
 
-export type ListResourcesResponse = {
+export type ListResourcesResponse = PaginatedResponse<{
     resources: ResourceWithTargets[];
-    pagination: { total: number; pageSize: number; page: number };
-};
+}>;
 
 registry.registerPath({
     method: "get",
@@ -268,16 +268,15 @@ export async function listResources(
             (resource) => resource.resourceId
         );
 
-        let conditions = and(
+        const conditions = [
             and(
                 inArray(resources.resourceId, accessibleResourceIds),
                 eq(resources.orgId, orgId)
             )
-        );
+        ];
 
         if (query) {
-            conditions = and(
-                conditions,
+            conditions.push(
                 or(
                     ilike(resources.name, "%" + query + "%"),
                     ilike(resources.fullDomain, "%" + query + "%")
@@ -285,17 +284,16 @@ export async function listResources(
             );
         }
         if (typeof enabled !== "undefined") {
-            conditions = and(conditions, eq(resources.enabled, enabled));
+            conditions.push(eq(resources.enabled, enabled));
         }
 
         if (typeof authState !== "undefined") {
             switch (authState) {
                 case "none":
-                    conditions = and(conditions, eq(resources.http, false));
+                    conditions.push(eq(resources.http, false));
                     break;
                 case "protected":
-                    conditions = and(
-                        conditions,
+                    conditions.push(
                         or(
                             eq(resources.sso, true),
                             eq(resources.emailWhitelistEnabled, true),
@@ -306,8 +304,7 @@ export async function listResources(
                     );
                     break;
                 case "not_protected":
-                    conditions = and(
-                        conditions,
+                    conditions.push(
                         not(eq(resources.sso, true)),
                         not(eq(resources.emailWhitelistEnabled, true)),
                         isNull(resourceHeaderAuth.headerAuthId),
@@ -318,7 +315,7 @@ export async function listResources(
             }
         }
 
-        let aggregateFilters: SQL<any> | null | undefined = null;
+        let aggregateFilters: SQL<any> | undefined = sql`1 = 1`;
 
         if (typeof healthStatus !== "undefined") {
             switch (healthStatus) {
@@ -354,8 +351,8 @@ export async function listResources(
         }
 
         const baseQuery = queryResourcesBase()
-            .where(conditions)
-            .having(aggregateFilters ?? sql`1 = 1`);
+            .where(and(...conditions))
+            .having(aggregateFilters);
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(baseQuery.as("filtered_resources"));

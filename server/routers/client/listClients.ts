@@ -29,6 +29,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import NodeCache from "node-cache";
 import semver from "semver";
 import { getUserDeviceName } from "@server/db/names";
+import type { PaginatedResponse } from "@server/types/Pagination";
 
 const olmVersionCache = new NodeCache({ stdTTL: 3600 });
 
@@ -89,38 +90,29 @@ const listClientsParamsSchema = z.strictObject({
 });
 
 const listClientsSchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().positive()),
-    offset: z
-        .string()
+        .catch(20)
+        .default(20),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative()),
+        .catch(1)
+        .default(1),
+    query: z.string().optional(),
+    sort_by: z
+        .enum(["megabytesIn", "megabytesOut"])
+        .optional()
+        .catch(undefined),
     filter: z.enum(["user", "machine"]).optional()
 });
 
-function queryClients(
-    orgId: string,
-    accessibleClientIds: number[],
-    filter?: "user" | "machine"
-) {
-    const conditions = [
-        inArray(clients.clientId, accessibleClientIds),
-        eq(clients.orgId, orgId)
-    ];
-
-    // Add filter condition based on filter type
-    if (filter === "user") {
-        conditions.push(isNotNull(clients.userId));
-    } else if (filter === "machine") {
-        conditions.push(isNull(clients.userId));
-    }
-
+function queryClientsBase() {
     return db
         .select({
             clientId: clients.clientId,
@@ -156,8 +148,7 @@ function queryClients(
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))
         .leftJoin(olms, eq(clients.clientId, olms.clientId))
         .leftJoin(users, eq(clients.userId, users.userId))
-        .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId))
-        .where(and(...conditions));
+        .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId));
 }
 
 async function getSiteAssociations(clientIds: number[]) {
@@ -175,7 +166,7 @@ async function getSiteAssociations(clientIds: number[]) {
         .where(inArray(clientSitesAssociationsCache.clientId, clientIds));
 }
 
-type ClientWithSites = Awaited<ReturnType<typeof queryClients>>[0] & {
+type ClientWithSites = Awaited<ReturnType<typeof queryClientsBase>>[0] & {
     sites: Array<{
         siteId: number;
         siteName: string | null;
@@ -186,10 +177,9 @@ type ClientWithSites = Awaited<ReturnType<typeof queryClients>>[0] & {
 
 type OlmWithUpdateAvailable = ClientWithSites;
 
-export type ListClientsResponse = {
+export type ListClientsResponse = PaginatedResponse<{
     clients: Array<ClientWithSites>;
-    pagination: { total: number; limit: number; offset: number };
-};
+}>;
 
 registry.registerPath({
     method: "get",
@@ -218,7 +208,7 @@ export async function listClients(
                 )
             );
         }
-        const { limit, offset, filter } = parsedQuery.data;
+        const { page, pageSize, query, filter } = parsedQuery.data;
 
         const parsedParams = listClientsParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -267,28 +257,31 @@ export async function listClients(
         const accessibleClientIds = accessibleClients.map(
             (client) => client.clientId
         );
-        const baseQuery = queryClients(orgId, accessibleClientIds, filter);
+        const baseQuery = queryClientsBase();
 
         // Get client count with filter
-        const countConditions = [
+        const conditions = [
             inArray(clients.clientId, accessibleClientIds),
             eq(clients.orgId, orgId)
         ];
 
         if (filter === "user") {
-            countConditions.push(isNotNull(clients.userId));
+            conditions.push(isNotNull(clients.userId));
         } else if (filter === "machine") {
-            countConditions.push(isNull(clients.userId));
+            conditions.push(isNull(clients.userId));
         }
 
-        const countQuery = db
-            .select({ count: count() })
-            .from(clients)
-            .where(and(...countConditions));
+        const countQuery = db.$count(
+            queryClientsBase().where(and(...conditions))
+        );
 
-        const clientsList = await baseQuery.limit(limit).offset(offset);
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0].count;
+        const [clientsList, totalCount] = await Promise.all([
+            baseQuery
+                .where(and(...conditions))
+                .limit(page)
+                .offset(pageSize * (page - 1)),
+            countQuery
+        ]);
 
         // Get associated sites for all clients
         const clientIds = clientsList.map((client) => client.clientId);
@@ -368,8 +361,8 @@ export async function listClients(
                 clients: olmsWithUpdates,
                 pagination: {
                     total: totalCount,
-                    limit,
-                    offset
+                    page,
+                    pageSize
                 }
             },
             success: true,
