@@ -819,6 +819,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/user-devices",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listClients),
+    client.listUserDevices
+);
+
+authenticated.get(
     "/client/:clientId",
     verifyApiKeyClientAccess,
     verifyApiKeyHasAction(ActionsEnum.getClient),

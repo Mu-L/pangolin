@@ -86,8 +86,7 @@ export const productUpdatesQueries = {
 };
 
 export const clientFilterSchema = z.object({
-    filter: z.enum(["machine", "user"]),
-    limit: z.int().prefault(1000).optional()
+    pageSize: z.int().prefault(1000).optional()
 });
 
 export const orgQueries = {
@@ -96,14 +95,13 @@ export const orgQueries = {
         filters
     }: {
         orgId: string;
-        filters: z.infer<typeof clientFilterSchema>;
+        filters?: z.infer<typeof clientFilterSchema>;
     }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "CLIENTS", filters] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    ...filters,
-                    limit: (filters.limit ?? 1000).toString()
+                    pageSize: (filters?.pageSize ?? 1000).toString()
                 });
 
                 const res = await meta!.api.get<

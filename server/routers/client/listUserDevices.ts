@@ -1,35 +1,26 @@
-import { db, olms, users } from "@server/db";
 import {
     clients,
+    currentFingerprint,
+    db,
+    olms,
     orgs,
     roleClients,
-    sites,
     userClients,
-    clientSitesAssociationsCache,
-    currentFingerprint
+    users
 } from "@server/db";
-import logger from "@server/logger";
-import HttpCode from "@server/types/HttpCode";
+import { getUserDeviceName } from "@server/db/names";
 import response from "@server/lib/response";
-import {
-    and,
-    count,
-    eq,
-    inArray,
-    isNotNull,
-    isNull,
-    or,
-    sql
-} from "drizzle-orm";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import type { PaginatedResponse } from "@server/types/Pagination";
+import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
 import NodeCache from "node-cache";
 import semver from "semver";
-import { getUserDeviceName } from "@server/db/names";
-import type { PaginatedResponse } from "@server/types/Pagination";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const olmVersionCache = new NodeCache({ stdTTL: 3600 });
 
@@ -85,11 +76,11 @@ async function getLatestOlmVersion(): Promise<string | null> {
     }
 }
 
-const listClientsParamsSchema = z.strictObject({
+const listUserDevicesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listClientsSchema = z.object({
+const listUserDevicesSchema = z.object({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()
@@ -108,7 +99,7 @@ const listClientsSchema = z.object({
     sort_by: z.enum(["megabytesIn", "megabytesOut"]).optional().catch(undefined)
 });
 
-function queryClientsBase() {
+function queryUserDevicesBase() {
     return db
         .select({
             clientId: clients.clientId,
@@ -130,7 +121,15 @@ function queryClientsBase() {
             approvalState: clients.approvalState,
             olmArchived: olms.archived,
             archived: clients.archived,
-            blocked: clients.blocked
+            blocked: clients.blocked,
+            deviceModel: currentFingerprint.deviceModel,
+            fingerprintPlatform: currentFingerprint.platform,
+            fingerprintOsVersion: currentFingerprint.osVersion,
+            fingerprintKernelVersion: currentFingerprint.kernelVersion,
+            fingerprintArch: currentFingerprint.arch,
+            fingerprintSerialNumber: currentFingerprint.serialNumber,
+            fingerprintUsername: currentFingerprint.username,
+            fingerprintHostname: currentFingerprint.hostname
         })
         .from(clients)
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))
@@ -139,55 +138,35 @@ function queryClientsBase() {
         .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId));
 }
 
-async function getSiteAssociations(clientIds: number[]) {
-    if (clientIds.length === 0) return [];
-
-    return db
-        .select({
-            clientId: clientSitesAssociationsCache.clientId,
-            siteId: clientSitesAssociationsCache.siteId,
-            siteName: sites.name,
-            siteNiceId: sites.niceId
-        })
-        .from(clientSitesAssociationsCache)
-        .leftJoin(sites, eq(clientSitesAssociationsCache.siteId, sites.siteId))
-        .where(inArray(clientSitesAssociationsCache.clientId, clientIds));
-}
-
-type ClientWithSites = Awaited<ReturnType<typeof queryClientsBase>>[0] & {
-    sites: Array<{
-        siteId: number;
-        siteName: string | null;
-        siteNiceId: string | null;
-    }>;
+type OlmWithUpdateAvailable = Awaited<
+    ReturnType<typeof queryUserDevicesBase>
+>[0] & {
     olmUpdateAvailable?: boolean;
 };
 
-type OlmWithUpdateAvailable = ClientWithSites;
-
-export type ListClientsResponse = PaginatedResponse<{
-    clients: Array<ClientWithSites>;
+export type ListUserDevicesResponse = PaginatedResponse<{
+    devices: Array<OlmWithUpdateAvailable>;
 }>;
 
 registry.registerPath({
     method: "get",
-    path: "/org/{orgId}/clients",
-    description: "List all clients for an organization.",
+    path: "/org/{orgId}/user-devices",
+    description: "List all user devices for an organization.",
     tags: [OpenAPITags.Client, OpenAPITags.Org],
     request: {
-        query: listClientsSchema,
-        params: listClientsParamsSchema
+        query: listUserDevicesSchema,
+        params: listUserDevicesParamsSchema
     },
     responses: {}
 });
 
-export async function listClients(
+export async function listUserDevices(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedQuery = listClientsSchema.safeParse(req.query);
+        const parsedQuery = listUserDevicesSchema.safeParse(req.query);
         if (!parsedQuery.success) {
             return next(
                 createHttpError(
@@ -198,7 +177,7 @@ export async function listClients(
         }
         const { page, pageSize, query } = parsedQuery.data;
 
-        const parsedParams = listClientsParamsSchema.safeParse(req.params);
+        const parsedParams = listUserDevicesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -245,67 +224,31 @@ export async function listClients(
         const accessibleClientIds = accessibleClients.map(
             (client) => client.clientId
         );
-        const baseQuery = queryClientsBase();
-
         // Get client count with filter
         const conditions = [
             inArray(clients.clientId, accessibleClientIds),
             eq(clients.orgId, orgId),
-            isNull(clients.userId)
+            isNotNull(clients.userId)
         ];
 
-        const countQuery = db.$count(
-            queryClientsBase().where(and(...conditions))
-        );
+        const baseQuery = queryUserDevicesBase().where(and(...conditions));
+
+        const countQuery = db.$count(baseQuery.as("filtered_clients"));
 
         const [clientsList, totalCount] = await Promise.all([
-            baseQuery
-                .where(and(...conditions))
-                .limit(page)
-                .offset(pageSize * (page - 1)),
+            baseQuery.limit(pageSize).offset(pageSize * (page - 1)),
             countQuery
         ]);
 
-        // Get associated sites for all clients
-        const clientIds = clientsList.map((client) => client.clientId);
-        const siteAssociations = await getSiteAssociations(clientIds);
-
-        // Group site associations by client ID
-        const sitesByClient = siteAssociations.reduce(
-            (acc, association) => {
-                if (!acc[association.clientId]) {
-                    acc[association.clientId] = [];
-                }
-                acc[association.clientId].push({
-                    siteId: association.siteId,
-                    siteName: association.siteName,
-                    siteNiceId: association.siteNiceId
-                });
-                return acc;
-            },
-            {} as Record<
-                number,
-                Array<{
-                    siteId: number;
-                    siteName: string | null;
-                    siteNiceId: string | null;
-                }>
-            >
-        );
-
         // Merge clients with their site associations and replace name with device name
-        const clientsWithSites = clientsList.map((client) => {
-            return {
-                ...client,
-                sites: sitesByClient[client.clientId] || []
-            };
-        });
-
-        const latestOlVersionPromise = getLatestOlmVersion();
-
-        const olmsWithUpdates: OlmWithUpdateAvailable[] = clientsWithSites.map(
+        const olmsWithUpdates: OlmWithUpdateAvailable[] = clientsList.map(
             (client) => {
-                const OlmWithUpdate: OlmWithUpdateAvailable = { ...client };
+                const model = client.deviceModel || null;
+                const newName = getUserDeviceName(model, client.name);
+                const OlmWithUpdate: OlmWithUpdateAvailable = {
+                    ...client,
+                    name: newName
+                };
                 // Initially set to false, will be updated if version check succeeds
                 OlmWithUpdate.olmUpdateAvailable = false;
                 return OlmWithUpdate;
@@ -314,14 +257,14 @@ export async function listClients(
 
         // Try to get the latest version, but don't block if it fails
         try {
-            const latestOlVersion = await latestOlVersionPromise;
+            const latestOlmVersion = await getLatestOlmVersion();
 
-            if (latestOlVersion) {
+            if (latestOlmVersion) {
                 olmsWithUpdates.forEach((client) => {
                     try {
                         client.olmUpdateAvailable = semver.lt(
                             client.olmVersion ? client.olmVersion : "",
-                            latestOlVersion
+                            latestOlmVersion
                         );
                     } catch (error) {
                         client.olmUpdateAvailable = false;
@@ -336,9 +279,9 @@ export async function listClients(
             );
         }
 
-        return response<ListClientsResponse>(res, {
+        return response<ListUserDevicesResponse>(res, {
             data: {
-                clients: olmsWithUpdates,
+                devices: olmsWithUpdates,
                 pagination: {
                     total: totalCount,
                     page,

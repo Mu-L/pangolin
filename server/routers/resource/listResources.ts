@@ -380,7 +380,7 @@ export async function listResources(
                           hcEnabled: targetHealthCheck.hcEnabled
                       })
                       .from(targets)
-                      .where(sql`${targets.resourceId} in ${resourceIdList}`)
+                      .where(inArray(targets.resourceId, resourceIdList))
                       .leftJoin(
                           targetHealthCheck,
                           eq(targetHealthCheck.targetId, targets.targetId)

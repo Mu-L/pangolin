@@ -255,10 +255,7 @@ export default function CreateInternalResourceDialog({
     const { data: usersResponse = [] } = useQuery(orgQueries.users({ orgId }));
     const { data: clientsResponse = [] } = useQuery(
         orgQueries.clients({
-            orgId,
-            filters: {
-                filter: "machine"
-            }
+            orgId
         })
     );
 
