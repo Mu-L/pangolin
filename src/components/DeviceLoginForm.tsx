@@ -55,12 +55,14 @@ type DeviceLoginFormProps = {
     userEmail: string;
     userName?: string;
     initialCode?: string;
+    userQueryParam?: string;
 };
 
 export default function DeviceLoginForm({
     userEmail,
     userName,
-    initialCode = ""
+    initialCode = "",
+    userQueryParam
 }: DeviceLoginFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -219,9 +221,12 @@ export default function DeviceLoginForm({
             const currentSearch =
                 typeof window !== "undefined" ? window.location.search : "";
             const redirectTarget = `/auth/login/device${currentSearch || ""}`;
-            router.push(
-                `/auth/login?forceLogin=true&redirect=${encodeURIComponent(redirectTarget)}`
-            );
+            const loginUrl = new URL("/auth/login", "http://x");
+            loginUrl.searchParams.set("forceLogin", "true");
+            loginUrl.searchParams.set("redirect", redirectTarget);
+            if (userQueryParam)
+                loginUrl.searchParams.set("user", userQueryParam);
+            router.push(loginUrl.pathname + loginUrl.search);
             router.refresh();
         }
     }

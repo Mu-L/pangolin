@@ -54,6 +54,7 @@ type LoginFormProps = {
     idps?: LoginFormIDP[];
     orgId?: string;
     forceLogin?: boolean;
+    defaultEmail?: string;
 };
 
 export default function LoginForm({
@@ -61,7 +62,8 @@ export default function LoginForm({
     onLogin,
     idps,
     orgId,
-    forceLogin
+    forceLogin,
+    defaultEmail
 }: LoginFormProps) {
     const router = useRouter();
 
@@ -116,7 +118,7 @@ export default function LoginForm({
     const form = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            email: "",
+            email: defaultEmail ?? "",
             password: ""
         }
     });

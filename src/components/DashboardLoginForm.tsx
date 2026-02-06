@@ -29,6 +29,7 @@ type DashboardLoginFormProps = {
     searchParams?: {
         [key: string]: string | string[] | undefined;
     };
+    defaultUser?: string;
 };
 
 export default function DashboardLoginForm({
@@ -36,7 +37,8 @@ export default function DashboardLoginForm({
     idps,
     forceLogin,
     showOrgLogin,
-    searchParams
+    searchParams,
+    defaultUser
 }: DashboardLoginFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -75,6 +77,7 @@ export default function DashboardLoginForm({
                     redirect={redirect}
                     idps={idps}
                     forceLogin={forceLogin}
+                    defaultEmail={defaultUser}
                     onLogin={(redirectUrl) => {
                         if (redirectUrl) {
                             const safe = cleanRedirect(redirectUrl);
