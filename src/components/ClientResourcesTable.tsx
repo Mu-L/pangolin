@@ -131,19 +131,7 @@ export default function ClientResourcesTable({
             accessorKey: "name",
             enableHiding: false,
             friendlyName: t("name"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("name")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
+            header: () => <span className="p-3">{t("name")}</span>
         },
         {
             id: "niceId",
