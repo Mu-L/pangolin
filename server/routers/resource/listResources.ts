@@ -69,38 +69,6 @@ const listResourcesSchema = z.object({
         .catch(undefined)
 });
 
-// (resource fields + a single joined target)
-type JoinedRow = {
-    resourceId: number;
-    niceId: string;
-    name: string;
-    ssl: boolean;
-    fullDomain: string | null;
-    passwordId: number | null;
-    sso: boolean;
-    pincodeId: number | null;
-    whitelist: boolean;
-    http: boolean;
-    protocol: string;
-    proxyPort: number | null;
-    enabled: boolean;
-    domainId: string | null;
-    headerAuthId: number | null;
-
-    // total_targets: number;
-    // healthy_targets: number;
-    // unhealthy_targets: number;
-    // unknown_targets: number;
-
-    // targetId: number | null;
-    // targetIp: string | null;
-    // targetPort: number | null;
-    // targetEnabled: boolean | null;
-
-    // hcHealth: string | null;
-    // hcEnabled: boolean | null;
-};
-
 // grouped by resource with targets[])
 export type ResourceWithTargets = {
     resourceId: number;

@@ -2,9 +2,8 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import { DataTable } from "@app/components/ui/data-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,13 +13,14 @@ import {
 import { InfoPopup } from "@app/components/ui/info-popup";
 import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { UpdateResourceResponse } from "@server/routers/resource";
+import type { PaginationState } from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
 import {
     ArrowRight,
-    ArrowUpDown,
     CheckCircle2,
     ChevronDown,
     Clock,
@@ -31,14 +31,12 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import type { PaginationState } from "@tanstack/react-table";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import { ControlledDataTable } from "./ui/controlled-data-table";
 
 export type TargetHealth = {
     targetId: number;
@@ -583,10 +581,6 @@ export default function ProxyResourcesTable({
             searchParams
         });
     }, 300);
-
-    console.log({
-        rowCount
-    });
 
     return (
         <>

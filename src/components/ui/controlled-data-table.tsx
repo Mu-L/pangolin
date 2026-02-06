@@ -130,7 +130,8 @@ export function ControlledDataTable<TData, TValue>({
     });
 
     console.log({
-        pagination
+        pagination,
+        rowCount
     });
 
     const table = useReactTable({

@@ -25,6 +25,11 @@ import CreateInternalResourceDialog from "@app/components/CreateInternalResource
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
+import { ControlledDataTable } from "./ui/controlled-data-table";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useDebouncedCallback } from "use-debounce";
+import { ColumnFilterButton } from "./ColumnFilterButton";
 
 export type InternalResourceRow = {
     id: number;
@@ -51,18 +56,22 @@ export type InternalResourceRow = {
 type ClientResourcesTableProps = {
     internalResources: InternalResourceRow[];
     orgId: string;
-    defaultSort?: {
-        id: string;
-        desc: boolean;
-    };
+    pagination: PaginationState;
+    rowCount: number;
 };
 
 export default function ClientResourcesTable({
     internalResources,
     orgId,
-    defaultSort
+    pagination,
+    rowCount
 }: ClientResourcesTableProps) {
     const router = useRouter();
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
     const t = useTranslations();
 
     const { env } = useEnvContext();
@@ -180,9 +189,24 @@ export default function ClientResourcesTable({
             accessorKey: "mode",
             friendlyName: t("editInternalResourceDialogMode"),
             header: () => (
-                <span className="p-3">
-                    {t("editInternalResourceDialogMode")}
-                </span>
+                <ColumnFilterButton
+                    options={[
+                        {
+                            value: "host",
+                            label: t("editInternalResourceDialogModeHost")
+                        },
+                        {
+                            value: "cidr",
+                            label: t("editInternalResourceDialogModeCidr")
+                        }
+                    ]}
+                    selectedValue={searchParams.get("mode") ?? undefined}
+                    onValueChange={(value) => handleFilterChange("mode", value)}
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("editInternalResourceDialogMode")}
+                    className="p-3"
+                />
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
@@ -300,6 +324,37 @@ export default function ClientResourcesTable({
         }
     ];
 
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null
+    ) {
+        searchParams.delete(column);
+        searchParams.delete("page");
+
+        if (value) {
+            searchParams.set(column, value);
+        }
+        filter({
+            searchParams
+        });
+    }
+
+    const handlePaginationChange = (newPage: PaginationState) => {
+        searchParams.set("page", (newPage.pageIndex + 1).toString());
+        searchParams.set("pageSize", newPage.pageSize.toString());
+        filter({
+            searchParams
+        });
+    };
+
+    const handleSearchChange = useDebouncedCallback((query: string) => {
+        searchParams.set("query", query);
+        searchParams.delete("page");
+        filter({
+            searchParams
+        });
+    }, 300);
+
     return (
         <>
             {selectedInternalResource && (
@@ -327,19 +382,20 @@ export default function ClientResourcesTable({
                 />
             )}
 
-            <DataTable
+            <ControlledDataTable
                 columns={internalColumns}
-                data={internalResources}
-                persistPageSize="internal-resources"
+                rows={internalResources}
+                tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
-                searchColumn="name"
                 onAdd={() => setIsCreateDialogOpen(true)}
                 addButtonText={t("resourceAdd")}
+                onSearch={handleSearchChange}
                 onRefresh={refreshData}
+                onPaginationChange={handlePaginationChange}
+                pagination={pagination}
+                rowCount={rowCount}
                 isRefreshing={isRefreshing}
-                defaultSort={defaultSort}
-                enableColumnVisibility={true}
-                persistColumnVisibility="internal-resources"
+                enableColumnVisibility
                 columnVisibility={{
                     niceId: false,
                     aliasAddress: false

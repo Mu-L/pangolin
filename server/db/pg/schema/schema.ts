@@ -219,7 +219,7 @@ export const siteResources = pgTable("siteResources", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
-    mode: varchar("mode").notNull(), // "host" | "cidr" | "port"
+    mode: varchar("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
     protocol: varchar("protocol"), // only for port mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
