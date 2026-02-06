@@ -32,7 +32,13 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import {
+    useOptimistic,
+    useRef,
+    useState,
+    useTransition,
+    type ComponentRef
+} from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
@@ -479,18 +485,9 @@ export default function ProxyResourcesTable({
                 />
             ),
             cell: ({ row }) => (
-                <Switch
-                    checked={
-                        row.original.http
-                            ? !!row.original.domainId && row.original.enabled
-                            : row.original.enabled
-                    }
-                    disabled={row.original.http && !row.original.domainId}
-                    onCheckedChange={(val) =>
-                        startTransition(() =>
-                            toggleResourceEnabled(val, row.original.id)
-                        )
-                    }
+                <ResourceEnabledForm
+                    resource={row.original}
+                    onToggleResourceEnabled={toggleResourceEnabled}
                 />
             )
         },
@@ -630,5 +627,45 @@ export default function ProxyResourcesTable({
                 stickyRightColumn="actions"
             />
         </>
+    );
+}
+
+type ResourceEnabledFormProps = {
+    resource: ResourceRow;
+    onToggleResourceEnabled: (
+        val: boolean,
+        resourceId: number
+    ) => Promise<void>;
+};
+
+function ResourceEnabledForm({
+    resource,
+    onToggleResourceEnabled
+}: ResourceEnabledFormProps) {
+    const enabled = resource.http
+        ? !!resource.domainId && resource.enabled
+        : resource.enabled;
+    const [optimisticEnabled, setOptimisticEnabled] = useOptimistic(enabled);
+
+    const formRef = useRef<ComponentRef<"form">>(null);
+
+    async function submitAction(formData: FormData) {
+        const newEnabled = !(formData.get("enabled") === "on");
+        setOptimisticEnabled(newEnabled);
+        await onToggleResourceEnabled(newEnabled, resource.id);
+    }
+
+    return (
+        <form action={submitAction} ref={formRef}>
+            <Switch
+                checked={optimisticEnabled}
+                disabled={
+                    (resource.http && !resource.domainId) ||
+                    optimisticEnabled !== enabled
+                }
+                name="enabled"
+                onCheckedChange={() => formRef.current?.requestSubmit()}
+            />
+        </form>
     );
 }
