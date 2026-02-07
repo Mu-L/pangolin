@@ -699,18 +699,6 @@ export default function UserDevicesTable({
         return allOptions;
     }, [t]);
 
-    const statusFilterValues = useMemo(() => {
-        const status = searchParams.getAll("status");
-        if (status.length > 0) {
-            return status;
-        }
-
-        if (build === "oss") {
-            return ["active"];
-        }
-        return ["active", "pending"];
-    }, [searchParams]);
-
     function handleFilterChange(
         column: string,
         value: string | null | undefined | string[]
@@ -803,7 +791,7 @@ export default function UserDevicesTable({
                         onValueChange: (selectedValues: string[]) => {
                             handleFilterChange("status", selectedValues);
                         },
-                        values: statusFilterValues
+                        values: searchParams.getAll("status")
                     }
                 ]}
             />
