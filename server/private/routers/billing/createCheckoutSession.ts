@@ -32,7 +32,7 @@ const createCheckoutSessionBodySchema = z.strictObject({
     tier: z.enum(["home_lab", "starter", "scale"]),
 });
 
-export async function createCheckoutSessionSAAS(
+export async function createCheckoutSession(
     req: Request,
     res: Response,
     next: NextFunction

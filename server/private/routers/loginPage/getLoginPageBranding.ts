@@ -25,9 +25,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq } from "drizzle-orm";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
-import { build } from "@server/build";
+
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
@@ -50,19 +48,6 @@ export async function getLoginPageBranding(
         }
 
         const { orgId } = parsedParams.data;
-
-        if (build === "saas") {
-            const { tier } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
-            if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
-            }
-        }
 
         const [existingLoginPageBranding] = await db
             .select()

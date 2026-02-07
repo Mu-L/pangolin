@@ -76,6 +76,7 @@ unauthenticated.post(
 authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createIdp),
     logActionAudit(ActionsEnum.createIdp),
@@ -85,6 +86,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyUserHasAction(ActionsEnum.updateIdp),
@@ -146,7 +148,7 @@ if (build === "saas") {
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),
-        billing.createCheckoutSessionSAAS
+        billing.createCheckoutSession
     );
 
     authenticated.post(
@@ -269,6 +271,7 @@ authenticated.delete(
 authenticated.put(
     "/org/:orgId/login-page",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createLoginPage),
     logActionAudit(ActionsEnum.createLoginPage),
@@ -278,6 +281,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/login-page/:loginPageId",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyLoginPageAccess,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
@@ -306,6 +310,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/approvals",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listApprovals),
     logActionAudit(ActionsEnum.listApprovals),
@@ -322,6 +327,7 @@ authenticated.get(
 authenticated.put(
     "/org/:orgId/approvals/:approvalId",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.updateApprovals),
     logActionAudit(ActionsEnum.updateApprovals),
@@ -331,6 +337,7 @@ authenticated.put(
 authenticated.get(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getLoginPage),
     logActionAudit(ActionsEnum.getLoginPage),
@@ -340,6 +347,7 @@ authenticated.get(
 authenticated.put(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
     logActionAudit(ActionsEnum.updateLoginPage),
@@ -349,6 +357,7 @@ authenticated.put(
 authenticated.delete(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,
+    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.deleteLoginPage),
     logActionAudit(ActionsEnum.deleteLoginPage),

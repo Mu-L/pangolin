@@ -13,9 +13,8 @@ import { generateId } from "@server/auth/sessions/app";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
-import { getOrgTierData } from "#dynamic/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { isSubscribed } from "@server/private/lib/isSubscribed";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -132,9 +131,8 @@ export async function createOrgUser(
             );
         } else if (type === "oidc") {
             if (build === "saas") {
-                const { tier } = await getOrgTierData(orgId);
-                const subscribed = tier === TierId.STANDARD;
-                if (!subscribed) {
+                const subscribed = await isSubscribed(orgId);
+                if (subscribed) {
                     return next(
                         createHttpError(
                             HttpCode.FORBIDDEN,

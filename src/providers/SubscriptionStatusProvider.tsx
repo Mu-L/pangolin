@@ -1,7 +1,6 @@
 "use client";
 
 import SubscriptionStatusContext from "@app/contexts/subscriptionStatusContext";
-import { getTierPriceSet, TierId } from "@server/lib/billing/tiers";
 import { GetOrgSubscriptionResponse } from "@server/routers/billing/types";
 import { useState } from "react";
 import { build } from "@server/build";
@@ -43,34 +42,37 @@ export function SubscriptionStatusProvider({
     };
 
     const getTier = () => {
-        const tierPriceSet = getTierPriceSet(env, sandbox_mode);
-
         if (subscriptionStatus?.subscriptions) {
             // Iterate through all subscriptions
-            for (const { subscription, items } of subscriptionStatus.subscriptions) {
-                if (items && items.length > 0) {
-                    // Iterate through tiers in order (earlier keys are higher tiers)
-                    for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
-                        // Check if any subscription item matches this tier's price ID
-                        const matchingItem = items.find(
-                            (item) => item.priceId === priceId
-                        );
-                        if (matchingItem) {
-                            return tierId;
-                        }
-                    }
+            for (const { subscription } of subscriptionStatus.subscriptions) {
+                if (
+                    subscription.type == "home_lab" ||
+                    subscription.type == "starter" ||
+                    subscription.type == "scale"
+                ) {
+                    return {
+                        tier: subscription.type,
+                        active: subscription.status === "active"
+                    };
                 }
             }
         }
 
-        return null;
+        return {
+            tier: null,
+            active: false
+        };
     };
 
     const isSubscribed = () => {
         if (build === "enterprise") {
             return true;
         }
-        return getTier() === TierId.STANDARD;
+        const { tier, active } = getTier();
+        return (
+            (tier == "home_lab" || tier == "starter" || tier == "scale") &&
+            active
+        );
     };
 
     const [subscribed, setSubscribed] = useState<boolean>(isSubscribed());

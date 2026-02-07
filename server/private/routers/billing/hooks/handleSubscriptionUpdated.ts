@@ -244,7 +244,8 @@ export async function handleSubscriptionUpdated(
                 // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
                 await handleSubscriptionLifesycle(
                     customer.orgId,
-                    subscription.status
+                    subscription.status,
+                    type
                 );
             } else if (type === "license") {
                 if (subscription.status === "canceled" || subscription.status == "unpaid" || subscription.status == "incomplete_expired") {

@@ -139,7 +139,8 @@ export async function handleSubscriptionCreated(
             // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
             await handleSubscriptionLifesycle(
                 customer.orgId,
-                subscription.status
+                subscription.status,
+                type
             );
 
             const [orgUserRes] = await db

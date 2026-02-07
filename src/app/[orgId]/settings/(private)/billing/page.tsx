@@ -76,7 +76,6 @@ export default function GeneralPage() {
                 setAllSubscriptions(subscriptions);
 
                 // Import tier and license price sets
-                const { getTierPriceSet } = await import("@server/lib/billing/tiers");
                 const { getLicensePriceSet } = await import("@server/lib/billing/licenses");
 
                 const tierPriceSet = getTierPriceSet(

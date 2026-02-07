@@ -18,7 +18,6 @@ import {
     ResourcePassword,
     ResourcePincode,
     ResourceRule,
-    resourceSessions
 } from "@server/db";
 import config from "@server/lib/config";
 import { isIpInCidr, stripPortFromHost } from "@server/lib/ip";
@@ -32,7 +31,6 @@ import { fromError } from "zod-validation-error";
 import { getCountryCodeForIp } from "@server/lib/geoip";
 import { getAsnForIp } from "@server/lib/asn";
 import { getOrgTierData } from "#dynamic/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import { verifyPassword } from "@server/auth/password";
 import {
     checkOrgAccessPolicy,
@@ -40,8 +38,8 @@ import {
 } from "#dynamic/lib/checkOrgAccessPolicy";
 import { logRequestAudit } from "./logRequestAudit";
 import cache from "@server/lib/cache";
-import semver from "semver";
 import { APP_VERSION } from "@server/lib/consts";
+import { isSubscribed } from "#private/lib/isSubscribed";
 
 const verifyResourceSessionSchema = z.object({
     sessions: z.record(z.string(), z.string()).optional(),
@@ -798,8 +796,8 @@ async function notAllowed(
 ) {
     let loginPage: LoginPage | null = null;
     if (orgId) {
-        const { tier } = await getOrgTierData(orgId); // returns null in oss
-        if (tier === TierId.STANDARD) {
+        const subscribed = await isSubscribed(orgId);
+        if (subscribed) {
             loginPage = await getOrgLoginPage(orgId);
         }
     }
@@ -852,8 +850,8 @@ async function headerAuthChallenged(
 ) {
     let loginPage: LoginPage | null = null;
     if (orgId) {
-        const { tier } = await getOrgTierData(orgId); // returns null in oss
-        if (tier === TierId.STANDARD) {
+        const subscribed = await isSubscribed(orgId);
+        if (subscribed) {
             loginPage = await getOrgLoginPage(orgId);
         }
     }

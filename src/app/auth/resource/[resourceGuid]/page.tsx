@@ -23,8 +23,6 @@ import type {
     LoadLoginPageBrandingResponse,
     LoadLoginPageResponse
 } from "@server/routers/loginPage/types";
-import { GetOrgTierResponse } from "@server/routers/billing/types";
-import { TierId } from "@server/lib/billing/tiers";
 import { CheckOrgUserAccessResponse } from "@server/routers/org";
 import OrgPolicyRequired from "@app/components/OrgPolicyRequired";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
