@@ -63,7 +63,6 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import { NewtSiteInstallCommands } from "@app/components/newt-install-commands";
-import { id } from "date-fns/locale";
 
 type SiteType = "newt" | "wireguard" | "local";
 
