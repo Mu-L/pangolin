@@ -1,6 +1,14 @@
 import React from "react";
 
-export default function CopyCodeBox({ text }: { text: string }) {
+const DEFAULT_HINT = "Copy and paste this code when prompted";
+
+export default function CopyCodeBox({
+    text,
+    hint
+}: {
+    text: string;
+    hint?: string;
+}) {
     return (
         <div className="inline-block">
             <div className="bg-gray-50 border border-gray-200 rounded-lg px-6 py-4 mx-auto">
@@ -8,9 +16,7 @@ export default function CopyCodeBox({ text }: { text: string }) {
                     {text}
                 </span>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-                Copy and paste this code when prompted
-            </p>
+            <p className="text-xs text-gray-500 mt-2">{hint ?? DEFAULT_HINT}</p>
         </div>
     );
 }

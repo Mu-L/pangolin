@@ -3,12 +3,9 @@ import yaml from "js-yaml";
 import { configFilePath1, configFilePath2 } from "./consts";
 import { z } from "zod";
 import stoi from "./stoi";
+import { getEnvOrYaml } from "./getEnvOrYaml";
 
 const portSchema = z.number().positive().gt(0).lte(65535);
-
-const getEnvOrYaml = (envVar: string) => (valFromYaml: any) => {
-    return process.env[envVar] ?? valFromYaml;
-};
 
 export const configSchema = z
     .object({
@@ -311,7 +308,10 @@ export const configSchema = z
             .object({
                 smtp_host: z.string().optional(),
                 smtp_port: portSchema.optional(),
-                smtp_user: z.string().optional(),
+                smtp_user: z
+                    .string()
+                    .optional()
+                    .transform(getEnvOrYaml("EMAIL_SMTP_USER")),
                 smtp_pass: z
                     .string()
                     .optional()

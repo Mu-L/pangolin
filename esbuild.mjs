@@ -6,6 +6,12 @@ import path from "path";
 import fs from "fs";
 // import { glob } from "glob";
 
+// Read default build type from server/build.ts
+let build = "oss";
+const buildFile = fs.readFileSync(path.resolve("server/build.ts"), "utf8");
+const m = buildFile.match(/export\s+const\s+build\s*=\s*["'](oss|saas|enterprise)["']/);
+if (m) build = m[1];
+
 const banner = `
 // patch __dirname
 // import { fileURLToPath } from "url";
@@ -37,7 +43,7 @@ const argv = yargs(hideBin(process.argv))
         describe: "Build type (oss, saas, enterprise)",
         type: "string",
         choices: ["oss", "saas", "enterprise"],
-        default: "oss"
+        default: build
     })
     .help()
     .alias("help", "h").argv;

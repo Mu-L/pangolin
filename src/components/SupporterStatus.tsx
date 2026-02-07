@@ -226,6 +226,21 @@ export default function SupporterStatus({
                             </Link>
                         </p>
 
+                        <div className="my-4 p-4 border border-blue-500/50 bg-blue-500/10 rounded-lg">
+                            <p className="text-sm">
+                                <strong>Business & Enterprise Users:</strong> For larger organizations or teams requiring advanced features, consider our self-serve enterprise license and Enterprise Edition.{" "}
+                                <Link
+                                    href="https://pangolin.net/pricing?hosting=self-host"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline inline-flex items-center gap-1"
+                                >
+                                    Learn more
+                                    <ExternalLink className="h-3 w-3" />
+                                </Link>
+                            </p>
+                        </div>
+
                         <div className="py-6">
                             <p className="mb-3 text-center">
                                 {t("supportKeyOptions")}

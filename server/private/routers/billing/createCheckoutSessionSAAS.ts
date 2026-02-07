@@ -29,7 +29,7 @@ const createCheckoutSessionSchema = z.strictObject({
     orgId: z.string()
 });
 
-export async function createCheckoutSession(
+export async function createCheckoutSessionSAAS(
     req: Request,
     res: Response,
     next: NextFunction
@@ -87,7 +87,7 @@ export async function createCheckoutSession(
             data: session.url,
             success: true,
             error: false,
-            message: "Organization created successfully",
+            message: "Checkout session created successfully",
             status: HttpCode.CREATED
         });
     } catch (error) {

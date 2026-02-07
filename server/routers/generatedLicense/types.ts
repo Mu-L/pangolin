@@ -6,6 +6,8 @@ export type GeneratedLicenseKey = {
     createdAt: string;
     tier: string;
     type: string;
+    users: number;
+    sites: number;
 };
 
 export type ListGeneratedLicenseKeysResponse = GeneratedLicenseKey[];
@@ -19,6 +21,7 @@ export type NewLicenseKey = {
         tier: string;
         type: string;
         quantity: number;
+        quantity_2: number;
         isValid: boolean;
         updatedAt: string;
         createdAt: string;
