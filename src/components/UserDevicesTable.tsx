@@ -699,16 +699,21 @@ export default function UserDevicesTable({
         return allOptions;
     }, [t]);
 
-    const statusFilterDefaultValues = useMemo(() => {
+    const statusFilterValues = useMemo(() => {
+        const status = searchParams.getAll("status");
+        if (status.length > 0) {
+            return status;
+        }
+
         if (build === "oss") {
             return ["active"];
         }
         return ["active", "pending"];
-    }, []);
+    }, [searchParams]);
 
     function handleFilterChange(
         column: string,
-        value: string | undefined | null | string[]
+        value: string | null | undefined | string[]
     ) {
         searchParams.delete(column);
         searchParams.delete("page");
@@ -795,45 +800,10 @@ export default function UserDevicesTable({
                         multiSelect: true,
                         displayMode: "calculated",
                         options: statusFilterOptions,
-                        onFilter: (
-                            selectedValues: (string | number | boolean)[]
-                        ) => {
-                            console.log({ selectedValues });
-                            // if (selectedValues.length === 0) return true;
-                            // const rowArchived = row.archived;
-                            // const rowBlocked = row.blocked;
-                            // const approvalState = row.approvalState;
-                            // const isActive =
-                            //     !rowArchived &&
-                            //     !rowBlocked &&
-                            //     approvalState !== "pending" &&
-                            //     approvalState !== "denied";
-
-                            // if (selectedValues.includes("active") && isActive)
-                            //     return true;
-                            // if (
-                            //     selectedValues.includes("pending") &&
-                            //     approvalState === "pending"
-                            // )
-                            //     return true;
-                            // if (
-                            //     selectedValues.includes("denied") &&
-                            //     approvalState === "denied"
-                            // )
-                            //     return true;
-                            // if (
-                            //     selectedValues.includes("archived") &&
-                            //     rowArchived
-                            // )
-                            //     return true;
-                            // if (
-                            //     selectedValues.includes("blocked") &&
-                            //     rowBlocked
-                            // )
-                            //     return true;
-                            // return false;
+                        onValueChange: (selectedValues: string[]) => {
+                            handleFilterChange("status", selectedValues);
                         },
-                        values: statusFilterDefaultValues
+                        values: statusFilterValues
                     }
                 ]}
             />

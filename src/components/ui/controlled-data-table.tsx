@@ -46,7 +46,7 @@ export type ExtendedColumnDef<TData, TValue = unknown> = ColumnDef<
 type FilterOption = {
     id: string;
     label: string;
-    value: string | number | boolean;
+    value: string;
 };
 
 type DataTableFilter = {
@@ -54,8 +54,8 @@ type DataTableFilter = {
     label: string;
     options: FilterOption[];
     multiSelect?: boolean;
-    onFilter: (selectedValues: (string | number | boolean)[]) => void;
-    values?: (string | number | boolean)[];
+    onValueChange: (selectedValues: string[]) => void;
+    values?: string[];
     displayMode?: "label" | "calculated"; // How to display the filter button text
 };
 
@@ -117,7 +117,7 @@ export function ControlledDataTable<TData, TValue>({
 
     // TODO: filters
     const activeFilters = useMemo(() => {
-        const initial: Record<string, (string | number | boolean)[]> = {};
+        const initial: Record<string, string[]> = {};
         filters?.forEach((filter) => {
             initial[filter.id] = filter.values || [];
         });
@@ -172,6 +172,33 @@ export function ControlledDataTable<TData, TValue>({
 
         // Multiple selections: always join with "and"
         return selectedOptions.map((opt) => opt.label).join(" or ");
+    };
+
+    const handleFilterChange = (
+        filterId: string,
+        optionValue: string,
+        checked: boolean
+    ) => {
+        const currentValues = activeFilters[filterId] || [];
+        const filter = filters?.find((f) => f.id === filterId);
+
+        if (!filter) return;
+
+        let newValues: string[];
+
+        if (filter.multiSelect) {
+            // Multi-select: add or remove the value
+            if (checked) {
+                newValues = [...currentValues, optionValue];
+            } else {
+                newValues = currentValues.filter((v) => v !== optionValue);
+            }
+        } else {
+            // Single-select: replace the value
+            newValues = checked ? [optionValue] : [];
+        }
+
+        filter.onValueChange(newValues);
     };
 
     // Helper function to check if a column should be sticky
@@ -285,11 +312,11 @@ export function ControlledDataTable<TData, TValue>({
                                                                 onCheckedChange={(
                                                                     checked
                                                                 ) => {
-                                                                    // handleFilterChange(
-                                                                    //     filter.id,
-                                                                    //     option.value,
-                                                                    //     checked
-                                                                    // )
+                                                                    handleFilterChange(
+                                                                        filter.id,
+                                                                        option.value,
+                                                                        checked
+                                                                    );
                                                                 }}
                                                                 onSelect={(e) =>
                                                                     e.preventDefault()
