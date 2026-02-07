@@ -1,35 +1,27 @@
-import { db, olms, users } from "@server/db";
 import {
     clients,
+    clientSitesAssociationsCache,
+    currentFingerprint,
+    db,
+    olms,
     orgs,
     roleClients,
     sites,
     userClients,
-    clientSitesAssociationsCache,
-    currentFingerprint
+    users
 } from "@server/db";
-import logger from "@server/logger";
-import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
-import {
-    and,
-    count,
-    eq,
-    inArray,
-    isNotNull,
-    isNull,
-    or,
-    sql
-} from "drizzle-orm";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import type { PaginatedResponse } from "@server/types/Pagination";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
 import NodeCache from "node-cache";
 import semver from "semver";
-import { getUserDeviceName } from "@server/db/names";
-import type { PaginatedResponse } from "@server/types/Pagination";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const olmVersionCache = new NodeCache({ stdTTL: 3600 });
 
