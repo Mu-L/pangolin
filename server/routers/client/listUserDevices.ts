@@ -5,6 +5,7 @@ import {
     olms,
     orgs,
     roleClients,
+    sites,
     userClients,
     users
 } from "@server/db";
@@ -14,7 +15,20 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import {
+    and,
+    asc,
+    desc,
+    eq,
+    ilike,
+    inArray,
+    isNotNull,
+    isNull,
+    not,
+    or,
+    sql,
+    type SQL
+} from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import NodeCache from "node-cache";
@@ -96,7 +110,40 @@ const listUserDevicesSchema = z.object({
         .catch(1)
         .default(1),
     query: z.string().optional(),
-    sort_by: z.enum(["megabytesIn", "megabytesOut"]).optional().catch(undefined)
+    sort_by: z
+        .enum(["megabytesIn", "megabytesOut"])
+        .optional()
+        .catch(undefined),
+    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc"),
+    online: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined),
+    agent: z
+        .enum([
+            "windows",
+            "android",
+            "cli",
+            "macos",
+            "ios",
+            "ipados",
+            "unknown"
+        ])
+        .optional()
+        .catch(undefined),
+    filters: z.preprocess(
+        (val: string) => {
+            return val.split(","); // the search query array is an array joined by a comma
+        },
+        z
+            .array(
+                z.enum(["active", "pending", "denied", "blocked", "archived"])
+            )
+            .optional()
+            .default(["active", "pending"])
+            .catch(["active", "pending"])
+    )
 });
 
 function queryUserDevicesBase() {
@@ -175,7 +222,28 @@ export async function listUserDevices(
                 )
             );
         }
-        const { page, pageSize, query } = parsedQuery.data;
+        const {
+            page,
+            pageSize,
+            query,
+            sort_by,
+            online,
+            filters,
+            agent,
+            order
+        } = parsedQuery.data;
+
+        console.log({ query: req.query });
+        console.log({
+            page,
+            pageSize,
+            query,
+            sort_by,
+            online,
+            filters,
+            agent,
+            order
+        });
 
         const parsedParams = listUserDevicesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -226,17 +294,93 @@ export async function listUserDevices(
         );
         // Get client count with filter
         const conditions = [
-            inArray(clients.clientId, accessibleClientIds),
-            eq(clients.orgId, orgId),
-            isNotNull(clients.userId)
+            and(
+                inArray(clients.clientId, accessibleClientIds),
+                eq(clients.orgId, orgId),
+                isNotNull(clients.userId)
+            )
         ];
+
+        if (query) {
+            conditions.push(
+                or(
+                    ilike(clients.name, "%" + query + "%"),
+                    ilike(users.name, "%" + query + "%")
+                )
+            );
+        }
+
+        if (typeof online !== "undefined") {
+            conditions.push(eq(clients.online, online));
+        }
+
+        const agentValueMap = {
+            windows: "Pangolin Windows",
+            android: "Pangolin Android",
+            ios: "Pangolin iOS",
+            ipados: "Pangolin iPadOS",
+            macos: "Pangolin macOS",
+            cli: "Pangolin CLI"
+        } satisfies Record<
+            Exclude<typeof agent, undefined | "unknown">,
+            string
+        >;
+        if (typeof agent !== "undefined") {
+            if (agent === "unknown") {
+                conditions.push(isNull(olms.agent));
+            } else {
+                conditions.push(eq(olms.agent, agentValueMap[agent]));
+            }
+        }
+
+        if (filters.length > 0) {
+            const filterAggregates: (SQL<unknown> | undefined)[] = [];
+
+            if (filters.includes("active")) {
+                filterAggregates.push(
+                    and(
+                        eq(clients.archived, false),
+                        eq(clients.blocked, false),
+                        or(
+                            eq(clients.approvalState, "approved"),
+                            isNull(clients.approvalState) // approval state of `NULL` means approved by default
+                        )
+                    )
+                );
+            }
+            if (filters.includes("pending")) {
+                filterAggregates.push(eq(clients.approvalState, "pending"));
+            }
+            if (filters.includes("denied")) {
+                filterAggregates.push(eq(clients.approvalState, "denied"));
+            }
+            if (filters.includes("archived")) {
+                filterAggregates.push(eq(clients.archived, true));
+            }
+            if (filters.includes("blocked")) {
+                filterAggregates.push(eq(clients.blocked, true));
+            }
+
+            conditions.push(or(...filterAggregates));
+        }
 
         const baseQuery = queryUserDevicesBase().where(and(...conditions));
 
         const countQuery = db.$count(baseQuery.as("filtered_clients"));
 
+        const listDevicesQuery = baseQuery
+            .limit(pageSize)
+            .offset(pageSize * (page - 1))
+            .orderBy(
+                sort_by
+                    ? order === "asc"
+                        ? asc(clients[sort_by])
+                        : desc(clients[sort_by])
+                    : asc(clients.clientId)
+            );
+
         const [clientsList, totalCount] = await Promise.all([
-            baseQuery.limit(pageSize).offset(pageSize * (page - 1)),
+            listDevicesQuery,
             countQuery
         ]);
 
