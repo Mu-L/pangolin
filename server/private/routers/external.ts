@@ -152,6 +152,14 @@ if (build === "saas") {
     );
 
     authenticated.post(
+        "/org/:orgId/billing/change-tier",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        logActionAudit(ActionsEnum.billing),
+        billing.changeTier
+    );
+
+    authenticated.post(
         "/org/:orgId/billing/create-portal-session",
         verifyOrgAccess,
         verifyUserHasAction(ActionsEnum.billing),

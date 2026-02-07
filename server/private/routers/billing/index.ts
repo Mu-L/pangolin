@@ -16,3 +16,4 @@ export * from "./createPortalSession";
 export * from "./getOrgSubscriptions";
 export * from "./getOrgUsage";
 export * from "./internalGetOrgTier";
+export * from "./changeTier";

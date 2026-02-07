@@ -14,7 +14,7 @@ import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
-import { isSubscribed } from "@server/private/lib/isSubscribed";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()

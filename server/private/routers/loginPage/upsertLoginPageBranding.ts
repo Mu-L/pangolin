@@ -26,7 +26,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq, InferInsertModel } from "drizzle-orm";
 import { build } from "@server/build";
-import config from "@server/private/lib/config";
+import config from "#private/lib/config";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()

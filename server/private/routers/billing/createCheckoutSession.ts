@@ -23,6 +23,8 @@ import config from "@server/lib/config";
 import { fromError } from "zod-validation-error";
 import stripe from "#private/lib/stripe";
 import { getHomeLabFeaturePriceSet, getLineItems, getScaleFeaturePriceSet, getStarterFeaturePriceSet } from "@server/lib/billing";
+import { usageService } from "@server/lib/billing/usageService";
+import Stripe from "stripe";
 
 const createCheckoutSessionSchema = z.strictObject({
     orgId: z.string()
@@ -80,18 +82,20 @@ export async function createCheckoutSession(
             );
         }
 
-        let lineItems;
+        let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
         if (tier === "home_lab") {
-            lineItems = getLineItems(getHomeLabFeaturePriceSet());
+            lineItems = await getLineItems(getHomeLabFeaturePriceSet(), orgId);
         } else if (tier === "starter") {
-            lineItems = getLineItems(getStarterFeaturePriceSet());
+            lineItems = await getLineItems(getStarterFeaturePriceSet(), orgId);
         } else if (tier === "scale") {
-            lineItems = getLineItems(getScaleFeaturePriceSet());
+            lineItems = await getLineItems(getScaleFeaturePriceSet(), orgId);
         } else {
             return next(
                 createHttpError(HttpCode.BAD_REQUEST, "Invalid plan")
             );
         }
+
+        logger.debug(`Line items: ${JSON.stringify(lineItems)}`)
 
         const session = await stripe!.checkout.sessions.create({
             client_reference_id: orgId, // So we can look it up the org later on the webhook

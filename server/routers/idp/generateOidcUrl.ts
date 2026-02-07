@@ -14,7 +14,7 @@ import jsonwebtoken from "jsonwebtoken";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import { build } from "@server/build";
-import { isSubscribed } from "@server/private/lib/isSubscribed";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
 
 const paramsSchema = z
     .object({
