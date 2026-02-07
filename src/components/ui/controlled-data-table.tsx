@@ -33,7 +33,7 @@ import { useStoredColumnVisibility } from "@app/hooks/useStoredColumnVisibility"
 
 import { Columns, Filter, Plus, RefreshCw, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 // Extended ColumnDef type that includes optional friendlyName for column visibility dropdown
 export type ExtendedColumnDef<TData, TValue = unknown> = ColumnDef<
@@ -54,11 +54,8 @@ type DataTableFilter = {
     label: string;
     options: FilterOption[];
     multiSelect?: boolean;
-    filterFn: (
-        row: any,
-        selectedValues: (string | number | boolean)[]
-    ) => boolean;
-    defaultValues?: (string | number | boolean)[];
+    onFilter: (selectedValues: (string | number | boolean)[]) => void;
+    values?: (string | number | boolean)[];
     displayMode?: "label" | "calculated"; // How to display the filter button text
 };
 
@@ -119,15 +116,13 @@ export function ControlledDataTable<TData, TValue>({
     );
 
     // TODO: filters
-    const [activeFilters, setActiveFilters] = useState<
-        Record<string, (string | number | boolean)[]>
-    >(() => {
+    const activeFilters = useMemo(() => {
         const initial: Record<string, (string | number | boolean)[]> = {};
         filters?.forEach((filter) => {
-            initial[filter.id] = filter.defaultValues || [];
+            initial[filter.id] = filter.values || [];
         });
         return initial;
-    });
+    }, [filters]);
 
     console.log({
         pagination,
@@ -147,7 +142,6 @@ export function ControlledDataTable<TData, TValue>({
         },
         manualFiltering: true,
         manualPagination: true,
-        // pageCount: pagination.pageCount,
         rowCount,
         state: {
             columnFilters,
@@ -177,7 +171,7 @@ export function ControlledDataTable<TData, TValue>({
         }
 
         // Multiple selections: always join with "and"
-        return selectedOptions.map((opt) => opt.label).join(" and ");
+        return selectedOptions.map((opt) => opt.label).join(" or ");
     };
 
     // Helper function to check if a column should be sticky

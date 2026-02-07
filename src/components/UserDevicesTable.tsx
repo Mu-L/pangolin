@@ -706,8 +706,6 @@ export default function UserDevicesTable({
         return ["active", "pending"];
     }, []);
 
-    const [, setCount] = useState(0);
-
     function handleFilterChange(
         column: string,
         value: string | undefined | null | string[]
@@ -726,7 +724,6 @@ export default function UserDevicesTable({
         filter({
             searchParams
         });
-        setCount((c) => c + 1);
     }
 
     function toggleSort(column: string) {
@@ -791,54 +788,54 @@ export default function UserDevicesTable({
                 rowCount={rowCount}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-                // filters={[
-                //     {
-                //         id: "status",
-                //         label: t("status") || "Status",
-                //         multiSelect: true,
-                //         displayMode: "calculated",
-                //         options: statusFilterOptions,
-                //         filterFn: (
-                //             row: ClientRow,
-                //             selectedValues: (string | number | boolean)[]
-                //         ) => {
-                //             if (selectedValues.length === 0) return true;
-                //             const rowArchived = row.archived;
-                //             const rowBlocked = row.blocked;
-                //             const approvalState = row.approvalState;
-                //             const isActive =
-                //                 !rowArchived &&
-                //                 !rowBlocked &&
-                //                 approvalState !== "pending" &&
-                //                 approvalState !== "denied";
+                filters={[
+                    {
+                        id: "status",
+                        label: t("status") || "Status",
+                        multiSelect: true,
+                        displayMode: "calculated",
+                        options: statusFilterOptions,
+                        onFilter: (
+                            selectedValues: (string | number | boolean)[]
+                        ) => {
+                            console.log({ selectedValues });
+                            // if (selectedValues.length === 0) return true;
+                            // const rowArchived = row.archived;
+                            // const rowBlocked = row.blocked;
+                            // const approvalState = row.approvalState;
+                            // const isActive =
+                            //     !rowArchived &&
+                            //     !rowBlocked &&
+                            //     approvalState !== "pending" &&
+                            //     approvalState !== "denied";
 
-                //             if (selectedValues.includes("active") && isActive)
-                //                 return true;
-                //             if (
-                //                 selectedValues.includes("pending") &&
-                //                 approvalState === "pending"
-                //             )
-                //                 return true;
-                //             if (
-                //                 selectedValues.includes("denied") &&
-                //                 approvalState === "denied"
-                //             )
-                //                 return true;
-                //             if (
-                //                 selectedValues.includes("archived") &&
-                //                 rowArchived
-                //             )
-                //                 return true;
-                //             if (
-                //                 selectedValues.includes("blocked") &&
-                //                 rowBlocked
-                //             )
-                //                 return true;
-                //             return false;
-                //         },
-                //         defaultValues: statusFilterDefaultValues
-                //     }
-                // ]}
+                            // if (selectedValues.includes("active") && isActive)
+                            //     return true;
+                            // if (
+                            //     selectedValues.includes("pending") &&
+                            //     approvalState === "pending"
+                            // )
+                            //     return true;
+                            // if (
+                            //     selectedValues.includes("denied") &&
+                            //     approvalState === "denied"
+                            // )
+                            //     return true;
+                            // if (
+                            //     selectedValues.includes("archived") &&
+                            //     rowArchived
+                            // )
+                            //     return true;
+                            // if (
+                            //     selectedValues.includes("blocked") &&
+                            //     rowBlocked
+                            // )
+                            //     return true;
+                            // return false;
+                        },
+                        values: statusFilterDefaultValues
+                    }
+                ]}
             />
         </>
     );
