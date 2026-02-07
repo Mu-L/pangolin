@@ -14,8 +14,7 @@ import jsonwebtoken from "jsonwebtoken";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import { build } from "@server/build";
-import { getOrgTierData } from "#dynamic/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
+import { isSubscribed } from "@server/private/lib/isSubscribed";
 
 const paramsSchema = z
     .object({
@@ -113,8 +112,7 @@ export async function generateOidcUrl(
             }
 
             if (build === "saas") {
-                const { tier } = await getOrgTierData(orgId);
-                const subscribed = tier === TierId.STANDARD;
+                const subscribed = await isSubscribed(orgId);
                 if (!subscribed) {
                     return next(
                         createHttpError(

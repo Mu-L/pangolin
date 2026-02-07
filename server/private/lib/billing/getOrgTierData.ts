@@ -11,23 +11,58 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { getTierPriceSet } from "@server/lib/billing/tiers";
-import { getOrgSubscriptionsData } from "@server/private/routers/billing/getOrgSubscriptions";
 import { build } from "@server/build";
+import { db, customers, subscriptions } from "@server/db";
+import { eq, and, ne } from "drizzle-orm";
 
 export async function getOrgTierData(
     orgId: string
-): Promise<{ tier: string | null; active: boolean }> {
-    let tier = null;
+): Promise<{ tier: "home_lab" | "starter" | "scale" | null; active: boolean }> {
+    let tier: "home_lab" | "starter" | "scale" | null = null;
     let active = false;
 
     if (build !== "saas") {
         return { tier, active };
     }
 
-    // TODO: THIS IS INEFFICIENT!!! WE SHOULD IMPROVE HOW WE STORE TIERS WITH SUBSCRIPTIONS AND RETRIEVE THEM
+    try {
+        // Get customer for org
+        const [customer] = await db
+            .select()
+            .from(customers)
+            .where(eq(customers.orgId, orgId))
+            .limit(1);
 
-    const subscriptionsWithItems = await getOrgSubscriptionsData(orgId);
+        if (customer) {
+            // Query for active subscriptions that are not license type
+            const [subscription] = await db
+                .select()
+                .from(subscriptions)
+                .where(
+                    and(
+                        eq(subscriptions.customerId, customer.customerId),
+                        eq(subscriptions.status, "active"),
+                        ne(subscriptions.type, "license")
+                    )
+                )
+                .limit(1);
+
+            if (subscription) {
+                // Validate that subscription.type is one of the expected tier values
+                if (
+                    subscription.type === "home_lab" ||
+                    subscription.type === "starter" ||
+                    subscription.type === "scale"
+                ) {
+                    tier = subscription.type;
+                    active = true;
+                }
+            }
+        }
+    } catch (error) {
+        // If org not found or error occurs, return null tier and inactive
+        // This is acceptable behavior as per the function signature
+    }
 
     return { tier, active };
 }

@@ -23,9 +23,7 @@ import { eq, and } from "drizzle-orm";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import { subdomainSchema } from "@server/lib/schemas";
 import { createCertificate } from "#private/routers/certificates/createCertificate";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
-import { build } from "@server/build";
+
 import { UpdateLoginPageResponse } from "@server/routers/loginPage/types";
 
 const paramsSchema = z
@@ -87,18 +85,6 @@ export async function updateLoginPage(
 
         const { loginPageId, orgId } = parsedParams.data;
 
-        if (build === "saas") {
-            const { tier } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
-            if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
-            }
-        }
 
         const [existingLoginPage] = await db
             .select()

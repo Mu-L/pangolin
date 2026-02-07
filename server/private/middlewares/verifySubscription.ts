@@ -38,9 +38,8 @@ export async function verifyValidSubscription(
             );
         }
 
-        const tier = await getOrgTierData(orgId);
-
-        if (!tier.active) {
+        const { tier, active  } = await getOrgTierData(orgId);
+        if ((tier == "home_lab" || tier == "starter" || tier == "scale") && active) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,

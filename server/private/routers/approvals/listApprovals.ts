@@ -19,8 +19,6 @@ import { fromError } from "zod-validation-error";
 
 import type { Request, Response, NextFunction } from "express";
 import { build } from "@server/build";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import {
     approvals,
     clients,
@@ -33,6 +31,7 @@ import {
 import { eq, isNull, sql, not, and, desc } from "drizzle-orm";
 import response from "@server/lib/response";
 import { getUserDeviceName } from "@server/db/names";
+import { isLicensedOrSubscribed } from "@server/private/lib/isLicencedOrSubscribed";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
@@ -220,19 +219,6 @@ export async function listApprovals(
         const { limit, offset, approvalState, clientId } = parsedQuery.data;
 
         const { orgId } = parsedParams.data;
-
-        if (build === "saas") {
-            const { tier } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
-            if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
-            }
-        }
 
         const approvalsList = await queryApprovals(
             orgId.toString(),

@@ -10,10 +10,10 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
-import { getOrgTierData } from "#dynamic/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import { cache } from "@server/lib/cache";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { subscribe } from "node:diagnostics_channel";
+import { isSubscribed } from "@server/private/lib/isSubscribed";
 
 const updateOrgParamsSchema = z.strictObject({
     orgId: z.string()
@@ -95,10 +95,10 @@ export async function updateOrg(
             parsedBody.data.passwordExpiryDays = undefined;
         }
 
-        const { tier } = await getOrgTierData(orgId);
+        const subscribed = await isSubscribed(orgId);
         if (
             build == "saas" &&
-            tier != TierId.STANDARD &&
+            subscribed &&
             parsedBody.data.settingsLogRetentionDaysRequest &&
             parsedBody.data.settingsLogRetentionDaysRequest > 30
         ) {

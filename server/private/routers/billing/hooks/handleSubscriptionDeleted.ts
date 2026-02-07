@@ -76,14 +76,15 @@ export async function handleSubscriptionDeleted(
         }
 
         const type = getSubType(fullSubscription);
-        if (type === "saas") {
+        if (type == "home_lab" || type == "starter" || type == "scale") {
             logger.debug(
                 `Handling SaaS subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
             );
 
             await handleSubscriptionLifesycle(
                 customer.orgId,
-                subscription.status
+                subscription.status,
+                type
             );
 
             const [orgUserRes] = await db

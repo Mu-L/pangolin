@@ -5,7 +5,7 @@ type SubscriptionStatusContextType = {
     subscriptionStatus: GetOrgSubscriptionResponse | null;
     updateSubscriptionStatus: (updatedSite: GetOrgSubscriptionResponse) => void;
     isActive: () => boolean;
-    getTier: () => string | null;
+    getTier: () => { tier: string | null; active: boolean };
     isSubscribed: () => boolean;
     subscribed: boolean;
 };

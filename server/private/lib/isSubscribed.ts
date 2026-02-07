@@ -12,14 +12,9 @@
  */
 
 import { build } from "@server/build";
-import license from "#private/license/license";
 import { getOrgTierData } from "#private/lib/billing";
 
-export async function isLicensedOrSubscribed(orgId: string): Promise<boolean> {
-    if (build === "enterprise") {
-        return await license.isUnlocked();
-    }
-
+export async function isSubscribed(orgId: string): Promise<boolean> {
     if (build === "saas") {
         const { tier, active } = await getOrgTierData(orgId);
         return (tier == "home_lab" || tier == "starter" || tier == "scale") && active;

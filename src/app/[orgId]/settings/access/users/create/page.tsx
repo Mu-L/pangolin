@@ -48,7 +48,6 @@ import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import Image from "next/image";
 import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
-import { TierId } from "@server/lib/billing/tiers";
 
 type UserType = "internal" | "oidc";
 

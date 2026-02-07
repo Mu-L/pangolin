@@ -1,11 +1,11 @@
 import { FeatureId } from "./features";
 
-export type LimitSet = {
+export type LimitSet = Partial<{
     [key in FeatureId]: {
         value: number | null; // null indicates no limit
         description?: string;
     };
-};
+}>;
 
 export const sandboxLimitSet: LimitSet = {
     [FeatureId.SITES]: { value: 1, description: "Sandbox limit" }, // 1 site up for 2 days

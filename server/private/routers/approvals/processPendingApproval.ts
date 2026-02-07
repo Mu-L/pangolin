@@ -17,10 +17,7 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import { build } from "@server/build";
 import { approvals, clients, db, orgs, type Approval } from "@server/db";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import response from "@server/lib/response";
 import { and, eq, type InferInsertModel } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
@@ -64,20 +61,6 @@ export async function processPendingApproval(
         }
 
         const { orgId, approvalId } = parsedParams.data;
-
-        if (build === "saas") {
-            const { tier } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
-            if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
-            }
-        }
-
         const updateData = parsedBody.data;
 
         const approval = await db

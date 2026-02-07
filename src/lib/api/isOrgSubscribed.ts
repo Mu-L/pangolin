@@ -1,5 +1,4 @@
 import { build } from "@server/build";
-import { TierId } from "@server/lib/billing/tiers";
 import { cache } from "react";
 import { getCachedSubscription } from "./getCachedSubscription";
 import { priv } from ".";
@@ -21,7 +20,7 @@ export const isOrgSubscribed = cache(async (orgId: string) => {
         try {
             const subRes = await getCachedSubscription(orgId);
             subscribed =
-                subRes.data.data.tier === TierId.STANDARD &&
+                (subRes.data.data.tier == "home_lab" || subRes.data.data.tier == "starter" || subRes.data.data.tier == "scale") &&
                 subRes.data.data.active;
         } catch {}
     }
