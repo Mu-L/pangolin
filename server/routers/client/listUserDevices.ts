@@ -1,3 +1,4 @@
+import { build } from "@server/build";
 import {
     clients,
     currentFingerprint,
@@ -132,9 +133,12 @@ const listUserDevicesSchema = z.object({
         ])
         .optional()
         .catch(undefined),
-    filters: z.preprocess(
-        (val: string) => {
-            return val.split(","); // the search query array is an array joined by a comma
+    status: z.preprocess(
+        (val: string | undefined) => {
+            if (val) {
+                return val.split(","); // the search query array is an array joined by commas
+            }
+            return undefined;
         },
         z
             .array(
@@ -222,16 +226,8 @@ export async function listUserDevices(
                 )
             );
         }
-        const {
-            page,
-            pageSize,
-            query,
-            sort_by,
-            online,
-            filters,
-            agent,
-            order
-        } = parsedQuery.data;
+        const { page, pageSize, query, sort_by, online, status, agent, order } =
+            parsedQuery.data;
 
         const parsedParams = listUserDevicesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -293,7 +289,7 @@ export async function listUserDevices(
             conditions.push(
                 or(
                     ilike(clients.name, "%" + query + "%"),
-                    ilike(users.name, "%" + query + "%")
+                    ilike(users.email, "%" + query + "%")
                 )
             );
         }
@@ -321,32 +317,38 @@ export async function listUserDevices(
             }
         }
 
-        if (filters.length > 0) {
+        if (status.length > 0) {
             const filterAggregates: (SQL<unknown> | undefined)[] = [];
 
-            if (filters.includes("active")) {
+            if (status.includes("active")) {
                 filterAggregates.push(
                     and(
                         eq(clients.archived, false),
                         eq(clients.blocked, false),
-                        or(
-                            eq(clients.approvalState, "approved"),
-                            isNull(clients.approvalState) // approval state of `NULL` means approved by default
-                        )
+                        build !== "oss"
+                            ? or(
+                                  eq(clients.approvalState, "approved"),
+                                  isNull(clients.approvalState) // approval state of `NULL` means approved by default
+                              )
+                            : undefined // undefined are automatically ignored by `drizzle-orm`
                     )
                 );
             }
-            if (filters.includes("pending")) {
-                filterAggregates.push(eq(clients.approvalState, "pending"));
-            }
-            if (filters.includes("denied")) {
-                filterAggregates.push(eq(clients.approvalState, "denied"));
-            }
-            if (filters.includes("archived")) {
+
+            if (status.includes("archived")) {
                 filterAggregates.push(eq(clients.archived, true));
             }
-            if (filters.includes("blocked")) {
+            if (status.includes("blocked")) {
                 filterAggregates.push(eq(clients.blocked, true));
+            }
+
+            if (build !== "oss") {
+                if (status.includes("pending")) {
+                    filterAggregates.push(eq(clients.approvalState, "pending"));
+                }
+                if (status.includes("denied")) {
+                    filterAggregates.push(eq(clients.approvalState, "denied"));
+                }
             }
 
             conditions.push(or(...filterAggregates));

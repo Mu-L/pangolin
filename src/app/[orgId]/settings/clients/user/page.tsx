@@ -10,6 +10,7 @@ import { getTranslations } from "next-intl/server";
 
 type ClientsPageProps = {
     params: Promise<{ orgId: string }>;
+    searchParams: Promise<Record<string, string>>;
 };
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function ClientsPage(props: ClientsPageProps) {
     const t = await getTranslations();
 
     const params = await props.params;
+    const searchParams = new URLSearchParams(await props.searchParams);
 
     let userClients: ListUserDevicesResponse["devices"] = [];
 
@@ -30,7 +32,10 @@ export default async function ClientsPage(props: ClientsPageProps) {
     try {
         const userRes = await internal.get<
             AxiosResponse<ListUserDevicesResponse>
-        >(`/org/${params.orgId}/user-devices`, await authCookieHeader());
+        >(
+            `/org/${params.orgId}/user-devices?${searchParams.toString()}`,
+            await authCookieHeader()
+        );
         const responseData = userRes.data.data;
         userClients = responseData.devices;
         pagination = responseData.pagination;
@@ -97,11 +102,6 @@ export default async function ClientsPage(props: ClientsPageProps) {
 
     const userClientRows: ClientRow[] = userClients.map(mapClientToRow);
 
-    console.log({
-        userClientRows,
-        pagination
-    });
-
     return (
         <>
             <SettingsSectionTitle
@@ -112,6 +112,11 @@ export default async function ClientsPage(props: ClientsPageProps) {
             <UserDevicesTable
                 userClients={userClientRows}
                 orgId={params.orgId}
+                rowCount={pagination.total}
+                pagination={{
+                    pageIndex: pagination.page - 1,
+                    pageSize: pagination.pageSize
+                }}
             />
         </>
     );

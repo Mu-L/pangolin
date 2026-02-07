@@ -2,37 +2,41 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
-import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
+import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { formatFingerprintInfo } from "@app/lib/formatDeviceFingerprint";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import { build } from "@server/build";
+import type { PaginationState } from "@tanstack/react-table";
 import {
-    formatFingerprintInfo,
-    formatPlatform
-} from "@app/lib/formatDeviceFingerprint";
-import {
+    ArrowDown01Icon,
     ArrowRight,
-    ArrowUpDown,
+    ArrowUp10Icon,
     ArrowUpRight,
-    MoreHorizontal,
-    CircleSlash
+    ChevronsUpDownIcon,
+    CircleSlash,
+    MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { useDebouncedCallback } from "use-debounce";
 import ClientDownloadBanner from "./ClientDownloadBanner";
+import { ColumnFilterButton } from "./ColumnFilterButton";
 import { Badge } from "./ui/badge";
-import { build } from "@server/build";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { InfoPopup } from "@app/components/ui/info-popup";
+import { ControlledDataTable } from "./ui/controlled-data-table";
 
 export type ClientRow = {
     id: number;
@@ -68,9 +72,15 @@ export type ClientRow = {
 type ClientTableProps = {
     userClients: ClientRow[];
     orgId: string;
+    pagination: PaginationState;
+    rowCount: number;
 };
 
-export default function UserDevicesTable({ userClients }: ClientTableProps) {
+export default function UserDevicesTable({
+    userClients,
+    pagination,
+    rowCount
+}: ClientTableProps) {
     const router = useRouter();
     const t = useTranslations();
 
@@ -80,6 +90,11 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
     );
 
     const api = createApiClient(useEnvContext());
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
     const [isRefreshing, startTransition] = useTransition();
 
     const defaultUserColumnVisibility = {
@@ -296,21 +311,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                 accessorKey: "name",
                 enableHiding: false,
                 friendlyName: t("name"),
-                header: ({ column }) => {
-                    return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("name")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
-                },
+                header: () => <span className="px-3">{t("name")}</span>,
                 cell: ({ row }) => {
                     const r = row.original;
                     const fingerprintInfo = r.fingerprint
@@ -360,40 +361,12 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "niceId",
                 friendlyName: t("identifier"),
-                header: ({ column }) => {
-                    return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("identifier")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
-                }
+                header: () => <span className="px-3">{t("identifier")}</span>
             },
             {
                 accessorKey: "userEmail",
                 friendlyName: t("users"),
-                header: ({ column }) => {
-                    return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("users")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
-                },
+                header: () => <span className="px-3">{t("users")}</span>,
                 cell: ({ row }) => {
                     const r = row.original;
                     return r.userId ? (
@@ -416,19 +389,30 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "online",
                 friendlyName: t("online"),
-                header: ({ column }) => {
+                header: () => {
                     return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
+                        <ColumnFilterButton
+                            options={[
+                                {
+                                    value: "true",
+                                    label: t("connected")
+                                },
+                                {
+                                    value: "false",
+                                    label: t("disconnected")
+                                }
+                            ]}
+                            selectedValue={
+                                searchParams.get("online") ?? undefined
                             }
-                        >
-                            {t("online")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
+                            onValueChange={(value) =>
+                                handleFilterChange("online", value)
+                            }
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
+                            label={t("online")}
+                            className="p-3"
+                        />
                     );
                 },
                 cell: ({ row }) => {
@@ -453,18 +437,29 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "mbIn",
                 friendlyName: t("dataIn"),
-                header: ({ column }) => {
+                header: () => {
+                    const dataInOrder = getSortDirection(
+                        "megabytesIn",
+                        searchParams
+                    );
+
+                    console.log({
+                        dataInOrder,
+                        searchParams: Object.fromEntries(searchParams.entries())
+                    });
+                    const Icon =
+                        dataInOrder === "asc"
+                            ? ArrowDown01Icon
+                            : dataInOrder === "desc"
+                              ? ArrowUp10Icon
+                              : ChevronsUpDownIcon;
                     return (
                         <Button
                             variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
+                            onClick={() => toggleSort("megabytesIn")}
                         >
                             {t("dataIn")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
+                            <Icon className="ml-2 h-4 w-4" />
                         </Button>
                     );
                 }
@@ -472,18 +467,25 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "mbOut",
                 friendlyName: t("dataOut"),
-                header: ({ column }) => {
+                header: () => {
+                    const dataOutOrder = getSortDirection(
+                        "megabytesOut",
+                        searchParams
+                    );
+
+                    const Icon =
+                        dataOutOrder === "asc"
+                            ? ArrowDown01Icon
+                            : dataOutOrder === "desc"
+                              ? ArrowUp10Icon
+                              : ChevronsUpDownIcon;
                     return (
                         <Button
                             variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
+                            onClick={() => toggleSort("megabytesOut")}
                         >
                             {t("dataOut")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
+                            <Icon className="ml-2 h-4 w-4" />
                         </Button>
                     );
                 }
@@ -491,21 +493,48 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "client",
                 friendlyName: t("agent"),
-                header: ({ column }) => {
-                    return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            {
+                                value: "macos",
+                                label: "Pangolin macOS"
+                            },
+                            {
+                                value: "ios",
+                                label: "Pangolin iOS"
+                            },
+                            {
+                                value: "ipados",
+                                label: "Pangolin iPadOS"
+                            },
+                            {
+                                value: "android",
+                                label: "Pangolin Android"
+                            },
+                            {
+                                value: "windows",
+                                label: "Pangolin Windows"
+                            },
+                            {
+                                value: "cli",
+                                label: "Pangolin CLI"
+                            },
+                            {
+                                value: "unknown",
+                                label: t("unknown")
                             }
-                        >
-                            {t("agent")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
-                },
+                        ]}
+                        selectedValue={searchParams.get("agent") ?? undefined}
+                        onValueChange={(value) =>
+                            handleFilterChange("agent", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("agent")}
+                        className="p-3"
+                    />
+                ),
                 cell: ({ row }) => {
                     const originalRow = row.original;
 
@@ -531,21 +560,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             {
                 accessorKey: "subnet",
                 friendlyName: t("address"),
-                header: ({ column }) => {
-                    return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("address")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
-                }
+                header: () => <span className="px-3">{t("address")}</span>
             }
         ];
 
@@ -643,7 +658,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         });
 
         return baseColumns;
-    }, [hasRowsWithoutUserId, t]);
+    }, [hasRowsWithoutUserId, t, getSortDirection, toggleSort]);
 
     const statusFilterOptions = useMemo(() => {
         const allOptions = [
@@ -691,6 +706,53 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
         return ["active", "pending"];
     }, []);
 
+    const [, setCount] = useState(0);
+
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null | string[]
+    ) {
+        searchParams.delete(column);
+        searchParams.delete("page");
+
+        if (typeof value === "string") {
+            searchParams.set(column, value);
+        } else if (value) {
+            for (const val of value) {
+                searchParams.append(column, val);
+            }
+        }
+
+        filter({
+            searchParams
+        });
+        setCount((c) => c + 1);
+    }
+
+    function toggleSort(column: string) {
+        const newSearch = getNextSortOrder(column, searchParams);
+
+        filter({
+            searchParams: newSearch
+        });
+    }
+
+    const handlePaginationChange = (newPage: PaginationState) => {
+        searchParams.set("page", (newPage.pageIndex + 1).toString());
+        searchParams.set("pageSize", newPage.pageSize.toString());
+        filter({
+            searchParams
+        });
+    };
+
+    const handleSearchChange = useDebouncedCallback((query: string) => {
+        searchParams.set("query", query);
+        searchParams.delete("page");
+        filter({
+            searchParams
+        });
+    }, 300);
+
     return (
         <>
             {selectedClient && !selectedClient.userId && (
@@ -714,67 +776,69 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             )}
             <ClientDownloadBanner />
 
-            <DataTable
+            <ControlledDataTable
                 columns={columns}
-                data={userClients || []}
-                persistPageSize="user-clients"
+                rows={userClients || []}
+                tableId="user-clients"
                 searchPlaceholder={t("resourcesSearch")}
-                searchColumn="name"
                 onRefresh={refreshData}
-                isRefreshing={isRefreshing}
-                enableColumnVisibility={true}
-                persistColumnVisibility="user-clients"
+                isRefreshing={isRefreshing || isFiltering}
+                enableColumnVisibility
                 columnVisibility={defaultUserColumnVisibility}
+                onSearch={handleSearchChange}
+                onPaginationChange={handlePaginationChange}
+                pagination={pagination}
+                rowCount={rowCount}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-                filters={[
-                    {
-                        id: "status",
-                        label: t("status") || "Status",
-                        multiSelect: true,
-                        displayMode: "calculated",
-                        options: statusFilterOptions,
-                        filterFn: (
-                            row: ClientRow,
-                            selectedValues: (string | number | boolean)[]
-                        ) => {
-                            if (selectedValues.length === 0) return true;
-                            const rowArchived = row.archived;
-                            const rowBlocked = row.blocked;
-                            const approvalState = row.approvalState;
-                            const isActive =
-                                !rowArchived &&
-                                !rowBlocked &&
-                                approvalState !== "pending" &&
-                                approvalState !== "denied";
+                // filters={[
+                //     {
+                //         id: "status",
+                //         label: t("status") || "Status",
+                //         multiSelect: true,
+                //         displayMode: "calculated",
+                //         options: statusFilterOptions,
+                //         filterFn: (
+                //             row: ClientRow,
+                //             selectedValues: (string | number | boolean)[]
+                //         ) => {
+                //             if (selectedValues.length === 0) return true;
+                //             const rowArchived = row.archived;
+                //             const rowBlocked = row.blocked;
+                //             const approvalState = row.approvalState;
+                //             const isActive =
+                //                 !rowArchived &&
+                //                 !rowBlocked &&
+                //                 approvalState !== "pending" &&
+                //                 approvalState !== "denied";
 
-                            if (selectedValues.includes("active") && isActive)
-                                return true;
-                            if (
-                                selectedValues.includes("pending") &&
-                                approvalState === "pending"
-                            )
-                                return true;
-                            if (
-                                selectedValues.includes("denied") &&
-                                approvalState === "denied"
-                            )
-                                return true;
-                            if (
-                                selectedValues.includes("archived") &&
-                                rowArchived
-                            )
-                                return true;
-                            if (
-                                selectedValues.includes("blocked") &&
-                                rowBlocked
-                            )
-                                return true;
-                            return false;
-                        },
-                        defaultValues: statusFilterDefaultValues
-                    }
-                ]}
+                //             if (selectedValues.includes("active") && isActive)
+                //                 return true;
+                //             if (
+                //                 selectedValues.includes("pending") &&
+                //                 approvalState === "pending"
+                //             )
+                //                 return true;
+                //             if (
+                //                 selectedValues.includes("denied") &&
+                //                 approvalState === "denied"
+                //             )
+                //                 return true;
+                //             if (
+                //                 selectedValues.includes("archived") &&
+                //                 rowArchived
+                //             )
+                //                 return true;
+                //             if (
+                //                 selectedValues.includes("blocked") &&
+                //                 rowBlocked
+                //             )
+                //                 return true;
+                //             return false;
+                //         },
+                //         defaultValues: statusFilterDefaultValues
+                //     }
+                // ]}
             />
         </>
     );

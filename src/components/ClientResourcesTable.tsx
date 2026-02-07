@@ -382,7 +382,7 @@ export default function ClientResourcesTable({
                 onPaginationChange={handlePaginationChange}
                 pagination={pagination}
                 rowCount={rowCount}
-                isRefreshing={isRefreshing}
+                isRefreshing={isRefreshing || isFiltering}
                 enableColumnVisibility
                 columnVisibility={{
                     niceId: false,

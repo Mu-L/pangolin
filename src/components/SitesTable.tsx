@@ -12,10 +12,10 @@ import {
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useSortColumn } from "@app/hooks/useSortColumn";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { parseDataSize } from "@app/lib/dataSize";
 import { build } from "@server/build";
 import { type PaginationState } from "@tanstack/react-table";
 import {
@@ -24,21 +24,19 @@ import {
     ArrowUp10Icon,
     ArrowUpRight,
     ChevronsUpDownIcon,
-    Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import z from "zod";
+import { ColumnFilterButton } from "./ColumnFilterButton";
 import {
     ControlledDataTable,
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
-import { ColumnFilter } from "./ColumnFilter";
-import { ColumnFilterButton } from "./ColumnFilterButton";
-import z from "zod";
 
 export type SiteRow = {
     id: number;
@@ -71,15 +69,17 @@ export default function SitesTable({
     rowCount
 }: SitesTableProps) {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const pathname = usePathname();
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
-
-    const [getSortDirection, toggleSorting] = useSortColumn();
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
@@ -135,9 +135,6 @@ export default function SitesTable({
                 });
         });
     }
-
-    const dataInOrder = getSortDirection("megabytesIn");
-    const dataOutOrder = getSortDirection("megabytesOut");
 
     const columns: ExtendedColumnDef<SiteRow>[] = [
         {
@@ -212,6 +209,10 @@ export default function SitesTable({
             accessorKey: "mbIn",
             friendlyName: t("dataIn"),
             header: () => {
+                const dataInOrder = getSortDirection(
+                    "megabytesIn",
+                    searchParams
+                );
                 const Icon =
                     dataInOrder === "asc"
                         ? ArrowDown01Icon
@@ -221,21 +222,23 @@ export default function SitesTable({
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() => toggleSorting("megabytesIn")}
+                        onClick={() => toggleSort("megabytesIn")}
                     >
                         {t("dataIn")}
                         <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
-            },
-            sortingFn: (rowA, rowB) =>
-                parseDataSize(rowA.original.mbIn) -
-                parseDataSize(rowB.original.mbIn)
+            }
         },
         {
             accessorKey: "mbOut",
             friendlyName: t("dataOut"),
             header: () => {
+                const dataOutOrder = getSortDirection(
+                    "megabytesOut",
+                    searchParams
+                );
+
                 const Icon =
                     dataOutOrder === "asc"
                         ? ArrowDown01Icon
@@ -245,16 +248,13 @@ export default function SitesTable({
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() => toggleSorting("megabytesOut")}
+                        onClick={() => toggleSort("megabytesOut")}
                     >
                         {t("dataOut")}
                         <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
-            },
-            sortingFn: (rowA, rowB) =>
-                parseDataSize(rowA.original.mbOut) -
-                parseDataSize(rowB.original.mbOut)
+            }
         },
         {
             accessorKey: "type",
@@ -423,18 +423,28 @@ export default function SitesTable({
         }
     ];
 
+    function toggleSort(column: string) {
+        const newSearch = getNextSortOrder(column, searchParams);
+
+        filter({
+            searchParams: newSearch
+        });
+    }
+
     const handlePaginationChange = (newPage: PaginationState) => {
-        const sp = new URLSearchParams(searchParams);
-        sp.set("page", (newPage.pageIndex + 1).toString());
-        sp.set("pageSize", newPage.pageSize.toString());
-        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+        searchParams.set("page", (newPage.pageIndex + 1).toString());
+        searchParams.set("pageSize", newPage.pageSize.toString());
+        filter({
+            searchParams
+        });
     };
 
     const handleSearchChange = useDebouncedCallback((query: string) => {
-        const sp = new URLSearchParams(searchParams);
-        sp.set("query", query);
-        sp.delete("page");
-        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+        searchParams.set("query", query);
+        searchParams.delete("page");
+        filter({
+            searchParams
+        });
     }, 300);
 
     return (
@@ -478,7 +488,7 @@ export default function SitesTable({
                 onSearch={handleSearchChange}
                 addButtonText={t("siteAdd")}
                 onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                isRefreshing={isRefreshing || isFiltering}
                 rowCount={rowCount}
                 columnVisibility={{
                     niceId: false,
