@@ -12,8 +12,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
 import { cache } from "@server/lib/cache";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { subscribe } from "node:diagnostics_channel";
-import { isSubscribed } from "@server/private/lib/isSubscribed";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
 
 const updateOrgParamsSchema = z.strictObject({
     orgId: z.string()

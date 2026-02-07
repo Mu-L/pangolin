@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { usageService } from "./usageService";
 
 export enum FeatureId {
     USERS = "users",
@@ -95,10 +96,24 @@ export function getScaleFeaturePriceSet(): FeaturePriceSet {
     }
 }
 
-export function getLineItems(
-    featurePriceSet: FeaturePriceSet
-): Stripe.Checkout.SessionCreateParams.LineItem[] {
-    return Object.entries(featurePriceSet).map(([featureId, priceId]) => ({
-        price: priceId
-    }));
+export async function getLineItems(
+    featurePriceSet: FeaturePriceSet,
+    orgId: string,
+): Promise<Stripe.Checkout.SessionCreateParams.LineItem[]> {
+    const users = await usageService.getUsageDaily(orgId, FeatureId.USERS);
+
+    return Object.entries(featurePriceSet).map(([featureId, priceId]) => {
+        let quantity: number | undefined;
+
+        if (featureId === FeatureId.USERS) {
+            quantity = users?.instantaneousValue || 1;
+        } else if (featureId === FeatureId.HOME_LAB) {
+            quantity = 1;
+        }
+
+        return {
+            price: priceId,
+            quantity: quantity
+        };
+    });
 }

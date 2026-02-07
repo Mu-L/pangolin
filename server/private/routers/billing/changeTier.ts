@@ -25,6 +25,7 @@ import {
     getHomeLabFeaturePriceSet,
     getScaleFeaturePriceSet,
     getStarterFeaturePriceSet,
+    getLineItems,
     FeatureId,
     type FeaturePriceSet
 } from "@server/lib/billing";
@@ -149,7 +150,7 @@ export async function changeTier(
         // Determine if we're switching between different products
         // home_lab uses HOME_LAB product, starter/scale use USERS product
         const currentTier = subscription.type;
-        const switchingProducts = 
+        const switchingProducts =
             (currentTier === "home_lab" && (tier === "starter" || tier === "scale")) ||
             ((currentTier === "starter" || currentTier === "scale") && tier === "home_lab");
 
@@ -175,10 +176,9 @@ export async function changeTier(
             }
 
             // Add new items for the target tier
-            for (const [featureId, priceId] of Object.entries(targetPriceSet)) {
-                itemsToUpdate.push({
-                    price: priceId
-                });
+            const newLineItems = await getLineItems(targetPriceSet, orgId);
+            for (const lineItem of newLineItems) {
+                itemsToUpdate.push(lineItem);
             }
 
             updatedSubscription = await stripe!.subscriptions.update(

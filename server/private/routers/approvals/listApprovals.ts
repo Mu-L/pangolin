@@ -31,7 +31,6 @@ import {
 import { eq, isNull, sql, not, and, desc } from "drizzle-orm";
 import response from "@server/lib/response";
 import { getUserDeviceName } from "@server/db/names";
-import { isLicensedOrSubscribed } from "@server/private/lib/isLicencedOrSubscribed";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
