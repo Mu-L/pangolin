@@ -233,18 +233,6 @@ export async function listUserDevices(
             order
         } = parsedQuery.data;
 
-        console.log({ query: req.query });
-        console.log({
-            page,
-            pageSize,
-            query,
-            sort_by,
-            online,
-            filters,
-            agent,
-            order
-        });
-
         const parsedParams = listUserDevicesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
