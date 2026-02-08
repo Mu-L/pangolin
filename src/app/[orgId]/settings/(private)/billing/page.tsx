@@ -23,6 +23,16 @@ import {
     InfoSections,
     InfoSectionTitle
 } from "@app/components/InfoSection";
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaClose,
+    CredenzaContent,
+    CredenzaDescription,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
 import { cn } from "@app/lib/cn";
 import {
     CreditCard,
@@ -30,7 +40,8 @@ import {
     Users,
     Globe,
     Server,
-    Layout
+    Layout,
+    Check
 } from "lucide-react";
 import {
     GetOrgSubscriptionResponse,
@@ -40,7 +51,7 @@ import { useTranslations } from "use-intl";
 import Link from "next/link";
 
 // Plan tier definitions matching the mockup
-type PlanId = "starter" | "homelab" | "team" | "business" | "enterprise";
+type PlanId = "free" | "homelab" | "team" | "business" | "enterprise";
 
 interface PlanOption {
     id: PlanId;
@@ -50,10 +61,39 @@ interface PlanOption {
     tierType: "home_lab" | "starter" | "scale" | null; // Maps to backend tier types
 }
 
+// Tier limits for display in confirmation dialog
+interface TierLimits {
+    sites: number;
+    users: number;
+    domains: number;
+    remoteNodes: number;
+}
+
+const tierLimits: Record<"home_lab" | "starter" | "scale", TierLimits> = {
+    home_lab: {
+        sites: 3,
+        users: 3,
+        domains: 3,
+        remoteNodes: 1
+    },
+    starter: {
+        sites: 10,
+        users: 150,
+        domains: 250,
+        remoteNodes: 5
+    },
+    scale: {
+        sites: 10,
+        users: 150,
+        domains: 250,
+        remoteNodes: 5
+    }
+};
+
 const planOptions: PlanOption[] = [
     {
-        id: "starter",
-        name: "Starter",
+        id: "free",
+        name: "Free",
         price: "Free",
         tierType: null
     },
@@ -96,10 +136,12 @@ export default function BillingPage() {
     const [allSubscriptions, setAllSubscriptions] = useState<
         GetOrgSubscriptionResponse["subscriptions"]
     >([]);
-    const [tierSubscription, setTierSubscription] =
-        useState<GetOrgSubscriptionResponse["subscriptions"][0] | null>(null);
-    const [licenseSubscription, setLicenseSubscription] =
-        useState<GetOrgSubscriptionResponse["subscriptions"][0] | null>(null);
+    const [tierSubscription, setTierSubscription] = useState<
+        GetOrgSubscriptionResponse["subscriptions"][0] | null
+    >(null);
+    const [licenseSubscription, setLicenseSubscription] = useState<
+        GetOrgSubscriptionResponse["subscriptions"][0] | null
+    >(null);
     const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
     // Usage and limits data
@@ -122,6 +164,15 @@ export default function BillingPage() {
     const DOMAINS = "domains";
     const REMOTE_EXIT_NODES = "remoteExitNodes";
 
+    // Confirmation dialog state
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [pendingTier, setPendingTier] = useState<{
+        tier: "home_lab" | "starter" | "scale";
+        action: "upgrade" | "downgrade";
+        planName: string;
+        price: string;
+    } | null>(null);
+
     useEffect(() => {
         async function fetchSubscription() {
             setSubscriptionLoading(true);
@@ -133,10 +184,11 @@ export default function BillingPage() {
                 setAllSubscriptions(subscriptions);
 
                 // Find tier subscription
-                const tierSub = subscriptions.find(({ subscription }) =>
-                    subscription?.type === "home_lab" ||
-                    subscription?.type === "starter" ||
-                    subscription?.type === "scale"
+                const tierSub = subscriptions.find(
+                    ({ subscription }) =>
+                        subscription?.type === "home_lab" ||
+                        subscription?.type === "starter" ||
+                        subscription?.type === "scale"
                 );
                 setTierSubscription(tierSub || null);
 
@@ -190,7 +242,9 @@ export default function BillingPage() {
         fetchUsage();
     }, [org.org.orgId]);
 
-    const handleStartSubscription = async (tier: "home_lab" | "starter" | "scale") => {
+    const handleStartSubscription = async (
+        tier: "home_lab" | "starter" | "scale"
+    ) => {
         setIsLoading(true);
         try {
             const response = await api.post<AxiosResponse<string>>(
@@ -270,15 +324,43 @@ export default function BillingPage() {
         }
     };
 
+    const confirmTierChange = () => {
+        if (!pendingTier) return;
+
+        if (
+            pendingTier.action === "upgrade" ||
+            pendingTier.action === "downgrade"
+        ) {
+            if (hasSubscription) {
+                handleChangeTier(pendingTier.tier);
+            } else {
+                handleStartSubscription(pendingTier.tier);
+            }
+        }
+
+        setShowConfirmDialog(false);
+        setPendingTier(null);
+    };
+
+    const showTierConfirmation = (
+        tier: "home_lab" | "starter" | "scale",
+        action: "upgrade" | "downgrade",
+        planName: string,
+        price: string
+    ) => {
+        setPendingTier({ tier, action, planName, price });
+        setShowConfirmDialog(true);
+    };
+
     const handleContactUs = () => {
         window.open("mailto:sales@pangolin.net", "_blank");
     };
 
     // Get current plan ID from tier
     const getCurrentPlanId = (): PlanId => {
-        if (!hasSubscription || !currentTier) return "starter";
+        if (!hasSubscription || !currentTier) return "free";
         const plan = planOptions.find((p) => p.tierType === currentTier);
-        return plan?.id || "starter";
+        return plan?.id || "free";
     };
 
     const currentPlanId = getCurrentPlanId();
@@ -295,8 +377,8 @@ export default function BillingPage() {
         }
 
         if (plan.id === currentPlanId) {
-            // If it's the free plan (starter with no subscription), show as current but disabled
-            if (plan.id === "starter" && !hasSubscription) {
+            // If it's the free plan (free with no subscription), show as current but disabled
+            if (plan.id === "free" && !hasSubscription) {
                 return {
                     label: "Current Plan",
                     action: () => {},
@@ -320,10 +402,18 @@ export default function BillingPage() {
         if (planIndex < currentIndex) {
             return {
                 label: "Downgrade",
-                action: () =>
-                    plan.tierType
-                        ? handleChangeTier(plan.tierType)
-                        : handleModifySubscription(),
+                action: () => {
+                    if (plan.tierType) {
+                        showTierConfirmation(
+                            plan.tierType,
+                            "downgrade",
+                            plan.name,
+                            plan.price + (plan.priceDetail || "")
+                        );
+                    } else {
+                        handleModifySubscription();
+                    }
+                },
                 variant: "outline" as const,
                 disabled: false
             };
@@ -331,12 +421,18 @@ export default function BillingPage() {
 
         return {
             label: "Upgrade",
-            action: () =>
-                plan.tierType
-                    ? hasSubscription
-                        ? handleChangeTier(plan.tierType)
-                        : handleStartSubscription(plan.tierType)
-                    : handleModifySubscription(),
+            action: () => {
+                if (plan.tierType) {
+                    showTierConfirmation(
+                        plan.tierType,
+                        "upgrade",
+                        plan.name,
+                        plan.price + (plan.priceDetail || "")
+                    );
+                } else {
+                    handleModifySubscription();
+                }
+            },
             variant: "outline" as const,
             disabled: false
         };
@@ -407,11 +503,11 @@ export default function BillingPage() {
                                     )}
                                 >
                                     <div className="flex-1">
-                                        <div className="font-semibold text-lg">
+                                        <div className="text-2xl">
                                             {plan.name}
                                         </div>
                                         <div className="mt-1">
-                                            <span className="text-2xl font-bold">
+                                            <span className="text-xl">
                                                 {plan.price}
                                             </span>
                                             {plan.priceDetail && (
@@ -431,7 +527,9 @@ export default function BillingPage() {
                                             size="sm"
                                             className="w-full"
                                             onClick={planAction.action}
-                                            disabled={isLoading || planAction.disabled}
+                                            disabled={
+                                                isLoading || planAction.disabled
+                                            }
                                         >
                                             {planAction.label}
                                         </Button>
@@ -469,7 +567,7 @@ export default function BillingPage() {
                 <SettingsSectionBody>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Current Usage */}
-                        <div className="border rounded-lg p-4 bg-muted/30">
+                        <div className="border rounded-lg p-4">
                             <div className="text-sm text-muted-foreground mb-2">
                                 {t("billingCurrentUsage") || "Current Usage"}
                             </div>
@@ -480,27 +578,27 @@ export default function BillingPage() {
                                 <span className="text-lg">
                                     {t("billingUsers") || "Users"}
                                 </span>
+                                {hasSubscription && getPricePerUser() > 0 && (
+                                    <div className="text-sm text-muted-foreground mt-1">
+                                        x ${getPricePerUser()} / month = $
+                                        {getUserCount() * getPricePerUser()} /
+                                        month
+                                    </div>
+                                )}
                             </div>
-                            {hasSubscription && getPricePerUser() > 0 && (
-                                <div className="text-sm text-muted-foreground mt-1">
-                                    x ${getPricePerUser()} / month = $
-                                    {getUserCount() * getPricePerUser()} / month
-                                </div>
-                            )}
                         </div>
 
                         {/* Maximum Limits */}
-                        <div className="border rounded-lg p-4 bg-muted/30">
+                        <div className="border rounded-lg p-4">
                             <div className="text-sm text-muted-foreground mb-3">
                                 {t("billingMaximumLimits") || "Maximum Limits"}
                             </div>
                             <InfoSections cols={4}>
                                 <InfoSection>
-                                    <InfoSectionTitle className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                                        <Users className="h-3 w-3" />
+                                    <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingUsers") || "Users"}
                                     </InfoSectionTitle>
-                                    <InfoSectionContent className="font-semibold">
+                                    <InfoSectionContent className="text-sm">
                                         {getLimitValue(USERS) ??
                                             t("billingUnlimited") ??
                                             "∞"}{" "}
@@ -509,11 +607,10 @@ export default function BillingPage() {
                                     </InfoSectionContent>
                                 </InfoSection>
                                 <InfoSection>
-                                    <InfoSectionTitle className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                                        <Layout className="h-3 w-3" />
+                                    <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingSites") || "Sites"}
                                     </InfoSectionTitle>
-                                    <InfoSectionContent className="font-semibold">
+                                    <InfoSectionContent className="text-sm">
                                         {getLimitValue(SITES) ??
                                             t("billingUnlimited") ??
                                             "∞"}{" "}
@@ -522,11 +619,10 @@ export default function BillingPage() {
                                     </InfoSectionContent>
                                 </InfoSection>
                                 <InfoSection>
-                                    <InfoSectionTitle className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                                        <Globe className="h-3 w-3" />
+                                    <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingDomains") || "Domains"}
                                     </InfoSectionTitle>
-                                    <InfoSectionContent className="font-semibold">
+                                    <InfoSectionContent className="text-sm">
                                         {getLimitValue(DOMAINS) ??
                                             t("billingUnlimited") ??
                                             "∞"}{" "}
@@ -535,12 +631,11 @@ export default function BillingPage() {
                                     </InfoSectionContent>
                                 </InfoSection>
                                 <InfoSection>
-                                    <InfoSectionTitle className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                                        <Server className="h-3 w-3" />
+                                    <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingRemoteNodes") ||
                                             "Remote Nodes"}
                                     </InfoSectionTitle>
-                                    <InfoSectionContent className="font-semibold">
+                                    <InfoSectionContent className="text-sm">
                                         {getLimitValue(REMOTE_EXIT_NODES) ??
                                             t("billingUnlimited") ??
                                             "∞"}{" "}
@@ -559,8 +654,7 @@ export default function BillingPage() {
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
-                            {t("billingPaidLicenseKeys") ||
-                                "Paid License Keys"}
+                            {t("billingPaidLicenseKeys") || "Paid License Keys"}
                         </SettingsSectionTitle>
                         <SettingsSectionDescription>
                             {t("billingManageLicenseSubscription") ||
@@ -597,6 +691,115 @@ export default function BillingPage() {
                     </SettingsSectionBody>
                 </SettingsSection>
             )}
+
+            {/* Tier Change Confirmation Dialog */}
+            <Credenza
+                open={showConfirmDialog}
+                onOpenChange={setShowConfirmDialog}
+            >
+                <CredenzaContent>
+                    <CredenzaHeader>
+                        <CredenzaTitle>
+                            {pendingTier?.action === "upgrade"
+                                ? t("billingConfirmUpgrade") ||
+                                  "Confirm Upgrade"
+                                : t("billingConfirmDowngrade") ||
+                                  "Confirm Downgrade"}
+                        </CredenzaTitle>
+                        <CredenzaDescription>
+                            {pendingTier?.action === "upgrade"
+                                ? t("billingConfirmUpgradeDescription") ||
+                                  `You are about to upgrade to the ${pendingTier?.planName} plan.`
+                                : t("billingConfirmDowngradeDescription") ||
+                                  `You are about to downgrade to the ${pendingTier?.planName} plan.`}
+                        </CredenzaDescription>
+                    </CredenzaHeader>
+                    <CredenzaBody>
+                        {pendingTier && pendingTier.tier && (
+                            <div className="space-y-4">
+                                <div className="border rounded-lg p-4 bg-muted/30">
+                                    <div className="font-semibold text-lg mb-2">
+                                        {pendingTier.planName}
+                                    </div>
+                                    <div className="text-2xl font-bold">
+                                        {pendingTier.price}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-semibold mb-3">
+                                        {t("billingPlanIncludes") ||
+                                            "Plan Includes:"}
+                                    </h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Check className="h-4 w-4 text-green-600" />
+                                            <span>
+                                                {
+                                                    tierLimits[pendingTier.tier]
+                                                        .sites
+                                                }{" "}
+                                                {t("billingSites") || "Sites"}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Check className="h-4 w-4 text-green-600" />
+                                            <span>
+                                                {
+                                                    tierLimits[pendingTier.tier]
+                                                        .users
+                                                }{" "}
+                                                {t("billingUsers") || "Users"}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Check className="h-4 w-4 text-green-600" />
+                                            <span>
+                                                {
+                                                    tierLimits[pendingTier.tier]
+                                                        .domains
+                                                }{" "}
+                                                {t("billingDomains") ||
+                                                    "Domains"}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Check className="h-4 w-4 text-green-600" />
+                                            <span>
+                                                {
+                                                    tierLimits[pendingTier.tier]
+                                                        .remoteNodes
+                                                }{" "}
+                                                {t("billingRemoteNodes") ||
+                                                    "Remote Nodes"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </CredenzaBody>
+                    <CredenzaFooter>
+                        <CredenzaClose asChild>
+                            <Button variant="outline" disabled={isLoading}>
+                                {t("cancel") || "Cancel"}
+                            </Button>
+                        </CredenzaClose>
+                        <Button
+                            onClick={confirmTierChange}
+                            disabled={isLoading}
+                        >
+                            {isLoading
+                                ? t("billingProcessing") || "Processing..."
+                                : pendingTier?.action === "upgrade"
+                                  ? t("billingConfirmUpgradeButton") ||
+                                    "Confirm Upgrade"
+                                  : t("billingConfirmDowngradeButton") ||
+                                    "Confirm Downgrade"}
+                        </Button>
+                    </CredenzaFooter>
+                </CredenzaContent>
+            </Credenza>
         </SettingsContainer>
     );
 }
