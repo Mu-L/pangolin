@@ -27,6 +27,7 @@ import {
 import { Input } from "@app/components/ui/input";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +52,7 @@ export default function Page() {
     >("role");
     const { isUnlocked } = useLicenseStatusContext();
     const t = useTranslations();
+    const { isPaidUser } = usePaidStatus();
 
     const params = useParams();
 
@@ -806,7 +808,7 @@ export default function Page() {
                 </Button>
                 <Button
                     type="submit"
-                    disabled={createLoading}
+                    disabled={createLoading || !isPaidUser}
                     loading={createLoading}
                     onClick={() => {
                         // log any issues with the form

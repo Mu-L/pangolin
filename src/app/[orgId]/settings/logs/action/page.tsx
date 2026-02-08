@@ -2,6 +2,7 @@
 import { ColumnFilter } from "@app/components/ColumnFilter";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -92,6 +93,9 @@ export default function GeneralPage() {
 
     // Trigger search with default values on component mount
     useEffect(() => {
+        if (build === "oss") {
+            return;
+        }
         const defaultRange = getDefaultDateRange();
         queryDateTime(
             defaultRange.startDate,
@@ -461,21 +465,7 @@ export default function GeneralPage() {
                 description={t("actionLogsDescription")}
             />
 
-            {build == "saas" && !subscription?.subscribed ? (
-                <Alert variant="info" className="mb-6">
-                    <AlertDescription>
-                        {t("subscriptionRequiredToUse")}
-                    </AlertDescription>
-                </Alert>
-            ) : null}
-
-            {build == "enterprise" && !isUnlocked() ? (
-                <Alert variant="info" className="mb-6">
-                    <AlertDescription>
-                        {t("licenseRequiredToUse")}
-                    </AlertDescription>
-                </Alert>
-            ) : null}
+            <PaidFeaturesAlert />
 
             <LogDataTable
                 columns={columns}
@@ -508,7 +498,8 @@ export default function GeneralPage() {
                 renderExpandedRow={renderExpandedRow}
                 disabled={
                     (build == "saas" && !subscription?.subscribed) ||
-                    (build == "enterprise" && !isUnlocked())
+                    (build == "enterprise" && !isUnlocked()) ||
+                    build === "oss"
                 }
             />
         </>

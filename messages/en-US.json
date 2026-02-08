@@ -2267,6 +2267,7 @@
     "actionLogsDescription": "View a history of actions performed in this organization",
     "accessLogsDescription": "View access auth requests for resources in this organization",
     "licenseRequiredToUse": "An Enterprise license is required to use this feature.",
+    "ossEnterpriseEditionRequired": "The <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> is required to use this feature.",
     "certResolver": "Certificate Resolver",
     "certResolverDescription": "Select the certificate resolver to use for this resource.",
     "selectCertResolver": "Select Certificate Resolver",

@@ -72,7 +72,9 @@ export default function CredentialsPage() {
         const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
         const isSaasNotSubscribed =
             build === "saas" && !subscription?.isSubscribed();
-        return isEnterpriseNotLicensed || isSaasNotSubscribed;
+        return (
+            isEnterpriseNotLicensed || isSaasNotSubscribed || build === "oss"
+        );
     };
 
     // Fetch site defaults for wireguard sites to show in obfuscated config
@@ -269,29 +271,27 @@ export default function CredentialsPage() {
                                     </Alert>
                                 )}
                             </SettingsSectionBody>
-                            {build !== "oss" && (
-                                <SettingsSectionFooter>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                            setShouldDisconnect(false);
-                                            setModalOpen(true);
-                                        }}
-                                        disabled={isSecurityFeatureDisabled()}
-                                    >
-                                        {t("regenerateCredentialsButton")}
-                                    </Button>
-                                    <Button
-                                        onClick={() => {
-                                            setShouldDisconnect(true);
-                                            setModalOpen(true);
-                                        }}
-                                        disabled={isSecurityFeatureDisabled()}
-                                    >
-                                        {t("siteRegenerateAndDisconnect")}
-                                    </Button>
-                                </SettingsSectionFooter>
-                            )}
+                            <SettingsSectionFooter>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShouldDisconnect(false);
+                                        setModalOpen(true);
+                                    }}
+                                    disabled={isSecurityFeatureDisabled()}
+                                >
+                                    {t("regenerateCredentialsButton")}
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        setShouldDisconnect(true);
+                                        setModalOpen(true);
+                                    }}
+                                    disabled={isSecurityFeatureDisabled()}
+                                >
+                                    {t("siteRegenerateAndDisconnect")}
+                                </Button>
+                            </SettingsSectionFooter>
                         </SettingsSection>
 
                         <NewtSiteInstallCommands
@@ -383,16 +383,14 @@ export default function CredentialsPage() {
                                 </>
                             )}
                         </SettingsSectionBody>
-                        {build === "enterprise" && (
-                            <SettingsSectionFooter>
-                                <Button
-                                    onClick={() => setModalOpen(true)}
-                                    disabled={isSecurityFeatureDisabled()}
-                                >
-                                    {t("siteRegenerateAndDisconnect")}
-                                </Button>
-                            </SettingsSectionFooter>
-                        )}
+                        <SettingsSectionFooter>
+                            <Button
+                                onClick={() => setModalOpen(true)}
+                                disabled={isSecurityFeatureDisabled()}
+                            >
+                                {t("siteRegenerateAndDisconnect")}
+                            </Button>
+                        </SettingsSectionFooter>
                     </SettingsSection>
                 )}
             </SettingsContainer>
