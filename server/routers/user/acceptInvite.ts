@@ -13,6 +13,7 @@ import { verifySession } from "@server/auth/sessions/verifySession";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { build } from "@server/build";
 
 const acceptInviteBodySchema = z.strictObject({
     token: z.string(),
@@ -90,6 +91,35 @@ export async function acceptInvite(
                     "Invite is not for this user"
                 )
             );
+        }
+
+        if (build == "saas") {
+            const usage = await usageService.getUsage(existingInvite.orgId, FeatureId.USERS);
+            if (!usage) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "No usage data found for this organization"
+                    )
+                );
+            }
+            const rejectUsers = await usageService.checkLimitSet(
+                existingInvite.orgId,
+                false,
+                FeatureId.USERS,
+                {
+                    ...usage,
+                    instantaneousValue: (usage.instantaneousValue || 0) + 1
+                } // We need to add one to know if we are violating the limit
+            );
+            if (rejectUsers) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "Can not accept because this org's user limit is exceeded. Please contact your administrator to upgrade their plan."
+                    )
+                );
+            }
         }
 
         let roleId: number;
