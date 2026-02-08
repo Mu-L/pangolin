@@ -27,6 +27,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 export const generateAccessTokenBodySchema = z.strictObject({
     validForSeconds: z.int().positive().optional(), // seconds
     title: z.string().optional(),
+    path: z.string().optional(),
     description: z.string().optional()
 });
 
@@ -85,7 +86,7 @@ export async function generateAccessToken(
     }
 
     const { resourceId } = parsedParams.data;
-    const { validForSeconds, title, description } = parsedBody.data;
+    const { validForSeconds, title, path, description } = parsedBody.data;
 
     const [resource] = await db
         .select()
@@ -121,6 +122,7 @@ export async function generateAccessToken(
                 expiresAt: expiresAt || null,
                 sessionLength: sessionLength,
                 title: title || null,
+                path: path || null,
                 description: description || null,
                 createdAt: new Date().getTime()
             })
@@ -131,6 +133,7 @@ export async function generateAccessToken(
                 expiresAt: resourceAccessToken.expiresAt,
                 sessionLength: resourceAccessToken.sessionLength,
                 title: resourceAccessToken.title,
+                path: resourceAccessToken.path,
                 description: resourceAccessToken.description,
                 createdAt: resourceAccessToken.createdAt
             })
