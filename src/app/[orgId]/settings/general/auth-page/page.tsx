@@ -20,11 +20,6 @@ export interface AuthPageProps {
 export default async function AuthPage(props: AuthPageProps) {
     const orgId = (await props.params).orgId;
 
-    // custom auth branding is only available in enterprise and saas
-    if (build === "oss") {
-        redirect(`/${orgId}/settings/general/`);
-    }
-
     let subscriptionStatus: GetOrgTierResponse | null = null;
     try {
         const subRes = await getCachedSubscription(orgId);

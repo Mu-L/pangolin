@@ -168,56 +168,50 @@ export default function EditRoleForm({
                                         </FormItem>
                                     )}
                                 />
-                                {build !== "oss" && (
-                                    <div>
-                                        <PaidFeaturesAlert />
+                                <PaidFeaturesAlert />
 
-                                        <FormField
-                                            control={form.control}
-                                            name="requireDeviceApproval"
-                                            render={({ field }) => (
-                                                <FormItem className="my-2">
-                                                    <FormControl>
-                                                        <CheckboxWithLabel
-                                                            {...field}
-                                                            disabled={
-                                                                !isPaidUser
-                                                            }
-                                                            value="on"
-                                                            checked={form.watch(
-                                                                "requireDeviceApproval"
-                                                            )}
-                                                            onCheckedChange={(
+                                <FormField
+                                    control={form.control}
+                                    name="requireDeviceApproval"
+                                    render={({ field }) => (
+                                        <FormItem className="my-2">
+                                            <FormControl>
+                                                <CheckboxWithLabel
+                                                    {...field}
+                                                    disabled={!isPaidUser}
+                                                    value="on"
+                                                    checked={form.watch(
+                                                        "requireDeviceApproval"
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked
+                                                    ) => {
+                                                        if (
+                                                            checked !==
+                                                            "indeterminate"
+                                                        ) {
+                                                            form.setValue(
+                                                                "requireDeviceApproval",
                                                                 checked
-                                                            ) => {
-                                                                if (
-                                                                    checked !==
-                                                                    "indeterminate"
-                                                                ) {
-                                                                    form.setValue(
-                                                                        "requireDeviceApproval",
-                                                                        checked
-                                                                    );
-                                                                }
-                                                            }}
-                                                            label={t(
-                                                                "requireDeviceApproval"
-                                                            )}
-                                                        />
-                                                    </FormControl>
+                                                            );
+                                                        }
+                                                    }}
+                                                    label={t(
+                                                        "requireDeviceApproval"
+                                                    )}
+                                                />
+                                            </FormControl>
 
-                                                    <FormDescription>
-                                                        {t(
-                                                            "requireDeviceApprovalDescription"
-                                                        )}
-                                                    </FormDescription>
+                                            <FormDescription>
+                                                {t(
+                                                    "requireDeviceApprovalDescription"
+                                                )}
+                                            </FormDescription>
 
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                )}
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </form>
                         </Form>
                     </CredenzaBody>

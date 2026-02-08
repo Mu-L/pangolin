@@ -61,7 +61,9 @@ export default function CredentialsPage() {
         const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
         const isSaasNotSubscribed =
             build === "saas" && !subscription?.isSubscribed();
-        return isEnterpriseNotLicensed || isSaasNotSubscribed;
+        return (
+            isEnterpriseNotLicensed || isSaasNotSubscribed || build === "oss"
+        );
     };
 
     const handleConfirmRegenerate = async () => {
@@ -181,29 +183,27 @@ export default function CredentialsPage() {
                             </Alert>
                         )}
                     </SettingsSectionBody>
-                    {build !== "oss" && (
-                        <SettingsSectionFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setShouldDisconnect(false);
-                                    setModalOpen(true);
-                                }}
-                                disabled={isSecurityFeatureDisabled()}
-                            >
-                                {t("regenerateCredentialsButton")}
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setShouldDisconnect(true);
-                                    setModalOpen(true);
-                                }}
-                                disabled={isSecurityFeatureDisabled()}
-                            >
-                                {t("clientRegenerateAndDisconnect")}
-                            </Button>
-                        </SettingsSectionFooter>
-                    )}
+                    <SettingsSectionFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShouldDisconnect(false);
+                                setModalOpen(true);
+                            }}
+                            disabled={isSecurityFeatureDisabled()}
+                        >
+                            {t("regenerateCredentialsButton")}
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setShouldDisconnect(true);
+                                setModalOpen(true);
+                            }}
+                            disabled={isSecurityFeatureDisabled()}
+                        >
+                            {t("clientRegenerateAndDisconnect")}
+                        </Button>
+                    </SettingsSectionFooter>
                 </SettingsSection>
 
                 <OlmInstallCommands

@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
+import { build } from "@server/build";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -110,6 +111,9 @@ export default function GeneralPage() {
 
     // Trigger search with default values on component mount
     useEffect(() => {
+        if (build === "oss") {
+            return;
+        }
         const defaultRange = getDefaultDateRange();
         queryDateTime(
             defaultRange.startDate,

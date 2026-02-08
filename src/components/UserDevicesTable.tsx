@@ -190,7 +190,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             const approvalsRes = await api.get<{
                 data: { approvals: Array<{ approvalId: number; clientId: number }> };
             }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
-            
+
             const approval = approvalsRes.data.data.approvals[0];
 
             if (!approval) {
@@ -232,7 +232,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             const approvalsRes = await api.get<{
                 data: { approvals: Array<{ approvalId: number; clientId: number }> };
             }>(`/org/${clientRow.orgId}/approvals?approvalState=pending&clientId=${clientRow.id}`);
-            
+
             const approval = approvalsRes.data.data.approvals[0];
 
             if (!approval) {
@@ -548,7 +548,7 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {clientRow.approvalState === "pending" && build !== "oss" && (
+                                {clientRow.approvalState === "pending" && (
                                     <>
                                         <DropdownMenuItem
                                             onClick={() => approveDevice(clientRow)}
@@ -652,17 +652,10 @@ export default function UserDevicesTable({ userClients }: ClientTableProps) {
             }
         ];
 
-        if (build === "oss") {
-            return allOptions.filter((option) => option.value !== "pending" && option.value !== "denied");
-        }
-
         return allOptions;
     }, [t]);
 
     const statusFilterDefaultValues = useMemo(() => {
-        if (build === "oss") {
-            return ["active"];
-        }
         return ["active", "pending"];
     }, []);
 
