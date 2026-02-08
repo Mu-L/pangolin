@@ -33,9 +33,7 @@ interface StripeEvent {
 
 export function noop() {
     if (
-        build !== "saas" ||
-        !process.env.S3_BUCKET ||
-        !process.env.LOCAL_FILE_PATH
+        build !== "saas"
     ) {
         return true;
     }

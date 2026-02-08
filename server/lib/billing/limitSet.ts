@@ -23,7 +23,7 @@ export const freeLimitSet: LimitSet = {
         description: "Free tier limit"
     }, // 25 GB
     [FeatureId.DOMAINS]: { value: 3, description: "Free tier limit" },
-    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Free tier limit" }
+    [FeatureId.REMOTE_EXIT_NODES]: { value: 0, description: "Free tier limit" }
 };
 
 export const homeLabLimitSet: LimitSet = {
