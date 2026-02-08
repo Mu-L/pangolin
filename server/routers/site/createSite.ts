@@ -151,7 +151,7 @@ export async function createSite(
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "Sites limit exceeded. Please upgrade your plan."
+                        "Site limit exceeded. Please upgrade your plan."
                     )
                 );
             }

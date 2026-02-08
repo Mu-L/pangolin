@@ -39,7 +39,7 @@ export default function InviteStatusCard({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [type, setType] = useState<
-        "rejected" | "wrong_user" | "user_does_not_exist" | "not_logged_in"
+        "rejected" | "wrong_user" | "user_does_not_exist" | "not_logged_in" | "user_limit_exceeded"
     >("rejected");
 
     useEffect(() => {
@@ -75,6 +75,11 @@ export default function InviteStatusCard({
                     error.includes("You must be logged in to accept an invite")
                 ) {
                     return "not_logged_in";
+                } else if (
+                    error.includes("user limit is exceeded") ||
+                    error.includes("Can not accept")
+                ) {
+                    return "user_limit_exceeded";
                 } else {
                     return "rejected";
                 }
@@ -145,6 +150,17 @@ export default function InviteStatusCard({
                     <p className="text-center">{t("inviteCreateUser")}</p>
                 </div>
             );
+        } else if (type === "user_limit_exceeded") {
+            return (
+                <div>
+                    <p className="text-center mb-4 font-semibold">
+                        Cannot Accept Invite
+                    </p>
+                    <p className="text-center text-sm">
+                        This organization has reached its user limit. Please contact the organization administrator to upgrade their plan before accepting this invite.
+                    </p>
+                </div>
+            );
         }
     }
 
@@ -165,6 +181,16 @@ export default function InviteStatusCard({
             );
         } else if (type === "user_does_not_exist") {
             return <Button onClick={goToSignup}>{t("createAnAccount")}</Button>;
+        } else if (type === "user_limit_exceeded") {
+            return (
+                <Button
+                    onClick={() => {
+                        router.push("/");
+                    }}
+                >
+                    {t("goHome")}
+                </Button>
+            );
         }
     }
 

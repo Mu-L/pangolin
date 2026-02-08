@@ -97,7 +97,7 @@ export async function createRemoteExitNode(
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "Remote exit node limit exceeded. Please upgrade your plan or contact us at support@pangolin.net"
+                        "Remote node limit exceeded. Please upgrade your plan."
                     )
                 );
             }
