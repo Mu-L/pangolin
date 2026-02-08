@@ -18,6 +18,7 @@ import { sendToClient } from "#dynamic/routers/ws";
 import { build } from "@server/build";
 import { s3Client } from "@server/lib/s3";
 import cache from "@server/lib/cache";
+import privateConfig from "@server/private/lib/config";
 
 interface StripeEvent {
     identifier?: string;
@@ -30,9 +31,7 @@ interface StripeEvent {
 }
 
 export function noop() {
-    if (
-        build !== "saas"
-    ) {
+    if (build !== "saas") {
         return true;
     }
     return false;
@@ -48,29 +47,39 @@ export class UsageService {
         if (noop()) {
             return;
         }
+
         this.bucketName = process.env.S3_BUCKET || undefined;
 
-        // Periodically check and upload events
-        setInterval(() => {
-            this.checkAndUploadEvents().catch((err) => {
-                logger.error("Error in periodic event upload:", err);
+        if ( // Only set up event uploading if usage reporting is enabled and bucket name is configured
+            privateConfig.getRawPrivateConfig().flags.usage_reporting &&
+            this.bucketName
+        ) {
+            // Periodically check and upload events
+            setInterval(() => {
+                this.checkAndUploadEvents().catch((err) => {
+                    logger.error("Error in periodic event upload:", err);
+                });
+            }, 30000); // every 30 seconds
+
+            // Handle graceful shutdown on SIGTERM
+            process.on("SIGTERM", async () => {
+                logger.info(
+                    "SIGTERM received, uploading events before shutdown..."
+                );
+                await this.forceUpload();
+                logger.info("Events uploaded, proceeding with shutdown");
             });
-        }, 30000); // every 30 seconds
 
-        // Handle graceful shutdown on SIGTERM
-        process.on("SIGTERM", async () => {
-            logger.info("SIGTERM received, uploading events before shutdown...");
-            await this.forceUpload();
-            logger.info("Events uploaded, proceeding with shutdown");
-        });
-
-        // Handle SIGINT as well (Ctrl+C)
-        process.on("SIGINT", async () => {
-            logger.info("SIGINT received, uploading events before shutdown...");
-            await this.forceUpload();
-            logger.info("Events uploaded, proceeding with shutdown");
-            process.exit(0);
-        });
+            // Handle SIGINT as well (Ctrl+C)
+            process.on("SIGINT", async () => {
+                logger.info(
+                    "SIGINT received, uploading events before shutdown..."
+                );
+                await this.forceUpload();
+                logger.info("Events uploaded, proceeding with shutdown");
+                process.exit(0);
+            });
+        }
     }
 
     /**
@@ -129,7 +138,9 @@ export class UsageService {
                 }
 
                 // Log event for Stripe
-                await this.logStripeEvent(featureId, value, customerId);
+                if (privateConfig.getRawPrivateConfig().flags.usage_reporting) {
+                    await this.logStripeEvent(featureId, value, customerId);
+                }
 
                 return usage || null;
             } catch (error: any) {
@@ -306,7 +317,9 @@ export class UsageService {
                 }
             });
 
-            await this.logStripeEvent(featureId, value || 0, customerId);
+            if (privateConfig.getRawPrivateConfig().flags.usage_reporting) {
+                await this.logStripeEvent(featureId, value || 0, customerId);
+            }
         } catch (error) {
             logger.error(
                 `Failed to update daily usage for ${orgId}/${featureId}:`,
