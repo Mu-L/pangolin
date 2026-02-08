@@ -176,6 +176,7 @@
     "shareErrorCreateDescription": "An error occurred while creating the share link",
     "shareCreateDescription": "Anyone with this link can access the resource",
     "shareTitleOptional": "Title (optional)",
+    "sharePathOptional": "Path (optional)",
     "expireIn": "Expire In",
     "neverExpire": "Never expire",
     "shareExpireDescription": "Expiration time is how long the link will be usable and provide access to the resource. After this time, the link will no longer work, and users who used this link will lose access to the resource.",
