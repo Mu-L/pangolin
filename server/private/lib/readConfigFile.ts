@@ -95,7 +95,8 @@ export const privateConfigSchema = z.object({
         .object({
             enable_redis: z.boolean().optional().default(false),
             use_pangolin_dns: z.boolean().optional().default(false),
-            use_org_only_idp: z.boolean().optional().default(false)
+            use_org_only_idp: z.boolean().optional().default(false),
+            usage_reporting: z.boolean().optional().default(false)
         })
         .optional()
         .prefault({}),
