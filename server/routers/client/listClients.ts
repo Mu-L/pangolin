@@ -320,7 +320,10 @@ export async function listClients(
         // Merge clients with their site associations and replace name with device name
         const clientsWithSites = clientsList.map((client) => {
             const model = client.deviceModel || null;
-            const newName = getUserDeviceName(model, client.name);
+            let newName = client.name;
+            if (filter === "user") {
+                newName = getUserDeviceName(model, client.name);
+            }
             return {
                 ...client,
                 name: newName,
