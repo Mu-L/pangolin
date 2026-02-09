@@ -39,7 +39,7 @@ export async function verifyValidSubscription(
         }
 
         const { tier, active  } = await getOrgTierData(orgId);
-        if ((tier == "home_lab" || tier == "starter" || tier == "scale") && active) {
+        if ((tier == "tier1" || tier == "tier2" || tier == "tier3") && active) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,

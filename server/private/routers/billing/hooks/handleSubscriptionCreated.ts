@@ -91,6 +91,7 @@ export async function handleSubscriptionCreated(
                     }
 
                     return {
+                        stripeSubscriptionItemId: item.id,
                         subscriptionId: subscription.id,
                         planId: item.plan.id,
                         priceId: item.price.id,
@@ -132,7 +133,7 @@ export async function handleSubscriptionCreated(
             return;
         }
 
-        if (type === "home_lab" || type === "starter" || type === "scale") {
+        if (type === "tier1" || type === "tier2" || type === "tier3") {
             logger.debug(
                 `Handling SAAS subscription lifecycle for org ${customer.orgId} with type ${type}`
             );

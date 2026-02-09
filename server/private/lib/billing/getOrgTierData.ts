@@ -17,8 +17,8 @@ import { eq, and, ne } from "drizzle-orm";
 
 export async function getOrgTierData(
     orgId: string
-): Promise<{ tier: "home_lab" | "starter" | "scale" | null; active: boolean }> {
-    let tier: "home_lab" | "starter" | "scale" | null = null;
+): Promise<{ tier: "tier1" | "tier2" | "tier3" | null; active: boolean }> {
+    let tier: "tier1" | "tier2" | "tier3" | null = null;
     let active = false;
 
     if (build !== "saas") {
@@ -50,9 +50,9 @@ export async function getOrgTierData(
             if (subscription) {
                 // Validate that subscription.type is one of the expected tier values
                 if (
-                    subscription.type === "home_lab" ||
-                    subscription.type === "starter" ||
-                    subscription.type === "scale"
+                    subscription.type === "tier1" ||
+                    subscription.type === "tier2" ||
+                    subscription.type === "tier3"
                 ) {
                     tier = subscription.type;
                     active = true;

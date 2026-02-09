@@ -35,7 +35,7 @@ const changeTierSchema = z.strictObject({
 });
 
 const changeTierBodySchema = z.strictObject({
-    tier: z.enum(["home_lab", "starter", "scale"])
+    tier: z.enum(["tier1", "tier2", "tier3"])
 });
 
 export async function changeTier(
@@ -93,9 +93,9 @@ export async function changeTier(
                     eq(subscriptions.customerId, customer.customerId),
                     eq(subscriptions.status, "active"),
                     or(
-                        eq(subscriptions.type, "home_lab"),
-                        eq(subscriptions.type, "starter"),
-                        eq(subscriptions.type, "scale")
+                        eq(subscriptions.type, "tier1"),
+                        eq(subscriptions.type, "tier2"),
+                        eq(subscriptions.type, "tier3")
                     )
                 )
             )
@@ -112,11 +112,11 @@ export async function changeTier(
 
         // Get the target tier's price set
         let targetPriceSet: FeaturePriceSet;
-        if (tier === "home_lab") {
+        if (tier === "tier1") {
             targetPriceSet = getHomeLabFeaturePriceSet();
-        } else if (tier === "starter") {
+        } else if (tier === "tier2") {
             targetPriceSet = getStarterFeaturePriceSet();
-        } else if (tier === "scale") {
+        } else if (tier === "tier3") {
             targetPriceSet = getScaleFeaturePriceSet();
         } else {
             return next(createHttpError(HttpCode.BAD_REQUEST, "Invalid tier"));
@@ -148,11 +148,11 @@ export async function changeTier(
         );
 
         // Determine if we're switching between different products
-        // home_lab uses HOME_LAB product, starter/scale use USERS product
+        // tier1 uses TIER1 product, tier2/tier3 use USERS product
         const currentTier = subscription.type;
         const switchingProducts =
-            (currentTier === "home_lab" && (tier === "starter" || tier === "scale")) ||
-            ((currentTier === "starter" || currentTier === "scale") && tier === "home_lab");
+            (currentTier === "tier1" && (tier === "tier2" || tier === "tier3")) ||
+            ((currentTier === "tier2" || currentTier === "tier3") && tier === "tier1");
 
         let updatedSubscription;
 
@@ -189,7 +189,7 @@ export async function changeTier(
                 }
             );
         } else {
-            // Same product, different price tier (starter <-> scale)
+            // Same product, different price tier (tier2 <-> tier3)
             // We can simply update the price
             logger.info(
                 `Updating price from ${currentTier} to ${tier} for subscription ${subscription.subscriptionId}`

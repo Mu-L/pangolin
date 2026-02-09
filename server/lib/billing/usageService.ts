@@ -50,7 +50,8 @@ export class UsageService {
 
         this.bucketName = process.env.S3_BUCKET || undefined;
 
-        if ( // Only set up event uploading if usage reporting is enabled and bucket name is configured
+        if (
+            // Only set up event uploading if usage reporting is enabled and bucket name is configured
             privateConfig.getRawPrivateConfig().flags.usage_reporting &&
             this.bucketName
         ) {
@@ -220,7 +221,7 @@ export class UsageService {
         return new Date(date * 1000).toISOString().split("T")[0];
     }
 
-    async updateDaily(
+    async updateCount(
         orgId: string,
         featureId: FeatureId,
         value?: number,
@@ -246,8 +247,6 @@ export class UsageService {
                 value = this.truncateValue(value);
             }
 
-            const today = this.getTodayDateString();
-
             let currentUsage: Usage | null = null;
 
             await db.transaction(async (trx) => {
@@ -261,57 +260,23 @@ export class UsageService {
                     .limit(1);
 
                 if (currentUsage) {
-                    const lastUpdateDate = this.getDateString(
-                        currentUsage.updatedAt
-                    );
-                    const currentRunningTotal = currentUsage.latestValue;
-                    const lastDailyValue = currentUsage.instantaneousValue || 0;
-
-                    if (value == undefined || value === null) {
-                        value = currentUsage.instantaneousValue || 0;
-                    }
-
-                    if (lastUpdateDate === today) {
-                        // Same day update: replace the daily value
-                        // Remove old daily value from running total, add new value
-                        const newRunningTotal = this.truncateValue(
-                            currentRunningTotal - lastDailyValue + value
-                        );
-
-                        await trx
-                            .update(usage)
-                            .set({
-                                latestValue: newRunningTotal,
-                                instantaneousValue: value,
-                                updatedAt: Math.floor(Date.now() / 1000)
-                            })
-                            .where(eq(usage.usageId, usageId));
-                    } else {
-                        // New day: add to running total
-                        const newRunningTotal = this.truncateValue(
-                            currentRunningTotal + value
-                        );
-
-                        await trx
-                            .update(usage)
-                            .set({
-                                latestValue: newRunningTotal,
-                                instantaneousValue: value,
-                                updatedAt: Math.floor(Date.now() / 1000)
-                            })
-                            .where(eq(usage.usageId, usageId));
-                    }
+                    await trx
+                        .update(usage)
+                        .set({
+                            instantaneousValue: value,
+                            updatedAt: Math.floor(Date.now() / 1000)
+                        })
+                        .where(eq(usage.usageId, usageId));
                 } else {
                     // First record for this meter
                     const meterId = getFeatureMeterId(featureId);
-                    const truncatedValue = this.truncateValue(value || 0);
                     await trx.insert(usage).values({
                         usageId,
                         featureId,
                         orgId,
                         meterId,
-                        instantaneousValue: truncatedValue,
-                        latestValue: truncatedValue,
+                        instantaneousValue: value || 0,
+                        latestValue: value || 0,
                         updatedAt: Math.floor(Date.now() / 1000)
                     });
                 }
@@ -322,7 +287,7 @@ export class UsageService {
             }
         } catch (error) {
             logger.error(
-                `Failed to update daily usage for ${orgId}/${featureId}:`,
+                `Failed to update count usage for ${orgId}/${featureId}:`,
                 error
             );
         }
@@ -540,17 +505,6 @@ export class UsageService {
             );
             throw error;
         }
-    }
-
-    public async getUsageDaily(
-        orgId: string,
-        featureId: FeatureId
-    ): Promise<Usage | null> {
-        if (noop()) {
-            return null;
-        }
-        await this.updateDaily(orgId, featureId); // Ensure daily usage is updated
-        return this.getUsage(orgId, featureId);
     }
 
     public async forceUpload(): Promise<void> {

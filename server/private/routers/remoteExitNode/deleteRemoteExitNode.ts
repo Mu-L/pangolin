@@ -106,7 +106,7 @@ export async function deleteRemoteExitNode(
         });
 
         if (numExitNodeOrgs) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 orgId,
                 FeatureId.REMOTE_EXIT_NODES,
                 numExitNodeOrgs.length

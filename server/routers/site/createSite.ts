@@ -450,7 +450,7 @@ export async function createSite(
         });
 
         if (numSites) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 orgId,
                 FeatureId.SITES,
                 numSites.length

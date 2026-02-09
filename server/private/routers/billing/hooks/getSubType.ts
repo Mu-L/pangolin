@@ -21,7 +21,7 @@ import {
 } from "@server/lib/billing/features";
 import Stripe from "stripe";
 
-export type SubscriptionType = "home_lab" | "starter" | "scale" | "license";
+export type SubscriptionType = "tier1" | "tier2" | "tier3" | "license";
 
 export function getSubType(fullSubscription: Stripe.Response<Stripe.Subscription>): SubscriptionType | null {
     // Determine subscription type by checking subscription items
@@ -41,19 +41,19 @@ export function getSubType(fullSubscription: Stripe.Response<Stripe.Subscription
         // Check if price ID matches home lab tier
         const homeLabPrices = Object.values(getHomeLabFeaturePriceSet());
         if (homeLabPrices.includes(priceId)) {
-            return "home_lab";
+            return "tier1";
         }
 
-        // Check if price ID matches starter tier
-        const starterPrices = Object.values(getStarterFeaturePriceSet());
-        if (starterPrices.includes(priceId)) {
-            return "starter";
+        // Check if price ID matches tier2 tier
+        const tier2Prices = Object.values(getStarterFeaturePriceSet());
+        if (tier2Prices.includes(priceId)) {
+            return "tier2";
         }
 
-        // Check if price ID matches scale tier
-        const scalePrices = Object.values(getScaleFeaturePriceSet());
-        if (scalePrices.includes(priceId)) {
-            return "scale";
+        // Check if price ID matches tier3 tier
+        const tier3Prices = Object.values(getScaleFeaturePriceSet());
+        if (tier3Prices.includes(priceId)) {
+            return "tier3";
         }
     }
 

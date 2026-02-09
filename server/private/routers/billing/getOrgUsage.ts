@@ -78,16 +78,10 @@ export async function getOrgUsage(
         // Get usage for org
         const usageData = [];
 
-        const sites = await usageService.getUsage(
-            orgId,
-            FeatureId.SITES
-        );
-        const users = await usageService.getUsageDaily(orgId, FeatureId.USERS);
-        const domains = await usageService.getUsageDaily(
-            orgId,
-            FeatureId.DOMAINS
-        );
-        const remoteExitNodes = await usageService.getUsageDaily(
+        const sites = await usageService.getUsage(orgId, FeatureId.SITES);
+        const users = await usageService.getUsage(orgId, FeatureId.USERS);
+        const domains = await usageService.getUsage(orgId, FeatureId.DOMAINS);
+        const remoteExitNodes = await usageService.getUsage(
             orgId,
             FeatureId.REMOTE_EXIT_NODES
         );

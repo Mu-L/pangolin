@@ -14,8 +14,8 @@
 import {
     freeLimitSet,
     homeLabLimitSet,
-    starterLimitSet,
-    scaleLimitSet,
+    tier2LimitSet,
+    tier3LimitSet,
     limitsService,
     LimitSet
 } from "@server/lib/billing";
@@ -24,16 +24,16 @@ import { SubscriptionType } from "./hooks/getSubType";
 
 function getLimitSetForSubscriptionType(subType: SubscriptionType | null): LimitSet {
     switch (subType) {
-        case "home_lab":
+        case "tier1":
             return homeLabLimitSet;
-        case "starter":
-            return starterLimitSet;
-        case "scale":
-            return scaleLimitSet;
+        case "tier2":
+            return tier2LimitSet;
+        case "tier3":
+            return tier3LimitSet;
         case "license":
-            // License subscriptions use starter limits by default
+            // License subscriptions use tier2 limits by default
             // This can be adjusted based on your business logic
-            return starterLimitSet;
+            return tier2LimitSet;
         default:
             return freeLimitSet;
     }

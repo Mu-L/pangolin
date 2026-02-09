@@ -82,12 +82,14 @@ export const subscriptions = pgTable("subscriptions", {
     canceledAt: bigint("canceledAt", { mode: "number" }),
     createdAt: bigint("createdAt", { mode: "number" }).notNull(),
     updatedAt: bigint("updatedAt", { mode: "number" }),
+    version: integer("version"),
     billingCycleAnchor: bigint("billingCycleAnchor", { mode: "number" }),
-    type: varchar("type", { length: 50 }) // home_lab, starter, scale, or license
+    type: varchar("type", { length: 50 }) // tier1, tier2, tier3, or license
 });
 
 export const subscriptionItems = pgTable("subscriptionItems", {
     subscriptionItemId: serial("subscriptionItemId").primaryKey(),
+    stripeSubscriptionItemId: varchar("stripeSubscriptionItemId", { length: 255 }),
     subscriptionId: varchar("subscriptionId", { length: 255 })
         .notNull()
         .references(() => subscriptions.subscriptionId, {
