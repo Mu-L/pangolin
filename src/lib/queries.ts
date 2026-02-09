@@ -383,6 +383,12 @@ export const approvalQueries = {
                     signal
                 });
                 return res.data.data.count;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
             }
         })
 };
