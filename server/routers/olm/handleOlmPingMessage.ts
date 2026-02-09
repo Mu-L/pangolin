@@ -117,6 +117,8 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         return;
     }
 
+    const isUserDevice = olm.userId !== null && olm.userId !== undefined;
+
     try {
         // get the client
         const [client] = await db
@@ -219,7 +221,9 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
         logger.error("Error handling ping message", { error });
     }
 
-    await handleFingerprintInsertion(olm, fingerprint, postures);
+    if (isUserDevice) {
+        await handleFingerprintInsertion(olm, fingerprint, postures);
+    }
 
     return {
         message: {

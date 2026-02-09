@@ -294,9 +294,11 @@ export async function getClient(
             );
         }
 
+        const isUserDevice = client.user !== null && client.user !== undefined;
+
         // Replace name with device name if OLM exists
         let clientName = client.clients.name;
-        if (client.olms) {
+        if (client.olms && isUserDevice) {
             const model = client.currentFingerprint?.deviceModel || null;
             clientName = getUserDeviceName(model, client.clients.name);
         }
