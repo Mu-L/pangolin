@@ -69,7 +69,8 @@ export async function handleSubscriptionCreated(
                 ? subscription.canceled_at
                 : null,
             createdAt: subscription.created,
-            type: type
+            type: type,
+            version: 1 // we are hardcoding the initial version when the subscription is created, and then we will increment it on every update
         };
 
         await db.insert(subscriptions).values(newSubscription);
