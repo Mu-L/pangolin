@@ -7,9 +7,29 @@ export enum FeatureId {
     EGRESS_DATA_MB = "egressDataMb",
     DOMAINS = "domains",
     REMOTE_EXIT_NODES = "remoteExitNodes",
-    HOME_LAB = "home_lab"
+    TIER1 = "tier1"
 }
 
+export async function getFeatureDisplayName(featureId: FeatureId): Promise<string> {
+    switch (featureId) {
+        case FeatureId.USERS:
+            return "Users";
+        case FeatureId.SITES:
+            return "Sites";
+        case FeatureId.EGRESS_DATA_MB:
+            return "Egress Data (MB)";
+        case FeatureId.DOMAINS:
+            return "Domains";
+        case FeatureId.REMOTE_EXIT_NODES:
+            return "Remote Exit Nodes";
+        case FeatureId.TIER1:
+            return "Home Lab";
+        default:
+            return featureId;
+    }
+}
+
+// this is from the old system
 export const FeatureMeterIds: Partial<Record<FeatureId, string>> = { // right now we are not charging for any data
     // [FeatureId.EGRESS_DATA_MB]: "mtr_61Srreh9eWrExDSCe41D3Ee2Ir7Wm5YW"
 };
@@ -40,11 +60,11 @@ export function getFeatureIdByMetricId(
 export type FeaturePriceSet = Partial<Record<FeatureId, string>>;
 
 export const homeLabFeaturePriceSet: FeaturePriceSet = {
-    [FeatureId.HOME_LAB]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
+    [FeatureId.TIER1]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
 };
 
 export const homeLabFeaturePriceSetSandbox: FeaturePriceSet = {
-    [FeatureId.HOME_LAB]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
+    [FeatureId.TIER1]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
 };
 
 export function getHomeLabFeaturePriceSet(): FeaturePriceSet {
@@ -58,11 +78,11 @@ export function getHomeLabFeaturePriceSet(): FeaturePriceSet {
     }
 }
 
-export const starterFeaturePriceSet: FeaturePriceSet = {
+export const tier2FeaturePriceSet: FeaturePriceSet = {
     [FeatureId.USERS]: "price_1SxaEHDCpkOb237BD9lBkPiR"
 };
 
-export const starterFeaturePriceSetSandbox: FeaturePriceSet = {
+export const tier2FeaturePriceSetSandbox: FeaturePriceSet = {
     [FeatureId.USERS]: "price_1SxaEHDCpkOb237BD9lBkPiR"
 };
 
@@ -71,17 +91,17 @@ export function getStarterFeaturePriceSet(): FeaturePriceSet {
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
     ) {
-        return starterFeaturePriceSet;
+        return tier2FeaturePriceSet;
     } else {
-        return starterFeaturePriceSetSandbox;
+        return tier2FeaturePriceSetSandbox;
     }
 }
 
-export const scaleFeaturePriceSet: FeaturePriceSet = {
+export const tier3FeaturePriceSet: FeaturePriceSet = {
     [FeatureId.USERS]: "price_1SxaEODCpkOb237BiXdCBSfs"
 };
 
-export const scaleFeaturePriceSetSandbox: FeaturePriceSet = {
+export const tier3FeaturePriceSetSandbox: FeaturePriceSet = {
     [FeatureId.USERS]: "price_1SxaEODCpkOb237BiXdCBSfs"
 };
 
@@ -90,9 +110,9 @@ export function getScaleFeaturePriceSet(): FeaturePriceSet {
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
     ) {
-        return scaleFeaturePriceSet;
+        return tier3FeaturePriceSet;
     } else {
-        return scaleFeaturePriceSetSandbox;
+        return tier3FeaturePriceSetSandbox;
     }
 }
 
@@ -100,14 +120,14 @@ export async function getLineItems(
     featurePriceSet: FeaturePriceSet,
     orgId: string,
 ): Promise<Stripe.Checkout.SessionCreateParams.LineItem[]> {
-    const users = await usageService.getUsageDaily(orgId, FeatureId.USERS);
+    const users = await usageService.getUsage(orgId, FeatureId.USERS);
 
     return Object.entries(featurePriceSet).map(([featureId, priceId]) => {
         let quantity: number | undefined;
 
         if (featureId === FeatureId.USERS) {
             quantity = users?.instantaneousValue || 1;
-        } else if (featureId === FeatureId.HOME_LAB) {
+        } else if (featureId === FeatureId.TIER1) {
             quantity = 1;
         }
 

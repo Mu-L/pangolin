@@ -17,7 +17,7 @@ import { getOrgTierData } from "#private/lib/billing";
 export async function isSubscribed(orgId: string): Promise<boolean> {
     if (build === "saas") {
         const { tier, active } = await getOrgTierData(orgId);
-        return (tier == "home_lab" || tier == "starter" || tier == "scale") && active;
+        return (tier == "tier1" || tier == "tier2" || tier == "tier3") && active;
     }
 
     return false;

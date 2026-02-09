@@ -70,8 +70,9 @@ export const subscriptions = sqliteTable("subscriptions", {
     canceledAt: integer("canceledAt"),
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt"),
+    version: integer("version"),
     billingCycleAnchor: integer("billingCycleAnchor"),
-    type: text("type") // home_lab, starter, scale, or license
+    type: text("type") // tier1, tier2, tier3, or license
 });
 
 export const subscriptionItems = sqliteTable("subscriptionItems", {

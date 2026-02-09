@@ -254,7 +254,7 @@ export async function createOrgUser(
             });
 
             if (orgUsers) {
-                await usageService.updateDaily(
+                await usageService.updateCount(
                     orgId,
                     FeatureId.USERS,
                     orgUsers.length

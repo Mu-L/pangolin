@@ -107,7 +107,7 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
         FeatureId.EGRESS_DATA_MB
     );
 
-    // Do we need to check the users and domains daily limits here?
+    // Do we need to check the users and domains count limits here?
     // const rejectUsers = await usageService.checkLimitSet(oldSite.orgId, false, FeatureId.USERS);
     // const rejectDomains = await usageService.checkLimitSet(oldSite.orgId, false, FeatureId.DOMAINS);
 

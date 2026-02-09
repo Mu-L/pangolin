@@ -58,7 +58,7 @@ interface PlanOption {
     name: string;
     price: string;
     priceDetail?: string;
-    tierType: "home_lab" | "starter" | "scale" | null; // Maps to backend tier types
+    tierType: "tier1" | "tier2" | "tier3" | null; // Maps to backend tier types
 }
 
 // Tier limits for display in confirmation dialog
@@ -69,20 +69,20 @@ interface TierLimits {
     remoteNodes: number;
 }
 
-const tierLimits: Record<"home_lab" | "starter" | "scale", TierLimits> = {
-    home_lab: {
+const tierLimits: Record<"tier1" | "tier2" | "tier3", TierLimits> = {
+    tier1: {
         sites: 3,
         users: 3,
         domains: 3,
         remoteNodes: 1
     },
-    starter: {
+    tier2: {
         sites: 10,
         users: 150,
         domains: 250,
         remoteNodes: 5
     },
-    scale: {
+    tier3: {
         sites: 10,
         users: 150,
         domains: 250,
@@ -102,21 +102,21 @@ const planOptions: PlanOption[] = [
         name: "Homelab",
         price: "$15",
         priceDetail: "/ month",
-        tierType: "home_lab"
+        tierType: "tier1"
     },
     {
         id: "team",
         name: "Team",
         price: "$5",
         priceDetail: "per user / month",
-        tierType: "starter"
+        tierType: "tier2"
     },
     {
         id: "business",
         name: "Business",
         price: "$10",
         priceDetail: "per user / month",
-        tierType: "scale"
+        tierType: "tier3"
     },
     {
         id: "enterprise",
@@ -155,7 +155,7 @@ export default function BillingPage() {
     const [hasSubscription, setHasSubscription] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [currentTier, setCurrentTier] = useState<
-        "home_lab" | "starter" | "scale" | null
+        "tier1" | "tier2" | "tier3" | null
     >(null);
 
     // Usage IDs
@@ -167,7 +167,7 @@ export default function BillingPage() {
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingTier, setPendingTier] = useState<{
-        tier: "home_lab" | "starter" | "scale";
+        tier: "tier1" | "tier2" | "tier3";
         action: "upgrade" | "downgrade";
         planName: string;
         price: string;
@@ -186,18 +186,18 @@ export default function BillingPage() {
                 // Find tier subscription
                 const tierSub = subscriptions.find(
                     ({ subscription }) =>
-                        subscription?.type === "home_lab" ||
-                        subscription?.type === "starter" ||
-                        subscription?.type === "scale"
+                        subscription?.type === "tier1" ||
+                        subscription?.type === "tier2" ||
+                        subscription?.type === "tier3"
                 );
                 setTierSubscription(tierSub || null);
 
                 if (tierSub?.subscription) {
                     setCurrentTier(
                         tierSub.subscription.type as
-                            | "home_lab"
-                            | "starter"
-                            | "scale"
+                            | "tier1"
+                            | "tier2"
+                            | "tier3"
                     );
                     setHasSubscription(
                         tierSub.subscription.status === "active"
@@ -243,7 +243,7 @@ export default function BillingPage() {
     }, [org.org.orgId]);
 
     const handleStartSubscription = async (
-        tier: "home_lab" | "starter" | "scale"
+        tier: "tier1" | "tier2" | "tier3"
     ) => {
         setIsLoading(true);
         try {
@@ -300,7 +300,7 @@ export default function BillingPage() {
         }
     };
 
-    const handleChangeTier = async (tier: "home_lab" | "starter" | "scale") => {
+    const handleChangeTier = async (tier: "tier1" | "tier2" | "tier3") => {
         if (!hasSubscription) {
             // If no subscription, start a new one
             handleStartSubscription(tier);
@@ -343,7 +343,7 @@ export default function BillingPage() {
     };
 
     const showTierConfirmation = (
-        tier: "home_lab" | "starter" | "scale",
+        tier: "tier1" | "tier2" | "tier3",
         action: "upgrade" | "downgrade",
         planName: string,
         price: string
@@ -453,8 +453,8 @@ export default function BillingPage() {
     // Calculate current usage cost for display
     const getUserCount = () => getUsageValue(USERS);
     const getPricePerUser = () => {
-        if (currentTier === "starter") return 5;
-        if (currentTier === "scale") return 10;
+        if (currentTier === "tier2") return 5;
+        if (currentTier === "tier3") return 10;
         return 0;
     };
 

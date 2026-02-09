@@ -182,7 +182,7 @@ export async function createUserAccountOrg(
     const customerId = await createCustomer(orgId, userEmail);
 
     if (customerId) {
-        await usageService.updateDaily(orgId, FeatureId.USERS, 1, customerId); // Only 1 because we are crating the org
+        await usageService.updateCount(orgId, FeatureId.USERS, 1, customerId); // Only 1 because we are crating the org
     }
 
     return {

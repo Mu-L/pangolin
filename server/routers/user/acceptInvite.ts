@@ -155,17 +155,19 @@ export async function acceptInvite(
                 .delete(userInvites)
                 .where(eq(userInvites.inviteId, inviteId));
 
+            await calculateUserClientsForOrgs(existingUser[0].userId, trx);
+
             // Get the total number of users in the org now
-            totalUsers = await db
+            totalUsers = await trx
                 .select()
                 .from(userOrgs)
                 .where(eq(userOrgs.orgId, existingInvite.orgId));
 
-            await calculateUserClientsForOrgs(existingUser[0].userId, trx);
+            logger.debug(`User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}. Total users in org: ${totalUsers.length}`);
         });
 
         if (totalUsers) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 existingInvite.orgId,
                 FeatureId.USERS,
                 totalUsers.length

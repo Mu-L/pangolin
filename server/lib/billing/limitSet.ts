@@ -37,7 +37,7 @@ export const homeLabLimitSet: LimitSet = {
     [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Home lab limit" }
 };
 
-export const starterLimitSet: LimitSet = {
+export const tier2LimitSet: LimitSet = {
     [FeatureId.SITES]: {
         value: 10,
         description: "Starter limit"
@@ -60,7 +60,7 @@ export const starterLimitSet: LimitSet = {
     }
 };
 
-export const scaleLimitSet: LimitSet = {
+export const tier3LimitSet: LimitSet = {
     [FeatureId.SITES]: {
         value: 10,
         description: "Scale limit"

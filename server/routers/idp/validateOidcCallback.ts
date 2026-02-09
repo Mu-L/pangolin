@@ -587,7 +587,7 @@ export async function validateOidcCallback(
             });
 
             for (const orgCount of orgUserCounts) {
-                await usageService.updateDaily(
+                await usageService.updateCount(
                     orgCount.orgId,
                     FeatureId.USERS,
                     orgCount.userCount

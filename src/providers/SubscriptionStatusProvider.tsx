@@ -46,9 +46,9 @@ export function SubscriptionStatusProvider({
             // Iterate through all subscriptions
             for (const { subscription } of subscriptionStatus.subscriptions) {
                 if (
-                    subscription.type == "home_lab" ||
-                    subscription.type == "starter" ||
-                    subscription.type == "scale"
+                    subscription.type == "tier1" ||
+                    subscription.type == "tier2" ||
+                    subscription.type == "tier3"
                 ) {
                     return {
                         tier: subscription.type,
@@ -70,7 +70,7 @@ export function SubscriptionStatusProvider({
         }
         const { tier, active } = getTier();
         return (
-            (tier == "home_lab" || tier == "starter" || tier == "scale") &&
+            (tier == "tier1" || tier == "tier2" || tier == "tier3") &&
             active
         );
     };

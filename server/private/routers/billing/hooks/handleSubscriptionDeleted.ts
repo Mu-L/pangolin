@@ -76,7 +76,7 @@ export async function handleSubscriptionDeleted(
         }
 
         const type = getSubType(fullSubscription);
-        if (type == "home_lab" || type == "starter" || type == "scale") {
+        if (type == "tier1" || type == "tier2" || type == "tier3") {
             logger.debug(
                 `Handling SaaS subscription deletion for orgId ${customer.orgId} and subscription ID ${subscription.id}`
             );

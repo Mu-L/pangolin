@@ -31,7 +31,7 @@ const createCheckoutSessionSchema = z.strictObject({
 });
 
 const createCheckoutSessionBodySchema = z.strictObject({
-    tier: z.enum(["home_lab", "starter", "scale"]),
+    tier: z.enum(["tier1", "tier2", "tier3"]),
 });
 
 export async function createCheckoutSession(
@@ -83,11 +83,11 @@ export async function createCheckoutSession(
         }
 
         let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
-        if (tier === "home_lab") {
+        if (tier === "tier1") {
             lineItems = await getLineItems(getHomeLabFeaturePriceSet(), orgId);
-        } else if (tier === "starter") {
+        } else if (tier === "tier2") {
             lineItems = await getLineItems(getStarterFeaturePriceSet(), orgId);
-        } else if (tier === "scale") {
+        } else if (tier === "tier3") {
             lineItems = await getLineItems(getScaleFeaturePriceSet(), orgId);
         } else {
             return next(

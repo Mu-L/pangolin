@@ -110,7 +110,7 @@ export async function deleteSite(
         });
 
         if (numSites) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 site.orgId,
                 FeatureId.SITES,
                 numSites.length
