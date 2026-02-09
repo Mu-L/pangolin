@@ -53,7 +53,11 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         postures
     });
 
-    await handleFingerprintInsertion(olm, fingerprint, postures);
+    const isUserDevice = olm.userId !== null && olm.userId !== undefined;
+
+    if (isUserDevice) {
+        await handleFingerprintInsertion(olm, fingerprint, postures);
+    }
 
     if (
         (olmVersion && olm.version !== olmVersion) ||

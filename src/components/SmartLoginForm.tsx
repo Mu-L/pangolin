@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -42,6 +42,7 @@ const isValidEmail = (str: string): boolean => {
 type SmartLoginFormProps = {
     redirect?: string;
     forceLogin?: boolean;
+    defaultUser?: string;
 };
 
 type ViewState =
@@ -59,7 +60,8 @@ type ViewState =
 
 export default function SmartLoginForm({
     redirect,
-    forceLogin
+    forceLogin,
+    defaultUser
 }: SmartLoginFormProps) {
     const router = useRouter();
     const { lookup, loading, error } = useUserLookup();
@@ -72,9 +74,17 @@ export default function SmartLoginForm({
     const form = useForm<z.infer<typeof identifierSchema>>({
         resolver: zodResolver(identifierSchema),
         defaultValues: {
-            identifier: ""
+            identifier: defaultUser ?? ""
         }
     });
+
+    const hasAutoLookedUp = useRef(false);
+    useEffect(() => {
+        if (defaultUser?.trim() && !hasAutoLookedUp.current) {
+            hasAutoLookedUp.current = true;
+            void handleLookup({ identifier: defaultUser.trim() });
+        }
+    }, [defaultUser]);
 
     const handleLookup = async (values: z.infer<typeof identifierSchema>) => {
         const identifier = values.identifier.trim();

@@ -121,24 +121,16 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/{orgId}/settings/access/roles",
                 icon: <Users className="size-4 flex-none" />
             },
-            ...(build === "saas" || env?.flags.useOrgOnlyIdp
-                ? [
-                      {
-                          title: "sidebarIdentityProviders",
-                          href: "/{orgId}/settings/idp",
-                          icon: <Fingerprint className="size-4 flex-none" />
-                      }
-                  ]
-                : []),
-            ...(build !== "oss"
-                ? [
-                      {
-                          title: "sidebarApprovals",
-                          href: "/{orgId}/settings/access/approvals",
-                          icon: <UserCog className="size-4 flex-none" />
-                      }
-                  ]
-                : []),
+            {
+                title: "sidebarIdentityProviders",
+                href: "/{orgId}/settings/idp",
+                icon: <Fingerprint className="size-4 flex-none" />
+            },
+            {
+                title: "sidebarApprovals",
+                href: "/{orgId}/settings/access/approvals",
+                icon: <UserCog className="size-4 flex-none" />
+            },
             {
                 title: "sidebarShareableLinks",
                 href: "/{orgId}/settings/share-links",
@@ -155,20 +147,16 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                     href: "/{orgId}/settings/logs/request",
                     icon: <SquareMousePointer className="size-4 flex-none" />
                 },
-                ...(build != "oss"
-                    ? [
-                          {
-                              title: "sidebarLogsAccess",
-                              href: "/{orgId}/settings/logs/access",
-                              icon: <ScanEye className="size-4 flex-none" />
-                          },
-                          {
-                              title: "sidebarLogsAction",
-                              href: "/{orgId}/settings/logs/action",
-                              icon: <Logs className="size-4 flex-none" />
-                          }
-                      ]
-                    : [])
+                {
+                    title: "sidebarLogsAccess",
+                    href: "/{orgId}/settings/logs/access",
+                    icon: <ScanEye className="size-4 flex-none" />
+                },
+                {
+                    title: "sidebarLogsAction",
+                    href: "/{orgId}/settings/logs/action",
+                    icon: <Logs className="size-4 flex-none" />
+                }
             ];
 
             const analytics = {

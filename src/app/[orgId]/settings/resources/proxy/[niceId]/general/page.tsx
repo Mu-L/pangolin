@@ -63,6 +63,7 @@ import {
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { GetResourceResponse } from "@server/routers/resource/getResource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 
 type MaintenanceSectionFormProps = {
     resource: GetResourceResponse;
@@ -78,6 +79,7 @@ function MaintenanceSectionForm({
     const api = createApiClient({ env });
     const { isUnlocked } = useLicenseStatusContext();
     const subscription = useSubscriptionStatusContext();
+    const { isPaidUser } = usePaidStatus();
 
     const MaintenanceFormSchema = z.object({
         maintenanceModeEnabled: z.boolean().optional(),
@@ -161,7 +163,7 @@ function MaintenanceSectionForm({
         const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
         const isSaasNotSubscribed =
             build === "saas" && !subscription?.isSubscribed();
-        return isEnterpriseNotLicensed || isSaasNotSubscribed;
+        return isEnterpriseNotLicensed || isSaasNotSubscribed || build === "oss";
     };
 
     if (!resource.http) {
@@ -413,7 +415,7 @@ function MaintenanceSectionForm({
                 <Button
                     type="submit"
                     loading={maintenanceSaveLoading}
-                    disabled={maintenanceSaveLoading}
+                    disabled={maintenanceSaveLoading || !isPaidUser }
                     form="maintenance-settings-form"
                 >
                     {t("saveSettings")}
@@ -739,12 +741,10 @@ export default function GeneralForm() {
                     </SettingsSectionFooter>
                 </SettingsSection>
 
-                {build !== "oss" && (
-                    <MaintenanceSectionForm
-                        resource={resource}
-                        updateResource={updateResource}
-                    />
-                )}
+                <MaintenanceSectionForm
+                    resource={resource}
+                    updateResource={updateResource}
+                />
             </SettingsContainer>
 
             <Credenza
