@@ -1,3 +1,6 @@
-export async function isLicensedOrSubscribed(orgId: string): Promise<boolean> {
+export async function isLicensedOrSubscribed(
+    orgId: string,
+    tiers: string[]
+): Promise<boolean> {
     return false;
 }

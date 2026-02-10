@@ -183,27 +183,29 @@ export default function CredentialsPage() {
                             </Alert>
                         )}
                     </SettingsSectionBody>
-                    <SettingsSectionFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShouldDisconnect(false);
-                                setModalOpen(true);
-                            }}
-                            disabled={isSecurityFeatureDisabled()}
-                        >
-                            {t("regenerateCredentialsButton")}
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                setShouldDisconnect(true);
-                                setModalOpen(true);
-                            }}
-                            disabled={isSecurityFeatureDisabled()}
-                        >
-                            {t("clientRegenerateAndDisconnect")}
-                        </Button>
-                    </SettingsSectionFooter>
+                    {!env.flags.disableEnterpriseFeatures && (
+                        <SettingsSectionFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShouldDisconnect(false);
+                                    setModalOpen(true);
+                                }}
+                                disabled={isSecurityFeatureDisabled()}
+                            >
+                                {t("regenerateCredentialsButton")}
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setShouldDisconnect(true);
+                                    setModalOpen(true);
+                                }}
+                                disabled={isSecurityFeatureDisabled()}
+                            >
+                                {t("clientRegenerateAndDisconnect")}
+                            </Button>
+                        </SettingsSectionFooter>
+                    )}
                 </SettingsSection>
 
                 <OlmInstallCommands

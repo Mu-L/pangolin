@@ -152,6 +152,7 @@ export default function GeneralPage() {
     const [approvalId, setApprovalId] = useState<number | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [, startTransition] = useTransition();
+    const { env } = useEnvContext();
 
     const showApprovalFeatures = build !== "oss" && isPaidUser;
 
@@ -567,231 +568,246 @@ export default function GeneralPage() {
                 </SettingsSection>
             )}
 
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>
-                        {t("deviceSecurity")}
-                    </SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        {t("deviceSecurityDescription")}
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
+            {!env.flags.disableEnterpriseFeatures && (
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("deviceSecurity")}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            {t("deviceSecurityDescription")}
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
 
-                <SettingsSectionBody>
-                    <PaidFeaturesAlert />
-                    {client.posture &&
-                    Object.keys(client.posture).length > 0 ? (
-                        <>
-                            <InfoSections cols={3}>
-                                {client.posture.biometricsEnabled !== null &&
-                                    client.posture.biometricsEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("biometricsEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .biometricsEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                    <SettingsSectionBody>
+                        <PaidFeaturesAlert />
+                        {client.posture &&
+                        Object.keys(client.posture).length > 0 ? (
+                            <>
+                                <InfoSections cols={3}>
+                                    {client.posture.biometricsEnabled !==
+                                        null &&
+                                        client.posture.biometricsEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("biometricsEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .biometricsEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.diskEncrypted !== null &&
-                                    client.posture.diskEncrypted !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("diskEncrypted")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .diskEncrypted
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.diskEncrypted !== null &&
+                                        client.posture.diskEncrypted !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("diskEncrypted")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .diskEncrypted
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.firewallEnabled !== null &&
-                                    client.posture.firewallEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("firewallEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .firewallEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.firewallEnabled !== null &&
+                                        client.posture.firewallEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("firewallEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .firewallEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.autoUpdatesEnabled !== null &&
-                                    client.posture.autoUpdatesEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("autoUpdatesEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .autoUpdatesEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.autoUpdatesEnabled !==
+                                        null &&
+                                        client.posture.autoUpdatesEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("autoUpdatesEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .autoUpdatesEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.tpmAvailable !== null &&
-                                    client.posture.tpmAvailable !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("tpmAvailable")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .tpmAvailable
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.tpmAvailable !== null &&
+                                        client.posture.tpmAvailable !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("tpmAvailable")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .tpmAvailable
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.windowsAntivirusEnabled !==
-                                    null &&
-                                    client.posture.windowsAntivirusEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("windowsAntivirusEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .windowsAntivirusEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.windowsAntivirusEnabled !==
+                                        null &&
+                                        client.posture
+                                            .windowsAntivirusEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t(
+                                                        "windowsAntivirusEnabled"
+                                                    )}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .windowsAntivirusEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.macosSipEnabled !== null &&
-                                    client.posture.macosSipEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("macosSipEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .macosSipEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.macosSipEnabled !== null &&
+                                        client.posture.macosSipEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("macosSipEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .macosSipEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.macosGatekeeperEnabled !==
-                                    null &&
-                                    client.posture.macosGatekeeperEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("macosGatekeeperEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .macosGatekeeperEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.macosGatekeeperEnabled !==
+                                        null &&
+                                        client.posture
+                                            .macosGatekeeperEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t(
+                                                        "macosGatekeeperEnabled"
+                                                    )}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .macosGatekeeperEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.macosFirewallStealthMode !==
-                                    null &&
-                                    client.posture.macosFirewallStealthMode !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("macosFirewallStealthMode")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .macosFirewallStealthMode
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.macosFirewallStealthMode !==
+                                        null &&
+                                        client.posture
+                                            .macosFirewallStealthMode !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t(
+                                                        "macosFirewallStealthMode"
+                                                    )}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .macosFirewallStealthMode
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.linuxAppArmorEnabled !== null &&
-                                    client.posture.linuxAppArmorEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("linuxAppArmorEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .linuxAppArmorEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
+                                    {client.posture.linuxAppArmorEnabled !==
+                                        null &&
+                                        client.posture.linuxAppArmorEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("linuxAppArmorEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .linuxAppArmorEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
 
-                                {client.posture.linuxSELinuxEnabled !== null &&
-                                    client.posture.linuxSELinuxEnabled !==
-                                        undefined && (
-                                        <InfoSection>
-                                            <InfoSectionTitle>
-                                                {t("linuxSELinuxEnabled")}
-                                            </InfoSectionTitle>
-                                            <InfoSectionContent>
-                                                {isPaidUser
-                                                    ? formatPostureValue(
-                                                          client.posture
-                                                              .linuxSELinuxEnabled
-                                                      )
-                                                    : "-"}
-                                            </InfoSectionContent>
-                                        </InfoSection>
-                                    )}
-                            </InfoSections>
-                        </>
-                    ) : (
-                        <div className="text-muted-foreground">
-                            {t("noData")}
-                        </div>
-                    )}
-                </SettingsSectionBody>
-            </SettingsSection>
+                                    {client.posture.linuxSELinuxEnabled !==
+                                        null &&
+                                        client.posture.linuxSELinuxEnabled !==
+                                            undefined && (
+                                            <InfoSection>
+                                                <InfoSectionTitle>
+                                                    {t("linuxSELinuxEnabled")}
+                                                </InfoSectionTitle>
+                                                <InfoSectionContent>
+                                                    {isPaidUser
+                                                        ? formatPostureValue(
+                                                              client.posture
+                                                                  .linuxSELinuxEnabled
+                                                          )
+                                                        : "-"}
+                                                </InfoSectionContent>
+                                            </InfoSection>
+                                        )}
+                                </InfoSections>
+                            </>
+                        ) : (
+                            <div className="text-muted-foreground">
+                                {t("noData")}
+                            </div>
+                        )}
+                    </SettingsSectionBody>
+                </SettingsSection>
+            )}
         </SettingsContainer>
     );
 }

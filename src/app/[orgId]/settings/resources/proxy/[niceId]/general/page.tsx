@@ -163,7 +163,9 @@ function MaintenanceSectionForm({
         const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
         const isSaasNotSubscribed =
             build === "saas" && !subscription?.isSubscribed();
-        return isEnterpriseNotLicensed || isSaasNotSubscribed || build === "oss";
+        return (
+            isEnterpriseNotLicensed || isSaasNotSubscribed || build === "oss"
+        );
     };
 
     if (!resource.http) {
@@ -189,13 +191,14 @@ function MaintenanceSectionForm({
                             className="space-y-4"
                             id="maintenance-settings-form"
                         >
-                            <PaidFeaturesAlert></PaidFeaturesAlert>
+                            <PaidFeaturesAlert />
                             <FormField
                                 control={maintenanceForm.control}
                                 name="maintenanceModeEnabled"
                                 render={({ field }) => {
                                     const isDisabled =
-                                        isSecurityFeatureDisabled() || resource.http === false;
+                                        isSecurityFeatureDisabled() ||
+                                        resource.http === false;
 
                                     return (
                                         <FormItem>
@@ -415,7 +418,7 @@ function MaintenanceSectionForm({
                 <Button
                     type="submit"
                     loading={maintenanceSaveLoading}
-                    disabled={maintenanceSaveLoading || !isPaidUser }
+                    disabled={maintenanceSaveLoading || !isPaidUser}
                     form="maintenance-settings-form"
                 >
                     {t("saveSettings")}
@@ -741,10 +744,12 @@ export default function GeneralForm() {
                     </SettingsSectionFooter>
                 </SettingsSection>
 
-                <MaintenanceSectionForm
-                    resource={resource}
-                    updateResource={updateResource}
-                />
+                {!env.flags.disableEnterpriseFeatures && (
+                    <MaintenanceSectionForm
+                        resource={resource}
+                        updateResource={updateResource}
+                    />
+                )}
             </SettingsContainer>
 
             <Credenza

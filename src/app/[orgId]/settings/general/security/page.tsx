@@ -102,10 +102,13 @@ type SectionFormProps = {
 
 export default function SecurityPage() {
     const { org } = useOrgContext();
+    const { env } = useEnvContext();
     return (
         <SettingsContainer>
             <LogRetentionSectionForm org={org.org} />
-            <SecuritySettingsSectionForm org={org.org} />
+            {!env.flags.disableEnterpriseFeatures && (
+                <SecuritySettingsSectionForm org={org.org} />
+            )}
         </SettingsContainer>
     );
 }
@@ -135,7 +138,8 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
     const { isPaidUser, hasSaasSubscription } = usePaidStatus();
 
     const [, formAction, loadingSave] = useActionState(performSave, null);
-    const api = createApiClient(useEnvContext());
+    const { env } = useEnvContext();
+    const api = createApiClient({ env });
 
     async function performSave() {
         const isValid = await form.trigger();
@@ -238,120 +242,144 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                 )}
                             />
 
-                            <PaidFeaturesAlert />
+                            {!env.flags.disableEnterpriseFeatures && (
+                                <>
+                                    <PaidFeaturesAlert />
 
-                            <FormField
-                                control={form.control}
-                                name="settingsLogRetentionDaysAccess"
-                                render={({ field }) => {
-                                    const isDisabled = !isPaidUser;
+                                    <FormField
+                                        control={form.control}
+                                        name="settingsLogRetentionDaysAccess"
+                                        render={({ field }) => {
+                                            const isDisabled = !isPaidUser;
 
-                                    return (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("logRetentionAccessLabel")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Select
-                                                    value={field.value.toString()}
-                                                    onValueChange={(value) => {
-                                                        if (!isDisabled) {
-                                                            field.onChange(
-                                                                parseInt(
-                                                                    value,
-                                                                    10
-                                                                )
-                                                            );
-                                                        }
-                                                    }}
-                                                    disabled={isDisabled}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue
-                                                            placeholder={t(
-                                                                "selectLogRetention"
-                                                            )}
-                                                        />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {LOG_RETENTION_OPTIONS.map(
-                                                            (option) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        option.value
-                                                                    }
-                                                                    value={option.value.toString()}
-                                                                >
-                                                                    {t(
-                                                                        option.label
-                                                                    )}
-                                                                </SelectItem>
-                                                            )
+                                            return (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            "logRetentionAccessLabel"
                                                         )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    );
-                                }}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="settingsLogRetentionDaysAction"
-                                render={({ field }) => {
-                                    const isDisabled = !isPaidUser;
-
-                                    return (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("logRetentionActionLabel")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Select
-                                                    value={field.value.toString()}
-                                                    onValueChange={(value) => {
-                                                        if (!isDisabled) {
-                                                            field.onChange(
-                                                                parseInt(
-                                                                    value,
-                                                                    10
-                                                                )
-                                                            );
-                                                        }
-                                                    }}
-                                                    disabled={isDisabled}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue
-                                                            placeholder={t(
-                                                                "selectLogRetention"
-                                                            )}
-                                                        />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {LOG_RETENTION_OPTIONS.map(
-                                                            (option) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        option.value
-                                                                    }
-                                                                    value={option.value.toString()}
-                                                                >
-                                                                    {t(
-                                                                        option.label
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Select
+                                                            value={field.value.toString()}
+                                                            onValueChange={(
+                                                                value
+                                                            ) => {
+                                                                if (
+                                                                    !isDisabled
+                                                                ) {
+                                                                    field.onChange(
+                                                                        parseInt(
+                                                                            value,
+                                                                            10
+                                                                        )
+                                                                    );
+                                                                }
+                                                            }}
+                                                            disabled={
+                                                                isDisabled
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue
+                                                                    placeholder={t(
+                                                                        "selectLogRetention"
                                                                     )}
-                                                                </SelectItem>
-                                                            )
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {LOG_RETENTION_OPTIONS.map(
+                                                                    (
+                                                                        option
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                option.value
+                                                                            }
+                                                                            value={option.value.toString()}
+                                                                        >
+                                                                            {t(
+                                                                                option.label
+                                                                            )}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="settingsLogRetentionDaysAction"
+                                        render={({ field }) => {
+                                            const isDisabled = !isPaidUser;
+
+                                            return (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            "logRetentionActionLabel"
                                                         )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    );
-                                }}
-                            />
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Select
+                                                            value={field.value.toString()}
+                                                            onValueChange={(
+                                                                value
+                                                            ) => {
+                                                                if (
+                                                                    !isDisabled
+                                                                ) {
+                                                                    field.onChange(
+                                                                        parseInt(
+                                                                            value,
+                                                                            10
+                                                                        )
+                                                                    );
+                                                                }
+                                                            }}
+                                                            disabled={
+                                                                isDisabled
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue
+                                                                    placeholder={t(
+                                                                        "selectLogRetention"
+                                                                    )}
+                                                                />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {LOG_RETENTION_OPTIONS.map(
+                                                                    (
+                                                                        option
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                option.value
+                                                                            }
+                                                                            value={option.value.toString()}
+                                                                        >
+                                                                            {t(
+                                                                                option.label
+                                                                            )}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }}
+                                    />
+                                </>
+                            )}
                         </form>
                     </Form>
                 </SettingsSectionForm>
