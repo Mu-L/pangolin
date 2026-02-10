@@ -15,7 +15,18 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import {
+    and,
+    asc,
+    desc,
+    eq,
+    ilike,
+    inArray,
+    isNull,
+    or,
+    sql,
+    type SQL
+} from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import NodeCache from "node-cache";
@@ -97,7 +108,29 @@ const listClientsSchema = z.object({
         .catch(1)
         .default(1),
     query: z.string().optional(),
-    sort_by: z.enum(["megabytesIn", "megabytesOut"]).optional().catch(undefined)
+    sort_by: z
+        .enum(["megabytesIn", "megabytesOut"])
+        .optional()
+        .catch(undefined),
+    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc"),
+    online: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined),
+    status: z.preprocess(
+        (val: string | undefined) => {
+            if (val) {
+                return val.split(","); // the search query array is an array joined by commas
+            }
+            return undefined;
+        },
+        z
+            .array(z.enum(["active", "blocked", "archived"]))
+            .optional()
+            .default(["active"])
+            .catch(["active"])
+    )
 });
 
 function queryClientsBase() {
@@ -188,7 +221,8 @@ export async function listClients(
                 )
             );
         }
-        const { page, pageSize, query } = parsedQuery.data;
+        const { page, pageSize, online, query, status, sort_by, order } =
+            parsedQuery.data;
 
         const parsedParams = listClientsParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -237,24 +271,60 @@ export async function listClients(
         const accessibleClientIds = accessibleClients.map(
             (client) => client.clientId
         );
-        const baseQuery = queryClientsBase();
 
         // Get client count with filter
         const conditions = [
-            inArray(clients.clientId, accessibleClientIds),
-            eq(clients.orgId, orgId),
-            isNull(clients.userId)
+            and(
+                inArray(clients.clientId, accessibleClientIds),
+                eq(clients.orgId, orgId),
+                isNull(clients.userId)
+            )
         ];
 
-        const countQuery = db.$count(
-            queryClientsBase().where(and(...conditions))
-        );
+        if (typeof online !== "undefined") {
+            conditions.push(eq(clients.online, online));
+        }
+
+        if (status.length > 0) {
+            const filterAggregates: (SQL<unknown> | undefined)[] = [];
+
+            if (status.includes("active")) {
+                filterAggregates.push(
+                    and(eq(clients.archived, false), eq(clients.blocked, false))
+                );
+            }
+
+            if (status.includes("archived")) {
+                filterAggregates.push(eq(clients.archived, true));
+            }
+            if (status.includes("blocked")) {
+                filterAggregates.push(eq(clients.blocked, true));
+            }
+
+            conditions.push(or(...filterAggregates));
+        }
+
+        if (query) {
+            conditions.push(or(ilike(clients.name, "%" + query + "%")));
+        }
+
+        const baseQuery = queryClientsBase().where(and(...conditions));
+
+        const countQuery = db.$count(baseQuery.as("filtered_clients"));
+
+        const listMachinesQuery = baseQuery
+            .limit(page)
+            .offset(pageSize * (page - 1))
+            .orderBy(
+                sort_by
+                    ? order === "asc"
+                        ? asc(clients[sort_by])
+                        : desc(clients[sort_by])
+                    : asc(clients.clientId)
+            );
 
         const [clientsList, totalCount] = await Promise.all([
-            baseQuery
-                .where(and(...conditions))
-                .limit(page)
-                .offset(pageSize * (page - 1)),
+            listMachinesQuery,
             countQuery
         ]);
 
