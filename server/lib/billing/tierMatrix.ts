@@ -1,3 +1,5 @@
+import { Tier } from "@server/types/Tiers";
+
 export enum TierFeature {
     OrgOidc = "orgOidc",
     CustomAuthenticationDomain = "customAuthenticationDomain",
@@ -14,7 +16,7 @@ export enum TierFeature {
     PasswordExpirationPolicies = "passwordExpirationPolicies"
 }
 
-export const tierMatrix: Record<TierFeature, string[]> = {
+export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.OrgOidc]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.CustomAuthenticationDomain]: [
         "tier1",

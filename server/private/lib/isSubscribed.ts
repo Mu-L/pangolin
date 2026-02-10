@@ -13,10 +13,11 @@
 
 import { build } from "@server/build";
 import { getOrgTierData } from "#private/lib/billing";
+import { Tier } from "@server/types/Tiers";
 
 export async function isSubscribed(
     orgId: string,
-    tiers: string[]
+    tiers: Tier[]
 ): Promise<boolean> {
     if (build === "saas") {
         const { tier, active } = await getOrgTierData(orgId);

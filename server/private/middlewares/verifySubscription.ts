@@ -16,8 +16,9 @@ import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { build } from "@server/build";
 import { getOrgTierData } from "#private/lib/billing";
+import { Tier } from "@server/types/Tiers";
 
-export function verifyValidSubscription(tiers: string[]) {
+export function verifyValidSubscription(tiers: Tier[]) {
     return async function (
         req: Request,
         res: Response,

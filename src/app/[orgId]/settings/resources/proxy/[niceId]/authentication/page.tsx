@@ -44,6 +44,7 @@ import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SetResourcePasswordForm from "components/SetResourcePasswordForm";
@@ -164,7 +165,7 @@ export default function ResourceAuthenticationPage() {
 
     const allIdps = useMemo(() => {
         if (build === "saas") {
-            if (isPaidUser) {
+            if (isPaidUser(tierMatrix.orgOidc)) {
                 return orgIdps.map((idp) => ({
                     id: idp.idpId,
                     text: idp.name
