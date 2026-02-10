@@ -14,7 +14,7 @@ import {
     LoadLoginPageResponse
 } from "@server/routers/loginPage/types";
 import { GetSessionTransferTokenRenponse } from "@server/routers/auth/types";
-import ValidateSessionTransferToken from "@app/components/private/ValidateSessionTransferToken";
+import ValidateSessionTransferToken from "@app/components/ValidateSessionTransferToken";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
 import { OrgSelectionForm } from "@app/components/OrgSelectionForm";
 import OrgLoginPage from "@app/components/OrgLoginPage";

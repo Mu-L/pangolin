@@ -46,7 +46,7 @@ import IdpTypeBadge from "@app/components/IdpTypeBadge";
 import { useTranslations } from "next-intl";
 import { AxiosResponse } from "axios";
 import { ListRolesResponse } from "@server/routers/role";
-import AutoProvisionConfigWidget from "@app/components/private/AutoProvisionConfigWidget";
+import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
 
 export default function GeneralPage() {
     const { env } = useEnvContext();

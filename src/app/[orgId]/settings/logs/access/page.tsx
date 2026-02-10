@@ -13,14 +13,13 @@ import { ArrowUpRight, Key, User } from "lucide-react";
 import Link from "next/link";
 import { ColumnFilter } from "@app/components/ColumnFilter";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
-import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
-import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { build } from "@server/build";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import axios from "axios";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -28,8 +27,8 @@ export default function GeneralPage() {
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
     const { orgId } = useParams();
-    const subscription = useSubscriptionStatusContext();
-    const { isUnlocked } = useLicenseStatusContext();
+
+    const { isPaidUser } = usePaidStatus();
 
     const [rows, setRows] = useState<any[]>([]);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -208,11 +207,7 @@ export default function GeneralPage() {
         }
     ) => {
         console.log("Date range changed:", { startDate, endDate, page, size });
-        if (
-            (build == "saas" && !subscription?.subscribed) ||
-            (build == "enterprise" && !isUnlocked()) ||
-            build === "oss"
-        ) {
+        if (!isPaidUser(tierMatrix.accessLogs) || build === "oss") {
             console.log(
                 "Access denied: subscription inactive or license locked"
             );
@@ -642,11 +637,7 @@ export default function GeneralPage() {
                 // Row expansion props
                 expandable={true}
                 renderExpandedRow={renderExpandedRow}
-                disabled={
-                    (build == "saas" && !subscription?.subscribed) ||
-                    (build == "enterprise" && !isUnlocked()) ||
-                    build === "oss"
-                }
+                disabled={!isPaidUser(tierMatrix.accessLogs) || build === "oss"}
             />
         </>
     );

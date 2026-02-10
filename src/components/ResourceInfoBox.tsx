@@ -11,7 +11,7 @@ import {
     InfoSectionTitle
 } from "@app/components/InfoSection";
 import { useTranslations } from "next-intl";
-import CertificateStatus from "@app/components/private/CertificateStatus";
+import CertificateStatus from "@app/components/CertificateStatus";
 import { toUnicode } from "punycode";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 

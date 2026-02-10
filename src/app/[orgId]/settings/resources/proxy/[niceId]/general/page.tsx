@@ -50,9 +50,6 @@ import { useActionState, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
-import { build } from "@server/build";
-import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
-import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import {
@@ -64,6 +61,7 @@ import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { GetResourceResponse } from "@server/routers/resource/getResource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type MaintenanceSectionFormProps = {
     resource: GetResourceResponse;
@@ -77,8 +75,6 @@ function MaintenanceSectionForm({
     const { env } = useEnvContext();
     const t = useTranslations();
     const api = createApiClient({ env });
-    const { isUnlocked } = useLicenseStatusContext();
-    const subscription = useSubscriptionStatusContext();
     const { isPaidUser } = usePaidStatus();
 
     const MaintenanceFormSchema = z.object({
@@ -159,15 +155,6 @@ function MaintenanceSectionForm({
         }
     }
 
-    const isSecurityFeatureDisabled = () => {
-        const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
-        const isSaasNotSubscribed =
-            build === "saas" && !subscription?.isSubscribed();
-        return (
-            isEnterpriseNotLicensed || isSaasNotSubscribed || build === "oss"
-        );
-    };
-
     if (!resource.http) {
         return null;
     }
@@ -197,7 +184,7 @@ function MaintenanceSectionForm({
                                 name="maintenanceModeEnabled"
                                 render={({ field }) => {
                                     const isDisabled =
-                                        isSecurityFeatureDisabled() ||
+                                        isPaidUser(tierMatrix.maintencePage) ||
                                         resource.http === false;
 
                                     return (
@@ -264,7 +251,7 @@ function MaintenanceSectionForm({
                                                         defaultValue={
                                                             field.value
                                                         }
-                                                        disabled={isSecurityFeatureDisabled()}
+                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
                                                         className="flex flex-col space-y-1"
                                                     >
                                                         <FormItem className="flex items-start space-x-3 space-y-0">
@@ -337,7 +324,7 @@ function MaintenanceSectionForm({
                                                 <FormControl>
                                                     <Input
                                                         {...field}
-                                                        disabled={isSecurityFeatureDisabled()}
+                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
                                                         placeholder="We'll be back soon!"
                                                     />
                                                 </FormControl>
@@ -363,7 +350,7 @@ function MaintenanceSectionForm({
                                                     <Textarea
                                                         {...field}
                                                         rows={4}
-                                                        disabled={isSecurityFeatureDisabled()}
+                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
                                                         placeholder={t(
                                                             "maintenancePageMessagePlaceholder"
                                                         )}
@@ -392,7 +379,7 @@ function MaintenanceSectionForm({
                                                 <FormControl>
                                                     <Input
                                                         {...field}
-                                                        disabled={isSecurityFeatureDisabled()}
+                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
                                                         placeholder={t(
                                                             "maintenanceTime"
                                                         )}

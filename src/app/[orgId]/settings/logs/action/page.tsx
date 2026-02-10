@@ -4,15 +4,14 @@ import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
-import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { ColumnDef } from "@tanstack/react-table";
 import axios from "axios";
 import { Key, User } from "lucide-react";
@@ -26,8 +25,8 @@ export default function GeneralPage() {
     const t = useTranslations();
     const { orgId } = useParams();
     const searchParams = useSearchParams();
-    const subscription = useSubscriptionStatusContext();
-    const { isUnlocked } = useLicenseStatusContext();
+
+    const { isPaidUser } = usePaidStatus();
 
     const [rows, setRows] = useState<any[]>([]);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -195,10 +194,7 @@ export default function GeneralPage() {
         }
     ) => {
         console.log("Date range changed:", { startDate, endDate, page, size });
-        if (
-            (build == "saas" && !subscription?.subscribed) ||
-            (build == "enterprise" && !isUnlocked())
-        ) {
+        if (!isPaidUser(tierMatrix.actionLogs)) {
             console.log(
                 "Access denied: subscription inactive or license locked"
             );
@@ -496,11 +492,7 @@ export default function GeneralPage() {
                 // Row expansion props
                 expandable={true}
                 renderExpandedRow={renderExpandedRow}
-                disabled={
-                    (build == "saas" && !subscription?.subscribed) ||
-                    (build == "enterprise" && !isUnlocked()) ||
-                    build === "oss"
-                }
+                disabled={!isPaidUser(tierMatrix.actionLogs) || build === "oss"}
             />
         </>
     );
