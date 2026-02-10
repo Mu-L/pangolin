@@ -116,6 +116,26 @@ export function getScaleFeaturePriceSet(): FeaturePriceSet {
     }
 }
 
+export function getFeatureIdByPriceId(priceId: string): FeatureId | undefined {
+    // Check all feature price sets
+    const allPriceSets = [
+        getHomeLabFeaturePriceSet(),
+        getStarterFeaturePriceSet(),
+        getScaleFeaturePriceSet()
+    ];
+
+    for (const priceSet of allPriceSets) {
+        const entry = (Object.entries(priceSet) as [FeatureId, string][]).find(
+            ([_, price]) => price === priceId
+        );
+        if (entry) {
+            return entry[0];
+        }
+    }
+
+    return undefined;
+}
+
 export async function getLineItems(
     featurePriceSet: FeaturePriceSet,
     orgId: string,

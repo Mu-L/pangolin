@@ -453,8 +453,19 @@ export default function BillingPage() {
     // Calculate current usage cost for display
     const getUserCount = () => getUsageValue(USERS);
     const getPricePerUser = () => {
-        if (currentTier === "tier2") return 5;
-        if (currentTier === "tier3") return 10;
+        console.log("Calculating price per user, tierSubscription:", tierSubscription);
+        if (!tierSubscription?.items) return 0;
+
+        // Find the subscription item for USERS feature
+        const usersItem = tierSubscription.items.find(
+            (item) => item.planId === USERS
+        );
+
+        // unitAmount is in cents, convert to dollars
+        if (usersItem?.unitAmount) {
+            return usersItem.unitAmount / 100;
+        }
+
         return 0;
     };
 

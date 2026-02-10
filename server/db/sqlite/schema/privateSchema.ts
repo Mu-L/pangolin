@@ -86,6 +86,7 @@ export const subscriptionItems = sqliteTable("subscriptionItems", {
         }),
     planId: text("planId").notNull(),
     priceId: text("priceId"),
+    featureId: text("featureId"),
     meterId: text("meterId"),
     unitAmount: real("unitAmount"),
     tiers: text("tiers"),
