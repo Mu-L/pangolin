@@ -147,7 +147,7 @@ export default function AuthPageBrandingForm({
         const isValid = await form.trigger();
         const brandingData = form.getValues();
 
-        if (!isValid || !isPaidUser) return;
+        if (!isValid || !isPaidUser(tierMatrix.loginPageBranding)) return;
 
         try {
             const updateRes = await api.put(
@@ -178,8 +178,6 @@ export default function AuthPageBrandingForm({
     }
 
     async function deleteBranding() {
-        if (!isPaidUser) return;
-
         try {
             const updateRes = await api.delete(
                 `/org/${orgId}/login-page-branding`
@@ -439,7 +437,7 @@ export default function AuthPageBrandingForm({
                                 disabled={
                                     isUpdatingBranding ||
                                     isDeletingBranding ||
-                                    !isPaidUser
+                                    !isPaidUser(tierMatrix.loginPageBranding)
                                 }
                                 className="gap-1"
                             >
@@ -454,7 +452,7 @@ export default function AuthPageBrandingForm({
                         disabled={
                             isUpdatingBranding ||
                             isDeletingBranding ||
-                            !isPaidUser
+                            !isPaidUser(tierMatrix.loginPageBranding)
                         }
                     >
                         {t("saveAuthPageBranding")}
