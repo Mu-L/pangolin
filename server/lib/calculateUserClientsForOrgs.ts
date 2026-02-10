@@ -20,6 +20,7 @@ import { sendTerminateClient } from "@server/routers/client/terminate";
 import { and, eq, notInArray, type InferInsertModel } from "drizzle-orm";
 import { rebuildClientAssociationsFromClient } from "./rebuildClientAssociations";
 import { OlmErrorCodes } from "@server/routers/olm/error";
+import { tierMatrix } from "./billing/tierMatrix";
 
 export async function calculateUserClientsForOrgs(
     userId: string,
@@ -189,7 +190,8 @@ export async function calculateUserClientsForOrgs(
                 const niceId = await getUniqueClientName(orgId);
 
                 const isOrgLicensed = await isLicensedOrSubscribed(
-                    userOrg.orgId
+                    userOrg.orgId,
+                    tierMatrix.deviceApprovals
                 );
                 const requireApproval =
                     build !== "oss" &&
