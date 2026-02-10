@@ -40,6 +40,7 @@ import {
 import { useParams } from "next/navigation";
 import { FaApple, FaWindows, FaLinux } from "react-icons/fa";
 import { SiAndroid } from "react-icons/si";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 function formatTimestamp(timestamp: number | null | undefined): string {
     if (!timestamp) return "-";
@@ -156,8 +157,11 @@ export default function GeneralPage() {
 
     const showApprovalFeatures = build !== "oss" && isPaidUser;
 
-    const formatPostureValue = (value: boolean | null | undefined) => {
-        if (value === null || value === undefined) return "-";
+    const formatPostureValue = (
+        value: boolean | null | undefined | "-"
+    ) => {
+        if (value === null || value === undefined || value === "-")
+            return "-";
         return (
             <div className="flex items-center gap-2">
                 {value ? (
@@ -594,7 +598,7 @@ export default function GeneralPage() {
                                                     {t("biometricsEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .biometricsEnabled

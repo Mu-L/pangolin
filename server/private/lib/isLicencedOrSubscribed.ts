@@ -14,10 +14,11 @@
 import { build } from "@server/build";
 import license from "#private/license/license";
 import { isSubscribed } from "#private/lib/isSubscribed";
+import { Tier } from "@server/types/Tiers";
 
 export async function isLicensedOrSubscribed(
     orgId: string,
-    tiers: string[]
+    tiers: Tier[]
 ): Promise<boolean> {
     if (build === "enterprise") {
         return await license.isUnlocked();

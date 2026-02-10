@@ -47,10 +47,10 @@ export function PaidFeaturesAlert() {
             ) : null}
 
             {build === "oss" && !hasEnterpriseLicense ? (
-                <Card className={bannerClassName}>
+                <Card className="mb-6 border-purple-500/30 bg-linear-to-br from-purple-500/10 via-background to-background overflow-hidden">
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>
-                            <KeyRound className="size-4 shrink-0 text-primary" />
+                            <KeyRound className="size-4 shrink-0 text-purple-500" />
                             <span>
                                 {t.rich("ossEnterpriseEditionRequired", {
                                     enterpriseEditionLink: (chunks) => (
@@ -58,7 +58,7 @@ export function PaidFeaturesAlert() {
                                             href="https://docs.pangolin.net/self-host/enterprise-edition"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 font-medium text-foreground underline"
+                                            className="inline-flex items-center gap-1 font-medium text-purple-600 underline"
                                         >
                                             {chunks}
                                             <ExternalLink className="size-3.5 shrink-0" />
