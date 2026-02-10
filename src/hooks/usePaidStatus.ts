@@ -1,6 +1,7 @@
 import { build } from "@server/build";
 import { useLicenseStatusContext } from "./useLicenseStatusContext";
 import { useSubscriptionStatusContext } from "./useSubscriptionStatusContext";
+import { Tier } from "@server/lib/tiers";
 
 export function usePaidStatus() {
     const { isUnlocked } = useLicenseStatusContext();
@@ -11,7 +12,7 @@ export function usePaidStatus() {
     const tierData = subscription?.getTier();
     const hasSaasSubscription = build === "saas" && tierData?.active;
 
-    function isPaidUser(tiers: string[]): boolean {
+    function isPaidUser(tiers: Tier): boolean {
         if (hasEnterpriseLicense) {
             return true;
         }

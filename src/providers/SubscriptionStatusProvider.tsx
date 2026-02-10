@@ -4,6 +4,7 @@ import SubscriptionStatusContext from "@app/contexts/subscriptionStatusContext";
 import { GetOrgSubscriptionResponse } from "@server/routers/billing/types";
 import { useState } from "react";
 import { build } from "@server/build";
+import { Tier } from "@server/types/Tiers";
 
 interface ProviderProps {
     children: React.ReactNode;
@@ -31,7 +32,10 @@ export function SubscriptionStatusProvider({
         });
     };
 
-    const getTier = () => {
+    const getTier = (): {
+        tier: Tier | null;
+        active: boolean;
+    } => {
         if (subscriptionStatus?.subscriptions) {
             // Iterate through all subscriptions
             for (const { subscription } of subscriptionStatus.subscriptions) {
