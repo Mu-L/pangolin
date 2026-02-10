@@ -1,6 +1,6 @@
 "use client";
 
-import AutoProvisionConfigWidget from "@app/components/private/AutoProvisionConfigWidget";
+import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
 import {
     SettingsContainer,
     SettingsSection,

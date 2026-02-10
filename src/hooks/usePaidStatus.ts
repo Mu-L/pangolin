@@ -10,22 +10,23 @@ export function usePaidStatus() {
     // Check if features are disabled due to licensing/subscription
     const hasEnterpriseLicense = build === "enterprise" && isUnlocked();
     const tierData = subscription?.getTier();
-    const hasSaasSubscription = build === "saas" && tierData?.active;
+
+    function hasSaasSubscription(tiers: Tier[]): boolean {
+        return (
+            (build === "saas" &&
+                tierData?.active &&
+                tierData?.tier &&
+                tiers.includes(tierData.tier)) ||
+            false
+        );
+    }
 
     function isPaidUser(tiers: Tier[]): boolean {
         if (hasEnterpriseLicense) {
             return true;
         }
 
-        if (
-            hasSaasSubscription &&
-            tierData?.tier &&
-            tiers.includes(tierData.tier)
-        ) {
-            return true;
-        }
-
-        return false;
+        return hasSaasSubscription(tiers);
     }
 
     return {

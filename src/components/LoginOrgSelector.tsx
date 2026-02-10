@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@app/components/ui/button";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { useTranslations } from "next-intl";
-import { Separator } from "./ui/separator";
 import LoginPasswordForm from "./LoginPasswordForm";
-import IdpLoginButtons from "./private/IdpLoginButtons";
+import IdpLoginButtons from "./IdpLoginButtons";
 import { LookupUserResponse } from "@server/routers/auth/lookupUser";
 import UserProfileCard from "./UserProfileCard";
 
