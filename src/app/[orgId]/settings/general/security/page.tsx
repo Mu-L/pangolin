@@ -43,6 +43,8 @@ import { SwitchInput } from "@app/components/SwitchInput";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import type { OrgContextType } from "@app/contexts/orgContext";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { isAppPageRouteDefinition } from "next/dist/server/route-definitions/app-page-route-definition";
 
 // Session length options in hours
 const SESSION_LENGTH_OPTIONS = [
@@ -244,13 +246,17 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
 
                             {!env.flags.disableEnterpriseFeatures && (
                                 <>
-                                    <PaidFeaturesAlert />
+                                    <PaidFeaturesAlert
+                                        tiers={tierMatrix.accessLogs}
+                                    />
 
                                     <FormField
                                         control={form.control}
                                         name="settingsLogRetentionDaysAccess"
                                         render={({ field }) => {
-                                            const isDisabled = !isPaidUser;
+                                            const isDisabled = !isPaidUser(
+                                                tierMatrix.accessLogs
+                                            );
 
                                             return (
                                                 <FormItem>
@@ -316,7 +322,9 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                         control={form.control}
                                         name="settingsLogRetentionDaysAction"
                                         render={({ field }) => {
-                                            const isDisabled = !isPaidUser;
+                                            const isDisabled = !isPaidUser(
+                                                tierMatrix.actionLogs
+                                            );
 
                                             return (
                                                 <FormItem>
@@ -521,12 +529,17 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                                 id="security-settings-section-form"
                                 className="space-y-4"
                             >
-                                <PaidFeaturesAlert />
+                                <PaidFeaturesAlert
+                                    tiers={tierMatrix.twoFactorEnforcement}
+                                />
+
                                 <FormField
                                     control={form.control}
                                     name="requireTwoFactor"
                                     render={({ field }) => {
-                                        const isDisabled = !isPaidUser;
+                                        const isDisabled = !isPaidUser(
+                                            tierMatrix.twoFactorEnforcement
+                                        );
 
                                         return (
                                             <FormItem className="col-span-2">
@@ -573,7 +586,9 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                                     control={form.control}
                                     name="maxSessionLengthHours"
                                     render={({ field }) => {
-                                        const isDisabled = !isPaidUser;
+                                        const isDisabled = !isPaidUser(
+                                            tierMatrix.sessionDurationPolicies
+                                        );
 
                                         return (
                                             <FormItem className="col-span-2">
@@ -653,7 +668,9 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                                     control={form.control}
                                     name="passwordExpiryDays"
                                     render={({ field }) => {
-                                        const isDisabled = !isPaidUser;
+                                        const isDisabled = !isPaidUser(
+                                            tierMatrix.passwordExpirationPolicies
+                                        );
 
                                         return (
                                             <FormItem className="col-span-2">
@@ -739,7 +756,12 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                         type="submit"
                         form="security-settings-section-form"
                         loading={loadingSave}
-                        disabled={loadingSave || !isPaidUser}
+                        disabled={
+                            loadingSave ||
+                            !isPaidUser(tierMatrix.twoFactorEnforcement) ||
+                            !isPaidUser(tierMatrix.sessionDurationPolicies) ||
+                            !isPaidUser(tierMatrix.passwordExpirationPolicies)
+                        }
                     >
                         {t("saveSettings")}
                     </Button>

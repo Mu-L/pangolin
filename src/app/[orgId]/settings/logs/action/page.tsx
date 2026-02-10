@@ -461,7 +461,7 @@ export default function GeneralPage() {
                 description={t("actionLogsDescription")}
             />
 
-            <PaidFeaturesAlert />
+            <PaidFeaturesAlert tiers={tierMatrix.actionLogs} />
 
             <LogDataTable
                 columns={columns}
@@ -472,6 +472,9 @@ export default function GeneralPage() {
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing}
                 onExport={() => startTransition(exportData)}
+                isExportDisabled={
+                    !isPaidUser(tierMatrix.logExport) || build === "oss"
+                }
                 isExporting={isExporting}
                 onDateRangeChange={handleDateRangeChange}
                 dateRange={{

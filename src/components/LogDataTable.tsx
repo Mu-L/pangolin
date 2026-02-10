@@ -120,6 +120,7 @@ type DataTableProps<TData, TValue> = {
     // Row expansion props
     expandable?: boolean;
     renderExpandedRow?: (row: TData) => React.ReactNode;
+    isExportDisabled?: boolean;
 };
 
 export function LogDataTable<TData, TValue>({
@@ -145,7 +146,8 @@ export function LogDataTable<TData, TValue>({
     isLoading = false,
     expandable = false,
     disabled = false,
-    renderExpandedRow
+    renderExpandedRow,
+    isExportDisabled
 }: DataTableProps<TData, TValue>) {
     const t = useTranslations();
 
@@ -403,7 +405,7 @@ export function LogDataTable<TData, TValue>({
                                             onClick={() =>
                                                 !disabled && onExport()
                                             }
-                                            disabled={isExporting || disabled}
+                                            disabled={isExporting || disabled || isExportDisabled}
                                         >
                                             {isExporting ? (
                                                 <Loader className="mr-2 size-4 animate-spin" />

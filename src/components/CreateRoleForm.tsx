@@ -36,6 +36,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { CheckboxWithLabel } from "./ui/checkbox";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type CreateRoleFormProps = {
     open: boolean;
@@ -164,7 +165,9 @@ export default function CreateRoleForm({
 
                                 {!env.flags.disableEnterpriseFeatures && (
                                     <>
-                                        <PaidFeaturesAlert />
+                                        <PaidFeaturesAlert
+                                            tiers={tierMatrix.deviceApprovals}
+                                        />
 
                                         <FormField
                                             control={form.control}
@@ -175,7 +178,9 @@ export default function CreateRoleForm({
                                                         <CheckboxWithLabel
                                                             {...field}
                                                             disabled={
-                                                                !isPaidUser
+                                                                !isPaidUser(
+                                                                    tierMatrix.deviceApprovals
+                                                                )
                                                             }
                                                             value="on"
                                                             checked={form.watch(

@@ -5,6 +5,7 @@ import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import IdpTable, { IdpRow } from "@app/components/OrgIdpTable";
 import { getTranslations } from "next-intl/server";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type OrgIdpPageProps = {
     params: Promise<{ orgId: string }>;
@@ -35,7 +36,7 @@ export default async function OrgIdpPage(props: OrgIdpPageProps) {
                 description={t("idpManageDescription")}
             />
 
-            <PaidFeaturesAlert />
+            <PaidFeaturesAlert tiers={tierMatrix.orgOidc} />
 
             <IdpTable idps={idps} orgId={params.orgId} />
         </>

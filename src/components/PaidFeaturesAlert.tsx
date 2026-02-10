@@ -1,4 +1,5 @@
 "use client";
+
 import { Card, CardContent } from "@app/components/ui/card";
 import { build } from "@server/build";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -6,6 +7,7 @@ import { ExternalLink, KeyRound, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { Tier } from "@server/types/Tiers";
 
 const bannerClassName =
     "mb-6 border-primary/30 bg-linear-to-br from-primary/10 via-background to-background overflow-hidden";
@@ -13,7 +15,11 @@ const bannerContentClassName = "py-3 px-4";
 const bannerRowClassName =
     "flex items-center gap-2.5 text-sm text-muted-foreground";
 
-export function PaidFeaturesAlert() {
+type Props = {
+    tiers: Tier[];
+};
+
+export function PaidFeaturesAlert({ tiers }: Props) {
     const t = useTranslations();
     const { hasSaasSubscription, hasEnterpriseLicense } = usePaidStatus();
     const { env } = useEnvContext();
@@ -24,7 +30,7 @@ export function PaidFeaturesAlert() {
 
     return (
         <>
-            {build === "saas" && !hasSaasSubscription ? (
+            {build === "saas" && !hasSaasSubscription(tiers) ? (
                 <Card className={bannerClassName}>
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>

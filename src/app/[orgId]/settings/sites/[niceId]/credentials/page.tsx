@@ -196,7 +196,9 @@ export default function CredentialsPage() {
                                 </SettingsSectionDescription>
                             </SettingsSectionHeader>
 
-                            <PaidFeaturesAlert />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.rotateCredentials}
+                            />
 
                             <SettingsSectionBody>
                                 <InfoSections cols={3}>
@@ -268,7 +270,11 @@ export default function CredentialsPage() {
                                             setShouldDisconnect(false);
                                             setModalOpen(true);
                                         }}
-                                        disabled={isPaidUser(tierMatrix.rotateCredentials)}
+                                        disabled={
+                                            !isPaidUser(
+                                                tierMatrix.rotateCredentials
+                                            )
+                                        }
                                     >
                                         {t("regenerateCredentialsButton")}
                                     </Button>
@@ -277,7 +283,11 @@ export default function CredentialsPage() {
                                             setShouldDisconnect(true);
                                             setModalOpen(true);
                                         }}
-                                        disabled={isPaidUser(tierMatrix.rotateCredentials)}
+                                        disabled={
+                                            !isPaidUser(
+                                                tierMatrix.rotateCredentials
+                                            )
+                                        }
                                     >
                                         {t("siteRegenerateAndDisconnect")}
                                     </Button>
@@ -304,7 +314,9 @@ export default function CredentialsPage() {
                             </SettingsSectionDescription>
                         </SettingsSectionHeader>
 
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.rotateCredentials}
+                        />
 
                         <SettingsSectionBody>
                             {!loadingDefaults && (
@@ -378,7 +390,11 @@ export default function CredentialsPage() {
                             <SettingsSectionFooter>
                                 <Button
                                     onClick={() => setModalOpen(true)}
-                                    disabled={isPaidUser(tierMatrix.rotateCredentials)}
+                                    disabled={
+                                        !isPaidUser(
+                                            tierMatrix.rotateCredentials
+                                        )
+                                    }
                                 >
                                     {t("siteRegenerateAndDisconnect")}
                                 </Button>
