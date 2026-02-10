@@ -31,6 +31,7 @@ import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
 import { sendEmail } from "@server/emails";
 import EnterpriseEditionKeyGenerated from "@server/emails/templates/EnterpriseEditionKeyGenerated";
 import config from "@server/lib/config";
+import { getFeatureIdByPriceId } from "@server/lib/billing/features";
 
 export async function handleSubscriptionCreated(
     subscription: Stripe.Subscription
@@ -91,11 +92,15 @@ export async function handleSubscriptionCreated(
                         name = product.name || null;
                     }
 
+                    // Get the feature ID from the price ID
+                    const featureId = getFeatureIdByPriceId(item.price.id);
+
                     return {
                         stripeSubscriptionItemId: item.id,
                         subscriptionId: subscription.id,
                         planId: item.plan.id,
                         priceId: item.price.id,
+                        featureId: featureId || null,
                         meterId: item.plan.meter,
                         unitAmount: item.price.unit_amount || 0,
                         currentPeriodStart: item.current_period_start,

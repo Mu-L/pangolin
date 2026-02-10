@@ -97,6 +97,7 @@ export const subscriptionItems = pgTable("subscriptionItems", {
         }),
     planId: varchar("planId", { length: 255 }).notNull(),
     priceId: varchar("priceId", { length: 255 }),
+    featureId: varchar("featureId", { length: 255 }),
     meterId: varchar("meterId", { length: 255 }),
     unitAmount: real("unitAmount"),
     tiers: text("tiers"),

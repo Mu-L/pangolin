@@ -206,7 +206,8 @@ export async function changeTier(
                         // Keep the existing item unchanged if we can't find it
                         return {
                             id: stripeItem.id,
-                            price: stripeItem.price.id
+                            price: stripeItem.price.id,
+                            quantity: stripeItem.quantity
                         };
                     }
 
@@ -216,14 +217,16 @@ export async function changeTier(
                     if (newPriceId) {
                         return {
                             id: stripeItem.id,
-                            price: newPriceId
+                            price: newPriceId,
+                            quantity: stripeItem.quantity
                         };
                     }
 
                     // If no mapping found, keep existing
                     return {
                         id: stripeItem.id,
-                        price: stripeItem.price.id
+                        price: stripeItem.price.id,
+                        quantity: stripeItem.quantity
                     };
                 }
             );

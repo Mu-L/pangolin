@@ -23,7 +23,7 @@ import {
 } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import logger from "@server/logger";
-import { getFeatureIdByMetricId } from "@server/lib/billing/features";
+import { getFeatureIdByMetricId, getFeatureIdByPriceId } from "@server/lib/billing/features";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
 import { getSubType } from "./getSubType";
@@ -81,20 +81,40 @@ export async function handleSubscriptionUpdated(
 
         // Upsert subscription items
         if (Array.isArray(fullSubscription.items?.data)) {
-            const itemsToUpsert = fullSubscription.items.data.map((item) => ({
-                stripeSubscriptionItemId: item.id,
-                subscriptionId: subscription.id,
-                planId: item.plan.id,
-                priceId: item.price.id,
-                meterId: item.plan.meter,
-                unitAmount: item.price.unit_amount || 0,
-                currentPeriodStart: item.current_period_start,
-                currentPeriodEnd: item.current_period_end,
-                tiers: item.price.tiers
-                    ? JSON.stringify(item.price.tiers)
-                    : null,
-                interval: item.plan.interval
-            }));
+            // First, get existing items to preserve featureId when there's no match
+            const existingItems = await db
+                .select()
+                .from(subscriptionItems)
+                .where(eq(subscriptionItems.subscriptionId, subscription.id));
+
+            const itemsToUpsert = fullSubscription.items.data.map((item) => {
+                // Try to get featureId from price
+                let featureId: string | null = getFeatureIdByPriceId(item.price.id) || null;
+                
+                // If no match, try to preserve existing featureId
+                if (!featureId) {
+                    const existingItem = existingItems.find(
+                        (ei) => ei.stripeSubscriptionItemId === item.id
+                    );
+                    featureId = existingItem?.featureId || null;
+                }
+
+                return {
+                    stripeSubscriptionItemId: item.id,
+                    subscriptionId: subscription.id,
+                    planId: item.plan.id,
+                    priceId: item.price.id,
+                    featureId: featureId,
+                    meterId: item.plan.meter,
+                    unitAmount: item.price.unit_amount || 0,
+                    currentPeriodStart: item.current_period_start,
+                    currentPeriodEnd: item.current_period_end,
+                    tiers: item.price.tiers
+                        ? JSON.stringify(item.price.tiers)
+                        : null,
+                    interval: item.plan.interval
+                };
+            });
             if (itemsToUpsert.length > 0) {
                 await db.transaction(async (trx) => {
                     await trx
