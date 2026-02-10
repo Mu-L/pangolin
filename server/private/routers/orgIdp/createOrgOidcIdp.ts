@@ -25,6 +25,8 @@ import { generateOidcRedirectUrl } from "@server/lib/idp/generateRedirectUrl";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import { CreateOrgIdpResponse } from "@server/routers/orgIdp/types";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z.strictObject({ orgId: z.string().nonempty() });
 
@@ -100,11 +102,20 @@ export async function createOrgOidcIdp(
             emailPath,
             namePath,
             name,
-            autoProvision,
             variant,
             roleMapping,
             tags
         } = parsedBody.data;
+
+        let { autoProvision } = parsedBody.data;
+
+        const subscribed = await isSubscribed(
+            orgId,
+            tierMatrix.deviceApprovals
+        );
+        if (!subscribed) {
+            autoProvision = false;
+        }
 
         const key = config.getRawConfig().server.secret!;
 

@@ -13,17 +13,13 @@ export enum TierFeature {
     DevicePosture = "devicePosture",
     TwoFactorEnforcement = "twoFactorEnforcement",
     SessionDurationPolicies = "sessionDurationPolicies",
-    PasswordExpirationPolicies = "passwordExpirationPolicies"
+    PasswordExpirationPolicies = "passwordExpirationPolicies",
+    AutoProvisioning = "autoProvisioning"
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.OrgOidc]: ["tier1", "tier2", "tier3", "enterprise"],
-    [TierFeature.LoginPageDomain]: [
-        "tier1",
-        "tier2",
-        "tier3",
-        "enterprise"
-    ],
+    [TierFeature.LoginPageDomain]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.DeviceApprovals]: ["tier1", "tier3", "enterprise"],
     [TierFeature.LoginPageBranding]: ["tier1", "tier3", "enterprise"],
     [TierFeature.LogExport]: ["tier3", "enterprise"],
@@ -32,7 +28,23 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.RotateCredentials]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.MaintencePage]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.DevicePosture]: ["tier2", "tier3", "enterprise"],
-    [TierFeature.TwoFactorEnforcement]: ["tier1", "tier2", "tier3", "enterprise"],
-    [TierFeature.SessionDurationPolicies]: ["tier1", "tier2", "tier3", "enterprise"],
-    [TierFeature.PasswordExpirationPolicies]: ["tier1", "tier2", "tier3", "enterprise"]
+    [TierFeature.TwoFactorEnforcement]: [
+        "tier1",
+        "tier2",
+        "tier3",
+        "enterprise"
+    ],
+    [TierFeature.SessionDurationPolicies]: [
+        "tier1",
+        "tier2",
+        "tier3",
+        "enterprise"
+    ],
+    [TierFeature.PasswordExpirationPolicies]: [
+        "tier1",
+        "tier2",
+        "tier3",
+        "enterprise"
+    ],
+    [TierFeature.AutoProvisioning]: ["tier1", "tier3", "enterprise"]
 };

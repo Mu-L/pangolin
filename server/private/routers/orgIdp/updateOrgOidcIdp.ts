@@ -24,6 +24,8 @@ import { idp, idpOidcConfig } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z
     .object({
@@ -106,10 +108,19 @@ export async function updateOrgOidcIdp(
             emailPath,
             namePath,
             name,
-            autoProvision,
             roleMapping,
             tags
         } = parsedBody.data;
+
+        let { autoProvision } = parsedBody.data;
+
+        const subscribed = await isSubscribed(
+            orgId,
+            tierMatrix.deviceApprovals
+        );
+        if (!subscribed) {
+            autoProvision = false;
+        }
 
         // Check if IDP exists and is of type OIDC
         const [existingIdp] = await db
