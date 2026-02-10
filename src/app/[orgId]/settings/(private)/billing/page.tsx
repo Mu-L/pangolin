@@ -37,10 +37,6 @@ import { cn } from "@app/lib/cn";
 import {
     CreditCard,
     ExternalLink,
-    Users,
-    Globe,
-    Server,
-    Layout,
     Check
 } from "lucide-react";
 import {
@@ -50,7 +46,6 @@ import {
 import { useTranslations } from "use-intl";
 import Link from "next/link";
 import { Tier } from "@server/types/Tiers";
-import { w } from "@faker-js/faker/dist/airline-DF6RqYmq";
 
 // Plan tier definitions matching the mockup
 type PlanId = "free" | "homelab" | "team" | "business" | "enterprise";
@@ -62,35 +57,6 @@ interface PlanOption {
     priceDetail?: string;
     tierType: Tier | null;
 }
-
-// Tier limits for display in confirmation dialog
-interface TierLimits {
-    sites: number;
-    users: number;
-    domains: number;
-    remoteNodes: number;
-}
-
-const tierLimits: Record<Tier, TierLimits> = {
-    tier1: {
-        sites: 3,
-        users: 3,
-        domains: 3,
-        remoteNodes: 1
-    },
-    tier2: {
-        sites: 10,
-        users: 150,
-        domains: 250,
-        remoteNodes: 5
-    },
-    tier3: {
-        sites: 10,
-        users: 150,
-        domains: 250,
-        remoteNodes: 5
-    }
-};
 
 const planOptions: PlanOption[] = [
     {

@@ -45,7 +45,7 @@ export function verifyValidSubscription(tiers: Tier[]) {
             }
 
             const { tier, active } = await getOrgTierData(orgId);
-            const isTier = tiers.includes(tier || "");
+            const isTier = tiers.includes(tier as Tier);
             if (!active) {
                 return next(
                     createHttpError(

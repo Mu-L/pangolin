@@ -616,7 +616,7 @@ export default function GeneralPage() {
                                                     {t("diskEncrypted")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .diskEncrypted
@@ -634,7 +634,7 @@ export default function GeneralPage() {
                                                     {t("firewallEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .firewallEnabled
@@ -653,7 +653,7 @@ export default function GeneralPage() {
                                                     {t("autoUpdatesEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .autoUpdatesEnabled
@@ -671,7 +671,7 @@ export default function GeneralPage() {
                                                     {t("tpmAvailable")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .tpmAvailable
@@ -693,7 +693,7 @@ export default function GeneralPage() {
                                                     )}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .windowsAntivirusEnabled
@@ -711,7 +711,7 @@ export default function GeneralPage() {
                                                     {t("macosSipEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .macosSipEnabled
@@ -733,7 +733,7 @@ export default function GeneralPage() {
                                                     )}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .macosGatekeeperEnabled
@@ -755,7 +755,7 @@ export default function GeneralPage() {
                                                     )}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .macosFirewallStealthMode
@@ -774,7 +774,7 @@ export default function GeneralPage() {
                                                     {t("linuxAppArmorEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .linuxAppArmorEnabled
@@ -793,7 +793,7 @@ export default function GeneralPage() {
                                                     {t("linuxSELinuxEnabled")}
                                                 </InfoSectionTitle>
                                                 <InfoSectionContent>
-                                                    {isPaidUser
+                                                    {isPaidUser(tierMatrix.devicePosture)
                                                         ? formatPostureValue(
                                                               client.posture
                                                                   .linuxSELinuxEnabled
