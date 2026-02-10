@@ -140,7 +140,7 @@ export async function createSite(
             }
             const rejectSites = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.SITES,
                 {
                     ...usage,

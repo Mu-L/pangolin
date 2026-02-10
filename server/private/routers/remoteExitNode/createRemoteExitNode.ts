@@ -85,7 +85,7 @@ export async function createRemoteExitNode(
         if (usage) {
             const rejectRemoteExitNodes = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.REMOTE_EXIT_NODES,
                 {
                     ...usage,

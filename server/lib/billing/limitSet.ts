@@ -8,77 +8,60 @@ export type LimitSet = Partial<{
 }>;
 
 export const sandboxLimitSet: LimitSet = {
-    [FeatureId.SITES]: { value: 1, description: "Sandbox limit" }, // 1 site up for 2 days
     [FeatureId.USERS]: { value: 1, description: "Sandbox limit" },
-    [FeatureId.EGRESS_DATA_MB]: { value: 1000, description: "Sandbox limit" }, // 1 GB
+    [FeatureId.SITES]: { value: 1, description: "Sandbox limit" },
     [FeatureId.DOMAINS]: { value: 0, description: "Sandbox limit" },
-    [FeatureId.REMOTE_EXIT_NODES]: { value: 0, description: "Sandbox limit" }
+    [FeatureId.REMOTE_EXIT_NODES]: { value: 0, description: "Sandbox limit" },
 };
 
 export const freeLimitSet: LimitSet = {
-    [FeatureId.SITES]: { value: 3, description: "Free tier limit" }, // 1 site up for 32 days
-    [FeatureId.USERS]: { value: 3, description: "Free tier limit" },
-    [FeatureId.EGRESS_DATA_MB]: {
-        value: 25000,
-        description: "Free tier limit"
-    }, // 25 GB
-    [FeatureId.DOMAINS]: { value: 3, description: "Free tier limit" },
-    [FeatureId.REMOTE_EXIT_NODES]: { value: 0, description: "Free tier limit" }
+    [FeatureId.USERS]: { value: 5, description: "Starter limit" },
+    [FeatureId.SITES]: { value: 5, description: "Starter limit" },
+    [FeatureId.DOMAINS]: { value: 5, description: "Starter limit" },
+    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Starter limit" },
 };
 
-export const homeLabLimitSet: LimitSet = {
-    [FeatureId.SITES]: { value: 3, description: "Home lab limit" }, // 1 site up for 32 days
-    [FeatureId.USERS]: { value: 3, description: "Home lab limit" },
-    [FeatureId.EGRESS_DATA_MB]: {
-        value: 25000,
-        description: "Home lab limit"
-    }, // 25 GB
-    [FeatureId.DOMAINS]: { value: 3, description: "Home lab limit" },
-    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Home lab limit" }
+export const tier1LimitSet: LimitSet = {
+    [FeatureId.USERS]: { value: 7, description: "Home limit" },
+    [FeatureId.SITES]: { value: 10, description: "Home limit" },
+    [FeatureId.DOMAINS]: { value: 10, description: "Home limit" },
+    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Home limit" },
 };
 
 export const tier2LimitSet: LimitSet = {
-    [FeatureId.SITES]: {
-        value: 10,
-        description: "Starter limit"
-    }, // 50 sites up for 31 days
     [FeatureId.USERS]: {
-        value: 150,
-        description: "Starter limit"
+        value: 100,
+        description: "Team limit"
     },
-    [FeatureId.EGRESS_DATA_MB]: {
-        value: 12000000,
-        description: "Starter limit"
-    }, // 12000 GB
+    [FeatureId.SITES]: {
+        value: 50,
+        description: "Team limit"
+    },
     [FeatureId.DOMAINS]: {
-        value: 250,
-        description: "Starter limit"
+        value: 50,
+        description: "Team limit"
     },
     [FeatureId.REMOTE_EXIT_NODES]: {
-        value: 5,
-        description: "Starter limit"
-    }
+        value: 3,
+        description: "Team limit"
+    },
 };
 
 export const tier3LimitSet: LimitSet = {
-    [FeatureId.SITES]: {
-        value: 10,
-        description: "Scale limit"
-    }, // 50 sites up for 31 days
     [FeatureId.USERS]: {
-        value: 150,
-        description: "Scale limit"
+        value: 500,
+        description: "Business limit"
     },
-    [FeatureId.EGRESS_DATA_MB]: {
-        value: 12000000,
-        description: "Scale limit"
-    }, // 12000 GB
-    [FeatureId.DOMAINS]: {
+    [FeatureId.SITES]: {
         value: 250,
-        description: "Scale limit"
+        description: "Business limit"
+    },
+    [FeatureId.DOMAINS]: {
+        value: 100,
+        description: "Business limit"
     },
     [FeatureId.REMOTE_EXIT_NODES]: {
-        value: 5,
-        description: "Scale limit"
-    }
+        value: 20,
+        description: "Business limit"
+    },
 };

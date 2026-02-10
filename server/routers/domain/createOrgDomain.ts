@@ -131,7 +131,7 @@ export async function createOrgDomain(
             }
             const rejectDomains = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.DOMAINS,
                 {
                     ...usage,

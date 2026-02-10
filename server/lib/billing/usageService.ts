@@ -517,7 +517,6 @@ export class UsageService {
 
     public async checkLimitSet(
         orgId: string,
-        kickSites = false,
         featureId?: FeatureId,
         usage?: Usage,
         trx: Transaction | typeof db = db
@@ -589,58 +588,6 @@ export class UsageService {
                     );
                     hasExceededLimits = true;
                     break; // Exit early if any limit is exceeded
-                }
-            }
-
-            // If any limits are exceeded, disconnect all sites for this organization
-            if (hasExceededLimits && kickSites) {
-                logger.warn(
-                    `Disconnecting all sites for org ${orgId} due to exceeded limits`
-                );
-
-                // Get all sites for this organization
-                const orgSites = await trx
-                    .select()
-                    .from(sites)
-                    .where(eq(sites.orgId, orgId));
-
-                // Mark all sites as offline and send termination messages
-                const siteUpdates = orgSites.map((site) => site.siteId);
-
-                if (siteUpdates.length > 0) {
-                    // Send termination messages to newt sites
-                    for (const site of orgSites) {
-                        if (site.type === "newt") {
-                            const [newt] = await trx
-                                .select()
-                                .from(newts)
-                                .where(eq(newts.siteId, site.siteId))
-                                .limit(1);
-
-                            if (newt) {
-                                const payload = {
-                                    type: `newt/wg/terminate`,
-                                    data: {
-                                        reason: "Usage limits exceeded"
-                                    }
-                                };
-
-                                // Don't await to prevent blocking
-                                await sendToClient(newt.newtId, payload).catch(
-                                    (error: any) => {
-                                        logger.error(
-                                            `Failed to send termination message to newt ${newt.newtId}:`,
-                                            error
-                                        );
-                                    }
-                                );
-                            }
-                        }
-                    }
-
-                    logger.info(
-                        `Disconnected ${orgSites.length} sites for org ${orgId} due to exceeded limits`
-                    );
                 }
             }
         } catch (error) {
