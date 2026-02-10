@@ -33,7 +33,6 @@ import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "../billing/tierMatrix";
-import { t } from "@faker-js/faker/dist/airline-DF6RqYmq";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;

@@ -24,6 +24,7 @@ import { createCertificate } from "#dynamic/routers/certificates/createCertifica
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const updateResourceParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -341,7 +342,7 @@ async function updateHttpResource(
         headers = null;
     }
 
-    const isLicensed = await isLicensedOrSubscribed(resource.orgId);
+    const isLicensed = await isLicensedOrSubscribed(resource.orgId, tierMatrix.maintencePage);
     if (!isLicensed) {
         updateData.maintenanceModeEnabled = undefined;
         updateData.maintenanceModeType = undefined;

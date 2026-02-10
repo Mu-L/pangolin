@@ -12,6 +12,7 @@ import { eq, and } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const createRoleParamsSchema = z.strictObject({
     orgId: z.string()
@@ -100,7 +101,7 @@ export async function createRole(
             );
         }
 
-        const isLicensed = await isLicensedOrSubscribed(orgId);
+        const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.deviceApprovals);
         if (!isLicensed) {
             roleData.requireDeviceApproval = undefined;
         }

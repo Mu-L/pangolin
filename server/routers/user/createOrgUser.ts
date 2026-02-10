@@ -15,6 +15,7 @@ import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -127,7 +128,10 @@ export async function createOrgUser(
             );
         } else if (type === "oidc") {
             if (build === "saas") {
-                const subscribed = await isSubscribed(orgId);
+                const subscribed = await isSubscribed(
+                    orgId,
+                    tierMatrix.orgOidc
+                );
                 if (subscribed) {
                     return next(
                         createHttpError(
