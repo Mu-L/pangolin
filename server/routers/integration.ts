@@ -146,7 +146,7 @@ authenticated.get(
 );
 // Site Resource endpoints
 authenticated.put(
-    "/org/:orgId/private-resource",
+    "/org/:orgId/site-resource",
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.createSiteResource),
     logActionAudit(ActionsEnum.createSiteResource),

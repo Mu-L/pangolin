@@ -25,10 +25,10 @@ import {
     getHomeLabFeaturePriceSet,
     getScaleFeaturePriceSet,
     getStarterFeaturePriceSet,
-    getLineItems,
     FeatureId,
     type FeaturePriceSet
 } from "@server/lib/billing";
+import { getLineItems } from "@server/lib/billing/getLineItems";
 
 const changeTierSchema = z.strictObject({
     orgId: z.string()
@@ -151,8 +151,10 @@ export async function changeTier(
         // tier1 uses TIER1 product, tier2/tier3 use USERS product
         const currentTier = subscription.type;
         const switchingProducts =
-            (currentTier === "tier1" && (tier === "tier2" || tier === "tier3")) ||
-            ((currentTier === "tier2" || currentTier === "tier3") && tier === "tier1");
+            (currentTier === "tier1" &&
+                (tier === "tier2" || tier === "tier3")) ||
+            ((currentTier === "tier2" || currentTier === "tier3") &&
+                tier === "tier1");
 
         let updatedSubscription;
 

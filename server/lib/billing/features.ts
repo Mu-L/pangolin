@@ -1,6 +1,3 @@
-import Stripe from "stripe";
-import { usageService } from "./usageService";
-
 export enum FeatureId {
     USERS = "users",
     SITES = "sites",
@@ -134,26 +131,4 @@ export function getFeatureIdByPriceId(priceId: string): FeatureId | undefined {
     }
 
     return undefined;
-}
-
-export async function getLineItems(
-    featurePriceSet: FeaturePriceSet,
-    orgId: string,
-): Promise<Stripe.Checkout.SessionCreateParams.LineItem[]> {
-    const users = await usageService.getUsage(orgId, FeatureId.USERS);
-
-    return Object.entries(featurePriceSet).map(([featureId, priceId]) => {
-        let quantity: number | undefined;
-
-        if (featureId === FeatureId.USERS) {
-            quantity = users?.instantaneousValue || 1;
-        } else if (featureId === FeatureId.TIER1) {
-            quantity = 1;
-        }
-
-        return {
-            price: priceId,
-            quantity: quantity
-        };
-    });
 }
