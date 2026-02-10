@@ -336,21 +336,7 @@ export default function MachineClientsTable({
             {
                 accessorKey: "client",
                 friendlyName: t("agent"),
-                header: ({ column }) => {
-                    return (
-                        <Button
-                            variant="ghost"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("agent")}
-                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
-                },
+                header: () => <span className="px-3">{t("agent")}</span>,
                 cell: ({ row }) => {
                     const originalRow = row.original;
 
