@@ -608,7 +608,7 @@ export default function GeneralPage() {
                 description={t("accessLogsDescription")}
             />
 
-            <PaidFeaturesAlert />
+            <PaidFeaturesAlert tiers={tierMatrix.accessLogs} />
 
             <LogDataTable
                 columns={columns}
@@ -618,6 +618,9 @@ export default function GeneralPage() {
                 isRefreshing={isRefreshing}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}
+                isExportDisabled={
+                    !isPaidUser(tierMatrix.accessLogs) || build === "oss"
+                }
                 onDateRangeChange={handleDateRangeChange}
                 dateRange={{
                     start: dateRange.startDate,

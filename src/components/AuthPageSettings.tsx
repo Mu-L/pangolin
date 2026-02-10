@@ -285,7 +285,7 @@ function AuthPageSettings({
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     <SettingsSectionForm>
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert tiers={tierMatrix.loginPageDomain} />
 
                         <Form {...form}>
                             <form

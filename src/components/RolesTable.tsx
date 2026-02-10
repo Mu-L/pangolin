@@ -5,16 +5,12 @@ import DeleteRoleForm from "@app/components/DeleteRoleForm";
 import { RolesDataTable } from "@app/components/RolesDataTable";
 import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
-import { createApiClient } from "@app/lib/api";
 import { Role } from "@server/db";
-import { ArrowRight, ArrowUpDown, Link, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -37,11 +33,6 @@ export default function UsersTable({ roles }: RolesTableProps) {
     const router = useRouter();
 
     const [roleToRemove, setRoleToRemove] = useState<RoleRow | null>(null);
-
-    const api = createApiClient(useEnvContext());
-
-    const { org } = useOrgContext();
-    const { isPaidUser } = usePaidStatus();
 
     const t = useTranslations();
     const [isRefreshing, startTransition] = useTransition();

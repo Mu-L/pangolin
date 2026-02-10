@@ -11,6 +11,7 @@ import type { GetOrgResponse } from "@server/routers/org";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export interface ApprovalFeedPageProps {
     params: Promise<{ orgId: string }>;
@@ -29,10 +30,9 @@ export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
     // Fetch roles to check if approvals are enabled
     let hasApprovalsEnabled = false;
     const rolesRes = await internal
-        .get<AxiosResponse<ListRolesResponse>>(
-            `/org/${params.orgId}/roles`,
-            await authCookieHeader()
-        )
+        .get<
+            AxiosResponse<ListRolesResponse>
+        >(`/org/${params.orgId}/roles`, await authCookieHeader())
         .catch((e) => {});
 
     if (rolesRes && rolesRes.status === 200) {
@@ -52,7 +52,7 @@ export default async function ApprovalFeedPage(props: ApprovalFeedPageProps) {
 
             <ApprovalsBanner />
 
-            <PaidFeaturesAlert />
+            <PaidFeaturesAlert tiers={tierMatrix.deviceApprovals} />
 
             <OrgProvider org={org}>
                 <div className="container mx-auto max-w-12xl">

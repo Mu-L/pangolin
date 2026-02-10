@@ -35,6 +35,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { build } from "@server/build";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type AuthPageCustomizationProps = {
     orgId: string;
@@ -139,7 +140,7 @@ export default function AuthPageBrandingForm({
                 `Choose your preferred authentication method for {{resourceName}}`,
             primaryColor: branding?.primaryColor ?? `#f36117` // default pangolin primary color
         },
-        disabled: !isPaidUser
+        disabled: !isPaidUser(tierMatrix.loginPageBranding)
     });
 
     async function updateBranding() {
@@ -221,7 +222,9 @@ export default function AuthPageBrandingForm({
 
                 <SettingsSectionBody>
                     <SettingsSectionForm>
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.loginPageBranding}
+                        />
 
                         <Form {...form}>
                             <form

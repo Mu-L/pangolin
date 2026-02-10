@@ -178,13 +178,15 @@ function MaintenanceSectionForm({
                             className="space-y-4"
                             id="maintenance-settings-form"
                         >
-                            <PaidFeaturesAlert />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.maintencePage}
+                            />
                             <FormField
                                 control={maintenanceForm.control}
                                 name="maintenanceModeEnabled"
                                 render={({ field }) => {
                                     const isDisabled =
-                                        isPaidUser(tierMatrix.maintencePage) ||
+                                        !isPaidUser(tierMatrix.maintencePage) ||
                                         resource.http === false;
 
                                     return (
@@ -251,7 +253,11 @@ function MaintenanceSectionForm({
                                                         defaultValue={
                                                             field.value
                                                         }
-                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
+                                                        disabled={
+                                                            !isPaidUser(
+                                                                tierMatrix.maintencePage
+                                                            )
+                                                        }
                                                         className="flex flex-col space-y-1"
                                                     >
                                                         <FormItem className="flex items-start space-x-3 space-y-0">
@@ -324,7 +330,11 @@ function MaintenanceSectionForm({
                                                 <FormControl>
                                                     <Input
                                                         {...field}
-                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
+                                                        disabled={
+                                                            !isPaidUser(
+                                                                tierMatrix.maintencePage
+                                                            )
+                                                        }
                                                         placeholder="We'll be back soon!"
                                                     />
                                                 </FormControl>
@@ -350,7 +360,11 @@ function MaintenanceSectionForm({
                                                     <Textarea
                                                         {...field}
                                                         rows={4}
-                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
+                                                        disabled={
+                                                            !isPaidUser(
+                                                                tierMatrix.maintencePage
+                                                            )
+                                                        }
                                                         placeholder={t(
                                                             "maintenancePageMessagePlaceholder"
                                                         )}
@@ -379,7 +393,11 @@ function MaintenanceSectionForm({
                                                 <FormControl>
                                                     <Input
                                                         {...field}
-                                                        disabled={isPaidUser(tierMatrix.maintencePage)}
+                                                        disabled={
+                                                            !isPaidUser(
+                                                                tierMatrix.maintencePage
+                                                            )
+                                                        }
                                                         placeholder={t(
                                                             "maintenanceTime"
                                                         )}
@@ -405,7 +423,10 @@ function MaintenanceSectionForm({
                 <Button
                     type="submit"
                     loading={maintenanceSaveLoading}
-                    disabled={maintenanceSaveLoading || !isPaidUser}
+                    disabled={
+                        maintenanceSaveLoading ||
+                        !isPaidUser(tierMatrix.maintencePage)
+                    }
                     form="maintenance-settings-form"
                 >
                     {t("saveSettings")}

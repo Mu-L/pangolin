@@ -129,7 +129,9 @@ export default function CredentialsPage() {
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.rotateCredentials}
+                        />
 
                         <InfoSections cols={3}>
                             <InfoSection>
@@ -194,7 +196,9 @@ export default function CredentialsPage() {
                                     setShouldDisconnect(false);
                                     setModalOpen(true);
                                 }}
-                                disabled={isPaidUser(tierMatrix.rotateCredentials)}
+                                disabled={
+                                    !isPaidUser(tierMatrix.rotateCredentials)
+                                }
                             >
                                 {t("regenerateCredentialsButton")}
                             </Button>
@@ -203,7 +207,9 @@ export default function CredentialsPage() {
                                     setShouldDisconnect(true);
                                     setModalOpen(true);
                                 }}
-                                disabled={isPaidUser(tierMatrix.rotateCredentials)}
+                                disabled={
+                                    !isPaidUser(tierMatrix.rotateCredentials)
+                                }
                             >
                                 {t("remoteExitNodeRegenerateAndDisconnect")}
                             </Button>
