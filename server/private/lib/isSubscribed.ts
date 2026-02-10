@@ -14,10 +14,14 @@
 import { build } from "@server/build";
 import { getOrgTierData } from "#private/lib/billing";
 
-export async function isSubscribed(orgId: string): Promise<boolean> {
+export async function isSubscribed(
+    orgId: string,
+    tiers: string[]
+): Promise<boolean> {
     if (build === "saas") {
         const { tier, active } = await getOrgTierData(orgId);
-        return (tier == "tier1" || tier == "tier2" || tier == "tier3") && active;
+        const isTier = (tier && tiers.includes(tier)) || false;
+        return active && isTier;
     }
 
     return false;

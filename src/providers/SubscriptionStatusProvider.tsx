@@ -31,16 +31,6 @@ export function SubscriptionStatusProvider({
         });
     };
 
-    const isActive = () => {
-        if (subscriptionStatus?.subscriptions) {
-            // Check if any subscription is active
-            return subscriptionStatus.subscriptions.some(
-                (sub) => sub.subscription?.status === "active"
-            );
-        }
-        return false;
-    };
-
     const getTier = () => {
         if (subscriptionStatus?.subscriptions) {
             // Iterate through all subscriptions
@@ -65,9 +55,6 @@ export function SubscriptionStatusProvider({
     };
 
     const isSubscribed = () => {
-        if (build === "enterprise") {
-            return true;
-        }
         const { tier, active } = getTier();
         return (
             (tier == "tier1" || tier == "tier2" || tier == "tier3") &&
@@ -82,7 +69,6 @@ export function SubscriptionStatusProvider({
             value={{
                 subscriptionStatus: subscriptionStatusState,
                 updateSubscriptionStatus,
-                isActive,
                 getTier,
                 isSubscribed,
                 subscribed

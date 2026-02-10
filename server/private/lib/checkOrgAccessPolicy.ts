@@ -78,6 +78,8 @@ export async function checkOrgAccessPolicy(
         }
     }
 
+    // TODO: check that the org is subscribed
+
     // get the needed data
 
     if (!props.org) {

@@ -17,44 +17,51 @@ import HttpCode from "@server/types/HttpCode";
 import { build } from "@server/build";
 import { getOrgTierData } from "#private/lib/billing";
 
-export async function verifyValidSubscription(
-    req: Request,
-    res: Response,
-    next: NextFunction
-) {
-    try {
-        if (build != "saas") {
+export function verifyValidSubscription(tiers: string[]) {
+    return async function (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<any> {
+        try {
+            if (build != "saas") {
+                return next();
+            }
+
+            const orgId =
+                req.params.orgId ||
+                req.body.orgId ||
+                req.query.orgId ||
+                req.userOrgId;
+
+            if (!orgId) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "Organization ID is required to verify subscription"
+                    )
+                );
+            }
+
+            const { tier, active } = await getOrgTierData(orgId);
+            const isTier = tiers.includes(tier || "");
+            if (!isTier || !active) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "Organization does not have an active subscription"
+                    )
+                );
+            }
+
             return next();
-        }
-
-        const orgId = req.params.orgId || req.body.orgId || req.query.orgId || req.userOrgId;
-
-        if (!orgId) {
+        } catch (e) {
             return next(
                 createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Organization ID is required to verify subscription"
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Error verifying subscription"
                 )
             );
         }
-
-        const { tier, active  } = await getOrgTierData(orgId);
-        if ((tier == "tier1" || tier == "tier2" || tier == "tier3") && active) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "Organization does not have an active subscription"
-                )
-            );
-        }
-
-        return next();
-    } catch (e) {
-        return next(
-            createHttpError(
-                HttpCode.INTERNAL_SERVER_ERROR,
-                "Error verifying subscription"
-            )
-        );
-    }
+    };
 }

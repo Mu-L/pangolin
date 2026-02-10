@@ -65,7 +65,11 @@ export function pullEnv(): Env {
                     ? true
                     : false,
             useOrgOnlyIdp:
-                process.env.USE_ORG_ONLY_IDP === "true" ? true : false
+                process.env.USE_ORG_ONLY_IDP === "true" ? true : false,
+            disableEnterpriseFeatures:
+                process.env.DISABLE_ENTERPRISE_FEATURES === "true"
+                    ? true
+                    : false
         },
 
         branding: {

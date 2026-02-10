@@ -5,6 +5,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { ExternalLink, KeyRound, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 const bannerClassName =
     "mb-6 border-primary/30 bg-linear-to-br from-primary/10 via-background to-background overflow-hidden";
@@ -15,6 +16,12 @@ const bannerRowClassName =
 export function PaidFeaturesAlert() {
     const t = useTranslations();
     const { hasSaasSubscription, hasEnterpriseLicense } = usePaidStatus();
+    const { env } = useEnvContext();
+
+    if (env.flags.disableEnterpriseFeatures) {
+        return null;
+    }
+
     return (
         <>
             {build === "saas" && !hasSaasSubscription ? (

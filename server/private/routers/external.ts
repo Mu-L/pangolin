@@ -86,7 +86,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(),
     verifyOrgAccess,
     verifyIdpAccess,
     verifyUserHasAction(ActionsEnum.updateIdp),

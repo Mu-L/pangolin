@@ -271,27 +271,29 @@ export default function CredentialsPage() {
                                     </Alert>
                                 )}
                             </SettingsSectionBody>
-                            <SettingsSectionFooter>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setShouldDisconnect(false);
-                                        setModalOpen(true);
-                                    }}
-                                    disabled={isSecurityFeatureDisabled()}
-                                >
-                                    {t("regenerateCredentialsButton")}
-                                </Button>
-                                <Button
-                                    onClick={() => {
-                                        setShouldDisconnect(true);
-                                        setModalOpen(true);
-                                    }}
-                                    disabled={isSecurityFeatureDisabled()}
-                                >
-                                    {t("siteRegenerateAndDisconnect")}
-                                </Button>
-                            </SettingsSectionFooter>
+                            {!env.flags.disableEnterpriseFeatures && (
+                                <SettingsSectionFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setShouldDisconnect(false);
+                                            setModalOpen(true);
+                                        }}
+                                        disabled={isSecurityFeatureDisabled()}
+                                    >
+                                        {t("regenerateCredentialsButton")}
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            setShouldDisconnect(true);
+                                            setModalOpen(true);
+                                        }}
+                                        disabled={isSecurityFeatureDisabled()}
+                                    >
+                                        {t("siteRegenerateAndDisconnect")}
+                                    </Button>
+                                </SettingsSectionFooter>
+                            )}
                         </SettingsSection>
 
                         <NewtSiteInstallCommands
@@ -383,14 +385,16 @@ export default function CredentialsPage() {
                                 </>
                             )}
                         </SettingsSectionBody>
-                        <SettingsSectionFooter>
-                            <Button
-                                onClick={() => setModalOpen(true)}
-                                disabled={isSecurityFeatureDisabled()}
-                            >
-                                {t("siteRegenerateAndDisconnect")}
-                            </Button>
-                        </SettingsSectionFooter>
+                        {!env.flags.disableEnterpriseFeatures && (
+                            <SettingsSectionFooter>
+                                <Button
+                                    onClick={() => setModalOpen(true)}
+                                    disabled={isSecurityFeatureDisabled()}
+                                >
+                                    {t("siteRegenerateAndDisconnect")}
+                                </Button>
+                            </SettingsSectionFooter>
+                        )}
                     </SettingsSection>
                 )}
             </SettingsContainer>
