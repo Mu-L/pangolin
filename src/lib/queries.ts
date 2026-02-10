@@ -16,11 +16,16 @@ import type {
 import type { ListTargetsResponse } from "@server/routers/target";
 import type { ListUsersResponse } from "@server/routers/user";
 import type ResponseT from "@server/types/Response";
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    keepPreviousData,
+    queryOptions
+} from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
+import { wait } from "./wait";
 
 export type ProductUpdate = {
     link: string | null;
@@ -356,22 +361,50 @@ export const approvalQueries = {
         orgId: string,
         filters: z.infer<typeof approvalFiltersSchema>
     ) =>
-        queryOptions({
+        infiniteQueryOptions({
             queryKey: ["APPROVALS", orgId, filters] as const,
-            queryFn: async ({ signal, meta }) => {
+            queryFn: async ({ signal, pageParam, meta }) => {
                 const sp = new URLSearchParams();
 
                 if (filters.approvalState) {
                     sp.set("approvalState", filters.approvalState);
                 }
+                if (pageParam) {
+                    sp.set("cursorPending", pageParam.cursorPending.toString());
+                    sp.set(
+                        "cursorTimestamp",
+                        pageParam.cursorTimestamp.toString()
+                    );
+                }
 
                 const res = await meta!.api.get<
-                    AxiosResponse<{ approvals: ApprovalItem[] }>
+                    AxiosResponse<{
+                        approvals: ApprovalItem[];
+                        pagination: {
+                            total: number;
+                            limit: number;
+                            cursorPending: number | null;
+                            cursorTimestamp: number | null;
+                        };
+                    }>
                 >(`/org/${orgId}/approvals?${sp.toString()}`, {
                     signal
                 });
                 return res.data.data;
-            }
+            },
+            initialPageParam: null as {
+                cursorPending: number;
+                cursorTimestamp: number;
+            } | null,
+            placeholderData: keepPreviousData,
+            getNextPageParam: ({ pagination }) =>
+                pagination.cursorPending != null &&
+                pagination.cursorTimestamp != null
+                    ? {
+                          cursorPending: pagination.cursorPending,
+                          cursorTimestamp: pagination.cursorTimestamp
+                      }
+                    : null
         }),
     pendingCount: (orgId: string) =>
         queryOptions({

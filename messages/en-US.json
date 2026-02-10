@@ -459,6 +459,8 @@
     "filterByApprovalState": "Filter By Approval State",
     "approvalListEmpty": "No approvals",
     "approvalState": "Approval State",
+    "approvalLoadMore": "Load more",
+    "loadingApprovals": "Loading Approvals",
     "approve": "Approve",
     "approved": "Approved",
     "denied": "Denied",

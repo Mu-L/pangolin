@@ -6,7 +6,6 @@ import {
     olms,
     orgs,
     roleClients,
-    sites,
     userClients,
     users
 } from "@server/db";
@@ -25,7 +24,6 @@ import {
     inArray,
     isNotNull,
     isNull,
-    not,
     or,
     sql,
     type SQL
