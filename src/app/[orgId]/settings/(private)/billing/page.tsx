@@ -34,11 +34,7 @@ import {
     CredenzaTitle
 } from "@app/components/Credenza";
 import { cn } from "@app/lib/cn";
-import {
-    CreditCard,
-    ExternalLink,
-    Check
-} from "lucide-react";
+import { CreditCard, ExternalLink, Check } from "lucide-react";
 import {
     GetOrgSubscriptionResponse,
     GetOrgUsageResponse
@@ -46,43 +42,45 @@ import {
 import { useTranslations } from "use-intl";
 import Link from "next/link";
 import { Tier } from "@server/types/Tiers";
+import { tier1LimitSet, tier2LimitSet, tier3LimitSet } from "@server/lib/billing/limitSet";
+import { FeatureId } from "@server/lib/billing/features";
 
 // Plan tier definitions matching the mockup
-type PlanId = "free" | "homelab" | "team" | "business" | "enterprise";
+type PlanId = "starter" | "home" | "team" | "business" | "enterprise";
 
-interface PlanOption {
+type PlanOption = {
     id: PlanId;
     name: string;
     price: string;
     priceDetail?: string;
     tierType: Tier | null;
-}
+};
 
 const planOptions: PlanOption[] = [
     {
-        id: "free",
-        name: "Free",
-        price: "Free",
+        id: "starter",
+        name: "Starter",
+        price: "Starter",
         tierType: null
     },
     {
-        id: "homelab",
-        name: "Homelab",
-        price: "$15",
+        id: "home",
+        name: "Home",
+        price: "$12.50",
         priceDetail: "/ month",
         tierType: "tier1"
     },
     {
         id: "team",
         name: "Team",
-        price: "$5",
+        price: "$4",
         priceDetail: "per user / month",
         tierType: "tier2"
     },
     {
         id: "business",
         name: "Business",
-        price: "$10",
+        price: "$9",
         priceDetail: "per user / month",
         tierType: "tier3"
     },
@@ -93,6 +91,34 @@ const planOptions: PlanOption[] = [
         tierType: null
     }
 ];
+
+// Tier limits mapping derived from limit sets
+const tierLimits: Record<Tier, { users: number; sites: number; domains: number; remoteNodes: number }> = {
+    tier1: {
+        users: tier1LimitSet[FeatureId.USERS]?.value ?? 0,
+        sites: tier1LimitSet[FeatureId.SITES]?.value ?? 0,
+        domains: tier1LimitSet[FeatureId.DOMAINS]?.value ?? 0,
+        remoteNodes: tier1LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+    },
+    tier2: {
+        users: tier2LimitSet[FeatureId.USERS]?.value ?? 0,
+        sites: tier2LimitSet[FeatureId.SITES]?.value ?? 0,
+        domains: tier2LimitSet[FeatureId.DOMAINS]?.value ?? 0,
+        remoteNodes: tier2LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+    },
+    tier3: {
+        users: tier3LimitSet[FeatureId.USERS]?.value ?? 0,
+        sites: tier3LimitSet[FeatureId.SITES]?.value ?? 0,
+        domains: tier3LimitSet[FeatureId.DOMAINS]?.value ?? 0,
+        remoteNodes: tier3LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+    },
+    enterprise: {
+        users: 0, // Custom for enterprise
+        sites: 0, // Custom for enterprise
+        domains: 0, // Custom for enterprise
+        remoteNodes: 0 // Custom for enterprise
+    }
+};
 
 export default function BillingPage() {
     const { org } = useOrgContext();
@@ -122,9 +148,7 @@ export default function BillingPage() {
 
     const [hasSubscription, setHasSubscription] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [currentTier, setCurrentTier] = useState<
-        Tier | null
-    >(null);
+    const [currentTier, setCurrentTier] = useState<Tier | null>(null);
 
     // Usage IDs
     const SITES = "sites";
@@ -135,7 +159,7 @@ export default function BillingPage() {
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingTier, setPendingTier] = useState<{
-        tier: Tier,
+        tier: Tier;
         action: "upgrade" | "downgrade";
         planName: string;
         price: string;
@@ -161,9 +185,7 @@ export default function BillingPage() {
                 setTierSubscription(tierSub || null);
 
                 if (tierSub?.subscription) {
-                    setCurrentTier(
-                        tierSub.subscription.type as Tier
-                    );
+                    setCurrentTier(tierSub.subscription.type as Tier);
                     setHasSubscription(
                         tierSub.subscription.status === "active"
                     );
@@ -207,9 +229,7 @@ export default function BillingPage() {
         fetchUsage();
     }, [org.org.orgId]);
 
-    const handleStartSubscription = async (
-        tier: Tier
-    ) => {
+    const handleStartSubscription = async (tier: Tier) => {
         setIsLoading(true);
         try {
             const response = await api.post<AxiosResponse<string>>(
@@ -323,9 +343,9 @@ export default function BillingPage() {
 
     // Get current plan ID from tier
     const getCurrentPlanId = (): PlanId => {
-        if (!hasSubscription || !currentTier) return "free";
+        if (!hasSubscription || !currentTier) return "starter";
         const plan = planOptions.find((p) => p.tierType === currentTier);
-        return plan?.id || "free";
+        return plan?.id || "starter";
     };
 
     const currentPlanId = getCurrentPlanId();
@@ -342,8 +362,8 @@ export default function BillingPage() {
         }
 
         if (plan.id === currentPlanId) {
-            // If it's the free plan (free with no subscription), show as current but disabled
-            if (plan.id === "free" && !hasSubscription) {
+            // If it's the starter plan (starter with no subscription), show as current but disabled
+            if (plan.id === "starter" && !hasSubscription) {
                 return {
                     label: "Current Plan",
                     action: () => {},
@@ -418,7 +438,10 @@ export default function BillingPage() {
     // Calculate current usage cost for display
     const getUserCount = () => getUsageValue(USERS);
     const getPricePerUser = () => {
-        console.log("Calculating price per user, tierSubscription:", tierSubscription);
+        console.log(
+            "Calculating price per user, tierSubscription:",
+            tierSubscription
+        );
         if (!tierSubscription?.items) return 0;
 
         // Find the subscription item for USERS feature
