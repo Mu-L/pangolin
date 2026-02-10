@@ -52,6 +52,7 @@ import {
     authenticated as a,
     authRouter as aa
 } from "@server/routers/external";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export const authenticated = a;
 export const unauthenticated = ua;
@@ -76,7 +77,7 @@ unauthenticated.post(
 authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.orgOidc),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createIdp),
     logActionAudit(ActionsEnum.createIdp),
@@ -86,7 +87,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
-    verifyValidSubscription(),
+    verifyValidSubscription(tierMatrix.orgOidc),
     verifyOrgAccess,
     verifyIdpAccess,
     verifyUserHasAction(ActionsEnum.updateIdp),
@@ -279,7 +280,7 @@ authenticated.delete(
 authenticated.put(
     "/org/:orgId/login-page",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.customAuthenticationDomain),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createLoginPage),
     logActionAudit(ActionsEnum.createLoginPage),
@@ -289,7 +290,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/login-page/:loginPageId",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.customAuthenticationDomain),
     verifyOrgAccess,
     verifyLoginPageAccess,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
@@ -318,7 +319,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/approvals",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.deviceApprovals),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listApprovals),
     logActionAudit(ActionsEnum.listApprovals),
@@ -335,7 +336,7 @@ authenticated.get(
 authenticated.put(
     "/org/:orgId/approvals/:approvalId",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.deviceApprovals),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.updateApprovals),
     logActionAudit(ActionsEnum.updateApprovals),
@@ -345,7 +346,7 @@ authenticated.put(
 authenticated.get(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.loginPageBranding),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getLoginPage),
     logActionAudit(ActionsEnum.getLoginPage),
@@ -355,7 +356,7 @@ authenticated.get(
 authenticated.put(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.loginPageBranding),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
     logActionAudit(ActionsEnum.updateLoginPage),
@@ -365,7 +366,6 @@ authenticated.put(
 authenticated.delete(
     "/org/:orgId/login-page-branding",
     verifyValidLicense,
-    verifyValidSubscription,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.deleteLoginPage),
     logActionAudit(ActionsEnum.deleteLoginPage),
@@ -433,7 +433,7 @@ authenticated.post(
 authenticated.get(
     "/org/:orgId/logs/action",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.actionLogs),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.exportLogs),
     logs.queryActionAuditLogs
@@ -442,7 +442,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/logs/action/export",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.logExport),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
@@ -452,7 +452,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/logs/access",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.accessLogs),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.exportLogs),
     logs.queryAccessAuditLogs
@@ -461,7 +461,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/logs/access/export",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.logExport),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
@@ -472,7 +472,7 @@ authenticated.post(
     "/re-key/:clientId/regenerate-client-secret",
     verifyClientAccess, // this is first to set the org id
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.rotateCredentials),
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateClientSecret
 );
@@ -481,7 +481,7 @@ authenticated.post(
     "/re-key/:siteId/regenerate-site-secret",
     verifySiteAccess, // this is first to set the org id
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.rotateCredentials),
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateSiteSecret
 );
@@ -489,7 +489,7 @@ authenticated.post(
 authenticated.put(
     "/re-key/:orgId/regenerate-remote-exit-node-secret",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.rotateCredentials),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateExitNodeSecret

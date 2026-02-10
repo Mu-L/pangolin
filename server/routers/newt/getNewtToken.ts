@@ -18,7 +18,7 @@ import config from "@server/lib/config";
 import { APP_VERSION } from "@server/lib/consts";
 
 export const newtGetTokenBodySchema = z.object({
-    newtId: z.string(),
+    // newtId: z.string(),
     secret: z.string(),
     token: z.string().optional()
 });

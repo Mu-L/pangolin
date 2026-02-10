@@ -12,7 +12,8 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
 import { cache } from "@server/lib/cache";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
+import { getOrgTierData } from "#dynamic/lib/billing";
 
 const updateOrgParamsSchema = z.strictObject({
     orgId: z.string()
@@ -87,26 +88,83 @@ export async function updateOrg(
 
         const { orgId } = parsedParams.data;
 
-        const isLicensed = await isLicensedOrSubscribed(orgId);
-        if (!isLicensed) {
+        // Check 2FA enforcement feature
+        const has2FAFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.TwoFactorEnforcement]
+        );
+        if (!has2FAFeature) {
             parsedBody.data.requireTwoFactor = undefined;
-            parsedBody.data.maxSessionLengthHours = undefined;
-            parsedBody.data.passwordExpiryDays = undefined;
         }
 
-        const subscribed = await isSubscribed(orgId);
-        if (
-            build == "saas" &&
-            subscribed &&
-            parsedBody.data.settingsLogRetentionDaysRequest &&
-            parsedBody.data.settingsLogRetentionDaysRequest > 30
-        ) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "You are not allowed to set log retention days greater than 30 with your current subscription"
-                )
-            );
+        // Check session duration policies feature
+        const hasSessionDurationFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.SessionDurationPolicies]
+        );
+        if (!hasSessionDurationFeature) {
+            parsedBody.data.maxSessionLengthHours = undefined;
+        }
+
+        // Check password expiration policies feature
+        const hasPasswordExpirationFeature = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.PasswordExpirationPolicies]
+        );
+        if (!hasPasswordExpirationFeature) {
+            parsedBody.data.passwordExpiryDays = undefined;
+        }
+        if (build == "saas") {
+            const { tier } = await getOrgTierData(orgId);
+
+            // Determine max allowed retention days based on tier
+            let maxRetentionDays: number | null = null;
+            if (!tier) {
+                maxRetentionDays = 0;
+            } else if (tier === "tier1") {
+                maxRetentionDays = 7;
+            } else if (tier === "tier2") {
+                maxRetentionDays = 30;
+            } else if (tier === "tier3") {
+                maxRetentionDays = 90;
+            }
+            // For enterprise tier, no check (maxRetentionDays remains null)
+
+            if (maxRetentionDays !== null) {
+                if (
+                    parsedBody.data.settingsLogRetentionDaysRequest !== undefined &&
+                    parsedBody.data.settingsLogRetentionDaysRequest > maxRetentionDays
+                ) {
+                    return next(
+                        createHttpError(
+                            HttpCode.FORBIDDEN,
+                            `You are not allowed to set log retention days greater than ${maxRetentionDays} with your current subscription`
+                        )
+                    );
+                }
+                if (
+                    parsedBody.data.settingsLogRetentionDaysAccess !== undefined &&
+                    parsedBody.data.settingsLogRetentionDaysAccess > maxRetentionDays
+                ) {
+                    return next(
+                        createHttpError(
+                            HttpCode.FORBIDDEN,
+                            `You are not allowed to set log retention days greater than ${maxRetentionDays} with your current subscription`
+                        )
+                    );
+                }
+                if (
+                    parsedBody.data.settingsLogRetentionDaysAction !== undefined &&
+                    parsedBody.data.settingsLogRetentionDaysAction > maxRetentionDays
+                ) {
+                    return next(
+                        createHttpError(
+                            HttpCode.FORBIDDEN,
+                            `You are not allowed to set log retention days greater than ${maxRetentionDays} with your current subscription`
+                        )
+                    );
+                }
+            }
         }
 
         const updatedOrg = await db

@@ -45,11 +45,19 @@ export function verifyValidSubscription(tiers: string[]) {
 
             const { tier, active } = await getOrgTierData(orgId);
             const isTier = tiers.includes(tier || "");
-            if (!isTier || !active) {
+            if (!active) {
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
                         "Organization does not have an active subscription"
+                    )
+                );
+            }
+            if (!isTier) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "Organization subscription tier does not have access to this feature"
                     )
                 );
             }
