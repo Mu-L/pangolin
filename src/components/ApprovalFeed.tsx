@@ -167,7 +167,7 @@ export function ApprovalFeed({
                     loading={isFetchingNextPage}
                     onClick={() => fetchNextPage()}
                 >
-                    {isFetchingNextPage ? t("loading") : t("approvalLoadMore")}
+                    {t("approvalLoadMore")}
                 </Button>
             )}
         </div>
