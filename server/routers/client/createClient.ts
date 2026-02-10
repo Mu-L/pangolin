@@ -101,7 +101,7 @@ export async function createClient(
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    "Invalid subnet format. Please provide a valid CIDR notation."
+                    "Invalid subnet format. Please provide a valid IP."
                 )
             );
         }
