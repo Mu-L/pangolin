@@ -124,6 +124,7 @@ const listUserDevicesSchema = z.object({
             "windows",
             "android",
             "cli",
+            "olm",
             "macos",
             "ios",
             "ipados",
@@ -302,7 +303,8 @@ export async function listUserDevices(
             ios: "Pangolin iOS",
             ipados: "Pangolin iPadOS",
             macos: "Pangolin macOS",
-            cli: "Pangolin CLI"
+            cli: "Pangolin CLI",
+            olm: "Olm CLI"
         } satisfies Record<
             Exclude<typeof agent, undefined | "unknown">,
             string

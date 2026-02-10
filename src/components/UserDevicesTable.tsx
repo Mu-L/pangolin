@@ -443,10 +443,6 @@ export default function UserDevicesTable({
                         searchParams
                     );
 
-                    console.log({
-                        dataInOrder,
-                        searchParams: Object.fromEntries(searchParams.entries())
-                    });
                     const Icon =
                         dataInOrder === "asc"
                             ? ArrowDown01Icon
@@ -519,6 +515,10 @@ export default function UserDevicesTable({
                             {
                                 value: "cli",
                                 label: "Pangolin CLI"
+                            },
+                            {
+                                value: "olm",
+                                label: "Olm CLI"
                             },
                             {
                                 value: "unknown",

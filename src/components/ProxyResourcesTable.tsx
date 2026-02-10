@@ -611,11 +611,9 @@ export default function ProxyResourcesTable({
                 onSearch={handleSearchChange}
                 onPaginationChange={handlePaginationChange}
                 onAdd={() =>
-                    startNavigation(() => {
-                        router.push(
-                            `/${orgId}/settings/resources/proxy/create`
-                        );
-                    })
+                    startNavigation(() =>
+                        router.push(`/${orgId}/settings/resources/proxy/create`)
+                    )
                 }
                 addButtonText={t("resourceAdd")}
                 onRefresh={refreshData}
