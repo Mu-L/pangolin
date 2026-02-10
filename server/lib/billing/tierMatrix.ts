@@ -2,7 +2,7 @@ import { Tier } from "@server/types/Tiers";
 
 export enum TierFeature {
     OrgOidc = "orgOidc",
-    CustomAuthenticationDomain = "customAuthenticationDomain",
+    LoginPageDomain = "loginPageDomain",
     DeviceApprovals = "deviceApprovals",
     LoginPageBranding = "loginPageBranding",
     LogExport = "logExport",
@@ -18,7 +18,7 @@ export enum TierFeature {
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.OrgOidc]: ["tier1", "tier2", "tier3", "enterprise"],
-    [TierFeature.CustomAuthenticationDomain]: [
+    [TierFeature.LoginPageDomain]: [
         "tier1",
         "tier2",
         "tier3",

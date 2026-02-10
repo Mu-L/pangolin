@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { OpenAPITags, registry } from "@server/openApi";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const updateRoleParamsSchema = z.strictObject({
     roleId: z.string().transform(Number).pipe(z.int().positive())
@@ -110,7 +111,7 @@ export async function updateRole(
             );
         }
 
-        const isLicensed = await isLicensedOrSubscribed(orgId);
+        const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.deviceApprovals);
         if (!isLicensed) {
             updateData.requireDeviceApproval = undefined;
         }

@@ -15,6 +15,7 @@ import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import { build } from "@server/build";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z
     .object({
@@ -112,7 +113,10 @@ export async function generateOidcUrl(
             }
 
             if (build === "saas") {
-                const subscribed = await isSubscribed(orgId);
+                const subscribed = await isSubscribed(
+                    orgId,
+                    tierMatrix.orgOidc
+                );
                 if (!subscribed) {
                     return next(
                         createHttpError(
