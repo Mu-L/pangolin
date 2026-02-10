@@ -17,7 +17,7 @@ export async function verifyLimits(
         return next();
     }
 
-    const orgId = req.userOrgId || req.params.orgId;
+    const orgId = req.userOrgId || req.apiKeyOrg?.orgId || req.params.orgId;
 
     if (!orgId) {
         return next(); // its fine if we silently fail here because this is not critical to operation or security and its better user experience if we dont fail

@@ -561,6 +561,7 @@ authenticated.get(
 authenticated.post(
     "/resource/:resourceId/rule/:ruleId",
     verifyResourceAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateResourceRule),
     logActionAudit(ActionsEnum.updateResourceRule),
     resource.updateResourceRule
@@ -582,6 +583,7 @@ authenticated.get(
 authenticated.post(
     "/target/:targetId",
     verifyTargetAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateTarget),
     logActionAudit(ActionsEnum.updateTarget),
     target.updateTarget
@@ -612,6 +614,7 @@ authenticated.get(
 authenticated.post(
     "/role/:roleId",
     verifyRoleAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateRole),
     logActionAudit(ActionsEnum.updateRole),
     role.updateRole
@@ -640,6 +643,7 @@ authenticated.post(
     "/role/:roleId/add/:userId",
     verifyRoleAccess,
     verifyUserAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.addUserRole),
     logActionAudit(ActionsEnum.addUserRole),
     user.addUserRole
@@ -649,6 +653,7 @@ authenticated.post(
     "/resource/:resourceId/roles",
     verifyResourceAccess,
     verifyRoleAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setResourceRoles),
     logActionAudit(ActionsEnum.setResourceRoles),
     resource.setResourceRoles
@@ -658,6 +663,7 @@ authenticated.post(
     "/resource/:resourceId/users",
     verifyResourceAccess,
     verifySetResourceUsers,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setResourceUsers),
     logActionAudit(ActionsEnum.setResourceUsers),
     resource.setResourceUsers
@@ -666,6 +672,7 @@ authenticated.post(
 authenticated.post(
     `/resource/:resourceId/password`,
     verifyResourceAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setResourcePassword),
     logActionAudit(ActionsEnum.setResourcePassword),
     resource.setResourcePassword
@@ -674,6 +681,7 @@ authenticated.post(
 authenticated.post(
     `/resource/:resourceId/pincode`,
     verifyResourceAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setResourcePincode),
     logActionAudit(ActionsEnum.setResourcePincode),
     resource.setResourcePincode
@@ -682,6 +690,7 @@ authenticated.post(
 authenticated.post(
     `/resource/:resourceId/header-auth`,
     verifyResourceAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setResourceHeaderAuth),
     logActionAudit(ActionsEnum.setResourceHeaderAuth),
     resource.setResourceHeaderAuth
@@ -690,6 +699,7 @@ authenticated.post(
 authenticated.post(
     `/resource/:resourceId/whitelist`,
     verifyResourceAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setResourceWhitelist),
     logActionAudit(ActionsEnum.setResourceWhitelist),
     resource.setResourceWhitelist
@@ -705,6 +715,7 @@ authenticated.get(
 authenticated.post(
     `/resource/:resourceId/access-token`,
     verifyResourceAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.generateAccessToken),
     logActionAudit(ActionsEnum.generateAccessToken),
     accessToken.generateAccessToken
@@ -805,6 +816,7 @@ authenticated.post(
     "/org/:orgId/user/:userId",
     verifyOrgAccess,
     verifyUserAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateOrgUser),
     logActionAudit(ActionsEnum.updateOrgUser),
     user.updateOrgUser
@@ -877,6 +889,7 @@ authenticated.post(
     "/user/:userId/olm/:olmId/archive",
     verifyIsLoggedInUser,
     verifyOlmAccess,
+    verifyLimits,
     olm.archiveUserOlm
 );
 
@@ -991,6 +1004,7 @@ authenticated.post(
     `/org/:orgId/api-key/:apiKeyId/actions`,
     verifyOrgAccess,
     verifyApiKeyAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.setApiKeyActions),
     logActionAudit(ActionsEnum.setApiKeyActions),
     apiKeys.setApiKeyActions
@@ -1043,6 +1057,7 @@ authenticated.post(
     `/org/:orgId/domain/:domainId/restart`,
     verifyOrgAccess,
     verifyDomainAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.restartOrgDomain),
     logActionAudit(ActionsEnum.restartOrgDomain),
     domain.restartOrgDomain

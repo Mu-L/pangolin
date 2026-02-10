@@ -19,7 +19,8 @@ import {
     verifyApiKeyHasAction,
     verifyApiKeyIsRoot,
     verifyApiKeyOrgAccess,
-    verifyApiKeyIdpAccess
+    verifyApiKeyIdpAccess,
+    verifyLimits
 } from "@server/middlewares";
 import {
     verifyValidSubscription,
@@ -95,6 +96,7 @@ authenticated.put(
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
     verifyApiKeyOrgAccess,
+    verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createIdp),
     logActionAudit(ActionsEnum.createIdp),
     orgIdp.createOrgOidcIdp
@@ -106,6 +108,7 @@ authenticated.post(
     verifyValidSubscription(tierMatrix.orgOidc),
     verifyApiKeyOrgAccess,
     verifyApiKeyIdpAccess,
+    verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.updateIdp),
     logActionAudit(ActionsEnum.updateIdp),
     orgIdp.updateOrgOidcIdp

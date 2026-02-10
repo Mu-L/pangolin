@@ -31,7 +31,8 @@ import {
     verifyUserHasAction,
     verifyUserIsServerAdmin,
     verifySiteAccess,
-    verifyClientAccess
+    verifyClientAccess,
+    verifyLimits
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -79,6 +80,7 @@ authenticated.put(
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
     verifyOrgAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.createIdp),
     logActionAudit(ActionsEnum.createIdp),
     orgIdp.createOrgOidcIdp
@@ -90,6 +92,7 @@ authenticated.post(
     verifyValidSubscription(tierMatrix.orgOidc),
     verifyOrgAccess,
     verifyIdpAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateIdp),
     logActionAudit(ActionsEnum.updateIdp),
     orgIdp.updateOrgOidcIdp
@@ -138,6 +141,7 @@ authenticated.post(
     verifyValidLicense,
     verifyOrgAccess,
     verifyCertificateAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.restartCertificate),
     logActionAudit(ActionsEnum.restartCertificate),
     certificates.restartCertificate
@@ -237,6 +241,7 @@ authenticated.put(
     "/org/:orgId/remote-exit-node",
     verifyValidLicense,
     verifyOrgAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.createRemoteExitNode),
     logActionAudit(ActionsEnum.createRemoteExitNode),
     remoteExitNode.createRemoteExitNode
@@ -282,6 +287,7 @@ authenticated.put(
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.loginPageDomain),
     verifyOrgAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.createLoginPage),
     logActionAudit(ActionsEnum.createLoginPage),
     loginPage.createLoginPage
@@ -293,6 +299,7 @@ authenticated.post(
     verifyValidSubscription(tierMatrix.loginPageDomain),
     verifyOrgAccess,
     verifyLoginPageAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
     logActionAudit(ActionsEnum.updateLoginPage),
     loginPage.updateLoginPage
@@ -338,6 +345,7 @@ authenticated.put(
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.deviceApprovals),
     verifyOrgAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateApprovals),
     logActionAudit(ActionsEnum.updateApprovals),
     approval.processPendingApproval
@@ -358,6 +366,7 @@ authenticated.put(
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.loginPageBranding),
     verifyOrgAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
     logActionAudit(ActionsEnum.updateLoginPage),
     loginPage.upsertLoginPageBranding
@@ -470,18 +479,20 @@ authenticated.get(
 
 authenticated.post(
     "/re-key/:clientId/regenerate-client-secret",
-    verifyClientAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
+    verifyClientAccess, // this is first to set the org id
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateClientSecret
 );
 
 authenticated.post(
     "/re-key/:siteId/regenerate-site-secret",
-    verifySiteAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
+    verifySiteAccess, // this is first to set the org id
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateSiteSecret
 );
@@ -491,6 +502,7 @@ authenticated.put(
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
     verifyOrgAccess,
+    verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateExitNodeSecret
 );
