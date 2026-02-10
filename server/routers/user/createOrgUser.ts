@@ -21,11 +21,7 @@ const paramsSchema = z.strictObject({
 });
 
 const bodySchema = z.strictObject({
-    email: z
-        .string()
-        .email()
-        .toLowerCase()
-        .optional(),
+    email: z.string().email().toLowerCase().optional(),
     username: z.string().nonempty().toLowerCase(),
     name: z.string().optional(),
     type: z.enum(["internal", "oidc"]).optional(),
@@ -94,7 +90,7 @@ export async function createOrgUser(
             }
             const rejectUsers = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.USERS,
                 {
                     ...usage,

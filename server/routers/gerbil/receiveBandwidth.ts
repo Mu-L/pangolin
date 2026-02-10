@@ -178,11 +178,9 @@ export async function updateSiteBandwidth(
 
     // Process usage updates outside of site update transactions
     // This separates the concerns and reduces lock contention
-    if (calcUsageAndLimits && (orgUsageMap.size > 0)) {
+    if (calcUsageAndLimits && orgUsageMap.size > 0) {
         // Sort org IDs to ensure consistent lock ordering
-        const allOrgIds = [
-            ...new Set([...orgUsageMap.keys()])
-        ].sort();
+        const allOrgIds = [...new Set([...orgUsageMap.keys()])].sort();
 
         for (const orgId of allOrgIds) {
             try {
@@ -199,7 +197,7 @@ export async function updateSiteBandwidth(
                         usageService
                             .checkLimitSet(
                                 orgId,
-                                true,
+
                                 FeatureId.EGRESS_DATA_MB,
                                 bandwidthUsage
                             )

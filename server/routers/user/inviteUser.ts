@@ -133,7 +133,6 @@ export async function inviteUser(
             }
             const rejectUsers = await usageService.checkLimitSet(
                 orgId,
-                false,
                 FeatureId.USERS,
                 {
                     ...usage,

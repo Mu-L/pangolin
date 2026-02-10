@@ -94,7 +94,10 @@ export async function acceptInvite(
         }
 
         if (build == "saas") {
-            const usage = await usageService.getUsage(existingInvite.orgId, FeatureId.USERS);
+            const usage = await usageService.getUsage(
+                existingInvite.orgId,
+                FeatureId.USERS
+            );
             if (!usage) {
                 return next(
                     createHttpError(
@@ -105,7 +108,7 @@ export async function acceptInvite(
             }
             const rejectUsers = await usageService.checkLimitSet(
                 existingInvite.orgId,
-                false,
+
                 FeatureId.USERS,
                 {
                     ...usage,
@@ -163,7 +166,9 @@ export async function acceptInvite(
                 .from(userOrgs)
                 .where(eq(userOrgs.orgId, existingInvite.orgId));
 
-            logger.debug(`User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}. Total users in org: ${totalUsers.length}`);
+            logger.debug(
+                `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}. Total users in org: ${totalUsers.length}`
+            );
         });
 
         if (totalUsers) {

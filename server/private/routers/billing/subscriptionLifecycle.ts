@@ -13,7 +13,7 @@
 
 import {
     freeLimitSet,
-    homeLabLimitSet,
+    tier1LimitSet,
     tier2LimitSet,
     tier3LimitSet,
     limitsService,
@@ -22,10 +22,12 @@ import {
 import { usageService } from "@server/lib/billing/usageService";
 import { SubscriptionType } from "./hooks/getSubType";
 
-function getLimitSetForSubscriptionType(subType: SubscriptionType | null): LimitSet {
+function getLimitSetForSubscriptionType(
+    subType: SubscriptionType | null
+): LimitSet {
     switch (subType) {
         case "tier1":
-            return homeLabLimitSet;
+            return tier1LimitSet;
         case "tier2":
             return tier2LimitSet;
         case "tier3":
@@ -48,12 +50,12 @@ export async function handleSubscriptionLifesycle(
         case "active":
             const activeLimitSet = getLimitSetForSubscriptionType(subType);
             await limitsService.applyLimitSetToOrg(orgId, activeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         case "canceled":
             // Subscription canceled - revert to free tier
             await limitsService.applyLimitSetToOrg(orgId, freeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         case "past_due":
             // Payment past due - keep current limits but notify customer
@@ -62,7 +64,7 @@ export async function handleSubscriptionLifesycle(
         case "unpaid":
             // Subscription unpaid - revert to free tier
             await limitsService.applyLimitSetToOrg(orgId, freeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         case "incomplete":
             // Payment incomplete - give them time to complete payment
@@ -70,7 +72,7 @@ export async function handleSubscriptionLifesycle(
         case "incomplete_expired":
             // Payment never completed - revert to free tier
             await limitsService.applyLimitSetToOrg(orgId, freeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         default:
             break;
