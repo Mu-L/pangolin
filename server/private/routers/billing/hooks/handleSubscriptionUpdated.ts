@@ -90,7 +90,7 @@ export async function handleSubscriptionUpdated(
             const itemsToUpsert = fullSubscription.items.data.map((item) => {
                 // Try to get featureId from price
                 let featureId: string | null = getFeatureIdByPriceId(item.price.id) || null;
-                
+
                 // If no match, try to preserve existing featureId
                 if (!featureId) {
                     const existingItem = existingItems.find(
