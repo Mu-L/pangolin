@@ -20,8 +20,9 @@ import {
     getScaleFeaturePriceSet,
 } from "@server/lib/billing/features";
 import Stripe from "stripe";
+import { Tier } from "@server/types/Tiers";
 
-export type SubscriptionType = "tier1" | "tier2" | "tier3" | "license";
+export type SubscriptionType = Tier | "license";
 
 export function getSubType(fullSubscription: Stripe.Response<Stripe.Subscription>): SubscriptionType | null {
     // Determine subscription type by checking subscription items

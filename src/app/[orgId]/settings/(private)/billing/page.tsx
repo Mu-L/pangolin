@@ -49,6 +49,8 @@ import {
 } from "@server/routers/billing/types";
 import { useTranslations } from "use-intl";
 import Link from "next/link";
+import { Tier } from "@server/types/Tiers";
+import { w } from "@faker-js/faker/dist/airline-DF6RqYmq";
 
 // Plan tier definitions matching the mockup
 type PlanId = "free" | "homelab" | "team" | "business" | "enterprise";
@@ -58,7 +60,7 @@ interface PlanOption {
     name: string;
     price: string;
     priceDetail?: string;
-    tierType: "tier1" | "tier2" | "tier3" | null; // Maps to backend tier types
+    tierType: Tier | null;
 }
 
 // Tier limits for display in confirmation dialog
@@ -69,7 +71,7 @@ interface TierLimits {
     remoteNodes: number;
 }
 
-const tierLimits: Record<"tier1" | "tier2" | "tier3", TierLimits> = {
+const tierLimits: Record<Tier, TierLimits> = {
     tier1: {
         sites: 3,
         users: 3,
@@ -155,7 +157,7 @@ export default function BillingPage() {
     const [hasSubscription, setHasSubscription] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [currentTier, setCurrentTier] = useState<
-        "tier1" | "tier2" | "tier3" | null
+        Tier | null
     >(null);
 
     // Usage IDs
@@ -167,7 +169,7 @@ export default function BillingPage() {
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingTier, setPendingTier] = useState<{
-        tier: "tier1" | "tier2" | "tier3";
+        tier: Tier,
         action: "upgrade" | "downgrade";
         planName: string;
         price: string;
@@ -194,10 +196,7 @@ export default function BillingPage() {
 
                 if (tierSub?.subscription) {
                     setCurrentTier(
-                        tierSub.subscription.type as
-                            | "tier1"
-                            | "tier2"
-                            | "tier3"
+                        tierSub.subscription.type as Tier
                     );
                     setHasSubscription(
                         tierSub.subscription.status === "active"
@@ -243,7 +242,7 @@ export default function BillingPage() {
     }, [org.org.orgId]);
 
     const handleStartSubscription = async (
-        tier: "tier1" | "tier2" | "tier3"
+        tier: Tier
     ) => {
         setIsLoading(true);
         try {
@@ -300,7 +299,7 @@ export default function BillingPage() {
         }
     };
 
-    const handleChangeTier = async (tier: "tier1" | "tier2" | "tier3") => {
+    const handleChangeTier = async (tier: Tier) => {
         if (!hasSubscription) {
             // If no subscription, start a new one
             handleStartSubscription(tier);
@@ -343,7 +342,7 @@ export default function BillingPage() {
     };
 
     const showTierConfirmation = (
-        tier: "tier1" | "tier2" | "tier3",
+        tier: Tier,
         action: "upgrade" | "downgrade",
         planName: string,
         price: string
