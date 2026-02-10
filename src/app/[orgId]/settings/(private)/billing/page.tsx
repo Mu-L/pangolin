@@ -42,7 +42,11 @@ import {
 import { useTranslations } from "use-intl";
 import Link from "next/link";
 import { Tier } from "@server/types/Tiers";
-import { tier1LimitSet, tier2LimitSet, tier3LimitSet } from "@server/lib/billing/limitSet";
+import {
+    tier1LimitSet,
+    tier2LimitSet,
+    tier3LimitSet
+} from "@server/lib/billing/limitSet";
 import { FeatureId } from "@server/lib/billing/features";
 
 // Plan tier definitions matching the mockup
@@ -93,7 +97,10 @@ const planOptions: PlanOption[] = [
 ];
 
 // Tier limits mapping derived from limit sets
-const tierLimits: Record<Tier, { users: number; sites: number; domains: number; remoteNodes: number }> = {
+const tierLimits: Record<
+    Tier,
+    { users: number; sites: number; domains: number; remoteNodes: number }
+> = {
     tier1: {
         users: tier1LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier1LimitSet[FeatureId.SITES]?.value ?? 0,
@@ -151,8 +158,8 @@ export default function BillingPage() {
     const [currentTier, setCurrentTier] = useState<Tier | null>(null);
 
     // Usage IDs
-    const SITES = "sites";
     const USERS = "users";
+    const SITES = "sites";
     const DOMAINS = "domains";
     const REMOTE_EXIT_NODES = "remoteExitNodes";
 
@@ -297,8 +304,70 @@ export default function BillingPage() {
             await api.post(`/org/${org.org.orgId}/billing/change-tier`, {
                 tier
             });
-            // Refresh subscription data
-            window.location.reload();
+
+            // Poll the API to check if the tier change has been reflected
+            const pollForTierChange = async (targetTier: Tier) => {
+                const maxAttempts = 30; // 30 seconds with 1 second interval
+                let attempts = 0;
+
+                const poll = async (): Promise<boolean> => {
+                    try {
+                        const res = await api.get<
+                            AxiosResponse<GetOrgSubscriptionResponse>
+                        >(`/org/${org.org.orgId}/billing/subscriptions`);
+                        const { subscriptions } = res.data.data;
+
+                        // Find tier subscription
+                        const tierSub = subscriptions.find(
+                            ({ subscription }) =>
+                                subscription?.type === "tier1" ||
+                                subscription?.type === "tier2" ||
+                                subscription?.type === "tier3"
+                        );
+
+                        // Check if the tier has changed to the target tier
+                        if (tierSub?.subscription?.type === targetTier) {
+                            return true;
+                        }
+
+                        return false;
+                    } catch (error) {
+                        console.error("Error polling subscription:", error);
+                        return false;
+                    }
+                };
+
+                while (attempts < maxAttempts) {
+                    const success = await poll();
+
+                    if (success) {
+                        // Tier change reflected, refresh the page
+                        window.location.reload();
+                        return;
+                    }
+
+                    attempts++;
+
+                    if (attempts < maxAttempts) {
+                        // Wait 1 second before next poll
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 1000)
+                        );
+                    }
+                }
+
+                // If we've exhausted all attempts, show an error
+                toast({
+                    title: "Tier change processing",
+                    description:
+                        "Your tier change is taking longer than expected. Please refresh the page in a moment to see the changes.",
+                    variant: "destructive"
+                });
+                setIsLoading(false);
+            };
+
+            // Start polling for the tier change
+            pollForTierChange(tier);
         } catch (error) {
             toast({
                 title: "Failed to change tier",
@@ -323,8 +392,8 @@ export default function BillingPage() {
             }
         }
 
-        setShowConfirmDialog(false);
-        setPendingTier(null);
+        // setShowConfirmDialog(false);
+        // setPendingTier(null);
     };
 
     const showTierConfirmation = (
@@ -338,7 +407,7 @@ export default function BillingPage() {
     };
 
     const handleContactUs = () => {
-        window.open("mailto:sales@pangolin.net", "_blank");
+        window.open("https://pangolin.net/talk-to-us", "_blank");
     };
 
     // Get current plan ID from tier
@@ -393,7 +462,7 @@ export default function BillingPage() {
                             plan.tierType,
                             "downgrade",
                             plan.name,
-                            plan.price + (plan.priceDetail || "")
+                            plan.price + (" " + plan.priceDetail || "")
                         );
                     } else {
                         handleModifySubscription();
@@ -412,7 +481,7 @@ export default function BillingPage() {
                         plan.tierType,
                         "upgrade",
                         plan.name,
-                        plan.price + (plan.priceDetail || "")
+                        plan.price + (" " + plan.priceDetail || "")
                     );
                 } else {
                     handleModifySubscription();
@@ -438,16 +507,14 @@ export default function BillingPage() {
     // Calculate current usage cost for display
     const getUserCount = () => getUsageValue(USERS);
     const getPricePerUser = () => {
-        console.log(
-            "Calculating price per user, tierSubscription:",
-            tierSubscription
-        );
         if (!tierSubscription?.items) return 0;
 
         // Find the subscription item for USERS feature
         const usersItem = tierSubscription.items.find(
-            (item) => item.planId === USERS
+            (item) => item.featureId === USERS
         );
+
+        console.log("Users subscription item:", usersItem);
 
         // unitAmount is in cents, convert to dollars
         if (usersItem?.unitAmount) {
@@ -529,6 +596,7 @@ export default function BillingPage() {
                                             disabled={
                                                 isLoading || planAction.disabled
                                             }
+                                            loading={isLoading && isCurrentPlan}
                                         >
                                             {planAction.label}
                                         </Button>
@@ -736,9 +804,9 @@ export default function BillingPage() {
                                             <span>
                                                 {
                                                     tierLimits[pendingTier.tier]
-                                                        .sites
+                                                        .users
                                                 }{" "}
-                                                {t("billingSites") || "Sites"}
+                                                {t("billingUsers") || "Users"}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -746,9 +814,9 @@ export default function BillingPage() {
                                             <span>
                                                 {
                                                     tierLimits[pendingTier.tier]
-                                                        .users
+                                                        .sites
                                                 }{" "}
-                                                {t("billingUsers") || "Users"}
+                                                {t("billingSites") || "Sites"}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -787,14 +855,13 @@ export default function BillingPage() {
                         <Button
                             onClick={confirmTierChange}
                             disabled={isLoading}
+                            loading={isLoading}
                         >
-                            {isLoading
-                                ? t("billingProcessing") || "Processing..."
-                                : pendingTier?.action === "upgrade"
-                                  ? t("billingConfirmUpgradeButton") ||
-                                    "Confirm Upgrade"
-                                  : t("billingConfirmDowngradeButton") ||
-                                    "Confirm Downgrade"}
+                            {pendingTier?.action === "upgrade"
+                                ? t("billingConfirmUpgradeButton") ||
+                                  "Confirm Upgrade"
+                                : t("billingConfirmDowngradeButton") ||
+                                  "Confirm Downgrade"}
                         </Button>
                     </CredenzaFooter>
                 </CredenzaContent>

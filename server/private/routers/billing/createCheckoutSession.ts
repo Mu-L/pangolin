@@ -22,8 +22,12 @@ import logger from "@server/logger";
 import config from "@server/lib/config";
 import { fromError } from "zod-validation-error";
 import stripe from "#private/lib/stripe";
-import { getHomeLabFeaturePriceSet, getLineItems, getScaleFeaturePriceSet, getStarterFeaturePriceSet } from "@server/lib/billing";
-import { usageService } from "@server/lib/billing/usageService";
+import {
+    getHomeLabFeaturePriceSet,
+    getScaleFeaturePriceSet,
+    getStarterFeaturePriceSet
+} from "@server/lib/billing";
+import { getLineItems } from "@server/lib/billing/getLineItems";
 import Stripe from "stripe";
 
 const createCheckoutSessionSchema = z.strictObject({
@@ -31,7 +35,7 @@ const createCheckoutSessionSchema = z.strictObject({
 });
 
 const createCheckoutSessionBodySchema = z.strictObject({
-    tier: z.enum(["tier1", "tier2", "tier3"]),
+    tier: z.enum(["tier1", "tier2", "tier3"])
 });
 
 export async function createCheckoutSession(
@@ -90,12 +94,10 @@ export async function createCheckoutSession(
         } else if (tier === "tier3") {
             lineItems = await getLineItems(getScaleFeaturePriceSet(), orgId);
         } else {
-            return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Invalid plan")
-            );
+            return next(createHttpError(HttpCode.BAD_REQUEST, "Invalid plan"));
         }
 
-        logger.debug(`Line items: ${JSON.stringify(lineItems)}`)
+        logger.debug(`Line items: ${JSON.stringify(lineItems)}`);
 
         const session = await stripe!.checkout.sessions.create({
             client_reference_id: orgId, // So we can look it up the org later on the webhook

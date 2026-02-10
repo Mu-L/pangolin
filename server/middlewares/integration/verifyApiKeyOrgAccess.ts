@@ -4,7 +4,6 @@ import { apiKeyOrg } from "@server/db";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
-import logger from "@server/logger";
 
 export async function verifyApiKeyOrgAccess(
     req: Request,
