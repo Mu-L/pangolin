@@ -13,12 +13,13 @@
 
 import { build } from "@server/build";
 import { db, customers, subscriptions } from "@server/db";
+import { Tier } from "@server/types/Tiers";
 import { eq, and, ne } from "drizzle-orm";
 
 export async function getOrgTierData(
     orgId: string
-): Promise<{ tier: "tier1" | "tier2" | "tier3" | null; active: boolean }> {
-    let tier: "tier1" | "tier2" | "tier3" | null = null;
+): Promise<{ tier: Tier | null; active: boolean }> {
+    let tier: Tier | null = null;
     let active = false;
 
     if (build !== "saas") {
