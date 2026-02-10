@@ -280,7 +280,7 @@ authenticated.delete(
 authenticated.put(
     "/org/:orgId/login-page",
     verifyValidLicense,
-    verifyValidSubscription(tierMatrix.customAuthenticationDomain),
+    verifyValidSubscription(tierMatrix.loginPageDomain),
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createLoginPage),
     logActionAudit(ActionsEnum.createLoginPage),
@@ -290,7 +290,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/login-page/:loginPageId",
     verifyValidLicense,
-    verifyValidSubscription(tierMatrix.customAuthenticationDomain),
+    verifyValidSubscription(tierMatrix.loginPageDomain),
     verifyOrgAccess,
     verifyLoginPageAccess,
     verifyUserHasAction(ActionsEnum.updateLoginPage),
