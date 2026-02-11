@@ -129,6 +129,7 @@ export const limits = sqliteTable("limits", {
         })
         .notNull(),
     value: real("value"),
+    override: integer("override", { mode: "boolean" }).default(false),
     description: text("description")
 });
 

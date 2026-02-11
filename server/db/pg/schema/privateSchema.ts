@@ -140,6 +140,7 @@ export const limits = pgTable("limits", {
         })
         .notNull(),
     value: real("value"),
+    override: boolean("override").default(false),
     description: text("description")
 });
 
