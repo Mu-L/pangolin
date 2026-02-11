@@ -17,6 +17,9 @@ import { hashPassword } from "@server/auth/password";
 import { isValidIP } from "@server/lib/validators";
 import { isIpInCidr } from "@server/lib/ip";
 import { verifyExitNodeOrgAccess } from "#dynamic/lib/exitNodes";
+import { build } from "@server/build";
+import { usageService } from "@server/lib/billing/usageService";
+import { FeatureId } from "@server/lib/billing";
 
 const createSiteParamsSchema = z.strictObject({
     orgId: z.string()
@@ -123,6 +126,35 @@ export async function createSite(
                     `Organization with ID ${orgId} not found`
                 )
             );
+        }
+
+        if (build == "saas") {
+            const usage = await usageService.getUsage(orgId, FeatureId.SITES);
+            if (!usage) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "No usage data found for this organization"
+                    )
+                );
+            }
+            const rejectSites = await usageService.checkLimitSet(
+                orgId,
+                false,
+                FeatureId.SITES,
+                {
+                    ...usage,
+                    instantaneousValue: (usage.instantaneousValue || 0) + 1
+                } // We need to add one to know if we are violating the limit
+            );
+            if (rejectSites) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "Sites limit exceeded. Please upgrade your plan."
+                    )
+                );
+            }
         }
 
         let updatedAddress = null;
@@ -255,8 +287,8 @@ export async function createSite(
 
         const niceId = await getUniqueSiteName(orgId);
 
-        let newSite: Site;
-
+        let newSite: Site | undefined;
+        let numSites: Site[] | undefined;
         await db.transaction(async (trx) => {
             if (type == "newt") {
                 [newSite] = await trx
@@ -411,13 +443,35 @@ export async function createSite(
                 });
             }
 
-            return response<CreateSiteResponse>(res, {
-                data: newSite,
-                success: true,
-                error: false,
-                message: "Site created successfully",
-                status: HttpCode.CREATED
-            });
+            numSites = await trx
+                .select()
+                .from(sites)
+                .where(eq(sites.orgId, orgId));
+        });
+
+        if (numSites) {
+            await usageService.updateDaily(
+                orgId,
+                FeatureId.SITES,
+                numSites.length
+            );
+        }
+
+        if (!newSite) {
+            return next(
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Failed to create site"
+                )
+            );
+        }
+
+        return response<CreateSiteResponse>(res, {
+            data: newSite,
+            success: true,
+            error: false,
+            message: "Site created successfully",
+            status: HttpCode.CREATED
         });
     } catch (error) {
         logger.error(error);

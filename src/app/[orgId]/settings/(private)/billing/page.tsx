@@ -207,7 +207,7 @@ export default function GeneralPage() {
     };
 
     // Usage IDs
-    const SITE_UPTIME = "siteUptime";
+    const SITES = "sites";
     const USERS = "users";
     const EGRESS_DATA_MB = "egressDataMb";
     const DOMAINS = "domains";
@@ -362,12 +362,11 @@ export default function GeneralPage() {
             getLimitUsage: (v: any) => v.latestValue
         },
         {
-            id: SITE_UPTIME,
-            label: t("billingOnlineTime"),
+            id: SITES,
+            label: t("billingSites"),
             icon: <Clock className="h-4 w-4 text-green-500" />,
-            unit: "min",
-            info: t("billingOnlineTimeInfo"),
-            note: "Not counted on self-hosted nodes",
+            unit: "",
+            info: t("billingSitesInfo"),
             getDisplay: (v: any) => v.latestValue,
             getLimitDisplay: (v: any) => v.value,
             getUsage: (v: any) => v.latestValue,
