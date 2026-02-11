@@ -23,6 +23,8 @@ import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { GetOrgSubscriptionResponse } from "@server/routers/billing/types";
+import { usageService } from "@server/lib/billing/usageService";
+import { build } from "@server/build";
 
 // Import tables for billing
 import {
@@ -70,9 +72,19 @@ export async function getOrgSubscriptions(
             throw err;
         }
 
+        let limitsExceeded = false;
+        if (build === "saas") {
+            try {
+                limitsExceeded = await usageService.checkLimitSet(orgId);
+            } catch (err) {
+                logger.error("Error checking limits for org %s: %s", orgId, err);
+            }
+        }
+
         return response<GetOrgSubscriptionResponse>(res, {
             data: {
-                subscriptions
+                subscriptions,
+                ...(build === "saas" ? { limitsExceeded } : {})
             },
             success: true,
             error: false,
