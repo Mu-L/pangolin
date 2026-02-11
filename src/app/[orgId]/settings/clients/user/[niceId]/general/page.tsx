@@ -594,7 +594,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .biometricsEnabled
+                                                              .biometricsEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -612,7 +613,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .diskEncrypted
+                                                              .diskEncrypted ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -630,7 +632,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .firewallEnabled
+                                                              .firewallEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -648,7 +651,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .autoUpdatesEnabled
+                                                              .autoUpdatesEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -666,7 +670,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .tpmAvailable
+                                                              .tpmAvailable ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -685,7 +690,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .windowsAntivirusEnabled
+                                                              .windowsAntivirusEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -703,7 +709,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .macosSipEnabled
+                                                              .macosSipEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -722,7 +729,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .macosGatekeeperEnabled
+                                                              .macosGatekeeperEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -741,7 +749,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .macosFirewallStealthMode
+                                                              .macosFirewallStealthMode ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -759,7 +768,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .linuxAppArmorEnabled
+                                                              .linuxAppArmorEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
@@ -777,7 +787,8 @@ export default function GeneralPage() {
                                                 {isPaidUser
                                                     ? formatPostureValue(
                                                           client.posture
-                                                              .linuxSELinuxEnabled
+                                                              .linuxSELinuxEnabled ===
+                                                              true
                                                       )
                                                     : "-"}
                                             </InfoSectionContent>
