@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { Tier } from "@server/types/Tiers";
+import { useParams } from "next/navigation";
 
 const TIER_ORDER: Tier[] = ["tier1", "tier2", "tier3", "enterprise"];
 
@@ -37,20 +38,18 @@ const bannerContentClassName = "py-3 px-4";
 const bannerRowClassName =
     "flex items-center gap-2.5 text-sm text-muted-foreground";
 const bannerIconClassName = "size-4 shrink-0 text-purple-500";
-const PRICING_URL = "https://pangolin.net/pricing";
 
-function tierLinkRenderer(chunks: React.ReactNode) {
-    return (
-        <Link
-            href={PRICING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-purple-600 underline"
-        >
-            {chunks}
-            <ExternalLink className="size-3.5 shrink-0" />
-        </Link>
-    );
+function getTierLinkRenderer(billingHref: string) {
+    return function tierLinkRenderer(chunks: React.ReactNode) {
+        return (
+            <Link
+                href={billingHref}
+                className="inline-flex items-center gap-1 font-medium text-purple-600 underline"
+            >
+                {chunks}
+            </Link>
+        );
+    };
 }
 
 type Props = {
@@ -59,10 +58,14 @@ type Props = {
 
 export function PaidFeaturesAlert({ tiers }: Props) {
     const t = useTranslations();
+    const params = useParams();
+    const orgId = params?.orgId as string | undefined;
     const { hasSaasSubscription, hasEnterpriseLicense, isActive, subscriptionTier } = usePaidStatus();
     const { env } = useEnvContext();
     const requiredTier = getRequiredTier(tiers);
     const requiredTierName = requiredTier ? t(TIER_TRANSLATION_KEYS[requiredTier]) : null;
+    const billingHref = orgId ? `/${orgId}/settings/billing` : "https://pangolin.net/pricing";
+    const tierLinkRenderer = getTierLinkRenderer(billingHref);
 
     if (env.flags.disableEnterpriseFeatures) {
         return null;
