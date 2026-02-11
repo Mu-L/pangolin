@@ -33,6 +33,7 @@ export function usePaidStatus() {
         hasEnterpriseLicense,
         hasSaasSubscription,
         isPaidUser,
+        isActive: tierData?.active,
         subscriptionTier: tierData?.tier
     };
 }

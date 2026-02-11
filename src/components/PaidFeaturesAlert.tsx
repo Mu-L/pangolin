@@ -21,7 +21,7 @@ type Props = {
 
 export function PaidFeaturesAlert({ tiers }: Props) {
     const t = useTranslations();
-    const { hasSaasSubscription, hasEnterpriseLicense } = usePaidStatus();
+    const { hasSaasSubscription, hasEnterpriseLicense, isActive } = usePaidStatus();
     const { env } = useEnvContext();
 
     if (env.flags.disableEnterpriseFeatures) {
@@ -35,7 +35,7 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>
                             <KeyRound className="size-4 shrink-0 text-primary" />
-                            <span>{t("subscriptionRequiredToUse")}</span>
+                            <span>{isActive ? t("mustUpgradeToUse") : t("subscriptionRequiredToUse")}</span>
                         </div>
                     </CardContent>
                 </Card>

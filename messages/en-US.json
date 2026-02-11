@@ -1545,6 +1545,7 @@
     "billingLimitViolationDescription": "Your current usage exceeds the limits of this plan. After downgrading, all actions will be disabled until you reduce usage within the new limits. Please review the features below that are currently over the limits. Limits in violation:",
     "billingFeatureLossWarning": "Feature Availability Notice",
     "billingFeatureLossDescription": "By downgrading, features not available in the new plan will be automatically disabled. Some settings and configurations may be lost. Please review the pricing matrix to understand which features will no longer be available.",
+    "billingUsageExceedsLimit": "Current usage ({current}) exceeds limit ({limit})",
     "signUpTerms": {
         "IAgreeToThe": "I agree to the",
         "termsOfService": "terms of service",
@@ -1959,6 +1960,7 @@
     "orgAuthBackToSignIn": "Back to standard sign in",
     "orgAuthNoAccount": "Don't have an account?",
     "subscriptionRequiredToUse": "A subscription is required to use this feature.",
+    "mustUpgradeToUse": "You must upgrade your subscription to use this feature.",
     "idpDisabled": "Identity providers are disabled.",
     "orgAuthPageDisabled": "Organization auth page is disabled.",
     "domainRestartedDescription": "Domain verification restarted successfully",
