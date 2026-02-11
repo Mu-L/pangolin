@@ -188,7 +188,7 @@ export async function handleSubscriptionUpdated(
                             const orgId = customer.orgId;
 
                             if (!orgId) {
-                                logger.warn(
+                                logger.debug(
                                     `No orgId found in subscription metadata for subscription ${subscription.id}. Skipping usage reset.`
                                 );
                                 continue;
