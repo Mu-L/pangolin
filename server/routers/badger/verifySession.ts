@@ -39,7 +39,7 @@ import {
 import { logRequestAudit } from "./logRequestAudit";
 import cache from "@server/lib/cache";
 import { APP_VERSION } from "@server/lib/consts";
-import { isSubscribed } from "#private/lib/isSubscribed";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const verifyResourceSessionSchema = z.object({
