@@ -24,7 +24,7 @@ import { idp, idpOidcConfig } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { isSubscribed } from "#private/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z
