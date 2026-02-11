@@ -16,11 +16,9 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useActionState } from "react";
-import { ApprovalsEmptyState } from "./ApprovalsEmptyState";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardHeader } from "./ui/card";
-import { InfoPopup } from "./ui/info-popup";
 import { Label } from "./ui/label";
 import {
     Select,
@@ -30,6 +28,9 @@ import {
     SelectValue
 } from "./ui/select";
 import { Separator } from "./ui/separator";
+import { InfoPopup } from "./ui/info-popup";
+import { ApprovalsEmptyState } from "./ApprovalsEmptyState";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 
 export type ApprovalFeedProps = {
     orgId: string;
@@ -50,6 +51,8 @@ export function ApprovalFeed({
         Object.fromEntries(searchParams.entries())
     );
 
+    const { isPaidUser } = usePaidStatus();
+
     const {
         data,
         isFetching,
@@ -58,7 +61,10 @@ export function ApprovalFeed({
         hasNextPage,
         fetchNextPage,
         isFetchingNextPage
-    } = useInfiniteQuery(approvalQueries.listApprovals(orgId, filters));
+    } = useInfiniteQuery({
+        ...approvalQueries.listApprovals(orgId, filters),
+        enabled: isPaidUser
+    });
 
     const approvals = data?.pages.flatMap((data) => data.approvals) ?? [];
 

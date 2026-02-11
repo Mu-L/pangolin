@@ -56,18 +56,28 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
 }
 
 type PostureData = {
-    biometricsEnabled?: boolean | null;
-    diskEncrypted?: boolean | null;
-    firewallEnabled?: boolean | null;
-    autoUpdatesEnabled?: boolean | null;
-    tpmAvailable?: boolean | null;
-    windowsAntivirusEnabled?: boolean | null;
-    macosSipEnabled?: boolean | null;
-    macosGatekeeperEnabled?: boolean | null;
-    macosFirewallStealthMode?: boolean | null;
-    linuxAppArmorEnabled?: boolean | null;
-    linuxSELinuxEnabled?: boolean | null;
+    biometricsEnabled?: boolean | null | "-";
+    diskEncrypted?: boolean | null | "-";
+    firewallEnabled?: boolean | null | "-";
+    autoUpdatesEnabled?: boolean | null | "-";
+    tpmAvailable?: boolean | null | "-";
+    windowsAntivirusEnabled?: boolean | null | "-";
+    macosSipEnabled?: boolean | null | "-";
+    macosGatekeeperEnabled?: boolean | null | "-";
+    macosFirewallStealthMode?: boolean | null | "-";
+    linuxAppArmorEnabled?: boolean | null | "-";
+    linuxSELinuxEnabled?: boolean | null | "-";
 };
+
+function maskPostureDataWithPlaceholder(posture: PostureData): PostureData {
+    const masked: PostureData = {};
+    for (const key of Object.keys(posture) as (keyof PostureData)[]) {
+        if (posture[key] !== undefined && posture[key] !== null) {
+            (masked as Record<keyof PostureData, "-">)[key] = "-";
+        }
+    }
+    return masked;
+}
 
 function getPlatformPostureData(
     platform: string | null | undefined,
@@ -284,9 +294,11 @@ export async function getClient(
             );
         }
 
+        const isUserDevice = client.user !== null && client.user !== undefined;
+
         // Replace name with device name if OLM exists
         let clientName = client.clients.name;
-        if (client.olms) {
+        if (client.olms && isUserDevice) {
             const model = client.currentFingerprint?.deviceModel || null;
             clientName = getUserDeviceName(model, client.clients.name);
         }
@@ -294,32 +306,34 @@ export async function getClient(
         // Build fingerprint data if available
         const fingerprintData = client.currentFingerprint
             ? {
-                  username: client.currentFingerprint.username || null,
-                  hostname: client.currentFingerprint.hostname || null,
-                  platform: client.currentFingerprint.platform || null,
-                  osVersion: client.currentFingerprint.osVersion || null,
-                  kernelVersion:
-                      client.currentFingerprint.kernelVersion || null,
-                  arch: client.currentFingerprint.arch || null,
-                  deviceModel: client.currentFingerprint.deviceModel || null,
-                  serialNumber: client.currentFingerprint.serialNumber || null,
-                  firstSeen: client.currentFingerprint.firstSeen || null,
-                  lastSeen: client.currentFingerprint.lastSeen || null
-              }
+                username: client.currentFingerprint.username || null,
+                hostname: client.currentFingerprint.hostname || null,
+                platform: client.currentFingerprint.platform || null,
+                osVersion: client.currentFingerprint.osVersion || null,
+                kernelVersion:
+                    client.currentFingerprint.kernelVersion || null,
+                arch: client.currentFingerprint.arch || null,
+                deviceModel: client.currentFingerprint.deviceModel || null,
+                serialNumber: client.currentFingerprint.serialNumber || null,
+                firstSeen: client.currentFingerprint.firstSeen || null,
+                lastSeen: client.currentFingerprint.lastSeen || null
+            }
             : null;
 
         // Build posture data if available (platform-specific)
-        // Only return posture data if org is licensed/subscribed
-        let postureData: PostureData | null = null;
+        // Licensed: real values; not licensed: same keys but values set to "-"
+        const rawPosture = getPlatformPostureData(
+            client.currentFingerprint?.platform || null,
+            client.currentFingerprint
+        );
         const isOrgLicensed = await isLicensedOrSubscribed(
             client.clients.orgId
         );
-        if (isOrgLicensed) {
-            postureData = getPlatformPostureData(
-                client.currentFingerprint?.platform || null,
-                client.currentFingerprint
-            );
-        }
+        const postureData: PostureData | null = rawPosture
+            ? isOrgLicensed
+                ? rawPosture
+                : maskPostureDataWithPlaceholder(rawPosture)
+            : null;
 
         const data: GetClientResponse = {
             ...client.clients,

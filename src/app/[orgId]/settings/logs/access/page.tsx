@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import axios from "axios";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -209,7 +210,8 @@ export default function GeneralPage() {
         console.log("Date range changed:", { startDate, endDate, page, size });
         if (
             (build == "saas" && !subscription?.subscribed) ||
-            (build == "enterprise" && !isUnlocked())
+            (build == "enterprise" && !isUnlocked()) ||
+            build === "oss"
         ) {
             console.log(
                 "Access denied: subscription inactive or license locked"
@@ -611,21 +613,7 @@ export default function GeneralPage() {
                 description={t("accessLogsDescription")}
             />
 
-            {build == "saas" && !subscription?.subscribed ? (
-                <Alert variant="info" className="mb-6">
-                    <AlertDescription>
-                        {t("subscriptionRequiredToUse")}
-                    </AlertDescription>
-                </Alert>
-            ) : null}
-
-            {build == "enterprise" && !isUnlocked() ? (
-                <Alert variant="info" className="mb-6">
-                    <AlertDescription>
-                        {t("licenseRequiredToUse")}
-                    </AlertDescription>
-                </Alert>
-            ) : null}
+            <PaidFeaturesAlert />
 
             <LogDataTable
                 columns={columns}
@@ -656,7 +644,8 @@ export default function GeneralPage() {
                 renderExpandedRow={renderExpandedRow}
                 disabled={
                     (build == "saas" && !subscription?.subscribed) ||
-                    (build == "enterprise" && !isUnlocked())
+                    (build == "enterprise" && !isUnlocked()) ||
+                    build === "oss"
                 }
             />
         </>

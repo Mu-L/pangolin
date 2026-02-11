@@ -55,14 +55,12 @@ export default async function GeneralSettingsPage({
         {
             title: t("security"),
             href: `/{orgId}/settings/general/security`
-        }
-    ];
-    if (build !== "oss") {
-        navItems.push({
+        },
+        {
             title: t("authPage"),
             href: `/{orgId}/settings/general/auth-page`
-        });
-    }
+        }
+    ];
 
     return (
         <>
