@@ -1541,6 +1541,10 @@
     "billingProcessing": "Processing...",
     "billingConfirmUpgradeButton": "Confirm Upgrade",
     "billingConfirmDowngradeButton": "Confirm Downgrade",
+    "billingLimitViolationWarning": "Usage Exceeds New Plan Limits",
+    "billingLimitViolationDescription": "Your current usage exceeds the limits of this plan. After downgrading, all actions will be disabled until you reduce usage within the new limits. Please review the features below that are currently over the limits. Limits in violation:",
+    "billingFeatureLossWarning": "Feature Availability Notice",
+    "billingFeatureLossDescription": "By downgrading, features not available in the new plan will be automatically disabled. Some settings and configurations may be lost. Please review the pricing matrix to understand which features will no longer be available.",
     "signUpTerms": {
         "IAgreeToThe": "I agree to the",
         "termsOfService": "terms of service",

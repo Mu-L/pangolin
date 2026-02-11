@@ -34,7 +34,12 @@ import {
     CredenzaTitle
 } from "@app/components/Credenza";
 import { cn } from "@app/lib/cn";
-import { CreditCard, ExternalLink, Check } from "lucide-react";
+import { CreditCard, ExternalLink, Check, AlertTriangle } from "lucide-react";
+import {
+    Alert,
+    AlertTitle,
+    AlertDescription
+} from "@app/components/ui/alert";
 import {
     GetOrgSubscriptionResponse,
     GetOrgUsageResponse
@@ -530,6 +535,63 @@ export default function BillingPage() {
         return licenseSubscription.items.length;
     };
 
+    // Check if downgrading to a tier would violate current usage limits
+    const checkLimitViolations = (targetTier: Tier): Array<{
+        feature: string;
+        currentUsage: number;
+        newLimit: number;
+    }> => {
+        const violations: Array<{
+            feature: string;
+            currentUsage: number;
+            newLimit: number;
+        }> = [];
+
+        const limits = tierLimits[targetTier];
+
+        // Check users
+        const usersUsage = getUsageValue(USERS);
+        if (limits.users > 0 && usersUsage > limits.users) {
+            violations.push({
+                feature: "Users",
+                currentUsage: usersUsage,
+                newLimit: limits.users
+            });
+        }
+
+        // Check sites
+        const sitesUsage = getUsageValue(SITES);
+        if (limits.sites > 0 && sitesUsage > limits.sites) {
+            violations.push({
+                feature: "Sites",
+                currentUsage: sitesUsage,
+                newLimit: limits.sites
+            });
+        }
+
+        // Check domains
+        const domainsUsage = getUsageValue(DOMAINS);
+        if (limits.domains > 0 && domainsUsage > limits.domains) {
+            violations.push({
+                feature: "Domains",
+                currentUsage: domainsUsage,
+                newLimit: limits.domains
+            });
+        }
+
+        // Check remote nodes
+        const remoteNodesUsage = getUsageValue(REMOTE_EXIT_NODES);
+        if (limits.remoteNodes > 0 && remoteNodesUsage > limits.remoteNodes) {
+            violations.push({
+                feature: "Remote Exit Nodes",
+                currentUsage: remoteNodesUsage,
+                newLimit: limits.remoteNodes
+            });
+        }
+
+        return violations;
+    };
+
     if (subscriptionLoading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -843,6 +905,48 @@ export default function BillingPage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Warning for limit violations when downgrading */}
+                                {pendingTier.action === "downgrade" && (() => {
+                                    const violations = checkLimitViolations(pendingTier.tier);
+                                    if (violations.length > 0) {
+                                        return (
+                                            <Alert variant="destructive">
+                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertTitle>
+                                                    {t("billingLimitViolationWarning") || "Usage Exceeds New Plan Limits"}
+                                                </AlertTitle>
+                                                <AlertDescription>
+                                                    <p className="mb-3">
+                                                        {t("billingLimitViolationDescription") || "Your current usage exceeds the limits of this plan. The following features will be disabled until you reduce usage:"}
+                                                    </p>
+                                                    <ul className="space-y-2">
+                                                        {violations.map((violation, index) => (
+                                                            <li key={index} className="flex items-center gap-2">
+                                                                <span className="font-medium">{violation.feature}:</span>
+                                                                <span>Currently using {violation.currentUsage}, new limit is {violation.newLimit}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </AlertDescription>
+                                            </Alert>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
+                                {/* Warning for feature loss when downgrading */}
+                                {pendingTier.action === "downgrade" && (
+                                    <Alert variant="warning">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertTitle>
+                                            {t("billingFeatureLossWarning") || "Feature Availability Notice"}
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            {t("billingFeatureLossDescription") || "By downgrading, features not available in the new plan will be automatically disabled. Some settings and configurations may be lost. Please review the pricing matrix to understand which features will no longer be available."}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                             </div>
                         )}
                     </CredenzaBody>
