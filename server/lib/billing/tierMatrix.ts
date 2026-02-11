@@ -2,19 +2,19 @@ import { Tier } from "@server/types/Tiers";
 
 export enum TierFeature {
     OrgOidc = "orgOidc",
-    LoginPageDomain = "loginPageDomain",
-    DeviceApprovals = "deviceApprovals",
-    LoginPageBranding = "loginPageBranding",
+    LoginPageDomain = "loginPageDomain", // handle downgrade by removing custom domain
+    DeviceApprovals = "deviceApprovals", // handle downgrade by disabling device approvals
+    LoginPageBranding = "loginPageBranding", // handle downgrade by setting to default branding
     LogExport = "logExport",
-    AccessLogs = "accessLogs",
-    ActionLogs = "actionLogs",
+    AccessLogs = "accessLogs", // set the retention period to none on downgrade
+    ActionLogs = "actionLogs", // set the retention period to none on downgrade
     RotateCredentials = "rotateCredentials",
-    MaintencePage = "maintencePage",
+    MaintencePage = "maintencePage", // handle downgrade
     DevicePosture = "devicePosture",
-    TwoFactorEnforcement = "twoFactorEnforcement",
-    SessionDurationPolicies = "sessionDurationPolicies",
-    PasswordExpirationPolicies = "passwordExpirationPolicies",
-    AutoProvisioning = "autoProvisioning"
+    TwoFactorEnforcement = "twoFactorEnforcement", // handle downgrade by setting to optional
+    SessionDurationPolicies = "sessionDurationPolicies", // handle downgrade by setting to default duration
+    PasswordExpirationPolicies = "passwordExpirationPolicies", // handle downgrade by setting to default duration
+    AutoProvisioning = "autoProvisioning" // handle downgrade by disabling auto provisioning
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {

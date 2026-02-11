@@ -32,6 +32,7 @@ import { sendEmail } from "@server/emails";
 import EnterpriseEditionKeyGenerated from "@server/emails/templates/EnterpriseEditionKeyGenerated";
 import config from "@server/lib/config";
 import { getFeatureIdByPriceId } from "@server/lib/billing/features";
+import { handleTierChange } from "../featureLifecycle";
 
 export async function handleSubscriptionCreated(
     subscription: Stripe.Subscription
@@ -149,6 +150,12 @@ export async function handleSubscriptionCreated(
                 subscription.status,
                 type
             );
+
+            // Handle initial tier setup - disable features not available in this tier
+            logger.info(
+                `Setting up initial tier features for org ${customer.orgId} with type ${type}`
+            );
+            await handleTierChange(customer.orgId, type);
 
             const [orgUserRes] = await db
                 .select()
