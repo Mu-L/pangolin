@@ -48,6 +48,7 @@ import { useTranslations } from "use-intl";
 import Link from "next/link";
 import { Tier } from "@server/types/Tiers";
 import {
+    freeLimitSet,
     tier1LimitSet,
     tier2LimitSet,
     tier3LimitSet
@@ -69,7 +70,7 @@ const planOptions: PlanOption[] = [
     {
         id: "starter",
         name: "Starter",
-        price: "Starter",
+        price: "Free",
         tierType: null
     },
     {
@@ -103,9 +104,15 @@ const planOptions: PlanOption[] = [
 
 // Tier limits mapping derived from limit sets
 const tierLimits: Record<
-    Tier,
+    Tier | "starter",
     { users: number; sites: number; domains: number; remoteNodes: number }
 > = {
+    starter: {
+        users: freeLimitSet[FeatureId.USERS]?.value ?? 0,
+        sites: freeLimitSet[FeatureId.SITES]?.value ?? 0,
+        domains: freeLimitSet[FeatureId.DOMAINS]?.value ?? 0,
+        remoteNodes: freeLimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+    },
     tier1: {
         users: tier1LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier1LimitSet[FeatureId.SITES]?.value ?? 0,
@@ -171,7 +178,7 @@ export default function BillingPage() {
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingTier, setPendingTier] = useState<{
-        tier: Tier;
+        tier: Tier | "starter";
         action: "upgrade" | "downgrade";
         planName: string;
         price: string;
@@ -390,7 +397,10 @@ export default function BillingPage() {
             pendingTier.action === "upgrade" ||
             pendingTier.action === "downgrade"
         ) {
-            if (hasSubscription) {
+            // If downgrading to starter (free tier), go to Stripe portal
+            if (pendingTier.tier === "starter") {
+                handleModifySubscription();
+            } else if (hasSubscription) {
                 handleChangeTier(pendingTier.tier);
             } else {
                 handleStartSubscription(pendingTier.tier);
@@ -402,7 +412,7 @@ export default function BillingPage() {
     };
 
     const showTierConfirmation = (
-        tier: Tier,
+        tier: Tier | "starter",
         action: "upgrade" | "downgrade",
         planName: string,
         price: string
@@ -468,6 +478,14 @@ export default function BillingPage() {
                             "downgrade",
                             plan.name,
                             plan.price + (" " + plan.priceDetail || "")
+                        );
+                    } else if (plan.id === "starter") {
+                        // Show confirmation for downgrading to starter (free tier)
+                        showTierConfirmation(
+                            "starter",
+                            "downgrade",
+                            plan.name,
+                            plan.price
                         );
                     } else {
                         handleModifySubscription();
@@ -536,7 +554,7 @@ export default function BillingPage() {
     };
 
     // Check if downgrading to a tier would violate current usage limits
-    const checkLimitViolations = (targetTier: Tier): Array<{
+    const checkLimitViolations = (targetTier: Tier | "starter"): Array<{
         feature: string;
         currentUsage: number;
         newLimit: number;
@@ -855,56 +873,58 @@ export default function BillingPage() {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <h4 className="font-semibold mb-3">
-                                        {t("billingPlanIncludes") ||
-                                            "Plan Includes:"}
-                                    </h4>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Check className="h-4 w-4 text-green-600" />
-                                            <span>
-                                                {
-                                                    tierLimits[pendingTier.tier]
-                                                        .users
-                                                }{" "}
-                                                {t("billingUsers") || "Users"}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Check className="h-4 w-4 text-green-600" />
-                                            <span>
-                                                {
-                                                    tierLimits[pendingTier.tier]
-                                                        .sites
-                                                }{" "}
-                                                {t("billingSites") || "Sites"}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Check className="h-4 w-4 text-green-600" />
-                                            <span>
-                                                {
-                                                    tierLimits[pendingTier.tier]
-                                                        .domains
-                                                }{" "}
-                                                {t("billingDomains") ||
-                                                    "Domains"}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Check className="h-4 w-4 text-green-600" />
-                                            <span>
-                                                {
-                                                    tierLimits[pendingTier.tier]
-                                                        .remoteNodes
-                                                }{" "}
-                                                {t("billingRemoteNodes") ||
-                                                    "Remote Nodes"}
-                                            </span>
+                                {tierLimits[pendingTier.tier] && (
+                                    <div>
+                                        <h4 className="font-semibold mb-3">
+                                            {t("billingPlanIncludes") ||
+                                                "Plan Includes:"}
+                                        </h4>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>
+                                                    {
+                                                        tierLimits[pendingTier.tier]
+                                                            .users
+                                                    }{" "}
+                                                    {t("billingUsers") || "Users"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>
+                                                    {
+                                                        tierLimits[pendingTier.tier]
+                                                            .sites
+                                                    }{" "}
+                                                    {t("billingSites") || "Sites"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>
+                                                    {
+                                                        tierLimits[pendingTier.tier]
+                                                            .domains
+                                                    }{" "}
+                                                    {t("billingDomains") ||
+                                                        "Domains"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>
+                                                    {
+                                                        tierLimits[pendingTier.tier]
+                                                            .remoteNodes
+                                                    }{" "}
+                                                    {t("billingRemoteNodes") ||
+                                                        "Remote Nodes"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Warning for limit violations when downgrading */}
                                 {pendingTier.action === "downgrade" && (() => {
