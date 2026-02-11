@@ -10,10 +10,11 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { Tier } from "@server/types/Tiers";
 
 const bannerClassName =
-    "mb-6 border-primary/30 bg-linear-to-br from-primary/10 via-background to-background overflow-hidden";
+    "mb-6 border-purple-500/30 bg-linear-to-br from-purple-500/10 via-background to-background overflow-hidden";
 const bannerContentClassName = "py-3 px-4";
 const bannerRowClassName =
     "flex items-center gap-2.5 text-sm text-muted-foreground";
+const bannerIconClassName = "size-4 shrink-0 text-purple-500";
 
 type Props = {
     tiers: Tier[];
@@ -34,7 +35,7 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                 <Card className={bannerClassName}>
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>
-                            <KeyRound className="size-4 shrink-0 text-primary" />
+                            <KeyRound className={bannerIconClassName} />
                             <span>{isActive ? t("mustUpgradeToUse") : t("subscriptionRequiredToUse")}</span>
                         </div>
                     </CardContent>
@@ -45,7 +46,7 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                 <Card className={bannerClassName}>
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>
-                            <KeyRound className="size-4 shrink-0 text-primary" />
+                            <KeyRound className={bannerIconClassName} />
                             <span>{t("licenseRequiredToUse")}</span>
                         </div>
                     </CardContent>
@@ -53,10 +54,10 @@ export function PaidFeaturesAlert({ tiers }: Props) {
             ) : null}
 
             {build === "oss" && !hasEnterpriseLicense ? (
-                <Card className="mb-6 border-purple-500/30 bg-linear-to-br from-purple-500/10 via-background to-background overflow-hidden">
+                <Card className={bannerClassName}>
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>
-                            <KeyRound className="size-4 shrink-0 text-purple-500" />
+                            <KeyRound className={bannerIconClassName} />
                             <span>
                                 {t.rich("ossEnterpriseEditionRequired", {
                                     enterpriseEditionLink: (chunks) => (
