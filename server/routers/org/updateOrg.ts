@@ -120,7 +120,7 @@ export async function updateOrg(
             // Determine max allowed retention days based on tier
             let maxRetentionDays: number | null = null;
             if (!tier) {
-                maxRetentionDays = 0;
+                maxRetentionDays = 3;
             } else if (tier === "tier1") {
                 maxRetentionDays = 7;
             } else if (tier === "tier2") {

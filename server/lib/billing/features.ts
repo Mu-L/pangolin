@@ -57,7 +57,7 @@ export function getFeatureIdByMetricId(
 export type FeaturePriceSet = Partial<Record<FeatureId, string>>;
 
 export const homeLabFeaturePriceSet: FeaturePriceSet = {
-    [FeatureId.TIER1]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
+    [FeatureId.TIER1]: "price_1SzVE3D3Ee2Ir7Wm6wT5Dl3G"
 };
 
 export const homeLabFeaturePriceSetSandbox: FeaturePriceSet = {
@@ -76,7 +76,7 @@ export function getHomeLabFeaturePriceSet(): FeaturePriceSet {
 }
 
 export const tier2FeaturePriceSet: FeaturePriceSet = {
-    [FeatureId.USERS]: "price_1SxaEHDCpkOb237BD9lBkPiR"
+    [FeatureId.USERS]: "price_1SzVCcD3Ee2Ir7Wmn6U3KvPN"
 };
 
 export const tier2FeaturePriceSetSandbox: FeaturePriceSet = {
@@ -95,7 +95,7 @@ export function getStarterFeaturePriceSet(): FeaturePriceSet {
 }
 
 export const tier3FeaturePriceSet: FeaturePriceSet = {
-    [FeatureId.USERS]: "price_1SxaEODCpkOb237BiXdCBSfs"
+    [FeatureId.USERS]: "price_1SzVDKD3Ee2Ir7WmPtOKNusv"
 };
 
 export const tier3FeaturePriceSetSandbox: FeaturePriceSet = {

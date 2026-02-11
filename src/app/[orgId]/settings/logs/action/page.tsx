@@ -472,9 +472,9 @@ export default function GeneralPage() {
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing}
                 onExport={() => startTransition(exportData)}
-                isExportDisabled={
-                    !isPaidUser(tierMatrix.logExport) || build === "oss"
-                }
+                // isExportDisabled={ // not disabling this because the user should be able to click the button and get the feedback about needing to upgrade the plan
+                //     !isPaidUser(tierMatrix.logExport) || build === "oss"
+                // }
                 isExporting={isExporting}
                 onDateRangeChange={handleDateRangeChange}
                 dateRange={{
