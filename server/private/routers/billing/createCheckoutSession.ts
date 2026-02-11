@@ -105,6 +105,7 @@ export async function createCheckoutSession(
             line_items: lineItems,
             customer: customer.customerId,
             mode: "subscription",
+            allow_promotion_codes: true,
             success_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing?canceled=true`
         });
