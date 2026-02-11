@@ -21,25 +21,10 @@ class LimitService {
                     .where(eq(limits.limitId, limitId))
                     .limit(1);
 
-                if (!limit) {
-                    logger.warn(
-                        `Limit with ID ${limitId} not found for org ${orgId}...`
-                    );
-                    continue;
-                }
-
                 // check if its overriden
-                if (limit.override) {
+                if (limit && limit.override) {
                     logger.debug(
                         `Skipping limit ${limitId} for org ${orgId} since it is overridden...`
-                    );
-                    continue;
-                }
-
-                // dont write if the value is the same
-                if (limit.value === value) {
-                    logger.debug(
-                        `Skipping limit ${limitId} for org ${orgId} since the value is the same (${value})...`
                     );
                     continue;
                 }
