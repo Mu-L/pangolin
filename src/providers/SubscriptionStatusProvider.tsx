@@ -68,6 +68,8 @@ export function SubscriptionStatusProvider({
 
     const [subscribed, setSubscribed] = useState<boolean>(isSubscribed());
 
+    const limitsExceeded = subscriptionStatusState?.limitsExceeded ?? false;
+
     return (
         <SubscriptionStatusContext.Provider
             value={{
@@ -75,7 +77,8 @@ export function SubscriptionStatusProvider({
                 updateSubscriptionStatus,
                 getTier,
                 isSubscribed,
-                subscribed
+                subscribed,
+                limitsExceeded
             }}
         >
             {children}

@@ -8,6 +8,8 @@ type SubscriptionStatusContextType = {
     getTier: () => { tier: Tier | null; active: boolean };
     isSubscribed: () => boolean;
     subscribed: boolean;
+    /** True when org has exceeded plan limits (sites, users, etc.). Only set when build === saas. */
+    limitsExceeded: boolean;
 };
 
 const SubscriptionStatusContext = createContext<

@@ -18,6 +18,8 @@
     "componentsMember": "You're a member of {count, plural, =0 {no organization} one {one organization} other {# organizations}}.",
     "componentsInvalidKey": "Invalid or expired license keys detected. Follow license terms to continue using all features.",
     "dismiss": "Dismiss",
+    "subscriptionViolationMessage": "You're beyond your limits for your current plan. Correct the problem by removing sites, users, or other resources to stay within your plan.",
+    "subscriptionViolationViewBilling": "View billing",
     "componentsLicenseViolation": "License Violation: This server is using {usedSites} sites which exceeds its licensed limit of {maxSites} sites. Follow license terms to continue using all features.",
     "componentsSupporterMessage": "Thank you for supporting Pangolin as a {tier}!",
     "inviteErrorNotValid": "We're sorry, but it looks like the invite you're trying to access has not been accepted or is no longer valid.",
