@@ -22,9 +22,9 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import stripe from "#private/lib/stripe";
 import {
-    getHomeLabFeaturePriceSet,
-    getScaleFeaturePriceSet,
-    getStarterFeaturePriceSet,
+    getTier1FeaturePriceSet,
+    getTier3FeaturePriceSet,
+    getTier2FeaturePriceSet,
     FeatureId,
     type FeaturePriceSet
 } from "@server/lib/billing";
@@ -113,11 +113,11 @@ export async function changeTier(
         // Get the target tier's price set
         let targetPriceSet: FeaturePriceSet;
         if (tier === "tier1") {
-            targetPriceSet = getHomeLabFeaturePriceSet();
+            targetPriceSet = getTier1FeaturePriceSet();
         } else if (tier === "tier2") {
-            targetPriceSet = getStarterFeaturePriceSet();
+            targetPriceSet = getTier2FeaturePriceSet();
         } else if (tier === "tier3") {
-            targetPriceSet = getScaleFeaturePriceSet();
+            targetPriceSet = getTier3FeaturePriceSet();
         } else {
             return next(createHttpError(HttpCode.BAD_REQUEST, "Invalid tier"));
         }

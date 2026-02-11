@@ -15,9 +15,9 @@ import {
     getLicensePriceSet,
 } from "@server/lib/billing/licenses";
 import {
-    getHomeLabFeaturePriceSet,
-    getStarterFeaturePriceSet,
-    getScaleFeaturePriceSet,
+    getTier1FeaturePriceSet,
+    getTier2FeaturePriceSet,
+    getTier3FeaturePriceSet,
 } from "@server/lib/billing/features";
 import Stripe from "stripe";
 import { Tier } from "@server/types/Tiers";
@@ -40,19 +40,19 @@ export function getSubType(fullSubscription: Stripe.Response<Stripe.Subscription
         }
 
         // Check if price ID matches home lab tier
-        const homeLabPrices = Object.values(getHomeLabFeaturePriceSet());
+        const homeLabPrices = Object.values(getTier1FeaturePriceSet());
         if (homeLabPrices.includes(priceId)) {
             return "tier1";
         }
 
         // Check if price ID matches tier2 tier
-        const tier2Prices = Object.values(getStarterFeaturePriceSet());
+        const tier2Prices = Object.values(getTier2FeaturePriceSet());
         if (tier2Prices.includes(priceId)) {
             return "tier2";
         }
 
         // Check if price ID matches tier3 tier
-        const tier3Prices = Object.values(getScaleFeaturePriceSet());
+        const tier3Prices = Object.values(getTier3FeaturePriceSet());
         if (tier3Prices.includes(priceId)) {
             return "tier3";
         }
