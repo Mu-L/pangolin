@@ -26,8 +26,9 @@ import logger from "@server/logger";
 import { getFeatureIdByMetricId, getFeatureIdByPriceId } from "@server/lib/billing/features";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
-import { getSubType } from "./getSubType";
+import { getSubType, SubscriptionType } from "./getSubType";
 import privateConfig from "#private/lib/config";
+import { handleTierChange } from "../featureLifecycle";
 
 export async function handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
@@ -65,6 +66,7 @@ export async function handleSubscriptionUpdated(
             .limit(1);
 
         const type = getSubType(fullSubscription);
+        const previousType = existingSubscription.type as SubscriptionType | null;
 
         await db
             .update(subscriptions)
@@ -78,6 +80,14 @@ export async function handleSubscriptionUpdated(
                 type: type
             })
             .where(eq(subscriptions.subscriptionId, subscription.id));
+
+        // Handle tier change if the subscription type changed
+        if (type && type !== previousType) {
+            logger.info(
+                `Tier change detected for org ${customer.orgId}: ${previousType} -> ${type}`
+            );
+            await handleTierChange(customer.orgId, type, previousType ?? undefined);
+        }
 
         // Upsert subscription items
         if (Array.isArray(fullSubscription.items?.data)) {
@@ -268,6 +278,18 @@ export async function handleSubscriptionUpdated(
                     subscription.status,
                     type
                 );
+
+                // Handle feature lifecycle when subscription is canceled or becomes unpaid
+                if (
+                    subscription.status === "canceled" ||
+                    subscription.status === "unpaid" ||
+                    subscription.status === "incomplete_expired"
+                ) {
+                    logger.info(
+                        `Subscription ${subscription.id} for org ${customer.orgId} is ${subscription.status}, disabling paid features`
+                    );
+                    await handleTierChange(customer.orgId, null, previousType ?? undefined);
+                }
             } else if (type === "license") {
                 if (subscription.status === "canceled" || subscription.status == "unpaid" || subscription.status == "incomplete_expired") {
                     try {

@@ -27,6 +27,7 @@ import { AudienceIds, moveEmailToAudience } from "#private/lib/resend";
 import { getSubType } from "./getSubType";
 import stripe from "#private/lib/stripe";
 import privateConfig from "#private/lib/config";
+import { handleTierChange } from "../featureLifecycle";
 
 export async function handleSubscriptionDeleted(
     subscription: Stripe.Subscription
@@ -86,6 +87,12 @@ export async function handleSubscriptionDeleted(
                 subscription.status,
                 type
             );
+
+            // Handle feature lifecycle for cancellation - disable all tier-specific features
+            logger.info(
+                `Disabling tier-specific features for org ${customer.orgId} due to subscription deletion`
+            );
+            await handleTierChange(customer.orgId, null, type);
 
             const [orgUserRes] = await db
                 .select()
