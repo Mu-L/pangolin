@@ -65,6 +65,11 @@ export class PrivateConfig {
                 this.rawPrivateConfig.branding?.logo?.dark_path || undefined;
         }
 
+        if (this.rawPrivateConfig.app.identity_provider_mode) {
+            process.env.IDENTITY_PROVIDER_MODE =
+                this.rawPrivateConfig.app.identity_provider_mode;
+        }
+
         process.env.BRANDING_LOGO_AUTH_WIDTH = this.rawPrivateConfig.branding
             ?.logo?.auth_page?.width
             ? this.rawPrivateConfig.branding?.logo?.auth_page?.width.toString()
@@ -129,10 +134,8 @@ export class PrivateConfig {
             process.env.USE_PANGOLIN_DNS =
                 this.rawPrivateConfig.flags.use_pangolin_dns.toString();
         }
-        if (this.rawPrivateConfig.flags.use_org_only_idp) {
-            process.env.USE_ORG_ONLY_IDP =
-                this.rawPrivateConfig.flags.use_org_only_idp.toString();
-        }
+
+        console.log(this.rawPrivateConfig.app.identity_provider_mode);
     }
 
     public getRawPrivateConfig() {
