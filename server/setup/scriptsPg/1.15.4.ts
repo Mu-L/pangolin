@@ -11,9 +11,6 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(
-            sql`ALTER TABLE "subscriptions" ADD COLUMN "type" varchar(50);`
-        );
-        await db.execute(
             sql`ALTER TABLE "resources" ADD COLUMN "postAuthPath" text;`
         );
 
