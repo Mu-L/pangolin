@@ -25,7 +25,7 @@ import { generateOidcRedirectUrl } from "@server/lib/idp/generateRedirectUrl";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import { CreateOrgIdpResponse } from "@server/routers/orgIdp/types";
-import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { isSubscribed } from "#private/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z.strictObject({ orgId: z.string().nonempty() });

@@ -56,22 +56,22 @@ export function getFeatureIdByMetricId(
 
 export type FeaturePriceSet = Partial<Record<FeatureId, string>>;
 
-export const homeLabFeaturePriceSet: FeaturePriceSet = {
+export const tier1FeaturePriceSet: FeaturePriceSet = {
     [FeatureId.TIER1]: "price_1SzVE3D3Ee2Ir7Wm6wT5Dl3G"
 };
 
-export const homeLabFeaturePriceSetSandbox: FeaturePriceSet = {
+export const tier1FeaturePriceSetSandbox: FeaturePriceSet = {
     [FeatureId.TIER1]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
 };
 
-export function getHomeLabFeaturePriceSet(): FeaturePriceSet {
+export function getTier1FeaturePriceSet(): FeaturePriceSet {
     if (
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
     ) {
-        return homeLabFeaturePriceSet;
+        return tier1FeaturePriceSet;
     } else {
-        return homeLabFeaturePriceSetSandbox;
+        return tier1FeaturePriceSetSandbox;
     }
 }
 
@@ -83,7 +83,7 @@ export const tier2FeaturePriceSetSandbox: FeaturePriceSet = {
     [FeatureId.USERS]: "price_1SxaEHDCpkOb237BD9lBkPiR"
 };
 
-export function getStarterFeaturePriceSet(): FeaturePriceSet {
+export function getTier2FeaturePriceSet(): FeaturePriceSet {
     if (
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
@@ -102,7 +102,7 @@ export const tier3FeaturePriceSetSandbox: FeaturePriceSet = {
     [FeatureId.USERS]: "price_1SxaEODCpkOb237BiXdCBSfs"
 };
 
-export function getScaleFeaturePriceSet(): FeaturePriceSet {
+export function getTier3FeaturePriceSet(): FeaturePriceSet {
     if (
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
@@ -116,9 +116,9 @@ export function getScaleFeaturePriceSet(): FeaturePriceSet {
 export function getFeatureIdByPriceId(priceId: string): FeatureId | undefined {
     // Check all feature price sets
     const allPriceSets = [
-        getHomeLabFeaturePriceSet(),
-        getStarterFeaturePriceSet(),
-        getScaleFeaturePriceSet()
+        getTier1FeaturePriceSet(),
+        getTier2FeaturePriceSet(),
+        getTier3FeaturePriceSet()
     ];
 
     for (const priceSet of allPriceSets) {

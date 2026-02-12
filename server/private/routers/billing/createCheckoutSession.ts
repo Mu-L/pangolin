@@ -23,9 +23,9 @@ import config from "@server/lib/config";
 import { fromError } from "zod-validation-error";
 import stripe from "#private/lib/stripe";
 import {
-    getHomeLabFeaturePriceSet,
-    getScaleFeaturePriceSet,
-    getStarterFeaturePriceSet
+    getTier1FeaturePriceSet,
+    getTier3FeaturePriceSet,
+    getTier2FeaturePriceSet
 } from "@server/lib/billing";
 import { getLineItems } from "@server/lib/billing/getLineItems";
 import Stripe from "stripe";
@@ -88,11 +88,11 @@ export async function createCheckoutSession(
 
         let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
         if (tier === "tier1") {
-            lineItems = await getLineItems(getHomeLabFeaturePriceSet(), orgId);
+            lineItems = await getLineItems(getTier1FeaturePriceSet(), orgId);
         } else if (tier === "tier2") {
-            lineItems = await getLineItems(getStarterFeaturePriceSet(), orgId);
+            lineItems = await getLineItems(getTier2FeaturePriceSet(), orgId);
         } else if (tier === "tier3") {
-            lineItems = await getLineItems(getScaleFeaturePriceSet(), orgId);
+            lineItems = await getLineItems(getTier3FeaturePriceSet(), orgId);
         } else {
             return next(createHttpError(HttpCode.BAD_REQUEST, "Invalid plan"));
         }
