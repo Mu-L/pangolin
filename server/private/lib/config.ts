@@ -134,8 +134,6 @@ export class PrivateConfig {
             process.env.USE_PANGOLIN_DNS =
                 this.rawPrivateConfig.flags.use_pangolin_dns.toString();
         }
-
-        console.log(this.rawPrivateConfig.app.identity_provider_mode);
     }
 
     public getRawPrivateConfig() {
