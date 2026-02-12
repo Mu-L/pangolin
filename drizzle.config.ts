@@ -1,14 +1,15 @@
+import { APP_PATH } from "@server/lib/consts";
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 
-const schema = [path.join("server", "db", "pg", "schema")];
+const schema = [path.join("server", "db", "sqlite", "schema")];
 
 export default defineConfig({
-    dialect: "postgresql",
+    dialect: "sqlite",
     schema: schema,
     out: path.join("server", "migrations"),
     verbose: true,
     dbCredentials: {
-        url: process.env.DATABASE_URL as string
+        url: path.join(APP_PATH, "db", "db.sqlite")
     }
 });

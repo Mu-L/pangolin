@@ -303,7 +303,7 @@ export default function CreateInternalResourceDialog({
     const [udpCustomPorts, setUdpCustomPorts] = useState<string>("");
 
     const availableSites = sites.filter(
-        (site) => site.type === "newt" && site.subnet
+        (site) => site.type === "newt"
     );
 
     const form = useForm<FormData>({
