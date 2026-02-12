@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Клиенты для машин предназначены для серверов и автоматизированных систем, которые не связаны с конкретным пользователем. Они аутентифицируются по ID и секрету и могут работать с Pangolin CLI, Olm CLI или Olm как с контейнером.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Olm как контейнер",
+    "machineClientsBannerOlmContainer": "Container",
     "clientsTableUserClients": "Пользователь",
     "clientsTableMachineClients": "Машина",
     "licenseTableValidUntil": "Действителен до",
