@@ -96,6 +96,8 @@ export const sites = pgTable("sites", {
 
 export const resources = pgTable("resources", {
     resourceId: serial("resourceId").primaryKey(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     resourceGuid: varchar("resourceGuid", { length: 36 })
         .unique()
         .notNull()
@@ -567,7 +569,10 @@ export const resourceWhitelist = pgTable("resourceWhitelist", {
     email: varchar("email").notNull(),
     resourceId: integer("resourceId")
         .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" })
+        .references(() => resources.resourceId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
 });
 
 export const resourceOtp = pgTable("resourceOtp", {
@@ -575,6 +580,9 @@ export const resourceOtp = pgTable("resourceOtp", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     email: varchar("email").notNull(),
     otpHash: varchar("otpHash").notNull(),
     expiresAt: bigint("expiresAt", { mode: "number" }).notNull()
