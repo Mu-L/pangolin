@@ -22,6 +22,7 @@ import { fromError } from "zod-validation-error";
 import { idp, idpOidcConfig, idpOrg } from "@server/db";
 import { eq } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
+import privateConfig from "#private/lib/config";
 
 const paramsSchema = z
     .object({
@@ -58,6 +59,18 @@ export async function deleteOrgIdp(
         }
 
         const { idpId } = parsedParams.data;
+
+        if (
+            privateConfig.getRawPrivateConfig().app.identity_provider_mode !==
+            "org"
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Organization-specific IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'org' in the private configuration to enable this feature."
+                )
+            );
+        }
 
         // Check if IDP exists
         const [existingIdp] = await db

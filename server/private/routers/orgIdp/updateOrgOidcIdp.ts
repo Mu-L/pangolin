@@ -26,6 +26,7 @@ import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import { isSubscribed } from "#private/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import privateConfig from "#private/lib/config";
 
 const paramsSchema = z
     .object({
@@ -93,6 +94,18 @@ export async function updateOrgOidcIdp(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
                     fromError(parsedBody.error).toString()
+                )
+            );
+        }
+
+        if (
+            privateConfig.getRawPrivateConfig().app.identity_provider_mode !==
+            "org"
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Organization-specific IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'org' in the private configuration to enable this feature."
                 )
             );
         }

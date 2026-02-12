@@ -132,7 +132,7 @@ export default function ResourceAuthenticationPage() {
     const { data: orgIdps = [], isLoading: isLoadingOrgIdps } = useQuery(
         orgQueries.identityProviders({
             orgId: org.org.orgId,
-            useOrgOnlyIdp: env.flags.useOrgOnlyIdp
+            useOrgOnlyIdp: env.app.identityProviderMode === "org"
         })
     );
 

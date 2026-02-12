@@ -204,7 +204,9 @@ export default function SignupForm({
         ? env.branding.logo?.authPage?.height || 44
         : 44;
 
-    const showOrgBanner = fromSmartLogin && (build === "saas" || env.flags.useOrgOnlyIdp);
+    const showOrgBanner =
+        fromSmartLogin &&
+        (build === "saas" || env.app.identityProviderMode === "org");
     const orgBannerHref = redirect
         ? `/auth/org?redirect=${encodeURIComponent(redirect)}`
         : "/auth/org";
@@ -226,388 +228,398 @@ export default function SignupForm({
                 </Alert>
             )}
             <Card className="w-full max-w-md">
-            <CardHeader className="border-b">
-                <div className="flex flex-row items-center justify-center">
-                    <BrandingLogo height={logoHeight} width={logoWidth} />
-                </div>
-                <div className="text-center space-y-1 pt-3">
-                    <p className="text-muted-foreground">{getSubtitle()}</p>
-                </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-                <Form {...form}>
-                    <form
-                        onSubmit={form.handleSubmit(onSubmit)}
-                        className="space-y-4"
-                    >
-                        <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{t("email")}</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            disabled={!!emailParam}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="flex items-center gap-2">
-                                        <FormLabel>{t("password")}</FormLabel>
-                                        {passwordStrength.strength ===
-                                            "strong" && (
-                                            <Check className="h-4 w-4 text-green-500" />
-                                        )}
-                                    </div>
-                                    <FormControl>
-                                        <div className="relative">
+                <CardHeader className="border-b">
+                    <div className="flex flex-row items-center justify-center">
+                        <BrandingLogo height={logoHeight} width={logoWidth} />
+                    </div>
+                    <div className="text-center space-y-1 pt-3">
+                        <p className="text-muted-foreground">{getSubtitle()}</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                    <Form {...form}>
+                        <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="space-y-4"
+                        >
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t("email")}</FormLabel>
+                                        <FormControl>
                                             <Input
-                                                type="password"
                                                 {...field}
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    setPasswordValue(
-                                                        e.target.value
-                                                    );
-                                                }}
-                                                className={cn(
-                                                    passwordStrength.strength ===
-                                                        "strong" &&
-                                                        "border-green-500 focus-visible:ring-green-500",
-                                                    passwordStrength.strength ===
-                                                        "medium" &&
-                                                        "border-yellow-500 focus-visible:ring-yellow-500",
-                                                    passwordStrength.strength ===
-                                                        "weak" &&
-                                                        passwordValue.length >
-                                                            0 &&
-                                                        "border-red-500 focus-visible:ring-red-500"
-                                                )}
-                                                autoComplete="new-password"
+                                                disabled={!!emailParam}
                                             />
-                                        </div>
-                                    </FormControl>
-
-                                    {passwordValue.length > 0 && (
-                                        <div className="space-y-3 mt-2">
-                                            {/* Password Strength Meter */}
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm font-medium text-foreground">
-                                                        {t("passwordStrength")}
-                                                    </span>
-                                                    <span
-                                                        className={cn(
-                                                            "text-sm font-semibold",
-                                                            passwordStrength.strength ===
-                                                                "strong" &&
-                                                                "text-green-600 dark:text-green-400",
-                                                            passwordStrength.strength ===
-                                                                "medium" &&
-                                                                "text-yellow-600 dark:text-yellow-400",
-                                                            passwordStrength.strength ===
-                                                                "weak" &&
-                                                                "text-red-600 dark:text-red-400"
-                                                        )}
-                                                    >
-                                                        {t(
-                                                            `passwordStrength${passwordStrength.strength.charAt(0).toUpperCase() + passwordStrength.strength.slice(1)}`
-                                                        )}
-                                                    </span>
-                                                </div>
-                                                <Progress
-                                                    value={
-                                                        passwordStrength.percentage
-                                                    }
-                                                    className="h-2"
-                                                />
-                                            </div>
-
-                                            {/* Requirements Checklist */}
-                                            <div className="bg-muted rounded-lg p-3 space-y-2">
-                                                <div className="text-sm font-medium text-foreground mb-2">
-                                                    {t("passwordRequirements")}
-                                                </div>
-                                                <div className="grid grid-cols-1 gap-1.5">
-                                                    <div className="flex items-center gap-2">
-                                                        {passwordStrength
-                                                            .requirements
-                                                            .length ? (
-                                                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                                        ) : (
-                                                            <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                                        )}
-                                                        <span
-                                                            className={cn(
-                                                                "text-sm",
-                                                                passwordStrength
-                                                                    .requirements
-                                                                    .length
-                                                                    ? "text-green-600 dark:text-green-400"
-                                                                    : "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {t(
-                                                                "passwordRequirementLengthText"
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {passwordStrength
-                                                            .requirements
-                                                            .uppercase ? (
-                                                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                                        ) : (
-                                                            <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                                        )}
-                                                        <span
-                                                            className={cn(
-                                                                "text-sm",
-                                                                passwordStrength
-                                                                    .requirements
-                                                                    .uppercase
-                                                                    ? "text-green-600 dark:text-green-400"
-                                                                    : "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {t(
-                                                                "passwordRequirementUppercaseText"
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {passwordStrength
-                                                            .requirements
-                                                            .lowercase ? (
-                                                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                                        ) : (
-                                                            <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                                        )}
-                                                        <span
-                                                            className={cn(
-                                                                "text-sm",
-                                                                passwordStrength
-                                                                    .requirements
-                                                                    .lowercase
-                                                                    ? "text-green-600 dark:text-green-400"
-                                                                    : "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {t(
-                                                                "passwordRequirementLowercaseText"
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {passwordStrength
-                                                            .requirements
-                                                            .number ? (
-                                                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                                        ) : (
-                                                            <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                                        )}
-                                                        <span
-                                                            className={cn(
-                                                                "text-sm",
-                                                                passwordStrength
-                                                                    .requirements
-                                                                    .number
-                                                                    ? "text-green-600 dark:text-green-400"
-                                                                    : "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {t(
-                                                                "passwordRequirementNumberText"
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {passwordStrength
-                                                            .requirements
-                                                            .special ? (
-                                                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                                        ) : (
-                                                            <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                                        )}
-                                                        <span
-                                                            className={cn(
-                                                                "text-sm",
-                                                                passwordStrength
-                                                                    .requirements
-                                                                    .special
-                                                                    ? "text-green-600 dark:text-green-400"
-                                                                    : "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {t(
-                                                                "passwordRequirementSpecialText"
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Only show FormMessage when not showing our custom requirements */}
-                                    {passwordValue.length === 0 && (
+                                        </FormControl>
                                         <FormMessage />
-                                    )}
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="flex items-center gap-2">
-                                        <FormLabel>
-                                            {t("confirmPassword")}
-                                        </FormLabel>
-                                        {doPasswordsMatch && (
-                                            <Check className="h-4 w-4 text-green-500" />
-                                        )}
-                                    </div>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Input
-                                                type="password"
-                                                {...field}
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    setConfirmPasswordValue(
-                                                        e.target.value
-                                                    );
-                                                }}
-                                                className={cn(
-                                                    doPasswordsMatch &&
-                                                        "border-green-500 focus-visible:ring-green-500",
-                                                    confirmPasswordValue.length >
-                                                        0 &&
-                                                        !doPasswordsMatch &&
-                                                        "border-red-500 focus-visible:ring-red-500"
-                                                )}
-                                                autoComplete="new-password"
-                                            />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="flex items-center gap-2">
+                                            <FormLabel>
+                                                {t("password")}
+                                            </FormLabel>
+                                            {passwordStrength.strength ===
+                                                "strong" && (
+                                                <Check className="h-4 w-4 text-green-500" />
+                                            )}
                                         </div>
-                                    </FormControl>
-                                    {confirmPasswordValue.length > 0 &&
-                                        !doPasswordsMatch && (
-                                            <p className="text-sm text-red-600 mt-1">
-                                                {t("passwordsDoNotMatch")}
-                                            </p>
-                                        )}
-                                    {/* Only show FormMessage when field is empty */}
-                                    {confirmPasswordValue.length === 0 && (
-                                        <FormMessage />
-                                    )}
-                                </FormItem>
-                            )}
-                        />
-                        {build === "saas" && (
-                            <>
-                                <FormField
-                                    control={form.control}
-                                    name="agreeToTerms"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center">
-                                            <FormControl>
-                                                <Checkbox
-                                                    checked={field.value}
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) => {
-                                                        field.onChange(checked);
-                                                        handleTermsChange(
-                                                            checked as boolean
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input
+                                                    type="password"
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        field.onChange(e);
+                                                        setPasswordValue(
+                                                            e.target.value
                                                         );
                                                     }}
-                                                />
-                                            </FormControl>
-                                            <div className="leading-none">
-                                                <FormLabel className="text-sm font-normal">
-                                                    <div>
-                                                        {t(
-                                                            "signUpTerms.IAgreeToThe"
-                                                        )}{" "}
-                                                        <a
-                                                            href="https://pangolin.net/terms-of-service.html"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            {t(
-                                                                "signUpTerms.termsOfService"
-                                                            )}{" "}
-                                                        </a>
-                                                        {t("signUpTerms.and")}{" "}
-                                                        <a
-                                                            href="https://pangolin.net/privacy-policy.html"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            {t(
-                                                                "signUpTerms.privacyPolicy"
-                                                            )}
-                                                        </a>
-                                                    </div>
-                                                </FormLabel>
-                                                <FormMessage />
-                                            </div>
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="marketingEmailConsent"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-start">
-                                            <FormControl>
-                                                <Checkbox
-                                                    checked={field.value}
-                                                    onCheckedChange={
-                                                        field.onChange
-                                                    }
-                                                />
-                                            </FormControl>
-                                            <div className="leading-none">
-                                                <FormLabel className="text-sm font-normal">
-                                                    {t(
-                                                        "signUpMarketing.keepMeInTheLoop"
+                                                    className={cn(
+                                                        passwordStrength.strength ===
+                                                            "strong" &&
+                                                            "border-green-500 focus-visible:ring-green-500",
+                                                        passwordStrength.strength ===
+                                                            "medium" &&
+                                                            "border-yellow-500 focus-visible:ring-yellow-500",
+                                                        passwordStrength.strength ===
+                                                            "weak" &&
+                                                            passwordValue.length >
+                                                                0 &&
+                                                            "border-red-500 focus-visible:ring-red-500"
                                                     )}
-                                                </FormLabel>
-                                                <FormMessage />
+                                                    autoComplete="new-password"
+                                                />
                                             </div>
-                                        </FormItem>
-                                    )}
-                                />
-                            </>
-                        )}
+                                        </FormControl>
 
-                        {error && (
-                            <Alert variant="destructive">
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
+                                        {passwordValue.length > 0 && (
+                                            <div className="space-y-3 mt-2">
+                                                {/* Password Strength Meter */}
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-sm font-medium text-foreground">
+                                                            {t(
+                                                                "passwordStrength"
+                                                            )}
+                                                        </span>
+                                                        <span
+                                                            className={cn(
+                                                                "text-sm font-semibold",
+                                                                passwordStrength.strength ===
+                                                                    "strong" &&
+                                                                    "text-green-600 dark:text-green-400",
+                                                                passwordStrength.strength ===
+                                                                    "medium" &&
+                                                                    "text-yellow-600 dark:text-yellow-400",
+                                                                passwordStrength.strength ===
+                                                                    "weak" &&
+                                                                    "text-red-600 dark:text-red-400"
+                                                            )}
+                                                        >
+                                                            {t(
+                                                                `passwordStrength${passwordStrength.strength.charAt(0).toUpperCase() + passwordStrength.strength.slice(1)}`
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <Progress
+                                                        value={
+                                                            passwordStrength.percentage
+                                                        }
+                                                        className="h-2"
+                                                    />
+                                                </div>
 
-                        <Button type="submit" className="w-full">
-                            {t("createAccount")}
-                        </Button>
-                </form>
-            </Form>
-        </CardContent>
-    </Card>
+                                                {/* Requirements Checklist */}
+                                                <div className="bg-muted rounded-lg p-3 space-y-2">
+                                                    <div className="text-sm font-medium text-foreground mb-2">
+                                                        {t(
+                                                            "passwordRequirements"
+                                                        )}
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            {passwordStrength
+                                                                .requirements
+                                                                .length ? (
+                                                                <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                                            ) : (
+                                                                <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                                            )}
+                                                            <span
+                                                                className={cn(
+                                                                    "text-sm",
+                                                                    passwordStrength
+                                                                        .requirements
+                                                                        .length
+                                                                        ? "text-green-600 dark:text-green-400"
+                                                                        : "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "passwordRequirementLengthText"
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {passwordStrength
+                                                                .requirements
+                                                                .uppercase ? (
+                                                                <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                                            ) : (
+                                                                <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                                            )}
+                                                            <span
+                                                                className={cn(
+                                                                    "text-sm",
+                                                                    passwordStrength
+                                                                        .requirements
+                                                                        .uppercase
+                                                                        ? "text-green-600 dark:text-green-400"
+                                                                        : "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "passwordRequirementUppercaseText"
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {passwordStrength
+                                                                .requirements
+                                                                .lowercase ? (
+                                                                <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                                            ) : (
+                                                                <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                                            )}
+                                                            <span
+                                                                className={cn(
+                                                                    "text-sm",
+                                                                    passwordStrength
+                                                                        .requirements
+                                                                        .lowercase
+                                                                        ? "text-green-600 dark:text-green-400"
+                                                                        : "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "passwordRequirementLowercaseText"
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {passwordStrength
+                                                                .requirements
+                                                                .number ? (
+                                                                <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                                            ) : (
+                                                                <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                                            )}
+                                                            <span
+                                                                className={cn(
+                                                                    "text-sm",
+                                                                    passwordStrength
+                                                                        .requirements
+                                                                        .number
+                                                                        ? "text-green-600 dark:text-green-400"
+                                                                        : "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "passwordRequirementNumberText"
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {passwordStrength
+                                                                .requirements
+                                                                .special ? (
+                                                                <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                                                            ) : (
+                                                                <X className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                                            )}
+                                                            <span
+                                                                className={cn(
+                                                                    "text-sm",
+                                                                    passwordStrength
+                                                                        .requirements
+                                                                        .special
+                                                                        ? "text-green-600 dark:text-green-400"
+                                                                        : "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "passwordRequirementSpecialText"
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Only show FormMessage when not showing our custom requirements */}
+                                        {passwordValue.length === 0 && (
+                                            <FormMessage />
+                                        )}
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="confirmPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <div className="flex items-center gap-2">
+                                            <FormLabel>
+                                                {t("confirmPassword")}
+                                            </FormLabel>
+                                            {doPasswordsMatch && (
+                                                <Check className="h-4 w-4 text-green-500" />
+                                            )}
+                                        </div>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input
+                                                    type="password"
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        field.onChange(e);
+                                                        setConfirmPasswordValue(
+                                                            e.target.value
+                                                        );
+                                                    }}
+                                                    className={cn(
+                                                        doPasswordsMatch &&
+                                                            "border-green-500 focus-visible:ring-green-500",
+                                                        confirmPasswordValue.length >
+                                                            0 &&
+                                                            !doPasswordsMatch &&
+                                                            "border-red-500 focus-visible:ring-red-500"
+                                                    )}
+                                                    autoComplete="new-password"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        {confirmPasswordValue.length > 0 &&
+                                            !doPasswordsMatch && (
+                                                <p className="text-sm text-red-600 mt-1">
+                                                    {t("passwordsDoNotMatch")}
+                                                </p>
+                                            )}
+                                        {/* Only show FormMessage when field is empty */}
+                                        {confirmPasswordValue.length === 0 && (
+                                            <FormMessage />
+                                        )}
+                                    </FormItem>
+                                )}
+                            />
+                            {build === "saas" && (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="agreeToTerms"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={(
+                                                            checked
+                                                        ) => {
+                                                            field.onChange(
+                                                                checked
+                                                            );
+                                                            handleTermsChange(
+                                                                checked as boolean
+                                                            );
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <div className="leading-none">
+                                                    <FormLabel className="text-sm font-normal">
+                                                        <div>
+                                                            {t(
+                                                                "signUpTerms.IAgreeToThe"
+                                                            )}{" "}
+                                                            <a
+                                                                href="https://pangolin.net/terms-of-service.html"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-primary hover:underline"
+                                                            >
+                                                                {t(
+                                                                    "signUpTerms.termsOfService"
+                                                                )}{" "}
+                                                            </a>
+                                                            {t(
+                                                                "signUpTerms.and"
+                                                            )}{" "}
+                                                            <a
+                                                                href="https://pangolin.net/privacy-policy.html"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-primary hover:underline"
+                                                            >
+                                                                {t(
+                                                                    "signUpTerms.privacyPolicy"
+                                                                )}
+                                                            </a>
+                                                        </div>
+                                                    </FormLabel>
+                                                    <FormMessage />
+                                                </div>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="marketingEmailConsent"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={
+                                                            field.onChange
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <div className="leading-none">
+                                                    <FormLabel className="text-sm font-normal">
+                                                        {t(
+                                                            "signUpMarketing.keepMeInTheLoop"
+                                                        )}
+                                                    </FormLabel>
+                                                    <FormMessage />
+                                                </div>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                            )}
+
+                            {error && (
+                                <Alert variant="destructive">
+                                    <AlertDescription>{error}</AlertDescription>
+                                </Alert>
+                            )}
+
+                            <Button type="submit" className="w-full">
+                                {t("createAccount")}
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
         </>
     );
 }

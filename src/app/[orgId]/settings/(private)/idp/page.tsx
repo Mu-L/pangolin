@@ -5,6 +5,7 @@ import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import IdpTable, { IdpRow } from "@app/components/OrgIdpTable";
 import { getTranslations } from "next-intl/server";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { IdpGlobalModeBanner } from "@app/components/IdpGlobalModeBanner";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type OrgIdpPageProps = {
@@ -35,6 +36,8 @@ export default async function OrgIdpPage(props: OrgIdpPageProps) {
                 title={t("idpManage")}
                 description={t("idpManageDescription")}
             />
+
+            <IdpGlobalModeBanner />
 
             <PaidFeaturesAlert tiers={tierMatrix.orgOidc} />
 

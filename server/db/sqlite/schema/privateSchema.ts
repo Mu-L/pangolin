@@ -79,6 +79,7 @@ export const subscriptionItems = sqliteTable("subscriptionItems", {
     subscriptionItemId: integer("subscriptionItemId").primaryKey({
         autoIncrement: true
     }),
+    stripeSubscriptionItemId: text("stripeSubscriptionItemId"),
     subscriptionId: text("subscriptionId")
         .notNull()
         .references(() => subscriptions.subscriptionId, {

@@ -35,7 +35,7 @@ export default async function OrgAuthPage(props: {
 
     const env = pullEnv();
 
-    if (build !== "saas" && !env.flags.useOrgOnlyIdp) {
+    if (build !== "saas" && env.app.identityProviderMode !== "org") {
         redirect("/");
     }
 

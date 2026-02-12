@@ -38,15 +38,49 @@ const bannerContentClassName = "py-3 px-4";
 const bannerRowClassName =
     "flex items-center gap-2.5 text-sm text-muted-foreground";
 const bannerIconClassName = "size-4 shrink-0 text-purple-500";
+const docsLinkClassName =
+    "inline-flex items-center gap-1 font-medium text-purple-600 underline";
+const PANGOLIN_CLOUD_SIGNUP_URL = "https://app.pangolin.net/auth/signup/";
+const ENTERPRISE_DOCS_URL =
+    "https://docs.pangolin.net/self-host/enterprise-edition";
 
 function getTierLinkRenderer(billingHref: string) {
     return function tierLinkRenderer(chunks: React.ReactNode) {
         return (
+            <Link href={billingHref} className={docsLinkClassName}>
+                {chunks}
+            </Link>
+        );
+    };
+}
+
+function getPangolinCloudLinkRenderer() {
+    return function pangolinCloudLinkRenderer(chunks: React.ReactNode) {
+        return (
             <Link
-                href={billingHref}
-                className="inline-flex items-center gap-1 font-medium text-purple-600 underline"
+                href={PANGOLIN_CLOUD_SIGNUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={docsLinkClassName}
             >
                 {chunks}
+                <ExternalLink className="size-3.5 shrink-0" />
+            </Link>
+        );
+    };
+}
+
+function getDocsLinkRenderer(href: string) {
+    return function docsLinkRenderer(chunks: React.ReactNode) {
+        return (
+            <Link
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={docsLinkClassName}
+            >
+                {chunks}
+                <ExternalLink className="size-3.5 shrink-0" />
             </Link>
         );
     };
@@ -66,6 +100,8 @@ export function PaidFeaturesAlert({ tiers }: Props) {
     const requiredTierName = requiredTier ? t(TIER_TRANSLATION_KEYS[requiredTier]) : null;
     const billingHref = orgId ? `/${orgId}/settings/billing` : "https://pangolin.net/pricing";
     const tierLinkRenderer = getTierLinkRenderer(billingHref);
+    const pangolinCloudLinkRenderer = getPangolinCloudLinkRenderer();
+    const enterpriseDocsLinkRenderer = getDocsLinkRenderer(ENTERPRISE_DOCS_URL);
 
     if (env.flags.disableEnterpriseFeatures) {
         return null;
@@ -103,7 +139,12 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                     <CardContent className={bannerContentClassName}>
                         <div className={bannerRowClassName}>
                             <KeyRound className={bannerIconClassName} />
-                            <span>{t("licenseRequiredToUse")}</span>
+                            <span>
+                                {t.rich("licenseRequiredToUse", {
+                                    enterpriseLicenseLink: enterpriseDocsLinkRenderer,
+                                    pangolinCloudLink: pangolinCloudLinkRenderer
+                                })}
+                            </span>
                         </div>
                     </CardContent>
                 </Card>
@@ -116,17 +157,8 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                             <KeyRound className={bannerIconClassName} />
                             <span>
                                 {t.rich("ossEnterpriseEditionRequired", {
-                                    enterpriseEditionLink: (chunks) => (
-                                        <Link
-                                            href="https://docs.pangolin.net/self-host/enterprise-edition"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 font-medium text-purple-600 underline"
-                                        >
-                                            {chunks}
-                                            <ExternalLink className="size-3.5 shrink-0" />
-                                        </Link>
-                                    )
+                                    enterpriseEditionLink: enterpriseDocsLinkRenderer,
+                                    pangolinCloudLink: pangolinCloudLinkRenderer
                                 })}
                             </span>
                         </div>

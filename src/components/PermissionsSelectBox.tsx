@@ -118,7 +118,7 @@ function getActionsCategories(root: boolean) {
         }
     };
 
-    if (root || build === "saas" || env.flags.useOrgOnlyIdp) {
+    if (root || build === "saas" || env.app.identityProviderMode === "org") {
         actionsByCategory["Identity Provider (IDP)"] = {
             [t("actionCreateIdp")]: "createIdp",
             [t("actionUpdateIdp")]: "updateIdp",

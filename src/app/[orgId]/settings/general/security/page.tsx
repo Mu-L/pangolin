@@ -44,7 +44,6 @@ import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import type { OrgContextType } from "@app/contexts/orgContext";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { isAppPageRouteDefinition } from "next/dist/server/route-definitions/app-page-route-definition";
 
 // Session length options in hours
 const SESSION_LENGTH_OPTIONS = [
@@ -219,6 +218,10 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                                 <SelectContent>
                                                     {LOG_RETENTION_OPTIONS.filter(
                                                         (option) => {
+                                                            if (build != "saas") {
+                                                                return true;
+                                                            }
+
                                                             let maxDays: number;
 
                                                             if (!subscriptionTier) {
@@ -314,6 +317,10 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                                             <SelectContent>
                                                                 {LOG_RETENTION_OPTIONS.filter(
                                                                     (option) => {
+                                                                        if (build != "saas") {
+                                                                            return true;
+                                                                        }
+
                                                                         let maxDays: number;
 
                                                                         if (!subscriptionTier) {
@@ -411,6 +418,10 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                                             <SelectContent>
                                                                 {LOG_RETENTION_OPTIONS.filter(
                                                                     (option) => {
+                                                                        if (build != "saas") {
+                                                                            return true;
+                                                                        }
+
                                                                         let maxDays: number;
 
                                                                         if (!subscriptionTier) {
