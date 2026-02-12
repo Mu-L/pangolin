@@ -23,8 +23,6 @@ import type {
     LoadLoginPageBrandingResponse,
     LoadLoginPageResponse
 } from "@server/routers/loginPage/types";
-import { GetOrgTierResponse } from "@server/routers/billing/types";
-import { TierId } from "@server/lib/billing/tiers";
 import { CheckOrgUserAccessResponse } from "@server/routers/org";
 import OrgPolicyRequired from "@app/components/OrgPolicyRequired";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
@@ -204,7 +202,7 @@ export default async function ResourceAuthPage(props: {
     }
 
     let loginIdps: LoginFormIDP[] = [];
-    if (build === "saas" || env.flags.useOrgOnlyIdp) {
+    if (build === "saas" || env.app.identityProviderMode === "org") {
         if (subscribed) {
             const idpsRes = await cache(
                 async () =>

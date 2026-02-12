@@ -25,10 +25,8 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq, InferInsertModel } from "drizzle-orm";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import { build } from "@server/build";
-import config from "@server/private/lib/config";
+import config from "#private/lib/config";
 
 const paramsSchema = z.strictObject({
     orgId: z.string()
@@ -127,19 +125,6 @@ export async function upsertLoginPageBranding(
         }
 
         const { orgId } = parsedParams.data;
-
-        if (build === "saas") {
-            const { tier } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
-            if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
-            }
-        }
 
         let updateData = parsedBody.data satisfies InferInsertModel<
             typeof loginPageBranding

@@ -30,6 +30,8 @@ import {
 import { Separator } from "./ui/separator";
 import { InfoPopup } from "./ui/info-popup";
 import { ApprovalsEmptyState } from "./ApprovalsEmptyState";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type ApprovalFeedProps = {
     orgId: string;
@@ -50,9 +52,12 @@ export function ApprovalFeed({
         Object.fromEntries(searchParams.entries())
     );
 
-    const { data, isFetching, refetch } = useQuery(
-        approvalQueries.listApprovals(orgId, filters)
-    );
+    const { isPaidUser } = usePaidStatus();
+
+    const { data, isFetching, refetch } = useQuery({
+        ...approvalQueries.listApprovals(orgId, filters),
+        enabled: isPaidUser(tierMatrix.deviceApprovals)
+    });
 
     const approvals = data?.approvals ?? [];
 
@@ -209,19 +214,19 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                     &nbsp;
                     {approval.type === "user_device" && (
                         <span className="inline-flex items-center gap-1">
-                                    {approval.deviceName ? (
-                                        <>
-                                            {t("requestingNewDeviceApproval")}:{" "}
-                                            {approval.niceId ? (
-                                                <Link
-                                                    href={`/${orgId}/settings/clients/user/${approval.niceId}/general`}
-                                                    className="text-primary hover:underline cursor-pointer"
-                                                >
-                                                    {approval.deviceName}
-                                                </Link>
-                                            ) : (
-                                                <span>{approval.deviceName}</span>
-                                            )}
+                            {approval.deviceName ? (
+                                <>
+                                    {t("requestingNewDeviceApproval")}:{" "}
+                                    {approval.niceId ? (
+                                        <Link
+                                            href={`/${orgId}/settings/clients/user/${approval.niceId}/general`}
+                                            className="text-primary hover:underline cursor-pointer"
+                                        >
+                                            {approval.deviceName}
+                                        </Link>
+                                    ) : (
+                                        <span>{approval.deviceName}</span>
+                                    )}
                                     {approval.fingerprint && (
                                         <InfoPopup>
                                             <div className="space-y-1 text-sm">
@@ -229,7 +234,10 @@ function ApprovalRequest({ approval, orgId, onSuccess }: ApprovalRequestProps) {
                                                     {t("deviceInformation")}
                                                 </div>
                                                 <div className="text-muted-foreground whitespace-pre-line">
-                                                    {formatFingerprintInfo(approval.fingerprint, t)}
+                                                    {formatFingerprintInfo(
+                                                        approval.fingerprint,
+                                                        t
+                                                    )}
                                                 </div>
                                             </div>
                                         </InfoPopup>

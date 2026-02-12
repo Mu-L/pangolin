@@ -19,6 +19,7 @@ import OrgPolicyResult from "@app/components/OrgPolicyResult";
 import UserProvider from "@app/providers/UserProvider";
 import { Layout } from "@app/components/Layout";
 import ApplyInternalRedirect from "@app/components/ApplyInternalRedirect";
+import SubscriptionViolation from "@app/components/SubscriptionViolation";
 
 export default async function OrgLayout(props: {
     children: React.ReactNode;
@@ -108,6 +109,7 @@ export default async function OrgLayout(props: {
         >
             <ApplyInternalRedirect orgId={orgId} />
             {props.children}
+            {build === "saas" && <SubscriptionViolation />}
             <SetLastOrgCookie orgId={orgId} />
         </SubscriptionStatusProvider>
     );

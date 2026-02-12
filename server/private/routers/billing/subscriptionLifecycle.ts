@@ -13,38 +13,66 @@
 
 import {
     freeLimitSet,
+    tier1LimitSet,
+    tier2LimitSet,
+    tier3LimitSet,
     limitsService,
-    subscribedLimitSet
+    LimitSet
 } from "@server/lib/billing";
 import { usageService } from "@server/lib/billing/usageService";
-import logger from "@server/logger";
+import { SubscriptionType } from "./hooks/getSubType";
+
+function getLimitSetForSubscriptionType(
+    subType: SubscriptionType | null
+): LimitSet {
+    switch (subType) {
+        case "tier1":
+            return tier1LimitSet;
+        case "tier2":
+            return tier2LimitSet;
+        case "tier3":
+            return tier3LimitSet;
+        case "license":
+            // License subscriptions use tier2 limits by default
+            // This can be adjusted based on your business logic
+            return tier2LimitSet;
+        default:
+            return freeLimitSet;
+    }
+}
 
 export async function handleSubscriptionLifesycle(
     orgId: string,
-    status: string
+    status: string,
+    subType: SubscriptionType | null
 ) {
     switch (status) {
         case "active":
-            await limitsService.applyLimitSetToOrg(orgId, subscribedLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            const activeLimitSet = getLimitSetForSubscriptionType(subType);
+            await limitsService.applyLimitSetToOrg(orgId, activeLimitSet);
+            await usageService.checkLimitSet(orgId);
             break;
         case "canceled":
+            // Subscription canceled - revert to free tier
             await limitsService.applyLimitSetToOrg(orgId, freeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         case "past_due":
-            // Optionally handle past due status, e.g., notify customer
+            // Payment past due - keep current limits but notify customer
+            // Limits will revert to free tier if it becomes unpaid
             break;
         case "unpaid":
+            // Subscription unpaid - revert to free tier
             await limitsService.applyLimitSetToOrg(orgId, freeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         case "incomplete":
-            // Optionally handle incomplete status, e.g., notify customer
+            // Payment incomplete - give them time to complete payment
             break;
         case "incomplete_expired":
+            // Payment never completed - revert to free tier
             await limitsService.applyLimitSetToOrg(orgId, freeLimitSet);
-            await usageService.checkLimitSet(orgId, true);
+            await usageService.checkLimitSet(orgId);
             break;
         default:
             break;

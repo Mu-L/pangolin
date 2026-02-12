@@ -140,7 +140,7 @@ export async function removeUserOrg(
         });
 
         if (userCount) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 orgId,
                 FeatureId.USERS,
                 userCount.length

@@ -23,11 +23,12 @@ import {
 } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import logger from "@server/logger";
-import { getFeatureIdByMetricId } from "@server/lib/billing/features";
+import { getFeatureIdByMetricId, getFeatureIdByPriceId } from "@server/lib/billing/features";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
-import { getSubType } from "./getSubType";
+import { getSubType, SubscriptionType } from "./getSubType";
 import privateConfig from "#private/lib/config";
+import { handleTierChange } from "../featureLifecycle";
 
 export async function handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
@@ -64,6 +65,9 @@ export async function handleSubscriptionUpdated(
             .where(eq(customers.customerId, subscription.customer as string))
             .limit(1);
 
+        const type = getSubType(fullSubscription);
+        const previousType = existingSubscription.type as SubscriptionType | null;
+
         await db
             .update(subscriptions)
             .set({
@@ -72,25 +76,55 @@ export async function handleSubscriptionUpdated(
                     ? subscription.canceled_at
                     : null,
                 updatedAt: Math.floor(Date.now() / 1000),
-                billingCycleAnchor: subscription.billing_cycle_anchor
+                billingCycleAnchor: subscription.billing_cycle_anchor,
+                type: type
             })
             .where(eq(subscriptions.subscriptionId, subscription.id));
 
+        // Handle tier change if the subscription type changed
+        if (type && type !== previousType) {
+            logger.info(
+                `Tier change detected for org ${customer.orgId}: ${previousType} -> ${type}`
+            );
+            await handleTierChange(customer.orgId, type, previousType ?? undefined);
+        }
+
         // Upsert subscription items
         if (Array.isArray(fullSubscription.items?.data)) {
-            const itemsToUpsert = fullSubscription.items.data.map((item) => ({
-                subscriptionId: subscription.id,
-                planId: item.plan.id,
-                priceId: item.price.id,
-                meterId: item.plan.meter,
-                unitAmount: item.price.unit_amount || 0,
-                currentPeriodStart: item.current_period_start,
-                currentPeriodEnd: item.current_period_end,
-                tiers: item.price.tiers
-                    ? JSON.stringify(item.price.tiers)
-                    : null,
-                interval: item.plan.interval
-            }));
+            // First, get existing items to preserve featureId when there's no match
+            const existingItems = await db
+                .select()
+                .from(subscriptionItems)
+                .where(eq(subscriptionItems.subscriptionId, subscription.id));
+
+            const itemsToUpsert = fullSubscription.items.data.map((item) => {
+                // Try to get featureId from price
+                let featureId: string | null = getFeatureIdByPriceId(item.price.id) || null;
+
+                // If no match, try to preserve existing featureId
+                if (!featureId) {
+                    const existingItem = existingItems.find(
+                        (ei) => ei.stripeSubscriptionItemId === item.id
+                    );
+                    featureId = existingItem?.featureId || null;
+                }
+
+                return {
+                    stripeSubscriptionItemId: item.id,
+                    subscriptionId: subscription.id,
+                    planId: item.plan.id,
+                    priceId: item.price.id,
+                    featureId: featureId,
+                    meterId: item.plan.meter,
+                    unitAmount: item.price.unit_amount || 0,
+                    currentPeriodStart: item.current_period_start,
+                    currentPeriodEnd: item.current_period_end,
+                    tiers: item.price.tiers
+                        ? JSON.stringify(item.price.tiers)
+                        : null,
+                    interval: item.plan.interval
+                };
+            });
             if (itemsToUpsert.length > 0) {
                 await db.transaction(async (trx) => {
                     await trx
@@ -154,7 +188,7 @@ export async function handleSubscriptionUpdated(
                             const orgId = customer.orgId;
 
                             if (!orgId) {
-                                logger.warn(
+                                logger.debug(
                                     `No orgId found in subscription metadata for subscription ${subscription.id}. Skipping usage reset.`
                                 );
                                 continue;
@@ -234,17 +268,29 @@ export async function handleSubscriptionUpdated(
             }
             // --- end usage update ---
 
-            const type = getSubType(fullSubscription);
-            if (type === "saas") {
+            if (type === "tier1" || type === "tier2" || type === "tier3") {
                 logger.debug(
-                    `Handling SAAS subscription lifecycle for org ${customer.orgId}`
+                    `Handling SAAS subscription lifecycle for org ${customer.orgId} with type ${type}`
                 );
                 // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
                 await handleSubscriptionLifesycle(
                     customer.orgId,
-                    subscription.status
+                    subscription.status,
+                    type
                 );
-            } else {
+
+                // Handle feature lifecycle when subscription is canceled or becomes unpaid
+                if (
+                    subscription.status === "canceled" ||
+                    subscription.status === "unpaid" ||
+                    subscription.status === "incomplete_expired"
+                ) {
+                    logger.info(
+                        `Subscription ${subscription.id} for org ${customer.orgId} is ${subscription.status}, disabling paid features`
+                    );
+                    await handleTierChange(customer.orgId, null, previousType ?? undefined);
+                }
+            } else if (type === "license") {
                 if (subscription.status === "canceled" || subscription.status == "unpaid" || subscription.status == "incomplete_expired") {
                     try {
                         // WARNING:

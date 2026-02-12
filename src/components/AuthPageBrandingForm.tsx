@@ -35,6 +35,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { build } from "@server/build";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type AuthPageCustomizationProps = {
     orgId: string;
@@ -139,14 +140,14 @@ export default function AuthPageBrandingForm({
                 `Choose your preferred authentication method for {{resourceName}}`,
             primaryColor: branding?.primaryColor ?? `#f36117` // default pangolin primary color
         },
-        disabled: !isPaidUser
+        disabled: !isPaidUser(tierMatrix.loginPageBranding)
     });
 
     async function updateBranding() {
         const isValid = await form.trigger();
         const brandingData = form.getValues();
 
-        if (!isValid || !isPaidUser) return;
+        if (!isValid || !isPaidUser(tierMatrix.loginPageBranding)) return;
 
         try {
             const updateRes = await api.put(
@@ -177,8 +178,6 @@ export default function AuthPageBrandingForm({
     }
 
     async function deleteBranding() {
-        if (!isPaidUser) return;
-
         try {
             const updateRes = await api.delete(
                 `/org/${orgId}/login-page-branding`
@@ -221,7 +220,9 @@ export default function AuthPageBrandingForm({
 
                 <SettingsSectionBody>
                     <SettingsSectionForm>
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.loginPageBranding}
+                        />
 
                         <Form {...form}>
                             <form
@@ -321,7 +322,7 @@ export default function AuthPageBrandingForm({
                                 </div>
 
                                 {build === "saas" ||
-                                env.env.flags.useOrgOnlyIdp ? (
+                                env.env.app.identityProviderMode === "org" ? (
                                     <>
                                         <div className="mt-3 mb-6">
                                             <SettingsSectionTitle>
@@ -436,7 +437,7 @@ export default function AuthPageBrandingForm({
                                 disabled={
                                     isUpdatingBranding ||
                                     isDeletingBranding ||
-                                    !isPaidUser
+                                    !isPaidUser(tierMatrix.loginPageBranding)
                                 }
                                 className="gap-1"
                             >
@@ -451,7 +452,7 @@ export default function AuthPageBrandingForm({
                         disabled={
                             isUpdatingBranding ||
                             isDeletingBranding ||
-                            !isPaidUser
+                            !isPaidUser(tierMatrix.loginPageBranding)
                         }
                     >
                         {t("saveAuthPageBranding")}

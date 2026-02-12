@@ -33,3 +33,4 @@ config/
 build.ts
 tsconfig.json
 Dockerfile*
+migrations/

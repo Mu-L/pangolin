@@ -34,7 +34,7 @@ jobs:
         run: npm run set:oss
 
       - name: Generate database migrations
-        run: npm run db:generate
+        run: npm run db:sqlite:generate
 
       - name: Apply database migrations
         run: npm run db:sqlite:push

@@ -31,7 +31,6 @@ import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useState, useEffect } from "react";
-import { SwitchInput } from "@app/components/SwitchInput";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { InfoIcon, ExternalLink } from "lucide-react";
 import {
@@ -41,12 +40,13 @@ import {
     InfoSectionTitle
 } from "@app/components/InfoSection";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import IdpTypeBadge from "@app/components/IdpTypeBadge";
 import { useTranslations } from "next-intl";
 import { AxiosResponse } from "axios";
 import { ListRolesResponse } from "@server/routers/role";
-import AutoProvisionConfigWidget from "@app/components/private/AutoProvisionConfigWidget";
+import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export default function GeneralPage() {
     const { env } = useEnvContext();
@@ -60,7 +60,6 @@ export default function GeneralPage() {
         "role" | "expression"
     >("role");
     const [variant, setVariant] = useState<"oidc" | "google" | "azure">("oidc");
-    const { isUnlocked } = useLicenseStatusContext();
 
     const dashboardRedirectUrl = `${env.app.dashboardUrl}/auth/idp/${idpId}/oidc/callback`;
     const [redirectUrl, setRedirectUrl] = useState(
@@ -499,6 +498,10 @@ export default function GeneralPage() {
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
                         <SettingsSectionForm>
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.autoProvisioning}
+                            />
+
                             <Form {...form}>
                                 <form
                                     onSubmit={form.handleSubmit(onSubmit)}

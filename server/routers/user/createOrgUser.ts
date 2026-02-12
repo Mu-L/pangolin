@@ -13,20 +13,16 @@ import { generateId } from "@server/auth/sessions/app";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
-import { getOrgTierData } from "#dynamic/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
 });
 
 const bodySchema = z.strictObject({
-    email: z
-        .string()
-        .email()
-        .toLowerCase()
-        .optional(),
+    email: z.string().email().toLowerCase().optional(),
     username: z.string().nonempty().toLowerCase(),
     name: z.string().optional(),
     type: z.enum(["internal", "oidc"]).optional(),
@@ -95,7 +91,7 @@ export async function createOrgUser(
             }
             const rejectUsers = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.USERS,
                 {
                     ...usage,
@@ -132,8 +128,10 @@ export async function createOrgUser(
             );
         } else if (type === "oidc") {
             if (build === "saas") {
-                const { tier } = await getOrgTierData(orgId);
-                const subscribed = tier === TierId.STANDARD;
+                const subscribed = await isSubscribed(
+                    orgId,
+                    tierMatrix.orgOidc
+                );
                 if (!subscribed) {
                     return next(
                         createHttpError(
@@ -256,7 +254,7 @@ export async function createOrgUser(
             });
 
             if (orgUsers) {
-                await usageService.updateDaily(
+                await usageService.updateCount(
                     orgId,
                     FeatureId.USERS,
                     orgUsers.length

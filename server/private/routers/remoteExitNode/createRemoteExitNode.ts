@@ -85,7 +85,7 @@ export async function createRemoteExitNode(
         if (usage) {
             const rejectRemoteExitNodes = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.REMOTE_EXIT_NODES,
                 {
                     ...usage,
@@ -97,7 +97,7 @@ export async function createRemoteExitNode(
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "Remote exit node limit exceeded. Please upgrade your plan or contact us at support@pangolin.net"
+                        "Remote node limit exceeded. Please upgrade your plan."
                     )
                 );
             }
@@ -224,7 +224,7 @@ export async function createRemoteExitNode(
         });
 
         if (numExitNodeOrgs) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 orgId,
                 FeatureId.REMOTE_EXIT_NODES,
                 numExitNodeOrgs.length

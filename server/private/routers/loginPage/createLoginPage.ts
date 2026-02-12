@@ -30,9 +30,7 @@ import { fromError } from "zod-validation-error";
 import { eq, and } from "drizzle-orm";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import { createCertificate } from "#private/routers/certificates/createCertificate";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
-import { build } from "@server/build";
+
 import { CreateLoginPageResponse } from "@server/routers/loginPage/types";
 
 const paramsSchema = z.strictObject({
@@ -75,19 +73,6 @@ export async function createLoginPage(
         }
 
         const { orgId } = parsedParams.data;
-
-        if (build === "saas") {
-            const { tier } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
-            if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
-            }
-        }
 
         const [existing] = await db
             .select()

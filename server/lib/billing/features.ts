@@ -1,30 +1,41 @@
-import Stripe from "stripe";
-
 export enum FeatureId {
-    SITE_UPTIME = "siteUptime",
     USERS = "users",
+    SITES = "sites",
     EGRESS_DATA_MB = "egressDataMb",
     DOMAINS = "domains",
-    REMOTE_EXIT_NODES = "remoteExitNodes"
+    REMOTE_EXIT_NODES = "remoteExitNodes",
+    TIER1 = "tier1"
 }
 
-export const FeatureMeterIds: Record<FeatureId, string> = {
-    [FeatureId.SITE_UPTIME]: "mtr_61Srrej5wUJuiTWgo41D3Ee2Ir7WmDLU",
-    [FeatureId.USERS]: "mtr_61SrreISyIWpwUNGR41D3Ee2Ir7WmQro",
-    [FeatureId.EGRESS_DATA_MB]: "mtr_61Srreh9eWrExDSCe41D3Ee2Ir7Wm5YW",
-    [FeatureId.DOMAINS]: "mtr_61Ss9nIKDNMw0LDRU41D3Ee2Ir7WmRPU",
-    [FeatureId.REMOTE_EXIT_NODES]: "mtr_61T86UXnfxTVXy9sD41D3Ee2Ir7WmFTE"
+export async function getFeatureDisplayName(featureId: FeatureId): Promise<string> {
+    switch (featureId) {
+        case FeatureId.USERS:
+            return "Users";
+        case FeatureId.SITES:
+            return "Sites";
+        case FeatureId.EGRESS_DATA_MB:
+            return "Egress Data (MB)";
+        case FeatureId.DOMAINS:
+            return "Domains";
+        case FeatureId.REMOTE_EXIT_NODES:
+            return "Remote Exit Nodes";
+        case FeatureId.TIER1:
+            return "Home Lab";
+        default:
+            return featureId;
+    }
+}
+
+// this is from the old system
+export const FeatureMeterIds: Partial<Record<FeatureId, string>> = { // right now we are not charging for any data
+    // [FeatureId.EGRESS_DATA_MB]: "mtr_61Srreh9eWrExDSCe41D3Ee2Ir7Wm5YW"
 };
 
-export const FeatureMeterIdsSandbox: Record<FeatureId, string> = {
-    [FeatureId.SITE_UPTIME]: "mtr_test_61Snh3cees4w60gv841DCpkOb237BDEu",
-    [FeatureId.USERS]: "mtr_test_61Sn5fLtq1gSfRkyA41DCpkOb237B6au",
-    [FeatureId.EGRESS_DATA_MB]: "mtr_test_61Snh2a2m6qome5Kv41DCpkOb237B3dQ",
-    [FeatureId.DOMAINS]: "mtr_test_61SsA8qrdAlgPpFRQ41DCpkOb237BGts",
-    [FeatureId.REMOTE_EXIT_NODES]: "mtr_test_61T86Vqmwa3D9ra3341DCpkOb237B94K"
+export const FeatureMeterIdsSandbox: Partial<Record<FeatureId, string>> = {
+    // [FeatureId.EGRESS_DATA_MB]: "mtr_test_61Snh2a2m6qome5Kv41DCpkOb237B3dQ"
 };
 
-export function getFeatureMeterId(featureId: FeatureId): string {
+export function getFeatureMeterId(featureId: FeatureId): string | undefined {
     if (
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
@@ -43,45 +54,81 @@ export function getFeatureIdByMetricId(
     )?.[0];
 }
 
-export type FeaturePriceSet = {
-    [key in Exclude<FeatureId, FeatureId.DOMAINS>]: string;
-} & {
-    [FeatureId.DOMAINS]?: string; // Optional since domains are not billed
+export type FeaturePriceSet = Partial<Record<FeatureId, string>>;
+
+export const tier1FeaturePriceSet: FeaturePriceSet = {
+    [FeatureId.TIER1]: "price_1SzVE3D3Ee2Ir7Wm6wT5Dl3G"
 };
 
-export const standardFeaturePriceSet: FeaturePriceSet = {
-    // Free tier matches the freeLimitSet
-    [FeatureId.SITE_UPTIME]: "price_1RrQc4D3Ee2Ir7WmaJGZ3MtF",
-    [FeatureId.USERS]: "price_1RrQeJD3Ee2Ir7WmgveP3xea",
-    [FeatureId.EGRESS_DATA_MB]: "price_1RrQXFD3Ee2Ir7WmvGDlgxQk",
-    // [FeatureId.DOMAINS]: "price_1Rz3tMD3Ee2Ir7Wm5qLeASzC",
-    [FeatureId.REMOTE_EXIT_NODES]: "price_1S46weD3Ee2Ir7Wm94KEHI4h"
+export const tier1FeaturePriceSetSandbox: FeaturePriceSet = {
+    [FeatureId.TIER1]: "price_1SxgpPDCpkOb237Bfo4rIsoT"
 };
 
-export const standardFeaturePriceSetSandbox: FeaturePriceSet = {
-    // Free tier matches the freeLimitSet
-    [FeatureId.SITE_UPTIME]: "price_1RefFBDCpkOb237BPrKZ8IEU",
-    [FeatureId.USERS]: "price_1ReNa4DCpkOb237Bc67G5muF",
-    [FeatureId.EGRESS_DATA_MB]: "price_1Rfp9LDCpkOb237BwuN5Oiu0",
-    // [FeatureId.DOMAINS]: "price_1Ryi88DCpkOb237B2D6DM80b",
-    [FeatureId.REMOTE_EXIT_NODES]: "price_1RyiZvDCpkOb237BXpmoIYJL"
-};
-
-export function getStandardFeaturePriceSet(): FeaturePriceSet {
+export function getTier1FeaturePriceSet(): FeaturePriceSet {
     if (
         process.env.ENVIRONMENT == "prod" &&
         process.env.SANDBOX_MODE !== "true"
     ) {
-        return standardFeaturePriceSet;
+        return tier1FeaturePriceSet;
     } else {
-        return standardFeaturePriceSetSandbox;
+        return tier1FeaturePriceSetSandbox;
     }
 }
 
-export function getLineItems(
-    featurePriceSet: FeaturePriceSet
-): Stripe.Checkout.SessionCreateParams.LineItem[] {
-    return Object.entries(featurePriceSet).map(([featureId, priceId]) => ({
-        price: priceId
-    }));
+export const tier2FeaturePriceSet: FeaturePriceSet = {
+    [FeatureId.USERS]: "price_1SzVCcD3Ee2Ir7Wmn6U3KvPN"
+};
+
+export const tier2FeaturePriceSetSandbox: FeaturePriceSet = {
+    [FeatureId.USERS]: "price_1SxaEHDCpkOb237BD9lBkPiR"
+};
+
+export function getTier2FeaturePriceSet(): FeaturePriceSet {
+    if (
+        process.env.ENVIRONMENT == "prod" &&
+        process.env.SANDBOX_MODE !== "true"
+    ) {
+        return tier2FeaturePriceSet;
+    } else {
+        return tier2FeaturePriceSetSandbox;
+    }
+}
+
+export const tier3FeaturePriceSet: FeaturePriceSet = {
+    [FeatureId.USERS]: "price_1SzVDKD3Ee2Ir7WmPtOKNusv"
+};
+
+export const tier3FeaturePriceSetSandbox: FeaturePriceSet = {
+    [FeatureId.USERS]: "price_1SxaEODCpkOb237BiXdCBSfs"
+};
+
+export function getTier3FeaturePriceSet(): FeaturePriceSet {
+    if (
+        process.env.ENVIRONMENT == "prod" &&
+        process.env.SANDBOX_MODE !== "true"
+    ) {
+        return tier3FeaturePriceSet;
+    } else {
+        return tier3FeaturePriceSetSandbox;
+    }
+}
+
+export function getFeatureIdByPriceId(priceId: string): FeatureId | undefined {
+    // Check all feature price sets
+    const allPriceSets = [
+        getTier1FeaturePriceSet(),
+        getTier2FeaturePriceSet(),
+        getTier3FeaturePriceSet()
+    ];
+
+    for (const priceSet of allPriceSets) {
+        const entry = (Object.entries(priceSet) as [FeatureId, string][]).find(
+            ([_, price]) => price === priceId
+        );
+        if (entry) {
+            return entry[0];
+        }
+    }
+
+    return undefined;
 }

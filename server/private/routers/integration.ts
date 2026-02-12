@@ -19,21 +19,20 @@ import {
     verifyApiKeyHasAction,
     verifyApiKeyIsRoot,
     verifyApiKeyOrgAccess,
-    verifyApiKeyIdpAccess
+    verifyApiKeyIdpAccess,
+    verifyLimits
 } from "@server/middlewares";
 import {
     verifyValidSubscription,
     verifyValidLicense
 } from "#private/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
-
 import {
     unauthenticated as ua,
     authenticated as a
 } from "@server/routers/integration";
 import { logActionAudit } from "#private/middlewares";
-import config from "#private/lib/config";
-import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export const unauthenticated = ua;
 export const authenticated = a;
@@ -57,7 +56,7 @@ authenticated.delete(
 authenticated.get(
     "/org/:orgId/logs/action",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.actionLogs),
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logs.queryActionAuditLogs
@@ -66,7 +65,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/logs/action/export",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.logExport),
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
@@ -76,7 +75,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/logs/access",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.accessLogs),
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logs.queryAccessAuditLogs
@@ -85,7 +84,7 @@ authenticated.get(
 authenticated.get(
     "/org/:orgId/logs/access/export",
     verifyValidLicense,
-    verifyValidSubscription,
+    verifyValidSubscription(tierMatrix.logExport),
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.exportLogs),
     logActionAudit(ActionsEnum.exportLogs),
@@ -95,7 +94,9 @@ authenticated.get(
 authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
+    verifyValidSubscription(tierMatrix.orgOidc),
     verifyApiKeyOrgAccess,
+    verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.createIdp),
     logActionAudit(ActionsEnum.createIdp),
     orgIdp.createOrgOidcIdp
@@ -104,8 +105,10 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
+    verifyValidSubscription(tierMatrix.orgOidc),
     verifyApiKeyOrgAccess,
     verifyApiKeyIdpAccess,
+    verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.updateIdp),
     logActionAudit(ActionsEnum.updateIdp),
     orgIdp.updateOrgOidcIdp

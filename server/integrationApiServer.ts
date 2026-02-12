@@ -105,11 +105,13 @@ function getOpenApiDocumentation() {
         servers: [{ url: "/v1" }]
     });
 
-    // convert to yaml and save to file
-    const outputPath = path.join(APP_PATH, "openapi.yaml");
-    const yamlOutput = yaml.dump(generated);
-    fs.writeFileSync(outputPath, yamlOutput, "utf8");
-    logger.info(`OpenAPI documentation saved to ${outputPath}`);
+    if (!process.env.DISABLE_GEN_OPENAPI) {
+        // convert to yaml and save to file
+        const outputPath = path.join(APP_PATH, "openapi.yaml");
+        const yamlOutput = yaml.dump(generated);
+        fs.writeFileSync(outputPath, yamlOutput, "utf8");
+        logger.info(`OpenAPI documentation saved to ${outputPath}`);
+    }
 
     return generated;
 }

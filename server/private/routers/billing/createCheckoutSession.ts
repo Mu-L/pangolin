@@ -22,14 +22,23 @@ import logger from "@server/logger";
 import config from "@server/lib/config";
 import { fromError } from "zod-validation-error";
 import stripe from "#private/lib/stripe";
-import { getLineItems, getStandardFeaturePriceSet } from "@server/lib/billing";
-import { getTierPriceSet, TierId } from "@server/lib/billing/tiers";
+import {
+    getTier1FeaturePriceSet,
+    getTier3FeaturePriceSet,
+    getTier2FeaturePriceSet
+} from "@server/lib/billing";
+import { getLineItems } from "@server/lib/billing/getLineItems";
+import Stripe from "stripe";
 
 const createCheckoutSessionSchema = z.strictObject({
     orgId: z.string()
 });
 
-export async function createCheckoutSessionSAAS(
+const createCheckoutSessionBodySchema = z.strictObject({
+    tier: z.enum(["tier1", "tier2", "tier3"])
+});
+
+export async function createCheckoutSession(
     req: Request,
     res: Response,
     next: NextFunction
@@ -46,6 +55,18 @@ export async function createCheckoutSessionSAAS(
         }
 
         const { orgId } = parsedParams.data;
+
+        const parsedBody = createCheckoutSessionBodySchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedBody.error).toString()
+                )
+            );
+        }
+
+        const { tier } = parsedBody.data;
 
         // check if we already have a customer for this org
         const [customer] = await db
@@ -65,20 +86,26 @@ export async function createCheckoutSessionSAAS(
             );
         }
 
-        const standardTierPrice = getTierPriceSet()[TierId.STANDARD];
+        let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
+        if (tier === "tier1") {
+            lineItems = await getLineItems(getTier1FeaturePriceSet(), orgId);
+        } else if (tier === "tier2") {
+            lineItems = await getLineItems(getTier2FeaturePriceSet(), orgId);
+        } else if (tier === "tier3") {
+            lineItems = await getLineItems(getTier3FeaturePriceSet(), orgId);
+        } else {
+            return next(createHttpError(HttpCode.BAD_REQUEST, "Invalid plan"));
+        }
+
+        logger.debug(`Line items: ${JSON.stringify(lineItems)}`);
 
         const session = await stripe!.checkout.sessions.create({
             client_reference_id: orgId, // So we can look it up the org later on the webhook
             billing_address_collection: "required",
-            line_items: [
-                {
-                    price: standardTierPrice, // Use the standard tier
-                    quantity: 1
-                },
-                ...getLineItems(getStandardFeaturePriceSet())
-            ], // Start with the standard feature set that matches the free limits
+            line_items: lineItems,
             customer: customer.customerId,
             mode: "subscription",
+            allow_promotion_codes: true,
             success_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing?canceled=true`
         });

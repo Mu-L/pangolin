@@ -17,8 +17,7 @@ import {
     ResourceHeaderAuthExtendedCompatibility,
     ResourcePassword,
     ResourcePincode,
-    ResourceRule,
-    resourceSessions
+    ResourceRule
 } from "@server/db";
 import config from "@server/lib/config";
 import { isIpInCidr, stripPortFromHost } from "@server/lib/ip";
@@ -32,7 +31,6 @@ import { fromError } from "zod-validation-error";
 import { getCountryCodeForIp } from "@server/lib/geoip";
 import { getAsnForIp } from "@server/lib/asn";
 import { getOrgTierData } from "#dynamic/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 import { verifyPassword } from "@server/auth/password";
 import {
     checkOrgAccessPolicy,
@@ -40,8 +38,9 @@ import {
 } from "#dynamic/lib/checkOrgAccessPolicy";
 import { logRequestAudit } from "./logRequestAudit";
 import cache from "@server/lib/cache";
-import semver from "semver";
 import { APP_VERSION } from "@server/lib/consts";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const verifyResourceSessionSchema = z.object({
     sessions: z.record(z.string(), z.string()).optional(),
@@ -798,8 +797,11 @@ async function notAllowed(
 ) {
     let loginPage: LoginPage | null = null;
     if (orgId) {
-        const { tier } = await getOrgTierData(orgId); // returns null in oss
-        if (tier === TierId.STANDARD) {
+        const subscribed = await isSubscribed(
+            orgId,
+            tierMatrix.loginPageDomain
+        );
+        if (subscribed) {
             loginPage = await getOrgLoginPage(orgId);
         }
     }
@@ -852,8 +854,8 @@ async function headerAuthChallenged(
 ) {
     let loginPage: LoginPage | null = null;
     if (orgId) {
-        const { tier } = await getOrgTierData(orgId); // returns null in oss
-        if (tier === TierId.STANDARD) {
+        const subscribed = await isSubscribed(orgId, tierMatrix.loginPageDomain);
+        if (subscribed) {
             loginPage = await getOrgLoginPage(orgId);
         }
     }
@@ -1039,7 +1041,11 @@ export function isPathAllowed(pattern: string, path: string): boolean {
     const MAX_RECURSION_DEPTH = 100;
 
     // Recursive function to try different wildcard matches
-    function matchSegments(patternIndex: number, pathIndex: number, depth: number = 0): boolean {
+    function matchSegments(
+        patternIndex: number,
+        pathIndex: number,
+        depth: number = 0
+    ): boolean {
         // Check recursion depth limit
         if (depth > MAX_RECURSION_DEPTH) {
             logger.warn(
@@ -1125,7 +1131,11 @@ export function isPathAllowed(pattern: string, path: string): boolean {
                 logger.debug(
                     `${indent}Segment with wildcard matches: "${currentPatternPart}" matches "${currentPathPart}"`
                 );
-                return matchSegments(patternIndex + 1, pathIndex + 1, depth + 1);
+                return matchSegments(
+                    patternIndex + 1,
+                    pathIndex + 1,
+                    depth + 1
+                );
             }
 
             logger.debug(

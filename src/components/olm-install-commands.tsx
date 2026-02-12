@@ -43,11 +43,11 @@ export function OlmInstallCommands({
             All: [
                 {
                     title: t("install"),
-                    command: `curl -fsSL https://static.pangolin.net/get-olm.sh | bash`
+                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | bash`
                 },
                 {
                     title: t("run"),
-                    command: `sudo olm --id ${id} --secret ${secret} --endpoint ${endpoint}`
+                    command: `sudo pangolin up --id ${id} --secret ${secret} --endpoint ${endpoint} --attach`
                 }
             ]
         },

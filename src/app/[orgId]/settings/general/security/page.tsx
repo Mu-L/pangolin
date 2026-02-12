@@ -3,12 +3,7 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
-import {
-    useState,
-    useRef,
-    useActionState,
-    type ComponentRef
-} from "react";
+import { useState, useRef, useActionState, type ComponentRef } from "react";
 import {
     Form,
     FormControl,
@@ -48,6 +43,7 @@ import { SwitchInput } from "@app/components/SwitchInput";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import type { OrgContextType } from "@app/contexts/orgContext";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 // Session length options in hours
 const SESSION_LENGTH_OPTIONS = [
@@ -107,10 +103,13 @@ type SectionFormProps = {
 
 export default function SecurityPage() {
     const { org } = useOrgContext();
+    const { env } = useEnvContext();
     return (
         <SettingsContainer>
             <LogRetentionSectionForm org={org.org} />
-            {build !== "oss" && <SecuritySettingsSectionForm org={org.org} />}
+            {!env.flags.disableEnterpriseFeatures && (
+                <SecuritySettingsSectionForm org={org.org} />
+            )}
         </SettingsContainer>
     );
 }
@@ -137,10 +136,11 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
 
     const router = useRouter();
     const t = useTranslations();
-    const { isPaidUser, hasSaasSubscription } = usePaidStatus();
+    const { isPaidUser, subscriptionTier } = usePaidStatus();
 
     const [, formAction, loadingSave] = useActionState(performSave, null);
-    const api = createApiClient(useEnvContext());
+    const { env } = useEnvContext();
+    const api = createApiClient({ env });
 
     async function performSave() {
         const isValid = await form.trigger();
@@ -218,13 +218,35 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                                 <SelectContent>
                                                     {LOG_RETENTION_OPTIONS.filter(
                                                         (option) => {
-                                                            if (
-                                                                hasSaasSubscription &&
-                                                                option.value >
-                                                                    30
-                                                            ) {
+                                                            if (build != "saas") {
+                                                                return true;
+                                                            }
+
+                                                            let maxDays: number;
+
+                                                            if (!subscriptionTier) {
+                                                                // No tier
+                                                                maxDays = 3;
+                                                            } else if (subscriptionTier == "enterprise") {
+                                                                // Enterprise - no limit
+                                                                return true;
+                                                            } else if (subscriptionTier == "tier3") {
+                                                                maxDays = 90;
+                                                            } else if (subscriptionTier == "tier2") {
+                                                                maxDays = 30;
+                                                            } else if (subscriptionTier == "tier1") {
+                                                                maxDays = 7;
+                                                            } else {
+                                                                // Default to most restrictive
+                                                                maxDays = 3;
+                                                            }
+
+                                                            // Filter out options that exceed the max
+                                                            // Special values: -1 (forever) and 9001 (end of year) should be filtered
+                                                            if (option.value < 0 || option.value > maxDays) {
                                                                 return false;
                                                             }
+
                                                             return true;
                                                         }
                                                     ).map((option) => (
@@ -243,15 +265,19 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                 )}
                             />
 
-                            {build !== "oss" && (
+                            {!env.flags.disableEnterpriseFeatures && (
                                 <>
-                                    <PaidFeaturesAlert />
+                                    <PaidFeaturesAlert
+                                        tiers={tierMatrix.accessLogs}
+                                    />
 
                                     <FormField
                                         control={form.control}
                                         name="settingsLogRetentionDaysAccess"
                                         render={({ field }) => {
-                                            const isDisabled = !isPaidUser;
+                                            const isDisabled = !isPaidUser(
+                                                tierMatrix.accessLogs
+                                            );
 
                                             return (
                                                 <FormItem>
@@ -289,7 +315,40 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {LOG_RETENTION_OPTIONS.map(
+                                                                {LOG_RETENTION_OPTIONS.filter(
+                                                                    (option) => {
+                                                                        if (build != "saas") {
+                                                                            return true;
+                                                                        }
+
+                                                                        let maxDays: number;
+
+                                                                        if (!subscriptionTier) {
+                                                                            // No tier
+                                                                            maxDays = 3;
+                                                                        } else if (subscriptionTier == "enterprise") {
+                                                                            // Enterprise - no limit
+                                                                            return true;
+                                                                        } else if (subscriptionTier == "tier3") {
+                                                                            maxDays = 90;
+                                                                        } else if (subscriptionTier == "tier2") {
+                                                                            maxDays = 30;
+                                                                        } else if (subscriptionTier == "tier1") {
+                                                                            maxDays = 7;
+                                                                        } else {
+                                                                            // Default to most restrictive
+                                                                            maxDays = 3;
+                                                                        }
+
+                                                                        // Filter out options that exceed the max
+                                                                        // Special values: -1 (forever) and 9001 (end of year) should be filtered
+                                                                        if (option.value < 0 || option.value > maxDays) {
+                                                                            return false;
+                                                                        }
+
+                                                                        return true;
+                                                                    }
+                                                                ).map(
                                                                     (
                                                                         option
                                                                     ) => (
@@ -317,7 +376,9 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                         control={form.control}
                                         name="settingsLogRetentionDaysAction"
                                         render={({ field }) => {
-                                            const isDisabled = !isPaidUser;
+                                            const isDisabled = !isPaidUser(
+                                                tierMatrix.actionLogs
+                                            );
 
                                             return (
                                                 <FormItem>
@@ -355,7 +416,40 @@ function LogRetentionSectionForm({ org }: SectionFormProps) {
                                                                 />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {LOG_RETENTION_OPTIONS.map(
+                                                                {LOG_RETENTION_OPTIONS.filter(
+                                                                    (option) => {
+                                                                        if (build != "saas") {
+                                                                            return true;
+                                                                        }
+
+                                                                        let maxDays: number;
+
+                                                                        if (!subscriptionTier) {
+                                                                            // No tier
+                                                                            maxDays = 3;
+                                                                        } else if (subscriptionTier == "enterprise") {
+                                                                            // Enterprise - no limit
+                                                                            return true;
+                                                                        } else if (subscriptionTier == "tier3") {
+                                                                            maxDays = 90;
+                                                                        } else if (subscriptionTier == "tier2") {
+                                                                            maxDays = 30;
+                                                                        } else if (subscriptionTier == "tier1") {
+                                                                            maxDays = 7;
+                                                                        } else {
+                                                                            // Default to most restrictive
+                                                                            maxDays = 3;
+                                                                        }
+
+                                                                        // Filter out options that exceed the max
+                                                                        // Special values: -1 (forever) and 9001 (end of year) should be filtered
+                                                                        if (option.value < 0 || option.value > maxDays) {
+                                                                            return false;
+                                                                        }
+
+                                                                        return true;
+                                                                    }
+                                                                ).map(
                                                                     (
                                                                         option
                                                                     ) => (
@@ -522,12 +616,17 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                                 id="security-settings-section-form"
                                 className="space-y-4"
                             >
-                                <PaidFeaturesAlert />
+                                <PaidFeaturesAlert
+                                    tiers={tierMatrix.twoFactorEnforcement}
+                                />
+
                                 <FormField
                                     control={form.control}
                                     name="requireTwoFactor"
                                     render={({ field }) => {
-                                        const isDisabled = !isPaidUser;
+                                        const isDisabled = !isPaidUser(
+                                            tierMatrix.twoFactorEnforcement
+                                        );
 
                                         return (
                                             <FormItem className="col-span-2">
@@ -574,7 +673,9 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                                     control={form.control}
                                     name="maxSessionLengthHours"
                                     render={({ field }) => {
-                                        const isDisabled = !isPaidUser;
+                                        const isDisabled = !isPaidUser(
+                                            tierMatrix.sessionDurationPolicies
+                                        );
 
                                         return (
                                             <FormItem className="col-span-2">
@@ -654,7 +755,9 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                                     control={form.control}
                                     name="passwordExpiryDays"
                                     render={({ field }) => {
-                                        const isDisabled = !isPaidUser;
+                                        const isDisabled = !isPaidUser(
+                                            tierMatrix.passwordExpirationPolicies
+                                        );
 
                                         return (
                                             <FormItem className="col-span-2">
@@ -740,7 +843,12 @@ function SecuritySettingsSectionForm({ org }: SectionFormProps) {
                         type="submit"
                         form="security-settings-section-form"
                         loading={loadingSave}
-                        disabled={loadingSave}
+                        disabled={
+                            loadingSave ||
+                            !isPaidUser(tierMatrix.twoFactorEnforcement) ||
+                            !isPaidUser(tierMatrix.sessionDurationPolicies) ||
+                            !isPaidUser(tierMatrix.passwordExpirationPolicies)
+                        }
                     >
                         {t("saveSettings")}
                     </Button>

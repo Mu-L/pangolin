@@ -34,6 +34,8 @@ import { FeatureId } from "@server/lib/billing";
 import { usageService } from "@server/lib/billing/usageService";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const ensureTrailingSlash = (url: string): string => {
     return url;
@@ -326,6 +328,33 @@ export async function validateOidcCallback(
                     .where(eq(idpOrg.idpId, existingIdp.idp.idpId))
                     .innerJoin(orgs, eq(orgs.orgId, idpOrg.orgId));
                 allOrgs = idpOrgs.map((o) => o.orgs);
+
+                // TODO: when there are multiple orgs we need to do this better!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+                if (allOrgs.length > 1) {
+                    // for some reason there is more than one org
+                    logger.error(
+                        "More than one organization linked to this IdP. This should not happen with auto-provisioning enabled."
+                    );
+                    return next(
+                        createHttpError(
+                            HttpCode.INTERNAL_SERVER_ERROR,
+                            "Multiple organizations linked to this IdP. Please contact support."
+                        )
+                    );
+                }
+
+                const subscribed = await isSubscribed(
+                    allOrgs[0].orgId,
+                    tierMatrix.autoProvisioning
+                );
+                if (!subscribed) {
+                    return next(
+                        createHttpError(
+                            HttpCode.FORBIDDEN,
+                            "This organization's current plan does not support this feature."
+                        )
+                    );
+                }
             } else {
                 allOrgs = await db.select().from(orgs);
             }
@@ -587,7 +616,7 @@ export async function validateOidcCallback(
             });
 
             for (const orgCount of orgUserCounts) {
-                await usageService.updateDaily(
+                await usageService.updateCount(
                     orgCount.orgId,
                     FeatureId.USERS,
                     orgCount.userCount

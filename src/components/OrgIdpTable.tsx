@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
-import { IdpDataTable } from "@app/components/private/OrgIdpDataTable";
+import { IdpDataTable } from "@app/components/OrgIdpDataTable";
 import { Button } from "@app/components/ui/button";
 import { ArrowRight, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
