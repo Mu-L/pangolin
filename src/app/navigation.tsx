@@ -125,7 +125,7 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
             ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
             build === "saas" ||
             env?.app.identityProviderMode === "org" ||
-            env?.app.identityProviderMode === undefined
+            (env?.app.identityProviderMode === undefined && build !== "oss")
                 ? [
                       {
                           title: "sidebarIdentityProviders",
