@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "머신 클라이언트는 특정 사용자와 연결되지 않은 서버 및 자동화된 시스템을 위한 것입니다. 이들은 ID와 비밀을 통해 인증하며, Pangolin CLI, Olm CLI, 또는 Olm 컨테이너로 실행될 수 있습니다.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Olm 컨테이너",
+    "machineClientsBannerOlmContainer": "Container",
     "clientsTableUserClients": "사용자",
     "clientsTableMachineClients": "기계",
     "licenseTableValidUntil": "유효 기한",
