@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Klienci maszyn służą dla serwerów i systemów zautomatyzowanych, które nie są powiązane z konkretnym użytkownikiem. Uwierzytelniają się za pomocą identyfikatora i sekretu i mogą działać z Pangolin CLI, Olm CLI lub Olm jako kontener.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Kontener Olm",
+    "machineClientsBannerOlmContainer": "Container",
     "clientsTableUserClients": "Użytkownik",
     "clientsTableMachineClients": "Maszyna",
     "licenseTableValidUntil": "Ważny do",
