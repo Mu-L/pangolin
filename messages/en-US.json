@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Machine clients are for servers and automated systems that are not associated with a specific user. They authenticate with an ID and secret, and can run with Pangolin CLI, Olm CLI, or Olm as a container.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Olm Container",
+    "machineClientsBannerOlmContainer": "Container",
     "clientsTableUserClients": "User",
     "clientsTableMachineClients": "Machine",
     "licenseTableValidUntil": "Valid Until",

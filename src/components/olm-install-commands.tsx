@@ -14,7 +14,7 @@ import { Button } from "./ui/button";
 
 export type CommandItem = string | { title: string; command: string };
 
-const PLATFORMS = ["unix", "windows", "docker"] as const;
+const PLATFORMS = ["unix", "docker", "windows"] as const;
 
 type Platform = (typeof PLATFORMS)[number];
 
@@ -51,6 +51,27 @@ export function OlmInstallCommands({
                 }
             ]
         },
+        docker: {
+            "Docker Compose": [
+                `services:
+  pangolin-cli:
+    image: fosrl/pangolin-cli
+    container_name: pangolin-cli
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - PANGOLIN_ENDPOINT=${endpoint}
+      - CLIENT_ID=${id}
+      - CLIENT_SECRET=${secret}`
+            ],
+            "Docker Run": [
+                `docker run -dit --network host --cap-add NET_ADMIN --device /dev/net/tun:/dev/net/tun fosrl/pangolin-cli up client --id ${id} --secret ${secret} --endpoint ${endpoint} --attach`
+            ]
+        },
         windows: {
             x64: [
                 {
@@ -62,27 +83,6 @@ export function OlmInstallCommands({
                     title: t("run"),
                     command: `olm.exe --id ${id} --secret ${secret} --endpoint ${endpoint}`
                 }
-            ]
-        },
-        docker: {
-            "Docker Compose": [
-                `services:
-  olm:
-    image: fosrl/olm
-    container_name: olm
-    restart: unless-stopped
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    environment:
-      - PANGOLIN_ENDPOINT=${endpoint}
-      - OLM_ID=${id}
-      - OLM_SECRET=${secret}`
-            ],
-            "Docker Run": [
-                `docker run -dit --network host --cap-add NET_ADMIN --device /dev/net/tun:/dev/net/tun fosrl/olm --id ${id} --secret ${secret} --endpoint ${endpoint}`
             ]
         }
     };
