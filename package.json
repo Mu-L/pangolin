@@ -13,7 +13,7 @@
     "scripts": {
         "dev": "NODE_ENV=development ENVIRONMENT=dev tsx watch server/index.ts",
         "dev:check": "npx tsc --noEmit && npm run format:check",
-        "dev:setup": "cp config/config.example.yml config/config.yml && npm run set:oss && npm run set:sqlite && npm run db:generate && npm run db:sqlite:push",
+        "dev:setup": "cp config/config.example.yml config/config.yml && npm run set:oss && npm run set:sqlite && npm run db:sqlite:generate && npm run db:sqlite:push",
         "db:pg:generate": "drizzle-kit generate --config=./drizzle.pg.config.ts",
         "db:sqlite:generate": "drizzle-kit generate --config=./drizzle.sqlite.config.ts",
         "db:pg:push": "npx tsx server/db/pg/migrate.ts",

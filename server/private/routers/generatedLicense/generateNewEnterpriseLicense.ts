@@ -113,7 +113,7 @@ export async function generateNewEnterpriseLicense(
         }
 
         const tier = licenseData.tier === "big_license" ? LicenseId.BIG_LICENSE : LicenseId.SMALL_LICENSE;
-        const tierPrice = getLicensePriceSet()[tier]
+        const tierPrice = getLicensePriceSet()[tier];
 
         const session = await stripe!.checkout.sessions.create({
             client_reference_id: keyId.toString(),
