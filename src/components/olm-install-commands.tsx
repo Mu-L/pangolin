@@ -43,7 +43,7 @@ export function OlmInstallCommands({
             All: [
                 {
                     title: t("install"),
-                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | bash`
+                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | sudo bash`
                 },
                 {
                     title: t("run"),
