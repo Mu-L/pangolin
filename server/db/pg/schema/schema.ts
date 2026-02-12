@@ -602,6 +602,7 @@ export const resourceRules = pgTable("resourceRules", {
 
 export const resourcePolicies = pgTable("resourcePolicies", {
     resourcePolicyId: serial('resourcePolicyId').primaryKey(),
+    sso: boolean("sso").notNull().default(true),
     idpId: integer("idpId").references(() => idp.idpId, {
         onDelete: "set null"
     }),
