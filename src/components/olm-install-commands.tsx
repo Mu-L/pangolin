@@ -55,7 +55,8 @@ export function OlmInstallCommands({
             x64: [
                 {
                     title: t("install"),
-                    command: `curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/olm_windows_installer.exe"`
+                    command: `# Download and run the installer to install Olm first\n
+                    curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/olm_windows_installer.exe"`
                 },
                 {
                     title: t("run"),
