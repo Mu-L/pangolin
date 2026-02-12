@@ -15,7 +15,7 @@
         "dev:check": "npx tsc --noEmit && npm run format:check",
         "dev:setup": "cp config/config.example.yml config/config.yml && npm run set:oss && npm run set:sqlite && npm run db:sqlite:generate && npm run db:sqlite:push",
         "db:generate": "drizzle-kit generate --config=./drizzle.config.ts",
-        "db:push": "npx tsx server/db/pg/migrate.ts",
+        "db:push": "npx tsx server/db/migrate.ts",
         "db:studio": "drizzle-kit studio --config=./drizzle.config.ts",
         "db:clear-migrations": "rm -rf server/migrations",
         "set:oss": "echo 'export const build = \"oss\" as \"saas\" | \"enterprise\" | \"oss\";' > server/build.ts && cp tsconfig.oss.json tsconfig.json",
