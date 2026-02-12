@@ -14,6 +14,7 @@ export default async function migration() {
         db.transaction(() => {
             db.prepare(`ALTER TABLE 'limits' ADD 'override' integer DEFAULT false;`).run();
             db.prepare(`ALTER TABLE 'subscriptionItems' ADD 'featureId' text;`).run();
+            db.prepare(`ALTER TABLE 'subscriptionItems' ADD 'stripeSubscriptionItemId' text;`).run();
             db.prepare(`ALTER TABLE 'subscriptions' ADD 'version' integer;`).run();
             db.prepare(`ALTER TABLE 'subscriptions' ADD 'type' text;`).run();
         })();
