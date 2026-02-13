@@ -1231,6 +1231,7 @@
     "sidebarResources": "Resources",
     "sidebarProxyResources": "Public",
     "sidebarClientResources": "Private",
+    "sidebarResourcePolicies": "Policies",
     "sidebarAccessControl": "Access Control",
     "sidebarLogsAndAnalytics": "Logs & Analytics",
     "sidebarUsers": "Users",

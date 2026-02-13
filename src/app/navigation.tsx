@@ -17,6 +17,7 @@ import {
     ScanEye, // Added from 'dev' branch
     Server,
     Settings,
+    ShieldIcon,
     SquareMousePointer,
     TicketCheck,
     User,
@@ -62,7 +63,18 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                         title: "sidebarClientResources",
                         href: "/{orgId}/settings/resources/client",
                         icon: <GlobeLock className="size-4 flex-none" />
-                    }
+                    },
+                    ...(build !== "oss"
+                        ? [
+                              {
+                                  title: "sidebarResourcePolicies",
+                                  href: "/{orgId}/settings/resources/policies",
+                                  icon: (
+                                      <ShieldIcon className="size-4 flex-none" />
+                                  )
+                              }
+                          ]
+                        : [])
                 ]
             },
             {
@@ -86,7 +98,7 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/{orgId}/settings/domains",
                 icon: <Globe className="size-4 flex-none" />
             },
-            ...(build == "saas"
+            ...(build === "saas"
                 ? [
                       {
                           title: "sidebarRemoteExitNodes",
