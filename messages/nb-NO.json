@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Maskinklienter er for servere og automatiserte systemer som ikke er tilknyttet en spesifikk bruker. De autentiserer med en ID og et hemmelighetsnummer, og kan kjøre med Pangolin CLI, Olm CLI eller Olm som en container.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Container",
+    "machineClientsBannerOlmContainer": "Olm Container",
     "clientsTableUserClients": "Bruker",
     "clientsTableMachineClients": "Maskin",
     "licenseTableValidUntil": "Gyldig til",
