@@ -12,3 +12,4 @@
  */
 
 export * from "./getMaintenanceInfo";
+export * from "./listResourcePolicies";

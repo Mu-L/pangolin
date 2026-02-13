@@ -32,7 +32,7 @@ import {
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { sql, eq, or, inArray, and, count } from "drizzle-orm";
+import { sql, eq, or, inArray, and, count, ilike, asc } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -97,9 +97,9 @@ function queryResourcePoliciesBase() {
 }
 
 // TODO: replaced with `PaginatedResponse<T>` when paginated table PR is merged
-export type ListResourcesResponse = {
+export type ListResourcePoliciesResponse = {
     policies: Awaited<ReturnType<typeof queryResourcePoliciesBase>>;
-    total: number; pageSize: number; page: number;
+    pagination: { total: number; pageSize: number; page: number; };
 };
 
 registry.registerPath({
@@ -165,6 +165,82 @@ export async function listResourcePolicies(
                 )
             );
         }
+
+        let accessibleResourcePolicies: Array<{ resourcePolicyId: number; }>;
+        if (req.user) {
+            accessibleResourcePolicies = await db
+                .select({
+                    resourcePolicyId: sql<number>`COALESCE(${userResources.resourcePolicyId}, ${roleResources.resourcePolicyId})`
+                })
+                .from(userResources)
+                .fullJoin(
+                    roleResources,
+                    eq(userResources.resourcePolicyId, roleResources.resourcePolicyId)
+                )
+                .where(
+                    or(
+                        eq(userResources.userId, req.user!.userId),
+                        eq(roleResources.roleId, req.userOrgRoleId!)
+                    )
+                );
+        } else {
+            accessibleResourcePolicies = await db
+                .select({
+                    resourcePolicyId: resourcePolicies.resourcePolicyId
+                })
+                .from(resourcePolicies)
+                .where(eq(resourcePolicies.orgId, orgId));
+        }
+
+        const accessibleResourceIds = accessibleResourcePolicies.map(
+            (resource) => resource.resourcePolicyId
+        );
+
+        const conditions = [
+            and(
+                inArray(resourcePolicies.resourcePolicyId, accessibleResourceIds),
+                eq(resourcePolicies.orgId, orgId)
+            )
+        ];
+
+        if (query) {
+            conditions.push(
+                or(
+                    ilike(resourcePolicies.name, "%" + query + "%"),
+                    ilike(resourcePolicies.niceId, "%" + query + "%"),
+                )
+            );
+        }
+
+        const baseQuery = queryResourcePoliciesBase()
+            .where(and(...conditions));
+
+        // we need to add `as` so that drizzle filters the result as a subquery
+        const countQuery = db.$count(baseQuery.as("filtered_policies"));
+
+        const [rows, totalCount] = await Promise.all([
+            baseQuery
+                .limit(pageSize)
+                .offset(pageSize * (page - 1))
+                .orderBy(asc(resourcePolicies.resourcePolicyId)),
+            countQuery
+        ]);
+
+        return response<ListResourcePoliciesResponse>(res, {
+            data: {
+                policies: rows,
+                pagination: {
+                    total: totalCount,
+                    pageSize,
+                    page
+                }
+            },
+            success: true,
+            error: false,
+            message: "Resources retrieved successfully",
+            status: HttpCode.OK
+        });
+
 
     } catch (error) {
         logger.error(error);

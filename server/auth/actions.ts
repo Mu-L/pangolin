@@ -131,7 +131,11 @@ export enum ActionsEnum {
     viewLogs = "viewLogs",
     exportLogs = "exportLogs",
     listApprovals = "listApprovals",
-    updateApprovals = "updateApprovals"
+    updateApprovals = "updateApprovals",
+    listResourcePolicies = "listResourcePolicies",
+    createResourcePolicies = "createResourcePolicies",
+    updateResourcePolicies = "updateResourcePolicies",
+    deleteResourcePolicies = "deleteResourcePolicies",
 }
 
 export async function checkUserActionPermission(
