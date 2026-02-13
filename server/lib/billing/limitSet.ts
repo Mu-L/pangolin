@@ -15,10 +15,10 @@ export const sandboxLimitSet: LimitSet = {
 };
 
 export const freeLimitSet: LimitSet = {
-    [FeatureId.USERS]: { value: 5, description: "Starter limit" },
-    [FeatureId.SITES]: { value: 5, description: "Starter limit" },
-    [FeatureId.DOMAINS]: { value: 5, description: "Starter limit" },
-    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Starter limit" },
+    [FeatureId.SITES]: { value: 5, description: "Basic limit" },
+    [FeatureId.USERS]: { value: 5, description: "Basic limit" },
+    [FeatureId.DOMAINS]: { value: 5, description: "Basic limit" },
+    [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Basic limit" },
 };
 
 export const tier1LimitSet: LimitSet = {
