@@ -9,19 +9,30 @@ import { getTranslations } from "next-intl/server";
 
 type SitesPageProps = {
     params: Promise<{ orgId: string }>;
+    searchParams: Promise<Record<string, string>>;
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function SitesPage(props: SitesPageProps) {
     const params = await props.params;
+
+    const searchParams = new URLSearchParams(await props.searchParams);
+
     let sites: ListSitesResponse["sites"] = [];
+    let pagination: ListSitesResponse["pagination"] = {
+        total: 0,
+        page: 1,
+        pageSize: 20
+    };
     try {
         const res = await internal.get<AxiosResponse<ListSitesResponse>>(
-            `/org/${params.orgId}/sites`,
+            `/org/${params.orgId}/sites?${searchParams.toString()}`,
             await authCookieHeader()
         );
-        sites = res.data.data.sites;
+        const responseData = res.data.data;
+        sites = responseData.sites;
+        pagination = responseData.pagination;
     } catch (e) {}
 
     const t = await getTranslations();
@@ -60,8 +71,6 @@ export default async function SitesPage(props: SitesPageProps) {
 
     return (
         <>
-            {/* <SitesSplashCard /> */}
-
             <SettingsSectionTitle
                 title={t("siteManageSites")}
                 description={t("siteDescription")}
@@ -69,7 +78,15 @@ export default async function SitesPage(props: SitesPageProps) {
 
             <SitesBanner />
 
-            <SitesTable sites={siteRows} orgId={params.orgId} />
+            <SitesTable
+                sites={siteRows}
+                orgId={params.orgId}
+                rowCount={pagination.total}
+                pagination={{
+                    pageIndex: pagination.page - 1,
+                    pageSize: pagination.pageSize
+                }}
+            />
         </>
     );
 }

@@ -1,11 +1,13 @@
 "use client";
-import * as React from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { QueryClient } from "@tanstack/react-query";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient } from "@app/lib/api";
-import { durationToMs } from "@app/lib/durationToMs";
+import {
+    keepPreviousData,
+    QueryClient,
+    QueryClientProvider
+} from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import * as React from "react";
 
 export type ReactQueryProviderProps = {
     children: React.ReactNode;
@@ -22,7 +24,8 @@ export function TanstackQueryProvider({ children }: ReactQueryProviderProps) {
                         staleTime: 0,
                         meta: {
                             api
-                        }
+                        },
+                        placeholderData: keepPreviousData
                     },
                     mutations: {
                         meta: { api }

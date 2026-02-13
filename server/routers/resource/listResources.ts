@@ -17,57 +17,58 @@ import {
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { sql, eq, or, inArray, and, count } from "drizzle-orm";
+import {
+    sql,
+    eq,
+    or,
+    inArray,
+    and,
+    count,
+    ilike,
+    asc,
+    not,
+    isNull,
+    type SQL
+} from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import type { PaginatedResponse } from "@server/types/Pagination";
 
 const listResourcesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
 const listResourcesSchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().nonnegative()),
-
-    offset: z
-        .string()
+        .catch(20)
+        .default(20),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative())
+        .catch(1)
+        .default(1),
+    query: z.string().optional(),
+    enabled: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined),
+    authState: z
+        .enum(["protected", "not_protected", "none"])
+        .optional()
+        .catch(undefined),
+    healthStatus: z
+        .enum(["no_targets", "healthy", "degraded", "offline", "unknown"])
+        .optional()
+        .catch(undefined)
 });
-
-// (resource fields + a single joined target)
-type JoinedRow = {
-    resourceId: number;
-    niceId: string;
-    name: string;
-    ssl: boolean;
-    fullDomain: string | null;
-    passwordId: number | null;
-    sso: boolean;
-    pincodeId: number | null;
-    whitelist: boolean;
-    http: boolean;
-    protocol: string;
-    proxyPort: number | null;
-    enabled: boolean;
-    domainId: string | null;
-    headerAuthId: number | null;
-
-    targetId: number | null;
-    targetIp: string | null;
-    targetPort: number | null;
-    targetEnabled: boolean | null;
-
-    hcHealth: string | null;
-    hcEnabled: boolean | null;
-};
 
 // grouped by resource with targets[])
 export type ResourceWithTargets = {
@@ -91,11 +92,32 @@ export type ResourceWithTargets = {
         ip: string;
         port: number;
         enabled: boolean;
-        healthStatus?: "healthy" | "unhealthy" | "unknown";
+        healthStatus: "healthy" | "unhealthy" | "unknown" | null;
     }>;
 };
 
-function queryResources(accessibleResourceIds: number[], orgId: string) {
+// Aggregate filters
+const total_targets = count(targets.targetId);
+const healthy_targets = sql<number>`SUM(
+                    CASE
+                    WHEN ${targetHealthCheck.hcHealth} = 'healthy' THEN 1
+                    ELSE 0
+                    END
+                ) `;
+const unknown_targets = sql<number>`SUM(
+                    CASE
+                    WHEN ${targetHealthCheck.hcHealth} = 'unknown' THEN 1
+                    ELSE 0
+                    END
+                ) `;
+const unhealthy_targets = sql<number>`SUM(
+                    CASE
+                    WHEN ${targetHealthCheck.hcHealth} = 'unhealthy' THEN 1
+                    ELSE 0
+                    END
+                ) `;
+
+function queryResourcesBase() {
     return db
         .select({
             resourceId: resources.resourceId,
@@ -114,14 +136,7 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
             niceId: resources.niceId,
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
-            targetId: targets.targetId,
-            targetIp: targets.ip,
-            targetPort: targets.port,
-            targetEnabled: targets.enabled,
-
-            hcHealth: targetHealthCheck.hcHealth,
-            hcEnabled: targetHealthCheck.hcEnabled
+                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
         })
         .from(resources)
         .leftJoin(
@@ -148,18 +163,18 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
             targetHealthCheck,
             eq(targetHealthCheck.targetId, targets.targetId)
         )
-        .where(
-            and(
-                inArray(resources.resourceId, accessibleResourceIds),
-                eq(resources.orgId, orgId)
-            )
+        .groupBy(
+            resources.resourceId,
+            resourcePassword.passwordId,
+            resourcePincode.pincodeId,
+            resourceHeaderAuth.headerAuthId,
+            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
         );
 }
 
-export type ListResourcesResponse = {
+export type ListResourcesResponse = PaginatedResponse<{
     resources: ResourceWithTargets[];
-    pagination: { total: number; limit: number; offset: number };
-};
+}>;
 
 registry.registerPath({
     method: "get",
@@ -190,7 +205,8 @@ export async function listResources(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { page, pageSize, authState, enabled, query, healthStatus } =
+            parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -252,14 +268,123 @@ export async function listResources(
             (resource) => resource.resourceId
         );
 
-        const countQuery: any = db
-            .select({ count: count() })
-            .from(resources)
-            .where(inArray(resources.resourceId, accessibleResourceIds));
+        const conditions = [
+            and(
+                inArray(resources.resourceId, accessibleResourceIds),
+                eq(resources.orgId, orgId)
+            )
+        ];
 
-        const baseQuery = queryResources(accessibleResourceIds, orgId);
+        if (query) {
+            conditions.push(
+                or(
+                    ilike(resources.name, "%" + query + "%"),
+                    ilike(resources.fullDomain, "%" + query + "%")
+                )
+            );
+        }
+        if (typeof enabled !== "undefined") {
+            conditions.push(eq(resources.enabled, enabled));
+        }
 
-        const rows: JoinedRow[] = await baseQuery.limit(limit).offset(offset);
+        if (typeof authState !== "undefined") {
+            switch (authState) {
+                case "none":
+                    conditions.push(eq(resources.http, false));
+                    break;
+                case "protected":
+                    conditions.push(
+                        or(
+                            eq(resources.sso, true),
+                            eq(resources.emailWhitelistEnabled, true),
+                            not(isNull(resourceHeaderAuth.headerAuthId)),
+                            not(isNull(resourcePincode.pincodeId)),
+                            not(isNull(resourcePassword.passwordId))
+                        )
+                    );
+                    break;
+                case "not_protected":
+                    conditions.push(
+                        not(eq(resources.sso, true)),
+                        not(eq(resources.emailWhitelistEnabled, true)),
+                        isNull(resourceHeaderAuth.headerAuthId),
+                        isNull(resourcePincode.pincodeId),
+                        isNull(resourcePassword.passwordId)
+                    );
+                    break;
+            }
+        }
+
+        let aggregateFilters: SQL<any> | undefined = sql`1 = 1`;
+
+        if (typeof healthStatus !== "undefined") {
+            switch (healthStatus) {
+                case "healthy":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${healthy_targets} = ${total_targets}`
+                    );
+                    break;
+                case "degraded":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${unhealthy_targets} > 0`
+                    );
+                    break;
+                case "no_targets":
+                    aggregateFilters = sql`${total_targets} = 0`;
+                    break;
+                case "offline":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${healthy_targets} = 0`,
+                        sql`${unhealthy_targets} = ${total_targets}`
+                    );
+                    break;
+                case "unknown":
+                    aggregateFilters = and(
+                        sql`${total_targets} > 0`,
+                        sql`${unknown_targets} = ${total_targets}`
+                    );
+                    break;
+            }
+        }
+
+        const baseQuery = queryResourcesBase()
+            .where(and(...conditions))
+            .having(aggregateFilters);
+
+        // we need to add `as` so that drizzle filters the result as a subquery
+        const countQuery = db.$count(baseQuery.as("filtered_resources"));
+
+        const [rows, totalCount] = await Promise.all([
+            baseQuery
+                .limit(pageSize)
+                .offset(pageSize * (page - 1))
+                .orderBy(asc(resources.resourceId)),
+            countQuery
+        ]);
+
+        const resourceIdList = rows.map((row) => row.resourceId);
+        const allResourceTargets =
+            resourceIdList.length === 0
+                ? []
+                : await db
+                      .select({
+                          targetId: targets.targetId,
+                          resourceId: targets.resourceId,
+                          ip: targets.ip,
+                          port: targets.port,
+                          enabled: targets.enabled,
+                          healthStatus: targetHealthCheck.hcHealth,
+                          hcEnabled: targetHealthCheck.hcEnabled
+                      })
+                      .from(targets)
+                      .where(inArray(targets.resourceId, resourceIdList))
+                      .leftJoin(
+                          targetHealthCheck,
+                          eq(targetHealthCheck.targetId, targets.targetId)
+                      );
 
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
@@ -288,44 +413,20 @@ export async function listResources(
                 map.set(row.resourceId, entry);
             }
 
-            if (
-                row.targetId != null &&
-                row.targetIp &&
-                row.targetPort != null &&
-                row.targetEnabled != null
-            ) {
-                let healthStatus: "healthy" | "unhealthy" | "unknown" =
-                    "unknown";
-
-                if (row.hcEnabled && row.hcHealth) {
-                    healthStatus = row.hcHealth as
-                        | "healthy"
-                        | "unhealthy"
-                        | "unknown";
-                }
-
-                entry.targets.push({
-                    targetId: row.targetId,
-                    ip: row.targetIp,
-                    port: row.targetPort,
-                    enabled: row.targetEnabled,
-                    healthStatus: healthStatus
-                });
-            }
+            entry.targets = allResourceTargets.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
         }
 
         const resourcesList: ResourceWithTargets[] = Array.from(map.values());
-
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0]?.count ?? 0;
 
         return response<ListResourcesResponse>(res, {
             data: {
                 resources: resourcesList,
                 pagination: {
                     total: totalCount,
-                    limit,
-                    offset
+                    pageSize,
+                    page
                 }
             },
             success: true,

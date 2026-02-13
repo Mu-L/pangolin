@@ -1,37 +1,42 @@
 "use client";
 
-import { Column, ColumnDef } from "@tanstack/react-table";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
-import { SitesDataTable } from "@app/components/SitesDataTable";
+import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
+
+import { Badge } from "@app/components/ui/badge";
+import { Button } from "@app/components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
-import { Button } from "@app/components/ui/button";
-import {
-    ArrowRight,
-    ArrowUpDown,
-    ArrowUpRight,
-    Check,
-    MoreHorizontal,
-    X
-} from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AxiosResponse } from "axios";
-import { useState, useEffect } from "react";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { toast } from "@app/hooks/useToast";
-import { formatAxiosError } from "@app/lib/api";
-import { createApiClient } from "@app/lib/api";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useTranslations } from "next-intl";
-import { parseDataSize } from "@app/lib/dataSize";
-import { Badge } from "@app/components/ui/badge";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { build } from "@server/build";
+import { type PaginationState } from "@tanstack/react-table";
+import {
+    ArrowDown01Icon,
+    ArrowRight,
+    ArrowUp10Icon,
+    ArrowUpRight,
+    ChevronsUpDownIcon,
+    MoreHorizontal
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { useDebouncedCallback } from "use-debounce";
+import z from "zod";
+import { ColumnFilterButton } from "./ColumnFilterButton";
+import {
+    ControlledDataTable,
+    type ExtendedColumnDef
+} from "./ui/controlled-data-table";
 
 export type SiteRow = {
     id: number;
@@ -52,79 +57,91 @@ export type SiteRow = {
 
 type SitesTableProps = {
     sites: SiteRow[];
+    pagination: PaginationState;
     orgId: string;
+    rowCount: number;
 };
 
-export default function SitesTable({ sites, orgId }: SitesTableProps) {
+export default function SitesTable({
+    sites,
+    orgId,
+    pagination,
+    rowCount
+}: SitesTableProps) {
     const router = useRouter();
+    const pathname = usePathname();
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
-    const [rows, setRows] = useState<SiteRow[]>(sites);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isRefreshing, startTransition] = useTransition();
+    const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
-    const { env } = useEnvContext();
 
-    // Update local state when props change (e.g., after refresh)
-    useEffect(() => {
-        setRows(sites);
-    }, [sites]);
+    const booleanSearchFilterSchema = z
+        .enum(["true", "false"])
+        .optional()
+        .catch(undefined);
 
-    const refreshData = async () => {
-        console.log("Data refreshed");
-        setIsRefreshing(true);
-        try {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            router.refresh();
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsRefreshing(false);
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null
+    ) {
+        const sp = new URLSearchParams(searchParams);
+        sp.delete(column);
+        sp.delete("page");
+
+        if (value) {
+            sp.set(column, value);
         }
-    };
+        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+    }
 
-    const deleteSite = (siteId: number) => {
-        api.delete(`/site/${siteId}`)
-            .catch((e) => {
-                console.error(t("siteErrorDelete"), e);
-                toast({
-                    variant: "destructive",
-                    title: t("siteErrorDelete"),
-                    description: formatAxiosError(e, t("siteErrorDelete"))
-                });
-            })
-            .then(() => {
+    function refreshData() {
+        startTransition(async () => {
+            try {
                 router.refresh();
-                setIsDeleteModalOpen(false);
+            } catch (error) {
+                toast({
+                    title: t("error"),
+                    description: t("refreshError"),
+                    variant: "destructive"
+                });
+            }
+        });
+    }
 
-                const newRows = rows.filter((row) => row.id !== siteId);
-
-                setRows(newRows);
-            });
-    };
+    function deleteSite(siteId: number) {
+        startTransition(async () => {
+            await api
+                .delete(`/site/${siteId}`)
+                .catch((e) => {
+                    console.error(t("siteErrorDelete"), e);
+                    toast({
+                        variant: "destructive",
+                        title: t("siteErrorDelete"),
+                        description: formatAxiosError(e, t("siteErrorDelete"))
+                    });
+                })
+                .then(() => {
+                    router.refresh();
+                    setIsDeleteModalOpen(false);
+                });
+        });
+    }
 
     const columns: ExtendedColumnDef<SiteRow>[] = [
         {
             accessorKey: "name",
             enableHiding: false,
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("name")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("name")}</span>;
             }
         },
         {
@@ -132,18 +149,8 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
             accessorKey: "nice",
             friendlyName: t("identifier"),
             enableHiding: true,
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("identifier")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("identifier")}</span>;
             },
             cell: ({ row }) => {
                 return <span>{row.original.nice || "-"}</span>;
@@ -152,17 +159,24 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
         {
             accessorKey: "online",
             friendlyName: t("online"),
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
+                    <ColumnFilterButton
+                        options={[
+                            { value: "true", label: t("online") },
+                            { value: "false", label: t("offline") }
+                        ]}
+                        selectedValue={booleanSearchFilterSchema.parse(
+                            searchParams.get("online")
+                        )}
+                        onValueChange={(value) =>
+                            handleFilterChange("online", value)
                         }
-                    >
-                        {t("online")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("online")}
+                        className="p-3"
+                    />
                 );
             },
             cell: ({ row }) => {
@@ -194,58 +208,59 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
         {
             accessorKey: "mbIn",
             friendlyName: t("dataIn"),
-            header: ({ column }) => {
+            header: () => {
+                const dataInOrder = getSortDirection(
+                    "megabytesIn",
+                    searchParams
+                );
+                const Icon =
+                    dataInOrder === "asc"
+                        ? ArrowDown01Icon
+                        : dataInOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
+                        onClick={() => toggleSort("megabytesIn")}
                     >
                         {t("dataIn")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
-            },
-            sortingFn: (rowA, rowB) =>
-                parseDataSize(rowA.original.mbIn) -
-                parseDataSize(rowB.original.mbIn)
+            }
         },
         {
             accessorKey: "mbOut",
             friendlyName: t("dataOut"),
-            header: ({ column }) => {
+            header: () => {
+                const dataOutOrder = getSortDirection(
+                    "megabytesOut",
+                    searchParams
+                );
+
+                const Icon =
+                    dataOutOrder === "asc"
+                        ? ArrowDown01Icon
+                        : dataOutOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
+                        onClick={() => toggleSort("megabytesOut")}
                     >
                         {t("dataOut")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
-            },
-            sortingFn: (rowA, rowB) =>
-                parseDataSize(rowA.original.mbOut) -
-                parseDataSize(rowB.original.mbOut)
+            }
         },
         {
             accessorKey: "type",
             friendlyName: t("type"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("type")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("type")}</span>;
             },
             cell: ({ row }) => {
                 const originalRow = row.original;
@@ -290,18 +305,8 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
         {
             accessorKey: "exitNode",
             friendlyName: t("exitNode"),
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("exitNode")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("exitNode")}</span>;
             },
             cell: ({ row }) => {
                 const originalRow = row.original;
@@ -354,18 +359,8 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
         },
         {
             accessorKey: "address",
-            header: ({ column }: { column: Column<SiteRow, unknown> }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        Address
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+            header: () => {
+                return <span className="p-3">{t("address")}</span>;
             },
             cell: ({ row }: { row: any }) => {
                 const originalRow = row.original;
@@ -428,6 +423,30 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
         }
     ];
 
+    function toggleSort(column: string) {
+        const newSearch = getNextSortOrder(column, searchParams);
+
+        filter({
+            searchParams: newSearch
+        });
+    }
+
+    const handlePaginationChange = (newPage: PaginationState) => {
+        searchParams.set("page", (newPage.pageIndex + 1).toString());
+        searchParams.set("pageSize", newPage.pageSize.toString());
+        filter({
+            searchParams
+        });
+    };
+
+    const handleSearchChange = useDebouncedCallback((query: string) => {
+        searchParams.set("query", query);
+        searchParams.delete("page");
+        filter({
+            searchParams
+        });
+    }, 300);
+
     return (
         <>
             {selectedSite && (
@@ -444,27 +463,42 @@ export default function SitesTable({ sites, orgId }: SitesTableProps) {
                         </div>
                     }
                     buttonText={t("siteConfirmDelete")}
-                    onConfirm={async () => deleteSite(selectedSite!.id)}
+                    onConfirm={async () =>
+                        startTransition(() => deleteSite(selectedSite!.id))
+                    }
                     string={selectedSite.name}
                     title={t("siteDelete")}
                 />
             )}
 
-            <SitesDataTable
+            <ControlledDataTable
                 columns={columns}
-                data={rows}
-                createSite={() =>
-                    router.push(`/${orgId}/settings/sites/create`)
+                rows={sites}
+                tableId="sites-table"
+                searchPlaceholder={t("searchSitesProgress")}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                onAdd={() =>
+                    startNavigation(() =>
+                        router.push(`/${orgId}/settings/sites/create`)
+                    )
                 }
+                isNavigatingToAddPage={isNavigatingToAddPage}
+                searchQuery={searchParams.get("query")?.toString()}
+                onSearch={handleSearchChange}
+                addButtonText={t("siteAdd")}
                 onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                isRefreshing={isRefreshing || isFiltering}
+                rowCount={rowCount}
                 columnVisibility={{
                     niceId: false,
                     nice: false,
                     exitNode: false,
                     address: false
                 }}
-                enableColumnVisibility={true}
+                enableColumnVisibility
+                stickyLeftColumn="name"
+                stickyRightColumn="actions"
             />
         </>
     );

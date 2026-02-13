@@ -7,10 +7,11 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import { ListClientsResponse } from "@server/routers/client";
 import { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
+import type { Pagination } from "@server/types/Pagination";
 
 type ClientsPageProps = {
     params: Promise<{ orgId: string }>;
-    searchParams: Promise<{ view?: string }>;
+    searchParams: Promise<Record<string, string>>;
 };
 
 export const dynamic = "force-dynamic";
@@ -19,17 +20,25 @@ export default async function ClientsPage(props: ClientsPageProps) {
     const t = await getTranslations();
 
     const params = await props.params;
+    const searchParams = new URLSearchParams(await props.searchParams);
 
     let machineClients: ListClientsResponse["clients"] = [];
+    let pagination: Pagination = {
+        page: 1,
+        total: 0,
+        pageSize: 20
+    };
 
     try {
         const machineRes = await internal.get<
             AxiosResponse<ListClientsResponse>
         >(
-            `/org/${params.orgId}/clients?filter=machine`,
+            `/org/${params.orgId}/clients?${searchParams.toString()}`,
             await authCookieHeader()
         );
-        machineClients = machineRes.data.data.clients;
+        const responseData = machineRes.data.data;
+        machineClients = responseData.clients;
+        pagination = responseData.pagination;
     } catch (e) {}
 
     function formatSize(mb: number): string {
@@ -80,6 +89,11 @@ export default async function ClientsPage(props: ClientsPageProps) {
             <MachineClientsTable
                 machineClients={machineClientRows}
                 orgId={params.orgId}
+                rowCount={pagination.total}
+                pagination={{
+                    pageIndex: pagination.page - 1,
+                    pageSize: pagination.pageSize
+                }}
             />
         </>
     );

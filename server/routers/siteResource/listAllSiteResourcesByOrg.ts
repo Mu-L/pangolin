@@ -1,41 +1,73 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, resources } from "@server/db";
 import { siteResources, sites, SiteResource } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc, ilike, or } from "drizzle-orm";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
+import type { PaginatedResponse } from "@server/types/Pagination";
 
 const listAllSiteResourcesByOrgParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
 const listAllSiteResourcesByOrgQuerySchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().positive()),
-    offset: z
-        .string()
+        .catch(20)
+        .default(20),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative())
+        .catch(1)
+        .default(1),
+    query: z.string().optional(),
+    mode: z.enum(["host", "cidr"]).optional().catch(undefined)
 });
 
-export type ListAllSiteResourcesByOrgResponse = {
+export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
     siteResources: (SiteResource & {
         siteName: string;
         siteNiceId: string;
         siteAddress: string | null;
     })[];
-};
+}>;
+
+function querySiteResourcesBase() {
+    return db
+        .select({
+            siteResourceId: siteResources.siteResourceId,
+            siteId: siteResources.siteId,
+            orgId: siteResources.orgId,
+            niceId: siteResources.niceId,
+            name: siteResources.name,
+            mode: siteResources.mode,
+            protocol: siteResources.protocol,
+            proxyPort: siteResources.proxyPort,
+            destinationPort: siteResources.destinationPort,
+            destination: siteResources.destination,
+            enabled: siteResources.enabled,
+            alias: siteResources.alias,
+            aliasAddress: siteResources.aliasAddress,
+            tcpPortRangeString: siteResources.tcpPortRangeString,
+            udpPortRangeString: siteResources.udpPortRangeString,
+            disableIcmp: siteResources.disableIcmp,
+            siteName: sites.name,
+            siteNiceId: sites.niceId,
+            siteAddress: sites.address
+        })
+        .from(siteResources)
+        .innerJoin(sites, eq(siteResources.siteId, sites.siteId));
+}
 
 registry.registerPath({
     method: "get",
@@ -80,39 +112,48 @@ export async function listAllSiteResourcesByOrg(
         }
 
         const { orgId } = parsedParams.data;
-        const { limit, offset } = parsedQuery.data;
+        const { page, pageSize, query, mode } = parsedQuery.data;
 
-        // Get all site resources for the org with site names
-        const siteResourcesList = await db
-            .select({
-                siteResourceId: siteResources.siteResourceId,
-                siteId: siteResources.siteId,
-                orgId: siteResources.orgId,
-                niceId: siteResources.niceId,
-                name: siteResources.name,
-                mode: siteResources.mode,
-                protocol: siteResources.protocol,
-                proxyPort: siteResources.proxyPort,
-                destinationPort: siteResources.destinationPort,
-                destination: siteResources.destination,
-                enabled: siteResources.enabled,
-                alias: siteResources.alias,
-                aliasAddress: siteResources.aliasAddress,
-                tcpPortRangeString: siteResources.tcpPortRangeString,
-                udpPortRangeString: siteResources.udpPortRangeString,
-                disableIcmp: siteResources.disableIcmp,
-                siteName: sites.name,
-                siteNiceId: sites.niceId,
-                siteAddress: sites.address
-            })
-            .from(siteResources)
-            .innerJoin(sites, eq(siteResources.siteId, sites.siteId))
-            .where(eq(siteResources.orgId, orgId))
-            .limit(limit)
-            .offset(offset);
+        const conditions = [and(eq(siteResources.orgId, orgId))];
+        if (query) {
+            conditions.push(
+                or(
+                    ilike(siteResources.name, "%" + query + "%"),
+                    ilike(siteResources.destination, "%" + query + "%"),
+                    ilike(siteResources.alias, "%" + query + "%"),
+                    ilike(siteResources.aliasAddress, "%" + query + "%"),
+                    ilike(sites.name, "%" + query + "%")
+                )
+            );
+        }
 
-        return response(res, {
-            data: { siteResources: siteResourcesList },
+        if (mode) {
+            conditions.push(eq(siteResources.mode, mode));
+        }
+
+        const baseQuery = querySiteResourcesBase().where(and(...conditions));
+
+        const countQuery = db.$count(
+            querySiteResourcesBase().where(and(...conditions))
+        );
+
+        const [siteResourcesList, totalCount] = await Promise.all([
+            baseQuery
+                .limit(pageSize)
+                .offset(pageSize * (page - 1))
+                .orderBy(asc(siteResources.siteResourceId)),
+            countQuery
+        ]);
+
+        return response<ListAllSiteResourcesByOrgResponse>(res, {
+            data: {
+                siteResources: siteResourcesList,
+                pagination: {
+                    total: totalCount,
+                    pageSize,
+                    page
+                }
+            },
             success: true,
             error: false,
             message: "Site resources retrieved successfully",

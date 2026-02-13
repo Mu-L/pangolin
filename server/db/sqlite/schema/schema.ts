@@ -216,7 +216,9 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     }).default(true),
     hcMethod: text("hcMethod").default("GET"),
     hcStatus: integer("hcStatus"), // http code
-    hcHealth: text("hcHealth").default("unknown"), // "unknown", "healthy", "unhealthy"
+    hcHealth: text("hcHealth")
+        .$type<"unknown" | "healthy" | "unhealthy">()
+        .default("unknown"), // "unknown", "healthy", "unhealthy"
     hcTlsServerName: text("hcTlsServerName")
 });
 
@@ -248,7 +250,7 @@ export const siteResources = sqliteTable("siteResources", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
-    mode: text("mode").notNull(), // "host" | "cidr" | "port"
+    mode: text("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
     protocol: text("protocol"), // only for port mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode

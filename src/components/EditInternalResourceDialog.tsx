@@ -277,10 +277,7 @@ export default function EditInternalResourceDialog({
             orgQueries.roles({ orgId }),
             orgQueries.users({ orgId }),
             orgQueries.clients({
-                orgId,
-                filters: {
-                    filter: "machine"
-                }
+                orgId
             }),
             resourceQueries.siteResourceUsers({ siteResourceId: resource.id }),
             resourceQueries.siteResourceRoles({ siteResourceId: resource.id }),

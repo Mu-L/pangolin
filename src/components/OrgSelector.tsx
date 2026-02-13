@@ -83,7 +83,7 @@ export function OrgSelector({
             <PopoverContent className="w-[320px] p-0" align="start">
                 <Command className="rounded-lg">
                     <CommandInput
-                        placeholder={t("searchProgress")}
+                        placeholder={t("searchPlaceholder")}
                         className="border-0 focus:ring-0"
                     />
                     <CommandEmpty className="py-6 text-center">

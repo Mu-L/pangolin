@@ -13,7 +13,7 @@ import {
     CommandItem,
     CommandList
 } from "@app/components/ui/command";
-import { CheckIcon, ChevronDownIcon, Filter } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, Funnel } from "lucide-react";
 import { cn } from "@app/lib/cn";
 import { Badge } from "./ui/badge";
 
@@ -22,7 +22,7 @@ interface FilterOption {
     label: string;
 }
 
-interface ColumnFilterProps {
+interface ColumnFilterButtonProps {
     options: FilterOption[];
     selectedValue?: string;
     onValueChange: (value: string | undefined) => void;
@@ -30,17 +30,19 @@ interface ColumnFilterProps {
     searchPlaceholder?: string;
     emptyMessage?: string;
     className?: string;
+    label: string;
 }
 
-export function ColumnFilter({
+export function ColumnFilterButton({
     options,
     selectedValue,
     onValueChange,
     placeholder,
     searchPlaceholder = "Search...",
     emptyMessage = "No options found",
-    className
-}: ColumnFilterProps) {
+    className,
+    label
+}: ColumnFilterButtonProps) {
     const [open, setOpen] = useState(false);
 
     const selectedOption = options.find(
@@ -61,17 +63,16 @@ export function ColumnFilter({
                     )}
                 >
                     <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4" />
+                        {label}
+
+                        <Funnel className="size-4 flex-none" />
 
                         {selectedOption && (
                             <Badge className="truncate" variant="secondary">
-                                {selectedOption
-                                    ? selectedOption.label
-                                    : placeholder}
+                                {selectedOption.label}
                             </Badge>
                         )}
                     </div>
-                    <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-50" align="start">

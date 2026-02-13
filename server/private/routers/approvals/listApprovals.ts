@@ -28,7 +28,7 @@ import {
     currentFingerprint,
     type Approval
 } from "@server/db";
-import { eq, isNull, sql, not, and, desc } from "drizzle-orm";
+import { eq, isNull, sql, not, and, desc, gte, lte } from "drizzle-orm";
 import response from "@server/lib/response";
 import { getUserDeviceName } from "@server/db/names";
 
@@ -37,18 +37,26 @@ const paramsSchema = z.strictObject({
 });
 
 const querySchema = z.strictObject({
-    limit: z
-        .string()
+    limit: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().nonnegative()),
-    offset: z
-        .string()
+        .catch(20)
+        .default(20),
+    cursorPending: z.coerce // pending cursor
+        .number<string>()
+        .int()
+        .max(1) // 0 means non pending
+        .min(0) // 1 means pending
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative()),
+        .catch(undefined),
+    cursorTimestamp: z.coerce
+        .number<string>()
+        .int()
+        .positive()
+        .optional()
+        .catch(undefined),
     approvalState: z
         .enum(["pending", "approved", "denied", "all"])
         .optional()
@@ -61,13 +69,21 @@ const querySchema = z.strictObject({
         .pipe(z.number().int().positive().optional())
 });
 
-async function queryApprovals(
-    orgId: string,
-    limit: number,
-    offset: number,
-    approvalState: z.infer<typeof querySchema>["approvalState"],
-    clientId?: number
-) {
+async function queryApprovals({
+    orgId,
+    limit,
+    approvalState,
+    cursorPending,
+    cursorTimestamp,
+    clientId
+}: {
+    orgId: string;
+    limit: number;
+    approvalState: z.infer<typeof querySchema>["approvalState"];
+    cursorPending?: number;
+    cursorTimestamp?: number;
+    clientId?: number;
+}) {
     let state: Array<Approval["decision"]> = [];
     switch (approvalState) {
         case "pending":
@@ -81,6 +97,26 @@ async function queryApprovals(
             break;
         default:
             state = ["approved", "denied", "pending"];
+    }
+
+    const conditions = [
+        eq(approvals.orgId, orgId),
+        sql`${approvals.decision} in ${state}`
+    ];
+
+    if (clientId) {
+        conditions.push(eq(approvals.clientId, clientId));
+    }
+
+    const pendingSortKey = sql`CASE ${approvals.decision} WHEN 'pending' THEN 1 ELSE 0 END`;
+
+    if (cursorPending != null && cursorTimestamp != null) {
+        // https://stackoverflow.com/a/79720298/10322846
+        // composite cursor, next data means (pending, timestamp) <= cursor
+        conditions.push(
+            lte(pendingSortKey, cursorPending),
+            lte(approvals.timestamp, cursorTimestamp)
+        );
     }
 
     const res = await db
@@ -105,7 +141,8 @@ async function queryApprovals(
             fingerprintArch: currentFingerprint.arch,
             fingerprintSerialNumber: currentFingerprint.serialNumber,
             fingerprintUsername: currentFingerprint.username,
-            fingerprintHostname: currentFingerprint.hostname
+            fingerprintHostname: currentFingerprint.hostname,
+            timestamp: approvals.timestamp
         })
         .from(approvals)
         .innerJoin(users, and(eq(approvals.userId, users.userId)))
@@ -118,22 +155,12 @@ async function queryApprovals(
         )
         .leftJoin(olms, eq(clients.clientId, olms.clientId))
         .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId))
-        .where(
-            and(
-                eq(approvals.orgId, orgId),
-                sql`${approvals.decision} in ${state}`,
-                ...(clientId ? [eq(approvals.clientId, clientId)] : [])
-            )
-        )
-        .orderBy(
-            sql`CASE ${approvals.decision} WHEN 'pending' THEN 0 ELSE 1 END`,
-            desc(approvals.timestamp)
-        )
-        .limit(limit)
-        .offset(offset);
+        .where(and(...conditions))
+        .orderBy(desc(pendingSortKey), desc(approvals.timestamp))
+        .limit(limit + 1); // the `+1` is used for the cursor
 
     // Process results to format device names and build fingerprint objects
-    return res.map((approval) => {
+    const approvalsList = res.slice(0, limit).map((approval) => {
         const model = approval.deviceModel || null;
         const deviceName = approval.clientName
             ? getUserDeviceName(model, approval.clientName)
@@ -152,15 +179,15 @@ async function queryApprovals(
 
         const fingerprint = hasFingerprintData
             ? {
-                platform: approval.fingerprintPlatform || null,
-                osVersion: approval.fingerprintOsVersion || null,
-                kernelVersion: approval.fingerprintKernelVersion || null,
-                arch: approval.fingerprintArch || null,
-                deviceModel: approval.deviceModel || null,
-                serialNumber: approval.fingerprintSerialNumber || null,
-                username: approval.fingerprintUsername || null,
-                hostname: approval.fingerprintHostname || null
-            }
+                  platform: approval.fingerprintPlatform ?? null,
+                  osVersion: approval.fingerprintOsVersion ?? null,
+                  kernelVersion: approval.fingerprintKernelVersion ?? null,
+                  arch: approval.fingerprintArch ?? null,
+                  deviceModel: approval.deviceModel ?? null,
+                  serialNumber: approval.fingerprintSerialNumber ?? null,
+                  username: approval.fingerprintUsername ?? null,
+                  hostname: approval.fingerprintHostname ?? null
+              }
             : null;
 
         const {
@@ -183,11 +210,30 @@ async function queryApprovals(
             niceId: approval.niceId || null
         };
     });
+    let nextCursorPending: number | null = null;
+    let nextCursorTimestamp: number | null = null;
+    if (res.length > limit) {
+        const lastItem = res[limit];
+        nextCursorPending = lastItem.decision === "pending" ? 1 : 0;
+        nextCursorTimestamp = lastItem.timestamp;
+    }
+    return {
+        approvalsList,
+        nextCursorPending,
+        nextCursorTimestamp
+    };
 }
 
 export type ListApprovalsResponse = {
-    approvals: NonNullable<Awaited<ReturnType<typeof queryApprovals>>>;
-    pagination: { total: number; limit: number; offset: number };
+    approvals: NonNullable<
+        Awaited<ReturnType<typeof queryApprovals>>
+    >["approvalsList"];
+    pagination: {
+        total: number;
+        limit: number;
+        cursorPending: number | null;
+        cursorTimestamp: number | null;
+    };
 };
 
 export async function listApprovals(
@@ -215,17 +261,25 @@ export async function listApprovals(
                 )
             );
         }
-        const { limit, offset, approvalState, clientId } = parsedQuery.data;
+        const {
+            limit,
+            cursorPending,
+            cursorTimestamp,
+            approvalState,
+            clientId
+        } = parsedQuery.data;
 
         const { orgId } = parsedParams.data;
 
-        const approvalsList = await queryApprovals(
-            orgId.toString(),
-            limit,
-            offset,
-            approvalState,
-            clientId
-        );
+        const { approvalsList, nextCursorPending, nextCursorTimestamp } =
+            await queryApprovals({
+                orgId: orgId.toString(),
+                limit,
+                cursorPending,
+                cursorTimestamp,
+                approvalState,
+                clientId
+            });
 
         const [{ count }] = await db
             .select({ count: sql<number>`count(*)` })
@@ -237,7 +291,8 @@ export async function listApprovals(
                 pagination: {
                     total: count,
                     limit,
-                    offset
+                    cursorPending: nextCursorPending,
+                    cursorTimestamp: nextCursorTimestamp
                 }
             },
             success: true,

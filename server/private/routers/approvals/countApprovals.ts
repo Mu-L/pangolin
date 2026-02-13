@@ -19,7 +19,7 @@ import { fromError } from "zod-validation-error";
 
 import type { Request, Response, NextFunction } from "express";
 import { approvals, db, type Approval } from "@server/db";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 
 const paramsSchema = z.strictObject({
@@ -88,7 +88,7 @@ export async function countApprovals(
             .where(
                 and(
                     eq(approvals.orgId, orgId),
-                    sql`${approvals.decision} in ${state}`
+                    inArray(approvals.decision, state)
                 )
             );
 

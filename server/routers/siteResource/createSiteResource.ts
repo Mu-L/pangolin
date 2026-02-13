@@ -284,7 +284,7 @@ export async function createSiteResource(
                     niceId,
                     orgId,
                     name,
-                    mode,
+                    mode: mode as "host" | "cidr",
                     // protocol: mode === "port" ? protocol : null,
                     // proxyPort: mode === "port" ? proxyPort : null,
                     // destinationPort: mode === "port" ? destinationPort : null,
