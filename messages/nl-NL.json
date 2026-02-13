@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Machineclients zijn bedoeld voor servers en geautomatiseerde systemen die niet aan een specifieke gebruiker zijn gekoppeld. Ze verifiëren met een ID en geheim, en kunnen draaien met Pangolin CLI, Olm CLI, of Olm als een container.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Container",
+    "machineClientsBannerOlmContainer": "Olm-container",
     "clientsTableUserClients": "Gebruiker",
     "clientsTableMachineClients": "Machine",
     "licenseTableValidUntil": "Geldig tot",
