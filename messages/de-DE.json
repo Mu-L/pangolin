@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Maschinelle Clients sind für Server und automatisierte Systeme, die nicht einem bestimmten Benutzer zugeordnet sind. Sie authentifizieren sich mit einer ID und einem Geheimnis und können mit Pangolin CLI, Olm CLI oder Olm als Container laufen.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Container",
+    "machineClientsBannerOlmContainer": "Olm Container",
     "clientsTableUserClients": "Benutzer",
     "clientsTableMachineClients": "Maschine",
     "licenseTableValidUntil": "Gültig bis",
