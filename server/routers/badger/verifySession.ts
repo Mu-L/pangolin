@@ -797,7 +797,7 @@ async function notAllowed(
 ) {
     let loginPage: LoginPage | null = null;
     if (orgId) {
-        const subscribed = await isSubscribed(
+        const subscribed = await isSubscribed( // this is fine because the org login page is only a saas feature
             orgId,
             tierMatrix.loginPageDomain
         );
@@ -854,7 +854,7 @@ async function headerAuthChallenged(
 ) {
     let loginPage: LoginPage | null = null;
     if (orgId) {
-        const subscribed = await isSubscribed(orgId, tierMatrix.loginPageDomain);
+        const subscribed = await isSubscribed(orgId, tierMatrix.loginPageDomain); // this is fine because the org login page is only a saas feature
         if (subscribed) {
             loginPage = await getOrgLoginPage(orgId);
         }
