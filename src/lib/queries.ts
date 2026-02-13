@@ -4,7 +4,9 @@ import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
 import type {
     GetResourceWhitelistResponse,
-    ListResourceNamesResponse
+    ListResourceNamesResponse,
+    ListResourceRolesResponse,
+    ListResourceUsersResponse
 } from "@server/routers/resource";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
@@ -113,7 +115,7 @@ export const orgQueries = {
                 return res.data.data.clients;
             }
         }),
-    users: ({ orgId }: { orgId: string }) =>
+    users: ({ orgId }: { orgId: string; }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "USERS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -124,7 +126,7 @@ export const orgQueries = {
                 return res.data.data.users;
             }
         }),
-    roles: ({ orgId }: { orgId: string }) =>
+    roles: ({ orgId }: { orgId: string; }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "ROLES"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -136,7 +138,7 @@ export const orgQueries = {
             }
         }),
 
-    sites: ({ orgId }: { orgId: string }) =>
+    sites: ({ orgId }: { orgId: string; }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "SITES"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -147,7 +149,7 @@ export const orgQueries = {
             }
         }),
 
-    domains: ({ orgId }: { orgId: string }) =>
+    domains: ({ orgId }: { orgId: string; }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "DOMAINS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -169,7 +171,7 @@ export const orgQueries = {
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<{
-                        idps: { idpId: number; name: string }[];
+                        idps: { idpId: number; name: string; }[];
                     }>
                 >(
                     build === "saas" || useOrgOnlyIdp
@@ -234,28 +236,28 @@ export const logQueries = {
 };
 
 export const resourceQueries = {
-    resourceUsers: ({ resourceId }: { resourceId: number }) =>
+    resourceUsers: ({ resourceId }: { resourceId: number; }) =>
         queryOptions({
             queryKey: ["RESOURCES", resourceId, "USERS"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<ListSiteResourceUsersResponse>
+                    AxiosResponse<ListResourceUsersResponse>
                 >(`/resource/${resourceId}/users`, { signal });
                 return res.data.data.users;
             }
         }),
-    resourceRoles: ({ resourceId }: { resourceId: number }) =>
+    resourceRoles: ({ resourceId }: { resourceId: number; }) =>
         queryOptions({
             queryKey: ["RESOURCES", resourceId, "ROLES"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<ListSiteResourceRolesResponse>
+                    AxiosResponse<ListResourceRolesResponse>
                 >(`/resource/${resourceId}/roles`, { signal });
 
                 return res.data.data.roles;
             }
         }),
-    siteResourceUsers: ({ siteResourceId }: { siteResourceId: number }) =>
+    siteResourceUsers: ({ siteResourceId }: { siteResourceId: number; }) =>
         queryOptions({
             queryKey: ["SITE_RESOURCES", siteResourceId, "USERS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -265,7 +267,7 @@ export const resourceQueries = {
                 return res.data.data.users;
             }
         }),
-    siteResourceRoles: ({ siteResourceId }: { siteResourceId: number }) =>
+    siteResourceRoles: ({ siteResourceId }: { siteResourceId: number; }) =>
         queryOptions({
             queryKey: ["SITE_RESOURCES", siteResourceId, "ROLES"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -276,7 +278,7 @@ export const resourceQueries = {
                 return res.data.data.roles;
             }
         }),
-    siteResourceClients: ({ siteResourceId }: { siteResourceId: number }) =>
+    siteResourceClients: ({ siteResourceId }: { siteResourceId: number; }) =>
         queryOptions({
             queryKey: ["SITE_RESOURCES", siteResourceId, "CLIENTS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -287,7 +289,7 @@ export const resourceQueries = {
                 return res.data.data.clients;
             }
         }),
-    resourceTargets: ({ resourceId }: { resourceId: number }) =>
+    resourceTargets: ({ resourceId }: { resourceId: number; }) =>
         queryOptions({
             queryKey: ["RESOURCES", resourceId, "TARGETS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -298,7 +300,7 @@ export const resourceQueries = {
                 return res.data.data.targets;
             }
         }),
-    resourceWhitelist: ({ resourceId }: { resourceId: number }) =>
+    resourceWhitelist: ({ resourceId }: { resourceId: number; }) =>
         queryOptions({
             queryKey: ["RESOURCES", resourceId, "WHITELISTS"] as const,
             queryFn: async ({ signal, meta }) => {
@@ -371,7 +373,7 @@ export const approvalQueries = {
                 }
 
                 const res = await meta!.api.get<
-                    AxiosResponse<{ approvals: ApprovalItem[] }>
+                    AxiosResponse<{ approvals: ApprovalItem[]; }>
                 >(`/org/${orgId}/approvals?${sp.toString()}`, {
                     signal
                 });
@@ -383,7 +385,7 @@ export const approvalQueries = {
             queryKey: ["APPROVALS", orgId, "COUNT", "pending"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<{ count: number }>
+                    AxiosResponse<{ count: number; }>
                 >(`/org/${orgId}/approvals/count?approvalState=pending`, {
                     signal
                 });
