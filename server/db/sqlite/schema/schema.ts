@@ -950,6 +950,9 @@ export const resourceRules = sqliteTable("resourceRules", {
 export const resourcePolicies = sqliteTable("resourcePolicies", {
     resourcePolicyId: integer('resourcePolicyId').primaryKey(),
     sso: integer("sso", { mode: 'boolean' }).notNull().default(true),
+    emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: 'boolean' }).notNull().default(false),
+    niceId: text("niceId").notNull(),
+    isDefault: integer("isDefault", { mode: 'boolean' }).notNull().default(true),
     idpId: integer("idpId").references(() => idp.idpId, {
         onDelete: "set null"
     }),

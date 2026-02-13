@@ -610,9 +610,12 @@ export const resourceRules = pgTable("resourceRules", {
 export const resourcePolicies = pgTable("resourcePolicies", {
     resourcePolicyId: serial('resourcePolicyId').primaryKey(),
     sso: boolean("sso").notNull().default(true),
+    emailWhitelistEnabled: boolean("emailWhitelistEnabled").notNull().default(false),
     idpId: integer("idpId").references(() => idp.idpId, {
         onDelete: "set null"
     }),
+    niceId: text("niceId").notNull(),
+    isDefault: boolean("isDefault").notNull().default(true),
     name: varchar("name").notNull(),
     orgId: varchar("orgId")
         .references(() => orgs.orgId, {
