@@ -4,7 +4,7 @@ import path from "path";
 
 const migrationsFolder = path.join("server/migrations");
 
-const runMigrations = async () => {
+export const runMigrations = async () => {
     console.log("Running migrations...");
     try {
         await migrate(db as any, {
@@ -17,5 +17,3 @@ const runMigrations = async () => {
         process.exit(1);
     }
 };
-
-runMigrations();

@@ -1,4 +1,4 @@
-name: Public Pipeline
+name: Public CICD Pipeline
 
 # CI/CD workflow for building, publishing, mirroring, signing container images and building release binaries.
 # Actions are pinned to specific SHAs to reduce supply-chain risk. This workflow triggers on tag push events.

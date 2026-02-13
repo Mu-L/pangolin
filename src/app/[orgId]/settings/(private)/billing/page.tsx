@@ -61,7 +61,7 @@ import {
 import { FeatureId } from "@server/lib/billing/features";
 
 // Plan tier definitions matching the mockup
-type PlanId = "starter" | "home" | "team" | "business" | "enterprise";
+type PlanId = "basic" | "home" | "team" | "business" | "enterprise";
 
 type PlanOption = {
     id: PlanId;
@@ -73,8 +73,8 @@ type PlanOption = {
 
 const planOptions: PlanOption[] = [
     {
-        id: "starter",
-        name: "Starter",
+        id: "basic",
+        name: "Basic",
         price: "Free",
         tierType: null
     },
@@ -109,10 +109,10 @@ const planOptions: PlanOption[] = [
 
 // Tier limits mapping derived from limit sets
 const tierLimits: Record<
-    Tier | "starter",
+    Tier | "basic",
     { users: number; sites: number; domains: number; remoteNodes: number }
 > = {
-    starter: {
+    basic: {
         users: freeLimitSet[FeatureId.USERS]?.value ?? 0,
         sites: freeLimitSet[FeatureId.SITES]?.value ?? 0,
         domains: freeLimitSet[FeatureId.DOMAINS]?.value ?? 0,
@@ -183,7 +183,7 @@ export default function BillingPage() {
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingTier, setPendingTier] = useState<{
-        tier: Tier | "starter";
+        tier: Tier | "basic";
         action: "upgrade" | "downgrade";
         planName: string;
         price: string;
@@ -402,8 +402,8 @@ export default function BillingPage() {
             pendingTier.action === "upgrade" ||
             pendingTier.action === "downgrade"
         ) {
-            // If downgrading to starter (free tier), go to Stripe portal
-            if (pendingTier.tier === "starter") {
+            // If downgrading to basic (free tier), go to Stripe portal
+            if (pendingTier.tier === "basic") {
                 handleModifySubscription();
             } else if (hasSubscription) {
                 handleChangeTier(pendingTier.tier);
@@ -417,7 +417,7 @@ export default function BillingPage() {
     };
 
     const showTierConfirmation = (
-        tier: Tier | "starter",
+        tier: Tier | "basic",
         action: "upgrade" | "downgrade",
         planName: string,
         price: string
@@ -432,9 +432,9 @@ export default function BillingPage() {
 
     // Get current plan ID from tier
     const getCurrentPlanId = (): PlanId => {
-        if (!hasSubscription || !currentTier) return "starter";
+        if (!hasSubscription || !currentTier) return "basic";
         const plan = planOptions.find((p) => p.tierType === currentTier);
-        return plan?.id || "starter";
+        return plan?.id || "basic";
     };
 
     const currentPlanId = getCurrentPlanId();
@@ -451,8 +451,8 @@ export default function BillingPage() {
         }
 
         if (plan.id === currentPlanId) {
-            // If it's the starter plan (starter with no subscription), show as current but disabled
-            if (plan.id === "starter" && !hasSubscription) {
+            // If it's the basic plan (basic with no subscription), show as current but disabled
+            if (plan.id === "basic" && !hasSubscription) {
                 return {
                     label: "Current Plan",
                     action: () => {},
@@ -484,10 +484,10 @@ export default function BillingPage() {
                             plan.name,
                             plan.price + (" " + plan.priceDetail || "")
                         );
-                    } else if (plan.id === "starter") {
-                        // Show confirmation for downgrading to starter (free tier)
+                    } else if (plan.id === "basic") {
+                        // Show confirmation for downgrading to basic (free tier)
                         showTierConfirmation(
-                            "starter",
+                            "basic",
                             "downgrade",
                             plan.name,
                             plan.price
@@ -566,7 +566,7 @@ export default function BillingPage() {
     };
 
     // Check if downgrading to a tier would violate current usage limits
-    const checkLimitViolations = (targetTier: Tier | "starter"): Array<{
+    const checkLimitViolations = (targetTier: Tier | "basic"): Array<{
         feature: string;
         currentUsage: number;
         newLimit: number;
