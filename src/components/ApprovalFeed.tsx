@@ -31,6 +31,7 @@ import { Separator } from "./ui/separator";
 import { InfoPopup } from "./ui/info-popup";
 import { ApprovalsEmptyState } from "./ApprovalsEmptyState";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type ApprovalFeedProps = {
     orgId: string;
@@ -63,7 +64,7 @@ export function ApprovalFeed({
         isFetchingNextPage
     } = useInfiniteQuery({
         ...approvalQueries.listApprovals(orgId, filters),
-        enabled: isPaidUser
+        enabled: isPaidUser(tierMatrix.deviceApprovals)
     });
 
     const approvals = data?.pages.flatMap((data) => data.approvals) ?? [];

@@ -86,7 +86,7 @@ export async function deleteAccountDomain(
         });
 
         if (numOrgDomains) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 orgId,
                 FeatureId.DOMAINS,
                 numOrgDomains.length

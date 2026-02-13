@@ -162,7 +162,8 @@ export const resources = sqliteTable("resources", {
     }).default("forced"), // "forced" = always show, "automatic" = only when down
     maintenanceTitle: text("maintenanceTitle"),
     maintenanceMessage: text("maintenanceMessage"),
-    maintenanceEstimatedTime: text("maintenanceEstimatedTime")
+    maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
+    postAuthPath: text("postAuthPath")
 });
 
 export const targets = sqliteTable("targets", {

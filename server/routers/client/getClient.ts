@@ -13,6 +13,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { getUserDeviceName } from "@server/db/names";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const getClientSchema = z.strictObject({
     clientId: z
@@ -327,7 +328,8 @@ export async function getClient(
             client.currentFingerprint
         );
         const isOrgLicensed = await isLicensedOrSubscribed(
-            client.clients.orgId
+            client.clients.orgId,
+            tierMatrix.devicePosture
         );
         const postureData: PostureData | null = rawPosture
             ? isOrgLicensed

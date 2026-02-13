@@ -271,7 +271,7 @@ export async function createOrg(
             // make sure we have the stripe customer
             const customerId = await createCustomer(orgId, req.user?.email);
             if (customerId) {
-                await usageService.updateDaily(
+                await usageService.updateCount(
                     orgId,
                     FeatureId.USERS,
                     1,

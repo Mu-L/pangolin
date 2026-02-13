@@ -36,6 +36,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
 import { CheckboxWithLabel } from "./ui/checkbox";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type CreateRoleFormProps = {
     open: boolean;
@@ -51,6 +52,7 @@ export default function CreateRoleForm({
     const { org } = useOrgContext();
     const t = useTranslations();
     const { isPaidUser } = usePaidStatus();
+    const { env } = useEnvContext();
 
     const formSchema = z.object({
         name: z
@@ -161,50 +163,60 @@ export default function CreateRoleForm({
                                     )}
                                 />
 
-                                <PaidFeaturesAlert />
+                                {!env.flags.disableEnterpriseFeatures && (
+                                    <>
+                                        <PaidFeaturesAlert
+                                            tiers={tierMatrix.deviceApprovals}
+                                        />
 
-                                <FormField
-                                    control={form.control}
-                                    name="requireDeviceApproval"
-                                    render={({ field }) => (
-                                        <FormItem className="my-2">
-                                            <FormControl>
-                                                <CheckboxWithLabel
-                                                    {...field}
-                                                    disabled={!isPaidUser}
-                                                    value="on"
-                                                    checked={form.watch(
-                                                        "requireDeviceApproval"
-                                                    )}
-                                                    onCheckedChange={(
-                                                        checked
-                                                    ) => {
-                                                        if (
-                                                            checked !==
-                                                            "indeterminate"
-                                                        ) {
-                                                            form.setValue(
-                                                                "requireDeviceApproval",
+                                        <FormField
+                                            control={form.control}
+                                            name="requireDeviceApproval"
+                                            render={({ field }) => (
+                                                <FormItem className="my-2">
+                                                    <FormControl>
+                                                        <CheckboxWithLabel
+                                                            {...field}
+                                                            disabled={
+                                                                !isPaidUser(
+                                                                    tierMatrix.deviceApprovals
+                                                                )
+                                                            }
+                                                            value="on"
+                                                            checked={form.watch(
+                                                                "requireDeviceApproval"
+                                                            )}
+                                                            onCheckedChange={(
                                                                 checked
-                                                            );
-                                                        }
-                                                    }}
-                                                    label={t(
-                                                        "requireDeviceApproval"
-                                                    )}
-                                                />
-                                            </FormControl>
+                                                            ) => {
+                                                                if (
+                                                                    checked !==
+                                                                    "indeterminate"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "requireDeviceApproval",
+                                                                        checked
+                                                                    );
+                                                                }
+                                                            }}
+                                                            label={t(
+                                                                "requireDeviceApproval"
+                                                            )}
+                                                        />
+                                                    </FormControl>
 
-                                            <FormDescription>
-                                                {t(
-                                                    "requireDeviceApprovalDescription"
-                                                )}
-                                            </FormDescription>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "requireDeviceApprovalDescription"
+                                                        )}
+                                                    </FormDescription>
 
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </>
+                                )}
                             </form>
                         </Form>
                     </CredenzaBody>

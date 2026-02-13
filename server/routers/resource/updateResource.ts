@@ -24,6 +24,7 @@ import { createCertificate } from "#dynamic/routers/certificates/createCertifica
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const updateResourceParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -54,7 +55,8 @@ const updateHttpResourceBodySchema = z
         maintenanceModeType: z.enum(["forced", "automatic"]).optional(),
         maintenanceTitle: z.string().max(255).nullable().optional(),
         maintenanceMessage: z.string().max(2000).nullable().optional(),
-        maintenanceEstimatedTime: z.string().max(100).nullable().optional()
+        maintenanceEstimatedTime: z.string().max(100).nullable().optional(),
+        postAuthPath: z.string().nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -341,7 +343,7 @@ async function updateHttpResource(
         headers = null;
     }
 
-    const isLicensed = await isLicensedOrSubscribed(resource.orgId);
+    const isLicensed = await isLicensedOrSubscribed(resource.orgId, tierMatrix.maintencePage);
     if (!isLicensed) {
         updateData.maintenanceModeEnabled = undefined;
         updateData.maintenanceModeType = undefined;

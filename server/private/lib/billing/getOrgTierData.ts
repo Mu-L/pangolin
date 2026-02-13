@@ -11,46 +11,59 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { getTierPriceSet } from "@server/lib/billing/tiers";
-import { getOrgSubscriptionsData } from "@server/private/routers/billing/getOrgSubscriptions";
 import { build } from "@server/build";
+import { db, customers, subscriptions } from "@server/db";
+import { Tier } from "@server/types/Tiers";
+import { eq, and, ne } from "drizzle-orm";
 
 export async function getOrgTierData(
     orgId: string
-): Promise<{ tier: string | null; active: boolean }> {
-    let tier = null;
+): Promise<{ tier: Tier | null; active: boolean }> {
+    let tier: Tier | null = null;
     let active = false;
 
     if (build !== "saas") {
         return { tier, active };
     }
 
-    // TODO: THIS IS INEFFICIENT!!! WE SHOULD IMPROVE HOW WE STORE TIERS WITH SUBSCRIPTIONS AND RETRIEVE THEM
+    try {
+        // Get customer for org
+        const [customer] = await db
+            .select()
+            .from(customers)
+            .where(eq(customers.orgId, orgId))
+            .limit(1);
 
-    const subscriptionsWithItems = await getOrgSubscriptionsData(orgId);
+        if (customer) {
+            // Query for active subscriptions that are not license type
+            const [subscription] = await db
+                .select()
+                .from(subscriptions)
+                .where(
+                    and(
+                        eq(subscriptions.customerId, customer.customerId),
+                        eq(subscriptions.status, "active"),
+                        ne(subscriptions.type, "license")
+                    )
+                )
+                .limit(1);
 
-    for (const { subscription, items } of subscriptionsWithItems) {
-        if (items && items.length > 0) {
-            const tierPriceSet = getTierPriceSet();
-            // Iterate through tiers in order (earlier keys are higher tiers)
-            for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
-                // Check if any subscription item matches this tier's price ID
-                const matchingItem = items.find((item) => item.priceId === priceId);
-                if (matchingItem) {
-                    tier = tierId;
-                    break;
+            if (subscription) {
+                // Validate that subscription.type is one of the expected tier values
+                if (
+                    subscription.type === "tier1" ||
+                    subscription.type === "tier2" ||
+                    subscription.type === "tier3"
+                ) {
+                    tier = subscription.type;
+                    active = true;
                 }
             }
         }
-
-        if (subscription && subscription.status === "active") {
-            active = true;
-        }
-
-        // If we found a tier and active subscription, we can stop
-        if (tier && active) {
-            break;
-        }
+    } catch (error) {
+        // If org not found or error occurs, return null tier and inactive
+        // This is acceptable behavior as per the function signature
     }
+
     return { tier, active };
 }

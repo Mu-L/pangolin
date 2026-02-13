@@ -121,16 +121,28 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/{orgId}/settings/access/roles",
                 icon: <Users className="size-4 flex-none" />
             },
-            {
-                title: "sidebarIdentityProviders",
-                href: "/{orgId}/settings/idp",
-                icon: <Fingerprint className="size-4 flex-none" />
-            },
-            {
-                title: "sidebarApprovals",
-                href: "/{orgId}/settings/access/approvals",
-                icon: <UserCog className="size-4 flex-none" />
-            },
+            // PaidFeaturesAlert
+            ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
+            build === "saas" ||
+            env?.app.identityProviderMode === "org" ||
+            (env?.app.identityProviderMode === undefined && build !== "oss")
+                ? [
+                      {
+                          title: "sidebarIdentityProviders",
+                          href: "/{orgId}/settings/idp",
+                          icon: <Fingerprint className="size-4 flex-none" />
+                      }
+                  ]
+                : []),
+            ...(!env?.flags.disableEnterpriseFeatures
+                ? [
+                      {
+                          title: "sidebarApprovals",
+                          href: "/{orgId}/settings/access/approvals",
+                          icon: <UserCog className="size-4 flex-none" />
+                      }
+                  ]
+                : []),
             {
                 title: "sidebarShareableLinks",
                 href: "/{orgId}/settings/share-links",
@@ -147,16 +159,20 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                     href: "/{orgId}/settings/logs/request",
                     icon: <SquareMousePointer className="size-4 flex-none" />
                 },
-                {
-                    title: "sidebarLogsAccess",
-                    href: "/{orgId}/settings/logs/access",
-                    icon: <ScanEye className="size-4 flex-none" />
-                },
-                {
-                    title: "sidebarLogsAction",
-                    href: "/{orgId}/settings/logs/action",
-                    icon: <Logs className="size-4 flex-none" />
-                }
+                ...(!env?.flags.disableEnterpriseFeatures
+                    ? [
+                          {
+                              title: "sidebarLogsAccess",
+                              href: "/{orgId}/settings/logs/access",
+                              icon: <ScanEye className="size-4 flex-none" />
+                          },
+                          {
+                              title: "sidebarLogsAction",
+                              href: "/{orgId}/settings/logs/action",
+                              icon: <Logs className="size-4 flex-none" />
+                          }
+                      ]
+                    : [])
             ];
 
             const analytics = {
@@ -236,7 +252,9 @@ export const adminNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/admin/api-keys",
                 icon: <KeyRound className="size-4 flex-none" />
             },
-            ...(build === "oss" || !env?.flags.useOrgOnlyIdp
+            ...(build === "oss" ||
+            env?.app.identityProviderMode === "global" ||
+            env?.app.identityProviderMode === undefined
                 ? [
                       {
                           title: "sidebarIdentityProviders",

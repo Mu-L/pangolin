@@ -31,6 +31,8 @@ import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
 import { sendEmail } from "@server/emails";
 import EnterpriseEditionKeyGenerated from "@server/emails/templates/EnterpriseEditionKeyGenerated";
 import config from "@server/lib/config";
+import { getFeatureIdByPriceId } from "@server/lib/billing/features";
+import { handleTierChange } from "../featureLifecycle";
 
 export async function handleSubscriptionCreated(
     subscription: Stripe.Subscription
@@ -59,6 +61,8 @@ export async function handleSubscriptionCreated(
             return;
         }
 
+        const type = getSubType(fullSubscription);
+
         const newSubscription = {
             subscriptionId: subscription.id,
             customerId: subscription.customer as string,
@@ -66,7 +70,9 @@ export async function handleSubscriptionCreated(
             canceledAt: subscription.canceled_at
                 ? subscription.canceled_at
                 : null,
-            createdAt: subscription.created
+            createdAt: subscription.created,
+            type: type,
+            version: 1 // we are hardcoding the initial version when the subscription is created, and then we will increment it on every update
         };
 
         await db.insert(subscriptions).values(newSubscription);
@@ -87,10 +93,15 @@ export async function handleSubscriptionCreated(
                         name = product.name || null;
                     }
 
+                    // Get the feature ID from the price ID
+                    const featureId = getFeatureIdByPriceId(item.price.id);
+
                     return {
+                        stripeSubscriptionItemId: item.id,
                         subscriptionId: subscription.id,
                         planId: item.plan.id,
                         priceId: item.price.id,
+                        featureId: featureId || null,
                         meterId: item.plan.meter,
                         unitAmount: item.price.unit_amount || 0,
                         currentPeriodStart: item.current_period_start,
@@ -129,16 +140,22 @@ export async function handleSubscriptionCreated(
             return;
         }
 
-        const type = getSubType(fullSubscription);
-        if (type === "saas") {
+        if (type === "tier1" || type === "tier2" || type === "tier3") {
             logger.debug(
-                `Handling SAAS subscription lifecycle for org ${customer.orgId}`
+                `Handling SAAS subscription lifecycle for org ${customer.orgId} with type ${type}`
             );
             // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
             await handleSubscriptionLifesycle(
                 customer.orgId,
-                subscription.status
+                subscription.status,
+                type
             );
+
+            // Handle initial tier setup - disable features not available in this tier
+            logger.info(
+                `Setting up initial tier features for org ${customer.orgId} with type ${type}`
+            );
+            await handleTierChange(customer.orgId, type);
 
             const [orgUserRes] = await db
                 .select()

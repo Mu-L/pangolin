@@ -107,6 +107,11 @@ export class Config {
             process.env.MAXMIND_ASN_PATH = parsedConfig.server.maxmind_asn_path;
         }
 
+        process.env.DISABLE_ENTERPRISE_FEATURES = parsedConfig.flags
+            ?.disable_enterprise_features
+            ? "true"
+            : "false";
+
         this.rawConfig = parsedConfig;
     }
 

@@ -1,5 +1,5 @@
 import AuthPageBrandingForm from "@app/components/AuthPageBrandingForm";
-import AuthPageSettings from "@app/components/private/AuthPageSettings";
+import AuthPageSettings from "@app/components/AuthPageSettings";
 import { SettingsContainer } from "@app/components/Settings";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";

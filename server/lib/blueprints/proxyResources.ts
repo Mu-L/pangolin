@@ -32,7 +32,7 @@ import { resourcePassword } from "@server/db";
 import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { build } from "@server/build";
+import { tierMatrix } from "../billing/tierMatrix";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -212,7 +212,7 @@ export async function updateProxyResources(
             } else {
                 // Update existing resource
 
-                const isLicensed = await isLicensedOrSubscribed(orgId);
+                const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.maintencePage);
                 if (!isLicensed) {
                     resourceData.maintenance = undefined;
                 }
@@ -648,7 +648,7 @@ export async function updateProxyResources(
                 );
             }
 
-            const isLicensed = await isLicensedOrSubscribed(orgId);
+            const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.maintencePage);
             if (!isLicensed) {
                 resourceData.maintenance = undefined;
             }

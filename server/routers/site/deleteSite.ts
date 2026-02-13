@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, siteResources } from "@server/db";
+import { db, Site, siteResources } from "@server/db";
 import { newts, newtSessions, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -12,6 +12,8 @@ import { fromError } from "zod-validation-error";
 import { sendToClient } from "#dynamic/routers/ws";
 import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import { usageService } from "@server/lib/billing/usageService";
+import { FeatureId } from "@server/lib/billing";
 
 const deleteSiteSchema = z.strictObject({
     siteId: z.string().transform(Number).pipe(z.int().positive())
@@ -62,6 +64,7 @@ export async function deleteSite(
         }
 
         let deletedNewtId: string | null = null;
+        let numSites: Site[] | undefined;
 
         await db.transaction(async (trx) => {
             if (site.type == "wireguard") {
@@ -99,8 +102,20 @@ export async function deleteSite(
             }
 
             await trx.delete(sites).where(eq(sites.siteId, siteId));
+
+            numSites = await trx
+                .select()
+                .from(sites)
+                .where(eq(sites.orgId, site.orgId));
         });
 
+        if (numSites) {
+            await usageService.updateCount(
+                site.orgId,
+                FeatureId.SITES,
+                numSites.length
+            );
+        }
         // Send termination message outside of transaction to prevent blocking
         if (deletedNewtId) {
             const payload = {

@@ -78,16 +78,10 @@ export async function getOrgUsage(
         // Get usage for org
         const usageData = [];
 
-        const siteUptime = await usageService.getUsage(
-            orgId,
-            FeatureId.SITE_UPTIME
-        );
-        const users = await usageService.getUsageDaily(orgId, FeatureId.USERS);
-        const domains = await usageService.getUsageDaily(
-            orgId,
-            FeatureId.DOMAINS
-        );
-        const remoteExitNodes = await usageService.getUsageDaily(
+        const sites = await usageService.getUsage(orgId, FeatureId.SITES);
+        const users = await usageService.getUsage(orgId, FeatureId.USERS);
+        const domains = await usageService.getUsage(orgId, FeatureId.DOMAINS);
+        const remoteExitNodes = await usageService.getUsage(
             orgId,
             FeatureId.REMOTE_EXIT_NODES
         );
@@ -96,8 +90,8 @@ export async function getOrgUsage(
             FeatureId.EGRESS_DATA_MB
         );
 
-        if (siteUptime) {
-            usageData.push(siteUptime);
+        if (sites) {
+            usageData.push(sites);
         }
         if (users) {
             usageData.push(users);

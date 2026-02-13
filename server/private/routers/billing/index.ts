@@ -11,8 +11,9 @@
  * This file is not licensed under the AGPLv3.
  */
 
-export * from "./createCheckoutSessionSAAS";
+export * from "./createCheckoutSession";
 export * from "./createPortalSession";
 export * from "./getOrgSubscriptions";
 export * from "./getOrgUsage";
 export * from "./internalGetOrgTier";
+export * from "./changeTier";

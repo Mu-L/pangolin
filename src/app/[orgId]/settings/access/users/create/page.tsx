@@ -47,8 +47,8 @@ import { ListIdpsResponse } from "@server/routers/idp";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import Image from "next/image";
-import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
-import { TierId } from "@server/lib/billing/tiers";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type UserType = "internal" | "oidc";
 
@@ -76,7 +76,7 @@ export default function Page() {
     const api = createApiClient({ env });
     const t = useTranslations();
 
-    const subscription = useSubscriptionStatusContext();
+    const { hasSaasSubscription } = usePaidStatus();
 
     const [selectedOption, setSelectedOption] = useState<string | null>(
         "internal"
@@ -238,7 +238,7 @@ export default function Page() {
         }
 
         async function fetchIdps() {
-            if (build === "saas" && !subscription?.subscribed) {
+            if (build === "saas" && !hasSaasSubscription(tierMatrix.orgOidc)) {
                 return;
             }
 
