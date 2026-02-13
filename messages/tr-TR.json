@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Makine müşterileri, belirli bir kullanıcı ile ilişkilendirilmemiş sunucular ve otomatik sistemler içindir. Kimlik ve şifreyle doğrulama yaparlar ve Pangolin CLI, Olm CLI veya Olm'yi bir konteyner olarak çalıştırabilirler.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Container",
+    "machineClientsBannerOlmContainer": "Olm Konteyner",
     "clientsTableUserClients": "Kullanıcı",
     "clientsTableMachineClients": "Makine",
     "licenseTableValidUntil": "Geçerli İki Tarih Kadar",
