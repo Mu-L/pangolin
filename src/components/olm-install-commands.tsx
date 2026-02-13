@@ -14,7 +14,7 @@ import { Button } from "./ui/button";
 
 export type CommandItem = string | { title: string; command: string };
 
-const PLATFORMS = ["unix", "windows", "docker"] as const;
+const PLATFORMS = ["unix", "docker", "windows"] as const;
 
 type Platform = (typeof PLATFORMS)[number];
 
@@ -43,7 +43,7 @@ export function OlmInstallCommands({
             All: [
                 {
                     title: t("install"),
-                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | bash`
+                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | sudo bash`
                 },
                 {
                     title: t("run"),
@@ -51,24 +51,12 @@ export function OlmInstallCommands({
                 }
             ]
         },
-        windows: {
-            x64: [
-                {
-                    title: t("install"),
-                    command: `curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/olm_windows_installer.exe"`
-                },
-                {
-                    title: t("run"),
-                    command: `olm.exe --id ${id} --secret ${secret} --endpoint ${endpoint}`
-                }
-            ]
-        },
         docker: {
             "Docker Compose": [
                 `services:
-  olm:
-    image: fosrl/olm
-    container_name: olm
+  pangolin-cli:
+    image: fosrl/pangolin-cli
+    container_name: pangolin-cli
     restart: unless-stopped
     network_mode: host
     cap_add:
@@ -77,11 +65,24 @@ export function OlmInstallCommands({
       - /dev/net/tun:/dev/net/tun
     environment:
       - PANGOLIN_ENDPOINT=${endpoint}
-      - OLM_ID=${id}
-      - OLM_SECRET=${secret}`
+      - CLIENT_ID=${id}
+      - CLIENT_SECRET=${secret}`
             ],
             "Docker Run": [
-                `docker run -dit --network host --cap-add NET_ADMIN --device /dev/net/tun:/dev/net/tun fosrl/olm --id ${id} --secret ${secret} --endpoint ${endpoint}`
+                `docker run -dit --network host --cap-add NET_ADMIN --device /dev/net/tun:/dev/net/tun fosrl/pangolin-cli up client --id ${id} --secret ${secret} --endpoint ${endpoint} --attach`
+            ]
+        },
+        windows: {
+            x64: [
+                {
+                    title: t("install"),
+                    command: `# Download and run the installer to install Olm first\n
+                    curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/olm_windows_installer.exe"`
+                },
+                {
+                    title: t("run"),
+                    command: `olm.exe --id ${id} --secret ${secret} --endpoint ${endpoint}`
+                }
             ]
         }
     };

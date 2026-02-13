@@ -397,7 +397,7 @@ export default function EditInternalResourceDialog({
     );
 
     const availableSites = sites.filter(
-        (site) => site.type === "newt" && site.subnet
+        (site) => site.type === "newt"
     );
 
     const form = useForm<FormData>({

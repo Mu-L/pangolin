@@ -35,6 +35,7 @@ export type GetResourceAuthInfoResponse = {
     whitelist: boolean;
     skipToIdpId: number | null;
     orgId: string;
+    postAuthPath: string | null;
 };
 
 export async function getResourceAuthInfo(
@@ -147,7 +148,8 @@ export async function getResourceAuthInfo(
                 url,
                 whitelist: resource.emailWhitelistEnabled,
                 skipToIdpId: resource.skipToIdpId,
-                orgId: resource.orgId
+                orgId: resource.orgId,
+                postAuthPath: resource.postAuthPath ?? null
             },
             success: true,
             error: false,
