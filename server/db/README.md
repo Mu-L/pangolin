@@ -56,15 +56,15 @@ Ensure drizzle-kit is installed.
 You must have a connection string in your config file, as shown above.
 
 ```bash
-npm run db:pg:generate
-npm run db:pg:push
+npm run db:generate
+npm run db:push
 ```
 
 ### SQLite
 
 ```bash
-npm run db:sqlite:generate
-npm run db:sqlite:push
+npm run db:generate
+npm run db:push
 ```
 
 ## Build Time

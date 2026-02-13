@@ -347,7 +347,7 @@ export async function validateOidcCallback(
                     allOrgs[0].orgId,
                     tierMatrix.autoProvisioning
                 );
-                if (subscribed) {
+                if (!subscribed) {
                     return next(
                         createHttpError(
                             HttpCode.FORBIDDEN,

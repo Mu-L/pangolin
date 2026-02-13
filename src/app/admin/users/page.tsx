@@ -50,7 +50,7 @@ export default async function UsersPage(props: PageProps) {
                 title={t("userTitle")}
                 description={t("userDescription")}
             />
-            <Alert variant="neutral" className="mb-6">
+            <Alert className="mb-6">
                 <InfoIcon className="h-4 w-4" />
                 <AlertTitle className="font-semibold">
                     {t("userAbount")}

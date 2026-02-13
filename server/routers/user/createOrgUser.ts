@@ -132,7 +132,7 @@ export async function createOrgUser(
                     orgId,
                     tierMatrix.orgOidc
                 );
-                if (subscribed) {
+                if (!subscribed) {
                     return next(
                         createHttpError(
                             HttpCode.FORBIDDEN,

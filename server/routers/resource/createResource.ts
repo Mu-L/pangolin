@@ -36,7 +36,8 @@ const createHttpResourceSchema = z
         http: z.boolean(),
         protocol: z.enum(["tcp", "udp"]),
         domainId: z.string(),
-        stickySession: z.boolean().optional()
+        stickySession: z.boolean().optional(),
+        postAuthPath: z.string().nullable().optional()
     })
     .refine(
         (data) => {
@@ -188,7 +189,7 @@ async function createHttpResource(
         );
     }
 
-    const { name, domainId } = parsedBody.data;
+    const { name, domainId, postAuthPath } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
 
@@ -255,7 +256,8 @@ async function createHttpResource(
                 http: true,
                 protocol: "tcp",
                 ssl: true,
-                stickySession: stickySession
+                stickySession: stickySession,
+                postAuthPath: postAuthPath
             })
             .returning();
 

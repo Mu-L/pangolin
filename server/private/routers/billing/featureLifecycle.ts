@@ -18,6 +18,113 @@ import logger from "@server/logger";
 import { db, idp, idpOrg, loginPage, loginPageBranding, loginPageBrandingOrg, loginPageOrg, orgs, resources, roles } from "@server/db";
 import { eq } from "drizzle-orm";
 
+/**
+ * Get the maximum allowed retention days for a given tier
+ * Returns null for enterprise tier (unlimited)
+ */
+function getMaxRetentionDaysForTier(tier: Tier | null): number | null {
+    if (!tier) {
+        return 3; // Free tier
+    }
+
+    switch (tier) {
+        case "tier1":
+            return 7;
+        case "tier2":
+            return 30;
+        case "tier3":
+            return 90;
+        case "enterprise":
+            return null; // No limit
+        default:
+            return 3; // Default to free tier limit
+    }
+}
+
+/**
+ * Cap retention days to the maximum allowed for the given tier
+ */
+async function capRetentionDays(
+    orgId: string,
+    tier: Tier | null
+): Promise<void> {
+    const maxRetentionDays = getMaxRetentionDaysForTier(tier);
+
+    // If there's no limit (enterprise tier), no capping needed
+    if (maxRetentionDays === null) {
+        logger.debug(
+            `No retention day limit for org ${orgId} on tier ${tier || "free"}`
+        );
+        return;
+    }
+
+    // Get current org settings
+    const [org] = await db
+        .select()
+        .from(orgs)
+        .where(eq(orgs.orgId, orgId));
+
+    if (!org) {
+        logger.warn(`Org ${orgId} not found when capping retention days`);
+        return;
+    }
+
+    const updates: Partial<typeof orgs.$inferInsert> = {};
+    let needsUpdate = false;
+
+    // Cap request log retention if it exceeds the limit
+    if (
+        org.settingsLogRetentionDaysRequest !== null &&
+        org.settingsLogRetentionDaysRequest > maxRetentionDays
+    ) {
+        updates.settingsLogRetentionDaysRequest = maxRetentionDays;
+        needsUpdate = true;
+        logger.info(
+            `Capping request log retention from ${org.settingsLogRetentionDaysRequest} to ${maxRetentionDays} days for org ${orgId}`
+        );
+    }
+
+    // Cap access log retention if it exceeds the limit
+    if (
+        org.settingsLogRetentionDaysAccess !== null &&
+        org.settingsLogRetentionDaysAccess > maxRetentionDays
+    ) {
+        updates.settingsLogRetentionDaysAccess = maxRetentionDays;
+        needsUpdate = true;
+        logger.info(
+            `Capping access log retention from ${org.settingsLogRetentionDaysAccess} to ${maxRetentionDays} days for org ${orgId}`
+        );
+    }
+
+    // Cap action log retention if it exceeds the limit
+    if (
+        org.settingsLogRetentionDaysAction !== null &&
+        org.settingsLogRetentionDaysAction > maxRetentionDays
+    ) {
+        updates.settingsLogRetentionDaysAction = maxRetentionDays;
+        needsUpdate = true;
+        logger.info(
+            `Capping action log retention from ${org.settingsLogRetentionDaysAction} to ${maxRetentionDays} days for org ${orgId}`
+        );
+    }
+
+    // Apply updates if needed
+    if (needsUpdate) {
+        await db
+            .update(orgs)
+            .set(updates)
+            .where(eq(orgs.orgId, orgId));
+
+        logger.info(
+            `Successfully capped retention days for org ${orgId} to max ${maxRetentionDays} days`
+        );
+    } else {
+        logger.debug(
+            `No retention day capping needed for org ${orgId}`
+        );
+    }
+}
+
 export async function handleTierChange(
     orgId: string,
     newTier: SubscriptionType | null,
@@ -40,6 +147,9 @@ export async function handleTierChange(
         logger.info(
             `Org ${orgId} is reverting to free tier, disabling all paid features`
         );
+        // Cap retention days to free tier limits
+        await capRetentionDays(orgId, null);
+
         // Disable all features in the tier matrix
         for (const [featureKey] of Object.entries(tierMatrix)) {
             const feature = featureKey as TierFeature;
@@ -56,6 +166,9 @@ export async function handleTierChange(
 
     // Get the tier (cast as Tier since we've ruled out "license" and null)
     const tier = newTier as Tier;
+
+    // Cap retention days to the new tier's limits
+    await capRetentionDays(orgId, tier);
 
     // Check each feature in the tier matrix
     for (const [featureKey, allowedTiers] of Object.entries(tierMatrix)) {

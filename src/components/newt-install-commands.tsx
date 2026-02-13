@@ -18,11 +18,11 @@ export type CommandItem = string | { title: string; command: string };
 
 const PLATFORMS = [
     "unix",
-    "windows",
     "docker",
     "kubernetes",
     "podman",
-    "nixos"
+    "nixos",
+    "windows"
 ] as const;
 
 type Platform = (typeof PLATFORMS)[number];

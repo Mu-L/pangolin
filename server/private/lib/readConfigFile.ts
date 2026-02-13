@@ -25,7 +25,8 @@ export const privateConfigSchema = z.object({
     app: z
         .object({
             region: z.string().optional().default("default"),
-            base_domain: z.string().optional()
+            base_domain: z.string().optional(),
+            identity_provider_mode: z.enum(["global", "org"]).optional()
         })
         .optional()
         .default({
@@ -95,7 +96,7 @@ export const privateConfigSchema = z.object({
         .object({
             enable_redis: z.boolean().optional().default(false),
             use_pangolin_dns: z.boolean().optional().default(false),
-            use_org_only_idp: z.boolean().optional().default(false),
+            use_org_only_idp: z.boolean().optional()
         })
         .optional()
         .prefault({}),
@@ -181,7 +182,29 @@ export const privateConfigSchema = z.object({
             // localFilePath: z.string().optional()
         })
         .optional()
-});
+})
+    .transform((data) => {
+        // this to maintain backwards compatibility with the old config file
+        const identityProviderMode = data.app?.identity_provider_mode;
+        const useOrgOnlyIdp = data.flags?.use_org_only_idp;
+
+        if (identityProviderMode !== undefined) {
+            return data;
+        }
+        if (useOrgOnlyIdp === true) {
+            return {
+                ...data,
+                app: { ...data.app, identity_provider_mode: "org" as const }
+            };
+        }
+        if (useOrgOnlyIdp === false) {
+            return {
+                ...data,
+                app: { ...data.app, identity_provider_mode: "global" as const }
+            };
+        }
+        return data;
+    });
 
 export function readPrivateConfigFile() {
     if (build == "oss") {

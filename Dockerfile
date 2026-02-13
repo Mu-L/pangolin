@@ -16,7 +16,7 @@ COPY . .
 RUN if [ "$BUILD" = "oss" ]; then rm -rf server/private; fi && \
     npm run set:$DATABASE && \
     npm run set:$BUILD && \
-    npm run db:$DATABASE:generate && \
+    npm run db:generate && \
     npm run build && \
     npm run build:cli
 

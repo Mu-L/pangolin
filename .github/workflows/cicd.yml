@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Public CICD Pipeline
 
 # CI/CD workflow for building, publishing, mirroring, signing container images and building release binaries.
 # Actions are pinned to specific SHAs to reduce supply-chain risk. This workflow triggers on tag push events.
@@ -440,6 +440,10 @@ jobs:
                   issuer="https://token.actions.githubusercontent.com"
                   id_regex="^https://github.com/${{ github.repository }}/.+"  # accept this repo (all workflows/refs)
 
+                  # Track failures
+                  FAILED_TAGS=()
+                  SUCCESSFUL_TAGS=()
+
                   # Determine if this is an RC release
                   IS_RC="false"
                   if [[ "$TAG" == *"-rc."* ]]; then
@@ -471,94 +475,123 @@ jobs:
                   for BASE_IMAGE in "${GHCR_IMAGE}" "${DOCKERHUB_IMAGE}"; do
                     for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
                       echo "Processing ${BASE_IMAGE}:${IMAGE_TAG}"
+                      TAG_FAILED=false
 
-                      DIGEST="$(skopeo inspect --retry-times 3 docker://${BASE_IMAGE}:${IMAGE_TAG} | jq -r '.Digest')"
-                      REF="${BASE_IMAGE}@${DIGEST}"
-                      echo "Resolved digest: ${REF}"
+                      # Wrap the entire tag processing in error handling
+                      (
+                        set -e
+                        DIGEST="$(skopeo inspect --retry-times 3 docker://${BASE_IMAGE}:${IMAGE_TAG} | jq -r '.Digest')"
+                        REF="${BASE_IMAGE}@${DIGEST}"
+                        echo "Resolved digest: ${REF}"
 
-                      echo "==> cosign sign (keyless) --recursive ${REF}"
-                      cosign sign --recursive "${REF}"
+                        echo "==> cosign sign (keyless) --recursive ${REF}"
+                        cosign sign --recursive "${REF}"
 
-                      echo "==> cosign sign (key) --recursive ${REF}"
-                      cosign sign --key env://COSIGN_PRIVATE_KEY --recursive "${REF}"
+                        echo "==> cosign sign (key) --recursive ${REF}"
+                        cosign sign --key env://COSIGN_PRIVATE_KEY --recursive "${REF}"
 
-                      # Retry wrapper for verification to handle registry propagation delays
-                      retry_verify() {
-                        local cmd="$1"
-                        local attempts=6
-                        local delay=5
-                        local i=1
-                        until eval "$cmd"; do
-                          if [ $i -ge $attempts ]; then
-                            echo "Verification failed after $attempts attempts"
-                            return 1
-                          fi
-                          echo "Verification not yet available. Retry $i/$attempts after ${delay}s..."
-                          sleep $delay
-                          i=$((i+1))
-                          delay=$((delay*2))
-                          # Cap the delay to avoid very long waits
-                          if [ $delay -gt 60 ]; then delay=60; fi
-                        done
-                        return 0
-                      }
-
-                      echo "==> cosign verify (public key) ${REF}"
-                      if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${REF}' -o text"; then
-                        VERIFIED_INDEX=true
-                      else
-                        VERIFIED_INDEX=false
-                      fi
-
-                      echo "==> cosign verify (keyless policy) ${REF}"
-                      if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${REF}' -o text"; then
-                        VERIFIED_INDEX_KEYLESS=true
-                      else
-                        VERIFIED_INDEX_KEYLESS=false
-                      fi
-
-                      # If index verification fails, attempt to verify child platform manifests
-                      if [ "${VERIFIED_INDEX}" != "true" ] || [ "${VERIFIED_INDEX_KEYLESS}" != "true" ]; then
-                        echo "Index verification not available; attempting child manifest verification for ${BASE_IMAGE}:${IMAGE_TAG}"
-                        CHILD_VERIFIED=false
-
-                        for ARCH in arm64 amd64; do
-                          CHILD_TAG="${IMAGE_TAG}-${ARCH}"
-                          echo "Resolving child digest for ${BASE_IMAGE}:${CHILD_TAG}"
-                          CHILD_DIGEST="$(skopeo inspect --retry-times 3 docker://${BASE_IMAGE}:${CHILD_TAG} | jq -r '.Digest' || true)"
-                          if [ -n "${CHILD_DIGEST}" ] && [ "${CHILD_DIGEST}" != "null" ]; then
-                            CHILD_REF="${BASE_IMAGE}@${CHILD_DIGEST}"
-                            echo "==> cosign verify (public key) child ${CHILD_REF}"
-                            if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${CHILD_REF}' -o text"; then
-                              CHILD_VERIFIED=true
-                              echo "Public key verification succeeded for child ${CHILD_REF}"
-                            else
-                              echo "Public key verification failed for child ${CHILD_REF}"
+                        # Retry wrapper for verification to handle registry propagation delays
+                        retry_verify() {
+                          local cmd="$1"
+                          local attempts=6
+                          local delay=5
+                          local i=1
+                          until eval "$cmd"; do
+                            if [ $i -ge $attempts ]; then
+                              echo "Verification failed after $attempts attempts"
+                              return 1
                             fi
+                            echo "Verification not yet available. Retry $i/$attempts after ${delay}s..."
+                            sleep $delay
+                            i=$((i+1))
+                            delay=$((delay*2))
+                            # Cap the delay to avoid very long waits
+                            if [ $delay -gt 60 ]; then delay=60; fi
+                          done
+                          return 0
+                        }
 
-                            echo "==> cosign verify (keyless policy) child ${CHILD_REF}"
-                            if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${CHILD_REF}' -o text"; then
-                              CHILD_VERIFIED=true
-                              echo "Keyless verification succeeded for child ${CHILD_REF}"
-                            else
-                              echo "Keyless verification failed for child ${CHILD_REF}"
-                            fi
-                          else
-                            echo "No child digest found for ${BASE_IMAGE}:${CHILD_TAG}; skipping"
-                          fi
-                        done
-
-                        if [ "${CHILD_VERIFIED}" != "true" ]; then
-                          echo "Failed to verify index and no child manifests verified for ${BASE_IMAGE}:${IMAGE_TAG}"
-                          exit 10
+                        echo "==> cosign verify (public key) ${REF}"
+                        if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${REF}' -o text"; then
+                          VERIFIED_INDEX=true
+                        else
+                          VERIFIED_INDEX=false
                         fi
-                      fi
 
-                      echo "✓ Successfully signed and verified ${BASE_IMAGE}:${IMAGE_TAG}"
+                        echo "==> cosign verify (keyless policy) ${REF}"
+                        if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${REF}' -o text"; then
+                          VERIFIED_INDEX_KEYLESS=true
+                        else
+                          VERIFIED_INDEX_KEYLESS=false
+                        fi
+
+                        # If index verification fails, attempt to verify child platform manifests
+                        if [ "${VERIFIED_INDEX}" != "true" ] || [ "${VERIFIED_INDEX_KEYLESS}" != "true" ]; then
+                          echo "Index verification not available; attempting child manifest verification for ${BASE_IMAGE}:${IMAGE_TAG}"
+                          CHILD_VERIFIED=false
+
+                          for ARCH in arm64 amd64; do
+                            CHILD_TAG="${IMAGE_TAG}-${ARCH}"
+                            echo "Resolving child digest for ${BASE_IMAGE}:${CHILD_TAG}"
+                            CHILD_DIGEST="$(skopeo inspect --retry-times 3 docker://${BASE_IMAGE}:${CHILD_TAG} | jq -r '.Digest' || true)"
+                            if [ -n "${CHILD_DIGEST}" ] && [ "${CHILD_DIGEST}" != "null" ]; then
+                              CHILD_REF="${BASE_IMAGE}@${CHILD_DIGEST}"
+                              echo "==> cosign verify (public key) child ${CHILD_REF}"
+                              if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${CHILD_REF}' -o text"; then
+                                CHILD_VERIFIED=true
+                                echo "Public key verification succeeded for child ${CHILD_REF}"
+                              else
+                                echo "Public key verification failed for child ${CHILD_REF}"
+                              fi
+
+                              echo "==> cosign verify (keyless policy) child ${CHILD_REF}"
+                              if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${CHILD_REF}' -o text"; then
+                                CHILD_VERIFIED=true
+                                echo "Keyless verification succeeded for child ${CHILD_REF}"
+                              else
+                                echo "Keyless verification failed for child ${CHILD_REF}"
+                              fi
+                            else
+                              echo "No child digest found for ${BASE_IMAGE}:${CHILD_TAG}; skipping"
+                            fi
+                          done
+
+                          if [ "${CHILD_VERIFIED}" != "true" ]; then
+                            echo "Failed to verify index and no child manifests verified for ${BASE_IMAGE}:${IMAGE_TAG}"
+                            exit 1
+                          fi
+                        fi
+                      ) || TAG_FAILED=true
+
+                      if [ "$TAG_FAILED" = "true" ]; then
+                        echo "⚠️  WARNING: Failed to sign/verify ${BASE_IMAGE}:${IMAGE_TAG}"
+                        FAILED_TAGS+=("${BASE_IMAGE}:${IMAGE_TAG}")
+                      else
+                        echo "✓ Successfully signed and verified ${BASE_IMAGE}:${IMAGE_TAG}"
+                        SUCCESSFUL_TAGS+=("${BASE_IMAGE}:${IMAGE_TAG}")
+                      fi
                     done
                   done
 
-                  echo "All images signed and verified successfully!"
+                  # Report summary
+                  echo ""
+                  echo "=========================================="
+                  echo "Sign and Verify Summary"
+                  echo "=========================================="
+                  echo "Successful: ${#SUCCESSFUL_TAGS[@]}"
+                  echo "Failed: ${#FAILED_TAGS[@]}"
+                  echo ""
+
+                  if [ ${#FAILED_TAGS[@]} -gt 0 ]; then
+                    echo "Failed tags:"
+                    for tag in "${FAILED_TAGS[@]}"; do
+                      echo "  - $tag"
+                    done
+                    echo ""
+                    echo "⚠️  WARNING: Some tags failed to sign/verify, but continuing anyway"
+                  else
+                    echo "✓ All images signed and verified successfully!"
+                  fi
               shell: bash
 
     post-run:

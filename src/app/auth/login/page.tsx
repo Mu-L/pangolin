@@ -76,12 +76,13 @@ export default async function Page(props: {
 
     // Only use SmartLoginForm if NOT (OSS build OR org-only IdP enabled)
     const useSmartLogin =
-        build === "saas" || (build === "enterprise" && env.flags.useOrgOnlyIdp);
+        build === "saas" ||
+        (build === "enterprise" && env.app.identityProviderMode === "org");
 
     let loginIdps: LoginFormIDP[] = [];
     if (!useSmartLogin) {
         // Load IdPs for DashboardLoginForm (OSS or org-only IdP mode)
-        if (build === "oss" || !env.flags.useOrgOnlyIdp) {
+        if (build === "oss" || env.app.identityProviderMode !== "org") {
             const idpsRes = await cache(
                 async () =>
                     await priv.get<AxiosResponse<ListIdpsResponse>>("/idp")
@@ -165,7 +166,8 @@ export default async function Page(props: {
                     forceLogin={forceLogin}
                     showOrgLogin={
                         !isInvite &&
-                        (build === "saas" || env.flags.useOrgOnlyIdp)
+                        (build === "saas" ||
+                            env.app.identityProviderMode === "org")
                     }
                     searchParams={searchParams}
                     defaultUser={defaultUser}
@@ -188,7 +190,8 @@ export default async function Page(props: {
                 </p>
             )}
 
-            {!isInvite && (build === "saas" || env.flags.useOrgOnlyIdp) ? (
+            {!isInvite &&
+            (build === "saas" || env.app.identityProviderMode === "org") ? (
                 <OrgSignInLink
                     href={`/auth/org${buildQueryString(searchParams)}`}
                     linkText={t("orgAuthSignInToOrg")}

@@ -32,3 +32,4 @@ migrations/
 config/
 build.ts
 tsconfig.json
+migrations/

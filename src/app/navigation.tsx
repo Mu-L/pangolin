@@ -124,7 +124,8 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
             // PaidFeaturesAlert
             ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
             build === "saas" ||
-            env?.flags.useOrgOnlyIdp
+            env?.app.identityProviderMode === "org" ||
+            (env?.app.identityProviderMode === undefined && build !== "oss")
                 ? [
                       {
                           title: "sidebarIdentityProviders",
@@ -251,7 +252,9 @@ export const adminNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/admin/api-keys",
                 icon: <KeyRound className="size-4 flex-none" />
             },
-            ...(build === "oss" || !env?.flags.useOrgOnlyIdp
+            ...(build === "oss" ||
+            env?.app.identityProviderMode === "global" ||
+            env?.app.identityProviderMode === undefined
                 ? [
                       {
                           title: "sidebarIdentityProviders",

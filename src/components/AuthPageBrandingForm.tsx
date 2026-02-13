@@ -322,7 +322,7 @@ export default function AuthPageBrandingForm({
                                 </div>
 
                                 {build === "saas" ||
-                                env.env.flags.useOrgOnlyIdp ? (
+                                env.env.app.identityProviderMode === "org" ? (
                                     <>
                                         <div className="mt-3 mb-6">
                                             <SettingsSectionTitle>

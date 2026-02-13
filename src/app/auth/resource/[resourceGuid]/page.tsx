@@ -26,6 +26,7 @@ import type {
 import { CheckOrgUserAccessResponse } from "@server/routers/org";
 import OrgPolicyRequired from "@app/components/OrgPolicyRequired";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
+import { normalizePostAuthPath } from "@server/lib/normalizePostAuthPath";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,11 @@ export default async function ResourceAuthPage(props: {
                 redirectUrl = searchParams.redirect;
             }
         } catch (e) {}
+    }
+
+    const normalizedPostAuthPath = normalizePostAuthPath(authInfo.postAuthPath);
+    if (normalizedPostAuthPath) {
+        redirectUrl = new URL(authInfo.url).origin + normalizedPostAuthPath;
     }
 
     const hasAuth =
@@ -202,7 +208,7 @@ export default async function ResourceAuthPage(props: {
     }
 
     let loginIdps: LoginFormIDP[] = [];
-    if (build === "saas" || env.flags.useOrgOnlyIdp) {
+    if (build === "saas" || env.app.identityProviderMode === "org") {
         if (subscribed) {
             const idpsRes = await cache(
                 async () =>
