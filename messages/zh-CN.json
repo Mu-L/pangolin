@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "机器客户端适用于不与特定用户关联的服务器与自动化系统。它们使用ID和密钥进行身份验证，并可以与Pangolin CLI、Olm CLI或作为容器运行。",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Container",
+    "machineClientsBannerOlmContainer": "Olm 容器",
     "clientsTableUserClients": "用户",
     "clientsTableMachineClients": "机",
     "licenseTableValidUntil": "有效期至",
