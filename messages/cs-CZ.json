@@ -2060,7 +2060,7 @@
     "machineClientsBannerDescription": "Klientské stroje jsou určeny pro servery a automatizované systémy, které nejsou přiřazeny k žádnému specifickému uživateli. Autentizují se pomocí ID a tajemství, a mohou běžet s Pangolin CLI, Olm CLI nebo Olm jako kontejner.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
-    "machineClientsBannerOlmContainer": "Container",
+    "machineClientsBannerOlmContainer": "Olm kontejner",
     "clientsTableUserClients": "Uživatel",
     "clientsTableMachineClients": "Stroj",
     "licenseTableValidUntil": "Platná do",
