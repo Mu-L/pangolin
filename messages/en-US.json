@@ -171,6 +171,8 @@
     "resourcePoliciesSearch": "Search policies...",
     "resourcePoliciesAdd": "Add Policy",
     "resourcePoliciesDefaultBadgeText": "Default policy",
+    "resourcePoliciesCreate": "Create Resource Policy",
+    "resourcePoliciesCreateDescription": "Follow the steps below to create a new policy",
     "authentication": "Authentication",
     "protected": "Protected",
     "notProtected": "Not Protected",
