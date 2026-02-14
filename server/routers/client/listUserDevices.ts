@@ -292,6 +292,10 @@ export async function listUserDevices(
                         "%" + query.toLowerCase() + "%"
                     ),
                     like(
+                        sql`LOWER(${clients.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
                         sql`LOWER(${users.email})`,
                         "%" + query.toLowerCase() + "%"
                     )

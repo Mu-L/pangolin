@@ -310,6 +310,10 @@ export async function listClients(
                     like(
                         sql`LOWER(${clients.name})`,
                         "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${clients.niceId})`,
+                        "%" + query.toLowerCase() + "%"
                     )
                 )
             );

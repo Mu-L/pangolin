@@ -122,6 +122,10 @@ export async function listAllSiteResourcesByOrg(
                         "%" + query.toLowerCase() + "%"
                     ),
                     like(
+                        sql`LOWER(${siteResources.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
                         sql`LOWER(${siteResources.destination})`,
                         "%" + query.toLowerCase() + "%"
                     ),

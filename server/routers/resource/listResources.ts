@@ -281,6 +281,10 @@ export async function listResources(
                         "%" + query.toLowerCase() + "%"
                     ),
                     like(
+                        sql`LOWER(${resources.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
                         sql`LOWER(${resources.fullDomain})`,
                         "%" + query.toLowerCase() + "%"
                     )
