@@ -8,6 +8,7 @@ import {
     InfoSections,
     InfoSectionTitle
 } from "@app/components/InfoSection";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { useTranslations } from "next-intl";
 
 type ClientInfoCardProps = {};
@@ -15,6 +16,12 @@ type ClientInfoCardProps = {};
 export default function SiteInfoCard({}: ClientInfoCardProps) {
     const { client, updateClient } = useClientContext();
     const t = useTranslations();
+
+    const userDisplayName = getUserDisplayName({
+        email: client.userEmail,
+        name: client.userName,
+        username: client.userUsername
+    });
 
     return (
         <Alert>
@@ -25,8 +32,12 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
                         <InfoSectionContent>{client.name}</InfoSectionContent>
                     </InfoSection>
                     <InfoSection>
-                        <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
-                        <InfoSectionContent>{client.niceId}</InfoSectionContent>
+                        <InfoSectionTitle>
+                            {userDisplayName ? t("user") : t("identifier")}
+                        </InfoSectionTitle>
+                        <InfoSectionContent>
+                            {userDisplayName || client.niceId}
+                        </InfoSectionContent>
                     </InfoSection>
                     <InfoSection>
                         <InfoSectionTitle>{t("status")}</InfoSectionTitle>

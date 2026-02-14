@@ -1,10 +1,10 @@
 "use client";
 
 import SubscriptionStatusContext from "@app/contexts/subscriptionStatusContext";
-import { getTierPriceSet, TierId } from "@server/lib/billing/tiers";
 import { GetOrgSubscriptionResponse } from "@server/routers/billing/types";
 import { useState } from "react";
 import { build } from "@server/build";
+import { Tier } from "@server/types/Tiers";
 
 interface ProviderProps {
     children: React.ReactNode;
@@ -32,50 +32,53 @@ export function SubscriptionStatusProvider({
         });
     };
 
-    const isActive = () => {
-        if (subscriptionStatus?.subscription?.status === "active") {
-            return true;
-        }
-        return false;
-    };
-
-    const getTier = () => {
-        const tierPriceSet = getTierPriceSet(env, sandbox_mode);
-
-        if (subscriptionStatus?.items && subscriptionStatus.items.length > 0) {
-            // Iterate through tiers in order (earlier keys are higher tiers)
-            for (const [tierId, priceId] of Object.entries(tierPriceSet)) {
-                // Check if any subscription item matches this tier's price ID
-                const matchingItem = subscriptionStatus.items.find(
-                    (item) => item.priceId === priceId
-                );
-                if (matchingItem) {
-                    return tierId;
+    const getTier = (): {
+        tier: Tier | null;
+        active: boolean;
+    } => {
+        if (subscriptionStatus?.subscriptions) {
+            // Iterate through all subscriptions
+            for (const { subscription } of subscriptionStatus.subscriptions) {
+                if (
+                    subscription.type == "tier1" ||
+                    subscription.type == "tier2" ||
+                    subscription.type == "tier3"
+                ) {
+                    return {
+                        tier: subscription.type,
+                        active: subscription.status === "active"
+                    };
                 }
             }
         }
 
-        return null;
+        return {
+            tier: null,
+            active: false
+        };
     };
 
     const isSubscribed = () => {
-        if (build === "enterprise") {
-            return true;
-        }
-        return getTier() === TierId.STANDARD;
+        const { tier, active } = getTier();
+        return (
+            (tier == "tier1" || tier == "tier2" || tier == "tier3") &&
+            active
+        );
     };
 
     const [subscribed, setSubscribed] = useState<boolean>(isSubscribed());
+
+    const limitsExceeded = subscriptionStatusState?.limitsExceeded ?? false;
 
     return (
         <SubscriptionStatusContext.Provider
             value={{
                 subscriptionStatus: subscriptionStatusState,
                 updateSubscriptionStatus,
-                isActive,
                 getTier,
                 isSubscribed,
-                subscribed
+                subscribed,
+                limitsExceeded
             }}
         >
             {children}

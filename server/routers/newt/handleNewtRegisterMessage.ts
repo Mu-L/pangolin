@@ -1,17 +1,13 @@
-import { db, ExitNode, exitNodeOrgs, newts, Transaction } from "@server/db";
+import { db, ExitNode, newts, Transaction } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
-import { exitNodes, Newt, resources, sites, Target, targets } from "@server/db";
-import { targetHealthCheck } from "@server/db";
-import { eq, and, sql, inArray, ne } from "drizzle-orm";
+import { exitNodes, Newt, sites } from "@server/db";
+import { eq } from "drizzle-orm";
 import { addPeer, deletePeer } from "../gerbil/peers";
 import logger from "@server/logger";
 import config from "@server/lib/config";
 import {
     findNextAvailableCidr,
-    getNextAvailableClientSubnet
 } from "@server/lib/ip";
-import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId } from "@server/lib/billing";
 import {
     selectBestExitNode,
     verifyExitNodeOrgAccess
@@ -29,8 +25,6 @@ export type ExitNodePingResult = {
     endpoint: string;
     wasPreviouslyConnected: boolean;
 };
-
-const numTimesLimitExceededForId: Record<string, number> = {};
 
 export const handleNewtRegisterMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -94,42 +88,6 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             "Site has docker socket enabled - requesting docker containers"
         );
         fetchContainers(newt.newtId);
-    }
-
-    const rejectSiteUptime = await usageService.checkLimitSet(
-        oldSite.orgId,
-        false,
-        FeatureId.SITE_UPTIME
-    );
-    const rejectEgressDataMb = await usageService.checkLimitSet(
-        oldSite.orgId,
-        false,
-        FeatureId.EGRESS_DATA_MB
-    );
-
-    // Do we need to check the users and domains daily limits here?
-    // const rejectUsers = await usageService.checkLimitSet(oldSite.orgId, false, FeatureId.USERS);
-    // const rejectDomains = await usageService.checkLimitSet(oldSite.orgId, false, FeatureId.DOMAINS);
-
-    // if (rejectEgressDataMb || rejectSiteUptime || rejectUsers || rejectDomains) {
-    if (rejectEgressDataMb || rejectSiteUptime) {
-        logger.info(
-            `Usage limits exceeded for org ${oldSite.orgId}. Rejecting newt registration.`
-        );
-
-        // PREVENT FURTHER REGISTRATION ATTEMPTS SO WE DON'T SPAM
-
-        // Increment the limit exceeded count for this site
-        numTimesLimitExceededForId[newt.newtId] =
-            (numTimesLimitExceededForId[newt.newtId] || 0) + 1;
-
-        if (numTimesLimitExceededForId[newt.newtId] > 15) {
-            logger.debug(
-                `Newt ${newt.newtId} has exceeded usage limits 15 times. Terminating...`
-            );
-        }
-
-        return;
     }
 
     let siteSubnet = oldSite.subnet;

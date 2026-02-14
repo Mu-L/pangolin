@@ -23,6 +23,8 @@ import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { GetOrgSubscriptionResponse } from "@server/routers/billing/types";
+import { usageService } from "@server/lib/billing/usageService";
+import { build } from "@server/build";
 
 // Import tables for billing
 import {
@@ -37,18 +39,7 @@ const getOrgSchema = z.strictObject({
     orgId: z.string()
 });
 
-registry.registerPath({
-    method: "get",
-    path: "/org/{orgId}/billing/subscription",
-    description: "Get an organization",
-    tags: [OpenAPITags.Org],
-    request: {
-        params: getOrgSchema
-    },
-    responses: {}
-});
-
-export async function getOrgSubscription(
+export async function getOrgSubscriptions(
     req: Request,
     res: Response,
     next: NextFunction
@@ -66,12 +57,9 @@ export async function getOrgSubscription(
 
         const { orgId } = parsedParams.data;
 
-        let subscriptionData = null;
-        let itemsData: SubscriptionItem[] = [];
+        let subscriptions = null;
         try {
-            const { subscription, items } = await getOrgSubscriptionData(orgId);
-            subscriptionData = subscription;
-            itemsData = items;
+            subscriptions = await getOrgSubscriptionsData(orgId);
         } catch (err) {
             if ((err as Error).message === "Not found") {
                 return next(
@@ -84,10 +72,19 @@ export async function getOrgSubscription(
             throw err;
         }
 
+        let limitsExceeded = false;
+        if (build === "saas") {
+            try {
+                limitsExceeded = await usageService.checkLimitSet(orgId);
+            } catch (err) {
+                logger.error("Error checking limits for org %s: %s", orgId, err);
+            }
+        }
+
         return response<GetOrgSubscriptionResponse>(res, {
             data: {
-                subscription: subscriptionData,
-                items: itemsData
+                subscriptions,
+                ...(build === "saas" ? { limitsExceeded } : {})
             },
             success: true,
             error: false,
@@ -102,9 +99,9 @@ export async function getOrgSubscription(
     }
 }
 
-export async function getOrgSubscriptionData(
+export async function getOrgSubscriptionsData(
     orgId: string
-): Promise<{ subscription: Subscription | null; items: SubscriptionItem[] }> {
+): Promise<Array<{ subscription: Subscription; items: SubscriptionItem[] }>> {
     const org = await db
         .select()
         .from(orgs)
@@ -122,21 +119,21 @@ export async function getOrgSubscriptionData(
         .where(eq(customers.orgId, orgId))
         .limit(1);
 
-    let subscription = null;
-    let items: SubscriptionItem[] = [];
+    const subscriptionsWithItems: Array<{
+        subscription: Subscription;
+        items: SubscriptionItem[];
+    }> = [];
 
     if (customer.length > 0) {
-        // Get subscription for customer
+        // Get all subscriptions for customer
         const subs = await db
             .select()
             .from(subscriptions)
-            .where(eq(subscriptions.customerId, customer[0].customerId))
-            .limit(1);
+            .where(eq(subscriptions.customerId, customer[0].customerId));
 
-        if (subs.length > 0) {
-            subscription = subs[0];
-            // Get subscription items
-            items = await db
+        for (const subscription of subs) {
+            // Get subscription items for each subscription
+            const items = await db
                 .select()
                 .from(subscriptionItems)
                 .where(
@@ -145,8 +142,13 @@ export async function getOrgSubscriptionData(
                         subscription.subscriptionId
                     )
                 );
+
+            subscriptionsWithItems.push({
+                subscription,
+                items
+            });
         }
     }
 
-    return { subscription, items };
+    return subscriptionsWithItems;
 }

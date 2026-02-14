@@ -114,7 +114,6 @@ export async function updateSiteBandwidth(
 
     // Aggregate usage data by organization (collected outside transaction)
     const orgUsageMap = new Map<string, number>();
-    const orgUptimeMap = new Map<string, number>();
 
     if (activePeers.length > 0) {
         // Remove any active peers from offline tracking since they're sending data
@@ -166,14 +165,6 @@ export async function updateSiteBandwidth(
                         updatedSite.orgId,
                         currentOrgUsage + totalBandwidth
                     );
-
-                    // Add 10 seconds of uptime for each active site
-                    const currentOrgUptime =
-                        orgUptimeMap.get(updatedSite.orgId) || 0;
-                    orgUptimeMap.set(
-                        updatedSite.orgId,
-                        currentOrgUptime + 10 / 60
-                    );
                 }
             } catch (error) {
                 logger.error(
@@ -187,11 +178,9 @@ export async function updateSiteBandwidth(
 
     // Process usage updates outside of site update transactions
     // This separates the concerns and reduces lock contention
-    if (calcUsageAndLimits && (orgUsageMap.size > 0 || orgUptimeMap.size > 0)) {
+    if (calcUsageAndLimits && orgUsageMap.size > 0) {
         // Sort org IDs to ensure consistent lock ordering
-        const allOrgIds = [
-            ...new Set([...orgUsageMap.keys(), ...orgUptimeMap.keys()])
-        ].sort();
+        const allOrgIds = [...new Set([...orgUsageMap.keys()])].sort();
 
         for (const orgId of allOrgIds) {
             try {
@@ -208,39 +197,13 @@ export async function updateSiteBandwidth(
                         usageService
                             .checkLimitSet(
                                 orgId,
-                                true,
+
                                 FeatureId.EGRESS_DATA_MB,
                                 bandwidthUsage
                             )
                             .catch((error: any) => {
                                 logger.error(
                                     `Error checking bandwidth limits for org ${orgId}:`,
-                                    error
-                                );
-                            });
-                    }
-                }
-
-                // Process uptime usage for this org
-                const totalUptime = orgUptimeMap.get(orgId);
-                if (totalUptime) {
-                    const uptimeUsage = await usageService.add(
-                        orgId,
-                        FeatureId.SITE_UPTIME,
-                        totalUptime
-                    );
-                    if (uptimeUsage) {
-                        // Fire and forget - don't block on limit checking
-                        usageService
-                            .checkLimitSet(
-                                orgId,
-                                true,
-                                FeatureId.SITE_UPTIME,
-                                uptimeUsage
-                            )
-                            .catch((error: any) => {
-                                logger.error(
-                                    `Error checking uptime limits for org ${orgId}:`,
                                     error
                                 );
                             });

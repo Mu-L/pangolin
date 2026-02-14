@@ -20,6 +20,8 @@ import {
 import { Input } from "@app/components/ui/input";
 import { useTranslations } from "next-intl";
 import { Control, FieldValues, Path } from "react-hook-form";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type Role = {
     roleId: number;
@@ -49,6 +51,8 @@ export default function AutoProvisionConfigWidget<T extends FieldValues>({
 }: AutoProvisionConfigWidgetProps<T>) {
     const t = useTranslations();
 
+    const { isPaidUser } = usePaidStatus();
+
     return (
         <div className="space-y-4">
             <div className="mb-4">
@@ -57,6 +61,7 @@ export default function AutoProvisionConfigWidget<T extends FieldValues>({
                     label={t("idpAutoProvisionUsers")}
                     defaultChecked={autoProvision}
                     onCheckedChange={onAutoProvisionChange}
+                    disabled={!isPaidUser(tierMatrix.autoProvisioning)}
                 />
                 <span className="text-sm text-muted-foreground">
                     {t("idpAutoProvisionUsersDescription")}

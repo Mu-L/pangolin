@@ -131,7 +131,7 @@ export async function createOrgDomain(
             }
             const rejectDomains = await usageService.checkLimitSet(
                 orgId,
-                false,
+
                 FeatureId.DOMAINS,
                 {
                     ...usage,
@@ -354,7 +354,7 @@ export async function createOrgDomain(
         });
 
         if (numOrgDomains) {
-            await usageService.updateDaily(
+            await usageService.updateCount(
                 orgId,
                 FeatureId.DOMAINS,
                 numOrgDomains.length

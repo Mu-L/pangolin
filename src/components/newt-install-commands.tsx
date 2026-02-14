@@ -18,11 +18,11 @@ export type CommandItem = string | { title: string; command: string };
 
 const PLATFORMS = [
     "unix",
-    "windows",
     "docker",
     "kubernetes",
     "podman",
-    "nixos"
+    "nixos",
+    "windows"
 ] as const;
 
 type Platform = (typeof PLATFORMS)[number];
@@ -91,7 +91,7 @@ export function NewtSiteInstallCommands({
       - NEWT_SECRET=${secret}${acceptClientsEnv}`
             ],
             "Docker Run": [
-                `docker run -dit fosrl/newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                `docker run -dit --network host fosrl/newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
             ]
         },
         kubernetes: {

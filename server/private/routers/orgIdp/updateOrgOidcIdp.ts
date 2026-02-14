@@ -24,9 +24,10 @@ import { idp, idpOidcConfig } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
+import { isSubscribed } from "#private/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import privateConfig from "#private/lib/config";
 import { build } from "@server/build";
-import { getOrgTierData } from "#private/lib/billing";
-import { TierId } from "@server/lib/billing/tiers";
 
 const paramsSchema = z
     .object({
@@ -98,6 +99,18 @@ export async function updateOrgOidcIdp(
             );
         }
 
+        if (
+            privateConfig.getRawPrivateConfig().app.identity_provider_mode !==
+            "org"
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Organization-specific IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'org' in the private configuration to enable this feature."
+                )
+            );
+        }
+
         const { idpId, orgId } = parsedParams.data;
         const {
             clientId,
@@ -109,21 +122,20 @@ export async function updateOrgOidcIdp(
             emailPath,
             namePath,
             name,
-            autoProvision,
             roleMapping,
             tags
         } = parsedBody.data;
 
-        if (build === "saas") {
-            const { tier, active } = await getOrgTierData(orgId);
-            const subscribed = tier === TierId.STANDARD;
+        let { autoProvision } = parsedBody.data;
+
+        if (build == "saas") {
+            // this is not paywalled with a ee license because this whole endpoint is restricted
+            const subscribed = await isSubscribed(
+                orgId,
+                tierMatrix.deviceApprovals
+            );
             if (!subscribed) {
-                return next(
-                    createHttpError(
-                        HttpCode.FORBIDDEN,
-                        "This organization's current plan does not support this feature."
-                    )
-                );
+                autoProvision = false;
             }
         }
 

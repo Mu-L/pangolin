@@ -52,4 +52,4 @@ scratch/
 tsconfig.json
 hydrateSaas.ts
 CLAUDE.md
-zaneops.*
+drizzle.config.ts

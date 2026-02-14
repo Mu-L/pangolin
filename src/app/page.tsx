@@ -10,6 +10,7 @@ import OrganizationLanding from "@app/components/OrganizationLanding";
 import { pullEnv } from "@app/lib/pullEnv";
 import { cleanRedirect } from "@app/lib/cleanRedirect";
 import { Layout } from "@app/components/Layout";
+import RedirectToOrg from "@app/components/RedirectToOrg";
 import { InitialSetupCompleteResponse } from "@server/routers/auth";
 import { cookies } from "next/headers";
 import { build } from "@server/build";
@@ -80,20 +81,25 @@ export default async function Page(props: {
     const lastOrgCookie = allCookies.get("pangolin-last-org")?.value;
 
     const lastOrgExists = orgs.some((org) => org.orgId === lastOrgCookie);
+    let targetOrgId: string | null = null;
     if (lastOrgExists && lastOrgCookie) {
-        redirect(`/${lastOrgCookie}`);
+        targetOrgId = lastOrgCookie;
     } else {
         let ownedOrg = orgs.find((org) => org.isOwner);
         if (!ownedOrg) {
             ownedOrg = orgs[0];
         }
         if (ownedOrg) {
-            redirect(`/${ownedOrg.orgId}`);
+            targetOrgId = ownedOrg.orgId;
         } else {
             if (!env.flags.disableUserCreateOrg || user.serverAdmin) {
                 redirect("/setup");
             }
         }
+    }
+
+    if (targetOrgId) {
+        return <RedirectToOrg targetOrgId={targetOrgId} />;
     }
 
     return (

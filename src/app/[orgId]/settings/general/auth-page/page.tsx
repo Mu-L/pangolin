@@ -1,5 +1,5 @@
 import AuthPageBrandingForm from "@app/components/AuthPageBrandingForm";
-import AuthPageSettings from "@app/components/private/AuthPageSettings";
+import AuthPageSettings from "@app/components/AuthPageSettings";
 import { SettingsContainer } from "@app/components/Settings";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
@@ -19,11 +19,6 @@ export interface AuthPageProps {
 
 export default async function AuthPage(props: AuthPageProps) {
     const orgId = (await props.params).orgId;
-
-    // custom auth branding is only available in enterprise and saas
-    if (build === "oss") {
-        redirect(`/${orgId}/settings/general/`);
-    }
 
     let subscriptionStatus: GetOrgTierResponse | null = null;
     try {

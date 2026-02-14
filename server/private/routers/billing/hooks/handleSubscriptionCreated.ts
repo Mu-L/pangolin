@@ -25,6 +25,14 @@ import logger from "@server/logger";
 import stripe from "#private/lib/stripe";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
 import { AudienceIds, moveEmailToAudience } from "#private/lib/resend";
+import { getSubType } from "./getSubType";
+import privateConfig from "#private/lib/config";
+import { getLicensePriceSet, LicenseId } from "@server/lib/billing/licenses";
+import { sendEmail } from "@server/emails";
+import EnterpriseEditionKeyGenerated from "@server/emails/templates/EnterpriseEditionKeyGenerated";
+import config from "@server/lib/config";
+import { getFeatureIdByPriceId } from "@server/lib/billing/features";
+import { handleTierChange } from "../featureLifecycle";
 
 export async function handleSubscriptionCreated(
     subscription: Stripe.Subscription
@@ -53,6 +61,8 @@ export async function handleSubscriptionCreated(
             return;
         }
 
+        const type = getSubType(fullSubscription);
+
         const newSubscription = {
             subscriptionId: subscription.id,
             customerId: subscription.customer as string,
@@ -60,7 +70,9 @@ export async function handleSubscriptionCreated(
             canceledAt: subscription.canceled_at
                 ? subscription.canceled_at
                 : null,
-            createdAt: subscription.created
+            createdAt: subscription.created,
+            type: type,
+            version: 1 // we are hardcoding the initial version when the subscription is created, and then we will increment it on every update
         };
 
         await db.insert(subscriptions).values(newSubscription);
@@ -81,10 +93,15 @@ export async function handleSubscriptionCreated(
                         name = product.name || null;
                     }
 
+                    // Get the feature ID from the price ID
+                    const featureId = getFeatureIdByPriceId(item.price.id);
+
                     return {
+                        stripeSubscriptionItemId: item.id,
                         subscriptionId: subscription.id,
                         planId: item.plan.id,
                         priceId: item.price.id,
+                        featureId: featureId || null,
                         meterId: item.plan.meter,
                         unitAmount: item.price.unit_amount || 0,
                         currentPeriodStart: item.current_period_start,
@@ -123,24 +140,148 @@ export async function handleSubscriptionCreated(
             return;
         }
 
-        await handleSubscriptionLifesycle(customer.orgId, subscription.status);
+        if (type === "tier1" || type === "tier2" || type === "tier3") {
+            logger.debug(
+                `Handling SAAS subscription lifecycle for org ${customer.orgId} with type ${type}`
+            );
+            // we only need to handle the limit lifecycle for saas subscriptions not for the licenses
+            await handleSubscriptionLifesycle(
+                customer.orgId,
+                subscription.status,
+                type
+            );
 
-        const [orgUserRes] = await db
-            .select()
-            .from(userOrgs)
-            .where(
-                and(
-                    eq(userOrgs.orgId, customer.orgId),
-                    eq(userOrgs.isOwner, true)
+            // Handle initial tier setup - disable features not available in this tier
+            logger.info(
+                `Setting up initial tier features for org ${customer.orgId} with type ${type}`
+            );
+            await handleTierChange(customer.orgId, type);
+
+            const [orgUserRes] = await db
+                .select()
+                .from(userOrgs)
+                .where(
+                    and(
+                        eq(userOrgs.orgId, customer.orgId),
+                        eq(userOrgs.isOwner, true)
+                    )
                 )
-            )
-            .innerJoin(users, eq(userOrgs.userId, users.userId));
+                .innerJoin(users, eq(userOrgs.userId, users.userId));
 
-        if (orgUserRes) {
-            const email = orgUserRes.user.email;
+            if (orgUserRes) {
+                const email = orgUserRes.user.email;
 
-            if (email) {
-                moveEmailToAudience(email, AudienceIds.Subscribed);
+                if (email) {
+                    moveEmailToAudience(email, AudienceIds.Subscribed);
+                }
+            }
+        } else if (type === "license") {
+            logger.debug(
+                `License subscription created for org ${customer.orgId}, no lifecycle handling needed.`
+            );
+
+            // Retrieve the client_reference_id from the checkout session
+            let licenseId: string | null = null;
+
+            try {
+                const sessions = await stripe!.checkout.sessions.list({
+                    subscription: subscription.id,
+                    limit: 1
+                });
+                if (sessions.data.length > 0) {
+                    licenseId = sessions.data[0].client_reference_id || null;
+                }
+
+                if (!licenseId) {
+                    logger.error(
+                        `No client_reference_id found for subscription ${subscription.id}`
+                    );
+                    return;
+                }
+
+                logger.debug(
+                    `Retrieved licenseId ${licenseId} from checkout session for subscription ${subscription.id}`
+                );
+
+                // Determine users and sites based on license type
+                const priceSet = getLicensePriceSet();
+                const subscriptionPriceId =
+                    fullSubscription.items.data[0]?.price.id;
+
+                let numUsers: number;
+                let numSites: number;
+
+                if (subscriptionPriceId === priceSet[LicenseId.SMALL_LICENSE]) {
+                    numUsers = 25;
+                    numSites = 25;
+                } else if (
+                    subscriptionPriceId === priceSet[LicenseId.BIG_LICENSE]
+                ) {
+                    numUsers = 50;
+                    numSites = 50;
+                } else {
+                    logger.error(
+                        `Unknown price ID ${subscriptionPriceId} for subscription ${subscription.id}`
+                    );
+                    return;
+                }
+
+                logger.debug(
+                    `License type determined: ${numUsers} users, ${numSites} sites for subscription ${subscription.id}`
+                );
+
+                const response = await fetch(
+                    `${privateConfig.getRawPrivateConfig().server.fossorial_api}/api/v1/license-internal/enterprise/paid-for`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "api-key":
+                                privateConfig.getRawPrivateConfig().server
+                                    .fossorial_api_key!,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            licenseId: parseInt(licenseId),
+                            paidFor: true,
+                            users: numUsers,
+                            sites: numSites
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                logger.debug(`Fossorial API response: ${JSON.stringify(data)}`);
+
+                if (customer.email) {
+                    logger.debug(
+                        `Sending license key email to ${customer.email} for subscription ${subscription.id}`
+                    );
+                    await sendEmail(
+                        EnterpriseEditionKeyGenerated({
+                            keyValue: data.data.licenseKey,
+                            personalUseOnly: false,
+                            users: numUsers,
+                            sites: numSites,
+                            modifySubscriptionLink: `${config.getRawConfig().app.dashboard_url}/${customer.orgId}/settings/billing`
+                        }),
+                        {
+                            to: customer.email,
+                            from: config.getNoReplyEmail(),
+                            subject:
+                                "Your Enterprise Edition license key is ready"
+                        }
+                    );
+                } else {
+                    logger.error(
+                        `No email found for customer ${customer.customerId} to send license key.`
+                    );
+                }
+
+                return data;
+            } catch (error) {
+                console.error("Error creating new license:", error);
+                throw error;
             }
         }
     } catch (error) {

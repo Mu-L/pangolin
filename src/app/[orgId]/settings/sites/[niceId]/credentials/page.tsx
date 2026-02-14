@@ -20,9 +20,6 @@ import { PickSiteDefaultsResponse } from "@server/routers/site";
 import { useSiteContext } from "@app/hooks/useSiteContext";
 import { generateKeypair } from "../wireguardConfig";
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
-import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
-import { build } from "@server/build";
 import {
     InfoSection,
     InfoSectionContent,
@@ -40,6 +37,8 @@ import {
 import { QRCodeCanvas } from "qrcode.react";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { NewtSiteInstallCommands } from "@app/components/newt-install-commands";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export default function CredentialsPage() {
     const { env } = useEnvContext();
@@ -65,15 +64,7 @@ export default function CredentialsPage() {
     const [loadingDefaults, setLoadingDefaults] = useState(false);
     const [shouldDisconnect, setShouldDisconnect] = useState(true);
 
-    const { licenseStatus, isUnlocked } = useLicenseStatusContext();
-    const subscription = useSubscriptionStatusContext();
-
-    const isSecurityFeatureDisabled = () => {
-        const isEnterpriseNotLicensed = build === "enterprise" && !isUnlocked();
-        const isSaasNotSubscribed =
-            build === "saas" && !subscription?.isSubscribed();
-        return isEnterpriseNotLicensed || isSaasNotSubscribed;
-    };
+    const { isPaidUser } = usePaidStatus();
 
     // Fetch site defaults for wireguard sites to show in obfuscated config
     useEffect(() => {
@@ -205,7 +196,9 @@ export default function CredentialsPage() {
                                 </SettingsSectionDescription>
                             </SettingsSectionHeader>
 
-                            <PaidFeaturesAlert />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.rotateCredentials}
+                            />
 
                             <SettingsSectionBody>
                                 <InfoSections cols={3}>
@@ -269,7 +262,7 @@ export default function CredentialsPage() {
                                     </Alert>
                                 )}
                             </SettingsSectionBody>
-                            {build !== "oss" && (
+                            {!env.flags.disableEnterpriseFeatures && (
                                 <SettingsSectionFooter>
                                     <Button
                                         variant="outline"
@@ -277,7 +270,11 @@ export default function CredentialsPage() {
                                             setShouldDisconnect(false);
                                             setModalOpen(true);
                                         }}
-                                        disabled={isSecurityFeatureDisabled()}
+                                        disabled={
+                                            !isPaidUser(
+                                                tierMatrix.rotateCredentials
+                                            )
+                                        }
                                     >
                                         {t("regenerateCredentialsButton")}
                                     </Button>
@@ -286,7 +283,11 @@ export default function CredentialsPage() {
                                             setShouldDisconnect(true);
                                             setModalOpen(true);
                                         }}
-                                        disabled={isSecurityFeatureDisabled()}
+                                        disabled={
+                                            !isPaidUser(
+                                                tierMatrix.rotateCredentials
+                                            )
+                                        }
                                     >
                                         {t("siteRegenerateAndDisconnect")}
                                     </Button>
@@ -313,7 +314,9 @@ export default function CredentialsPage() {
                             </SettingsSectionDescription>
                         </SettingsSectionHeader>
 
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.rotateCredentials}
+                        />
 
                         <SettingsSectionBody>
                             {!loadingDefaults && (
@@ -383,11 +386,15 @@ export default function CredentialsPage() {
                                 </>
                             )}
                         </SettingsSectionBody>
-                        {build === "enterprise" && (
+                        {!env.flags.disableEnterpriseFeatures && (
                             <SettingsSectionFooter>
                                 <Button
                                     onClick={() => setModalOpen(true)}
-                                    disabled={isSecurityFeatureDisabled()}
+                                    disabled={
+                                        !isPaidUser(
+                                            tierMatrix.rotateCredentials
+                                        )
+                                    }
                                 >
                                     {t("siteRegenerateAndDisconnect")}
                                 </Button>

@@ -121,7 +121,11 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/{orgId}/settings/access/roles",
                 icon: <Users className="size-4 flex-none" />
             },
-            ...(build === "saas" || env?.flags.useOrgOnlyIdp
+            // PaidFeaturesAlert
+            ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
+            build === "saas" ||
+            env?.app.identityProviderMode === "org" ||
+            (env?.app.identityProviderMode === undefined && build !== "oss")
                 ? [
                       {
                           title: "sidebarIdentityProviders",
@@ -130,7 +134,7 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                       }
                   ]
                 : []),
-            ...(build !== "oss"
+            ...(!env?.flags.disableEnterpriseFeatures
                 ? [
                       {
                           title: "sidebarApprovals",
@@ -155,7 +159,7 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                     href: "/{orgId}/settings/logs/request",
                     icon: <SquareMousePointer className="size-4 flex-none" />
                 },
-                ...(build != "oss"
+                ...(!env?.flags.disableEnterpriseFeatures
                     ? [
                           {
                               title: "sidebarLogsAccess",
@@ -248,7 +252,9 @@ export const adminNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/admin/api-keys",
                 icon: <KeyRound className="size-4 flex-none" />
             },
-            ...(build === "oss" || !env?.flags.useOrgOnlyIdp
+            ...(build === "oss" ||
+            env?.app.identityProviderMode === "global" ||
+            env?.app.identityProviderMode === undefined
                 ? [
                       {
                           title: "sidebarIdentityProviders",

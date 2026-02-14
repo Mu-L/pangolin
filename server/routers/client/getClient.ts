@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, olms } from "@server/db";
+import { db, olms, users } from "@server/db";
 import { clients, currentFingerprint } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -13,6 +13,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { getUserDeviceName } from "@server/db/names";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const getClientSchema = z.strictObject({
     clientId: z
@@ -36,6 +37,7 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
                 currentFingerprint,
                 eq(olms.olmId, currentFingerprint.olmId)
             )
+            .leftJoin(users, eq(clients.userId, users.userId))
             .limit(1);
         return res;
     } else if (niceId && orgId) {
@@ -48,24 +50,35 @@ async function query(clientId?: number, niceId?: string, orgId?: string) {
                 currentFingerprint,
                 eq(olms.olmId, currentFingerprint.olmId)
             )
+            .leftJoin(users, eq(clients.userId, users.userId))
             .limit(1);
         return res;
     }
 }
 
 type PostureData = {
-    biometricsEnabled?: boolean | null;
-    diskEncrypted?: boolean | null;
-    firewallEnabled?: boolean | null;
-    autoUpdatesEnabled?: boolean | null;
-    tpmAvailable?: boolean | null;
-    windowsAntivirusEnabled?: boolean | null;
-    macosSipEnabled?: boolean | null;
-    macosGatekeeperEnabled?: boolean | null;
-    macosFirewallStealthMode?: boolean | null;
-    linuxAppArmorEnabled?: boolean | null;
-    linuxSELinuxEnabled?: boolean | null;
+    biometricsEnabled?: boolean | null | "-";
+    diskEncrypted?: boolean | null | "-";
+    firewallEnabled?: boolean | null | "-";
+    autoUpdatesEnabled?: boolean | null | "-";
+    tpmAvailable?: boolean | null | "-";
+    windowsAntivirusEnabled?: boolean | null | "-";
+    macosSipEnabled?: boolean | null | "-";
+    macosGatekeeperEnabled?: boolean | null | "-";
+    macosFirewallStealthMode?: boolean | null | "-";
+    linuxAppArmorEnabled?: boolean | null | "-";
+    linuxSELinuxEnabled?: boolean | null | "-";
 };
+
+function maskPostureDataWithPlaceholder(posture: PostureData): PostureData {
+    const masked: PostureData = {};
+    for (const key of Object.keys(posture) as (keyof PostureData)[]) {
+        if (posture[key] !== undefined && posture[key] !== null) {
+            (masked as Record<keyof PostureData, "-">)[key] = "-";
+        }
+    }
+    return masked;
+}
 
 function getPlatformPostureData(
     platform: string | null | undefined,
@@ -207,6 +220,9 @@ export type GetClientResponse = NonNullable<
     olmId: string | null;
     agent: string | null;
     olmVersion: string | null;
+    userEmail: string | null;
+    userName: string | null;
+    userUsername: string | null;
     fingerprint: {
         username: string | null;
         hostname: string | null;
@@ -279,9 +295,11 @@ export async function getClient(
             );
         }
 
+        const isUserDevice = client.user !== null && client.user !== undefined;
+
         // Replace name with device name if OLM exists
         let clientName = client.clients.name;
-        if (client.olms) {
+        if (client.olms && isUserDevice) {
             const model = client.currentFingerprint?.deviceModel || null;
             clientName = getUserDeviceName(model, client.clients.name);
         }
@@ -289,32 +307,35 @@ export async function getClient(
         // Build fingerprint data if available
         const fingerprintData = client.currentFingerprint
             ? {
-                  username: client.currentFingerprint.username || null,
-                  hostname: client.currentFingerprint.hostname || null,
-                  platform: client.currentFingerprint.platform || null,
-                  osVersion: client.currentFingerprint.osVersion || null,
-                  kernelVersion:
-                      client.currentFingerprint.kernelVersion || null,
-                  arch: client.currentFingerprint.arch || null,
-                  deviceModel: client.currentFingerprint.deviceModel || null,
-                  serialNumber: client.currentFingerprint.serialNumber || null,
-                  firstSeen: client.currentFingerprint.firstSeen || null,
-                  lastSeen: client.currentFingerprint.lastSeen || null
-              }
+                username: client.currentFingerprint.username || null,
+                hostname: client.currentFingerprint.hostname || null,
+                platform: client.currentFingerprint.platform || null,
+                osVersion: client.currentFingerprint.osVersion || null,
+                kernelVersion:
+                    client.currentFingerprint.kernelVersion || null,
+                arch: client.currentFingerprint.arch || null,
+                deviceModel: client.currentFingerprint.deviceModel || null,
+                serialNumber: client.currentFingerprint.serialNumber || null,
+                firstSeen: client.currentFingerprint.firstSeen || null,
+                lastSeen: client.currentFingerprint.lastSeen || null
+            }
             : null;
 
         // Build posture data if available (platform-specific)
-        // Only return posture data if org is licensed/subscribed
-        let postureData: PostureData | null = null;
-        const isOrgLicensed = await isLicensedOrSubscribed(
-            client.clients.orgId
+        // Licensed: real values; not licensed: same keys but values set to "-"
+        const rawPosture = getPlatformPostureData(
+            client.currentFingerprint?.platform || null,
+            client.currentFingerprint
         );
-        if (isOrgLicensed) {
-            postureData = getPlatformPostureData(
-                client.currentFingerprint?.platform || null,
-                client.currentFingerprint
-            );
-        }
+        const isOrgLicensed = await isLicensedOrSubscribed(
+            client.clients.orgId,
+            tierMatrix.devicePosture
+        );
+        const postureData: PostureData | null = rawPosture
+            ? isOrgLicensed
+                ? rawPosture
+                : maskPostureDataWithPlaceholder(rawPosture)
+            : null;
 
         const data: GetClientResponse = {
             ...client.clients,
@@ -322,6 +343,9 @@ export async function getClient(
             olmId: client.olms ? client.olms.olmId : null,
             agent: client.olms?.agent || null,
             olmVersion: client.olms?.version || null,
+            userEmail: client.user?.email ?? null,
+            userName: client.user?.name ?? null,
+            userUsername: client.user?.username ?? null,
             fingerprint: fingerprintData,
             posture: postureData
         };

@@ -1,6 +1,7 @@
 "use client";
 
-import AutoProvisionConfigWidget from "@app/components/private/AutoProvisionConfigWidget";
+import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import {
     SettingsContainer,
     SettingsSection,
@@ -27,9 +28,11 @@ import {
 import { Input } from "@app/components/ui/input";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { ListRolesResponse } from "@server/routers/role";
 import { AxiosResponse } from "axios";
 import { InfoIcon } from "lucide-react";
@@ -49,8 +52,8 @@ export default function Page() {
     const [roleMappingMode, setRoleMappingMode] = useState<
         "role" | "expression"
     >("role");
-    const { isUnlocked } = useLicenseStatusContext();
     const t = useTranslations();
+    const { isPaidUser } = usePaidStatus();
 
     const params = useParams();
 
@@ -361,6 +364,9 @@ export default function Page() {
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
                         <SettingsSectionForm>
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.autoProvisioning}
+                            />
                             <Form {...form}>
                                 <form
                                     className="space-y-4"
@@ -806,7 +812,7 @@ export default function Page() {
                 </Button>
                 <Button
                     type="submit"
-                    disabled={createLoading}
+                    disabled={createLoading || !isPaidUser(tierMatrix.orgOidc)}
                     loading={createLoading}
                     onClick={() => {
                         // log any issues with the form

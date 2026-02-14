@@ -1,13 +1,15 @@
 import { GetOrgSubscriptionResponse } from "@server/routers/billing/types";
+import { Tier } from "@server/types/Tiers";
 import { createContext } from "react";
 
 type SubscriptionStatusContextType = {
     subscriptionStatus: GetOrgSubscriptionResponse | null;
     updateSubscriptionStatus: (updatedSite: GetOrgSubscriptionResponse) => void;
-    isActive: () => boolean;
-    getTier: () => string | null;
+    getTier: () => { tier: Tier | null; active: boolean };
     isSubscribed: () => boolean;
     subscribed: boolean;
+    /** True when org has exceeded plan limits (sites, users, etc.). Only set when build === saas. */
+    limitsExceeded: boolean;
 };
 
 const SubscriptionStatusContext = createContext<

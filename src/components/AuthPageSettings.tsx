@@ -28,7 +28,7 @@ import { ListDomainsResponse } from "@server/routers/domain";
 import { DomainRow } from "@app/components/DomainsTable";
 import { toUnicode } from "punycode";
 import { Globe, Trash2 } from "lucide-react";
-import CertificateStatus from "@app/components/private/CertificateStatus";
+import CertificateStatus from "@app/components/CertificateStatus";
 import {
     Credenza,
     CredenzaBody,
@@ -42,10 +42,10 @@ import {
 import DomainPicker from "@app/components/DomainPicker";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { InfoPopup } from "@app/components/ui/info-popup";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { build } from "@server/build";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { PaidFeaturesAlert } from "../PaidFeaturesAlert";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 // Auth page form schema
 const AuthPageFormSchema = z.object({
@@ -75,7 +75,7 @@ function AuthPageSettings({
     const t = useTranslations();
     const { env } = useEnvContext();
 
-    const { hasSaasSubscription } = usePaidStatus();
+    const { isPaidUser } = usePaidStatus();
 
     // Auth page domain state
     const [loginPage, setLoginPage] = useState(defaultLoginPage);
@@ -177,7 +177,7 @@ function AuthPageSettings({
         try {
             // Handle auth page domain
             if (data.authPageDomainId) {
-                if (build === "enterprise" || hasSaasSubscription) {
+                if (isPaidUser(tierMatrix.loginPageDomain)) {
                     const sanitizedSubdomain = data.authPageSubdomain
                         ? finalizeSubdomainSanitize(data.authPageSubdomain)
                         : "";
@@ -285,7 +285,7 @@ function AuthPageSettings({
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     <SettingsSectionForm>
-                        <PaidFeaturesAlert />
+                        <PaidFeaturesAlert tiers={tierMatrix.loginPageDomain} />
 
                         <Form {...form}>
                             <form
@@ -361,7 +361,11 @@ function AuthPageSettings({
                                                 onClick={() =>
                                                     setEditDomainOpen(true)
                                                 }
-                                                disabled={!hasSaasSubscription}
+                                                disabled={
+                                                    !isPaidUser(
+                                                        tierMatrix.loginPageDomain
+                                                    )
+                                                }
                                             >
                                                 {form.watch("authPageDomainId")
                                                     ? t("changeDomain")
@@ -376,7 +380,9 @@ function AuthPageSettings({
                                                         clearAuthPageDomain
                                                     }
                                                     disabled={
-                                                        !hasSaasSubscription
+                                                        !isPaidUser(
+                                                            tierMatrix.loginPageDomain
+                                                        )
                                                     }
                                                 >
                                                     <Trash2 size="14" />
@@ -395,7 +401,9 @@ function AuthPageSettings({
 
                                     {env.flags.usePangolinDns &&
                                         (build === "enterprise" ||
-                                            !hasSaasSubscription) &&
+                                            !isPaidUser(
+                                                tierMatrix.loginPageDomain
+                                            )) &&
                                         loginPage?.domainId &&
                                         loginPage?.fullDomain &&
                                         !hasUnsavedChanges && (
@@ -424,7 +432,7 @@ function AuthPageSettings({
                         disabled={
                             isSubmitting ||
                             !hasUnsavedChanges ||
-                            !hasSaasSubscription
+                            !isPaidUser(tierMatrix.loginPageDomain)
                         }
                     >
                         {t("saveAuthPageDomain")}
@@ -477,7 +485,10 @@ function AuthPageSettings({
                                     handleDomainSelection(selectedDomain);
                                 }
                             }}
-                            disabled={!selectedDomain || !hasSaasSubscription}
+                            disabled={
+                                !selectedDomain ||
+                                !isPaidUser(tierMatrix.loginPageDomain)
+                            }
                         >
                             {t("selectDomain")}
                         </Button>

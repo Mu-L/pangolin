@@ -17,6 +17,7 @@ import { privateConfigFilePath1 } from "@server/lib/consts";
 import { z } from "zod";
 import { colorsSchema } from "@server/lib/colorsSchema";
 import { build } from "@server/build";
+import { getEnvOrYaml } from "@server/lib/getEnvOrYaml";
 
 const portSchema = z.number().positive().gt(0).lte(65535);
 
@@ -24,7 +25,8 @@ export const privateConfigSchema = z.object({
     app: z
         .object({
             region: z.string().optional().default("default"),
-            base_domain: z.string().optional()
+            base_domain: z.string().optional(),
+            identity_provider_mode: z.enum(["global", "org"]).optional()
         })
         .optional()
         .default({
@@ -32,19 +34,29 @@ export const privateConfigSchema = z.object({
         }),
     server: z
         .object({
-            encryption_key_path: z
+            encryption_key: z
                 .string()
                 .optional()
-                .default("./config/encryption.pem")
-                .pipe(z.string().min(8)),
-            resend_api_key: z.string().optional(),
-            reo_client_id: z.string().optional(),
-            fossorial_api_key: z.string().optional()
+                .transform(getEnvOrYaml("SERVER_ENCRYPTION_KEY")),
+            resend_api_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("RESEND_API_KEY")),
+            reo_client_id: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("REO_CLIENT_ID")),
+            fossorial_api: z
+                .string()
+                .optional()
+                .default("https://api.fossorial.io"),
+            fossorial_api_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("FOSSORIAL_API_KEY"))
         })
         .optional()
-        .default({
-            encryption_key_path: "./config/encryption.pem"
-        }),
+        .prefault({}),
     redis: z
         .object({
             host: z.string(),
@@ -84,7 +96,7 @@ export const privateConfigSchema = z.object({
         .object({
             enable_redis: z.boolean().optional().default(false),
             use_pangolin_dns: z.boolean().optional().default(false),
-            use_org_only_idp: z.boolean().optional().default(false)
+            use_org_only_idp: z.boolean().optional()
         })
         .optional()
         .prefault({}),
@@ -157,14 +169,42 @@ export const privateConfigSchema = z.object({
         .optional(),
     stripe: z
         .object({
-            secret_key: z.string(),
-            webhook_secret: z.string(),
-            s3Bucket: z.string(),
-            s3Region: z.string().default("us-east-1"),
-            localFilePath: z.string()
+            secret_key: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("STRIPE_SECRET_KEY")),
+            webhook_secret: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("STRIPE_WEBHOOK_SECRET")),
+            // s3Bucket: z.string(),
+            // s3Region: z.string().default("us-east-1"),
+            // localFilePath: z.string().optional()
         })
         .optional()
-});
+})
+    .transform((data) => {
+        // this to maintain backwards compatibility with the old config file
+        const identityProviderMode = data.app?.identity_provider_mode;
+        const useOrgOnlyIdp = data.flags?.use_org_only_idp;
+
+        if (identityProviderMode !== undefined) {
+            return data;
+        }
+        if (useOrgOnlyIdp === true) {
+            return {
+                ...data,
+                app: { ...data.app, identity_provider_mode: "org" as const }
+            };
+        }
+        if (useOrgOnlyIdp === false) {
+            return {
+                ...data,
+                app: { ...data.app, identity_provider_mode: "global" as const }
+            };
+        }
+        return data;
+    });
 
 export function readPrivateConfigFile() {
     if (build == "oss") {

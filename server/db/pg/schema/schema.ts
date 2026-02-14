@@ -142,7 +142,8 @@ export const resources = pgTable("resources", {
     }).default("forced"), // "forced" = always show, "automatic" = only when down
     maintenanceTitle: text("maintenanceTitle"),
     maintenanceMessage: text("maintenanceMessage"),
-    maintenanceEstimatedTime: text("maintenanceEstimatedTime")
+    maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
+    postAuthPath: text("postAuthPath")
 });
 
 export const targets = pgTable("targets", {

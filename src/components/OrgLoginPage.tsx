@@ -3,7 +3,7 @@ import {
     LoadLoginPageBrandingResponse,
     LoadLoginPageResponse
 } from "@server/routers/loginPage/types";
-import IdpLoginButtons from "@app/components/private/IdpLoginButtons";
+import IdpLoginButtons from "@app/components/IdpLoginButtons";
 import {
     Card,
     CardContent,
