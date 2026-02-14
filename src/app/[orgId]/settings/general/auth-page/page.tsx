@@ -11,7 +11,6 @@ import {
     GetLoginPageResponse
 } from "@server/routers/loginPage/types";
 import { AxiosResponse } from "axios";
-import { redirect } from "next/navigation";
 
 export interface AuthPageProps {
     params: Promise<{ orgId: string }>;

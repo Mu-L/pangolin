@@ -11,7 +11,6 @@
  * This file is not licensed under the AGPLv3.
  */
 
-
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import {
@@ -36,6 +35,8 @@ import { sql, eq, or, inArray, and, count, ilike, asc } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import type { PaginatedResponse } from "@server/types/Pagination";
+import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
 
 const listResourcePoliciesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -56,7 +57,7 @@ const listResourcePoliciesSchema = z.object({
         .optional()
         .catch(1)
         .default(1),
-    query: z.string().optional(),
+    query: z.string().optional()
 });
 
 function queryResourcePoliciesBase() {
@@ -65,42 +66,10 @@ function queryResourcePoliciesBase() {
             resourcePolicyId: resourcePolicies.resourcePolicyId,
             name: resourcePolicies.name,
             niceId: resourcePolicies.niceId,
-            passwordId: resourcePassword.passwordId,
-            sso: resourcePolicies.sso,
-            pincodeId: resourcePincode.pincodeId,
-            whitelist: resourcePolicies.emailWhitelistEnabled,
-            headerAuthId: resourceHeaderAuth.headerAuthId,
-            headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
+            orgId: resourcePolicies.orgId
         })
-        .from(resourcePolicies)
-        .leftJoin(
-            resourcePassword,
-            eq(resourcePassword.resourcePolicyId, resourcePolicies.resourcePolicyId)
-        )
-        .leftJoin(
-            resourcePincode,
-            eq(resourcePincode.resourcePolicyId, resourcePolicies.resourcePolicyId)
-        )
-        .leftJoin(
-            resourceHeaderAuth,
-            eq(resourceHeaderAuth.resourcePolicyId, resourcePolicies.resourcePolicyId)
-        )
-        .leftJoin(
-            resourceHeaderAuthExtendedCompatibility,
-            eq(
-                resourceHeaderAuthExtendedCompatibility.resourcePolicyId,
-                resourcePolicies.resourcePolicyId
-            )
-        );
-
+        .from(resourcePolicies);
 }
-
-// TODO: replaced with `PaginatedResponse<T>` when paginated table PR is merged
-export type ListResourcePoliciesResponse = {
-    policies: Awaited<ReturnType<typeof queryResourcePoliciesBase>>;
-    pagination: { total: number; pageSize: number; page: number; };
-};
 
 registry.registerPath({
     method: "get",
@@ -115,8 +84,6 @@ registry.registerPath({
     },
     responses: {}
 });
-
-
 
 export async function listResourcePolicies(
     req: Request,
@@ -133,10 +100,11 @@ export async function listResourcePolicies(
                 )
             );
         }
-        const { page, pageSize, query, } =
-            parsedQuery.data;
+        const { page, pageSize, query } = parsedQuery.data;
 
-        const parsedParams = listResourcePoliciesParamsSchema.safeParse(req.params);
+        const parsedParams = listResourcePoliciesParamsSchema.safeParse(
+            req.params
+        );
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -166,7 +134,7 @@ export async function listResourcePolicies(
             );
         }
 
-        let accessibleResourcePolicies: Array<{ resourcePolicyId: number; }>;
+        let accessibleResourcePolicies: Array<{ resourcePolicyId: number }>;
         if (req.user) {
             accessibleResourcePolicies = await db
                 .select({
@@ -175,7 +143,10 @@ export async function listResourcePolicies(
                 .from(userResources)
                 .fullJoin(
                     roleResources,
-                    eq(userResources.resourcePolicyId, roleResources.resourcePolicyId)
+                    eq(
+                        userResources.resourcePolicyId,
+                        roleResources.resourcePolicyId
+                    )
                 )
                 .where(
                     or(
@@ -198,7 +169,10 @@ export async function listResourcePolicies(
 
         const conditions = [
             and(
-                inArray(resourcePolicies.resourcePolicyId, accessibleResourceIds),
+                inArray(
+                    resourcePolicies.resourcePolicyId,
+                    accessibleResourceIds
+                ),
                 eq(resourcePolicies.orgId, orgId)
             )
         ];
@@ -207,13 +181,12 @@ export async function listResourcePolicies(
             conditions.push(
                 or(
                     ilike(resourcePolicies.name, "%" + query + "%"),
-                    ilike(resourcePolicies.niceId, "%" + query + "%"),
+                    ilike(resourcePolicies.niceId, "%" + query + "%")
                 )
             );
         }
 
-        const baseQuery = queryResourcePoliciesBase()
-            .where(and(...conditions));
+        const baseQuery = queryResourcePoliciesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(baseQuery.as("filtered_policies"));
@@ -240,8 +213,6 @@ export async function listResourcePolicies(
             message: "Resources retrieved successfully",
             status: HttpCode.OK
         });
-
-
     } catch (error) {
         logger.error(error);
         return next(

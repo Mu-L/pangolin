@@ -1,18 +1,18 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useState } from "react";
-import { useForm } from "react-hook-form";
-import z from "zod";
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { useActionState } from "react";
+import { useForm } from "react-hook-form";
+import z from "zod";
 import {
     SettingsSection,
     SettingsSectionBody,
@@ -21,21 +21,19 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "./Settings";
-import { useTranslations } from "next-intl";
 
-import type { GetLoginPageBrandingResponse } from "@server/routers/loginPage/types";
-import { Input } from "./ui/input";
-import { ExternalLink, InfoIcon, XIcon } from "lucide-react";
-import { Button } from "./ui/button";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useRouter } from "next/navigation";
-import { toast } from "@app/hooks/useToast";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { build } from "@server/build";
-import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { GetLoginPageBrandingResponse } from "@server/routers/loginPage/types";
+import { XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 export type AuthPageCustomizationProps = {
     orgId: string;
