@@ -100,25 +100,54 @@ const listUserDevicesSchema = z.object({
         .positive()
         .optional()
         .catch(20)
-        .default(20),
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
         .min(0)
         .optional()
         .catch(1)
-        .default(1),
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
     query: z.string().optional(),
     sort_by: z
         .enum(["megabytesIn", "megabytesOut"])
         .optional()
-        .catch(undefined),
-    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc"),
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["megabytesIn", "megabytesOut"],
+            description: "Field to sort by"
+        }),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
+        .openapi({
+            type: "string",
+            enum: ["asc", "desc"],
+            default: "asc",
+            description: "Sort order"
+        }),
     online: z
         .enum(["true", "false"])
         .transform((v) => v === "true")
         .optional()
-        .catch(undefined),
+        .catch(undefined)
+        .openapi({
+            type: "boolean",
+            description: "Filter by online status"
+        }),
     agent: z
         .enum([
             "windows",
@@ -131,7 +160,22 @@ const listUserDevicesSchema = z.object({
             "unknown"
         ])
         .optional()
-        .catch(undefined),
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: [
+                "windows",
+                "android",
+                "cli",
+                "olm",
+                "macos",
+                "ios",
+                "ipados",
+                "unknown"
+            ],
+            description:
+                "Filter by agent type. Use 'unknown' to filter clients with no agent detected."
+        }),
     status: z.preprocess(
         (val: string | undefined) => {
             if (val) {
@@ -146,6 +190,16 @@ const listUserDevicesSchema = z.object({
             .optional()
             .default(["active", "pending"])
             .catch(["active", "pending"])
+            .openapi({
+                type: "array",
+                items: {
+                    type: "string",
+                    enum: ["active", "pending", "denied", "blocked", "archived"]
+                },
+                default: ["active", "pending"],
+                description:
+                    "Filter by device status. Can include multiple values separated by commas. 'active' means not archived, not blocked, and if approval is enabled, approved. 'pending' and 'denied' are only applicable if approval is enabled."
+            })
     )
 });
 

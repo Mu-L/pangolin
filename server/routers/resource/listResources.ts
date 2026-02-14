@@ -44,28 +44,54 @@ const listResourcesSchema = z.object({
         .positive()
         .optional()
         .catch(20)
-        .default(20),
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
         .min(0)
         .optional()
         .catch(1)
-        .default(1),
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
     query: z.string().optional(),
     enabled: z
         .enum(["true", "false"])
         .transform((v) => v === "true")
         .optional()
-        .catch(undefined),
+        .catch(undefined)
+        .openapi({
+            type: "boolean",
+            description: "Filter resources based on enabled status"
+        }),
     authState: z
         .enum(["protected", "not_protected", "none"])
         .optional()
-        .catch(undefined),
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["protected", "not_protected", "none"],
+            description:
+                "Filter resources based on authentication state. `protected` means the resource has at least one auth mechanism (password, pincode, header auth, SSO, or email whitelist). `not_protected` means the resource has no auth mechanisms. `none` means the resource is not protected by HTTP (i.e. it has no auth mechanisms and http is false)."
+        }),
     healthStatus: z
         .enum(["no_targets", "healthy", "degraded", "offline", "unknown"])
         .optional()
         .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["no_targets", "healthy", "degraded", "offline", "unknown"],
+            description:
+                "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status. `no_targets` means the resource has no targets."
+        })
 });
 
 // grouped by resource with targets[])
