@@ -320,11 +320,6 @@ export function DataTable<TData, TValue>({
         return result;
     }, [data, tabs, activeTab, filters, activeFilters]);
 
-    console.log({
-        pagination,
-        paginationState
-    });
-
     const table = useReactTable({
         data: filteredData,
         columns,
@@ -852,12 +847,14 @@ export function DataTable<TData, TValue>({
                         </Table>
                     </div>
                     <div className="mt-4">
-                        <DataTablePagination
-                            table={table}
-                            onPageSizeChange={handlePageSizeChange}
-                            pageSize={pagination.pageSize}
-                            pageIndex={pagination.pageIndex}
-                        />
+                        {table.getRowModel().rows?.length > 0 && (
+                            <DataTablePagination
+                                table={table}
+                                onPageSizeChange={handlePageSizeChange}
+                                pageSize={pagination.pageSize}
+                                pageIndex={pagination.pageIndex}
+                            />
+                        )}
                     </div>
                 </CardContent>
             </Card>

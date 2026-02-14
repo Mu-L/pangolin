@@ -124,11 +124,6 @@ export function ControlledDataTable<TData, TValue>({
         return initial;
     }, [filters]);
 
-    console.log({
-        pagination,
-        rowCount
-    });
-
     const table = useReactTable({
         data: rows,
         columns,
