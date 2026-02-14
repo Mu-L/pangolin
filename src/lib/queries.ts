@@ -16,11 +16,16 @@ import type {
 import type { ListTargetsResponse } from "@server/routers/target";
 import type { ListUsersResponse } from "@server/routers/user";
 import type ResponseT from "@server/types/Response";
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import {
+    infiniteQueryOptions,
+    keepPreviousData,
+    queryOptions
+} from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
+import { wait } from "./wait";
 
 export type ProductUpdate = {
     link: string | null;
@@ -86,8 +91,7 @@ export const productUpdatesQueries = {
 };
 
 export const clientFilterSchema = z.object({
-    filter: z.enum(["machine", "user"]),
-    limit: z.int().prefault(1000).optional()
+    pageSize: z.int().prefault(1000).optional()
 });
 
 export const orgQueries = {
@@ -96,14 +100,13 @@ export const orgQueries = {
         filters
     }: {
         orgId: string;
-        filters: z.infer<typeof clientFilterSchema>;
+        filters?: z.infer<typeof clientFilterSchema>;
     }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "CLIENTS", filters] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    ...filters,
-                    limit: (filters.limit ?? 1000).toString()
+                    pageSize: (filters?.pageSize ?? 1000).toString()
                 });
 
                 const res = await meta!.api.get<
@@ -188,19 +191,16 @@ export const logAnalyticsFiltersSchema = z.object({
         .refine((val) => !isNaN(Date.parse(val)), {
             error: "timeStart must be a valid ISO date string"
         })
-        .optional(),
+        .optional()
+        .catch(undefined),
     timeEnd: z
         .string()
         .refine((val) => !isNaN(Date.parse(val)), {
             error: "timeEnd must be a valid ISO date string"
         })
-        .optional(),
-    resourceId: z
-        .string()
         .optional()
-        .transform(Number)
-        .pipe(z.int().positive())
-        .optional()
+        .catch(undefined),
+    resourceId: z.coerce.number().optional().catch(undefined)
 });
 
 export type LogAnalyticsFilters = z.TypeOf<typeof logAnalyticsFiltersSchema>;
@@ -361,22 +361,50 @@ export const approvalQueries = {
         orgId: string,
         filters: z.infer<typeof approvalFiltersSchema>
     ) =>
-        queryOptions({
+        infiniteQueryOptions({
             queryKey: ["APPROVALS", orgId, filters] as const,
-            queryFn: async ({ signal, meta }) => {
+            queryFn: async ({ signal, pageParam, meta }) => {
                 const sp = new URLSearchParams();
 
                 if (filters.approvalState) {
                     sp.set("approvalState", filters.approvalState);
                 }
+                if (pageParam) {
+                    sp.set("cursorPending", pageParam.cursorPending.toString());
+                    sp.set(
+                        "cursorTimestamp",
+                        pageParam.cursorTimestamp.toString()
+                    );
+                }
 
                 const res = await meta!.api.get<
-                    AxiosResponse<{ approvals: ApprovalItem[] }>
+                    AxiosResponse<{
+                        approvals: ApprovalItem[];
+                        pagination: {
+                            total: number;
+                            limit: number;
+                            cursorPending: number | null;
+                            cursorTimestamp: number | null;
+                        };
+                    }>
                 >(`/org/${orgId}/approvals?${sp.toString()}`, {
                     signal
                 });
                 return res.data.data;
-            }
+            },
+            initialPageParam: null as {
+                cursorPending: number;
+                cursorTimestamp: number;
+            } | null,
+            placeholderData: keepPreviousData,
+            getNextPageParam: ({ pagination }) =>
+                pagination.cursorPending != null &&
+                pagination.cursorTimestamp != null
+                    ? {
+                          cursorPending: pagination.cursorPending,
+                          cursorTimestamp: pagination.cursorTimestamp
+                      }
+                    : null
         }),
     pendingCount: (orgId: string) =>
         queryOptions({
@@ -388,6 +416,12 @@ export const approvalQueries = {
                     signal
                 });
                 return res.data.data.count;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
             }
         })
 };

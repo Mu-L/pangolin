@@ -146,6 +146,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/user-devices",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listClients),
+    client.listUserDevices
+);
+
+authenticated.get(
     "/client/:clientId",
     verifyClientAccess,
     verifyUserHasAction(ActionsEnum.getClient),

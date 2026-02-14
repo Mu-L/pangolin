@@ -1,17 +1,25 @@
-import { db, exitNodes, newts } from "@server/db";
-import { orgs, roleSites, sites, userSites } from "@server/db";
-import { remoteExitNodes } from "@server/db";
-import logger from "@server/logger";
-import HttpCode from "@server/types/HttpCode";
+import {
+    db,
+    exitNodes,
+    newts,
+    orgs,
+    remoteExitNodes,
+    roleSites,
+    sites,
+    userSites
+} from "@server/db";
+import cache from "@server/lib/cache";
 import response from "@server/lib/response";
-import { and, count, eq, inArray, or, sql } from "drizzle-orm";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import type { PaginatedResponse } from "@server/types/Pagination";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
+import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
-import semver from "semver";
-import cache from "@server/lib/cache";
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
@@ -74,21 +82,63 @@ const listSitesParamsSchema = z.strictObject({
 });
 
 const listSitesSchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().positive()),
-    offset: z
-        .string()
+        .catch(20)
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative())
+        .catch(1)
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
+    query: z.string().optional(),
+    sort_by: z
+        .enum(["megabytesIn", "megabytesOut"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["megabytesIn", "megabytesOut"],
+            description: "Field to sort by"
+        }),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
+        .openapi({
+            type: "string",
+            enum: ["asc", "desc"],
+            default: "asc",
+            description: "Sort order"
+        }),
+    online: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "boolean",
+            description: "Filter by online status"
+        })
 });
 
-function querySites(orgId: string, accessibleSiteIds: number[]) {
+function querySitesBase() {
     return db
         .select({
             siteId: sites.siteId,
@@ -115,23 +165,16 @@ function querySites(orgId: string, accessibleSiteIds: number[]) {
         .leftJoin(
             remoteExitNodes,
             eq(remoteExitNodes.exitNodeId, sites.exitNodeId)
-        )
-        .where(
-            and(
-                inArray(sites.siteId, accessibleSiteIds),
-                eq(sites.orgId, orgId)
-            )
         );
 }
 
-type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySites>>[0] & {
+type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySitesBase>>[0] & {
     newtUpdateAvailable?: boolean;
 };
 
-export type ListSitesResponse = {
+export type ListSitesResponse = PaginatedResponse<{
     sites: SiteWithUpdateAvailable[];
-    pagination: { total: number; limit: number; offset: number };
-};
+}>;
 
 registry.registerPath({
     method: "get",
@@ -160,7 +203,6 @@ export async function listSites(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
 
         const parsedParams = listSitesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -203,34 +245,67 @@ export async function listSites(
                 .where(eq(sites.orgId, orgId));
         }
 
-        const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
-        const baseQuery = querySites(orgId, accessibleSiteIds);
+        const { pageSize, page, query, sort_by, order, online } =
+            parsedQuery.data;
 
-        const countQuery = db
-            .select({ count: count() })
-            .from(sites)
-            .where(
-                and(
-                    inArray(sites.siteId, accessibleSiteIds),
-                    eq(sites.orgId, orgId)
+        const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
+
+        const conditions = [
+            and(
+                inArray(sites.siteId, accessibleSiteIds),
+                eq(sites.orgId, orgId)
+            )
+        ];
+        if (query) {
+            conditions.push(
+                or(
+                    like(
+                        sql`LOWER(${sites.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${sites.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
                 )
             );
+        }
+        if (typeof online !== "undefined") {
+            conditions.push(eq(sites.online, online));
+        }
 
-        const sitesList = await baseQuery.limit(limit).offset(offset);
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0].count;
+        const baseQuery = querySitesBase().where(and(...conditions));
+
+        // we need to add `as` so that drizzle filters the result as a subquery
+        const countQuery = db.$count(
+            querySitesBase().where(and(...conditions))
+        );
+
+        const siteListQuery = baseQuery
+            .limit(pageSize)
+            .offset(pageSize * (page - 1))
+            .orderBy(
+                sort_by
+                    ? order === "asc"
+                        ? asc(sites[sort_by])
+                        : desc(sites[sort_by])
+                    : asc(sites.siteId)
+            );
+
+        const [totalCount, rows] = await Promise.all([
+            countQuery,
+            siteListQuery
+        ]);
 
         // Get latest version asynchronously without blocking the response
         const latestNewtVersionPromise = getLatestNewtVersion();
 
-        const sitesWithUpdates: SiteWithUpdateAvailable[] = sitesList.map(
-            (site) => {
-                const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
-                // Initially set to false, will be updated if version check succeeds
-                siteWithUpdate.newtUpdateAvailable = false;
-                return siteWithUpdate;
-            }
-        );
+        const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
+            const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
+            // Initially set to false, will be updated if version check succeeds
+            siteWithUpdate.newtUpdateAvailable = false;
+            return siteWithUpdate;
+        });
 
         // Try to get the latest version, but don't block if it fails
         try {
@@ -267,8 +342,8 @@ export async function listSites(
                 sites: sitesWithUpdates,
                 pagination: {
                     total: totalCount,
-                    limit,
-                    offset
+                    pageSize,
+                    page
                 }
             },
             success: true,

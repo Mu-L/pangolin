@@ -37,8 +37,9 @@ export async function generateNewEnterpriseLicense(
     next: NextFunction
 ): Promise<any> {
     try {
-
-        const parsedParams = generateNewEnterpriseLicenseParamsSchema.safeParse(req.params);
+        const parsedParams = generateNewEnterpriseLicenseParamsSchema.safeParse(
+            req.params
+        );
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -63,7 +64,10 @@ export async function generateNewEnterpriseLicense(
 
         const licenseData = req.body;
 
-        if (licenseData.tier != "big_license" && licenseData.tier != "small_license") {
+        if (
+            licenseData.tier != "big_license" &&
+            licenseData.tier != "small_license"
+        ) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
@@ -79,7 +83,8 @@ export async function generateNewEnterpriseLicense(
             return next(
                 createHttpError(
                     apiResponse.status || HttpCode.BAD_REQUEST,
-                    apiResponse.message || "Failed to create license from Fossorial API"
+                    apiResponse.message ||
+                        "Failed to create license from Fossorial API"
                 )
             );
         }
@@ -112,7 +117,10 @@ export async function generateNewEnterpriseLicense(
             );
         }
 
-        const tier = licenseData.tier === "big_license" ? LicenseId.BIG_LICENSE : LicenseId.SMALL_LICENSE;
+        const tier =
+            licenseData.tier === "big_license"
+                ? LicenseId.BIG_LICENSE
+                : LicenseId.SMALL_LICENSE;
         const tierPrice = getLicensePriceSet()[tier];
 
         const session = await stripe!.checkout.sessions.create({
@@ -122,7 +130,7 @@ export async function generateNewEnterpriseLicense(
                 {
                     price: tierPrice, // Use the standard tier
                     quantity: 1
-                },
+                }
             ], // Start with the standard feature set that matches the free limits
             customer: customer.customerId,
             mode: "subscription",

@@ -14,7 +14,7 @@ import { redirect } from "next/navigation";
 
 export interface ClientResourcesPageProps {
     params: Promise<{ orgId: string }>;
-    searchParams: Promise<{ view?: string }>;
+    searchParams: Promise<Record<string, string>>;
 }
 
 export default async function ClientResourcesPage(
@@ -22,22 +22,24 @@ export default async function ClientResourcesPage(
 ) {
     const params = await props.params;
     const t = await getTranslations();
-
-    let resources: ListResourcesResponse["resources"] = [];
-    try {
-        const res = await internal.get<AxiosResponse<ListResourcesResponse>>(
-            `/org/${params.orgId}/resources`,
-            await authCookieHeader()
-        );
-        resources = res.data.data.resources;
-    } catch (e) {}
+    const searchParams = new URLSearchParams(await props.searchParams);
 
     let siteResources: ListAllSiteResourcesByOrgResponse["siteResources"] = [];
+    let pagination: ListResourcesResponse["pagination"] = {
+        total: 0,
+        page: 1,
+        pageSize: 20
+    };
     try {
         const res = await internal.get<
             AxiosResponse<ListAllSiteResourcesByOrgResponse>
-        >(`/org/${params.orgId}/site-resources`, await authCookieHeader());
-        siteResources = res.data.data.siteResources;
+        >(
+            `/org/${params.orgId}/site-resources?${searchParams.toString()}`,
+            await authCookieHeader()
+        );
+        const responseData = res.data.data;
+        siteResources = responseData.siteResources;
+        pagination = responseData.pagination;
     } catch (e) {}
 
     let org = null;
@@ -89,9 +91,10 @@ export default async function ClientResourcesPage(
                 <ClientResourcesTable
                     internalResources={internalResourceRows}
                     orgId={params.orgId}
-                    defaultSort={{
-                        id: "name",
-                        desc: false
+                    rowCount={pagination.total}
+                    pagination={{
+                        pageIndex: pagination.page - 1,
+                        pageSize: pagination.pageSize
                     }}
                 />
             </OrgProvider>
