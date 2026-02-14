@@ -1,39 +1,37 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
 import {
     db,
     resourceHeaderAuth,
-    resourceHeaderAuthExtendedCompatibility
-} from "@server/db";
-import {
-    resources,
-    userResources,
-    roleResources,
+    resourceHeaderAuthExtendedCompatibility,
     resourcePassword,
     resourcePincode,
+    resources,
+    roleResources,
+    targetHealthCheck,
     targets,
-    targetHealthCheck
+    userResources
 } from "@server/db";
 import response from "@server/lib/response";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
+import type { PaginatedResponse } from "@server/types/Pagination";
 import {
-    sql,
-    eq,
-    or,
-    inArray,
     and,
-    count,
-    ilike,
     asc,
-    not,
+    count,
+    eq,
+    inArray,
     isNull,
+    like,
+    not,
+    or,
+    sql,
     type SQL
 } from "drizzle-orm";
-import logger from "@server/logger";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
-import type { PaginatedResponse } from "@server/types/Pagination";
 
 const listResourcesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -278,8 +276,14 @@ export async function listResources(
         if (query) {
             conditions.push(
                 or(
-                    ilike(resources.name, "%" + query + "%"),
-                    ilike(resources.fullDomain, "%" + query + "%")
+                    like(
+                        sql`LOWER(${resources.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${resources.fullDomain})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
                 )
             );
         }

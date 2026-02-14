@@ -20,10 +20,10 @@ import {
     asc,
     desc,
     eq,
-    ilike,
     inArray,
     isNotNull,
     isNull,
+    like,
     or,
     sql,
     type SQL
@@ -287,8 +287,14 @@ export async function listUserDevices(
         if (query) {
             conditions.push(
                 or(
-                    ilike(clients.name, "%" + query + "%"),
-                    ilike(users.email, "%" + query + "%")
+                    like(
+                        sql`LOWER(${clients.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${users.email})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
                 )
             );
         }

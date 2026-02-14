@@ -1,15 +1,14 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { db, resources } from "@server/db";
-import { siteResources, sites, SiteResource } from "@server/db";
+import { db, SiteResource, siteResources, sites } from "@server/db";
 import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import { eq, and, asc, ilike, or } from "drizzle-orm";
-import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
+import { and, asc, eq, like, or, sql } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const listAllSiteResourcesByOrgParamsSchema = z.strictObject({
     orgId: z.string()
@@ -118,11 +117,26 @@ export async function listAllSiteResourcesByOrg(
         if (query) {
             conditions.push(
                 or(
-                    ilike(siteResources.name, "%" + query + "%"),
-                    ilike(siteResources.destination, "%" + query + "%"),
-                    ilike(siteResources.alias, "%" + query + "%"),
-                    ilike(siteResources.aliasAddress, "%" + query + "%"),
-                    ilike(sites.name, "%" + query + "%")
+                    like(
+                        sql`LOWER(${siteResources.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${siteResources.destination})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${siteResources.alias})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${siteResources.aliasAddress})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${sites.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
                 )
             );
         }

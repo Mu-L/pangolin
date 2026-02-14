@@ -1,28 +1,25 @@
-import { db, exitNodes, newts } from "@server/db";
-import { orgs, roleSites, sites, userSites } from "@server/db";
-import { remoteExitNodes } from "@server/db";
-import logger from "@server/logger";
-import HttpCode from "@server/types/HttpCode";
-import response from "@server/lib/response";
 import {
-    and,
-    asc,
-    count,
-    desc,
-    eq,
-    ilike,
-    inArray,
-    or,
-    sql
-} from "drizzle-orm";
+    db,
+    exitNodes,
+    newts,
+    orgs,
+    remoteExitNodes,
+    roleSites,
+    sites,
+    userSites
+} from "@server/db";
+import cache from "@server/lib/cache";
+import response from "@server/lib/response";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import type { PaginatedResponse } from "@server/types/Pagination";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
+import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
-import semver from "semver";
-import cache from "@server/lib/cache";
-import type { PaginatedResponse } from "@server/types/Pagination";
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
@@ -233,8 +230,14 @@ export async function listSites(
         if (query) {
             conditions.push(
                 or(
-                    ilike(sites.name, "%" + query + "%"),
-                    ilike(sites.niceId, "%" + query + "%")
+                    like(
+                        sql`LOWER(${sites.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${sites.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
                 )
             );
         }

@@ -20,9 +20,9 @@ import {
     asc,
     desc,
     eq,
-    ilike,
     inArray,
     isNull,
+    like,
     or,
     sql,
     type SQL
@@ -305,7 +305,14 @@ export async function listClients(
         }
 
         if (query) {
-            conditions.push(or(ilike(clients.name, "%" + query + "%")));
+            conditions.push(
+                or(
+                    like(
+                        sql`LOWER(${clients.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
+                )
+            );
         }
 
         const baseQuery = queryClientsBase().where(and(...conditions));
