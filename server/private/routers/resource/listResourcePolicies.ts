@@ -11,32 +11,17 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import {
-    db,
-    resourceHeaderAuth,
-    resourceHeaderAuthExtendedCompatibility,
-    resourcePolicies
-} from "@server/db";
-import {
-    resources,
-    userResources,
-    roleResources,
-    resourcePassword,
-    resourcePincode,
-    targets,
-    targetHealthCheck
-} from "@server/db";
+import { db, resourcePolicies, roleResources, userResources } from "@server/db";
 import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import { sql, eq, or, inArray, and, count, ilike, asc } from "drizzle-orm";
 import logger from "@server/logger";
-import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import type { PaginatedResponse } from "@server/types/Pagination";
 import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import HttpCode from "@server/types/HttpCode";
+import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromZodError } from "zod-validation-error";
 
 const listResourcePoliciesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -66,7 +51,8 @@ function queryResourcePoliciesBase() {
             resourcePolicyId: resourcePolicies.resourcePolicyId,
             name: resourcePolicies.name,
             niceId: resourcePolicies.niceId,
-            orgId: resourcePolicies.orgId
+            orgId: resourcePolicies.orgId,
+            isDefault: resourcePolicies.isDefault
         })
         .from(resourcePolicies);
 }
@@ -180,8 +166,14 @@ export async function listResourcePolicies(
         if (query) {
             conditions.push(
                 or(
-                    ilike(resourcePolicies.name, "%" + query + "%"),
-                    ilike(resourcePolicies.niceId, "%" + query + "%")
+                    like(
+                        sql`LOWER(${resourcePolicies.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${resourcePolicies.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
                 )
             );
         }

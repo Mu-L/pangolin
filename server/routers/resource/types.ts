@@ -14,6 +14,9 @@ export type GetMaintenanceInfoResponse = {
 
 export type ListResourcePoliciesResponse = PaginatedResponse<{
     policies: Array<
-        Pick<ResourcePolicy, "resourcePolicyId" | "niceId" | "name" | "orgId">
+        Pick<
+            ResourcePolicy,
+            "resourcePolicyId" | "niceId" | "name" | "orgId" | "isDefault"
+        >
     >;
 }>;

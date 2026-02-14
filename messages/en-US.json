@@ -170,6 +170,7 @@
     "resourcePoliciesDescription": "Create and manage authentication policies to control access to your resources",
     "resourcePoliciesSearch": "Search policies...",
     "resourcePoliciesAdd": "Add Policy",
+    "resourcePoliciesDefaultBadgeText": "Default policy",
     "authentication": "Authentication",
     "protected": "Protected",
     "notProtected": "Not Protected",

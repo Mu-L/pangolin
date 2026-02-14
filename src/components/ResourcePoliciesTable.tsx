@@ -20,6 +20,7 @@ import { MoreHorizontal, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { useDebouncedCallback } from "use-debounce";
+import { Badge } from "./ui/badge";
 
 type ResourcePolicyRow = ListResourcePoliciesResponse["policies"][number];
 
@@ -70,7 +71,25 @@ export function ResourcePoliciesTable({
             accessorKey: "name",
             enableHiding: false,
             friendlyName: t("name"),
-            header: () => <span className="p-3">{t("name")}</span>
+            header: () => <span className="p-3">{t("name")}</span>,
+            cell({ row }) {
+                const r = row.original;
+                return (
+                    <div className="flex items-center gap-2">
+                        <span>{r.name}</span>
+                        {r.isDefault && (
+                            <>
+                                <Badge
+                                    variant="outlinePrimary"
+                                    className="flex items-center gap-1"
+                                >
+                                    {t("resourcePoliciesDefaultBadgeText")}
+                                </Badge>
+                            </>
+                        )}
+                    </div>
+                );
+            }
         },
         {
             id: "niceId",
