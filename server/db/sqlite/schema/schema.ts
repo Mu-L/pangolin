@@ -1,13 +1,6 @@
 import { randomUUID } from "crypto";
 import { InferSelectModel } from "drizzle-orm";
-import {
-    sqliteTable,
-    text,
-    integer,
-    index,
-    uniqueIndex
-} from "drizzle-orm/sqlite-core";
-import { no } from "zod/v4/locales";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const domains = sqliteTable("domains", {
     domainId: text("domainId").primaryKey(),
