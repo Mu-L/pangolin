@@ -281,7 +281,7 @@ esbuild
             })
         ],
         sourcemap: "inline",
-        target: "node22"
+        target: "node24"
     })
     .then((result) => {
         // Check if there were any errors in the build result
