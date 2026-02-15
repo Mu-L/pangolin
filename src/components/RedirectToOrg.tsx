@@ -13,7 +13,8 @@ export default function RedirectToOrg({ targetOrgId }: RedirectToOrgProps) {
 
     useEffect(() => {
         try {
-            const target = getInternalRedirectTarget(targetOrgId);
+            const target =
+                getInternalRedirectTarget(targetOrgId) ?? `/${targetOrgId}`;
             router.replace(target);
         } catch {
             router.replace(`/${targetOrgId}`);

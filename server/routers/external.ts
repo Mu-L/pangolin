@@ -1171,6 +1171,7 @@ authRouter.post(
     auth.login
 );
 authRouter.post("/logout", auth.logout);
+authRouter.post("/delete-my-account", auth.deleteMyAccount);
 authRouter.post(
     "/lookup-user",
     rateLimit({

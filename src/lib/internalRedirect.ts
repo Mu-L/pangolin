@@ -41,11 +41,12 @@ export function consumeInternalRedirectPath(): string | null {
 }
 
 /**
- * Returns the full redirect target for an org: either `/${orgId}` or
- * `/${orgId}${path}` if a valid internal_redirect was stored. Consumes the
- * stored value.
+ * Returns the full redirect target if a valid internal_redirect was stored
+ * (consumes the stored value). Returns null if none was stored or expired.
+ * Paths starting with /auth/ are returned as-is; others are prefixed with orgId.
  */
-export function getInternalRedirectTarget(orgId: string): string {
+export function getInternalRedirectTarget(orgId: string): string | null {
     const path = consumeInternalRedirectPath();
-    return path ? `/${orgId}${path}` : `/${orgId}`;
+    if (!path) return null;
+    return path.startsWith("/auth/") ? path : `/${orgId}${path}`;
 }
