@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { consumeInternalRedirectPath } from "@app/lib/internalRedirect";
+import { getInternalRedirectTarget } from "@app/lib/internalRedirect";
 
 type ApplyInternalRedirectProps = {
     orgId: string;
@@ -14,9 +14,9 @@ export default function ApplyInternalRedirect({
     const router = useRouter();
 
     useEffect(() => {
-        const path = consumeInternalRedirectPath();
-        if (path) {
-            router.replace(`/${orgId}${path}`);
+        const target = getInternalRedirectTarget(orgId);
+        if (target) {
+            router.replace(target);
         }
     }, [orgId, router]);
 

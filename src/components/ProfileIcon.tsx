@@ -15,9 +15,11 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { Laptop, LogOut, Moon, Sun, Smartphone } from "lucide-react";
+import { Laptop, LogOut, Moon, Sun, Smartphone, Trash2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { build } from "@server/build";
 import { useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
 import Disable2FaForm from "./Disable2FaForm";
@@ -187,6 +189,20 @@ export default function ProfileIcon() {
                     <DropdownMenuSeparator />
                     <LocaleSwitcher />
                     <DropdownMenuSeparator />
+                    {user?.type === UserType.Internal && !user?.serverAdmin && (
+                        <>
+                            <DropdownMenuItem asChild>
+                                <Link
+                                    href="/auth/delete-account"
+                                    className="flex cursor-pointer items-center"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>{t("deleteAccount")}</span>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                        </>
+                    )}
                     <DropdownMenuItem onClick={() => logout()}>
                         {/* <LogOut className="mr-2 h-4 w-4" /> */}
                         <span>{t("logout")}</span>
