@@ -1,9 +1,5 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useState } from "react";
-import { useForm } from "react-hook-form";
-import z from "zod";
 import {
     Form,
     FormControl,
@@ -13,6 +9,11 @@ import {
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { useActionState } from "react";
+import { useForm } from "react-hook-form";
+import z from "zod";
 import {
     SettingsSection,
     SettingsSectionBody,
@@ -21,19 +22,19 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "./Settings";
-import { useTranslations } from "next-intl";
 
-import type { GetLoginPageBrandingResponse } from "@server/routers/loginPage/types";
-import { Input } from "./ui/input";
-import { ExternalLink, InfoIcon, XIcon } from "lucide-react";
-import { Button } from "./ui/button";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useRouter } from "next/navigation";
-import { toast } from "@app/hooks/useToast";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { build } from "@server/build";
+import type { GetLoginPageBrandingResponse } from "@server/routers/loginPage/types";
+import { XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { validateLocalPath } from "@app/lib/validateLocalPath";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
@@ -45,13 +46,36 @@ export type AuthPageCustomizationProps = {
 const AuthPageFormSchema = z.object({
     logoUrl: z.union([
         z.literal(""),
-        z.url("Must be a valid URL").superRefine(async (url, ctx) => {
+        z.string().superRefine(async (urlOrPath, ctx) => {
+            const parseResult = z.url().safeParse(urlOrPath);
+            if (!parseResult.success) {
+                if (build !== "enterprise") {
+                    ctx.addIssue({
+                        code: "custom",
+                        message: "Must be a valid URL"
+                    });
+                    return;
+                } else {
+                    try {
+                        validateLocalPath(urlOrPath);
+                    } catch (error) {
+                        ctx.addIssue({
+                            code: "custom",
+                            message:
+                                "Must be either a valid image URL or a valid pathname starting with `/` and not containing query parameters, `..` or `*`"
+                        });
+                    } finally {
+                        return;
+                    }
+                }
+            }
+
             try {
-                const response = await fetch(url, {
+                const response = await fetch(urlOrPath, {
                     method: "HEAD"
                 }).catch(() => {
                     // If HEAD fails (CORS or method not allowed), try GET
-                    return fetch(url, { method: "GET" });
+                    return fetch(urlOrPath, { method: "GET" });
                 });
 
                 if (response.status !== 200) {
@@ -271,12 +295,25 @@ export default function AuthPageBrandingForm({
                                         render={({ field }) => (
                                             <FormItem className="md:col-span-3">
                                                 <FormLabel>
-                                                    {t("brandingLogoURL")}
+                                                    {build === "enterprise"
+                                                        ? t(
+                                                              "brandingLogoURLOrPath"
+                                                          )
+                                                        : t("brandingLogoURL")}
                                                 </FormLabel>
                                                 <FormControl>
                                                     <Input {...field} />
                                                 </FormControl>
                                                 <FormMessage />
+                                                <FormDescription>
+                                                    {build === "enterprise"
+                                                        ? t(
+                                                              "brandingLogoPathDescription"
+                                                          )
+                                                        : t(
+                                                              "brandingLogoURLDescription"
+                                                          )}
+                                                </FormDescription>
                                             </FormItem>
                                         )}
                                     />

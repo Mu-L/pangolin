@@ -1,18 +1,16 @@
-import {
-    pgTable,
-    serial,
-    varchar,
-    boolean,
-    integer,
-    bigint,
-    real,
-    text,
-    index,
-    uniqueIndex
-} from "drizzle-orm/pg-core";
-import { InferSelectModel } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { alias } from "yargs";
+import { InferSelectModel } from "drizzle-orm";
+import {
+    bigint,
+    boolean,
+    index,
+    integer,
+    pgTable,
+    real,
+    serial,
+    text,
+    varchar
+} from "drizzle-orm/pg-core";
 
 export const domains = pgTable("domains", {
     domainId: varchar("domainId").primaryKey(),
@@ -188,7 +186,9 @@ export const targetHealthCheck = pgTable("targetHealthCheck", {
     hcFollowRedirects: boolean("hcFollowRedirects").default(true),
     hcMethod: varchar("hcMethod").default("GET"),
     hcStatus: integer("hcStatus"), // http code
-    hcHealth: text("hcHealth").default("unknown"), // "unknown", "healthy", "unhealthy"
+    hcHealth: text("hcHealth")
+        .$type<"unknown" | "healthy" | "unhealthy">()
+        .default("unknown"), // "unknown", "healthy", "unhealthy"
     hcTlsServerName: text("hcTlsServerName")
 });
 
@@ -218,7 +218,7 @@ export const siteResources = pgTable("siteResources", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
-    mode: varchar("mode").notNull(), // "host" | "cidr" | "port"
+    mode: varchar("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
     protocol: varchar("protocol"), // only for port mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode

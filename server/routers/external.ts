@@ -146,6 +146,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/user-devices",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listClients),
+    client.listUserDevices
+);
+
+authenticated.get(
     "/client/:clientId",
     verifyClientAccess,
     verifyUserHasAction(ActionsEnum.getClient),
@@ -1164,6 +1171,7 @@ authRouter.post(
     auth.login
 );
 authRouter.post("/logout", auth.logout);
+authRouter.post("/delete-my-account", auth.deleteMyAccount);
 authRouter.post(
     "/lookup-user",
     rateLimit({

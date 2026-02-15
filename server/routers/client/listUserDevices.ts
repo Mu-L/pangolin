@@ -1,15 +1,15 @@
+import { build } from "@server/build";
 import {
     clients,
-    clientSitesAssociationsCache,
     currentFingerprint,
     db,
     olms,
     orgs,
     roleClients,
-    sites,
     userClients,
     users
 } from "@server/db";
+import { getUserDeviceName } from "@server/db/names";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -21,6 +21,7 @@ import {
     desc,
     eq,
     inArray,
+    isNotNull,
     isNull,
     like,
     or,
@@ -88,11 +89,11 @@ async function getLatestOlmVersion(): Promise<string | null> {
     }
 }
 
-const listClientsParamsSchema = z.strictObject({
+const listUserDevicesParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const listClientsSchema = z.object({
+const listUserDevicesSchema = z.object({
     pageSize: z.coerce
         .number<string>() // for prettier formatting
         .int()
@@ -147,6 +148,34 @@ const listClientsSchema = z.object({
             type: "boolean",
             description: "Filter by online status"
         }),
+    agent: z
+        .enum([
+            "windows",
+            "android",
+            "cli",
+            "olm",
+            "macos",
+            "ios",
+            "ipados",
+            "unknown"
+        ])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: [
+                "windows",
+                "android",
+                "cli",
+                "olm",
+                "macos",
+                "ios",
+                "ipados",
+                "unknown"
+            ],
+            description:
+                "Filter by agent type. Use 'unknown' to filter clients with no agent detected."
+        }),
     status: z.preprocess(
         (val: string | undefined) => {
             if (val) {
@@ -155,24 +184,26 @@ const listClientsSchema = z.object({
             return undefined;
         },
         z
-            .array(z.enum(["active", "blocked", "archived"]))
+            .array(
+                z.enum(["active", "pending", "denied", "blocked", "archived"])
+            )
             .optional()
-            .default(["active"])
-            .catch(["active"])
+            .default(["active", "pending"])
+            .catch(["active", "pending"])
             .openapi({
                 type: "array",
                 items: {
                     type: "string",
-                    enum: ["active", "blocked", "archived"]
+                    enum: ["active", "pending", "denied", "blocked", "archived"]
                 },
-                default: ["active"],
+                default: ["active", "pending"],
                 description:
-                    "Filter by client status. Can be a comma-separated list of values. Defaults to 'active'."
+                    "Filter by device status. Can include multiple values separated by commas. 'active' means not archived, not blocked, and if approval is enabled, approved. 'pending' and 'denied' are only applicable if approval is enabled."
             })
     )
 });
 
-function queryClientsBase() {
+function queryUserDevicesBase() {
     return db
         .select({
             clientId: clients.clientId,
@@ -194,7 +225,15 @@ function queryClientsBase() {
             approvalState: clients.approvalState,
             olmArchived: olms.archived,
             archived: clients.archived,
-            blocked: clients.blocked
+            blocked: clients.blocked,
+            deviceModel: currentFingerprint.deviceModel,
+            fingerprintPlatform: currentFingerprint.platform,
+            fingerprintOsVersion: currentFingerprint.osVersion,
+            fingerprintKernelVersion: currentFingerprint.kernelVersion,
+            fingerprintArch: currentFingerprint.arch,
+            fingerprintSerialNumber: currentFingerprint.serialNumber,
+            fingerprintUsername: currentFingerprint.username,
+            fingerprintHostname: currentFingerprint.hostname
         })
         .from(clients)
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))
@@ -203,55 +242,35 @@ function queryClientsBase() {
         .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId));
 }
 
-async function getSiteAssociations(clientIds: number[]) {
-    if (clientIds.length === 0) return [];
-
-    return db
-        .select({
-            clientId: clientSitesAssociationsCache.clientId,
-            siteId: clientSitesAssociationsCache.siteId,
-            siteName: sites.name,
-            siteNiceId: sites.niceId
-        })
-        .from(clientSitesAssociationsCache)
-        .leftJoin(sites, eq(clientSitesAssociationsCache.siteId, sites.siteId))
-        .where(inArray(clientSitesAssociationsCache.clientId, clientIds));
-}
-
-type ClientWithSites = Awaited<ReturnType<typeof queryClientsBase>>[0] & {
-    sites: Array<{
-        siteId: number;
-        siteName: string | null;
-        siteNiceId: string | null;
-    }>;
+type OlmWithUpdateAvailable = Awaited<
+    ReturnType<typeof queryUserDevicesBase>
+>[0] & {
     olmUpdateAvailable?: boolean;
 };
 
-type OlmWithUpdateAvailable = ClientWithSites;
-
-export type ListClientsResponse = PaginatedResponse<{
-    clients: Array<ClientWithSites>;
+export type ListUserDevicesResponse = PaginatedResponse<{
+    devices: Array<OlmWithUpdateAvailable>;
 }>;
 
 registry.registerPath({
     method: "get",
-    path: "/org/{orgId}/clients",
-    description: "List all clients for an organization.",
+    path: "/org/{orgId}/user-devices",
+    description: "List all user devices for an organization.",
     tags: [OpenAPITags.Client, OpenAPITags.Org],
     request: {
-        query: listClientsSchema,
-        params: listClientsParamsSchema
+        query: listUserDevicesSchema,
+        params: listUserDevicesParamsSchema
     },
     responses: {}
 });
 
-export async function listClients(
+export async function listUserDevices(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedQuery = listClientsSchema.safeParse(req.query);
+        const parsedQuery = listUserDevicesSchema.safeParse(req.query);
         if (!parsedQuery.success) {
             return next(
                 createHttpError(
@@ -260,10 +279,10 @@ export async function listClients(
                 )
             );
         }
-        const { page, pageSize, online, query, status, sort_by, order } =
+        const { page, pageSize, query, sort_by, online, status, agent, order } =
             parsedQuery.data;
 
-        const parsedParams = listClientsParamsSchema.safeParse(req.params);
+        const parsedParams = listUserDevicesParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -310,38 +329,14 @@ export async function listClients(
         const accessibleClientIds = accessibleClients.map(
             (client) => client.clientId
         );
-
         // Get client count with filter
         const conditions = [
             and(
                 inArray(clients.clientId, accessibleClientIds),
                 eq(clients.orgId, orgId),
-                isNull(clients.userId)
+                isNotNull(clients.userId)
             )
         ];
-
-        if (typeof online !== "undefined") {
-            conditions.push(eq(clients.online, online));
-        }
-
-        if (status.length > 0) {
-            const filterAggregates: (SQL<unknown> | undefined)[] = [];
-
-            if (status.includes("active")) {
-                filterAggregates.push(
-                    and(eq(clients.archived, false), eq(clients.blocked, false))
-                );
-            }
-
-            if (status.includes("archived")) {
-                filterAggregates.push(eq(clients.archived, true));
-            }
-            if (status.includes("blocked")) {
-                filterAggregates.push(eq(clients.blocked, true));
-            }
-
-            conditions.push(or(...filterAggregates));
-        }
 
         if (query) {
             conditions.push(
@@ -353,17 +348,82 @@ export async function listClients(
                     like(
                         sql`LOWER(${clients.niceId})`,
                         "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${users.email})`,
+                        "%" + query.toLowerCase() + "%"
                     )
                 )
             );
         }
 
-        const baseQuery = queryClientsBase().where(and(...conditions));
+        if (typeof online !== "undefined") {
+            conditions.push(eq(clients.online, online));
+        }
+
+        const agentValueMap = {
+            windows: "Pangolin Windows",
+            android: "Pangolin Android",
+            ios: "Pangolin iOS",
+            ipados: "Pangolin iPadOS",
+            macos: "Pangolin macOS",
+            cli: "Pangolin CLI",
+            olm: "Olm CLI"
+        } satisfies Record<
+            Exclude<typeof agent, undefined | "unknown">,
+            string
+        >;
+        if (typeof agent !== "undefined") {
+            if (agent === "unknown") {
+                conditions.push(isNull(olms.agent));
+            } else {
+                conditions.push(eq(olms.agent, agentValueMap[agent]));
+            }
+        }
+
+        if (status.length > 0) {
+            const filterAggregates: (SQL<unknown> | undefined)[] = [];
+
+            if (status.includes("active")) {
+                filterAggregates.push(
+                    and(
+                        eq(clients.archived, false),
+                        eq(clients.blocked, false),
+                        build !== "oss"
+                            ? or(
+                                  eq(clients.approvalState, "approved"),
+                                  isNull(clients.approvalState) // approval state of `NULL` means approved by default
+                              )
+                            : undefined // undefined are automatically ignored by `drizzle-orm`
+                    )
+                );
+            }
+
+            if (status.includes("archived")) {
+                filterAggregates.push(eq(clients.archived, true));
+            }
+            if (status.includes("blocked")) {
+                filterAggregates.push(eq(clients.blocked, true));
+            }
+
+            if (build !== "oss") {
+                if (status.includes("pending")) {
+                    filterAggregates.push(eq(clients.approvalState, "pending"));
+                }
+                if (status.includes("denied")) {
+                    filterAggregates.push(eq(clients.approvalState, "denied"));
+                }
+            }
+
+            conditions.push(or(...filterAggregates));
+        }
+
+        const baseQuery = queryUserDevicesBase().where(and(...conditions));
 
         const countQuery = db.$count(baseQuery.as("filtered_clients"));
 
-        const listMachinesQuery = baseQuery
-            .limit(page)
+        const listDevicesQuery = baseQuery
+            .limit(pageSize)
             .offset(pageSize * (page - 1))
             .orderBy(
                 sort_by
@@ -374,50 +434,19 @@ export async function listClients(
             );
 
         const [clientsList, totalCount] = await Promise.all([
-            listMachinesQuery,
+            listDevicesQuery,
             countQuery
         ]);
 
-        // Get associated sites for all clients
-        const clientIds = clientsList.map((client) => client.clientId);
-        const siteAssociations = await getSiteAssociations(clientIds);
-
-        // Group site associations by client ID
-        const sitesByClient = siteAssociations.reduce(
-            (acc, association) => {
-                if (!acc[association.clientId]) {
-                    acc[association.clientId] = [];
-                }
-                acc[association.clientId].push({
-                    siteId: association.siteId,
-                    siteName: association.siteName,
-                    siteNiceId: association.siteNiceId
-                });
-                return acc;
-            },
-            {} as Record<
-                number,
-                Array<{
-                    siteId: number;
-                    siteName: string | null;
-                    siteNiceId: string | null;
-                }>
-            >
-        );
-
         // Merge clients with their site associations and replace name with device name
-        const clientsWithSites = clientsList.map((client) => {
-            return {
-                ...client,
-                sites: sitesByClient[client.clientId] || []
-            };
-        });
-
-        const latestOlVersionPromise = getLatestOlmVersion();
-
-        const olmsWithUpdates: OlmWithUpdateAvailable[] = clientsWithSites.map(
+        const olmsWithUpdates: OlmWithUpdateAvailable[] = clientsList.map(
             (client) => {
-                const OlmWithUpdate: OlmWithUpdateAvailable = { ...client };
+                const model = client.deviceModel || null;
+                const newName = getUserDeviceName(model, client.name);
+                const OlmWithUpdate: OlmWithUpdateAvailable = {
+                    ...client,
+                    name: newName
+                };
                 // Initially set to false, will be updated if version check succeeds
                 OlmWithUpdate.olmUpdateAvailable = false;
                 return OlmWithUpdate;
@@ -426,14 +455,14 @@ export async function listClients(
 
         // Try to get the latest version, but don't block if it fails
         try {
-            const latestOlVersion = await latestOlVersionPromise;
+            const latestOlmVersion = await getLatestOlmVersion();
 
-            if (latestOlVersion) {
+            if (latestOlmVersion) {
                 olmsWithUpdates.forEach((client) => {
                     try {
                         client.olmUpdateAvailable = semver.lt(
                             client.olmVersion ? client.olmVersion : "",
-                            latestOlVersion
+                            latestOlmVersion
                         );
                     } catch (error) {
                         client.olmUpdateAvailable = false;
@@ -448,9 +477,9 @@ export async function listClients(
             );
         }
 
-        return response<ListClientsResponse>(res, {
+        return response<ListUserDevicesResponse>(res, {
             data: {
-                clients: olmsWithUpdates,
+                devices: olmsWithUpdates,
                 pagination: {
                     total: totalCount,
                     page,

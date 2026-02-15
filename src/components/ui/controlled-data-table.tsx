@@ -2,25 +2,13 @@
 
 import {
     ColumnDef,
+    ColumnFiltersState,
     flexRender,
     getCoreRowModel,
-    useReactTable,
-    getPaginationRowModel,
-    SortingState,
-    getSortedRowModel,
-    ColumnFiltersState,
-    getFilteredRowModel,
-    VisibilityState,
-    PaginationState
+    PaginationState,
+    useReactTable
 } from "@tanstack/react-table";
 
-// Extended ColumnDef type that includes optional friendlyName for column visibility dropdown
-export type ExtendedColumnDef<TData, TValue = unknown> = ColumnDef<
-    TData,
-    TValue
-> & {
-    friendlyName?: string;
-};
 import {
     Table,
     TableBody,
@@ -29,19 +17,9 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
-import { Button } from "@app/components/ui/button";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Input } from "@app/components/ui/input";
 import { DataTablePagination } from "@app/components/DataTablePagination";
-import { Plus, Search, RefreshCw, Columns, Filter } from "lucide-react";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle
-} from "@app/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@app/components/ui/tabs";
-import { useTranslations } from "next-intl";
+import { Button } from "@app/components/ui/button";
+import { Card, CardContent, CardHeader } from "@app/components/ui/card";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -50,100 +28,25 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
+import { Input } from "@app/components/ui/input";
+import { useStoredColumnVisibility } from "@app/hooks/useStoredColumnVisibility";
 
-const STORAGE_KEYS = {
-    PAGE_SIZE: "datatable-page-size",
-    COLUMN_VISIBILITY: "datatable-column-visibility",
-    getTablePageSize: (tableId?: string) =>
-        tableId ? `${tableId}-size` : STORAGE_KEYS.PAGE_SIZE,
-    getTableColumnVisibility: (tableId?: string) =>
-        tableId
-            ? `${tableId}-column-visibility`
-            : STORAGE_KEYS.COLUMN_VISIBILITY
-};
+import { Columns, Filter, Plus, RefreshCw, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
 
-const getStoredPageSize = (tableId?: string, defaultSize = 20): number => {
-    if (typeof window === "undefined") return defaultSize;
-
-    try {
-        const key = STORAGE_KEYS.getTablePageSize(tableId);
-        const stored = localStorage.getItem(key);
-        if (stored) {
-            const parsed = parseInt(stored, 10);
-            // Validate that it's a reasonable page size
-            if (parsed > 0 && parsed <= 1000) {
-                return parsed;
-            }
-        }
-    } catch (error) {
-        console.warn("Failed to read page size from localStorage:", error);
-    }
-    return defaultSize;
-};
-
-const setStoredPageSize = (pageSize: number, tableId?: string): void => {
-    if (typeof window === "undefined") return;
-
-    try {
-        const key = STORAGE_KEYS.getTablePageSize(tableId);
-        localStorage.setItem(key, pageSize.toString());
-    } catch (error) {
-        console.warn("Failed to save page size to localStorage:", error);
-    }
-};
-
-const getStoredColumnVisibility = (
-    tableId?: string,
-    defaultVisibility?: Record<string, boolean>
-): Record<string, boolean> => {
-    if (typeof window === "undefined") return defaultVisibility || {};
-
-    try {
-        const key = STORAGE_KEYS.getTableColumnVisibility(tableId);
-        const stored = localStorage.getItem(key);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            // Validate that it's an object
-            if (typeof parsed === "object" && parsed !== null) {
-                return parsed;
-            }
-        }
-    } catch (error) {
-        console.warn(
-            "Failed to read column visibility from localStorage:",
-            error
-        );
-    }
-    return defaultVisibility || {};
-};
-
-const setStoredColumnVisibility = (
-    visibility: Record<string, boolean>,
-    tableId?: string
-): void => {
-    if (typeof window === "undefined") return;
-
-    try {
-        const key = STORAGE_KEYS.getTableColumnVisibility(tableId);
-        localStorage.setItem(key, JSON.stringify(visibility));
-    } catch (error) {
-        console.warn(
-            "Failed to save column visibility to localStorage:",
-            error
-        );
-    }
-};
-
-type TabFilter = {
-    id: string;
-    label: string;
-    filterFn: (row: any) => boolean;
+// Extended ColumnDef type that includes optional friendlyName for column visibility dropdown
+export type ExtendedColumnDef<TData, TValue = unknown> = ColumnDef<
+    TData,
+    TValue
+> & {
+    friendlyName?: string;
 };
 
 type FilterOption = {
     id: string;
     label: string;
-    value: string | number | boolean;
+    value: string;
 };
 
 type DataTableFilter = {
@@ -151,276 +54,96 @@ type DataTableFilter = {
     label: string;
     options: FilterOption[];
     multiSelect?: boolean;
-    filterFn: (
-        row: any,
-        selectedValues: (string | number | boolean)[]
-    ) => boolean;
-    defaultValues?: (string | number | boolean)[];
+    onValueChange: (selectedValues: string[]) => void;
+    values?: string[];
     displayMode?: "label" | "calculated"; // How to display the filter button text
-};
-
-export type DataTablePaginationState = PaginationState & {
-    pageCount: number;
 };
 
 export type DataTablePaginationUpdateFn = (newPage: PaginationState) => void;
 
-type DataTableProps<TData, TValue> = {
+type ControlledDataTableProps<TData, TValue> = {
     columns: ExtendedColumnDef<TData, TValue>[];
-    data: TData[];
-    title?: string;
+    rows: TData[];
+    tableId: string;
     addButtonText?: string;
     onAdd?: () => void;
     onRefresh?: () => void;
     isRefreshing?: boolean;
+    isNavigatingToAddPage?: boolean;
     searchPlaceholder?: string;
-    searchColumn?: string;
-    defaultSort?: {
-        id: string;
-        desc: boolean;
-    };
-    tabs?: TabFilter[];
-    defaultTab?: string;
     filters?: DataTableFilter[];
     filterDisplayMode?: "label" | "calculated"; // Global filter display mode (can be overridden per filter)
-    persistPageSize?: boolean | string;
-    defaultPageSize?: number;
     columnVisibility?: Record<string, boolean>;
     enableColumnVisibility?: boolean;
-    manualFiltering?: boolean;
     onSearch?: (input: string) => void;
     searchQuery?: string;
-    pagination?: DataTablePaginationState;
-    onPaginationChange?: DataTablePaginationUpdateFn;
-    persistColumnVisibility?: boolean | string;
+    onPaginationChange: DataTablePaginationUpdateFn;
     stickyLeftColumn?: string; // Column ID or accessorKey for left sticky column
     stickyRightColumn?: string; // Column ID or accessorKey for right sticky column (typically "actions")
+    rowCount: number;
+    pagination: PaginationState;
 };
 
-export function DataTable<TData, TValue>({
+export function ControlledDataTable<TData, TValue>({
     columns,
-    data,
-    title,
+    rows,
     addButtonText,
     onAdd,
     onRefresh,
     isRefreshing,
     searchPlaceholder = "Search...",
-    searchColumn = "name",
-    defaultSort,
-    tabs,
-    defaultTab,
     filters,
     filterDisplayMode = "label",
-    persistPageSize = false,
-    defaultPageSize = 20,
     columnVisibility: defaultColumnVisibility,
     enableColumnVisibility = false,
-    persistColumnVisibility = false,
-    manualFiltering = false,
-    pagination: paginationState,
+    tableId,
+    pagination,
     stickyLeftColumn,
     onSearch,
     searchQuery,
     onPaginationChange,
-    stickyRightColumn
-}: DataTableProps<TData, TValue>) {
+    stickyRightColumn,
+    rowCount,
+    isNavigatingToAddPage
+}: ControlledDataTableProps<TData, TValue>) {
     const t = useTranslations();
 
-    // Determine table identifier for storage
-    // Use persistPageSize string if provided, otherwise use persistColumnVisibility string, otherwise undefined
-    const tableId =
-        typeof persistPageSize === "string"
-            ? persistPageSize
-            : typeof persistColumnVisibility === "string"
-              ? persistColumnVisibility
-              : undefined;
-
-    // Auto-enable persistence if column visibility is enabled
-    // Use explicit persistColumnVisibility if provided, otherwise auto-enable when enableColumnVisibility is true and we have a tableId
-    const shouldPersistColumnVisibility =
-        persistColumnVisibility === true ||
-        typeof persistColumnVisibility === "string" ||
-        (enableColumnVisibility && tableId !== undefined);
-
-    // Compute initial column visibility (from localStorage if enabled, otherwise from prop/default)
-    const initialColumnVisibility = (() => {
-        if (shouldPersistColumnVisibility) {
-            return getStoredColumnVisibility(tableId, defaultColumnVisibility);
-        }
-        return defaultColumnVisibility || {};
-    })();
-
-    // Initialize page size from storage or default
-    const [pageSize, setPageSize] = useState<number>(() => {
-        if (persistPageSize) {
-            return getStoredPageSize(tableId, defaultPageSize);
-        }
-        return defaultPageSize;
-    });
-
-    const [sorting, setSorting] = useState<SortingState>(
-        defaultSort ? [defaultSort] : []
-    );
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [globalFilter, setGlobalFilter] = useState<any>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        initialColumnVisibility
-    );
-    const [_pagination, setPagination] = useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: pageSize
-    });
 
-    const pagination = paginationState ?? _pagination;
-
-    const [activeTab, setActiveTab] = useState<string>(
-        defaultTab || tabs?.[0]?.id || ""
+    const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility(
+        tableId,
+        defaultColumnVisibility
     );
-    const [activeFilters, setActiveFilters] = useState<
-        Record<string, (string | number | boolean)[]>
-    >(() => {
-        const initial: Record<string, (string | number | boolean)[]> = {};
+
+    // TODO: filters
+    const activeFilters = useMemo(() => {
+        const initial: Record<string, string[]> = {};
         filters?.forEach((filter) => {
-            initial[filter.id] = filter.defaultValues || [];
+            initial[filter.id] = filter.values || [];
         });
         return initial;
-    });
-
-    // Track initial values to avoid storing defaults on first render
-    const initialPageSize = useRef(pageSize);
-    const initialColumnVisibilityState = useRef(columnVisibility);
-    const hasUserChangedPageSize = useRef(false);
-    const hasUserChangedColumnVisibility = useRef(false);
-
-    // Apply tab and custom filters to data
-    const filteredData = useMemo(() => {
-        let result = data;
-
-        // Apply tab filter
-        if (tabs && activeTab !== "") {
-            const activeTabFilter = tabs.find((tab) => tab.id === activeTab);
-            if (activeTabFilter) {
-                result = result.filter(activeTabFilter.filterFn);
-            }
-        }
-
-        // Apply custom filters
-        if (filters && filters.length > 0) {
-            filters.forEach((filter) => {
-                const selectedValues = activeFilters[filter.id] || [];
-                if (selectedValues.length > 0) {
-                    result = result.filter((row) =>
-                        filter.filterFn(row, selectedValues)
-                    );
-                }
-            });
-        }
-
-        return result;
-    }, [data, tabs, activeTab, filters, activeFilters]);
+    }, [filters]);
 
     const table = useReactTable({
-        data: filteredData,
+        data: rows,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        onSortingChange: setSorting,
-        getSortedRowModel: getSortedRowModel(),
-        onColumnFiltersChange: setColumnFilters,
-        getFilteredRowModel: getFilteredRowModel(),
-        onGlobalFilterChange: setGlobalFilter,
+        // getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
-        onPaginationChange: onPaginationChange
-            ? (state) => {
-                  const newState =
-                      typeof state === "function" ? state(pagination) : state;
-                  onPaginationChange(newState);
-              }
-            : setPagination,
-        manualFiltering,
-        manualPagination: Boolean(paginationState),
-        pageCount: paginationState?.pageCount,
-        initialState: {
-            pagination,
-            columnVisibility: initialColumnVisibility
+        onPaginationChange: (state) => {
+            const newState =
+                typeof state === "function" ? state(pagination) : state;
+            onPaginationChange(newState);
         },
+        manualFiltering: true,
+        manualPagination: true,
+        rowCount,
         state: {
-            sorting,
             columnFilters,
-            globalFilter,
             columnVisibility,
             pagination
         }
     });
-
-    // Persist pageSize to localStorage when it changes (but not on initial mount)
-    useEffect(() => {
-        if (persistPageSize && pagination.pageSize !== pageSize) {
-            // Only store if user has actually changed it from initial value
-            if (
-                hasUserChangedPageSize.current &&
-                pagination.pageSize !== initialPageSize.current
-            ) {
-                setStoredPageSize(pagination.pageSize, tableId);
-            }
-            setPageSize(pagination.pageSize);
-        }
-    }, [pagination.pageSize, persistPageSize, tableId, pageSize]);
-
-    useEffect(() => {
-        // Persist column visibility to localStorage when it changes (but not on initial mount)
-        if (shouldPersistColumnVisibility) {
-            const hasChanged =
-                JSON.stringify(columnVisibility) !==
-                JSON.stringify(initialColumnVisibilityState.current);
-            if (hasChanged) {
-                // Mark as user-initiated change and persist
-                hasUserChangedColumnVisibility.current = true;
-                setStoredColumnVisibility(columnVisibility, tableId);
-            }
-        }
-    }, [columnVisibility, shouldPersistColumnVisibility, tableId]);
-
-    const handleTabChange = (value: string) => {
-        setActiveTab(value);
-        // Reset to first page when changing tabs
-        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-    };
-
-    const handleFilterChange = (
-        filterId: string,
-        optionValue: string | number | boolean,
-        checked: boolean
-    ) => {
-        setActiveFilters((prev) => {
-            const currentValues = prev[filterId] || [];
-            const filter = filters?.find((f) => f.id === filterId);
-
-            if (!filter) return prev;
-
-            let newValues: (string | number | boolean)[];
-
-            if (filter.multiSelect) {
-                // Multi-select: add or remove the value
-                if (checked) {
-                    newValues = [...currentValues, optionValue];
-                } else {
-                    newValues = currentValues.filter((v) => v !== optionValue);
-                }
-            } else {
-                // Single-select: replace the value
-                newValues = checked ? [optionValue] : [];
-            }
-
-            return {
-                ...prev,
-                [filterId]: newValues
-            };
-        });
-        // Reset to first page when changing filters
-        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-    };
 
     // Calculate display text for a filter based on selected values
     const getFilterDisplayText = (filter: DataTableFilter): string => {
@@ -443,23 +166,34 @@ export function DataTable<TData, TValue>({
         }
 
         // Multiple selections: always join with "and"
-        return selectedOptions.map((opt) => opt.label).join(" and ");
+        return selectedOptions.map((opt) => opt.label).join(" or ");
     };
 
-    // Enhanced pagination component that updates our local state
-    const handlePageSizeChange = (newPageSize: number) => {
-        hasUserChangedPageSize.current = true;
-        setPagination((prev) => ({
-            ...prev,
-            pageSize: newPageSize,
-            pageIndex: 0
-        }));
-        setPageSize(newPageSize);
+    const handleFilterChange = (
+        filterId: string,
+        optionValue: string,
+        checked: boolean
+    ) => {
+        const currentValues = activeFilters[filterId] || [];
+        const filter = filters?.find((f) => f.id === filterId);
 
-        // Persist immediately when user changes it
-        if (persistPageSize) {
-            setStoredPageSize(newPageSize, tableId);
+        if (!filter) return;
+
+        let newValues: string[];
+
+        if (filter.multiSelect) {
+            // Multi-select: add or remove the value
+            if (checked) {
+                newValues = [...currentValues, optionValue];
+            } else {
+                newValues = currentValues.filter((v) => v !== optionValue);
+            }
+        } else {
+            // Single-select: replace the value
+            newValues = checked ? [optionValue] : [];
         }
+
+        filter.onValueChange(newValues);
     };
 
     // Helper function to check if a column should be sticky
@@ -502,22 +236,20 @@ export function DataTable<TData, TValue>({
             <Card>
                 <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-4">
                     <div className="flex flex-row space-y-3 w-full sm:mr-2 gap-2">
-                        <div className="relative w-full sm:max-w-sm">
-                            <Input
-                                placeholder={searchPlaceholder}
-                                defaultValue={searchQuery}
-                                value={onSearch ? undefined : globalFilter}
-                                onChange={(e) => {
-                                    onSearch
-                                        ? onSearch(e.currentTarget.value)
-                                        : table.setGlobalFilter(
-                                              String(e.target.value)
-                                          );
-                                }}
-                                className="w-full pl-8"
-                            />
-                            <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                        </div>
+                        {onSearch && (
+                            <div className="relative w-full sm:max-w-sm">
+                                <Input
+                                    placeholder={searchPlaceholder}
+                                    defaultValue={searchQuery}
+                                    onChange={(e) =>
+                                        onSearch(e.currentTarget.value)
+                                    }
+                                    className="w-full pl-8"
+                                />
+                                <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                            </div>
+                        )}
+
                         {filters && filters.length > 0 && (
                             <div className="flex gap-2">
                                 {filters.map((filter) => {
@@ -574,13 +306,13 @@ export function DataTable<TData, TValue>({
                                                                 }
                                                                 onCheckedChange={(
                                                                     checked
-                                                                ) =>
+                                                                ) => {
                                                                     handleFilterChange(
                                                                         filter.id,
                                                                         option.value,
                                                                         checked
-                                                                    )
-                                                                }
+                                                                    );
+                                                                }}
                                                                 onSelect={(e) =>
                                                                     e.preventDefault()
                                                                 }
@@ -595,25 +327,6 @@ export function DataTable<TData, TValue>({
                                     );
                                 })}
                             </div>
-                        )}
-                        {tabs && tabs.length > 0 && (
-                            <Tabs
-                                value={activeTab}
-                                onValueChange={handleTabChange}
-                                className="w-full"
-                            >
-                                <TabsList>
-                                    {tabs.map((tab) => (
-                                        <TabsTrigger
-                                            key={tab.id}
-                                            value={tab.id}
-                                        >
-                                            {tab.label} (
-                                            {data.filter(tab.filterFn).length})
-                                        </TabsTrigger>
-                                    ))}
-                                </TabsList>
-                            </Tabs>
                         )}
                     </div>
                     <div className="flex items-center gap-2 sm:justify-end">
@@ -635,7 +348,10 @@ export function DataTable<TData, TValue>({
                         )}
                         {onAdd && addButtonText && (
                             <div>
-                                <Button onClick={onAdd}>
+                                <Button
+                                    onClick={onAdd}
+                                    loading={isNavigatingToAddPage}
+                                >
                                     <Plus className="mr-2 h-4 w-4" />
                                     {addButtonText}
                                 </Button>
@@ -847,10 +563,23 @@ export function DataTable<TData, TValue>({
                         </Table>
                     </div>
                     <div className="mt-4">
-                        {table.getRowModel().rows?.length > 0 && (
+                        {rowCount > 0 && (
                             <DataTablePagination
                                 table={table}
-                                onPageSizeChange={handlePageSizeChange}
+                                totalCount={rowCount}
+                                onPageSizeChange={(pageSize) =>
+                                    onPaginationChange({
+                                        ...pagination,
+                                        pageSize
+                                    })
+                                }
+                                onPageChange={(pageIndex) => {
+                                    onPaginationChange({
+                                        ...pagination,
+                                        pageIndex
+                                    });
+                                }}
+                                isServerPagination
                                 pageSize={pagination.pageSize}
                                 pageIndex={pagination.pageIndex}
                             />
