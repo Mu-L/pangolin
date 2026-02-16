@@ -252,7 +252,7 @@ export async function signSshKey(
             data: {
                 certificate: cert.certificate,
                 sshUsername: usernameToUse,
-                sshHost: resource.niceId,
+                sshHost: resource.destination,
                 resourceId: resource.siteResourceId,
                 keyId: cert.keyId,
                 validPrincipals: cert.validPrincipals,
