@@ -33,7 +33,7 @@ const updateResourceParamsSchema = z.strictObject({
 const updateHttpResourceBodySchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
-        niceId: z.string().min(1).max(255).optional(),
+        niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
         subdomain: subdomainSchema.nullable().optional(),
         ssl: z.boolean().optional(),
         sso: z.boolean().optional(),

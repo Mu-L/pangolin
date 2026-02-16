@@ -41,6 +41,7 @@ const updateSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
         siteId: z.int(),
+        // niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
         mode: z.enum(["host", "cidr"]).optional(),
         // protocol: z.enum(["tcp", "udp"]).nullish(),

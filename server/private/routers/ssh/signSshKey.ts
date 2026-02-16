@@ -20,7 +20,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { eq, or } from "drizzle-orm";
+import { eq, or, and } from "drizzle-orm";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "#private/lib/sshCA";
 import config from "@server/lib/config";
@@ -33,12 +33,11 @@ const bodySchema = z
     .strictObject({
         publicKey: z.string().nonempty(),
         resourceId: z.number().int().positive().optional(),
-        niceId: z.string().nonempty().optional(),
-        alias: z.string().nonempty().optional()
+        resource: z.string().nonempty().optional() // this is either the nice id or the alias
     })
     .refine(
         (data) => {
-            const fields = [data.resourceId, data.niceId, data.alias];
+            const fields = [data.resourceId, data.resource];
             const definedFields = fields.filter((field) => field !== undefined);
             return definedFields.length === 1;
         },
@@ -105,7 +104,11 @@ export async function signSshKey(
         }
 
         const { orgId } = parsedParams.data;
-        const { publicKey, resourceId, niceId, alias } = parsedBody.data;
+        const {
+            publicKey,
+            resourceId,
+            resource: resourceQueryString
+        } = parsedBody.data;
         const userId = req.user?.userId;
         const roleId = req.userOrgRoleId!;
 
@@ -135,10 +138,11 @@ export async function signSshKey(
         let whereClause;
         if (resourceId !== undefined) {
             whereClause = eq(siteResources.siteResourceId, resourceId);
-        } else if (niceId !== undefined) {
-            whereClause = eq(siteResources.niceId, niceId);
-        } else if (alias !== undefined) {
-            whereClause = eq(siteResources.alias, alias);
+        } else if (resourceQueryString !== undefined) {
+            whereClause = or(
+                eq(siteResources.niceId, resourceQueryString),
+                eq(siteResources.alias, resourceQueryString)
+            );
         } else {
             // This should never happen due to the schema validation, but TypeScript doesn't know that
             return next(
@@ -149,20 +153,28 @@ export async function signSshKey(
             );
         }
 
-        const [resource] = await db
+        const resources = await db
             .select()
             .from(siteResources)
-            .where(whereClause)
-            .limit(1);
+            .where(and(whereClause, eq(siteResources.orgId, orgId)));
 
-        if (!resource) {
+        if (!resources || resources.length === 0) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, `Resource not found`)
+            );
+        }
+
+        if (resources.length > 1) {
+            // error but this should not happen because the nice id cant contain a dot and the alias has to have a dot and both have to be unique within the org so there should never be multiple matches
             return next(
                 createHttpError(
-                    HttpCode.NOT_FOUND,
-                    `Resource not found`
+                    HttpCode.BAD_REQUEST,
+                    `Multiple resources found matching the criteria`
                 )
             );
         }
+
+        const resource = resources[0];
 
         if (resource.orgId !== orgId) {
             return next(
