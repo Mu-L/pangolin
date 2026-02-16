@@ -131,7 +131,8 @@ export enum ActionsEnum {
     viewLogs = "viewLogs",
     exportLogs = "exportLogs",
     listApprovals = "listApprovals",
-    updateApprovals = "updateApprovals"
+    updateApprovals = "updateApprovals",
+    signSshKey = "signSshKey"
 }
 
 export async function checkUserActionPermission(

@@ -28,6 +28,8 @@ import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { doCidrsOverlap } from "@server/lib/ip";
+import { generateCA } from "@server/private/lib/sshCA";
+import { encrypt } from "@server/lib/crypto";
 
 const createOrgSchema = z.strictObject({
     orgId: z.string(),
@@ -143,6 +145,11 @@ export async function createOrg(
                 .from(domains)
                 .where(eq(domains.configManaged, true));
 
+            // Generate SSH CA keys for the org
+            const ca = generateCA(`${orgId}-ca`);
+            const encryptionKey = config.getRawConfig().server.secret!;
+            const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
+
             const newOrg = await trx
                 .insert(orgs)
                 .values({
@@ -150,7 +157,9 @@ export async function createOrg(
                     name,
                     subnet,
                     utilitySubnet,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    sshCaPrivateKey: encryptedCaPrivateKey,
+                    sshCaPublicKey: ca.publicKeyOpenSSH
                 })
                 .returning();
 
