@@ -24,7 +24,7 @@ import { eq, or, and } from "drizzle-orm";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "#private/lib/sshCA";
 import config from "@server/lib/config";
-import { sendToClient } from "#dynamic/routers/ws";
+import { sendToClient } from "#private/routers/ws";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -352,13 +352,13 @@ export async function signSshKey(
             data: {
                 messageId: message.messageId,
                 orgId: orgId,
-                agentPort: 8080,
+                agentPort: 22123,
                 agentHost: resource.destination,
-                caCert: publicKey,
+                caCert: caKeys.publicKeyOpenSSH,
                 username: usernameToUse,
                 niceId: resource.niceId,
                 metadata: {
-                    sudo: true,
+                    sudo: true, // we are hardcoding these for now but should make configurable from the role or something
                     homedir: true
                 }
             }
@@ -366,12 +366,19 @@ export async function signSshKey(
 
         const expiresIn = Number(validFor); // seconds
 
+        let sshHost;
+        if (resource.alias && resource.alias != "") {
+            sshHost = resource.alias;
+        } else {
+            sshHost = resource.destination;
+        }
+
         return response<SignSshKeyResponse>(res, {
             data: {
                 certificate: cert.certificate,
                 messageId: message.messageId,
                 sshUsername: usernameToUse,
-                sshHost: resource.destination,
+                sshHost: sshHost,
                 resourceId: resource.siteResourceId,
                 keyId: cert.keyId,
                 validPrincipals: cert.validPrincipals,
