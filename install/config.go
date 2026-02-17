@@ -118,19 +118,19 @@ func copyDockerService(sourceFile, destFile, serviceName string) error {
 	}
 
 	// Parse source Docker Compose YAML
-	var sourceCompose map[string]interface{}
+	var sourceCompose map[string]any
 	if err := yaml.Unmarshal(sourceData, &sourceCompose); err != nil {
 		return fmt.Errorf("error parsing source Docker Compose file: %w", err)
 	}
 
 	// Parse destination Docker Compose YAML
-	var destCompose map[string]interface{}
+	var destCompose map[string]any
 	if err := yaml.Unmarshal(destData, &destCompose); err != nil {
 		return fmt.Errorf("error parsing destination Docker Compose file: %w", err)
 	}
 
 	// Get services section from source
-	sourceServices, ok := sourceCompose["services"].(map[string]interface{})
+	sourceServices, ok := sourceCompose["services"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("services section not found in source file or has invalid format")
 	}
@@ -142,10 +142,10 @@ func copyDockerService(sourceFile, destFile, serviceName string) error {
 	}
 
 	// Get or create services section in destination
-	destServices, ok := destCompose["services"].(map[string]interface{})
+	destServices, ok := destCompose["services"].(map[string]any)
 	if !ok {
 		// If services section doesn't exist, create it
-		destServices = make(map[string]interface{})
+		destServices = make(map[string]any)
 		destCompose["services"] = destServices
 	}
 
@@ -187,7 +187,7 @@ func backupConfig() error {
 	return nil
 }
 
-func MarshalYAMLWithIndent(data interface{}, indent int) ([]byte, error) {
+func MarshalYAMLWithIndent(data any, indent int) ([]byte, error) {
 	buffer := new(bytes.Buffer)
 	encoder := yaml.NewEncoder(buffer)
 	encoder.SetIndent(indent)
@@ -227,28 +227,28 @@ func CheckAndAddTraefikLogVolume(composePath string) error {
 	}
 
 	// Parse YAML into a generic map
-	var compose map[string]interface{}
+	var compose map[string]any
 	if err := yaml.Unmarshal(data, &compose); err != nil {
 		return fmt.Errorf("error parsing compose file: %w", err)
 	}
 
 	// Get services section
-	services, ok := compose["services"].(map[string]interface{})
+	services, ok := compose["services"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("services section not found or invalid")
 	}
 
 	// Get traefik service
-	traefik, ok := services["traefik"].(map[string]interface{})
+	traefik, ok := services["traefik"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("traefik service not found or invalid")
 	}
 
 	// Check volumes
 	logVolume := "./config/traefik/logs:/var/log/traefik"
-	var volumes []interface{}
+	var volumes []any
 
-	if existingVolumes, ok := traefik["volumes"].([]interface{}); ok {
+	if existingVolumes, ok := traefik["volumes"].([]any); ok {
 		// Check if volume already exists
 		for _, v := range existingVolumes {
 			if v.(string) == logVolume {
@@ -294,13 +294,13 @@ func MergeYAML(baseFile, overlayFile string) error {
 	}
 
 	// Parse base YAML into a map
-	var baseMap map[string]interface{}
+	var baseMap map[string]any
 	if err := yaml.Unmarshal(baseContent, &baseMap); err != nil {
 		return fmt.Errorf("error parsing base YAML: %v", err)
 	}
 
 	// Parse overlay YAML into a map
-	var overlayMap map[string]interface{}
+	var overlayMap map[string]any
 	if err := yaml.Unmarshal(overlayContent, &overlayMap); err != nil {
 		return fmt.Errorf("error parsing overlay YAML: %v", err)
 	}
@@ -323,8 +323,8 @@ func MergeYAML(baseFile, overlayFile string) error {
 }
 
 // mergeMap recursively merges two maps
-func mergeMap(base, overlay map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func mergeMap(base, overlay map[string]any) map[string]any {
+	result := make(map[string]any)
 
 	// Copy all key-values from base map
 	for k, v := range base {
@@ -335,8 +335,8 @@ func mergeMap(base, overlay map[string]interface{}) map[string]interface{} {
 	for k, v := range overlay {
 		// If both maps have the same key and both values are maps, merge recursively
 		if baseVal, ok := base[k]; ok {
-			if baseMap, isBaseMap := baseVal.(map[string]interface{}); isBaseMap {
-				if overlayMap, isOverlayMap := v.(map[string]interface{}); isOverlayMap {
+			if baseMap, isBaseMap := baseVal.(map[string]any); isBaseMap {
+				if overlayMap, isOverlayMap := v.(map[string]any); isOverlayMap {
 					result[k] = mergeMap(baseMap, overlayMap)
 					continue
 				}
