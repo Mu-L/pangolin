@@ -50,6 +50,7 @@ import createHttpError from "http-errors";
 import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
 import { logActionAudit } from "#dynamic/middlewares";
+import { checkRoundTripMessage } from "./ws";
 
 // Root routes
 export const unauthenticated = Router();
@@ -1122,6 +1123,8 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.getBlueprint),
     blueprints.getBlueprint
 );
+
+authenticated.get("/ws/round-trip-message/:messageId", checkRoundTripMessage);
 
 // Auth routes
 export const authRouter = Router();

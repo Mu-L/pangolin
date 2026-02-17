@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, orgs, siteResources } from "@server/db";
+import { db, newts, orgs, roundTripMessageTracker, siteResources, sites, userOrgs } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -24,6 +24,7 @@ import { eq, or, and } from "drizzle-orm";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "#private/lib/sshCA";
 import config from "@server/lib/config";
+import { sendToClient } from "#dynamic/routers/ws";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -49,6 +50,7 @@ const bodySchema = z
 
 export type SignSshKeyResponse = {
     certificate: string;
+    messageId: number;
     sshUsername: string;
     sshHost: string;
     resourceId: number;
@@ -116,6 +118,104 @@ export async function signSshKey(
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
             );
+        }
+
+        const [userOrg] = await db
+            .select()
+            .from(userOrgs)
+            .where(and(eq(userOrgs.orgId, orgId), eq(userOrgs.userId, userId)))
+            .limit(1);
+
+        if (!userOrg) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "User does not belong to the specified organization"
+                )
+            );
+        }
+
+        let usernameToUse;
+        if (!userOrg.pamUsername) {
+            if (req.user?.email) {
+                // Extract username from email (first part before @)
+                usernameToUse = req.user?.email.split("@")[0];
+                if (!usernameToUse) {
+                    return next(
+                        createHttpError(
+                            HttpCode.BAD_REQUEST,
+                            "Unable to extract username from email"
+                        )
+                    );
+                }
+            } else if (req.user?.username) {
+                usernameToUse = req.user.username;
+                // We need to clean out any spaces or special characters from the username to ensure it's valid for SSH certificates
+                usernameToUse = usernameToUse.replace(/[^a-zA-Z0-9_-]/g, "");
+                if (!usernameToUse) {
+                    return next(
+                        createHttpError(
+                            HttpCode.BAD_REQUEST,
+                            "Username is not valid for SSH certificate"
+                        )
+                    );
+                }
+            } else {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "User does not have a valid email or username for SSH certificate"
+                    )
+                );
+            }
+
+            // check if we have a existing user in this org with the same
+            const [existingUserWithSameName] = await db
+                .select()
+                .from(userOrgs)
+                .where(
+                    and(
+                        eq(userOrgs.orgId, orgId),
+                        eq(userOrgs.pamUsername, usernameToUse)
+                    )
+                )
+                .limit(1);
+
+            if (existingUserWithSameName) {
+                let foundUniqueUsername = false;
+                for (let attempt = 0; attempt < 20; attempt++) {
+                    const randomNum = Math.floor(Math.random() * 101); // 0 to 100
+                    const candidateUsername = `${usernameToUse}${randomNum}`;
+
+                    const [existingUser] = await db
+                        .select()
+                        .from(userOrgs)
+                        .where(
+                            and(
+                                eq(userOrgs.orgId, orgId),
+                                eq(userOrgs.pamUsername, candidateUsername)
+                            )
+                        )
+                        .limit(1);
+
+                    if (!existingUser) {
+                        usernameToUse = candidateUsername;
+                        foundUniqueUsername = true;
+                        break;
+                    }
+                }
+
+                if (!foundUniqueUsername) {
+                    return next(
+                        createHttpError(
+                            HttpCode.CONFLICT,
+                            "Unable to generate a unique username for SSH certificate"
+                        )
+                    );
+                }
+            }
+        } else {
+            usernameToUse = userOrg.pamUsername;
         }
 
         // Get and decrypt the org's CA keys
@@ -201,35 +301,18 @@ export async function signSshKey(
             );
         }
 
-        let usernameToUse;
-        if (req.user?.email) {
-            // Extract username from email (first part before @)
-            usernameToUse = req.user?.email.split("@")[0];
-            if (!usernameToUse) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Unable to extract username from email"
-                    )
-                );
-            }
-        } else if (req.user?.username) {
-            usernameToUse = req.user.username;
-            // We need to clean out any spaces or special characters from the username to ensure it's valid for SSH certificates
-            usernameToUse = usernameToUse.replace(/[^a-zA-Z0-9_-]/g, "");
-            if (!usernameToUse) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Username is not valid for SSH certificate"
-                    )
-                );
-            }
-        } else {
+        // get the site
+        const [newt] = await db
+            .select()
+            .from(newts)
+            .where(eq(newts.siteId, resource.siteId))
+            .limit(1);
+
+        if (!newt) {
             return next(
                 createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "User does not have a valid email or username for SSH certificate"
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Site associated with resource not found"
                 )
             );
         }
@@ -240,10 +323,45 @@ export async function signSshKey(
         const validFor = 300n;
 
         const cert = signPublicKey(caKeys.privateKeyPem, publicKey, {
-            keyId: `${usernameToUse}@${orgId}`,
+            keyId: `${usernameToUse}@${resource.niceId}`,
             validPrincipals: [usernameToUse, resource.niceId],
             validAfter: now - 60n, // Start 1 min ago for clock skew
             validBefore: now + validFor
+        });
+
+        const [message] = await db
+            .insert(roundTripMessageTracker)
+            .values({
+                wsClientId: newt.newtId,
+                messageType: `newt/pam/connection`,
+                sentAt: Math.floor(Date.now() / 1000),
+            })
+            .returning();
+
+        if (!message) {
+            return next(
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Failed to create message tracker entry"
+                )
+            );
+        }
+
+        await sendToClient(newt.newtId, {
+            type: `newt/pam/connection`,
+            data: {
+                messageId: message.messageId,
+                orgId: orgId,
+                agentPort: 8080,
+                agentHost: resource.destination,
+                caCert: publicKey,
+                username: usernameToUse,
+                niceId: resource.niceId,
+                metadata: {
+                    sudo: true,
+                    homedir: true
+                }
+            }
         });
 
         const expiresIn = Number(validFor); // seconds
@@ -251,6 +369,7 @@ export async function signSshKey(
         return response<SignSshKeyResponse>(res, {
             data: {
                 certificate: cert.certificate,
+                messageId: message.messageId,
                 sshUsername: usernameToUse,
                 sshHost: resource.destination,
                 resourceId: resource.siteResourceId,

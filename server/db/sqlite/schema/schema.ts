@@ -635,7 +635,8 @@ export const userOrgs = sqliteTable("userOrgs", {
     isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
     autoProvisioned: integer("autoProvisioned", {
         mode: "boolean"
-    }).default(false)
+    }).default(false),
+    pamUsername: text("pamUsername") // cleaned username for ssh and such
 });
 
 export const emailVerificationCodes = sqliteTable("emailVerificationCodes", {
@@ -1077,6 +1078,16 @@ export const deviceWebAuthCodes = sqliteTable("deviceWebAuthCodes", {
     })
 });
 
+export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
+    messageId: integer("messageId").primaryKey({ autoIncrement: true }),
+    wsClientId: text("clientId"),
+    messageType: text("messageType"),
+    sentAt: integer("sentAt").notNull(),
+    receivedAt: integer("receivedAt"),
+    error: text("error"),
+    complete: integer("complete", { mode: "boolean" }).notNull().default(false)
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1138,3 +1149,6 @@ export type SecurityKey = InferSelectModel<typeof securityKeys>;
 export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
+export type RoundTripMessageTracker = InferSelectModel<
+    typeof roundTripMessageTracker
+>;

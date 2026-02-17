@@ -330,7 +330,8 @@ export const userOrgs = pgTable("userOrgs", {
         .notNull()
         .references(() => roles.roleId),
     isOwner: boolean("isOwner").notNull().default(false),
-    autoProvisioned: boolean("autoProvisioned").default(false)
+    autoProvisioned: boolean("autoProvisioned").default(false),
+    pamUsername: varchar("pamUsername") // cleaned username for ssh and such
 });
 
 export const emailVerificationCodes = pgTable("emailVerificationCodes", {
@@ -986,6 +987,16 @@ export const deviceWebAuthCodes = pgTable("deviceWebAuthCodes", {
     })
 });
 
+export const roundTripMessageTracker = pgTable("roundTripMessageTracker", {
+    messageId: serial("messageId").primaryKey(),
+    wsClientId: varchar("clientId"),
+    messageType: varchar("messageType"),
+    sentAt: bigint("sentAt", { mode: "number" }).notNull(),
+    receivedAt: bigint("receivedAt", { mode: "number" }),
+    error: text("error"),
+    complete: boolean("complete").notNull().default(false)
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1046,3 +1057,4 @@ export type SecurityKey = InferSelectModel<typeof securityKeys>;
 export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
+export type RoundTripMessageTracker = InferSelectModel<typeof roundTripMessageTracker>;
