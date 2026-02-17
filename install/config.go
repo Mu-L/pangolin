@@ -192,8 +192,7 @@ func MarshalYAMLWithIndent(data interface{}, indent int) ([]byte, error) {
 	encoder := yaml.NewEncoder(buffer)
 	encoder.SetIndent(indent)
 
-	err := encoder.Encode(data)
-	if err != nil {
+	if err := encoder.Encode(data); err != nil {
 		return nil, err
 	}
 
@@ -209,7 +208,7 @@ func replaceInFile(filepath, oldStr, newStr string) error {
 	}
 
 	// Replace the string
-	newContent := strings.Replace(string(content), oldStr, newStr, -1)
+	newContent := strings.ReplaceAll(string(content), oldStr, newStr)
 
 	// Write the modified content back to the file
 	err = os.WriteFile(filepath, []byte(newContent), 0644)

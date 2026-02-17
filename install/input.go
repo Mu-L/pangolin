@@ -57,11 +57,12 @@ func readBool(reader *bufio.Reader, prompt string, defaultValue bool) bool {
 	for {
 		input := readString(reader, prompt+" (yes/no)", defaultStr)
 		lower := strings.ToLower(input)
-		if lower == "yes" {
+		switch lower {
+		case "yes":
 			return true
-		} else if lower == "no" {
+		case "no":
 			return false
-		} else {
+		default:
 			fmt.Println("Please enter 'yes' or 'no'.")
 		}
 	}
@@ -71,11 +72,12 @@ func readBoolNoDefault(reader *bufio.Reader, prompt string) bool {
 	for {
 		input := readStringNoDefault(reader, prompt+" (yes/no)")
 		lower := strings.ToLower(input)
-		if lower == "yes" {
+		switch lower {
+		case "yes":
 			return true
-		} else if lower == "no" {
+		case "no":
 			return false
-		} else {
+		default:
 			fmt.Println("Please enter 'yes' or 'no'.")
 		}
 	}

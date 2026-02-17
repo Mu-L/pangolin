@@ -144,12 +144,13 @@ func installDocker() error {
 }
 
 func startDockerService() error {
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "linux":
 		cmd := exec.Command("systemctl", "enable", "--now", "docker")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
-	} else if runtime.GOOS == "darwin" {
+	case "darwin":
 		// On macOS, Docker is usually started via the Docker Desktop application
 		fmt.Println("Please start Docker Desktop manually on macOS.")
 		return nil
@@ -302,7 +303,7 @@ func pullContainers(containerType SupportedContainer) error {
 		return nil
 	}
 
-	return fmt.Errorf("Unsupported container type: %s", containerType)
+	return fmt.Errorf("unsupported container type: %s", containerType)
 }
 
 // startContainers starts the containers using the appropriate command.
@@ -325,7 +326,7 @@ func startContainers(containerType SupportedContainer) error {
 		return nil
 	}
 
-	return fmt.Errorf("Unsupported container type: %s", containerType)
+	return fmt.Errorf("unsupported container type: %s", containerType)
 }
 
 // stopContainers stops the containers using the appropriate command.
@@ -347,7 +348,7 @@ func stopContainers(containerType SupportedContainer) error {
 		return nil
 	}
 
-	return fmt.Errorf("Unsupported container type: %s", containerType)
+	return fmt.Errorf("unsupported container type: %s", containerType)
 }
 
 // restartContainer restarts a specific container using the appropriate command.
@@ -369,5 +370,5 @@ func restartContainer(container string, containerType SupportedContainer) error 
 		return nil
 	}
 
-	return fmt.Errorf("Unsupported container type: %s", containerType)
+	return fmt.Errorf("unsupported container type: %s", containerType)
 }

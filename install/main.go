@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
-	"crypto/rand"
-	"encoding/base64"
 	"net"
 	"net/http"
 	"net/url"
@@ -102,7 +102,10 @@ func main() {
 			os.Exit(1)
 		}
 
-		moveFile("config/docker-compose.yml", "docker-compose.yml")
+		if err := moveFile("config/docker-compose.yml", "docker-compose.yml"); err != nil {
+			fmt.Printf("Error moving docker-compose.yml: %v\n", err)
+			os.Exit(1)
+		}
 
 		fmt.Println("\nConfiguration files created successfully!")
 
@@ -123,7 +126,11 @@ func main() {
 
 			if !isDockerInstalled() && runtime.GOOS == "linux" && config.InstallationContainerType == Docker {
 				if readBool(reader, "Docker is not installed. Would you like to install it?", true) {
-					installDocker()
+					if err := installDocker(); err != nil {
+						fmt.Printf("Error installing Docker: %v\n", err)
+						return
+					}
+
 					// try to start docker service but ignore errors
 					if err := startDockerService(); err != nil {
 						fmt.Println("Error starting Docker service:", err)
@@ -132,7 +139,7 @@ func main() {
 					}
 					// wait 10 seconds for docker to start checking if docker is running every 2 seconds
 					fmt.Println("Waiting for Docker to start...")
-					for i := 0; i < 5; i++ {
+					for range 5 {
 						if isDockerRunning() {
 							fmt.Println("Docker is running!")
 							break
@@ -290,7 +297,8 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 		os.Exit(1)
 	}
 
-	if chosenContainer == Podman {
+	switch chosenContainer {
+	case Podman:
 		if !isPodmanInstalled() {
 			fmt.Println("Podman or podman-compose is not installed. Please install both manually. Automated installation will be available in a later release.")
 			os.Exit(1)
@@ -311,7 +319,7 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 				// Linux only.
 
 				if err := run("bash", "-c", "echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system"); err != nil {
-				    fmt.Printf("Error configuring unprivileged ports: %v\n", err)
+					fmt.Printf("Error configuring unprivileged ports: %v\n", err)
 					os.Exit(1)
 				}
 			} else {
@@ -321,7 +329,7 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 			fmt.Println("Unprivileged ports have been configured.")
 		}
 
-	} else if chosenContainer == Docker {
+	case Docker:
 		// check if docker is not installed and the user is root
 		if !isDockerInstalled() {
 			if os.Geteuid() != 0 {
@@ -336,7 +344,7 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 			fmt.Println("The installer will not be able to run docker commands without running it as root.")
 			os.Exit(1)
 		}
-	} else {
+	default:
 		// This shouldn't happen unless there's a third container runtime.
 		os.Exit(1)
 	}
@@ -405,10 +413,18 @@ func collectUserInput(reader *bufio.Reader) Config {
 }
 
 func createConfigFiles(config Config) error {
-	os.MkdirAll("config", 0755)
-	os.MkdirAll("config/letsencrypt", 0755)
-	os.MkdirAll("config/db", 0755)
-	os.MkdirAll("config/logs", 0755)
+	if err := os.MkdirAll("config", 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %v", err)
+	}
+	if err := os.MkdirAll("config/letsencrypt", 0755); err != nil {
+		return fmt.Errorf("failed to create letsencrypt directory: %v", err)
+	}
+	if err := os.MkdirAll("config/db", 0755); err != nil {
+		return fmt.Errorf("failed to create db directory: %v", err)
+	}
+	if err := os.MkdirAll("config/logs", 0755); err != nil {
+		return fmt.Errorf("failed to create logs directory: %v", err)
+	}
 
 	// Walk through all embedded files
 	err := fs.WalkDir(configFiles, "config", func(path string, d fs.DirEntry, err error) error {
@@ -562,22 +578,24 @@ func showSetupTokenInstructions(containerType SupportedContainer, dashboardDomai
 	fmt.Println("To get your setup token, you need to:")
 	fmt.Println("")
 	fmt.Println("1. Start the containers")
-	if containerType == Docker {
+	switch containerType {
+	case Docker:
 		fmt.Println("   docker compose up -d")
-	} else if containerType == Podman {
+	case Podman:
 		fmt.Println("   podman-compose up -d")
-	} else {
 	}
+
 	fmt.Println("")
 	fmt.Println("2. Wait for the Pangolin container to start and generate the token")
 	fmt.Println("")
 	fmt.Println("3. Check the container logs for the setup token")
-	if containerType == Docker {
+	switch containerType {
+	case Docker:
 		fmt.Println("   docker logs pangolin | grep -A 2 -B 2 'SETUP TOKEN'")
-	} else if containerType == Podman {
+	case Podman:
 		fmt.Println("   podman logs pangolin | grep -A 2 -B 2 'SETUP TOKEN'")
-	} else {
 	}
+
 	fmt.Println("")
 	fmt.Println("4. Look for output like")
 	fmt.Println("   === SETUP TOKEN GENERATED ===")
@@ -639,10 +657,7 @@ func checkPortsAvailable(port int) error {
 	addr := fmt.Sprintf(":%d", port)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf(
-			"ERROR: port %d is occupied or cannot be bound: %w\n\n",
-			port, err,
-		)
+		return fmt.Errorf("ERROR: port %d is occupied or cannot be bound: %w", port, err)
 	}
 	if closeErr := ln.Close(); closeErr != nil {
 		fmt.Fprintf(os.Stderr,

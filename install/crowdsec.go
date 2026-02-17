@@ -27,9 +27,18 @@ func installCrowdsec(config Config) error {
 		os.Exit(1)
 	}
 
-	os.MkdirAll("config/crowdsec/db", 0755)
-	os.MkdirAll("config/crowdsec/acquis.d", 0755)
-	os.MkdirAll("config/traefik/logs", 0755)
+	if err := os.MkdirAll("config/crowdsec/db", 0755); err != nil {
+		fmt.Printf("Error creating config files: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.MkdirAll("config/crowdsec/acquis.d", 0755); err != nil {
+		fmt.Printf("Error creating config files: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.MkdirAll("config/traefik/logs", 0755); err != nil {
+		fmt.Printf("Error creating config files: %v\n", err)
+		os.Exit(1)
+	}
 
 	if err := copyDockerService("config/crowdsec/docker-compose.yml", "docker-compose.yml", "crowdsec"); err != nil {
 		fmt.Printf("Error copying docker service: %v\n", err)
