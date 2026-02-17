@@ -20,12 +20,13 @@ import {
     TooltipProvider,
     TooltipTrigger
 } from "@app/components/ui/tooltip";
+import { Badge } from "@app/components/ui/badge";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { Check, ChevronsUpDown, Plus, Building2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
 
@@ -47,6 +48,17 @@ export function OrgSelector({
     const t = useTranslations();
 
     const selectedOrg = orgs?.find((org) => org.orgId === orgId);
+
+    const sortedOrgs = useMemo(() => {
+        if (!orgs?.length) return orgs ?? [];
+        return [...orgs].sort((a, b) => {
+            const aPrimary = Boolean(a.isPrimaryOrg);
+            const bPrimary = Boolean(b.isPrimaryOrg);
+            if (aPrimary && !bPrimary) return -1;
+            if (!aPrimary && bPrimary) return 1;
+            return 0;
+        });
+    }, [orgs]);
 
     const orgSelectorContent = (
         <Popover open={open} onOpenChange={setOpen}>
@@ -124,7 +136,7 @@ export function OrgSelector({
                     )}
                     <CommandGroup heading={t("orgs")} className="py-2">
                         <CommandList>
-                            {orgs?.map((org) => (
+                            {sortedOrgs.map((org) => (
                                 <CommandItem
                                     key={org.orgId}
                                     onSelect={() => {
@@ -136,12 +148,22 @@ export function OrgSelector({
                                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted mr-3">
                                         <Users className="h-4 w-4 text-muted-foreground" />
                                     </div>
-                                    <div className="flex flex-col flex-1">
-                                        <span className="font-medium">
-                                            {org.name}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {t("organization")}
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-medium truncate">
+                                                {org.name}
+                                            </span>
+                                            {org.isPrimaryOrg && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="shrink-0 text-[10px] px-1.5 py-0 font-medium"
+                                                >
+                                                    {t("primary")}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground font-mono">
+                                            {org.orgId}
                                         </span>
                                     </div>
                                     <Check

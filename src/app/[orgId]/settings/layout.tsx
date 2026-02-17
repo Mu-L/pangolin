@@ -77,12 +77,16 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
         }
     } catch (e) {}
 
+    const primaryOrg = orgs.find((o) => o.orgId === params.orgId)?.isPrimaryOrg;
+
     return (
         <UserProvider user={user}>
             <Layout
                 orgId={params.orgId}
                 orgs={orgs}
-                navItems={orgNavSections(env)}
+                navItems={orgNavSections(env, {
+                    isPrimaryOrg: primaryOrg
+                })}
             >
                 {children}
             </Layout>

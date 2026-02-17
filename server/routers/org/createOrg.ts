@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
     domains,
     Org,
@@ -24,7 +24,11 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { isValidCIDR } from "@server/lib/validators";
 import { createCustomer } from "#dynamic/lib/billing";
 import { usageService } from "@server/lib/billing/usageService";
-import { FeatureId } from "@server/lib/billing";
+import {
+    FeatureId,
+    limitsService,
+    sandboxLimitSet
+} from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { doCidrsOverlap } from "@server/lib/ip";
@@ -136,6 +140,40 @@ export async function createOrg(
             );
         }
 
+        let isFirstOrg: boolean | null = null;
+        let billingOrgIdForNewOrg: string | null = null;
+        if (build === "saas" && req.user) {
+            const ownedOrgs = await db
+                .select()
+                .from(userOrgs)
+                .where(
+                    and(
+                        eq(userOrgs.userId, req.user.userId),
+                        eq(userOrgs.isOwner, true)
+                    )
+                );
+            if (ownedOrgs.length === 0) {
+                isFirstOrg = true;
+            } else {
+                isFirstOrg = false;
+                const [billingOrg] = await db
+                    .select({ orgId: orgs.orgId })
+                    .from(orgs)
+                    .innerJoin(userOrgs, eq(orgs.orgId, userOrgs.orgId))
+                    .where(
+                        and(
+                            eq(userOrgs.userId, req.user.userId),
+                            eq(userOrgs.isOwner, true),
+                            eq(orgs.isBillingOrg, true)
+                        )
+                    )
+                    .limit(1);
+                if (billingOrg) {
+                    billingOrgIdForNewOrg = billingOrg.orgId;
+                }
+            }
+        }
+
         let error = "";
         let org: Org | null = null;
 
@@ -150,6 +188,16 @@ export async function createOrg(
             const encryptionKey = config.getRawConfig().server.secret!;
             const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
 
+            const saasBillingFields =
+                build === "saas" && req.user && isFirstOrg !== null
+                    ? isFirstOrg
+                        ? { isBillingOrg: true as const, billingOrgId: null }
+                        : {
+                              isBillingOrg: false as const,
+                              billingOrgId: billingOrgIdForNewOrg
+                          }
+                    : {};
+
             const newOrg = await trx
                 .insert(orgs)
                 .values({
@@ -159,7 +207,8 @@ export async function createOrg(
                     utilitySubnet,
                     createdAt: new Date().toISOString(),
                     sshCaPrivateKey: encryptedCaPrivateKey,
-                    sshCaPublicKey: ca.publicKeyOpenSSH
+                    sshCaPublicKey: ca.publicKeyOpenSSH,
+                    ...saasBillingFields
                 })
                 .returning();
 
@@ -276,8 +325,8 @@ export async function createOrg(
             return next(createHttpError(HttpCode.INTERNAL_SERVER_ERROR, error));
         }
 
-        if (build == "saas") {
-            // make sure we have the stripe customer
+        if (build === "saas" && isFirstOrg === true) {
+            await limitsService.applyLimitSetToOrg(orgId, sandboxLimitSet);
             const customerId = await createCustomer(orgId, req.user?.email);
             if (customerId) {
                 await usageService.updateCount(

@@ -31,6 +31,10 @@ export type SidebarNavSection = {
     items: SidebarNavItem[];
 };
 
+export type OrgNavSectionsOptions = {
+    isPrimaryOrg?: boolean;
+};
+
 // Merged from 'user-management-and-resources' branch
 export const orgLangingNavItems: SidebarNavItem[] = [
     {
@@ -40,7 +44,10 @@ export const orgLangingNavItems: SidebarNavItem[] = [
     }
 ];
 
-export const orgNavSections = (env?: Env): SidebarNavSection[] => [
+export const orgNavSections = (
+    env?: Env,
+    options?: OrgNavSectionsOptions
+): SidebarNavSection[] => [
     {
         heading: "sidebarGeneral",
         items: [
@@ -214,28 +221,28 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 title: "sidebarSettings",
                 href: "/{orgId}/settings/general",
                 icon: <Settings className="size-4 flex-none" />
-            },
-
-            ...(build == "saas"
-                ? [
+            }
+        ]
+    },
+    ...(build == "saas" && options?.isPrimaryOrg
+        ? [
+              {
+                  heading: "sidebarBillingAndLicenses",
+                  items: [
                       {
                           title: "sidebarBilling",
                           href: "/{orgId}/settings/billing",
                           icon: <CreditCard className="size-4 flex-none" />
-                      }
-                  ]
-                : []),
-            ...(build == "saas"
-                ? [
+                      },
                       {
                           title: "sidebarEnterpriseLicenses",
                           href: "/{orgId}/settings/license",
                           icon: <TicketCheck className="size-4 flex-none" />
                       }
                   ]
-                : [])
-        ]
-    }
+              }
+          ]
+        : [])
 ];
 
 export const adminNavSections = (env?: Env): SidebarNavSection[] => [

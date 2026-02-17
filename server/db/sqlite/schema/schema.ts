@@ -47,7 +47,9 @@ export const orgs = sqliteTable("orgs", {
         .notNull()
         .default(0),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
-    sshCaPublicKey: text("sshCaPublicKey") // SSH CA public key (OpenSSH format)
+    sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
+    isBillingOrg: integer("isBillingOrg", { mode: "boolean" }),
+    billingOrgId: text("billingOrgId")
 });
 
 export const userDomains = sqliteTable("userDomains", {

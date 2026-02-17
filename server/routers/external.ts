@@ -65,9 +65,8 @@ authenticated.use(verifySessionUserMiddleware);
 
 authenticated.get("/pick-org-defaults", org.pickOrgDefaults);
 authenticated.get("/org/checkId", org.checkId);
-if (build === "oss" || build === "enterprise") {
-    authenticated.put("/org", getUserOrgs, org.createOrg);
-}
+
+authenticated.put("/org", getUserOrgs, org.createOrg);
 
 authenticated.get("/orgs", verifyUserIsServerAdmin, org.listOrgs);
 authenticated.get("/user/:userId/orgs", verifyIsLoggedInUser, org.listUserOrgs);

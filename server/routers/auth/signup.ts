@@ -21,7 +21,6 @@ import { hashPassword } from "@server/auth/password";
 import { checkValidInvite } from "@server/auth/checkValidInvite";
 import { passwordSchema } from "@server/auth/passwordSchema";
 import { UserType } from "@server/types/UserTypes";
-import { createUserAccountOrg } from "@server/lib/createUserAccountOrg";
 import { build } from "@server/build";
 import resend, { AudienceIds, moveEmailToAudience } from "#dynamic/lib/resend";
 
@@ -197,26 +196,6 @@ export async function signup(
         //     actionId: ActionsEnum.createOrg,
         //     orgId: null,
         // });
-
-        if (build == "saas") {
-            const { success, error, org } = await createUserAccountOrg(
-                userId,
-                email
-            );
-            if (!success) {
-                if (error) {
-                    return next(
-                        createHttpError(HttpCode.INTERNAL_SERVER_ERROR, error)
-                    );
-                }
-                return next(
-                    createHttpError(
-                        HttpCode.INTERNAL_SERVER_ERROR,
-                        "Failed to create user account and organization"
-                    )
-                );
-            }
-        }
 
         const token = generateSessionToken();
         const sess = await createSession(token, userId);
