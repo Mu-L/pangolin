@@ -145,10 +145,10 @@ export async function createOrg(
                 .from(domains)
                 .where(eq(domains.configManaged, true));
 
-            // Generate SSH CA keys for the org
-            const ca = generateCA(`${orgId}-ca`);
-            const encryptionKey = config.getRawConfig().server.secret!;
-            const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
+            // // Generate SSH CA keys for the org
+            // const ca = generateCA(`${orgId}-ca`);
+            // const encryptionKey = config.getRawConfig().server.secret!;
+            // const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
 
             const newOrg = await trx
                 .insert(orgs)
@@ -158,8 +158,8 @@ export async function createOrg(
                     subnet,
                     utilitySubnet,
                     createdAt: new Date().toISOString(),
-                    sshCaPrivateKey: encryptedCaPrivateKey,
-                    sshCaPublicKey: ca.publicKeyOpenSSH
+                    // sshCaPrivateKey: encryptedCaPrivateKey,
+                    // sshCaPublicKey: ca.publicKeyOpenSSH
                 })
                 .returning();
 

@@ -82,9 +82,9 @@ export async function createUserAccountOrg(
         const utilitySubnet = config.getRawConfig().orgs.utility_subnet_group;
 
         // Generate SSH CA keys for the org
-        const ca = generateCA(`${orgId}-ca`);
-        const encryptionKey = config.getRawConfig().server.secret!;
-        const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
+        // const ca = generateCA(`${orgId}-ca`);
+        // const encryptionKey = config.getRawConfig().server.secret!;
+        // const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
 
         const newOrg = await trx
             .insert(orgs)
@@ -95,8 +95,8 @@ export async function createUserAccountOrg(
                 subnet: "100.90.128.0/24", // TODO: this should not be hardcoded - or can it be the same in all orgs?
                 utilitySubnet: utilitySubnet,
                 createdAt: new Date().toISOString(),
-                sshCaPrivateKey: encryptedCaPrivateKey,
-                sshCaPublicKey: ca.publicKeyOpenSSH
+                // sshCaPrivateKey: encryptedCaPrivateKey,
+                // sshCaPublicKey: ca.publicKeyOpenSSH
             })
             .returning();
 
