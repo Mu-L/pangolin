@@ -16,6 +16,7 @@ import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { assignUserToOrg } from "@server/lib/userOrg";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -220,15 +221,12 @@ export async function createOrgUser(
                         );
                     }
 
-                    await trx
-                        .insert(userOrgs)
-                        .values({
-                            orgId,
-                            userId: existingUser.userId,
-                            roleId: role.roleId,
-                            autoProvisioned: false
-                        })
-                        .returning();
+                    await assignUserToOrg(org, {
+                        orgId,
+                        userId: existingUser.userId,
+                        roleId: role.roleId,
+                        autoProvisioned: false
+                    }, trx);
                 } else {
                     userId = generateId(15);
 
@@ -246,47 +244,15 @@ export async function createOrgUser(
                         })
                         .returning();
 
-                    await trx
-                        .insert(userOrgs)
-                        .values({
+                        await assignUserToOrg(org, {
                             orgId,
                             userId: newUser.userId,
                             roleId: role.roleId,
                             autoProvisioned: false
-                        })
-                        .returning();
+                        }, trx);
                 }
 
                 await calculateUserClientsForOrgs(userId, trx);
-
-                // calculate if the user is in any other of the orgs before we count it as an add to the billing org
-                if (org.billingOrgId) {
-                    const otherBillingOrgs = await trx
-                        .select()
-                        .from(orgs)
-                        .where(
-                            and(
-                                eq(orgs.billingOrgId, org.billingOrgId),
-                                ne(orgs.orgId, orgId)
-                            )
-                        );
-
-                    const billingOrgIds = otherBillingOrgs.map((o) => o.orgId);
-
-                    const orgsInBillingDomainThatTheUserIsStillIn = await trx
-                        .select()
-                        .from(userOrgs)
-                        .where(
-                            and(
-                                eq(userOrgs.userId, userId),
-                                inArray(userOrgs.orgId, billingOrgIds)
-                            )
-                        );
-
-                    if (orgsInBillingDomainThatTheUserIsStillIn.length === 0) {
-                        await usageService.add(orgId, FeatureId.USERS, 1, trx);
-                    }
-                }
             });
         } else {
             return next(

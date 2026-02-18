@@ -22,6 +22,7 @@ import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
 import { UserType } from "@server/types/UserTypes";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { removeUserFromOrg } from "@server/lib/userOrg";
 
 const removeUserSchema = z.strictObject({
     userId: z.string(),
@@ -89,68 +90,7 @@ export async function removeUserOrg(
         }
 
         await db.transaction(async (trx) => {
-            await trx
-                .delete(userOrgs)
-                .where(
-                    and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId))
-                );
-
-            await db.delete(userResources).where(
-                and(
-                    eq(userResources.userId, userId),
-                    exists(
-                        db
-                            .select()
-                            .from(resources)
-                            .where(
-                                and(
-                                    eq(
-                                        resources.resourceId,
-                                        userResources.resourceId
-                                    ),
-                                    eq(resources.orgId, orgId)
-                                )
-                            )
-                    )
-                )
-            );
-
-            await db.delete(userSiteResources).where(
-                and(
-                    eq(userSiteResources.userId, userId),
-                    exists(
-                        db
-                            .select()
-                            .from(siteResources)
-                            .where(
-                                and(
-                                    eq(
-                                        siteResources.siteResourceId,
-                                        userSiteResources.siteResourceId
-                                    ),
-                                    eq(siteResources.orgId, orgId)
-                                )
-                            )
-                    )
-                )
-            );
-
-            await db.delete(userSites).where(
-                and(
-                    eq(userSites.userId, userId),
-                    exists(
-                        db
-                            .select()
-                            .from(sites)
-                            .where(
-                                and(
-                                    eq(sites.siteId, userSites.siteId),
-                                    eq(sites.orgId, orgId)
-                                )
-                            )
-                    )
-                )
-            );
+            await removeUserFromOrg(org, userId, trx);
 
             // if (build === "saas") {
             //     const [rootUser] = await trx
@@ -170,30 +110,6 @@ export async function removeUserOrg(
             // }
 
             await calculateUserClientsForOrgs(userId, trx);
-
-            // calculate if the user is in any other of the orgs before we count it as an remove to the billing org
-            if (org.billingOrgId) {
-                const billingOrgs = await trx
-                    .select()
-                    .from(orgs)
-                    .where(eq(orgs.billingOrgId, org.billingOrgId));
-
-                const billingOrgIds = billingOrgs.map((o) => o.orgId);
-
-                const orgsInBillingDomainThatTheUserIsStillIn = await trx
-                    .select()
-                    .from(userOrgs)
-                    .where(
-                        and(
-                            eq(userOrgs.userId, userId),
-                            inArray(userOrgs.orgId, billingOrgIds)
-                        )
-                    );
-
-                if (orgsInBillingDomainThatTheUserIsStillIn.length === 0) {
-                    await usageService.add(orgId, FeatureId.USERS, -1, trx);
-                }
-            }
         });
 
         return response(res, {
