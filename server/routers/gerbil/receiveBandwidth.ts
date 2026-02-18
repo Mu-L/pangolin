@@ -197,7 +197,6 @@ export async function updateSiteBandwidth(
                         usageService
                             .checkLimitSet(
                                 orgId,
-
                                 FeatureId.EGRESS_DATA_MB,
                                 bandwidthUsage
                             )
