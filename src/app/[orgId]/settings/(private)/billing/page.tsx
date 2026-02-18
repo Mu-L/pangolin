@@ -768,7 +768,7 @@ export default function BillingPage() {
                             <div className="text-sm text-muted-foreground mb-3">
                                 {t("billingMaximumLimits") || "Maximum Limits"}
                             </div>
-                            <InfoSections cols={4}>
+                            <InfoSections cols={5}>
                                 <InfoSection>
                                     <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingUsers") || "Users"}
@@ -888,7 +888,7 @@ export default function BillingPage() {
                                                             t("billingUnlimited") ??
                                                             "∞"}{" "}
                                                         {getLimitValue(ORGINIZATIONS) !==
-                                                            null && "organizations"}
+                                                            null && "orgs"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
@@ -901,7 +901,7 @@ export default function BillingPage() {
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
                                                 {getLimitValue(ORGINIZATIONS) !==
-                                                    null && "organizations"}
+                                                    null && "orgs"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -923,7 +923,7 @@ export default function BillingPage() {
                                                             t("billingUnlimited") ??
                                                             "∞"}{" "}
                                                         {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                            null && "remote nodes"}
+                                                            null && "nodes"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
@@ -936,7 +936,7 @@ export default function BillingPage() {
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
                                                 {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                    null && "remote nodes"}
+                                                    null && "nodes"}
                                             </>
                                         )}
                                     </InfoSectionContent>

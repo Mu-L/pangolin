@@ -130,17 +130,21 @@ export class UsageService {
                 featureId,
                 orgId,
                 meterId,
-                instantaneousValue: value,
-                latestValue: value,
+                instantaneousValue: value || 0,
+                latestValue: value || 0,
                 updatedAt: Math.floor(Date.now() / 1000)
             })
             .onConflictDoUpdate({
                 target: usage.usageId,
                 set: {
-                    instantaneousValue: sql`${usage.instantaneousValue} + ${value}`
+                    instantaneousValue: sql`COALESCE(${usage.instantaneousValue}, 0) + ${value}`
                 }
             })
             .returning();
+
+        logger.debug(
+            `Added usage for org ${orgId} feature ${featureId}: +${value}, new instantaneousValue: ${returnUsage.instantaneousValue}`
+        );
 
         return returnUsage;
     }

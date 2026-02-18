@@ -171,16 +171,7 @@ export async function createOrg(
             }
         }
 
-        if (build == "saas") {
-            if (!billingOrgIdForNewOrg) {
-                return next(
-                    createHttpError(
-                        HttpCode.INTERNAL_SERVER_ERROR,
-                        "Billing org not found for user. Cannot create new organization."
-                    )
-                );
-            }
-
+        if (build == "saas" && billingOrgIdForNewOrg) {
             const usage = await usageService.getUsage(billingOrgIdForNewOrg, FeatureId.ORGINIZATIONS);
             if (!usage) {
                 return next(

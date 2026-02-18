@@ -1428,6 +1428,7 @@
     "billingSites": "Sites",
     "billingUsers": "Users",
     "billingDomains": "Domains",
+    "billingOrganizations": "Orgs",
     "billingRemoteExitNodes": "Remote Nodes",
     "billingNoLimitConfigured": "No limit configured",
     "billingEstimatedPeriod": "Estimated Billing Period",

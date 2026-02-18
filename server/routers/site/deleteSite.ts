@@ -100,6 +100,8 @@ export async function deleteSite(
                 }
             }
 
+            await trx.delete(sites).where(eq(sites.siteId, siteId));
+
             await usageService.add(site.orgId, FeatureId.SITES, -1, trx);
         });
 
