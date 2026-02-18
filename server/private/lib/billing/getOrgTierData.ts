@@ -78,7 +78,8 @@ export async function getOrgTierData(
             if (
                 subscription.type === "tier1" ||
                 subscription.type === "tier2" ||
-                subscription.type === "tier3"
+                subscription.type === "tier3" ||
+                subscription.type === "enterprise"
             ) {
                 tier = subscription.type;
                 active = true;
