@@ -55,7 +55,9 @@ export const orgs = pgTable("orgs", {
         .notNull()
         .default(0),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
-    sshCaPublicKey: text("sshCaPublicKey") // SSH CA public key (OpenSSH format)
+    sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
+    isBillingOrg: boolean("isBillingOrg"),
+    billingOrgId: varchar("billingOrgId")
 });
 
 export const orgDomains = pgTable("orgDomains", {

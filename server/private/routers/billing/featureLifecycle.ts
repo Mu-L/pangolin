@@ -15,7 +15,18 @@ import { SubscriptionType } from "./hooks/getSubType";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { Tier } from "@server/types/Tiers";
 import logger from "@server/logger";
-import { db, idp, idpOrg, loginPage, loginPageBranding, loginPageBrandingOrg, loginPageOrg, orgs, resources, roles } from "@server/db";
+import {
+    db,
+    idp,
+    idpOrg,
+    loginPage,
+    loginPageBranding,
+    loginPageBrandingOrg,
+    loginPageOrg,
+    orgs,
+    resources,
+    roles
+} from "@server/db";
 import { eq } from "drizzle-orm";
 
 /**
@@ -59,10 +70,7 @@ async function capRetentionDays(
     }
 
     // Get current org settings
-    const [org] = await db
-        .select()
-        .from(orgs)
-        .where(eq(orgs.orgId, orgId));
+    const [org] = await db.select().from(orgs).where(eq(orgs.orgId, orgId));
 
     if (!org) {
         logger.warn(`Org ${orgId} not found when capping retention days`);
@@ -110,22 +118,46 @@ async function capRetentionDays(
 
     // Apply updates if needed
     if (needsUpdate) {
-        await db
-            .update(orgs)
-            .set(updates)
-            .where(eq(orgs.orgId, orgId));
+        await db.update(orgs).set(updates).where(eq(orgs.orgId, orgId));
 
         logger.info(
             `Successfully capped retention days for org ${orgId} to max ${maxRetentionDays} days`
         );
     } else {
-        logger.debug(
-            `No retention day capping needed for org ${orgId}`
-        );
+        logger.debug(`No retention day capping needed for org ${orgId}`);
     }
 }
 
 export async function handleTierChange(
+    orgId: string,
+    newTier: SubscriptionType | null,
+    previousTier?: SubscriptionType | null
+): Promise<void> {
+    logger.info(
+        `Handling tier change for org ${orgId}: ${previousTier || "none"} -> ${newTier || "free"}`
+    );
+
+    // Get all orgs that have this orgId as their billingOrgId
+    const associatedOrgs = await db
+        .select()
+        .from(orgs)
+        .where(eq(orgs.billingOrgId, orgId));
+
+    logger.info(
+        `Found ${associatedOrgs.length} org(s) associated with billing org ${orgId}`
+    );
+
+    // Loop over all associated orgs and apply tier changes
+    for (const org of associatedOrgs) {
+        await handleTierChangeForOrg(org.orgId, newTier, previousTier);
+    }
+
+    logger.info(
+        `Completed tier change handling for all orgs associated with billing org ${orgId}`
+    );
+}
+
+async function handleTierChangeForOrg(
     orgId: string,
     newTier: SubscriptionType | null,
     previousTier?: SubscriptionType | null
@@ -314,9 +346,7 @@ async function disableLoginPageDomain(orgId: string): Promise<void> {
         );
 
     if (existingLoginPage) {
-        await db
-            .delete(loginPageOrg)
-            .where(eq(loginPageOrg.orgId, orgId));
+        await db.delete(loginPageOrg).where(eq(loginPageOrg.orgId, orgId));
 
         await db
             .delete(loginPage)

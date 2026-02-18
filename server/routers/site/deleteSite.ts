@@ -64,7 +64,6 @@ export async function deleteSite(
         }
 
         let deletedNewtId: string | null = null;
-        let numSites: Site[] | undefined;
 
         await db.transaction(async (trx) => {
             if (site.type == "wireguard") {
@@ -103,19 +102,9 @@ export async function deleteSite(
 
             await trx.delete(sites).where(eq(sites.siteId, siteId));
 
-            numSites = await trx
-                .select()
-                .from(sites)
-                .where(eq(sites.orgId, site.orgId));
+            await usageService.add(site.orgId, FeatureId.SITES, -1, trx);
         });
 
-        if (numSites) {
-            await usageService.updateCount(
-                site.orgId,
-                FeatureId.SITES,
-                numSites.length
-            );
-        }
         // Send termination message outside of transaction to prevent blocking
         if (deletedNewtId) {
             const payload = {

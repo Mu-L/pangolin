@@ -148,7 +148,6 @@ export async function createOrgDomain(
             }
         }
 
-        let numOrgDomains: OrgDomains[] | undefined;
         let aRecords: CreateDomainResponse["aRecords"];
         let cnameRecords: CreateDomainResponse["cnameRecords"];
         let txtRecords: CreateDomainResponse["txtRecords"];
@@ -347,19 +346,8 @@ export async function createOrgDomain(
                 await trx.insert(dnsRecords).values(recordsToInsert);
             }
 
-            numOrgDomains = await trx
-                .select()
-                .from(orgDomains)
-                .where(eq(orgDomains.orgId, orgId));
+            await usageService.add(orgId, FeatureId.DOMAINS, 1, trx);
         });
-
-        if (numOrgDomains) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.DOMAINS,
-                numOrgDomains.length
-            );
-        }
 
         if (!returned) {
             return next(

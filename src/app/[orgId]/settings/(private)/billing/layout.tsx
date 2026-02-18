@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getCachedOrgUser } from "@app/lib/api/getCachedOrgUser";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";
+import { build } from "@server/build";
 
 type BillingSettingsProps = {
     children: React.ReactNode;
@@ -17,6 +18,9 @@ export default async function BillingSettingsPage({
     params
 }: BillingSettingsProps) {
     const { orgId } = await params;
+    if (build !== "saas") {
+        redirect(`/${orgId}/settings`);
+    }
 
     const user = await verifySession();
 
@@ -37,6 +41,10 @@ export default async function BillingSettingsPage({
         const res = await getCachedOrg(orgId);
         org = res.data.data;
     } catch {
+        redirect(`/${orgId}`);
+    }
+
+    if (!(org?.org?.isBillingOrg && orgUser?.isOwner)) {
         redirect(`/${orgId}`);
     }
 

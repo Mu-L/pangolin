@@ -7,18 +7,12 @@ export type LimitSet = Partial<{
     };
 }>;
 
-export const sandboxLimitSet: LimitSet = {
-    [FeatureId.USERS]: { value: 1, description: "Sandbox limit" },
-    [FeatureId.SITES]: { value: 1, description: "Sandbox limit" },
-    [FeatureId.DOMAINS]: { value: 0, description: "Sandbox limit" },
-    [FeatureId.REMOTE_EXIT_NODES]: { value: 0, description: "Sandbox limit" },
-};
-
 export const freeLimitSet: LimitSet = {
     [FeatureId.SITES]: { value: 5, description: "Basic limit" },
     [FeatureId.USERS]: { value: 5, description: "Basic limit" },
     [FeatureId.DOMAINS]: { value: 5, description: "Basic limit" },
     [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Basic limit" },
+    [FeatureId.ORGINIZATIONS]: { value: 1, description: "Basic limit" },
 };
 
 export const tier1LimitSet: LimitSet = {
@@ -26,6 +20,7 @@ export const tier1LimitSet: LimitSet = {
     [FeatureId.SITES]: { value: 10, description: "Home limit" },
     [FeatureId.DOMAINS]: { value: 10, description: "Home limit" },
     [FeatureId.REMOTE_EXIT_NODES]: { value: 1, description: "Home limit" },
+    [FeatureId.ORGINIZATIONS]: { value: 1, description: "Home limit" },
 };
 
 export const tier2LimitSet: LimitSet = {
@@ -45,6 +40,10 @@ export const tier2LimitSet: LimitSet = {
         value: 3,
         description: "Team limit"
     },
+    [FeatureId.ORGINIZATIONS]: {
+        value: 1,
+        description: "Team limit"
+    }
 };
 
 export const tier3LimitSet: LimitSet = {
@@ -62,6 +61,10 @@ export const tier3LimitSet: LimitSet = {
     },
     [FeatureId.REMOTE_EXIT_NODES]: {
         value: 20,
+        description: "Business limit"
+    },
+    [FeatureId.ORGINIZATIONS]: {
+        value: 5,
         description: "Business limit"
     },
 };

@@ -8,7 +8,10 @@ import {
     userOrgs,
     resourcePassword,
     resourcePincode,
-    resourceWhitelist
+    resourceWhitelist,
+    siteResources,
+    userSiteResources,
+    roleSiteResources
 } from "@server/db";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
@@ -57,9 +60,21 @@ export async function getUserResources(
             .from(roleResources)
             .where(eq(roleResources.roleId, userRoleId));
 
-        const [directResources, roleResourceResults] = await Promise.all([
+        const directSiteResourcesQuery = db
+            .select({ siteResourceId: userSiteResources.siteResourceId })
+            .from(userSiteResources)
+            .where(eq(userSiteResources.userId, userId));
+
+        const roleSiteResourcesQuery = db
+            .select({ siteResourceId: roleSiteResources.siteResourceId })
+            .from(roleSiteResources)
+            .where(eq(roleSiteResources.roleId, userRoleId));
+
+        const [directResources, roleResourceResults, directSiteResourceResults, roleSiteResourceResults] = await Promise.all([
             directResourcesQuery,
-            roleResourcesQuery
+            roleResourcesQuery,
+            directSiteResourcesQuery,
+            roleSiteResourcesQuery
         ]);
 
         // Combine all accessible resource IDs
@@ -68,18 +83,25 @@ export async function getUserResources(
             ...roleResourceResults.map((r) => r.resourceId)
         ];
 
-        if (accessibleResourceIds.length === 0) {
-            return response(res, {
-                data: { resources: [] },
-                success: true,
-                error: false,
-                message: "No resources found",
-                status: HttpCode.OK
-            });
-        }
+        // Combine all accessible site resource IDs
+        const accessibleSiteResourceIds = [
+            ...directSiteResourceResults.map((r) => r.siteResourceId),
+            ...roleSiteResourceResults.map((r) => r.siteResourceId)
+        ];
 
         // Get resource details for accessible resources
-        const resourcesData = await db
+        let resourcesData: Array<{
+            resourceId: number;
+            name: string;
+            fullDomain: string | null;
+            ssl: boolean;
+            enabled: boolean;
+            sso: boolean;
+            protocol: string;
+            emailWhitelistEnabled: boolean;
+        }> = [];
+        if (accessibleResourceIds.length > 0) {
+            resourcesData = await db
             .select({
                 resourceId: resources.resourceId,
                 name: resources.name,
@@ -98,6 +120,40 @@ export async function getUserResources(
                     eq(resources.enabled, true)
                 )
             );
+        }
+
+        // Get site resource details for accessible site resources
+        let siteResourcesData: Array<{
+            siteResourceId: number;
+            name: string;
+            destination: string;
+            mode: string;
+            protocol: string | null;
+            enabled: boolean;
+            alias: string | null;
+            aliasAddress: string | null;
+        }> = [];
+        if (accessibleSiteResourceIds.length > 0) {
+            siteResourcesData = await db
+                .select({
+                    siteResourceId: siteResources.siteResourceId,
+                    name: siteResources.name,
+                    destination: siteResources.destination,
+                    mode: siteResources.mode,
+                    protocol: siteResources.protocol,
+                    enabled: siteResources.enabled,
+                    alias: siteResources.alias,
+                    aliasAddress: siteResources.aliasAddress
+                })
+                .from(siteResources)
+                .where(
+                    and(
+                        inArray(siteResources.siteResourceId, accessibleSiteResourceIds),
+                        eq(siteResources.orgId, orgId),
+                        eq(siteResources.enabled, true)
+                    )
+                );
+        }
 
         // Check for password, pincode, and whitelist protection for each resource
         const resourcesWithAuth = await Promise.all(
@@ -161,8 +217,26 @@ export async function getUserResources(
             })
         );
 
+        // Format site resources
+        const siteResourcesFormatted = siteResourcesData.map((siteResource) => {
+            return {
+                siteResourceId: siteResource.siteResourceId,
+                name: siteResource.name,
+                destination: siteResource.destination,
+                mode: siteResource.mode,
+                protocol: siteResource.protocol,
+                enabled: siteResource.enabled,
+                alias: siteResource.alias,
+                aliasAddress: siteResource.aliasAddress,
+                type: 'site' as const
+            };
+        });
+
         return response(res, {
-            data: { resources: resourcesWithAuth },
+            data: { 
+                resources: resourcesWithAuth,
+                siteResources: siteResourcesFormatted
+            },
             success: true,
             error: false,
             message: "User resources retrieved successfully",
@@ -189,6 +263,17 @@ export type GetUserResourcesResponse = {
             enabled: boolean;
             protected: boolean;
             protocol: string;
+        }>;
+        siteResources: Array<{
+            siteResourceId: number;
+            name: string;
+            destination: string;
+            mode: string;
+            protocol: string | null;
+            enabled: boolean;
+            alias: string | null;
+            aliasAddress: string | null;
+            type: 'site';
         }>;
     };
 };

@@ -65,9 +65,8 @@ authenticated.use(verifySessionUserMiddleware);
 
 authenticated.get("/pick-org-defaults", org.pickOrgDefaults);
 authenticated.get("/org/checkId", org.checkId);
-if (build === "oss" || build === "enterprise") {
-    authenticated.put("/org", getUserOrgs, org.createOrg);
-}
+
+authenticated.put("/org", getUserOrgs, org.createOrg);
 
 authenticated.get("/orgs", verifyUserIsServerAdmin, org.listOrgs);
 authenticated.get("/user/:userId/orgs", verifyIsLoggedInUser, org.listUserOrgs);
@@ -87,16 +86,14 @@ authenticated.post(
     org.updateOrg
 );
 
-if (build !== "saas") {
-    authenticated.delete(
-        "/org/:orgId",
-        verifyOrgAccess,
-        verifyUserIsOrgOwner,
-        verifyUserHasAction(ActionsEnum.deleteOrg),
-        logActionAudit(ActionsEnum.deleteOrg),
-        org.deleteOrg
-    );
-}
+authenticated.delete(
+    "/org/:orgId",
+    verifyOrgAccess,
+    verifyUserIsOrgOwner,
+    verifyUserHasAction(ActionsEnum.deleteOrg),
+    logActionAudit(ActionsEnum.deleteOrg),
+    org.deleteOrg
+);
 
 authenticated.put(
     "/org/:orgId/site",
