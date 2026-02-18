@@ -14,6 +14,7 @@ import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { build } from "@server/build";
+import { assignUserToOrg } from "@server/lib/userOrg";
 
 const acceptInviteBodySchema = z.strictObject({
     token: z.string(),
@@ -160,12 +161,15 @@ export async function acceptInvite(
         }
 
         await db.transaction(async (trx) => {
-            // add the user to the org
-            await trx.insert(userOrgs).values({
-                userId: existingUser[0].userId,
-                orgId: existingInvite.orgId,
-                roleId: existingInvite.roleId
-            });
+            await assignUserToOrg(
+                org,
+                {
+                    userId: existingUser[0].userId,
+                    orgId: existingInvite.orgId,
+                    roleId: existingInvite.roleId
+                },
+                trx
+            );
 
             // delete the invite
             await trx
@@ -173,40 +177,6 @@ export async function acceptInvite(
                 .where(eq(userInvites.inviteId, inviteId));
 
             await calculateUserClientsForOrgs(existingUser[0].userId, trx);
-
-            // calculate if the user is in any other of the orgs before we count it as an add to the billing org
-            if (org.billingOrgId) {
-                const otherBillingOrgs = await trx
-                    .select()
-                    .from(orgs)
-                    .where(
-                        and(
-                            eq(orgs.billingOrgId, org.billingOrgId),
-                            ne(orgs.orgId, existingInvite.orgId)
-                        )
-                    );
-
-                const billingOrgIds = otherBillingOrgs.map((o) => o.orgId);
-
-                const orgsInBillingDomainThatTheUserIsStillIn = await trx
-                    .select()
-                    .from(userOrgs)
-                    .where(
-                        and(
-                            eq(userOrgs.userId, existingUser[0].userId),
-                            inArray(userOrgs.orgId, billingOrgIds)
-                        )
-                    );
-
-                if (orgsInBillingDomainThatTheUserIsStillIn.length === 0) {
-                    await usageService.add(
-                        existingInvite.orgId,
-                        FeatureId.USERS,
-                        1,
-                        trx
-                    );
-                }
-            }
 
             logger.debug(
                 `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}`
