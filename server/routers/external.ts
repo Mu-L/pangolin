@@ -42,7 +42,8 @@ import {
     verifyUserIsOrgOwner,
     verifySiteResourceAccess,
     verifyOlmAccess,
-    verifyLimits
+    verifyLimits,
+    verifyResourcePolicyAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -674,6 +675,39 @@ authenticated.post(
     verifyUserHasAction(ActionsEnum.setResourceUsers),
     logActionAudit(ActionsEnum.setResourceUsers),
     resource.setResourceUsers
+);
+
+authenticated.get(
+    "/resource-policy/:resourcePolicyId/roles",
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.listResourcePolicyRoles),
+    resource.listResourcePolicyRoles
+);
+
+authenticated.get(
+    "/resource-policy/:resourcePolicyId/users",
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.listResourcePolicyUsers),
+    resource.listResourcePolicyUsers
+);
+
+authenticated.post(
+    "/resource-policy/:resourcePolicyId/roles",
+    verifyResourcePolicyAccess,
+    verifyRoleAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
+    logActionAudit(ActionsEnum.setResourcePolicyRoles),
+    resource.setResourcePolicyRoles
+);
+
+authenticated.post(
+    "/resource-policy/:resourcePolicyId/users",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
+    logActionAudit(ActionsEnum.setResourcePolicyUsers),
+    resource.setResourcePolicyUsers
 );
 
 authenticated.post(
