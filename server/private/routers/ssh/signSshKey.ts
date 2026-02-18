@@ -139,7 +139,7 @@ export async function signSshKey(
         if (!userOrg.pamUsername) {
             if (req.user?.email) {
                 // Extract username from email (first part before @)
-                usernameToUse = req.user?.email.split("@")[0];
+                usernameToUse = req.user?.email.split("@")[0].replace(/[^a-zA-Z0-9_-]/g, "");
                 if (!usernameToUse) {
                     return next(
                         createHttpError(
