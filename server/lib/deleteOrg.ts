@@ -85,7 +85,9 @@ export async function deleteOrgById(
                         deletedNewtIds.push(deletedNewt.newtId);
                         await trx
                             .delete(newtSessions)
-                            .where(eq(newtSessions.newtId, deletedNewt.newtId));
+                            .where(
+                                eq(newtSessions.newtId, deletedNewt.newtId)
+                            );
                     }
                 }
             }
@@ -229,13 +231,15 @@ export function sendTerminationMessages(result: DeleteOrgByIdResult): void {
         );
     }
     for (const olmId of result.olmsToTerminate) {
-        sendTerminateClient(0, OlmErrorCodes.TERMINATED_REKEYED, olmId).catch(
-            (error) => {
-                logger.error(
-                    "Failed to send termination message to olm:",
-                    error
-                );
-            }
-        );
+        sendTerminateClient(
+            0,
+            OlmErrorCodes.TERMINATED_REKEYED,
+            olmId
+        ).catch((error) => {
+            logger.error(
+                "Failed to send termination message to olm:",
+                error
+            );
+        });
     }
 }

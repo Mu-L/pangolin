@@ -15,10 +15,13 @@ import {
 import { verifyPassword } from "@server/auth/password";
 import { verifyTotpCode } from "@server/auth/totp";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
-import { deleteOrgById, sendTerminationMessages } from "@server/lib/deleteOrg";
-import { UserType } from "@server/types/UserTypes";
 import { build } from "@server/build";
 import { getOrgTierData } from "#dynamic/lib/billing";
+import {
+    deleteOrgById,
+    sendTerminationMessages
+} from "@server/lib/deleteOrg";
+import { UserType } from "@server/types/UserTypes";
 
 const deleteMyAccountBody = z.strictObject({
     password: z.string().optional(),
@@ -230,7 +233,10 @@ export async function deleteMyAccount(
     } catch (error) {
         logger.error(error);
         return next(
-            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
+            createHttpError(
+                HttpCode.INTERNAL_SERVER_ERROR,
+                "An error occurred"
+            )
         );
     }
 }
