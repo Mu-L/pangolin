@@ -64,7 +64,7 @@ export const tier3LimitSet: LimitSet = {
         description: "Business limit"
     },
     [FeatureId.ORGINIZATIONS]: {
-        value: 20,
+        value: 5,
         description: "Business limit"
     },
 };
