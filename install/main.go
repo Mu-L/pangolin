@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
-	"crypto/rand"
-	"encoding/base64"
 	"net"
 	"net/http"
 	"net/url"
@@ -20,11 +20,17 @@ import (
 	"time"
 )
 
-// DO NOT EDIT THIS FUNCTION; IT MATCHED BY REGEX IN CICD
+// Version variables injected at build time via -ldflags
+var (
+	pangolinVersion string
+	gerbilVersion   string
+	badgerVersion   string
+)
+
 func loadVersions(config *Config) {
-	config.PangolinVersion = "replaceme"
-	config.GerbilVersion = "replaceme"
-	config.BadgerVersion = "replaceme"
+	config.PangolinVersion = pangolinVersion
+	config.GerbilVersion = gerbilVersion
+	config.BadgerVersion = badgerVersion
 }
 
 //go:embed config/*
