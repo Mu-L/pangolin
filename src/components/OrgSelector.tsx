@@ -25,7 +25,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { Check, ChevronsUpDown, Plus, Building2, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
@@ -44,6 +44,7 @@ export function OrgSelector({
     const { user } = useUserContext();
     const [open, setOpen] = useState(false);
     const router = useRouter();
+    const pathname = usePathname();
     const { env } = useEnvContext();
     const t = useTranslations();
 
@@ -141,7 +142,11 @@ export function OrgSelector({
                                     key={org.orgId}
                                     onSelect={() => {
                                         setOpen(false);
-                                        router.push(`/${org.orgId}/settings`);
+                                        const newPath = pathname.replace(
+                                            /^\/[^/]+/,
+                                            `/${org.orgId}`
+                                        );
+                                        router.push(newPath);
                                     }}
                                     className="mx-2 rounded-md"
                                 >

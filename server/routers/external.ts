@@ -86,16 +86,14 @@ authenticated.post(
     org.updateOrg
 );
 
-if (build !== "saas") {
-    authenticated.delete(
-        "/org/:orgId",
-        verifyOrgAccess,
-        verifyUserIsOrgOwner,
-        verifyUserHasAction(ActionsEnum.deleteOrg),
-        logActionAudit(ActionsEnum.deleteOrg),
-        org.deleteOrg
-    );
-}
+authenticated.delete(
+    "/org/:orgId",
+    verifyOrgAccess,
+    verifyUserIsOrgOwner,
+    verifyUserHasAction(ActionsEnum.deleteOrg),
+    logActionAudit(ActionsEnum.deleteOrg),
+    org.deleteOrg
+);
 
 authenticated.put(
     "/org/:orgId/site",
