@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, UserOrg } from "@server/db";
+import { db, orgs, UserOrg } from "@server/db";
 import { roles, userInvites, userOrgs, users } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray, ne } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -125,8 +125,22 @@ export async function acceptInvite(
             }
         }
 
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, existingInvite.orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Organization does not exist. Please contact an admin."
+                )
+            );
+        }
+
         let roleId: number;
-        let totalUsers: UserOrg[] | undefined;
         // get the role to make sure it exists
         const existingRole = await db
             .select()
@@ -160,24 +174,44 @@ export async function acceptInvite(
 
             await calculateUserClientsForOrgs(existingUser[0].userId, trx);
 
-            // Get the total number of users in the org now
-            totalUsers = await trx
-                .select()
-                .from(userOrgs)
-                .where(eq(userOrgs.orgId, existingInvite.orgId));
+            // calculate if the user is in any other of the orgs before we count it as an add to the billing org
+            if (org.billingOrgId) {
+                const otherBillingOrgs = await trx
+                    .select()
+                    .from(orgs)
+                    .where(
+                        and(
+                            eq(orgs.billingOrgId, org.billingOrgId),
+                            ne(orgs.orgId, existingInvite.orgId)
+                        )
+                    );
+
+                const billingOrgIds = otherBillingOrgs.map((o) => o.orgId);
+
+                const orgsInBillingDomainThatTheUserIsStillIn = await trx
+                    .select()
+                    .from(userOrgs)
+                    .where(
+                        and(
+                            eq(userOrgs.userId, existingUser[0].userId),
+                            inArray(userOrgs.orgId, billingOrgIds)
+                        )
+                    );
+
+                if (orgsInBillingDomainThatTheUserIsStillIn.length === 0) {
+                    await usageService.add(
+                        existingInvite.orgId,
+                        FeatureId.USERS,
+                        1,
+                        trx
+                    );
+                }
+            }
 
             logger.debug(
-                `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}. Total users in org: ${totalUsers.length}`
+                `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}`
             );
         });
-
-        if (totalUsers) {
-            await usageService.updateCount(
-                existingInvite.orgId,
-                FeatureId.USERS,
-                totalUsers.length
-            );
-        }
 
         return response<AcceptInviteResponse>(res, {
             data: { accepted: true, orgId: existingInvite.orgId },

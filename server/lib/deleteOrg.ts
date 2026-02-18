@@ -19,6 +19,8 @@ import { sendToClient } from "#dynamic/routers/ws";
 import { deletePeer } from "@server/routers/gerbil/peers";
 import { OlmErrorCodes } from "@server/routers/olm/error";
 import { sendTerminateClient } from "@server/routers/client/terminate";
+import { usageService } from "./billing/usageService";
+import { FeatureId } from "./billing";
 
 export type DeleteOrgByIdResult = {
     deletedNewtIds: string[];
@@ -74,9 +76,7 @@ export async function deleteOrgById(
                         deletedNewtIds.push(deletedNewt.newtId);
                         await trx
                             .delete(newtSessions)
-                            .where(
-                                eq(newtSessions.newtId, deletedNewt.newtId)
-                            );
+                            .where(eq(newtSessions.newtId, deletedNewt.newtId));
                     }
                 }
             }
@@ -137,6 +137,9 @@ export async function deleteOrgById(
                 .where(inArray(domains.domainId, domainIdsToDelete));
         }
         await trx.delete(resources).where(eq(resources.orgId, orgId));
+
+        await usageService.add(orgId, FeatureId.ORGINIZATIONS, -1, trx); // here we are decreasing the org count BEFORE deleting the org because we need to still be able to get the org to get the billing org inside of here
+
         await trx.delete(orgs).where(eq(orgs.orgId, orgId));
     });
 
@@ -155,15 +158,13 @@ export function sendTerminationMessages(result: DeleteOrgByIdResult): void {
         );
     }
     for (const olmId of result.olmsToTerminate) {
-        sendTerminateClient(
-            0,
-            OlmErrorCodes.TERMINATED_REKEYED,
-            olmId
-        ).catch((error) => {
-            logger.error(
-                "Failed to send termination message to olm:",
-                error
-            );
-        });
+        sendTerminateClient(0, OlmErrorCodes.TERMINATED_REKEYED, olmId).catch(
+            (error) => {
+                logger.error(
+                    "Failed to send termination message to olm:",
+                    error
+                );
+            }
+        );
     }
 }

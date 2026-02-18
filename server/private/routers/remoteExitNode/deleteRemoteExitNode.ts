@@ -13,9 +13,9 @@
 
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { db, ExitNodeOrg, exitNodeOrgs, exitNodes } from "@server/db";
+import { db, ExitNodeOrg, exitNodeOrgs, exitNodes, orgs } from "@server/db";
 import { remoteExitNodes } from "@server/db";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -50,7 +50,8 @@ export async function deleteRemoteExitNode(
         const [remoteExitNode] = await db
             .select()
             .from(remoteExitNodes)
-            .where(eq(remoteExitNodes.remoteExitNodeId, remoteExitNodeId));
+            .where(eq(remoteExitNodes.remoteExitNodeId, remoteExitNodeId))
+            .limit(1);
 
         if (!remoteExitNode) {
             return next(
@@ -70,7 +71,17 @@ export async function deleteRemoteExitNode(
             );
         }
 
-        let numExitNodeOrgs: ExitNodeOrg[] | undefined;
+        const [org] = await db.select().from(orgs).where(eq(orgs.orgId, orgId));
+
+        if (!org) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Org with ID ${orgId} not found`
+                )
+            );
+        }
+
         await db.transaction(async (trx) => {
             await trx
                 .delete(exitNodeOrgs)
@@ -81,37 +92,38 @@ export async function deleteRemoteExitNode(
                     )
                 );
 
-            const [remainingExitNodeOrgs] = await trx
-                .select({ count: count() })
-                .from(exitNodeOrgs)
-                .where(eq(exitNodeOrgs.exitNodeId, remoteExitNode.exitNodeId!));
+            // calculate if the user is in any other of the orgs before we count it as an remove to the billing org
+            if (org.billingOrgId) {
+                const otherBillingOrgs = await trx
+                    .select()
+                    .from(orgs)
+                    .where(eq(orgs.billingOrgId, org.billingOrgId));
 
-            if (remainingExitNodeOrgs.count === 0) {
-                await trx
-                    .delete(remoteExitNodes)
+                const billingOrgIds = otherBillingOrgs.map((o) => o.orgId);
+
+                const orgsInBillingDomainThatTheNodeIsStillIn = await trx
+                    .select()
+                    .from(exitNodeOrgs)
                     .where(
-                        eq(remoteExitNodes.remoteExitNodeId, remoteExitNodeId)
+                        and(
+                            eq(
+                                exitNodeOrgs.exitNodeId,
+                                remoteExitNode.exitNodeId!
+                            ),
+                            inArray(exitNodeOrgs.orgId, billingOrgIds)
+                        )
                     );
-                await trx
-                    .delete(exitNodes)
-                    .where(
-                        eq(exitNodes.exitNodeId, remoteExitNode.exitNodeId!)
+
+                if (orgsInBillingDomainThatTheNodeIsStillIn.length === 0) {
+                    await usageService.add(
+                        orgId,
+                        FeatureId.REMOTE_EXIT_NODES,
+                        -1,
+                        trx
                     );
+                }
             }
-
-            numExitNodeOrgs = await trx
-                .select()
-                .from(exitNodeOrgs)
-                .where(eq(exitNodeOrgs.orgId, orgId));
         });
-
-        if (numExitNodeOrgs) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.REMOTE_EXIT_NODES,
-                numExitNodeOrgs.length
-            );
-        }
 
         return response(res, {
             data: null,

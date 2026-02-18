@@ -1,8 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, resources, sites, UserOrg } from "@server/db";
+import {
+    db,
+    orgs,
+    resources,
+    siteResources,
+    sites,
+    UserOrg,
+    userSiteResources
+} from "@server/db";
 import { userOrgs, userResources, users, userSites } from "@server/db";
-import { and, count, eq, exists } from "drizzle-orm";
+import { and, count, eq, exists, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -50,16 +58,16 @@ export async function removeUserOrg(
         const { userId, orgId } = parsedParams.data;
 
         // get the user first
-        const user = await db
+        const [user] = await db
             .select()
             .from(userOrgs)
             .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)));
 
-        if (!user || user.length === 0) {
+        if (!user) {
             return next(createHttpError(HttpCode.NOT_FOUND, "User not found"));
         }
 
-        if (user[0].isOwner) {
+        if (user.isOwner) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
@@ -68,7 +76,17 @@ export async function removeUserOrg(
             );
         }
 
-        let userCount: UserOrg[] | undefined;
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Organization not found")
+            );
+        }
 
         await db.transaction(async (trx) => {
             await trx
@@ -97,6 +115,26 @@ export async function removeUserOrg(
                 )
             );
 
+            await db.delete(userSiteResources).where(
+                and(
+                    eq(userSiteResources.userId, userId),
+                    exists(
+                        db
+                            .select()
+                            .from(siteResources)
+                            .where(
+                                and(
+                                    eq(
+                                        siteResources.siteResourceId,
+                                        userSiteResources.siteResourceId
+                                    ),
+                                    eq(siteResources.orgId, orgId)
+                                )
+                            )
+                    )
+                )
+            );
+
             await db.delete(userSites).where(
                 and(
                     eq(userSites.userId, userId),
@@ -113,11 +151,6 @@ export async function removeUserOrg(
                     )
                 )
             );
-
-            userCount = await trx
-                .select()
-                .from(userOrgs)
-                .where(eq(userOrgs.orgId, orgId));
 
             // if (build === "saas") {
             //     const [rootUser] = await trx
@@ -137,15 +170,31 @@ export async function removeUserOrg(
             // }
 
             await calculateUserClientsForOrgs(userId, trx);
-        });
 
-        if (userCount) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.USERS,
-                userCount.length
-            );
-        }
+            // calculate if the user is in any other of the orgs before we count it as an remove to the billing org
+            if (org.billingOrgId) {
+                const billingOrgs = await trx
+                    .select()
+                    .from(orgs)
+                    .where(eq(orgs.billingOrgId, org.billingOrgId));
+
+                const billingOrgIds = billingOrgs.map((o) => o.orgId);
+
+                const orgsInBillingDomainThatTheUserIsStillIn = await trx
+                    .select()
+                    .from(userOrgs)
+                    .where(
+                        and(
+                            eq(userOrgs.userId, userId),
+                            inArray(userOrgs.orgId, billingOrgIds)
+                        )
+                    );
+
+                if (orgsInBillingDomainThatTheUserIsStillIn.length === 0) {
+                    await usageService.add(orgId, FeatureId.USERS, -1, trx);
+                }
+            }
+        });
 
         return response(res, {
             data: null,
