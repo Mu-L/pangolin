@@ -50,7 +50,10 @@ export default function StepperForm() {
 
     const orgSchema = z.object({
         orgName: z.string().min(1, { message: t("orgNameRequired") }),
-        orgId: z.string().min(1, { message: t("orgIdRequired") }),
+        orgId: z
+            .string()
+            .min(1, { message: t("orgIdRequired") })
+            .max(32, { message: t("orgIdMaxLength") }),
         subnet: z.string().min(1, { message: t("subnetRequired") }),
         utilitySubnet: z.string().min(1, { message: t("subnetRequired") })
     });
@@ -138,6 +141,16 @@ export default function StepperForm() {
             .replace(/\s+/g, "-")
             .replace(/-+/g, "-")
             .replace(/^-+|-+$/g, "");
+    };
+
+    const sanitizeOrgId = (value: string) => {
+        return value
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9_-]/g, "")
+            .replace(/-+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 32);
     };
 
     async function orgSubmit(values: z.infer<typeof orgSchema>) {
@@ -303,7 +316,22 @@ export default function StepperForm() {
                                 <FormItem>
                                     <FormLabel>{t("orgId")}</FormLabel>
                                     <FormControl>
-                                        <Input type="text" {...field} />
+                                        <Input
+                                            type="text"
+                                            {...field}
+                                            onChange={(e) => {
+                                                const value = sanitizeOrgId(
+                                                    e.target.value
+                                                );
+                                                field.onChange(value);
+                                                setOrgIdTaken(false);
+                                                if (value) {
+                                                    debouncedCheckOrgIdAvailability(
+                                                        value
+                                                    );
+                                                }
+                                            }}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                     <FormDescription>

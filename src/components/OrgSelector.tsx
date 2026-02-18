@@ -154,22 +154,22 @@ export function OrgSelector({
                                         <Users className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <div className="flex flex-col flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-medium truncate">
-                                                {org.name}
+                                        <span className="font-medium truncate">
+                                            {org.name}
+                                        </span>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-xs text-muted-foreground font-mono truncate">
+                                                {org.orgId}
                                             </span>
                                             {org.isPrimaryOrg && (
                                                 <Badge
                                                     variant="outline"
-                                                    className="shrink-0 text-[10px] px-1.5 py-0 font-medium"
+                                                    className="shrink-0 text-[10px] px-1.5 py-0 font-medium ml-auto"
                                                 >
                                                     {t("primary")}
                                                 </Badge>
                                             )}
                                         </div>
-                                        <span className="text-xs text-muted-foreground font-mono">
-                                            {org.orgId}
-                                        </span>
                                     </div>
                                     <Check
                                         className={cn(

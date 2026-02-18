@@ -31,8 +31,17 @@ import { doCidrsOverlap } from "@server/lib/ip";
 import { generateCA } from "@server/private/lib/sshCA";
 import { encrypt } from "@server/lib/crypto";
 
+const validOrgIdRegex = /^[a-z0-9_]+(-[a-z0-9_]+)*$/;
+
 const createOrgSchema = z.strictObject({
-    orgId: z.string(),
+    orgId: z
+        .string()
+        .min(1, "Organization ID is required")
+        .max(32, "Organization ID must be at most 32 characters")
+        .refine((val) => validOrgIdRegex.test(val), {
+            message:
+                "Organization ID must contain only lowercase letters, numbers, underscores, and single hyphens (no leading, trailing, or consecutive hyphens)"
+        }),
     name: z.string().min(1).max(255),
     subnet: z
         // .union([z.cidrv4(), z.cidrv6()])

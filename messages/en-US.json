@@ -1031,6 +1031,7 @@
     "pangolinSetup": "Setup - Pangolin",
     "orgNameRequired": "Organization name is required",
     "orgIdRequired": "Organization ID is required",
+    "orgIdMaxLength": "Organization ID must be at most 32 characters",
     "orgErrorCreate": "An error occurred while creating org",
     "pageNotFound": "Page Not Found",
     "pageNotFoundDescription": "Oops! The page you're looking for doesn't exist.",
