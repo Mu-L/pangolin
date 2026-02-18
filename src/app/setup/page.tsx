@@ -149,7 +149,6 @@ export default function StepperForm() {
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9_-]/g, "")
             .replace(/-+/g, "-")
-            .replace(/^-+|-+$/g, "")
             .slice(0, 32);
     };
 
