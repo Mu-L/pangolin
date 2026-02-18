@@ -72,6 +72,7 @@ type SignupFormProps = {
     inviteToken?: string;
     emailParam?: string;
     fromSmartLogin?: boolean;
+    skipVerificationEmail?: boolean;
 };
 
 const formSchema = z
@@ -103,7 +104,8 @@ export default function SignupForm({
     inviteId,
     inviteToken,
     emailParam,
-    fromSmartLogin = false
+    fromSmartLogin = false,
+    skipVerificationEmail = false
 }: SignupFormProps) {
     const router = useRouter();
     const { env } = useEnvContext();
@@ -147,7 +149,8 @@ export default function SignupForm({
                 inviteToken,
                 termsAcceptedTimestamp: termsAgreedAt,
                 marketingEmailConsent:
-                    build === "saas" ? marketingEmailConsent : undefined
+                    build === "saas" ? marketingEmailConsent : undefined,
+                skipVerificationEmail: skipVerificationEmail || undefined
             })
             .catch((e) => {
                 console.error(e);

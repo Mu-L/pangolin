@@ -436,6 +436,7 @@ export async function validateOidcCallback(
                 }
             }
 
+            // These are the orgs that the user should be provisioned into based on the IdP mappings and the token claims
             logger.debug("User org info", { userOrgInfo });
 
             let existingUserId = existingUser?.userId;

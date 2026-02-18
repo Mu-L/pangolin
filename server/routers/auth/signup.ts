@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { db, users } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
-import { z } from "zod";
+import { email, z } from "zod";
 import { fromError } from "zod-validation-error";
 import createHttpError from "http-errors";
 import response from "@server/lib/response";
@@ -30,7 +30,8 @@ export const signupBodySchema = z.object({
     inviteToken: z.string().optional(),
     inviteId: z.string().optional(),
     termsAcceptedTimestamp: z.string().nullable().optional(),
-    marketingEmailConsent: z.boolean().optional()
+    marketingEmailConsent: z.boolean().optional(),
+    skipVerificationEmail: z.boolean().optional()
 });
 
 export type SignUpBody = z.infer<typeof signupBodySchema>;
@@ -61,7 +62,8 @@ export async function signup(
         inviteToken,
         inviteId,
         termsAcceptedTimestamp,
-        marketingEmailConsent
+        marketingEmailConsent,
+        skipVerificationEmail
     } = parsedBody.data;
 
     const passwordHash = await hashPassword(password);
@@ -214,7 +216,13 @@ export async function signup(
         }
 
         if (config.getRawConfig().flags?.require_email_verification) {
-            sendEmailVerificationCode(email, userId);
+            if (!skipVerificationEmail) {
+                sendEmailVerificationCode(email, userId);
+            } else {
+                logger.debug(
+                    `User ${email} opted out of verification email during signup.`
+                );
+            }
 
             return response<SignUpResponse>(res, {
                 data: {
@@ -222,7 +230,9 @@ export async function signup(
                 },
                 success: true,
                 error: false,
-                message: `User created successfully. We sent an email to ${email} with a verification code.`,
+                message: skipVerificationEmail
+                    ? "User created successfully. Please verify your email."
+                    : `User created successfully. We sent an email to ${email} with a verification code.`,
                 status: HttpCode.OK
             });
         }
