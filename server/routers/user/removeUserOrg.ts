@@ -1,8 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, resources, sites, UserOrg } from "@server/db";
+import {
+    db,
+    orgs,
+    resources,
+    siteResources,
+    sites,
+    UserOrg,
+    userSiteResources
+} from "@server/db";
 import { userOrgs, userResources, users, userSites } from "@server/db";
-import { and, count, eq, exists } from "drizzle-orm";
+import { and, count, eq, exists, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -14,6 +22,7 @@ import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
 import { UserType } from "@server/types/UserTypes";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { removeUserFromOrg } from "@server/lib/userOrg";
 
 const removeUserSchema = z.strictObject({
     userId: z.string(),
@@ -50,16 +59,16 @@ export async function removeUserOrg(
         const { userId, orgId } = parsedParams.data;
 
         // get the user first
-        const user = await db
+        const [user] = await db
             .select()
             .from(userOrgs)
             .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)));
 
-        if (!user || user.length === 0) {
+        if (!user) {
             return next(createHttpError(HttpCode.NOT_FOUND, "User not found"));
         }
 
-        if (user[0].isOwner) {
+        if (user.isOwner) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
@@ -68,56 +77,20 @@ export async function removeUserOrg(
             );
         }
 
-        let userCount: UserOrg[] | undefined;
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Organization not found")
+            );
+        }
 
         await db.transaction(async (trx) => {
-            await trx
-                .delete(userOrgs)
-                .where(
-                    and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId))
-                );
-
-            await db.delete(userResources).where(
-                and(
-                    eq(userResources.userId, userId),
-                    exists(
-                        db
-                            .select()
-                            .from(resources)
-                            .where(
-                                and(
-                                    eq(
-                                        resources.resourceId,
-                                        userResources.resourceId
-                                    ),
-                                    eq(resources.orgId, orgId)
-                                )
-                            )
-                    )
-                )
-            );
-
-            await db.delete(userSites).where(
-                and(
-                    eq(userSites.userId, userId),
-                    exists(
-                        db
-                            .select()
-                            .from(sites)
-                            .where(
-                                and(
-                                    eq(sites.siteId, userSites.siteId),
-                                    eq(sites.orgId, orgId)
-                                )
-                            )
-                    )
-                )
-            );
-
-            userCount = await trx
-                .select()
-                .from(userOrgs)
-                .where(eq(userOrgs.orgId, orgId));
+            await removeUserFromOrg(org, userId, trx);
 
             // if (build === "saas") {
             //     const [rootUser] = await trx
@@ -138,14 +111,6 @@ export async function removeUserOrg(
 
             await calculateUserClientsForOrgs(userId, trx);
         });
-
-        if (userCount) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.USERS,
-                userCount.length
-            );
-        }
 
         return response(res, {
             data: null,

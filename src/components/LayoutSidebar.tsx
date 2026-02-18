@@ -189,10 +189,12 @@ export function LayoutSidebar({
             <div className="w-full border-t border-border" />
 
             <div className="p-4 pt-1 flex flex-col shrink-0">
-                {canShowProductUpdates && (
+                {canShowProductUpdates ? (
                     <div className="mb-3">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />
                     </div>
+                ) : (
+                    <div className="mb-3"></div>
                 )}
 
                 {build === "enterprise" && (

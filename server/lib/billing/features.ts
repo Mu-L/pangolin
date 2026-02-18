@@ -4,6 +4,7 @@ export enum FeatureId {
     EGRESS_DATA_MB = "egressDataMb",
     DOMAINS = "domains",
     REMOTE_EXIT_NODES = "remoteExitNodes",
+    ORGINIZATIONS = "organizations",
     TIER1 = "tier1"
 }
 
@@ -19,6 +20,8 @@ export async function getFeatureDisplayName(featureId: FeatureId): Promise<strin
             return "Domains";
         case FeatureId.REMOTE_EXIT_NODES:
             return "Remote Exit Nodes";
+        case FeatureId.ORGINIZATIONS:
+            return "Organizations";
         case FeatureId.TIER1:
             return "Home Lab";
         default:

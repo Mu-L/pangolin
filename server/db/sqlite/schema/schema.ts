@@ -1,13 +1,6 @@
 import { randomUUID } from "crypto";
 import { InferSelectModel } from "drizzle-orm";
-import {
-    sqliteTable,
-    text,
-    integer,
-    index,
-    uniqueIndex
-} from "drizzle-orm/sqlite-core";
-import { no } from "zod/v4/locales";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const domains = sqliteTable("domains", {
     domainId: text("domainId").primaryKey(),
@@ -52,7 +45,11 @@ export const orgs = sqliteTable("orgs", {
         .default(0),
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
-        .default(0)
+        .default(0),
+    sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
+    sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
+    isBillingOrg: integer("isBillingOrg", { mode: "boolean" }),
+    billingOrgId: text("billingOrgId")
 });
 
 export const userDomains = sqliteTable("userDomains", {
@@ -214,7 +211,9 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     }).default(true),
     hcMethod: text("hcMethod").default("GET"),
     hcStatus: integer("hcStatus"), // http code
-    hcHealth: text("hcHealth").default("unknown"), // "unknown", "healthy", "unhealthy"
+    hcHealth: text("hcHealth")
+        .$type<"unknown" | "healthy" | "unhealthy">()
+        .default("unknown"), // "unknown", "healthy", "unhealthy"
     hcTlsServerName: text("hcTlsServerName")
 });
 
@@ -246,7 +245,7 @@ export const siteResources = sqliteTable("siteResources", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
-    mode: text("mode").notNull(), // "host" | "cidr" | "port"
+    mode: text("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
     protocol: text("protocol"), // only for port mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
@@ -638,7 +637,8 @@ export const userOrgs = sqliteTable("userOrgs", {
     isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
     autoProvisioned: integer("autoProvisioned", {
         mode: "boolean"
-    }).default(false)
+    }).default(false),
+    pamUsername: text("pamUsername") // cleaned username for ssh and such
 });
 
 export const emailVerificationCodes = sqliteTable("emailVerificationCodes", {
@@ -1080,6 +1080,16 @@ export const deviceWebAuthCodes = sqliteTable("deviceWebAuthCodes", {
     })
 });
 
+export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
+    messageId: integer("messageId").primaryKey({ autoIncrement: true }),
+    wsClientId: text("clientId"),
+    messageType: text("messageType"),
+    sentAt: integer("sentAt").notNull(),
+    receivedAt: integer("receivedAt"),
+    error: text("error"),
+    complete: integer("complete", { mode: "boolean" }).notNull().default(false)
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1141,3 +1151,6 @@ export type SecurityKey = InferSelectModel<typeof securityKeys>;
 export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
+export type RoundTripMessageTracker = InferSelectModel<
+    typeof roundTripMessageTracker
+>;

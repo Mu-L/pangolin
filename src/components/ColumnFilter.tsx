@@ -15,6 +15,7 @@ import {
 } from "@app/components/ui/command";
 import { CheckIcon, ChevronDownIcon, Filter } from "lucide-react";
 import { cn } from "@app/lib/cn";
+import { Badge } from "./ui/badge";
 
 interface FilterOption {
     value: string;
@@ -61,16 +62,19 @@ export function ColumnFilter({
                 >
                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4" />
-                        <span className="truncate">
-                            {selectedOption
-                                ? selectedOption.label
-                                : placeholder}
-                        </span>
+
+                        {selectedOption && (
+                            <Badge className="truncate" variant="secondary">
+                                {selectedOption
+                                    ? selectedOption.label
+                                    : placeholder}
+                            </Badge>
+                        )}
                     </div>
                     <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-[200px]" align="start">
+            <PopoverContent className="p-0 w-50" align="start">
                 <Command>
                     <CommandInput placeholder={searchPlaceholder} />
                     <CommandList>

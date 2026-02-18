@@ -25,6 +25,7 @@ import * as logs from "#private/routers/auditLogs";
 import * as misc from "#private/routers/misc";
 import * as reKey from "#private/routers/re-key";
 import * as approval from "#private/routers/approvals";
+import * as ssh from "#private/routers/ssh";
 
 import {
     verifyOrgAccess,
@@ -505,4 +506,15 @@ authenticated.put(
     verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateExitNodeSecret
+);
+
+authenticated.post(
+    "/org/:orgId/ssh/sign-key",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.sshPam),
+    verifyOrgAccess,
+    verifyLimits,
+    // verifyUserHasAction(ActionsEnum.signSshKey),
+    logActionAudit(ActionsEnum.signSshKey),
+    ssh.signSshKey
 );

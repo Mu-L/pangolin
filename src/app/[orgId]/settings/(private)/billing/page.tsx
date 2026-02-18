@@ -110,37 +110,42 @@ const planOptions: PlanOption[] = [
 // Tier limits mapping derived from limit sets
 const tierLimits: Record<
     Tier | "basic",
-    { users: number; sites: number; domains: number; remoteNodes: number }
+    { users: number; sites: number; domains: number; remoteNodes: number; organizations: number }
 > = {
     basic: {
         users: freeLimitSet[FeatureId.USERS]?.value ?? 0,
         sites: freeLimitSet[FeatureId.SITES]?.value ?? 0,
         domains: freeLimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: freeLimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: freeLimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: freeLimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     tier1: {
         users: tier1LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier1LimitSet[FeatureId.SITES]?.value ?? 0,
         domains: tier1LimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: tier1LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: tier1LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: tier1LimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     tier2: {
         users: tier2LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier2LimitSet[FeatureId.SITES]?.value ?? 0,
         domains: tier2LimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: tier2LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: tier2LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: tier2LimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     tier3: {
         users: tier3LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier3LimitSet[FeatureId.SITES]?.value ?? 0,
         domains: tier3LimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: tier3LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: tier3LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: tier3LimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     enterprise: {
         users: 0, // Custom for enterprise
         sites: 0, // Custom for enterprise
         domains: 0, // Custom for enterprise
-        remoteNodes: 0 // Custom for enterprise
+        remoteNodes: 0, // Custom for enterprise
+        organizations: 0 // Custom for enterprise
     }
 };
 
@@ -179,6 +184,7 @@ export default function BillingPage() {
     const SITES = "sites";
     const DOMAINS = "domains";
     const REMOTE_EXIT_NODES = "remoteExitNodes";
+    const ORGINIZATIONS = "organizations";
 
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -619,6 +625,16 @@ export default function BillingPage() {
             });
         }
 
+        // Check organizations
+        const organizationsUsage = getUsageValue(ORGINIZATIONS);
+        if (limits.organizations > 0 && organizationsUsage > limits.organizations) {
+            violations.push({
+                feature: "Organizations",
+                currentUsage: organizationsUsage,
+                newLimit: limits.organizations
+            });
+        }
+
         return violations;
     };
 
@@ -752,7 +768,7 @@ export default function BillingPage() {
                             <div className="text-sm text-muted-foreground mb-3">
                                 {t("billingMaximumLimits") || "Maximum Limits"}
                             </div>
-                            <InfoSections cols={4}>
+                            <InfoSections cols={5}>
                                 <InfoSection>
                                     <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingUsers") || "Users"}
@@ -857,6 +873,41 @@ export default function BillingPage() {
                                 </InfoSection>
                                 <InfoSection>
                                     <InfoSectionTitle className="flex items-center gap-1 text-xs">
+                                        {t("billingOrganizations") ||
+                                            "Organizations"}
+                                    </InfoSectionTitle>
+                                    <InfoSectionContent className="text-sm">
+                                        {isOverLimit(ORGINIZATIONS) ? (
+                                            <Tooltip>
+                                                <TooltipTrigger className="flex items-center gap-1">
+                                                    <AlertTriangle className="h-3 w-3 text-orange-400" />
+                                                    <span className={cn(
+                                                        "text-orange-600 dark:text-orange-400 font-medium"
+                                                    )}>
+                                                        {getLimitValue(ORGINIZATIONS) ??
+                                                            t("billingUnlimited") ??
+                                                            "∞"}{" "}
+                                                        {getLimitValue(ORGINIZATIONS) !==
+                                                            null && "orgs"}
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(ORGINIZATIONS), limit: getLimitValue(ORGINIZATIONS) ?? 0 }) || `Current usage (${getUsageValue(ORGINIZATIONS)}) exceeds limit (${getLimitValue(ORGINIZATIONS)})`}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ) : (
+                                            <>
+                                                {getLimitValue(ORGINIZATIONS) ??
+                                                    t("billingUnlimited") ??
+                                                    "∞"}{" "}
+                                                {getLimitValue(ORGINIZATIONS) !==
+                                                    null && "orgs"}
+                                            </>
+                                        )}
+                                    </InfoSectionContent>
+                                </InfoSection>
+                                <InfoSection>
+                                    <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingRemoteNodes") ||
                                             "Remote Nodes"}
                                     </InfoSectionTitle>
@@ -872,7 +923,7 @@ export default function BillingPage() {
                                                             t("billingUnlimited") ??
                                                             "∞"}{" "}
                                                         {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                            null && "remote nodes"}
+                                                            null && "nodes"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
@@ -885,7 +936,7 @@ export default function BillingPage() {
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
                                                 {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                    null && "remote nodes"}
+                                                    null && "nodes"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -1014,6 +1065,17 @@ export default function BillingPage() {
                                                     }{" "}
                                                     {t("billingDomains") ||
                                                         "Domains"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>
+                                                    {
+                                                        tierLimits[pendingTier.tier]
+                                                            .organizations
+                                                    }{" "}
+                                                    {t("billingOrganizations") ||
+                                                        "Organizations"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">

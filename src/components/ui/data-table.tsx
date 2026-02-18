@@ -151,10 +151,19 @@ type DataTableFilter = {
     label: string;
     options: FilterOption[];
     multiSelect?: boolean;
-    filterFn: (row: any, selectedValues: (string | number | boolean)[]) => boolean;
+    filterFn: (
+        row: any,
+        selectedValues: (string | number | boolean)[]
+    ) => boolean;
     defaultValues?: (string | number | boolean)[];
     displayMode?: "label" | "calculated"; // How to display the filter button text
 };
+
+export type DataTablePaginationState = PaginationState & {
+    pageCount: number;
+};
+
+export type DataTablePaginationUpdateFn = (newPage: PaginationState) => void;
 
 type DataTableProps<TData, TValue> = {
     columns: ExtendedColumnDef<TData, TValue>[];
@@ -178,6 +187,11 @@ type DataTableProps<TData, TValue> = {
     defaultPageSize?: number;
     columnVisibility?: Record<string, boolean>;
     enableColumnVisibility?: boolean;
+    manualFiltering?: boolean;
+    onSearch?: (input: string) => void;
+    searchQuery?: string;
+    pagination?: DataTablePaginationState;
+    onPaginationChange?: DataTablePaginationUpdateFn;
     persistColumnVisibility?: boolean | string;
     stickyLeftColumn?: string; // Column ID or accessorKey for left sticky column
     stickyRightColumn?: string; // Column ID or accessorKey for right sticky column (typically "actions")
@@ -203,7 +217,12 @@ export function DataTable<TData, TValue>({
     columnVisibility: defaultColumnVisibility,
     enableColumnVisibility = false,
     persistColumnVisibility = false,
+    manualFiltering = false,
+    pagination: paginationState,
     stickyLeftColumn,
+    onSearch,
+    searchQuery,
+    onPaginationChange,
     stickyRightColumn
 }: DataTableProps<TData, TValue>) {
     const t = useTranslations();
@@ -248,22 +267,25 @@ export function DataTable<TData, TValue>({
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         initialColumnVisibility
     );
-    const [pagination, setPagination] = useState<PaginationState>({
+    const [_pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: pageSize
     });
+
+    const pagination = paginationState ?? _pagination;
+
     const [activeTab, setActiveTab] = useState<string>(
         defaultTab || tabs?.[0]?.id || ""
     );
-    const [activeFilters, setActiveFilters] = useState<Record<string, (string | number | boolean)[]>>(
-        () => {
-            const initial: Record<string, (string | number | boolean)[]> = {};
-            filters?.forEach((filter) => {
-                initial[filter.id] = filter.defaultValues || [];
-            });
-            return initial;
-        }
-    );
+    const [activeFilters, setActiveFilters] = useState<
+        Record<string, (string | number | boolean)[]>
+    >(() => {
+        const initial: Record<string, (string | number | boolean)[]> = {};
+        filters?.forEach((filter) => {
+            initial[filter.id] = filter.defaultValues || [];
+        });
+        return initial;
+    });
 
     // Track initial values to avoid storing defaults on first render
     const initialPageSize = useRef(pageSize);
@@ -309,12 +331,18 @@ export function DataTable<TData, TValue>({
         getFilteredRowModel: getFilteredRowModel(),
         onGlobalFilterChange: setGlobalFilter,
         onColumnVisibilityChange: setColumnVisibility,
-        onPaginationChange: setPagination,
+        onPaginationChange: onPaginationChange
+            ? (state) => {
+                  const newState =
+                      typeof state === "function" ? state(pagination) : state;
+                  onPaginationChange(newState);
+              }
+            : setPagination,
+        manualFiltering,
+        manualPagination: Boolean(paginationState),
+        pageCount: paginationState?.pageCount,
         initialState: {
-            pagination: {
-                pageSize: pageSize,
-                pageIndex: 0
-            },
+            pagination,
             columnVisibility: initialColumnVisibility
         },
         state: {
@@ -368,11 +396,11 @@ export function DataTable<TData, TValue>({
         setActiveFilters((prev) => {
             const currentValues = prev[filterId] || [];
             const filter = filters?.find((f) => f.id === filterId);
-            
+
             if (!filter) return prev;
 
             let newValues: (string | number | boolean)[];
-            
+
             if (filter.multiSelect) {
                 // Multi-select: add or remove the value
                 if (checked) {
@@ -397,7 +425,7 @@ export function DataTable<TData, TValue>({
     // Calculate display text for a filter based on selected values
     const getFilterDisplayText = (filter: DataTableFilter): string => {
         const selectedValues = activeFilters[filter.id] || [];
-        
+
         if (selectedValues.length === 0) {
             return filter.label;
         }
@@ -477,12 +505,15 @@ export function DataTable<TData, TValue>({
                         <div className="relative w-full sm:max-w-sm">
                             <Input
                                 placeholder={searchPlaceholder}
-                                value={globalFilter ?? ""}
-                                onChange={(e) =>
-                                    table.setGlobalFilter(
-                                        String(e.target.value)
-                                    )
-                                }
+                                defaultValue={searchQuery}
+                                value={onSearch ? undefined : globalFilter}
+                                onChange={(e) => {
+                                    onSearch
+                                        ? onSearch(e.currentTarget.value)
+                                        : table.setGlobalFilter(
+                                              String(e.target.value)
+                                          );
+                                }}
                                 className="w-full pl-8"
                             />
                             <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -490,13 +521,17 @@ export function DataTable<TData, TValue>({
                         {filters && filters.length > 0 && (
                             <div className="flex gap-2">
                                 {filters.map((filter) => {
-                                    const selectedValues = activeFilters[filter.id] || [];
-                                    const hasActiveFilters = selectedValues.length > 0;
-                                    const displayMode = filter.displayMode || filterDisplayMode;
-                                    const displayText = displayMode === "calculated" 
-                                        ? getFilterDisplayText(filter)
-                                        : filter.label;
-                                    
+                                    const selectedValues =
+                                        activeFilters[filter.id] || [];
+                                    const hasActiveFilters =
+                                        selectedValues.length > 0;
+                                    const displayMode =
+                                        filter.displayMode || filterDisplayMode;
+                                    const displayText =
+                                        displayMode === "calculated"
+                                            ? getFilterDisplayText(filter)
+                                            : filter.label;
+
                                     return (
                                         <DropdownMenu key={filter.id}>
                                             <DropdownMenuTrigger asChild>
@@ -507,37 +542,54 @@ export function DataTable<TData, TValue>({
                                                 >
                                                     <Filter className="h-4 w-4 mr-2" />
                                                     {displayText}
-                                                    {displayMode === "label" && hasActiveFilters && (
-                                                        <span className="ml-2 bg-muted text-foreground rounded-full px-2 py-0.5 text-xs">
-                                                            {selectedValues.length}
-                                                        </span>
-                                                    )}
+                                                    {displayMode === "label" &&
+                                                        hasActiveFilters && (
+                                                            <span className="ml-2 bg-muted text-foreground rounded-full px-2 py-0.5 text-xs">
+                                                                {
+                                                                    selectedValues.length
+                                                                }
+                                                            </span>
+                                                        )}
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="w-48">
+                                            <DropdownMenuContent
+                                                align="start"
+                                                className="w-48"
+                                            >
                                                 <DropdownMenuLabel>
                                                     {filter.label}
                                                 </DropdownMenuLabel>
                                                 <DropdownMenuSeparator />
-                                                {filter.options.map((option) => {
-                                                    const isChecked = selectedValues.includes(option.value);
-                                                    return (
-                                                        <DropdownMenuCheckboxItem
-                                                            key={option.id}
-                                                            checked={isChecked}
-                                                            onCheckedChange={(checked) =>
-                                                                handleFilterChange(
-                                                                    filter.id,
-                                                                    option.value,
+                                                {filter.options.map(
+                                                    (option) => {
+                                                        const isChecked =
+                                                            selectedValues.includes(
+                                                                option.value
+                                                            );
+                                                        return (
+                                                            <DropdownMenuCheckboxItem
+                                                                key={option.id}
+                                                                checked={
+                                                                    isChecked
+                                                                }
+                                                                onCheckedChange={(
                                                                     checked
-                                                                )
-                                                            }
-                                                            onSelect={(e) => e.preventDefault()}
-                                                        >
-                                                            {option.label}
-                                                        </DropdownMenuCheckboxItem>
-                                                    );
-                                                })}
+                                                                ) =>
+                                                                    handleFilterChange(
+                                                                        filter.id,
+                                                                        option.value,
+                                                                        checked
+                                                                    )
+                                                                }
+                                                                onSelect={(e) =>
+                                                                    e.preventDefault()
+                                                                }
+                                                            >
+                                                                {option.label}
+                                                            </DropdownMenuCheckboxItem>
+                                                        );
+                                                    }
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     );
@@ -795,12 +847,14 @@ export function DataTable<TData, TValue>({
                         </Table>
                     </div>
                     <div className="mt-4">
-                        <DataTablePagination
-                            table={table}
-                            onPageSizeChange={handlePageSizeChange}
-                            pageSize={pagination.pageSize}
-                            pageIndex={pagination.pageIndex}
-                        />
+                        {table.getRowModel().rows?.length > 0 && (
+                            <DataTablePagination
+                                table={table}
+                                onPageSizeChange={handlePageSizeChange}
+                                pageSize={pagination.pageSize}
+                                pageIndex={pagination.pageIndex}
+                            />
+                        )}
                     </div>
                 </CardContent>
             </Card>

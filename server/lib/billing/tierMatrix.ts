@@ -14,7 +14,8 @@ export enum TierFeature {
     TwoFactorEnforcement = "twoFactorEnforcement", // handle downgrade by setting to optional
     SessionDurationPolicies = "sessionDurationPolicies", // handle downgrade by setting to default duration
     PasswordExpirationPolicies = "passwordExpirationPolicies", // handle downgrade by setting to default duration
-    AutoProvisioning = "autoProvisioning" // handle downgrade by disabling auto provisioning
+    AutoProvisioning = "autoProvisioning", // handle downgrade by disabling auto provisioning
+    SshPam = "sshPam"
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
@@ -46,5 +47,6 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
         "tier3",
         "enterprise"
     ],
-    [TierFeature.AutoProvisioning]: ["tier1", "tier3", "enterprise"]
+    [TierFeature.AutoProvisioning]: ["tier1", "tier3", "enterprise"],
+    [TierFeature.SshPam]: ["enterprise"]
 };

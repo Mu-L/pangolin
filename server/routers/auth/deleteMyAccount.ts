@@ -15,6 +15,8 @@ import {
 import { verifyPassword } from "@server/auth/password";
 import { verifyTotpCode } from "@server/auth/totp";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
+import { build } from "@server/build";
+import { getOrgTierData } from "#dynamic/lib/billing";
 import {
     deleteOrgById,
     sendTerminationMessages
@@ -40,11 +42,6 @@ export type DeleteMyAccountSuccessResponse = {
     success: true;
 };
 
-/**
- * Self-service account deletion (saas only). Returns preview when no password;
- * requires password and optional 2FA code to perform deletion. Uses shared
- * deleteOrgById for each owned org (delete-my-account may delete multiple orgs).
- */
 export async function deleteMyAccount(
     req: Request,
     res: Response,
@@ -91,17 +88,34 @@ export async function deleteMyAccount(
 
         const ownedOrgsRows = await db
             .select({
-                orgId: userOrgs.orgId
+                orgId: userOrgs.orgId,
+                isOwner: userOrgs.isOwner,
+                isBillingOrg: orgs.isBillingOrg
             })
             .from(userOrgs)
+            .innerJoin(orgs, eq(userOrgs.orgId, orgs.orgId))
             .where(
-                and(
-                    eq(userOrgs.userId, userId),
-                    eq(userOrgs.isOwner, true)
-                )
+                and(eq(userOrgs.userId, userId), eq(userOrgs.isOwner, true))
             );
 
         const orgIds = ownedOrgsRows.map((r) => r.orgId);
+
+        if (build === "saas" && orgIds.length > 0) {
+            const primaryOrgId = ownedOrgsRows.find(
+                (r) => r.isBillingOrg && r.isOwner
+            )?.orgId;
+            if (primaryOrgId) {
+                const { tier, active } = await getOrgTierData(primaryOrgId);
+                if (active && tier) {
+                    return next(
+                        createHttpError(
+                            HttpCode.BAD_REQUEST,
+                            "You must cancel your subscription before deleting your account"
+                        )
+                    );
+                }
+            }
+        }
 
         if (!password) {
             const orgsWithNames =

@@ -50,6 +50,7 @@ import createHttpError from "http-errors";
 import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
 import { logActionAudit } from "#dynamic/middlewares";
+import { checkRoundTripMessage } from "./ws";
 
 // Root routes
 export const unauthenticated = Router();
@@ -64,9 +65,8 @@ authenticated.use(verifySessionUserMiddleware);
 
 authenticated.get("/pick-org-defaults", org.pickOrgDefaults);
 authenticated.get("/org/checkId", org.checkId);
-if (build === "oss" || build === "enterprise") {
-    authenticated.put("/org", getUserOrgs, org.createOrg);
-}
+
+authenticated.put("/org", getUserOrgs, org.createOrg);
 
 authenticated.get("/orgs", verifyUserIsServerAdmin, org.listOrgs);
 authenticated.get("/user/:userId/orgs", verifyIsLoggedInUser, org.listUserOrgs);
@@ -86,16 +86,14 @@ authenticated.post(
     org.updateOrg
 );
 
-if (build !== "saas") {
-    authenticated.delete(
-        "/org/:orgId",
-        verifyOrgAccess,
-        verifyUserIsOrgOwner,
-        verifyUserHasAction(ActionsEnum.deleteOrg),
-        logActionAudit(ActionsEnum.deleteOrg),
-        org.deleteOrg
-    );
-}
+authenticated.delete(
+    "/org/:orgId",
+    verifyOrgAccess,
+    verifyUserIsOrgOwner,
+    verifyUserHasAction(ActionsEnum.deleteOrg),
+    logActionAudit(ActionsEnum.deleteOrg),
+    org.deleteOrg
+);
 
 authenticated.put(
     "/org/:orgId/site",
@@ -143,6 +141,13 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listClients),
     client.listClients
+);
+
+authenticated.get(
+    "/org/:orgId/user-devices",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listClients),
+    client.listUserDevices
 );
 
 authenticated.get(
@@ -1115,6 +1120,8 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.getBlueprint),
     blueprints.getBlueprint
 );
+
+authenticated.get("/ws/round-trip-message/:messageId", checkRoundTripMessage);
 
 // Auth routes
 export const authRouter = Router();

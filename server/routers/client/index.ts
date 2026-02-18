@@ -6,6 +6,7 @@ export * from "./unarchiveClient";
 export * from "./blockClient";
 export * from "./unblockClient";
 export * from "./listClients";
+export * from "./listUserDevices";
 export * from "./updateClient";
 export * from "./getClient";
 export * from "./createUserClient";

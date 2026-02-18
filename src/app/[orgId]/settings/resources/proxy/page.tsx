@@ -16,7 +16,7 @@ import { cache } from "react";
 
 export interface ProxyResourcesPageProps {
     params: Promise<{ orgId: string }>;
-    searchParams: Promise<{ view?: string }>;
+    searchParams: Promise<Record<string, string>>;
 }
 
 export default async function ProxyResourcesPage(
@@ -24,14 +24,22 @@ export default async function ProxyResourcesPage(
 ) {
     const params = await props.params;
     const t = await getTranslations();
+    const searchParams = new URLSearchParams(await props.searchParams);
 
     let resources: ListResourcesResponse["resources"] = [];
+    let pagination: ListResourcesResponse["pagination"] = {
+        total: 0,
+        page: 1,
+        pageSize: 20
+    };
     try {
         const res = await internal.get<AxiosResponse<ListResourcesResponse>>(
-            `/org/${params.orgId}/resources`,
+            `/org/${params.orgId}/resources?${searchParams.toString()}`,
             await authCookieHeader()
         );
-        resources = res.data.data.resources;
+        const responseData = res.data.data;
+        resources = responseData.resources;
+        pagination = responseData.pagination;
     } catch (e) {}
 
     let siteResources: ListAllSiteResourcesByOrgResponse["siteResources"] = [];
@@ -104,9 +112,10 @@ export default async function ProxyResourcesPage(
                 <ProxyResourcesTable
                     resources={resourceRows}
                     orgId={params.orgId}
-                    defaultSort={{
-                        id: "name",
-                        desc: false
+                    rowCount={pagination.total}
+                    pagination={{
+                        pageIndex: pagination.page - 1,
+                        pageSize: pagination.pageSize
                     }}
                 />
             </OrgProvider>

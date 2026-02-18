@@ -40,7 +40,11 @@ const listOrgsSchema = z.object({
 //     responses: {}
 // });
 
-type ResponseOrg = Org & { isOwner?: boolean; isAdmin?: boolean };
+type ResponseOrg = Org & {
+    isOwner?: boolean;
+    isAdmin?: boolean;
+    isPrimaryOrg?: boolean;
+};
 
 export type ListUserOrgsResponse = {
     orgs: ResponseOrg[];
@@ -131,6 +135,9 @@ export async function listUserOrgs(
             }
             if (val.roles && val.roles.isAdmin) {
                 res.isAdmin = val.roles.isAdmin;
+            }
+            if (val.userOrgs?.isOwner && val.orgs?.isBillingOrg) {
+                res.isPrimaryOrg = val.orgs.isBillingOrg;
             }
             return res;
         });

@@ -2,16 +2,16 @@
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cn } from "@app/lib/cn";
 import { formatFingerprintInfo } from "@app/lib/formatDeviceFingerprint";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
     approvalFiltersSchema,
     approvalQueries,
     type ApprovalItem
 } from "@app/lib/queries";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Ban, Check, LaptopMinimal, RefreshCw } from "lucide-react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { Ban, Check, Loader, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -54,12 +54,20 @@ export function ApprovalFeed({
 
     const { isPaidUser } = usePaidStatus();
 
-    const { data, isFetching, refetch } = useQuery({
+    const {
+        data,
+        isFetching,
+        isLoading,
+        refetch,
+        hasNextPage,
+        fetchNextPage,
+        isFetchingNextPage
+    } = useInfiniteQuery({
         ...approvalQueries.listApprovals(orgId, filters),
         enabled: isPaidUser(tierMatrix.deviceApprovals)
     });
 
-    const approvals = data?.approvals ?? [];
+    const approvals = data?.pages.flatMap((data) => data.approvals) ?? [];
 
     // Show empty state if no approvals are enabled for any role
     if (!hasApprovalsEnabled) {
@@ -115,13 +123,13 @@ export function ApprovalFeed({
                         onClick={() => {
                             refetch();
                         }}
-                        disabled={isFetching}
+                        disabled={isFetching || isLoading}
                         className="lg:static gap-2"
                     >
                         <RefreshCw
                             className={cn(
                                 "size-4",
-                                isFetching && "animate-spin"
+                                (isFetching || isLoading) && "animate-spin"
                             )}
                         />
                         {t("refresh")}
@@ -145,13 +153,30 @@ export function ApprovalFeed({
                         ))}
 
                         {approvals.length === 0 && (
-                            <li className="flex justify-center items-center p-4 text-muted-foreground">
-                                {t("approvalListEmpty")}
+                            <li className="flex justify-center items-center p-4 text-muted-foreground gap-2">
+                                {isLoading
+                                    ? t("loadingApprovals")
+                                    : t("approvalListEmpty")}
+
+                                {isLoading && (
+                                    <Loader className="size-4 flex-none animate-spin" />
+                                )}
                             </li>
                         )}
                     </ul>
                 </CardHeader>
             </Card>
+            {hasNextPage && (
+                <Button
+                    variant="secondary"
+                    className="self-center"
+                    size="lg"
+                    loading={isFetchingNextPage}
+                    onClick={() => fetchNextPage()}
+                >
+                    {t("approvalLoadMore")}
+                </Button>
+            )}
         </div>
     );
 }

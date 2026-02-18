@@ -1,34 +1,38 @@
-import { db, olms, users } from "@server/db";
 import {
     clients,
+    clientSitesAssociationsCache,
+    currentFingerprint,
+    db,
+    olms,
     orgs,
     roleClients,
     sites,
     userClients,
-    clientSitesAssociationsCache,
-    currentFingerprint
+    users
 } from "@server/db";
-import logger from "@server/logger";
-import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import type { PaginatedResponse } from "@server/types/Pagination";
 import {
     and,
-    count,
+    asc,
+    desc,
     eq,
     inArray,
-    isNotNull,
     isNull,
+    like,
     or,
-    sql
+    sql,
+    type SQL
 } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
 import NodeCache from "node-cache";
 import semver from "semver";
-import { getUserDeviceName } from "@server/db/names";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const olmVersionCache = new NodeCache({ stdTTL: 3600 });
 
@@ -89,38 +93,86 @@ const listClientsParamsSchema = z.strictObject({
 });
 
 const listClientsSchema = z.object({
-    limit: z
-        .string()
+    pageSize: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .positive()
         .optional()
-        .default("1000")
-        .transform(Number)
-        .pipe(z.int().positive()),
-    offset: z
-        .string()
+        .catch(20)
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
+    page: z.coerce
+        .number<string>() // for prettier formatting
+        .int()
+        .min(0)
         .optional()
-        .default("0")
-        .transform(Number)
-        .pipe(z.int().nonnegative()),
-    filter: z.enum(["user", "machine"]).optional()
+        .catch(1)
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
+    query: z.string().optional(),
+    sort_by: z
+        .enum(["megabytesIn", "megabytesOut"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["megabytesIn", "megabytesOut"],
+            description: "Field to sort by"
+        }),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
+        .openapi({
+            type: "string",
+            enum: ["asc", "desc"],
+            default: "asc",
+            description: "Sort order"
+        }),
+    online: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "boolean",
+            description: "Filter by online status"
+        }),
+    status: z.preprocess(
+        (val: string | undefined) => {
+            if (val) {
+                return val.split(","); // the search query array is an array joined by commas
+            }
+            return undefined;
+        },
+        z
+            .array(z.enum(["active", "blocked", "archived"]))
+            .optional()
+            .default(["active"])
+            .catch(["active"])
+            .openapi({
+                type: "array",
+                items: {
+                    type: "string",
+                    enum: ["active", "blocked", "archived"]
+                },
+                default: ["active"],
+                description:
+                    "Filter by client status. Can be a comma-separated list of values. Defaults to 'active'."
+            })
+    )
 });
 
-function queryClients(
-    orgId: string,
-    accessibleClientIds: number[],
-    filter?: "user" | "machine"
-) {
-    const conditions = [
-        inArray(clients.clientId, accessibleClientIds),
-        eq(clients.orgId, orgId)
-    ];
-
-    // Add filter condition based on filter type
-    if (filter === "user") {
-        conditions.push(isNotNull(clients.userId));
-    } else if (filter === "machine") {
-        conditions.push(isNull(clients.userId));
-    }
-
+function queryClientsBase() {
     return db
         .select({
             clientId: clients.clientId,
@@ -142,22 +194,13 @@ function queryClients(
             approvalState: clients.approvalState,
             olmArchived: olms.archived,
             archived: clients.archived,
-            blocked: clients.blocked,
-            deviceModel: currentFingerprint.deviceModel,
-            fingerprintPlatform: currentFingerprint.platform,
-            fingerprintOsVersion: currentFingerprint.osVersion,
-            fingerprintKernelVersion: currentFingerprint.kernelVersion,
-            fingerprintArch: currentFingerprint.arch,
-            fingerprintSerialNumber: currentFingerprint.serialNumber,
-            fingerprintUsername: currentFingerprint.username,
-            fingerprintHostname: currentFingerprint.hostname
+            blocked: clients.blocked
         })
         .from(clients)
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))
         .leftJoin(olms, eq(clients.clientId, olms.clientId))
         .leftJoin(users, eq(clients.userId, users.userId))
-        .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId))
-        .where(and(...conditions));
+        .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId));
 }
 
 async function getSiteAssociations(clientIds: number[]) {
@@ -175,7 +218,7 @@ async function getSiteAssociations(clientIds: number[]) {
         .where(inArray(clientSitesAssociationsCache.clientId, clientIds));
 }
 
-type ClientWithSites = Awaited<ReturnType<typeof queryClients>>[0] & {
+type ClientWithSites = Awaited<ReturnType<typeof queryClientsBase>>[0] & {
     sites: Array<{
         siteId: number;
         siteName: string | null;
@@ -186,10 +229,9 @@ type ClientWithSites = Awaited<ReturnType<typeof queryClients>>[0] & {
 
 type OlmWithUpdateAvailable = ClientWithSites;
 
-export type ListClientsResponse = {
+export type ListClientsResponse = PaginatedResponse<{
     clients: Array<ClientWithSites>;
-    pagination: { total: number; limit: number; offset: number };
-};
+}>;
 
 registry.registerPath({
     method: "get",
@@ -218,7 +260,8 @@ export async function listClients(
                 )
             );
         }
-        const { limit, offset, filter } = parsedQuery.data;
+        const { page, pageSize, online, query, status, sort_by, order } =
+            parsedQuery.data;
 
         const parsedParams = listClientsParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -267,28 +310,73 @@ export async function listClients(
         const accessibleClientIds = accessibleClients.map(
             (client) => client.clientId
         );
-        const baseQuery = queryClients(orgId, accessibleClientIds, filter);
 
         // Get client count with filter
-        const countConditions = [
-            inArray(clients.clientId, accessibleClientIds),
-            eq(clients.orgId, orgId)
+        const conditions = [
+            and(
+                inArray(clients.clientId, accessibleClientIds),
+                eq(clients.orgId, orgId),
+                isNull(clients.userId)
+            )
         ];
 
-        if (filter === "user") {
-            countConditions.push(isNotNull(clients.userId));
-        } else if (filter === "machine") {
-            countConditions.push(isNull(clients.userId));
+        if (typeof online !== "undefined") {
+            conditions.push(eq(clients.online, online));
         }
 
-        const countQuery = db
-            .select({ count: count() })
-            .from(clients)
-            .where(and(...countConditions));
+        if (status.length > 0) {
+            const filterAggregates: (SQL<unknown> | undefined)[] = [];
 
-        const clientsList = await baseQuery.limit(limit).offset(offset);
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0].count;
+            if (status.includes("active")) {
+                filterAggregates.push(
+                    and(eq(clients.archived, false), eq(clients.blocked, false))
+                );
+            }
+
+            if (status.includes("archived")) {
+                filterAggregates.push(eq(clients.archived, true));
+            }
+            if (status.includes("blocked")) {
+                filterAggregates.push(eq(clients.blocked, true));
+            }
+
+            conditions.push(or(...filterAggregates));
+        }
+
+        if (query) {
+            conditions.push(
+                or(
+                    like(
+                        sql`LOWER(${clients.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${clients.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
+                )
+            );
+        }
+
+        const baseQuery = queryClientsBase().where(and(...conditions));
+
+        const countQuery = db.$count(baseQuery.as("filtered_clients"));
+
+        const listMachinesQuery = baseQuery
+            .limit(page)
+            .offset(pageSize * (page - 1))
+            .orderBy(
+                sort_by
+                    ? order === "asc"
+                        ? asc(clients[sort_by])
+                        : desc(clients[sort_by])
+                    : asc(clients.clientId)
+            );
+
+        const [clientsList, totalCount] = await Promise.all([
+            listMachinesQuery,
+            countQuery
+        ]);
 
         // Get associated sites for all clients
         const clientIds = clientsList.map((client) => client.clientId);
@@ -319,14 +407,8 @@ export async function listClients(
 
         // Merge clients with their site associations and replace name with device name
         const clientsWithSites = clientsList.map((client) => {
-            const model = client.deviceModel || null;
-            let newName = client.name;
-            if (filter === "user") {
-                newName = getUserDeviceName(model, client.name);
-            }
             return {
                 ...client,
-                name: newName,
                 sites: sitesByClient[client.clientId] || []
             };
         });
@@ -371,8 +453,8 @@ export async function listClients(
                 clients: olmsWithUpdates,
                 pagination: {
                     total: totalCount,
-                    limit,
-                    offset
+                    page,
+                    pageSize
                 }
             },
             success: true,
