@@ -88,7 +88,8 @@ import {
     Check,
     ChevronsUpDown,
     InfoIcon,
-    Key
+    Key,
+    Plus
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -314,8 +315,8 @@ function PolicyUsersRolesSection({
     allIdps
 }: PolicyUsersRolesSectionProps) {
     const t = useTranslations();
-    const [ssoEnabled, setSsoEnabled] = useState(true);
-    const [selectedIdpId, setSelectedIdpId] = useState<number | null>(null);
+    const ssoEnabled = form.watch("sso");
+    const selectedIdpId = form.watch("skipToIdpId");
     const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
         number | null
     >(null);
@@ -338,9 +339,8 @@ function PolicyUsersRolesSection({
                     <SwitchInput
                         id="sso-toggle"
                         label={t("ssoUse")}
-                        defaultChecked={true}
+                        defaultChecked={ssoEnabled}
                         onCheckedChange={(val) => {
-                            setSsoEnabled(val);
                             form.setValue("sso", val);
                         }}
                     />
@@ -445,11 +445,9 @@ function PolicyUsersRolesSection({
                             <Select
                                 onValueChange={(value) => {
                                     if (value === "none") {
-                                        setSelectedIdpId(null);
                                         form.setValue("skipToIdpId", null);
                                     } else {
                                         const id = parseInt(value);
-                                        setSelectedIdpId(id);
                                         form.setValue("skipToIdpId", id);
                                     }
                                 }}
@@ -493,6 +491,33 @@ function PolicyUsersRolesSection({
 
 function PolicyAuthMethodsSection() {
     const t = useTranslations();
+    const [isOpen, setIsOpen] = useState(false);
+
+    if (!isOpen) {
+        return (
+            <SettingsSection>
+                <SettingsSectionHeader>
+                    <SettingsSectionTitle>
+                        {t("resourceAuthMethods")}
+                    </SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        {t("resourceAuthMethodsDescriptions")}
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsOpen(true)}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("resourcePolicyAuthMethodAdd")}
+                    </Button>
+                </SettingsSectionBody>
+            </SettingsSection>
+        );
+    }
+
     return (
         <SettingsSection>
             <SettingsSectionHeader>
@@ -562,10 +587,36 @@ function PolicyOtpEmailSection({
     emailEnabled
 }: PolicyOtpEmailSectionProps) {
     const t = useTranslations();
+    const [isOpen, setIsOpen] = useState(false);
     const [whitelistEnabled, setWhitelistEnabled] = useState(false);
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
+
+    if (!isOpen) {
+        return (
+            <SettingsSection>
+                <SettingsSectionHeader>
+                    <SettingsSectionTitle>
+                        {t("otpEmailTitle")}
+                    </SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        {t("otpEmailTitleDescription")}
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsOpen(true)}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("resourcePolicyOtpEmailAdd")}
+                    </Button>
+                </SettingsSectionBody>
+            </SettingsSection>
+        );
+    }
 
     return (
         <SettingsSection>
@@ -680,6 +731,7 @@ function PolicyRulesSection({
     isMaxmindAsnAvailable
 }: PolicyRulesSectionProps) {
     const t = useTranslations();
+    const [isOpen, setIsOpen] = useState(false);
     const [rules, setRules] = useState<LocalRule[]>([]);
     const [rulesEnabled, setRulesEnabled] = useState(false);
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
@@ -1175,6 +1227,31 @@ function PolicyRulesSection({
         getFilteredRowModel: getFilteredRowModel(),
         state: { pagination: { pageIndex: 0, pageSize: 1000 } }
     });
+
+    if (!isOpen) {
+        return (
+            <SettingsSection>
+                <SettingsSectionHeader>
+                    <SettingsSectionTitle>
+                        {t("rulesResource")}
+                    </SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        {t("rulesResourcePolicyDescription")}
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsOpen(true)}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("resourcePolicyRulesAdd")}
+                    </Button>
+                </SettingsSectionBody>
+            </SettingsSection>
+        );
+    }
 
     return (
         <SettingsSection>

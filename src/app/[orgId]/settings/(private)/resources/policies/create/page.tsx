@@ -35,7 +35,7 @@ export default async function CreateResourcePolicyPage(
 
                 <Button asChild variant="outline">
                     <Link href={`/${params.orgId}/settings/resources/policies`}>
-                        {t("policiesSeeAll")}
+                        {t("resourcePoliciesSeeAll")}
                     </Link>
                 </Button>
             </div>
