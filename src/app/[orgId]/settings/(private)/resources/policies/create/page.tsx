@@ -1,4 +1,4 @@
-import { CreatePolicyForm } from "@app/components/CreatePolicyForm";
+import { CreatePolicyForm } from "@app/components/resource-policy/CreatePolicyForm";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";

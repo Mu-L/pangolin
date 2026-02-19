@@ -180,6 +180,8 @@
     "resourcePolicyAuthMethodAdd": "Add Authentication Method",
     "resourcePolicyOtpEmailAdd": "Add OTP emails",
     "resourcePolicyRulesAdd": "Add Rules",
+    "resourcePolicyAuthMethodsDescription": "Allow access to resources via additional auth methods",
+    "resourcePolicyUsersRolesDescription": "Configure which users and roles can visit associated resources",
     "rulesResourcePolicyDescription": "Configure rules to control access resources associated to this policy",
     "authentication": "Authentication",
     "protected": "Protected",

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-    SettingsContainer,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
@@ -53,25 +52,31 @@ import {
     TableHeader,
     TableRow
 } from "@app/components/ui/table";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useOrgContext } from "@app/hooks/useOrgContext";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaClose,
+    CredenzaContent,
+    CredenzaDescription,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
 import { toast } from "@app/hooks/useToast";
+import {
+    InputOTP,
+    InputOTPGroup,
+    InputOTPSlot
+} from "@app/components/ui/input-otp";
 
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { orgQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { build } from "@server/build";
 import { MAJOR_ASNS } from "@server/db/asns";
 import { COUNTRIES } from "@server/db/countries";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     isValidCIDR,
     isValidIP,
     isValidUrlGlobPattern
 } from "@server/lib/validators";
-import { UserType } from "@server/types/UserTypes";
-import { useQuery } from "@tanstack/react-query";
 import {
     ColumnDef,
     flexRender,
@@ -93,11 +98,10 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useActionState, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { UseFormReturn, useForm } from "react-hook-form";
 import z from "zod";
-
-// ─── Schemas & types ──────────────────────────────────────────────────────────
+import type { PolicyFormValues } from ".";
 
 const addRuleSchema = z.object({
     action: z.enum(["ACCEPT", "DROP", "PASS"]),
@@ -117,190 +121,6 @@ type LocalRule = {
     updated?: boolean;
 };
 
-const createPolicySchema = z.object({
-    name: z.string().min(1).max(255),
-    sso: z.boolean().default(true),
-    skipToIdpId: z.number().nullable().optional(),
-    emailWhitelistEnabled: z.boolean().default(false),
-    roles: z.array(z.object({ id: z.string(), text: z.string() })),
-    users: z.array(z.object({ id: z.string(), text: z.string() })),
-    emails: z.array(z.object({ id: z.string(), text: z.string() })),
-    applyRules: z.boolean().default(false),
-    rules: z
-        .array(
-            z.object({
-                action: z.enum(["ACCEPT", "DROP", "PASS"]),
-                match: z.string(),
-                value: z.string(),
-                priority: z.number().int(),
-                enabled: z.boolean()
-            })
-        )
-        .default([])
-});
-
-type PolicyFormValues = z.infer<typeof createPolicySchema>;
-
-// ─── CreatePolicyForm ─────────────────────────────────────────────────────────
-
-export type CreatePolicyFormProps = {};
-
-export function CreatePolicyForm({}: CreatePolicyFormProps) {
-    const { org } = useOrgContext();
-    const t = useTranslations();
-    const { env } = useEnvContext();
-    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
-    const { isPaidUser } = usePaidStatus();
-
-    const isMaxmindAvailable = !!(
-        env.server.maxmind_db_path && env.server.maxmind_db_path.length > 0
-    );
-    const isMaxmindAsnAvailable = !!(
-        env.server.maxmind_asn_path && env.server.maxmind_asn_path.length > 0
-    );
-
-    const { data: orgRoles = [], isLoading: isLoadingOrgRoles } = useQuery(
-        orgQueries.roles({ orgId: org.org.orgId })
-    );
-    const { data: orgUsers = [], isLoading: isLoadingOrgUsers } = useQuery(
-        orgQueries.users({ orgId: org.org.orgId })
-    );
-    const { data: orgIdps = [], isLoading: isLoadingOrgIdps } = useQuery(
-        orgQueries.identityProviders({
-            orgId: org.org.orgId,
-            useOrgOnlyIdp: env.app.identityProviderMode === "org"
-        })
-    );
-
-    const form = useForm<PolicyFormValues>({
-        resolver: zodResolver(createPolicySchema) as any,
-        defaultValues: {
-            name: "",
-            sso: true,
-            skipToIdpId: null,
-            emailWhitelistEnabled: false,
-            roles: [],
-            users: [],
-            emails: [],
-            applyRules: false,
-            rules: []
-        }
-    });
-
-    async function onSubmit() {
-        // ...
-    }
-
-    const allRoles = useMemo(
-        () =>
-            orgRoles
-                .map((role) => ({
-                    id: role.roleId.toString(),
-                    text: role.name
-                }))
-                .filter((role) => role.text !== "Admin"),
-        [orgRoles]
-    );
-
-    const allUsers = useMemo(
-        () =>
-            orgUsers.map((user) => ({
-                id: user.id.toString(),
-                text: `${getUserDisplayName({ email: user.email, username: user.username })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
-            })),
-        [orgUsers]
-    );
-
-    const allIdps = useMemo(() => {
-        if (build === "saas") {
-            if (isPaidUser(tierMatrix.orgOidc)) {
-                return orgIdps.map((idp) => ({
-                    id: idp.idpId,
-                    text: idp.name
-                }));
-            }
-        } else {
-            return orgIdps.map((idp) => ({ id: idp.idpId, text: idp.name }));
-        }
-        return [];
-    }, [orgIdps, isPaidUser]);
-
-    if (isLoadingOrgRoles || isLoadingOrgUsers || isLoadingOrgIdps) {
-        return <></>;
-    }
-
-    return (
-        <Form {...form}>
-            <form action={formAction}>
-                <SettingsContainer>
-                    {/* Name */}
-                    <SettingsSection>
-                        <SettingsSectionHeader>
-                            <SettingsSectionTitle>
-                                {t("resourcePolicyName")}
-                            </SettingsSectionTitle>
-                            <SettingsSectionDescription>
-                                {t("resourcePolicyNameDescription")}
-                            </SettingsSectionDescription>
-                        </SettingsSectionHeader>
-                        <SettingsSectionBody>
-                            <SettingsSectionForm>
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("name")}</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    {...field}
-                                                    placeholder={t(
-                                                        "resourcePolicyNamePlaceholder"
-                                                    )}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </SettingsSectionForm>
-                        </SettingsSectionBody>
-                    </SettingsSection>
-
-                    <PolicyUsersRolesSection
-                        form={form}
-                        allRoles={allRoles}
-                        allUsers={allUsers}
-                        allIdps={allIdps}
-                    />
-                    <PolicyAuthMethodsSection />
-                    <PolicyOtpEmailSection
-                        form={form}
-                        emailEnabled={env.email.emailEnabled}
-                    />
-                    <PolicyRulesSection
-                        form={form}
-                        isMaxmindAvailable={isMaxmindAvailable}
-                        isMaxmindAsnAvailable={isMaxmindAsnAvailable}
-                    />
-                </SettingsContainer>
-
-                <div className="flex py-6 justify-end">
-                    <Button
-                        type="submit"
-                        loading={isSubmitting}
-                        disabled={isSubmitting}
-                    >
-                        {t("resourcePoliciesCreate")}
-                    </Button>
-                </div>
-            </form>
-        </Form>
-    );
-}
-
-// ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
-
 type PolicyUsersRolesSectionProps = {
     form: UseFormReturn<PolicyFormValues, any, any>;
     allRoles: { id: string; text: string }[];
@@ -308,7 +128,9 @@ type PolicyUsersRolesSectionProps = {
     allIdps: { id: number; text: string }[];
 };
 
-function PolicyUsersRolesSection({
+// ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
+
+export function PolicyUsersRolesSection({
     form,
     allRoles,
     allUsers,
@@ -331,7 +153,7 @@ function PolicyUsersRolesSection({
                     {t("resourceUsersRoles")}
                 </SettingsSectionTitle>
                 <SettingsSectionDescription>
-                    {t("resourceUsersRolesDescription")}
+                    {t("resourcePolicyUsersRolesDescription")}
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
@@ -489,9 +311,51 @@ function PolicyUsersRolesSection({
 
 // ─── PolicyAuthMethodsSection ─────────────────────────────────────────────────
 
-function PolicyAuthMethodsSection() {
+const setPasswordSchema = z.object({
+    password: z.string().min(4).max(100)
+});
+
+const setPincodeSchema = z.object({
+    pincode: z.string().length(6)
+});
+
+const setHeaderAuthSchema = z.object({
+    user: z.string().min(4).max(100),
+    password: z.string().min(4).max(100),
+    extendedCompatibility: z.boolean()
+});
+
+type PolicyAuthMethodsSectionProps = {
+    form: UseFormReturn<PolicyFormValues, any, any>;
+};
+
+export function PolicyAuthMethodsSection({
+    form
+}: PolicyAuthMethodsSectionProps) {
     const t = useTranslations();
     const [isOpen, setIsOpen] = useState(false);
+    const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
+    const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
+    const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
+
+    const password = form.watch("password");
+    const pincode = form.watch("pincode");
+    const headerAuth = form.watch("headerAuth");
+
+    const passwordForm = useForm({
+        resolver: zodResolver(setPasswordSchema),
+        defaultValues: { password: "" }
+    });
+
+    const pincodeForm = useForm({
+        resolver: zodResolver(setPincodeSchema),
+        defaultValues: { pincode: "" }
+    });
+
+    const headerAuthForm = useForm({
+        resolver: zodResolver(setHeaderAuthSchema),
+        defaultValues: { user: "", password: "", extendedCompatibility: true }
+    });
 
     if (!isOpen) {
         return (
@@ -501,7 +365,7 @@ function PolicyAuthMethodsSection() {
                         {t("resourceAuthMethods")}
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
-                        {t("resourceAuthMethodsDescriptions")}
+                        {t("resourcePolicyAuthMethodsDescription")}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
@@ -519,59 +383,359 @@ function PolicyAuthMethodsSection() {
     }
 
     return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>
-                    {t("resourceAuthMethods")}
-                </SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {t("resourceAuthMethodsDescriptions")}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-            <SettingsSectionBody>
-                <SettingsSectionForm>
-                    <div className="flex items-center justify-between border rounded-md p-2 mb-4">
-                        <div className="flex items-center text-sm space-x-2">
-                            <Key size="14" />
-                            <span>
-                                {t("resourcePasswordProtection", {
-                                    status: t("disabled")
+        <>
+            {/* Password Credenza */}
+            <Credenza
+                open={isSetPasswordOpen}
+                onOpenChange={(val) => {
+                    setIsSetPasswordOpen(val);
+                    if (!val) passwordForm.reset();
+                }}
+            >
+                <CredenzaContent>
+                    <CredenzaHeader>
+                        <CredenzaTitle>
+                            {t("resourcePasswordSetupTitle")}
+                        </CredenzaTitle>
+                        <CredenzaDescription>
+                            {t("resourcePasswordSetupTitleDescription")}
+                        </CredenzaDescription>
+                    </CredenzaHeader>
+                    <CredenzaBody>
+                        <Form {...passwordForm}>
+                            <form
+                                onSubmit={passwordForm.handleSubmit((data) => {
+                                    form.setValue("password", data);
+                                    setIsSetPasswordOpen(false);
+                                    passwordForm.reset();
                                 })}
-                            </span>
-                        </div>
-                        <Button variant="secondary" size="sm" disabled>
-                            {t("passwordAdd")}
+                                className="space-y-4"
+                                id="set-password-form"
+                            >
+                                <FormField
+                                    control={passwordForm.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                {t("password")}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    autoComplete="off"
+                                                    type="password"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </form>
+                        </Form>
+                    </CredenzaBody>
+                    <CredenzaFooter>
+                        <CredenzaClose asChild>
+                            <Button variant="outline">{t("close")}</Button>
+                        </CredenzaClose>
+                        <Button type="submit" form="set-password-form">
+                            {t("resourcePasswordSubmit")}
                         </Button>
-                    </div>
+                    </CredenzaFooter>
+                </CredenzaContent>
+            </Credenza>
 
-                    <div className="flex items-center justify-between border rounded-md p-2">
-                        <div className="flex items-center space-x-2 text-sm">
-                            <Binary size="14" />
-                            <span>
-                                {t("resourcePincodeProtection", {
-                                    status: t("disabled")
+            {/* Pincode Credenza */}
+            <Credenza
+                open={isSetPincodeOpen}
+                onOpenChange={(val) => {
+                    setIsSetPincodeOpen(val);
+                    if (!val) pincodeForm.reset();
+                }}
+            >
+                <CredenzaContent>
+                    <CredenzaHeader>
+                        <CredenzaTitle>
+                            {t("resourcePincodeSetupTitle")}
+                        </CredenzaTitle>
+                        <CredenzaDescription>
+                            {t("resourcePincodeSetupTitleDescription")}
+                        </CredenzaDescription>
+                    </CredenzaHeader>
+                    <CredenzaBody>
+                        <Form {...pincodeForm}>
+                            <form
+                                onSubmit={pincodeForm.handleSubmit((data) => {
+                                    form.setValue("pincode", data);
+                                    setIsSetPincodeOpen(false);
+                                    pincodeForm.reset();
                                 })}
-                            </span>
-                        </div>
-                        <Button variant="secondary" size="sm" disabled>
-                            {t("pincodeAdd")}
+                                className="space-y-4"
+                                id="set-pincode-form"
+                            >
+                                <FormField
+                                    control={pincodeForm.control}
+                                    name="pincode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                {t("resourcePincode")}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <div className="flex justify-center">
+                                                    <InputOTP
+                                                        autoComplete="false"
+                                                        maxLength={6}
+                                                        {...field}
+                                                    >
+                                                        <InputOTPGroup className="flex">
+                                                            <InputOTPSlot
+                                                                index={0}
+                                                                obscured
+                                                            />
+                                                            <InputOTPSlot
+                                                                index={1}
+                                                                obscured
+                                                            />
+                                                            <InputOTPSlot
+                                                                index={2}
+                                                                obscured
+                                                            />
+                                                            <InputOTPSlot
+                                                                index={3}
+                                                                obscured
+                                                            />
+                                                            <InputOTPSlot
+                                                                index={4}
+                                                                obscured
+                                                            />
+                                                            <InputOTPSlot
+                                                                index={5}
+                                                                obscured
+                                                            />
+                                                        </InputOTPGroup>
+                                                    </InputOTP>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </form>
+                        </Form>
+                    </CredenzaBody>
+                    <CredenzaFooter>
+                        <CredenzaClose asChild>
+                            <Button variant="outline">{t("close")}</Button>
+                        </CredenzaClose>
+                        <Button type="submit" form="set-pincode-form">
+                            {t("resourcePincodeSubmit")}
                         </Button>
-                    </div>
+                    </CredenzaFooter>
+                </CredenzaContent>
+            </Credenza>
 
-                    <div className="flex items-center justify-between border rounded-md p-2">
-                        <div className="flex items-center space-x-2 text-sm">
-                            <Bot size="14" />
-                            <span>
-                                {t("resourceHeaderAuthProtectionDisabled")}
-                            </span>
-                        </div>
-                        <Button variant="secondary" size="sm" disabled>
-                            {t("headerAuthAdd")}
+            {/* Header Auth Credenza */}
+            <Credenza
+                open={isSetHeaderAuthOpen}
+                onOpenChange={(val) => {
+                    setIsSetHeaderAuthOpen(val);
+                    if (!val) headerAuthForm.reset();
+                }}
+            >
+                <CredenzaContent>
+                    <CredenzaHeader>
+                        <CredenzaTitle>
+                            {t("resourceHeaderAuthSetupTitle")}
+                        </CredenzaTitle>
+                        <CredenzaDescription>
+                            {t("resourceHeaderAuthSetupTitleDescription")}
+                        </CredenzaDescription>
+                    </CredenzaHeader>
+                    <CredenzaBody>
+                        <Form {...headerAuthForm}>
+                            <form
+                                onSubmit={headerAuthForm.handleSubmit((data) => {
+                                    form.setValue("headerAuth", data);
+                                    setIsSetHeaderAuthOpen(false);
+                                    headerAuthForm.reset();
+                                })}
+                                className="space-y-4"
+                                id="set-header-auth-form"
+                            >
+                                <FormField
+                                    control={headerAuthForm.control}
+                                    name="user"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t("user")}</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    autoComplete="off"
+                                                    type="text"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={headerAuthForm.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                {t("password")}
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    autoComplete="off"
+                                                    type="password"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={headerAuthForm.control}
+                                    name="extendedCompatibility"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <SwitchInput
+                                                    id="header-auth-compatibility-toggle"
+                                                    label={t(
+                                                        "headerAuthCompatibility"
+                                                    )}
+                                                    info={t(
+                                                        "headerAuthCompatibilityInfo"
+                                                    )}
+                                                    checked={field.value}
+                                                    onCheckedChange={
+                                                        field.onChange
+                                                    }
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </form>
+                        </Form>
+                    </CredenzaBody>
+                    <CredenzaFooter>
+                        <CredenzaClose asChild>
+                            <Button variant="outline">{t("close")}</Button>
+                        </CredenzaClose>
+                        <Button type="submit" form="set-header-auth-form">
+                            {t("resourceHeaderAuthSubmit")}
                         </Button>
-                    </div>
-                </SettingsSectionForm>
-            </SettingsSectionBody>
-        </SettingsSection>
+                    </CredenzaFooter>
+                </CredenzaContent>
+            </Credenza>
+
+            <SettingsSection>
+                <SettingsSectionHeader>
+                    <SettingsSectionTitle>
+                        {t("resourceAuthMethods")}
+                    </SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        {t("resourcePolicyAuthMethodsDescription")}
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    <SettingsSectionForm>
+                        {/* Password row */}
+                        <div className="flex items-center justify-between border rounded-md p-2 mb-4">
+                            <div
+                                className={`flex items-center ${password ? "text-green-500" : ""} text-sm space-x-2`}
+                            >
+                                <Key size="14" />
+                                <span>
+                                    {t("resourcePasswordProtection", {
+                                        status: password
+                                            ? t("enabled")
+                                            : t("disabled")
+                                    })}
+                                </span>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={
+                                    password
+                                        ? () => form.setValue("password", null)
+                                        : () => setIsSetPasswordOpen(true)
+                                }
+                            >
+                                {password ? t("passwordRemove") : t("passwordAdd")}
+                            </Button>
+                        </div>
+
+                        {/* Pincode row */}
+                        <div className="flex items-center justify-between border rounded-md p-2">
+                            <div
+                                className={`flex items-center ${pincode ? "text-green-500" : ""} space-x-2 text-sm`}
+                            >
+                                <Binary size="14" />
+                                <span>
+                                    {t("resourcePincodeProtection", {
+                                        status: pincode
+                                            ? t("enabled")
+                                            : t("disabled")
+                                    })}
+                                </span>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={
+                                    pincode
+                                        ? () => form.setValue("pincode", null)
+                                        : () => setIsSetPincodeOpen(true)
+                                }
+                            >
+                                {pincode ? t("pincodeRemove") : t("pincodeAdd")}
+                            </Button>
+                        </div>
+
+                        {/* Header auth row */}
+                        <div className="flex items-center justify-between border rounded-md p-2">
+                            <div
+                                className={`flex items-center ${headerAuth ? "text-green-500" : ""} space-x-2 text-sm`}
+                            >
+                                <Bot size="14" />
+                                <span>
+                                    {headerAuth
+                                        ? t("resourceHeaderAuthProtectionEnabled")
+                                        : t("resourceHeaderAuthProtectionDisabled")}
+                                </span>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={
+                                    headerAuth
+                                        ? () =>
+                                              form.setValue("headerAuth", null)
+                                        : () => setIsSetHeaderAuthOpen(true)
+                                }
+                            >
+                                {headerAuth
+                                    ? t("headerAuthRemove")
+                                    : t("headerAuthAdd")}
+                            </Button>
+                        </div>
+                    </SettingsSectionForm>
+                </SettingsSectionBody>
+            </SettingsSection>
+        </>
     );
 }
 
@@ -582,7 +746,7 @@ type PolicyOtpEmailSectionProps = {
     emailEnabled: boolean;
 };
 
-function PolicyOtpEmailSection({
+export function PolicyOtpEmailSection({
     form,
     emailEnabled
 }: PolicyOtpEmailSectionProps) {
@@ -725,7 +889,7 @@ type PolicyRulesSectionProps = {
     isMaxmindAsnAvailable: boolean;
 };
 
-function PolicyRulesSection({
+export function PolicyRulesSection({
     form,
     isMaxmindAvailable,
     isMaxmindAsnAvailable
