@@ -85,7 +85,10 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
             users: [],
             emails: [],
             applyRules: false,
-            rules: []
+            rules: [],
+            password: null,
+            headerAuth: null,
+            pincode: null
         }
     });
 
