@@ -99,7 +99,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { useCallback, useMemo, useState } from "react";
-import { UseFormReturn, useForm } from "react-hook-form";
+import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 import z from "zod";
 import type { PolicyFormValues } from ".";
 
@@ -137,8 +137,11 @@ export function PolicyUsersRolesSection({
     allIdps
 }: PolicyUsersRolesSectionProps) {
     const t = useTranslations();
-    const ssoEnabled = form.watch("sso");
-    const selectedIdpId = form.watch("skipToIdpId");
+    const ssoEnabled = useWatch({ control: form.control, name: "sso" });
+    const selectedIdpId = useWatch({
+        control: form.control,
+        name: "skipToIdpId"
+    });
     const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
         number | null
     >(null);
@@ -163,6 +166,7 @@ export function PolicyUsersRolesSection({
                         label={t("ssoUse")}
                         defaultChecked={ssoEnabled}
                         onCheckedChange={(val) => {
+                            console.log(`form.setValue("sso", ${val})`);
                             form.setValue("sso", val);
                         }}
                     />
@@ -555,11 +559,13 @@ export function PolicyAuthMethodsSection({
                     <CredenzaBody>
                         <Form {...headerAuthForm}>
                             <form
-                                onSubmit={headerAuthForm.handleSubmit((data) => {
-                                    form.setValue("headerAuth", data);
-                                    setIsSetHeaderAuthOpen(false);
-                                    headerAuthForm.reset();
-                                })}
+                                onSubmit={headerAuthForm.handleSubmit(
+                                    (data) => {
+                                        form.setValue("headerAuth", data);
+                                        setIsSetHeaderAuthOpen(false);
+                                        headerAuthForm.reset();
+                                    }
+                                )}
                                 className="space-y-4"
                                 id="set-header-auth-form"
                             >
@@ -672,7 +678,9 @@ export function PolicyAuthMethodsSection({
                                         : () => setIsSetPasswordOpen(true)
                                 }
                             >
-                                {password ? t("passwordRemove") : t("passwordAdd")}
+                                {password
+                                    ? t("passwordRemove")
+                                    : t("passwordAdd")}
                             </Button>
                         </div>
 
@@ -712,8 +720,12 @@ export function PolicyAuthMethodsSection({
                                 <Bot size="14" />
                                 <span>
                                     {headerAuth
-                                        ? t("resourceHeaderAuthProtectionEnabled")
-                                        : t("resourceHeaderAuthProtectionDisabled")}
+                                        ? t(
+                                              "resourceHeaderAuthProtectionEnabled"
+                                          )
+                                        : t(
+                                              "resourceHeaderAuthProtectionDisabled"
+                                          )}
                                 </span>
                             </div>
                             <Button
