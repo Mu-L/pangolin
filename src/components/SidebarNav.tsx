@@ -167,16 +167,25 @@ function CollapsibleNavItem({
                     </div>
                 </button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
+            <CollapsibleContent forceMount>
                 <div
                     className={cn(
-                        "border-l ml-[22px] pl-[9px] mt-0 space-y-0",
-                        "border-border"
+                        "grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out",
+                        isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
                     )}
                 >
-                    {item.items!.map((childItem) =>
-                        renderNavItem(childItem, level + 1)
-                    )}
+                    <div className="min-h-0">
+                        <div
+                            className={cn(
+                                "border-l ml-[22px] pl-[9px] mt-0 space-y-0",
+                                "border-border"
+                            )}
+                        >
+                            {item.items!.map((childItem) =>
+                                renderNavItem(childItem, level + 1)
+                            )}
+                        </div>
+                    </div>
                 </div>
             </CollapsibleContent>
         </Collapsible>
