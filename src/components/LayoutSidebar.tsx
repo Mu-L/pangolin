@@ -18,7 +18,7 @@ import { approvalQueries } from "@app/lib/queries";
 import { build } from "@server/build";
 import { useQuery } from "@tanstack/react-query";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { ExternalLink, Server } from "lucide-react";
+import { ArrowRight, ExternalLink, Server } from "lucide-react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -146,36 +146,6 @@ export function LayoutSidebar({
             />
             <div className="flex-1 overflow-y-auto relative">
                 <div className="px-2 pt-1">
-                    {!isAdminPage && user.serverAdmin && (
-                        <div className="py-2">
-                            <Link
-                                href="/admin"
-                                className={cn(
-                                    "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
-                                    isSidebarCollapsed
-                                        ? "px-2 py-2 justify-center"
-                                        : "px-3 py-1.5"
-                                )}
-                                title={
-                                    isSidebarCollapsed
-                                        ? t("serverAdmin")
-                                        : undefined
-                                }
-                            >
-                                <span
-                                    className={cn(
-                                        "shrink-0",
-                                        !isSidebarCollapsed && "mr-2"
-                                    )}
-                                >
-                                    <Server className="h-4 w-4" />
-                                </span>
-                                {!isSidebarCollapsed && (
-                                    <span>{t("serverAdmin")}</span>
-                                )}
-                            </Link>
-                        </div>
-                    )}
                     <SidebarNav
                         sections={navItems}
                         isCollapsed={isSidebarCollapsed}
@@ -185,6 +155,40 @@ export function LayoutSidebar({
                 {/* Fade gradient at bottom to indicate scrollable content */}
                 <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
             </div>
+
+            {!isAdminPage && user.serverAdmin && (
+                <div className="shrink-0 px-2 pb-2">
+                    <Link
+                        href="/admin"
+                        className={cn(
+                            "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
+                            isSidebarCollapsed
+                                ? "px-2 py-2 justify-center"
+                                : "px-3 py-1.5"
+                        )}
+                        title={
+                            isSidebarCollapsed
+                                ? t("serverAdmin")
+                                : undefined
+                        }
+                    >
+                        <span
+                            className={cn(
+                                "shrink-0",
+                                !isSidebarCollapsed && "mr-2"
+                            )}
+                        >
+                            <Server className="h-4 w-4" />
+                        </span>
+                        {!isSidebarCollapsed && (
+                            <>
+                                <span className="flex-1">{t("serverAdmin")}</span>
+                                <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
+                            </>
+                        )}
+                    </Link>
+                </div>
+            )}
 
             <div className="w-full border-t border-border" />
 

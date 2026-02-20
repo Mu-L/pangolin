@@ -71,7 +71,7 @@ export function OrgSelector({
                         "cursor-pointer transition-colors",
                         isCollapsed
                             ? "w-full h-16 flex items-center justify-center hover:bg-muted"
-                            : "w-full px-4 py-4 hover:bg-muted"
+                            : "w-full px-5 py-4 hover:bg-muted"
                     )}
                 >
                     {isCollapsed ? (
