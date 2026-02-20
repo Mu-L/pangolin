@@ -119,7 +119,7 @@ function CollapsibleNavItem({
                 <button
                     className={cn(
                         "flex items-center w-full rounded-md transition-colors",
-                        level === 0 ? "px-3 py-1.5" : "px-3 py-1",
+                        "px-3 py-1.5",
                         isActive
                             ? "bg-secondary font-medium"
                             : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
@@ -170,7 +170,7 @@ function CollapsibleNavItem({
             <CollapsibleContent>
                 <div
                     className={cn(
-                        "border-l ml-3 pl-3 mt-0 space-y-0",
+                        "border-l ml-[22px] pl-[9px] mt-0 space-y-0",
                         "border-border"
                     )}
                 >
@@ -278,11 +278,7 @@ export function SidebarNav({
                 href={isDisabled ? "#" : hydratedHref}
                 className={cn(
                     "flex items-center rounded-md transition-colors relative",
-                    isCollapsed
-                        ? "px-2 py-2 justify-center"
-                        : level === 0
-                          ? "px-3 py-1.5"
-                          : "px-3 py-1",
+                    isCollapsed ? "px-2 py-2 justify-center" : "px-3 py-1.5",
                     isActive
                         ? "bg-secondary font-medium"
                         : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
@@ -298,7 +294,7 @@ export function SidebarNav({
                 tabIndex={isDisabled ? -1 : undefined}
                 aria-disabled={isDisabled}
             >
-                {item.icon && (
+                {item.icon && level === 0 && (
                     <span
                         className={cn(
                             "flex-shrink-0 w-5 h-5 flex items-center justify-center",
@@ -355,12 +351,12 @@ export function SidebarNav({
             <div
                 className={cn(
                     "flex items-center rounded-md transition-colors",
-                    level === 0 ? "px-3 py-1.5" : "px-3 py-1",
+                    "px-3 py-1.5",
                     "text-muted-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
             >
-                {item.icon && (
+                {item.icon && level === 0 && (
                     <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">
                         {item.icon}
                     </span>
@@ -480,11 +476,6 @@ export function SidebarNav({
                                                         }
                                                     }}
                                                 >
-                                                    {childItem.icon && (
-                                                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">
-                                                            {childItem.icon}
-                                                        </span>
-                                                    )}
                                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                                         <span className="truncate">
                                                             {t(childItem.title)}
