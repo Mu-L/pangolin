@@ -679,7 +679,13 @@ export const roles = sqliteTable("roles", {
     description: text("description"),
     requireDeviceApproval: integer("requireDeviceApproval", {
         mode: "boolean"
-    }).default(false)
+    }).default(false),
+    sshSudoMode: text("sshSudoMode").default("none"), // "none" | "full" | "commands"
+    sshSudoCommands: text("sshSudoCommands").default("[]"),
+    sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
+        false
+    ),
+    sshUnixGroups: text("sshUnixGroups").default("[]")
 });
 
 export const roleActions = sqliteTable("roleActions", {

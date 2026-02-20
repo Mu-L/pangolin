@@ -1,9 +1,10 @@
-import { db, orgs, roles } from "@server/db";
+import { db, orgs, roleActions, roles } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { ActionsEnum } from "@server/auth/actions";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -37,7 +38,11 @@ async function queryRoles(orgId: string, limit: number, offset: number) {
             name: roles.name,
             description: roles.description,
             orgName: orgs.name,
-            requireDeviceApproval: roles.requireDeviceApproval
+            requireDeviceApproval: roles.requireDeviceApproval,
+            sshSudoMode: roles.sshSudoMode,
+            sshSudoCommands: roles.sshSudoCommands,
+            sshCreateHomeDir: roles.sshCreateHomeDir,
+            sshUnixGroups: roles.sshUnixGroups
         })
         .from(roles)
         .leftJoin(orgs, eq(roles.orgId, orgs.orgId))
@@ -106,9 +111,28 @@ export async function listRoles(
         const totalCountResult = await countQuery;
         const totalCount = totalCountResult[0].count;
 
+        let rolesWithAllowSsh = rolesList;
+        if (rolesList.length > 0) {
+            const roleIds = rolesList.map((r) => r.roleId);
+            const signSshKeyRows = await db
+                .select({ roleId: roleActions.roleId })
+                .from(roleActions)
+                .where(
+                    and(
+                        inArray(roleActions.roleId, roleIds),
+                        eq(roleActions.actionId, ActionsEnum.signSshKey)
+                    )
+                );
+            const roleIdsWithSsh = new Set(signSshKeyRows.map((r) => r.roleId));
+            rolesWithAllowSsh = rolesList.map((r) => ({
+                ...r,
+                allowSsh: roleIdsWithSsh.has(r.roleId)
+            }));
+        }
+
         return response(res, {
             data: {
-                roles: rolesList,
+                roles: rolesWithAllowSsh,
                 pagination: {
                     total: totalCount,
                     limit,

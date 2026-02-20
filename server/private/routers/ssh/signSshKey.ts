@@ -13,7 +13,17 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, newts, orgs, roundTripMessageTracker, siteResources, sites, userOrgs } from "@server/db";
+import {
+    db,
+    newts,
+    roles,
+    roundTripMessageTracker,
+    siteResources,
+    sites,
+    userOrgs
+} from "@server/db";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -25,6 +35,8 @@ import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResourc
 import { signPublicKey, getOrgCAKeys } from "#private/lib/sshCA";
 import config from "@server/lib/config";
 import { sendToClient } from "#private/routers/ws";
+import { groups } from "d3";
+import { homedir } from "os";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -135,11 +147,26 @@ export async function signSshKey(
             );
         }
 
+        const isLicensed = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.sshPam
+        );
+        if (!isLicensed) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "SSH key signing requires a paid plan"
+                )
+            );
+        }
+
         let usernameToUse;
         if (!userOrg.pamUsername) {
             if (req.user?.email) {
                 // Extract username from email (first part before @)
-                usernameToUse = req.user?.email.split("@")[0].replace(/[^a-zA-Z0-9_-]/g, "");
+                usernameToUse = req.user?.email
+                    .split("@")[0]
+                    .replace(/[^a-zA-Z0-9_-]/g, "");
                 if (!usernameToUse) {
                     return next(
                         createHttpError(
@@ -301,6 +328,29 @@ export async function signSshKey(
             );
         }
 
+        const [roleRow] = await db
+            .select()
+            .from(roles)
+            .where(eq(roles.roleId, roleId))
+            .limit(1);
+
+        let parsedSudoCommands: string[] = [];
+        let parsedGroups: string[] = [];
+        try {
+            parsedSudoCommands = JSON.parse(roleRow?.sshSudoCommands ?? "[]");
+            if (!Array.isArray(parsedSudoCommands)) parsedSudoCommands = [];
+        } catch {
+            parsedSudoCommands = [];
+        }
+        try {
+            parsedGroups = JSON.parse(roleRow?.sshUnixGroups ?? "[]");
+            if (!Array.isArray(parsedGroups)) parsedGroups = [];
+        } catch {
+            parsedGroups = [];
+        }
+        const homedir = roleRow?.sshCreateHomeDir ?? null;
+        const sudoMode = roleRow?.sshSudoMode ?? "none";
+
         // get the site
         const [newt] = await db
             .select()
@@ -334,7 +384,7 @@ export async function signSshKey(
             .values({
                 wsClientId: newt.newtId,
                 messageType: `newt/pam/connection`,
-                sentAt: Math.floor(Date.now() / 1000),
+                sentAt: Math.floor(Date.now() / 1000)
             })
             .returning();
 
@@ -358,8 +408,10 @@ export async function signSshKey(
                 username: usernameToUse,
                 niceId: resource.niceId,
                 metadata: {
-                    sudo: true, // we are hardcoding these for now but should make configurable from the role or something
-                    homedir: true
+                    sudoMode: sudoMode,
+                    sudoCommands: parsedSudoCommands,
+                    homedir: homedir,
+                    groups: parsedGroups
                 }
             }
         });

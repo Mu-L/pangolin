@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, type Role } from "@server/db";
-import { roles } from "@server/db";
-import { eq } from "drizzle-orm";
+import { roleActions, roles } from "@server/db";
+import { and, eq } from "drizzle-orm";
+import { ActionsEnum } from "@server/auth/actions";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -16,11 +17,18 @@ const updateRoleParamsSchema = z.strictObject({
     roleId: z.string().transform(Number).pipe(z.int().positive())
 });
 
+const sshSudoModeSchema = z.enum(["none", "full", "commands"]);
+
 const updateRoleBodySchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
         description: z.string().optional(),
-        requireDeviceApproval: z.boolean().optional()
+        requireDeviceApproval: z.boolean().optional(),
+        allowSsh: z.boolean().optional(),
+        sshSudoMode: sshSudoModeSchema.optional(),
+        sshSudoCommands: z.array(z.string()).optional(),
+        sshCreateHomeDir: z.boolean().optional(),
+        sshUnixGroups: z.array(z.string()).optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -75,7 +83,9 @@ export async function updateRole(
         }
 
         const { roleId } = parsedParams.data;
-        const updateData = parsedBody.data;
+        const body = parsedBody.data;
+        const { allowSsh, ...restBody } = body;
+        const updateData: Record<string, unknown> = { ...restBody };
 
         const role = await db
             .select()
@@ -111,18 +121,70 @@ export async function updateRole(
             );
         }
 
-        const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.deviceApprovals);
-        if (!isLicensed) {
+        const isLicensedDeviceApprovals = await isLicensedOrSubscribed(orgId, tierMatrix.deviceApprovals);
+        if (!isLicensedDeviceApprovals) {
             updateData.requireDeviceApproval = undefined;
         }
 
-        const updatedRole = await db
-            .update(roles)
-            .set(updateData)
-            .where(eq(roles.roleId, roleId))
-            .returning();
+        const isLicensedSshPam = await isLicensedOrSubscribed(orgId, tierMatrix.sshPam);
+        if (!isLicensedSshPam) {
+            delete updateData.sshSudoMode;
+            delete updateData.sshSudoCommands;
+            delete updateData.sshCreateHomeDir;
+            delete updateData.sshUnixGroups;
+        } else {
+            if (Array.isArray(updateData.sshSudoCommands)) {
+                updateData.sshSudoCommands = JSON.stringify(updateData.sshSudoCommands);
+            }
+            if (Array.isArray(updateData.sshUnixGroups)) {
+                updateData.sshUnixGroups = JSON.stringify(updateData.sshUnixGroups);
+            }
+        }
 
-        if (updatedRole.length === 0) {
+        const updatedRole = await db.transaction(async (trx) => {
+            const result = await trx
+                .update(roles)
+                .set(updateData as typeof roles.$inferInsert)
+                .where(eq(roles.roleId, roleId))
+                .returning();
+
+            if (result.length === 0) {
+                return null;
+            }
+
+            if (allowSsh === true) {
+                const existing = await trx
+                    .select()
+                    .from(roleActions)
+                    .where(
+                        and(
+                            eq(roleActions.roleId, roleId),
+                            eq(roleActions.actionId, ActionsEnum.signSshKey)
+                        )
+                    )
+                    .limit(1);
+                if (existing.length === 0) {
+                    await trx.insert(roleActions).values({
+                        roleId,
+                        actionId: ActionsEnum.signSshKey,
+                        orgId: orgId!
+                    });
+                }
+            } else if (allowSsh === false) {
+                await trx
+                    .delete(roleActions)
+                    .where(
+                        and(
+                            eq(roleActions.roleId, roleId),
+                            eq(roleActions.actionId, ActionsEnum.signSshKey)
+                        )
+                    );
+            }
+
+            return result[0];
+        });
+
+        if (!updatedRole) {
             return next(
                 createHttpError(
                     HttpCode.NOT_FOUND,
@@ -132,7 +194,7 @@ export async function updateRole(
         }
 
         return response(res, {
-            data: updatedRole[0],
+            data: updatedRole,
             success: true,
             error: false,
             message: "Role updated successfully",
