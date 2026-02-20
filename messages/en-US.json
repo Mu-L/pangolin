@@ -2099,7 +2099,7 @@
     "manageMachineClients": "Manage Machine Clients",
     "manageMachineClientsDescription": "Create and manage clients that servers and systems use to privately connect to resources",
     "machineClientsBannerTitle": "Servers & Automated Systems",
-    "machineClientsBannerDescription": "Machine clients are for servers and automated systems that are not associated with a specific user. They authenticate with an ID and secret, and can run with Pangolin CLI, Olm CLI, or Olm as a container.",
+    "machineClientsBannerDescription": "Machine clients are for servers and automated systems that are not associated with a specific user. They authenticate with an ID and secret, and can be deployed as a CLI or a container.",
     "machineClientsBannerPangolinCLI": "Pangolin CLI",
     "machineClientsBannerOlmCLI": "Olm CLI",
     "machineClientsBannerOlmContainer": "Container",

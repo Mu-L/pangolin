@@ -145,7 +145,7 @@ export function LayoutSidebar({
                 )}
             />
             <div className="flex-1 overflow-y-auto relative">
-                <div className="px-2 pt-1">
+                <div className="px-2 pt-3">
                     <SidebarNav
                         sections={navItems}
                         isCollapsed={isSidebarCollapsed}
@@ -167,9 +167,7 @@ export function LayoutSidebar({
                                 : "px-3 py-1.5"
                         )}
                         title={
-                            isSidebarCollapsed
-                                ? t("serverAdmin")
-                                : undefined
+                            isSidebarCollapsed ? t("serverAdmin") : undefined
                         }
                     >
                         <span
@@ -182,7 +180,9 @@ export function LayoutSidebar({
                         </span>
                         {!isSidebarCollapsed && (
                             <>
-                                <span className="flex-1">{t("serverAdmin")}</span>
+                                <span className="flex-1">
+                                    {t("serverAdmin")}
+                                </span>
                                 <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
                             </>
                         )}

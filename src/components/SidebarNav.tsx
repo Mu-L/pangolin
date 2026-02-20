@@ -122,7 +122,7 @@ function CollapsibleNavItem({
                         "px-3 py-1.5",
                         isActive
                             ? "bg-secondary font-medium"
-                            : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
+                            : "text-foreground/80 hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                         isDisabled && "cursor-not-allowed opacity-60"
                     )}
                     disabled={isDisabled}
@@ -290,7 +290,7 @@ export function SidebarNav({
                     isCollapsed ? "px-2 py-2 justify-center" : "px-3 py-1.5",
                     isActive
                         ? "bg-secondary font-medium"
-                        : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
+                        : "text-foreground/80 hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
                 onClick={(e) => {
@@ -361,7 +361,7 @@ export function SidebarNav({
                 className={cn(
                     "flex items-center rounded-md transition-colors",
                     "px-3 py-1.5",
-                    "text-muted-foreground",
+                    "text-foreground/80",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
             >
@@ -416,7 +416,7 @@ export function SidebarNav({
                                                 "flex items-center rounded-md transition-colors px-2 py-2 justify-center w-full",
                                                 isActive || isChildActive
                                                     ? "bg-secondary font-medium"
-                                                    : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
+                                                    : "text-foreground/80 hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                                                 isDisabled &&
                                                     "cursor-not-allowed opacity-60"
                                             )}
@@ -471,7 +471,7 @@ export function SidebarNav({
                                                         "flex items-center rounded-md transition-colors px-3 py-1.5 text-sm",
                                                         childIsActive
                                                             ? "bg-secondary font-medium"
-                                                            : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                                                            : "text-foreground/80 hover:bg-secondary/50 hover:text-foreground",
                                                         childIsDisabled &&
                                                             "cursor-not-allowed opacity-60"
                                                     )}

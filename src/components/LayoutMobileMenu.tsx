@@ -73,14 +73,14 @@ export function LayoutMobileMenu({
                                         {t("navbarDescription")}
                                     </SheetDescription>
                                     <div className="flex-1 overflow-y-auto relative">
-                                        <div className="px-3">
+                                        <div className="px-1">
                                             <OrgSelector
                                                 orgId={orgId}
                                                 orgs={orgs}
                                             />
                                         </div>
                                         <div className="w-full border-b border-border" />
-                                        <div className="px-3">
+                                        <div className="px-3 pt-3">
                                             {!isAdminPage &&
                                                 user.serverAdmin && (
                                                     <div className="py-2">

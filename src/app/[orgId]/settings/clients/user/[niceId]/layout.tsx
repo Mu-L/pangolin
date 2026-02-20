@@ -47,7 +47,7 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
             />
 
             <ClientProvider client={client}>
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <ClientInfoCard />
                     <HorizontalTabs items={navItems}>{children}</HorizontalTabs>
                 </div>
