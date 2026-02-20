@@ -49,6 +49,14 @@ COPY server/db/ios_models.json ./dist/ios_models.json
 COPY server/db/mac_models.json ./dist/mac_models.json
 COPY public ./public
 
+# Copy MaxMind databases for SaaS builds
+ARG BUILD=oss
+RUN mkdir -p ./maxmind
+
+# This is only for saas
+COPY --from=builder-dev /app/GeoLite2-Country.mmdb ./maxmind/GeoLite2-Country.mmdb
+COPY --from=builder-dev /app/GeoLite2-ASN.mmdb ./maxmind/GeoLite2-ASN.mmdb
+
 # OCI Image Labels - Build Args for dynamic values
 ARG VERSION="dev"
 ARG REVISION=""

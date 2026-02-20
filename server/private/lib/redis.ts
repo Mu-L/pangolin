@@ -108,11 +108,15 @@ class RedisManager {
             port: redisConfig.port!,
             password: redisConfig.password,
             db: redisConfig.db
-            // tls: {
-            //     rejectUnauthorized:
-            //         redisConfig.tls?.reject_unauthorized || false
-            // }
         };
+        
+        // Enable TLS if configured (required for AWS ElastiCache in-transit encryption)
+        if (redisConfig.tls) {
+            opts.tls = {
+                rejectUnauthorized: redisConfig.tls.rejectUnauthorized ?? true
+            };
+        }
+        
         return opts;
     }
 
@@ -130,11 +134,15 @@ class RedisManager {
             port: replica.port!,
             password: replica.password,
             db: replica.db || redisConfig.db
-            // tls: {
-            //     rejectUnauthorized:
-            //         replica.tls?.reject_unauthorized || false
-            // }
         };
+        
+        // Enable TLS if configured (required for AWS ElastiCache in-transit encryption)
+        if (redisConfig.tls) {
+            opts.tls = {
+                rejectUnauthorized: redisConfig.tls.rejectUnauthorized ?? true
+            };
+        }
+        
         return opts;
     }
 
