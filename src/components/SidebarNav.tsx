@@ -128,7 +128,7 @@ function CollapsibleNavItem({
                     disabled={isDisabled}
                 >
                     {item.icon && (
-                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">
+                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center opacity-50">
                             {item.icon}
                         </span>
                     )}
@@ -306,7 +306,7 @@ export function SidebarNav({
                 {item.icon && level === 0 && (
                     <span
                         className={cn(
-                            "flex-shrink-0 w-5 h-5 flex items-center justify-center",
+                            "flex-shrink-0 w-5 h-5 flex items-center justify-center opacity-50",
                             !isCollapsed && "mr-3"
                         )}
                     >
@@ -366,7 +366,7 @@ export function SidebarNav({
                 )}
             >
                 {item.icon && level === 0 && (
-                    <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center">
+                    <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center opacity-50">
                         {item.icon}
                     </span>
                 )}
@@ -423,7 +423,7 @@ export function SidebarNav({
                                             disabled={isDisabled}
                                         >
                                             {item.icon && (
-                                                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                                                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center opacity-50">
                                                     {item.icon}
                                                 </span>
                                             )}
