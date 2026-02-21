@@ -33,7 +33,7 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
     return (
         <Alert>
             <AlertDescription>
-                <InfoSections cols={4}>
+                <InfoSections cols={3}>
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>{site.niceId}</InfoSectionContent>
@@ -68,15 +68,6 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
                             {getConnectionTypeString(site.type)}
                         </InfoSectionContent>
                     </InfoSection>
-
-                    {site.type == "newt" && (
-                        <InfoSection>
-                            <InfoSectionTitle>Address</InfoSectionTitle>
-                            <InfoSectionContent>
-                                {site.address?.split("/")[0]}
-                            </InfoSectionContent>
-                        </InfoSection>
-                    )}
                 </InfoSections>
             </AlertDescription>
         </Alert>
