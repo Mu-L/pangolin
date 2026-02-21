@@ -14,7 +14,7 @@ export default async function migration() {
     // all roles set hoemdir to true
 
     // generate ca certs for all orgs?
-    // set authDaemonMode to "site" for all orgs
+    // set authDaemonMode to "site" for all site-resources
 
     try {
         db.transaction(() => {})();
