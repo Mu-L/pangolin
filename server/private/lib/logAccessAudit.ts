@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { accessAuditLog, db, orgs } from "@server/db";
+import { accessAuditLog, logsDb, db, orgs } from "@server/db";
 import { getCountryCodeForIp } from "@server/lib/geoip";
 import logger from "@server/logger";
 import { and, eq, lt } from "drizzle-orm";
@@ -52,7 +52,7 @@ export async function cleanUpOldLogs(orgId: string, retentionDays: number) {
     const cutoffTimestamp = calculateCutoffTimestamp(retentionDays);
 
     try {
-        await db
+        await logsDb
             .delete(accessAuditLog)
             .where(
                 and(
@@ -124,7 +124,7 @@ export async function logAccessAudit(data: {
             ? await getCountryCodeFromIp(data.requestIp)
             : undefined;
 
-        await db.insert(accessAuditLog).values({
+        await logsDb.insert(accessAuditLog).values({
             timestamp: timestamp,
             orgId: data.orgId,
             actorType,

@@ -83,6 +83,46 @@ export const privateConfigSchema = z.object({
             //     .optional()
         })
         .optional(),
+    postgres_logs: z
+        .object({
+            connection_string: z
+                .string()
+                .optional()
+                .transform(getEnvOrYaml("POSTGRES_LOGS_CONNECTION_STRING")),
+            replicas: z
+                .array(
+                    z.object({
+                        connection_string: z.string()
+                    })
+                )
+                .optional(),
+            pool: z
+                .object({
+                    max_connections: z
+                        .number()
+                        .positive()
+                        .optional()
+                        .default(20),
+                    max_replica_connections: z
+                        .number()
+                        .positive()
+                        .optional()
+                        .default(10),
+                    idle_timeout_ms: z
+                        .number()
+                        .positive()
+                        .optional()
+                        .default(30000),
+                    connection_timeout_ms: z
+                        .number()
+                        .positive()
+                        .optional()
+                        .default(5000)
+                })
+                .optional()
+                .prefault({})
+        })
+        .optional(),
     gerbil: z
         .object({
             local_exit_node_reachable_at: z

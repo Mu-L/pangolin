@@ -1,4 +1,4 @@
-import { db, orgs, requestAuditLog } from "@server/db";
+import { logsDb, primaryLogsDb, db, orgs, requestAuditLog } from "@server/db";
 import logger from "@server/logger";
 import { and, eq, lt, sql } from "drizzle-orm";
 import cache from "@server/lib/cache";
@@ -69,7 +69,7 @@ async function flushAuditLogs() {
     try {
         // Use a transaction to ensure all inserts succeed or fail together
         // This prevents index corruption from partial writes
-        await db.transaction(async (tx) => {
+        await logsDb.transaction(async (tx) => {
             // Batch insert logs in groups of 25 to avoid overwhelming the database
             const BATCH_DB_SIZE = 25;
             for (let i = 0; i < logsToWrite.length; i += BATCH_DB_SIZE) {
@@ -162,7 +162,7 @@ export async function cleanUpOldLogs(orgId: string, retentionDays: number) {
     const cutoffTimestamp = calculateCutoffTimestamp(retentionDays);
 
     try {
-        await db
+        await logsDb
             .delete(requestAuditLog)
             .where(
                 and(

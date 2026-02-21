@@ -1,4 +1,5 @@
 export * from "./driver";
+export * from "./logsDriver";
 export * from "./schema/schema";
 export * from "./schema/privateSchema";
 export * from "./migrate";

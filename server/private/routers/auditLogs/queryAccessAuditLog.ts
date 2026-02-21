@@ -11,11 +11,11 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { accessAuditLog, db, resources } from "@server/db";
+import { accessAuditLog, logsDb, resources, db, primaryDb } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
-import { eq, gt, lt, and, count, desc } from "drizzle-orm";
+import { eq, gt, lt, and, count, desc, inArray } from "drizzle-orm";
 import { OpenAPITags } from "@server/openApi";
 import { z } from "zod";
 import createHttpError from "http-errors";
@@ -115,7 +115,7 @@ function getWhere(data: Q) {
 }
 
 export function queryAccess(data: Q) {
-    return db
+    return logsDb
         .select({
             orgId: accessAuditLog.orgId,
             action: accessAuditLog.action,
@@ -133,16 +133,46 @@ export function queryAccess(data: Q) {
             actor: accessAuditLog.actor
         })
         .from(accessAuditLog)
-        .leftJoin(
-            resources,
-            eq(accessAuditLog.resourceId, resources.resourceId)
-        )
         .where(getWhere(data))
         .orderBy(desc(accessAuditLog.timestamp), desc(accessAuditLog.id));
 }
 
+async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryAccess>>) {
+    // If logs database is the same as main database, we can do a join
+    // Otherwise, we need to fetch resource details separately
+    const resourceIds = logs
+        .map(log => log.resourceId)
+        .filter((id): id is number => id !== null && id !== undefined);
+    
+    if (resourceIds.length === 0) {
+        return logs.map(log => ({ ...log, resourceName: null, resourceNiceId: null }));
+    }
+
+    // Fetch resource details from main database
+    const resourceDetails = await primaryDb
+        .select({
+            resourceId: resources.resourceId,
+            name: resources.name,
+            niceId: resources.niceId
+        })
+        .from(resources)
+        .where(inArray(resources.resourceId, resourceIds));
+
+    // Create a map for quick lookup
+    const resourceMap = new Map(
+        resourceDetails.map(r => [r.resourceId, { name: r.name, niceId: r.niceId }])
+    );
+
+    // Enrich logs with resource details
+    return logs.map(log => ({
+        ...log,
+        resourceName: log.resourceId ? resourceMap.get(log.resourceId)?.name ?? null : null,
+        resourceNiceId: log.resourceId ? resourceMap.get(log.resourceId)?.niceId ?? null : null
+    }));
+}
+
 export function countAccessQuery(data: Q) {
-    const countQuery = db
+    const countQuery = logsDb
         .select({ count: count() })
         .from(accessAuditLog)
         .where(getWhere(data));
@@ -161,7 +191,7 @@ async function queryUniqueFilterAttributes(
     );
 
     // Get unique actors
-    const uniqueActors = await db
+    const uniqueActors = await logsDb
         .selectDistinct({
             actor: accessAuditLog.actor
         })
@@ -169,7 +199,7 @@ async function queryUniqueFilterAttributes(
         .where(baseConditions);
 
     // Get unique locations
-    const uniqueLocations = await db
+    const uniqueLocations = await logsDb
         .selectDistinct({
             locations: accessAuditLog.location
         })
@@ -177,25 +207,40 @@ async function queryUniqueFilterAttributes(
         .where(baseConditions);
 
     // Get unique resources with names
-    const uniqueResources = await db
+    const uniqueResources = await logsDb
         .selectDistinct({
-            id: accessAuditLog.resourceId,
-            name: resources.name
+            id: accessAuditLog.resourceId
         })
         .from(accessAuditLog)
-        .leftJoin(
-            resources,
-            eq(accessAuditLog.resourceId, resources.resourceId)
-        )
         .where(baseConditions);
+
+    // Fetch resource names from main database for the unique resource IDs
+    const resourceIds = uniqueResources
+        .map(row => row.id)
+        .filter((id): id is number => id !== null);
+    
+    let resourcesWithNames: Array<{ id: number; name: string | null }> = [];
+    
+    if (resourceIds.length > 0) {
+        const resourceDetails = await primaryDb
+            .select({
+                resourceId: resources.resourceId,
+                name: resources.name
+            })
+            .from(resources)
+            .where(inArray(resources.resourceId, resourceIds));
+        
+        resourcesWithNames = resourceDetails.map(r => ({
+            id: r.resourceId,
+            name: r.name
+        }));
+    }
 
     return {
         actors: uniqueActors
             .map((row) => row.actor)
             .filter((actor): actor is string => actor !== null),
-        resources: uniqueResources.filter(
-            (row): row is { id: number; name: string | null } => row.id !== null
-        ),
+        resources: resourcesWithNames,
         locations: uniqueLocations
             .map((row) => row.locations)
             .filter((location): location is string => location !== null)
@@ -243,7 +288,10 @@ export async function queryAccessAuditLogs(
 
         const baseQuery = queryAccess(data);
 
-        const log = await baseQuery.limit(data.limit).offset(data.offset);
+        const logsRaw = await baseQuery.limit(data.limit).offset(data.offset);
+        
+        // Enrich with resource details (handles cross-database scenario)
+        const log = await enrichWithResourceDetails(logsRaw);
 
         const totalCountResult = await countAccessQuery(data);
         const totalCount = totalCountResult[0].count;

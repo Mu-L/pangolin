@@ -12,7 +12,7 @@
  */
 
 import { ActionsEnum } from "@server/auth/actions";
-import { actionAuditLog, db, orgs } from "@server/db";
+import { actionAuditLog, logsDb, db, orgs } from "@server/db";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import { Request, Response, NextFunction } from "express";
@@ -54,7 +54,7 @@ export async function cleanUpOldLogs(orgId: string, retentionDays: number) {
     const cutoffTimestamp = calculateCutoffTimestamp(retentionDays);
 
     try {
-        await db
+        await logsDb
             .delete(actionAuditLog)
             .where(
                 and(
@@ -123,7 +123,7 @@ export function logActionAudit(action: ActionsEnum) {
                 metadata = JSON.stringify(req.params);
             }
 
-            await db.insert(actionAuditLog).values({
+            await logsDb.insert(actionAuditLog).values({
                 timestamp,
                 orgId,
                 actorType,
