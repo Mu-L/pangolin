@@ -258,8 +258,10 @@ export const siteResources = sqliteTable("siteResources", {
     disableIcmp: integer("disableIcmp", { mode: "boolean" })
         .notNull()
         .default(false),
-    authDaemonPort: integer("authDaemonPort"),
-    authDaemonMode: text("authDaemonMode").$type<"site" | "remote">()
+    authDaemonPort: integer("authDaemonPort").default(22123),
+    authDaemonMode: text("authDaemonMode")
+        .$type<"site" | "remote">()
+        .default("site")
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
