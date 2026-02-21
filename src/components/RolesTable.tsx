@@ -111,7 +111,7 @@ export default function UsersTable({ roles }: RolesTableProps) {
                                 <Button
                                     variant="ghost"
                                     className="h-8 w-8 p-0"
-                                    disabled={isAdmin}
+                                    disabled={isAdmin || false}
                                 >
                                     <span className="sr-only">
                                         {t("openMenu")}
@@ -121,7 +121,7 @@ export default function UsersTable({ roles }: RolesTableProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                    disabled={isAdmin}
+                                    disabled={isAdmin || false}
                                     onClick={() => {
                                         setRoleToRemove(roleRow);
                                         setIsDeleteModalOpen(true);
@@ -135,7 +135,7 @@ export default function UsersTable({ roles }: RolesTableProps) {
                         </DropdownMenu>
                         <Button
                             variant={"outline"}
-                            disabled={isAdmin}
+                            disabled={isAdmin || false}
                             onClick={() => {
                                 setEditingRole(roleRow);
                                 setIsEditDialogOpen(true);

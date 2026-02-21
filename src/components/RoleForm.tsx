@@ -139,6 +139,12 @@ export function RoleForm({
     const sshDisabled = !isPaidUser(tierMatrix.sshPam);
     const sshSudoMode = form.watch("sshSudoMode");
 
+    useEffect(() => {
+        if (sshDisabled) {
+            form.setValue("allowSsh", false);
+        }
+    }, [sshDisabled, form]);
+
     return (
         <Form {...form}>
             <form
@@ -291,14 +297,18 @@ export function RoleForm({
                                                 <OptionSelect<"allow" | "disallow">
                                                     options={allowSshOptions}
                                                     value={
-                                                        field.value
-                                                            ? "allow"
-                                                            : "disallow"
+                                                        sshDisabled
+                                                            ? "disallow"
+                                                            : field.value
+                                                              ? "allow"
+                                                              : "disallow"
                                                     }
-                                                    onChange={(v) =>
-                                                        field.onChange(v === "allow")
-                                                    }
+                                                    onChange={(v) => {
+                                                        if (sshDisabled) return;
+                                                        field.onChange(v === "allow");
+                                                    }}
                                                     cols={2}
+                                                    disabled={sshDisabled}
                                                 />
                                                 <FormDescription>
                                                     {t(

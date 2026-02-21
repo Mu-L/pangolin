@@ -22,7 +22,7 @@ import {
     sites,
     userOrgs
 } from "@server/db";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { isLicensedOrSubscribed } from "#private/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -35,8 +35,6 @@ import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResourc
 import { signPublicKey, getOrgCAKeys } from "#private/lib/sshCA";
 import config from "@server/lib/config";
 import { sendToClient } from "#private/routers/ws";
-import { groups } from "d3";
-import { homedir } from "os";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -402,7 +400,8 @@ export async function signSshKey(
             data: {
                 messageId: message.messageId,
                 orgId: orgId,
-                agentPort: 22123,
+                agentPort: resource.authDaemonPort ?? 22123,
+                externalAuthDaemon: resource.authDaemonMode === "remote",
                 agentHost: resource.destination,
                 caCert: caKeys.publicKeyOpenSSH,
                 username: usernameToUse,

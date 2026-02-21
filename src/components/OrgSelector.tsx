@@ -98,15 +98,6 @@ export function OrgSelector({
                 align="start"
                 sideOffset={12}
             >
-                {/* Peak pointing up to the trigger */}
-                <div
-                    className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full w-0 h-0 border-[7px] border-transparent border-b-border"
-                    aria-hidden
-                />
-                <div
-                    className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full w-0 h-0 border-[6px] border-transparent border-b-[var(--color-popover)]"
-                    aria-hidden
-                />
                 <Command className="rounded-lg border-0 flex-1 min-h-0">
                     <CommandInput
                         placeholder={t("searchPlaceholder")}
@@ -124,10 +115,14 @@ export function OrgSelector({
                                     key={org.orgId}
                                     onSelect={() => {
                                         setOpen(false);
-                                        const newPath = pathname.replace(
-                                            /^\/[^/]+/,
-                                            `/${org.orgId}`
-                                        );
+                                        const newPath = pathname.includes(
+                                            "/settings/"
+                                        )
+                                            ? pathname.replace(
+                                                  /^\/[^/]+/,
+                                                  `/${org.orgId}`
+                                              )
+                                            : `/${org.orgId}`;
                                         router.push(newPath);
                                     }}
                                     className="mx-1 rounded-md py-1.5 h-auto min-h-0"
@@ -166,8 +161,7 @@ export function OrgSelector({
                         </CommandGroup>
                     </CommandList>
                 </Command>
-                {(!env.flags.disableUserCreateOrg ||
-                    user.serverAdmin) && (
+                {(!env.flags.disableUserCreateOrg || user.serverAdmin) && (
                     <div className="p-2 border-t border-border">
                         <Button
                             variant="ghost"

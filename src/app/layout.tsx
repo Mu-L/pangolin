@@ -125,9 +125,9 @@ export default async function RootLayout({
                     </ThemeProvider>
                 </NextIntlClientProvider>
 
-                {process.env.NODE_ENV === "development" && (
+                {/*process.env.NODE_ENV === "development" && (
                     <TailwindIndicator />
-                )}
+                )*/}
             </body>
         </html>
     );

@@ -110,8 +110,8 @@ export const orgNavSections = (
         heading: "access",
         items: [
             {
-                title: "sidebarUsers",
-                icon: <User className="size-4 flex-none" />,
+                title: "sidebarTeam",
+                icon: <Users className="size-4 flex-none" />,
                 items: [
                     {
                         title: "sidebarUsers",
@@ -119,16 +119,16 @@ export const orgNavSections = (
                         icon: <User className="size-4 flex-none" />
                     },
                     {
+                        title: "sidebarRoles",
+                        href: "/{orgId}/settings/access/roles",
+                        icon: <Users className="size-4 flex-none" />
+                    },
+                    {
                         title: "sidebarInvitations",
                         href: "/{orgId}/settings/access/invitations",
                         icon: <TicketCheck className="size-4 flex-none" />
                     }
                 ]
-            },
-            {
-                title: "sidebarRoles",
-                href: "/{orgId}/settings/access/roles",
-                icon: <Users className="size-4 flex-none" />
             },
             // PaidFeaturesAlert
             ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||

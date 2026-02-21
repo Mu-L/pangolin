@@ -122,13 +122,13 @@ function CollapsibleNavItem({
                         "px-3 py-1.5",
                         isActive
                             ? "bg-secondary font-medium"
-                            : "text-foreground/80 hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
+                            : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                         isDisabled && "cursor-not-allowed opacity-60"
                     )}
                     disabled={isDisabled}
                 >
                     {item.icon && (
-                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center opacity-50">
+                        <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center text-muted-foreground">
                             {item.icon}
                         </span>
                     )}
@@ -189,6 +189,167 @@ function CollapsibleNavItem({
                 </div>
             </CollapsibleContent>
         </Collapsible>
+    );
+}
+
+type CollapsedNavItemWithPopoverProps = {
+    item: SidebarNavItem;
+    tooltipText: string;
+    isActive: boolean;
+    isChildActive: boolean;
+    isDisabled: boolean;
+    hydrateHref: (val?: string) => string | undefined;
+    pathname: string;
+    build: string;
+    isUnlocked: () => boolean;
+    disabled: boolean;
+    t: (key: string) => string;
+    onItemClick?: () => void;
+};
+
+const TOOLTIP_SUPPRESS_MS = 400;
+
+function CollapsedNavItemWithPopover({
+    item,
+    tooltipText,
+    isActive,
+    isChildActive,
+    isDisabled,
+    hydrateHref,
+    pathname,
+    build,
+    isUnlocked,
+    disabled,
+    t,
+    onItemClick
+}: CollapsedNavItemWithPopoverProps) {
+    const [popoverOpen, setPopoverOpen] = React.useState(false);
+    const [tooltipOpen, setTooltipOpen] = React.useState(false);
+    const suppressTooltipRef = React.useRef(false);
+
+    const handlePopoverOpenChange = React.useCallback((open: boolean) => {
+        setPopoverOpen(open);
+        if (!open) {
+            setTooltipOpen(false);
+            suppressTooltipRef.current = true;
+            window.setTimeout(() => {
+                suppressTooltipRef.current = false;
+            }, TOOLTIP_SUPPRESS_MS);
+        }
+    }, []);
+
+    const handleTooltipOpenChange = React.useCallback((open: boolean) => {
+        if (open && suppressTooltipRef.current) return;
+        setTooltipOpen(open);
+    }, []);
+
+    return (
+        <TooltipProvider>
+            <Tooltip open={tooltipOpen} onOpenChange={handleTooltipOpenChange}>
+                <Popover
+                    open={popoverOpen}
+                    onOpenChange={handlePopoverOpenChange}
+                >
+                    <PopoverTrigger asChild>
+                        <TooltipTrigger asChild>
+                            <button
+                                className={cn(
+                                    "flex items-center rounded-md transition-colors px-2 py-2 justify-center w-full",
+                                    isActive || isChildActive
+                                        ? "bg-secondary font-medium"
+                                        : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
+                                    isDisabled &&
+                                        "cursor-not-allowed opacity-60"
+                                )}
+                                disabled={isDisabled}
+                            >
+                                {item.icon && (
+                                    <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground">
+                                        {item.icon}
+                                    </span>
+                                )}
+                            </button>
+                        </TooltipTrigger>
+                    </PopoverTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                        <p>{tooltipText}</p>
+                    </TooltipContent>
+                    <PopoverContent
+                        side="right"
+                        align="start"
+                        className="w-56 p-1"
+                    >
+                        <div className="space-y-1">
+                            {item.items!.map((childItem) => {
+                                const childHydratedHref = hydrateHref(
+                                    childItem.href
+                                );
+                                const childIsActive = childHydratedHref
+                                    ? pathname.startsWith(childHydratedHref)
+                                    : false;
+                                const childIsEE =
+                                    build === "enterprise" &&
+                                    childItem.showEE &&
+                                    !isUnlocked();
+                                const childIsDisabled = disabled || childIsEE;
+
+                                if (!childHydratedHref) {
+                                    return null;
+                                }
+
+                                return (
+                                    <Link
+                                        key={childItem.title}
+                                        href={
+                                            childIsDisabled
+                                                ? "#"
+                                                : childHydratedHref
+                                        }
+                                        className={cn(
+                                            "flex items-center rounded-md transition-colors px-3 py-1.5 text-sm",
+                                            childIsActive
+                                                ? "bg-secondary font-medium"
+                                                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                                            childIsDisabled &&
+                                                "cursor-not-allowed opacity-60"
+                                        )}
+                                        onClick={(e) => {
+                                            if (childIsDisabled) {
+                                                e.preventDefault();
+                                            } else {
+                                                handlePopoverOpenChange(false);
+                                                onItemClick?.();
+                                            }
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <span className="truncate">
+                                                {t(childItem.title)}
+                                            </span>
+                                            {childItem.isBeta && (
+                                                <span className="uppercase font-mono text-yellow-600 dark:text-yellow-800 font-black text-xs">
+                                                    {t("beta")}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {build === "enterprise" &&
+                                            childItem.showEE &&
+                                            !isUnlocked() && (
+                                                <Badge
+                                                    variant="outlinePrimary"
+                                                    className="flex-shrink-0 ml-2"
+                                                >
+                                                    {t("licenseBadge")}
+                                                </Badge>
+                                            )}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </PopoverContent>
+                </Popover>
+            </Tooltip>
+        </TooltipProvider>
     );
 }
 
@@ -290,7 +451,7 @@ export function SidebarNav({
                     isCollapsed ? "px-2 py-2 justify-center" : "px-3 py-1.5",
                     isActive
                         ? "bg-secondary font-medium"
-                        : "text-foreground/80 hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
+                        : "text-muted-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
                 onClick={(e) => {
@@ -306,7 +467,10 @@ export function SidebarNav({
                 {item.icon && level === 0 && (
                     <span
                         className={cn(
-                            "flex-shrink-0 w-5 h-5 flex items-center justify-center opacity-50",
+                            "flex-shrink-0 w-5 h-5 flex items-center justify-center",
+                            isCollapsed
+                                ? "text-muted-foreground"
+                                : "text-muted-foreground",
                             !isCollapsed && "mr-3"
                         )}
                     >
@@ -361,12 +525,12 @@ export function SidebarNav({
                 className={cn(
                     "flex items-center rounded-md transition-colors",
                     "px-3 py-1.5",
-                    "text-foreground/80",
+                    "text-muted-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
             >
                 {item.icon && level === 0 && (
-                    <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center opacity-50">
+                    <span className="flex-shrink-0 mr-3 w-5 h-5 flex items-center justify-center text-muted-foreground">
                         {item.icon}
                     </span>
                 )}
@@ -406,115 +570,21 @@ export function SidebarNav({
             // If item has nested items, show both tooltip and popover
             if (hasNestedItems) {
                 return (
-                    <TooltipProvider key={item.title}>
-                        <Tooltip>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            className={cn(
-                                                "flex items-center rounded-md transition-colors px-2 py-2 justify-center w-full",
-                                                isActive || isChildActive
-                                                    ? "bg-secondary font-medium"
-                                                    : "text-foreground/80 hover:bg-secondary/80 dark:hover:bg-secondary/50 hover:text-foreground",
-                                                isDisabled &&
-                                                    "cursor-not-allowed opacity-60"
-                                            )}
-                                            disabled={isDisabled}
-                                        >
-                                            {item.icon && (
-                                                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center opacity-50">
-                                                    {item.icon}
-                                                </span>
-                                            )}
-                                        </button>
-                                    </TooltipTrigger>
-                                </PopoverTrigger>
-                                <TooltipContent side="right" sideOffset={8}>
-                                    <p>{tooltipText}</p>
-                                </TooltipContent>
-                                <PopoverContent
-                                    side="right"
-                                    align="start"
-                                    className="w-56 p-1"
-                                >
-                                    <div className="space-y-1">
-                                        {item.items!.map((childItem) => {
-                                            const childHydratedHref =
-                                                hydrateHref(childItem.href);
-                                            const childIsActive =
-                                                childHydratedHref
-                                                    ? pathname.startsWith(
-                                                          childHydratedHref
-                                                      )
-                                                    : false;
-                                            const childIsEE =
-                                                build === "enterprise" &&
-                                                childItem.showEE &&
-                                                !isUnlocked();
-                                            const childIsDisabled =
-                                                disabled || childIsEE;
-
-                                            if (!childHydratedHref) {
-                                                return null;
-                                            }
-
-                                            return (
-                                                <Link
-                                                    key={childItem.title}
-                                                    href={
-                                                        childIsDisabled
-                                                            ? "#"
-                                                            : childHydratedHref
-                                                    }
-                                                    className={cn(
-                                                        "flex items-center rounded-md transition-colors px-3 py-1.5 text-sm",
-                                                        childIsActive
-                                                            ? "bg-secondary font-medium"
-                                                            : "text-foreground/80 hover:bg-secondary/50 hover:text-foreground",
-                                                        childIsDisabled &&
-                                                            "cursor-not-allowed opacity-60"
-                                                    )}
-                                                    onClick={(e) => {
-                                                        if (childIsDisabled) {
-                                                            e.preventDefault();
-                                                        } else if (
-                                                            onItemClick
-                                                        ) {
-                                                            onItemClick();
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                        <span className="truncate">
-                                                            {t(childItem.title)}
-                                                        </span>
-                                                        {childItem.isBeta && (
-                                                            <span className="uppercase font-mono text-yellow-600 dark:text-yellow-800 font-black text-xs">
-                                                                {t("beta")}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {build === "enterprise" &&
-                                                        childItem.showEE &&
-                                                        !isUnlocked() && (
-                                                            <Badge
-                                                                variant="outlinePrimary"
-                                                                className="flex-shrink-0 ml-2"
-                                                            >
-                                                                {t(
-                                                                    "licenseBadge"
-                                                                )}
-                                                            </Badge>
-                                                        )}
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <CollapsedNavItemWithPopover
+                        key={item.title}
+                        item={item}
+                        tooltipText={tooltipText}
+                        isActive={isActive}
+                        isChildActive={isChildActive}
+                        isDisabled={!!isDisabled}
+                        hydrateHref={hydrateHref}
+                        pathname={pathname}
+                        build={build}
+                        isUnlocked={isUnlocked}
+                        disabled={disabled ?? false}
+                        t={t}
+                        onItemClick={onItemClick}
+                    />
                 );
             }
 
@@ -549,7 +619,7 @@ export function SidebarNav({
                     className={cn(sectionIndex > 0 && "mt-4")}
                 >
                     {!isCollapsed && (
-                        <div className="px-3 py-2 text-xs font-medium text-muted-foreground/80 uppercase tracking-wider">
+                        <div className="px-3 py-2 text-xs font-medium text-foreground uppercase tracking-wider">
                             {t(`${section.heading}`)}
                         </div>
                     )}

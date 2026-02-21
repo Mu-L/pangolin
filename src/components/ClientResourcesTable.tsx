@@ -51,6 +51,8 @@ export type InternalResourceRow = {
     tcpPortRangeString: string | null;
     udpPortRangeString: string | null;
     disableIcmp: boolean;
+    authDaemonMode?: "site" | "remote" | null;
+    authDaemonPort?: number | null;
 };
 
 type ClientResourcesTableProps = {

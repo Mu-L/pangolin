@@ -32,8 +32,8 @@ import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useState } from "react";
 import { SwitchInput } from "@app/components/SwitchInput";
+import { ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 
 const GeneralFormSchema = z.object({
     name: z.string().nonempty("Name is required"),
@@ -187,21 +187,22 @@ export default function GeneralPage() {
                                                 </FormControl>
                                                 <FormMessage />
                                                 <FormDescription>
-                                                    {t(
-                                                        "enableDockerSocketDescription"
-                                                    )}{" "}
-                                                    <Link
-                                                        href="https://docs.pangolin.net/manage/sites/configure-site#docker-socket-integration"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-primary hover:underline inline-flex items-center"
-                                                    >
-                                                        <span>
-                                                            {t(
-                                                                "enableDockerSocketLink"
-                                                            )}
-                                                        </span>
-                                                    </Link>
+                                                    {t.rich(
+                                                        "enableDockerSocketDescription",
+                                                        {
+                                                            docsLink: (chunks) => (
+                                                                <a
+                                                                    href="https://docs.pangolin.net/manage/sites/configure-site#docker-socket-integration"
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                                                >
+                                                                    {chunks}
+                                                                    <ExternalLink className="size-3.5 shrink-0" />
+                                                                </a>
+                                                            )
+                                                        }
+                                                    )}
                                                 </FormDescription>
                                             </FormItem>
                                         )}

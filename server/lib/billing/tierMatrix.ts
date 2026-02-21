@@ -48,5 +48,5 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
         "enterprise"
     ],
     [TierFeature.AutoProvisioning]: ["tier1", "tier3", "enterprise"],
-    [TierFeature.SshPam]: ["tier1", "tier3", "enterprise"]
+    [TierFeature.SshPam]: ["enterprise"]
 };

@@ -61,7 +61,10 @@ function encodeUInt64(value: bigint): Buffer {
  * Decode a string from SSH wire format at the given offset
  * Returns the string buffer and the new offset
  */
-function decodeString(data: Buffer, offset: number): { value: Buffer; newOffset: number } {
+function decodeString(
+    data: Buffer,
+    offset: number
+): { value: Buffer; newOffset: number } {
     const len = data.readUInt32BE(offset);
     const value = data.subarray(offset + 4, offset + 4 + len);
     return { value, newOffset: offset + 4 + len };
@@ -91,7 +94,9 @@ function parseOpenSSHPublicKey(pubKeyLine: string): {
     // Verify the key type in the blob matches
     const { value: blobKeyType } = decodeString(keyData, 0);
     if (blobKeyType.toString("utf8") !== keyType) {
-        throw new Error(`Key type mismatch: ${blobKeyType.toString("utf8")} vs ${keyType}`);
+        throw new Error(
+            `Key type mismatch: ${blobKeyType.toString("utf8")} vs ${keyType}`
+        );
     }
 
     return { keyType, keyData, comment };
@@ -238,7 +243,7 @@ export interface SignedCertificate {
  * @param comment - Optional comment for the CA public key
  * @returns CA key pair and configuration info
  */
-export function generateCA(comment: string = "ssh-ca"): CAKeyPair {
+export function generateCA(comment: string = "pangolin-ssh-ca"): CAKeyPair {
     // Generate Ed25519 key pair
     const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519", {
         publicKeyEncoding: { type: "spki", format: "pem" },
@@ -269,7 +274,7 @@ export function generateCA(comment: string = "ssh-ca"): CAKeyPair {
 
 /**
  * Get and decrypt the SSH CA keys for an organization.
- * 
+ *
  * @param orgId - Organization ID
  * @param decryptionKey - Key to decrypt the CA private key (typically server.secret from config)
  * @returns CA key pair or null if not found
@@ -307,7 +312,10 @@ export async function getOrgCAKeys(
         key: privateKeyPem,
         format: "pem"
     });
-    const publicKeyPem = pubKeyObj.export({ type: "spki", format: "pem" }) as string;
+    const publicKeyPem = pubKeyObj.export({
+        type: "spki",
+        format: "pem"
+    }) as string;
 
     return {
         privateKeyPem,
@@ -365,8 +373,8 @@ export function signPublicKey(
     const serial = options.serial ?? BigInt(Date.now());
     const certType = options.certType ?? 1; // 1 = user cert
     const now = BigInt(Math.floor(Date.now() / 1000));
-    const validAfter = options.validAfter ?? (now - 60n); // 1 minute ago
-    const validBefore = options.validBefore ?? (now + 86400n * 365n); // 1 year from now
+    const validAfter = options.validAfter ?? now - 60n; // 1 minute ago
+    const validBefore = options.validBefore ?? now + 86400n * 365n; // 1 year from now
 
     // Default extensions for user certificates
     const defaultExtensions = [
@@ -422,10 +430,7 @@ export function signPublicKey(
     ]);
 
     // Build complete certificate
-    const certificate = Buffer.concat([
-        certBody,
-        encodeString(signatureBlob)
-    ]);
+    const certificate = Buffer.concat([certBody, encodeString(signatureBlob)]);
 
     // Format as OpenSSH certificate line
     const certLine = `${certTypeString} ${certificate.toString("base64")} ${options.keyId}`;

@@ -232,7 +232,11 @@ export const siteResources = pgTable("siteResources", {
     aliasAddress: varchar("aliasAddress"),
     tcpPortRangeString: varchar("tcpPortRangeString").notNull().default("*"),
     udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
-    disableIcmp: boolean("disableIcmp").notNull().default(false)
+    disableIcmp: boolean("disableIcmp").notNull().default(false),
+    authDaemonPort: integer("authDaemonPort"),
+    authDaemonMode: varchar("authDaemonMode", { length: 32 }).$type<
+        "site" | "remote"
+    >()
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {

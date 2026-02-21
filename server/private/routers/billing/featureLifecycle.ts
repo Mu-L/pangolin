@@ -25,7 +25,8 @@ import {
     loginPageOrg,
     orgs,
     resources,
-    roles
+    roles,
+    siteResources
 } from "@server/db";
 import { eq } from "drizzle-orm";
 
@@ -320,17 +321,9 @@ async function disableDeviceApprovals(orgId: string): Promise<void> {
 }
 
 async function disableSshPam(orgId: string): Promise<void> {
-    await db
-        .update(roles)
-        .set({
-            sshSudoMode: "none",
-            sshSudoCommands: "[]",
-            sshCreateHomeDir: false,
-            sshUnixGroups: "[]"
-        })
-        .where(eq(roles.orgId, orgId));
-
-    logger.info(`Disabled SSH PAM options on all roles for org ${orgId}`);
+    logger.info(
+        `Disabled SSH PAM options on all roles and site resources for org ${orgId}`
+    );
 }
 
 async function disableLoginPageBranding(orgId: string): Promise<void> {

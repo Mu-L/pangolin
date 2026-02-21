@@ -257,7 +257,9 @@ export const siteResources = sqliteTable("siteResources", {
     udpPortRangeString: text("udpPortRangeString").notNull().default("*"),
     disableIcmp: integer("disableIcmp", { mode: "boolean" })
         .notNull()
-        .default(false)
+        .default(false),
+    authDaemonPort: integer("authDaemonPort"),
+    authDaemonMode: text("authDaemonMode").$type<"site" | "remote">()
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
