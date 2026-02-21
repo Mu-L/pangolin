@@ -23,8 +23,14 @@ export async function verifyRoleAccess(
         );
     }
 
-    const roleIds = req.body?.roleIds;
-    const allRoleIds = roleIds || (isNaN(singleRoleId) ? [] : [singleRoleId]);
+    let allRoleIds: number[] = [];
+    if (!isNaN(singleRoleId)) {
+        // If roleId is provided in URL params, query params, or body (single), use it exclusively
+        allRoleIds = [singleRoleId];
+    } else if (req.body?.roleIds) {
+        // Only use body.roleIds if no single roleId was provided
+        allRoleIds = req.body.roleIds;
+    }
 
     if (allRoleIds.length === 0) {
         return next();

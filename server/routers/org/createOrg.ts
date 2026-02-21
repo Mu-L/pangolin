@@ -181,7 +181,10 @@ export async function createOrg(
         }
 
         if (build == "saas" && billingOrgIdForNewOrg) {
-            const usage = await usageService.getUsage(billingOrgIdForNewOrg, FeatureId.ORGINIZATIONS);
+            const usage = await usageService.getUsage(
+                billingOrgIdForNewOrg,
+                FeatureId.ORGINIZATIONS
+            );
             if (!usage) {
                 return next(
                     createHttpError(
@@ -218,11 +221,6 @@ export async function createOrg(
                 .from(domains)
                 .where(eq(domains.configManaged, true));
 
-            // Generate SSH CA keys for the org
-            // const ca = generateCA(`${orgId}-ca`);
-            // const encryptionKey = config.getRawConfig().server.secret!;
-            // const encryptedCaPrivateKey = encrypt(ca.privateKeyPem, encryptionKey);
-
             const saasBillingFields =
                 build === "saas" && req.user && isFirstOrg !== null
                     ? isFirstOrg
@@ -233,6 +231,19 @@ export async function createOrg(
                           }
                     : {};
 
+            const encryptionKey = config.getRawConfig().server.secret;
+            let sshCaFields: {
+                sshCaPrivateKey?: string;
+                sshCaPublicKey?: string;
+            } = {};
+            if (encryptionKey) {
+                const ca = generateCA(`pangolin-ssh-ca-${orgId}`);
+                sshCaFields = {
+                    sshCaPrivateKey: encrypt(ca.privateKeyPem, encryptionKey),
+                    sshCaPublicKey: ca.publicKeyOpenSSH
+                };
+            }
+
             const newOrg = await trx
                 .insert(orgs)
                 .values({
@@ -241,8 +252,7 @@ export async function createOrg(
                     subnet,
                     utilitySubnet,
                     createdAt: new Date().toISOString(),
-                    // sshCaPrivateKey: encryptedCaPrivateKey,
-                    // sshCaPublicKey: ca.publicKeyOpenSSH,
+                    ...sshCaFields,
                     ...saasBillingFields
                 })
                 .returning();
@@ -262,7 +272,8 @@ export async function createOrg(
                     orgId: newOrg[0].orgId,
                     isAdmin: true,
                     name: "Admin",
-                    description: "Admin role with the most permissions"
+                    description: "Admin role with the most permissions",
+                    sshSudoMode: "full"
                 })
                 .returning({ roleId: roles.roleId });
 

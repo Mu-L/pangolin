@@ -257,7 +257,11 @@ export const siteResources = sqliteTable("siteResources", {
     udpPortRangeString: text("udpPortRangeString").notNull().default("*"),
     disableIcmp: integer("disableIcmp", { mode: "boolean" })
         .notNull()
-        .default(false)
+        .default(false),
+    authDaemonPort: integer("authDaemonPort").default(22123),
+    authDaemonMode: text("authDaemonMode")
+        .$type<"site" | "remote">()
+        .default("site")
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -679,7 +683,13 @@ export const roles = sqliteTable("roles", {
     description: text("description"),
     requireDeviceApproval: integer("requireDeviceApproval", {
         mode: "boolean"
-    }).default(false)
+    }).default(false),
+    sshSudoMode: text("sshSudoMode").default("none"), // "none" | "full" | "commands"
+    sshSudoCommands: text("sshSudoCommands").default("[]"),
+    sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
+        true
+    ),
+    sshUnixGroups: text("sshUnixGroups").default("[]")
 });
 
 export const roleActions = sqliteTable("roleActions", {

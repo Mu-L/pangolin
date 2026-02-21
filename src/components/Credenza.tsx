@@ -84,7 +84,7 @@ const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
     return (
         <CredenzaContent
             className={cn(
-                "overflow-y-auto max-h-[100dvh] md:max-h-screen",
+                "overflow-y-auto max-h-[100dvh] md:max-h-screen md:top-[clamp(1.5rem,12vh,200px)] md:translate-y-0",
                 className
             )}
             {...props}

@@ -78,6 +78,8 @@ function querySiteResourcesBase() {
             tcpPortRangeString: siteResources.tcpPortRangeString,
             udpPortRangeString: siteResources.udpPortRangeString,
             disableIcmp: siteResources.disableIcmp,
+            authDaemonMode: siteResources.authDaemonMode,
+            authDaemonPort: siteResources.authDaemonPort,
             siteName: sites.name,
             siteNiceId: sites.niceId,
             siteAddress: sites.address

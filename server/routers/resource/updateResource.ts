@@ -9,7 +9,7 @@ import {
     Resource,
     resources
 } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -33,7 +33,15 @@ const updateResourceParamsSchema = z.strictObject({
 const updateHttpResourceBodySchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
-        niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
+        niceId: z
+            .string()
+            .min(1)
+            .max(255)
+            .regex(
+                /^[a-zA-Z0-9-]+$/,
+                "niceId can only contain letters, numbers, and dashes"
+            )
+            .optional(),
         subdomain: subdomainSchema.nullable().optional(),
         ssl: z.boolean().optional(),
         sso: z.boolean().optional(),
@@ -248,14 +256,13 @@ async function updateHttpResource(
             .where(
                 and(
                     eq(resources.niceId, updateData.niceId),
-                    eq(resources.orgId, resource.orgId)
+                    eq(resources.orgId, resource.orgId),
+                    ne(resources.resourceId, resource.resourceId) // exclude the current resource from the search
                 )
-            );
+            )
+            .limit(1);
 
-        if (
-            existingResource &&
-            existingResource.resourceId !== resource.resourceId
-        ) {
+        if (existingResource) {
             return next(
                 createHttpError(
                     HttpCode.CONFLICT,
@@ -343,7 +350,10 @@ async function updateHttpResource(
         headers = null;
     }
 
-    const isLicensed = await isLicensedOrSubscribed(resource.orgId, tierMatrix.maintencePage);
+    const isLicensed = await isLicensedOrSubscribed(
+        resource.orgId,
+        tierMatrix.maintencePage
+    );
     if (!isLicensed) {
         updateData.maintenanceModeEnabled = undefined;
         updateData.maintenanceModeType = undefined;

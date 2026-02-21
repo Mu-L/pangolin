@@ -12,34 +12,42 @@ import { useParams } from "next/navigation";
 
 const TIER_ORDER: Tier[] = ["tier1", "tier2", "tier3", "enterprise"];
 
-const TIER_TRANSLATION_KEYS: Record<Tier, "subscriptionTierTier1" | "subscriptionTierTier2" | "subscriptionTierTier3" | "subscriptionTierEnterprise"> = {
+const TIER_TRANSLATION_KEYS: Record<
+    Tier,
+    | "subscriptionTierTier1"
+    | "subscriptionTierTier2"
+    | "subscriptionTierTier3"
+    | "subscriptionTierEnterprise"
+> = {
     tier1: "subscriptionTierTier1",
     tier2: "subscriptionTierTier2",
     tier3: "subscriptionTierTier3",
     enterprise: "subscriptionTierEnterprise"
 };
 
-function getRequiredTier(tiers: Tier[]): Tier | null {
+function formatRequiredTiersList(
+    tiers: Tier[],
+    t: (key: (typeof TIER_TRANSLATION_KEYS)[Tier]) => string
+): string | null {
     if (tiers.length === 0) return null;
-    let min: Tier | null = null;
-    for (const tier of tiers) {
-        const idx = TIER_ORDER.indexOf(tier);
-        if (idx === -1) continue;
-        if (min === null || TIER_ORDER.indexOf(min) > idx) {
-            min = tier;
-        }
-    }
-    return min;
+    const sorted = [...tiers]
+        .filter((tier) => TIER_ORDER.includes(tier))
+        .sort((a, b) => TIER_ORDER.indexOf(a) - TIER_ORDER.indexOf(b));
+    if (sorted.length === 0) return null;
+    const names = sorted.map((tier) => t(TIER_TRANSLATION_KEYS[tier]));
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} or ${names[1]}`;
+    return `${names.slice(0, -1).join(", ")}, or ${names.at(-1)}`;
 }
 
 const bannerClassName =
-    "mb-6 border-purple-500/30 bg-linear-to-br from-purple-500/10 via-background to-background overflow-hidden";
+    "mb-6 border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden";
 const bannerContentClassName = "py-3 px-4";
 const bannerRowClassName =
     "flex items-center gap-2.5 text-sm text-muted-foreground";
-const bannerIconClassName = "size-4 shrink-0 text-purple-500";
+const bannerIconClassName = "size-4 shrink-0 text-black-500";
 const docsLinkClassName =
-    "inline-flex items-center gap-1 font-medium text-purple-600 underline";
+    "inline-flex items-center gap-1 font-medium text-black-600 underline";
 const PANGOLIN_CLOUD_SIGNUP_URL = "https://app.pangolin.net/auth/signup/";
 const ENTERPRISE_DOCS_URL =
     "https://docs.pangolin.net/self-host/enterprise-edition";
@@ -94,11 +102,17 @@ export function PaidFeaturesAlert({ tiers }: Props) {
     const t = useTranslations();
     const params = useParams();
     const orgId = params?.orgId as string | undefined;
-    const { hasSaasSubscription, hasEnterpriseLicense, isActive, subscriptionTier } = usePaidStatus();
+    const {
+        hasSaasSubscription,
+        hasEnterpriseLicense,
+        isActive,
+        subscriptionTier
+    } = usePaidStatus();
     const { env } = useEnvContext();
-    const requiredTier = getRequiredTier(tiers);
-    const requiredTierName = requiredTier ? t(TIER_TRANSLATION_KEYS[requiredTier]) : null;
-    const billingHref = orgId ? `/${orgId}/settings/billing` : "https://pangolin.net/pricing";
+    const requiredTiersLabel = formatRequiredTiersList(tiers, t);
+    const billingHref = orgId
+        ? `/${orgId}/settings/billing`
+        : "https://pangolin.net/pricing";
     const tierLinkRenderer = getTierLinkRenderer(billingHref);
     const pangolinCloudLinkRenderer = getPangolinCloudLinkRenderer();
     const enterpriseDocsLinkRenderer = getDocsLinkRenderer(ENTERPRISE_DOCS_URL);
@@ -115,16 +129,16 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                         <div className={bannerRowClassName}>
                             <KeyRound className={bannerIconClassName} />
                             <span>
-                                {requiredTierName
+                                {requiredTiersLabel
                                     ? isActive
                                         ? t.rich("upgradeToTierToUse", {
-                                            tier: requiredTierName,
-                                            tierLink: tierLinkRenderer
-                                        })
-                                        : t.rich("subscriptionRequiredTierToUse", {
-                                            tier: requiredTierName,
-                                            tierLink: tierLinkRenderer
-                                        })
+                                              tier: requiredTiersLabel,
+                                              tierLink: tierLinkRenderer
+                                          })
+                                        : t.rich("upgradeToTierToUse", {
+                                              tier: requiredTiersLabel,
+                                              tierLink: tierLinkRenderer
+                                          })
                                     : isActive
                                       ? t("mustUpgradeToUse")
                                       : t("subscriptionRequiredToUse")}
@@ -141,7 +155,8 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                             <KeyRound className={bannerIconClassName} />
                             <span>
                                 {t.rich("licenseRequiredToUse", {
-                                    enterpriseLicenseLink: enterpriseDocsLinkRenderer,
+                                    enterpriseLicenseLink:
+                                        enterpriseDocsLinkRenderer,
                                     pangolinCloudLink: pangolinCloudLinkRenderer
                                 })}
                             </span>
@@ -157,7 +172,8 @@ export function PaidFeaturesAlert({ tiers }: Props) {
                             <KeyRound className={bannerIconClassName} />
                             <span>
                                 {t.rich("ossEnterpriseEditionRequired", {
-                                    enterpriseEditionLink: enterpriseDocsLinkRenderer,
+                                    enterpriseEditionLink:
+                                        enterpriseDocsLinkRenderer,
                                     pangolinCloudLink: pangolinCloudLinkRenderer
                                 })}
                             </span>
