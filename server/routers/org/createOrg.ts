@@ -272,7 +272,8 @@ export async function createOrg(
                     orgId: newOrg[0].orgId,
                     isAdmin: true,
                     name: "Admin",
-                    description: "Admin role with the most permissions"
+                    description: "Admin role with the most permissions",
+                    sshSudoMode: "full"
                 })
                 .returning({ roleId: roles.roleId });
 

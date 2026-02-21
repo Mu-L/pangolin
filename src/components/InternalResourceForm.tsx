@@ -385,7 +385,7 @@ export function InternalResourceForm({
                   tcpPortRangeString: resource.tcpPortRangeString ?? "*",
                   udpPortRangeString: resource.udpPortRangeString ?? "*",
                   disableIcmp: resource.disableIcmp ?? false,
-                  authDaemonMode: resource.authDaemonMode ?? null,
+                  authDaemonMode: resource.authDaemonMode ?? "site",
                   authDaemonPort: resource.authDaemonPort ?? null,
                   roles: [],
                   users: [],
@@ -413,7 +413,7 @@ export function InternalResourceForm({
     });
 
     const mode = form.watch("mode");
-    const authDaemonMode = form.watch("authDaemonMode");
+    const authDaemonMode = form.watch("authDaemonMode") ?? "site";
     const hasInitialized = useRef(false);
     const previousResourceId = useRef<number | null>(null);
 
@@ -466,7 +466,7 @@ export function InternalResourceForm({
                     tcpPortRangeString: resource.tcpPortRangeString ?? "*",
                     udpPortRangeString: resource.udpPortRangeString ?? "*",
                     disableIcmp: resource.disableIcmp ?? false,
-                    authDaemonMode: resource.authDaemonMode ?? null,
+                    authDaemonMode: resource.authDaemonMode ?? "site",
                     authDaemonPort: resource.authDaemonPort ?? null,
                     roles: [],
                     users: [],

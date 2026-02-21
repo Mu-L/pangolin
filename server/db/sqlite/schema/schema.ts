@@ -685,7 +685,7 @@ export const roles = sqliteTable("roles", {
     sshSudoMode: text("sshSudoMode").default("none"), // "none" | "full" | "commands"
     sshSudoCommands: text("sshSudoCommands").default("[]"),
     sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
-        false
+        true
     ),
     sshUnixGroups: text("sshUnixGroups").default("[]")
 });

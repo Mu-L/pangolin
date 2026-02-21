@@ -46,11 +46,13 @@ export default function EditRoleForm({
 
     async function onSubmit(values: RoleFormValues) {
         const payload: UpdateRoleBody = {
-            name: values.name,
-            description: values.description || undefined,
             requireDeviceApproval: values.requireDeviceApproval,
             allowSsh: values.allowSsh
         };
+        if (!role.isAdmin) {
+            payload.name = values.name;
+            payload.description = values.description || undefined;
+        }
         if (isPaidUser(tierMatrix.sshPam)) {
             payload.sshSudoMode = values.sshSudoMode;
             payload.sshCreateHomeDir = values.sshCreateHomeDir;

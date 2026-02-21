@@ -102,16 +102,14 @@ export async function updateRole(
             );
         }
 
-        if (role[0].isAdmin) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    `Cannot update a Admin role`
-                )
-            );
+        const orgId = role[0].orgId;
+        const isAdminRole = role[0].isAdmin;
+
+        if (isAdminRole) {
+            delete updateData.name;
+            delete updateData.description;
         }
 
-        const orgId = role[0].orgId;
         if (!orgId) {
             return next(
                 createHttpError(

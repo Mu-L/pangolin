@@ -135,7 +135,6 @@ export default function UsersTable({ roles }: RolesTableProps) {
                         </DropdownMenu>
                         <Button
                             variant={"outline"}
-                            disabled={isAdmin || false}
                             onClick={() => {
                                 setEditingRole(roleRow);
                                 setIsEditDialogOpen(true);

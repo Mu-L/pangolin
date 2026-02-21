@@ -138,6 +138,7 @@ export function RoleForm({
 
     const sshDisabled = !isPaidUser(tierMatrix.sshPam);
     const sshSudoMode = form.watch("sshSudoMode");
+    const isAdminRole = variant === "edit" && role?.isAdmin === true;
 
     useEffect(() => {
         if (sshDisabled) {
@@ -161,7 +162,11 @@ export function RoleForm({
                                 <FormItem>
                                     <FormLabel>{t("accessRoleName")}</FormLabel>
                                     <FormControl>
-                                        <Input {...field} />
+                                        <Input
+                                            {...field}
+                                            disabled={isAdminRole}
+                                            readOnly={isAdminRole}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -174,7 +179,11 @@ export function RoleForm({
                                 <FormItem>
                                     <FormLabel>{t("description")}</FormLabel>
                                     <FormControl>
-                                        <Input {...field} />
+                                        <Input
+                                            {...field}
+                                            disabled={isAdminRole}
+                                            readOnly={isAdminRole}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -203,7 +212,11 @@ export function RoleForm({
                                             {t("accessRoleName")}
                                         </FormLabel>
                                         <FormControl>
-                                            <Input {...field} />
+                                            <Input
+                                                {...field}
+                                                disabled={isAdminRole}
+                                                readOnly={isAdminRole}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -218,7 +231,11 @@ export function RoleForm({
                                             {t("description")}
                                         </FormLabel>
                                         <FormControl>
-                                            <Input {...field} />
+                                            <Input
+                                                {...field}
+                                                disabled={isAdminRole}
+                                                readOnly={isAdminRole}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
