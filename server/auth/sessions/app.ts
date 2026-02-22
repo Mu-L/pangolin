@@ -3,7 +3,14 @@ import {
     encodeHexLowerCase
 } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
-import { resourceSessions, Session, sessions, User, users } from "@server/db";
+import {
+    resourceSessions,
+    safeRead,
+    Session,
+    sessions,
+    User,
+    users
+} from "@server/db";
 import { db } from "@server/db";
 import { eq, inArray } from "drizzle-orm";
 import config from "@server/lib/config";
@@ -54,11 +61,15 @@ export async function validateSessionToken(
     const sessionId = encodeHexLowerCase(
         sha256(new TextEncoder().encode(token))
     );
-    const result = await db
-        .select({ user: users, session: sessions })
-        .from(sessions)
-        .innerJoin(users, eq(sessions.userId, users.userId))
-        .where(eq(sessions.sessionId, sessionId));
+
+    const result = await safeRead((db) =>
+        db
+            .select({ user: users, session: sessions })
+            .from(sessions)
+            .innerJoin(users, eq(sessions.userId, users.userId))
+            .where(eq(sessions.sessionId, sessionId))
+    );
+
     if (result.length < 1) {
         return { session: null, user: null };
     }
