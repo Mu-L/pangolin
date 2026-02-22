@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import localFont from "next/font/local";
-import { APP_FONT } from "./font-config";
 import { ThemeProvider } from "@app/providers/ThemeProvider";
 import EnvProvider from "@app/providers/EnvProvider";
 import { pullEnv } from "@app/lib/pullEnv";
@@ -33,73 +31,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const ember = localFont({
-    src: [
-        {
-            path: "../../public/fonts/ember/AmazonEmber_Th.ttf",
-            weight: "100",
-            style: "normal"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_ThIt.ttf",
-            weight: "100",
-            style: "italic"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_Lt.ttf",
-            weight: "300",
-            style: "normal"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_LtIt.ttf",
-            weight: "300",
-            style: "italic"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_Rg.ttf",
-            weight: "400",
-            style: "normal"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_RgIt.ttf",
-            weight: "400",
-            style: "italic"
-        },
-        {
-            path: "../../public/fonts/ember/Amazon-Ember-Medium.ttf",
-            weight: "500",
-            style: "normal"
-        },
-        {
-            path: "../../public/fonts/ember/Amazon-Ember-MediumItalic.ttf",
-            weight: "500",
-            style: "italic"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_Bd.ttf",
-            weight: "700",
-            style: "normal"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_BdIt.ttf",
-            weight: "700",
-            style: "italic"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_He.ttf",
-            weight: "800",
-            style: "normal"
-        },
-        {
-            path: "../../public/fonts/ember/AmazonEmber_HeIt.ttf",
-            weight: "800",
-            style: "italic"
-        }
-    ],
-    variable: "--font-ember",
-    display: "swap"
-});
 
 const inter = Inter({
     subsets: ["latin"]
