@@ -46,8 +46,6 @@ export class UsageService {
             return null;
         }
 
-        let orgIdToUse = await this.getBillingOrg(orgId, transaction);
-
         // Truncate value to 11 decimal places
         value = this.truncateValue(value);
 
@@ -59,6 +57,7 @@ export class UsageService {
             try {
                 let usage;
                 if (transaction) {
+                    const orgIdToUse = await this.getBillingOrg(orgId, transaction);
                     usage = await this.internalAddUsage(
                         orgIdToUse,
                         featureId,
@@ -67,6 +66,7 @@ export class UsageService {
                     );
                 } else {
                     await db.transaction(async (trx) => {
+                        const orgIdToUse = await this.getBillingOrg(orgId, trx);
                         usage = await this.internalAddUsage(
                             orgIdToUse,
                             featureId,
@@ -92,7 +92,7 @@ export class UsageService {
                     const delay = baseDelay + jitter;
 
                     logger.warn(
-                        `Deadlock detected for ${orgIdToUse}/${featureId}, retrying attempt ${attempt}/${maxRetries} after ${delay.toFixed(0)}ms`
+                        `Deadlock detected for ${orgId}/${featureId}, retrying attempt ${attempt}/${maxRetries} after ${delay.toFixed(0)}ms`
                     );
 
                     await new Promise((resolve) => setTimeout(resolve, delay));
@@ -100,7 +100,7 @@ export class UsageService {
                 }
 
                 logger.error(
-                    `Failed to add usage for ${orgIdToUse}/${featureId} after ${attempt} attempts:`,
+                    `Failed to add usage for ${orgId}/${featureId} after ${attempt} attempts:`,
                     error
                 );
                 break;
@@ -169,7 +169,7 @@ export class UsageService {
             return;
         }
 
-        let orgIdToUse = await this.getBillingOrg(orgId);
+        const orgIdToUse = await this.getBillingOrg(orgId);
 
         try {
             // Truncate value to 11 decimal places if provided
@@ -227,7 +227,7 @@ export class UsageService {
         orgId: string,
         featureId: FeatureId
     ): Promise<string | null> {
-        let orgIdToUse = await this.getBillingOrg(orgId);
+        const orgIdToUse = await this.getBillingOrg(orgId);
 
         const cacheKey = `customer_${orgIdToUse}_${featureId}`;
         const cached = cache.get<string>(cacheKey);
@@ -274,7 +274,7 @@ export class UsageService {
             return null;
         }
 
-        let orgIdToUse = await this.getBillingOrg(orgId, trx);
+        const orgIdToUse = await this.getBillingOrg(orgId, trx);
 
         const usageId = `${orgIdToUse}-${featureId}`;
 
@@ -382,7 +382,7 @@ export class UsageService {
             return false;
         }
 
-        let orgIdToUse = await this.getBillingOrg(orgId, trx);
+        const orgIdToUse = await this.getBillingOrg(orgId, trx);
 
         // This method should check the current usage against the limits set for the organization
         // and kick out all of the sites on the org

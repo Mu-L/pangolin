@@ -32,6 +32,8 @@ import {
     getClientSiteResourceAccess,
     rebuildClientAssociationsFromSiteResource
 } from "@server/lib/rebuildClientAssociations";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const updateSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -61,7 +63,9 @@ const updateSiteResourceSchema = z
         clientIds: z.array(z.int()),
         tcpPortRangeString: portRangeStringSchema,
         udpPortRangeString: portRangeStringSchema,
-        disableIcmp: z.boolean().optional()
+        disableIcmp: z.boolean().optional(),
+        authDaemonPort: z.int().positive().nullish(),
+        authDaemonMode: z.enum(["site", "remote"]).optional()
     })
     .strict()
     .refine(
@@ -172,7 +176,9 @@ export async function updateSiteResource(
             clientIds,
             tcpPortRangeString,
             udpPortRangeString,
-            disableIcmp
+            disableIcmp,
+            authDaemonPort,
+            authDaemonMode
         } = parsedBody.data;
 
         const [site] = await db
@@ -197,6 +203,11 @@ export async function updateSiteResource(
                 createHttpError(HttpCode.NOT_FOUND, "Site resource not found")
             );
         }
+
+        const isLicensedSshPam = await isLicensedOrSubscribed(
+            existingSiteResource.orgId,
+            tierMatrix.sshPam
+        );
 
         const [org] = await db
             .select()
@@ -308,6 +319,18 @@ export async function updateSiteResource(
                 // wait some time to allow for messages to be handled
                 await new Promise((resolve) => setTimeout(resolve, 750));
 
+                const sshPamSet =
+                    isLicensedSshPam &&
+                    (authDaemonPort !== undefined || authDaemonMode !== undefined)
+                        ? {
+                              ...(authDaemonPort !== undefined && {
+                                  authDaemonPort
+                              }),
+                              ...(authDaemonMode !== undefined && {
+                                  authDaemonMode
+                              })
+                          }
+                        : {};
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
@@ -319,7 +342,8 @@ export async function updateSiteResource(
                         alias: alias && alias.trim() ? alias : null,
                         tcpPortRangeString: tcpPortRangeString,
                         udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp
+                        disableIcmp: disableIcmp,
+                        ...sshPamSet
                     })
                     .where(
                         and(
@@ -397,6 +421,18 @@ export async function updateSiteResource(
                 );
             } else {
                 // Update the site resource
+                const sshPamSet =
+                    isLicensedSshPam &&
+                    (authDaemonPort !== undefined || authDaemonMode !== undefined)
+                        ? {
+                              ...(authDaemonPort !== undefined && {
+                                  authDaemonPort
+                              }),
+                              ...(authDaemonMode !== undefined && {
+                                  authDaemonMode
+                              })
+                          }
+                        : {};
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
@@ -408,7 +444,8 @@ export async function updateSiteResource(
                         alias: alias && alias.trim() ? alias : null,
                         tcpPortRangeString: tcpPortRangeString,
                         udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp
+                        disableIcmp: disableIcmp,
+                        ...sshPamSet
                     })
                     .where(
                         and(eq(siteResources.siteResourceId, siteResourceId))

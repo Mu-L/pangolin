@@ -514,7 +514,7 @@ authenticated.post(
     verifyValidSubscription(tierMatrix.sshPam),
     verifyOrgAccess,
     verifyLimits,
-    // verifyUserHasAction(ActionsEnum.signSshKey),
+    verifyUserHasAction(ActionsEnum.signSshKey),
     logActionAudit(ActionsEnum.signSshKey),
     ssh.signSshKey
 );

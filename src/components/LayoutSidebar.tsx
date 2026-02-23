@@ -18,7 +18,7 @@ import { approvalQueries } from "@app/lib/queries";
 import { build } from "@server/build";
 import { useQuery } from "@tanstack/react-query";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import { ExternalLink, Server } from "lucide-react";
+import { ArrowRight, ExternalLink, PanelRightOpen, Server } from "lucide-react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -145,37 +145,7 @@ export function LayoutSidebar({
                 )}
             />
             <div className="flex-1 overflow-y-auto relative">
-                <div className="px-2 pt-1">
-                    {!isAdminPage && user.serverAdmin && (
-                        <div className="py-2">
-                            <Link
-                                href="/admin"
-                                className={cn(
-                                    "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
-                                    isSidebarCollapsed
-                                        ? "px-2 py-2 justify-center"
-                                        : "px-3 py-1.5"
-                                )}
-                                title={
-                                    isSidebarCollapsed
-                                        ? t("serverAdmin")
-                                        : undefined
-                                }
-                            >
-                                <span
-                                    className={cn(
-                                        "shrink-0",
-                                        !isSidebarCollapsed && "mr-2"
-                                    )}
-                                >
-                                    <Server className="h-4 w-4" />
-                                </span>
-                                {!isSidebarCollapsed && (
-                                    <span>{t("serverAdmin")}</span>
-                                )}
-                            </Link>
-                        </div>
-                    )}
+                <div className="px-2 pt-3">
                     <SidebarNav
                         sections={navItems}
                         isCollapsed={isSidebarCollapsed}
@@ -186,31 +156,89 @@ export function LayoutSidebar({
                 <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
             </div>
 
-            <div className="w-full border-t border-border" />
+            {!isAdminPage && user.serverAdmin && (
+                <div className="shrink-0 px-2 pb-2">
+                    <Link
+                        href="/admin"
+                        className={cn(
+                            "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
+                            isSidebarCollapsed
+                                ? "px-2 py-2 justify-center"
+                                : "px-3 py-1.5"
+                        )}
+                        title={
+                            isSidebarCollapsed ? t("serverAdmin") : undefined
+                        }
+                    >
+                        <span
+                            className={cn(
+                                "shrink-0",
+                                !isSidebarCollapsed && "mr-2"
+                            )}
+                        >
+                            <Server className="h-4 w-4" />
+                        </span>
+                        {!isSidebarCollapsed && (
+                            <>
+                                <span className="flex-1">
+                                    {t("serverAdmin")}
+                                </span>
+                                <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
+                            </>
+                        )}
+                    </Link>
+                </div>
+            )}
 
-            <div className="p-4 pt-1 flex flex-col shrink-0">
-                {canShowProductUpdates ? (
-                    <div className="mb-3">
+            {isSidebarCollapsed && (
+                <div className="shrink-0 flex justify-center py-2">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSidebarCollapsed(false);
+                                        setHasManualToggle(true);
+                                        setSidebarStateCookie(false);
+                                    }}
+                                    className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-secondary/80 dark:hover:bg-secondary/50 transition-colors"
+                                    aria-label={t("sidebarExpand")}
+                                >
+                                    <PanelRightOpen className="h-4 w-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" sideOffset={8}>
+                                <p>{t("sidebarExpand")}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+            )}
+
+            <div className="w-full border-t border-border mb-3" />
+
+            <div className="p-4 pt-0 mt-0 flex flex-col shrink-0">
+                {canShowProductUpdates && (
+                    <div className="mb-3 empty:mb-0">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />
                     </div>
-                ) : (
-                    <div className="mb-3"></div>
                 )}
 
                 {build === "enterprise" && (
-                    <div className="mb-3">
+                    <div className="mb-3 empty:mb-0">
                         <SidebarLicenseButton
                             isCollapsed={isSidebarCollapsed}
                         />
                     </div>
                 )}
                 {build === "oss" && (
-                    <div className="mb-3">
+                    <div className="mb-3 empty:mb-0">
                         <SupporterStatus isCollapsed={isSidebarCollapsed} />
                     </div>
                 )}
                 {build === "saas" && (
-                    <div className="mb-3">
+                    <div className="mb-3 empty:mb-0">
                         <SidebarSupportButton
                             isCollapsed={isSidebarCollapsed}
                         />
@@ -226,19 +254,19 @@ export function LayoutSidebar({
                                         className="whitespace-nowrap"
                                     >
                                         {link.href ? (
-                                            <div className="text-xs text-muted-foreground text-center">
+                                            <div className="text-xs text-muted-foreground text-left">
                                                 <Link
                                                     href={link.href}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="flex items-center justify-center gap-1"
+                                                    className="flex items-center justify-start gap-1"
                                                 >
                                                     {link.text}
                                                     <ExternalLink size={12} />
                                                 </Link>
                                             </div>
                                         ) : (
-                                            <div className="text-xs text-muted-foreground text-center">
+                                            <div className="text-xs text-muted-foreground text-left">
                                                 {link.text}
                                             </div>
                                         )}
@@ -247,12 +275,12 @@ export function LayoutSidebar({
                             </>
                         ) : (
                             <>
-                                <div className="text-xs text-muted-foreground text-center">
+                                <div className="text-xs text-muted-foreground text-left">
                                     <Link
                                         href="https://github.com/fosrl/pangolin"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center justify-center gap-1"
+                                        className="flex items-center justify-start gap-1"
                                     >
                                         {build === "oss"
                                             ? t("communityEdition")
@@ -265,22 +293,22 @@ export function LayoutSidebar({
                                 {build === "enterprise" &&
                                 isUnlocked() &&
                                 licenseStatus?.tier === "personal" ? (
-                                    <div className="text-xs text-muted-foreground text-center">
+                                    <div className="text-xs text-muted-foreground text-left">
                                         {t("personalUseOnly")}
                                     </div>
                                 ) : null}
                                 {build === "enterprise" && !isUnlocked() ? (
-                                    <div className="text-xs text-muted-foreground text-center">
+                                    <div className="text-xs text-muted-foreground text-left">
                                         {t("unlicensed")}
                                     </div>
                                 ) : null}
                                 {env?.app?.version && (
-                                    <div className="text-xs text-muted-foreground text-center">
+                                    <div className="text-xs text-muted-foreground text-left">
                                         <Link
                                             href={`https://github.com/fosrl/pangolin/releases/tag/${env.app.version}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-1"
+                                            className="flex items-center justify-start gap-1"
                                         >
                                             v{env.app.version}
                                             <ExternalLink size={12} />

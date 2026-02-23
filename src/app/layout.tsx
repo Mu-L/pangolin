@@ -82,13 +82,13 @@ export default async function RootLayout({
             <body className={`${font.className} h-screen-safe overflow-hidden`}>
                 <StoreInternalRedirect />
                 <TopLoader />
-                {build === "saas" && (
+                {/* build === "saas" && (
                     <Script
                         src="https://rybbit.fossorial.io/api/script.js"
                         data-site-id="fe1ff2a33287"
                         strategy="afterInteractive"
                     />
-                )}
+                )*/}
                 <ViewportHeightFix />
                 <NextIntlClientProvider>
                     <ThemeProvider
@@ -125,9 +125,9 @@ export default async function RootLayout({
                     </ThemeProvider>
                 </NextIntlClientProvider>
 
-                {process.env.NODE_ENV === "development" && (
+                {/*process.env.NODE_ENV === "development" && (
                     <TailwindIndicator />
-                )}
+                )*/}
             </body>
         </html>
     );

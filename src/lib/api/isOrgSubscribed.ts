@@ -20,7 +20,7 @@ export const isOrgSubscribed = cache(async (orgId: string) => {
         try {
             const subRes = await getCachedSubscription(orgId);
             subscribed =
-                (subRes.data.data.tier == "tier1" || subRes.data.data.tier == "tier2" || subRes.data.data.tier == "tier3") &&
+                (subRes.data.data.tier == "tier1" || subRes.data.data.tier == "tier2" || subRes.data.data.tier == "tier3" || subRes.data.data.tier == "enterprise") &&
                 subRes.data.data.active;
         } catch {}
     }
