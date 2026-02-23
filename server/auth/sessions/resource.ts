@@ -1,7 +1,7 @@
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { resourceSessions, ResourceSession } from "@server/db";
-import { db } from "@server/db";
+import { db, safeRead } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import config from "@server/lib/config";
 
@@ -66,15 +66,17 @@ export async function validateResourceSessionToken(
     const sessionId = encodeHexLowerCase(
         sha256(new TextEncoder().encode(token))
     );
-    const result = await db
-        .select()
-        .from(resourceSessions)
-        .where(
-            and(
-                eq(resourceSessions.sessionId, sessionId),
-                eq(resourceSessions.resourceId, resourceId)
+    const result = await safeRead((db) =>
+        db
+            .select()
+            .from(resourceSessions)
+            .where(
+                and(
+                    eq(resourceSessions.sessionId, sessionId),
+                    eq(resourceSessions.resourceId, resourceId)
+                )
             )
-        );
+    );
 
     if (result.length < 1) {
         return { resourceSession: null };

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Geist, Inter, Manrope, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "@app/providers/ThemeProvider";
 import EnvProvider from "@app/providers/EnvProvider";
 import { pullEnv } from "@app/lib/pullEnv";
@@ -24,6 +23,7 @@ import { TanstackQueryProvider } from "@app/components/TanstackQueryProvider";
 import { TailwindIndicator } from "@app/components/TailwindIndicator";
 import { ViewportHeightFix } from "@app/components/ViewportHeightFix";
 import StoreInternalRedirect from "@app/components/StoreInternalRedirect";
+import { Inter } from "next/font/google";
 
 export const metadata: Metadata = {
     title: `Dashboard - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
@@ -32,9 +32,11 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const font = Inter({
+const inter = Inter({
     subsets: ["latin"]
 });
+
+const fontClassName = inter.className;
 
 export default async function RootLayout({
     children
@@ -79,7 +81,7 @@ export default async function RootLayout({
 
     return (
         <html suppressHydrationWarning lang={locale}>
-            <body className={`${font.className} h-screen-safe overflow-hidden`}>
+            <body className={`${fontClassName} h-screen-safe overflow-hidden`}>
                 <StoreInternalRedirect />
                 <TopLoader />
                 {/* build === "saas" && (
