@@ -19,6 +19,7 @@ import m11 from "./scriptsPg/1.14.0";
 import m12 from "./scriptsPg/1.15.0";
 import m13 from "./scriptsPg/1.15.3";
 import m14 from "./scriptsPg/1.15.4";
+import { build } from "@server/build";
 
 // THIS CANNOT IMPORT ANYTHING FROM THE SERVER
 // EXCEPT FOR THE DATABASE AND THE SCHEMA
@@ -53,6 +54,10 @@ async function run() {
 }
 
 export async function runMigrations() {
+    if (build == "saas") {
+        console.log("Running in SaaS mode, skipping migrations...");
+        return;
+    }
     if (process.env.DISABLE_MIGRATIONS) {
         console.log("Migrations are disabled. Skipping...");
         return;

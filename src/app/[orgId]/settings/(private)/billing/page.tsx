@@ -445,6 +445,54 @@ export default function BillingPage() {
 
     const currentPlanId = getCurrentPlanId();
 
+    // Check if subscription is in a problematic state that requires attention
+    const hasProblematicSubscription = (): boolean => {
+        if (!tierSubscription?.subscription) return false;
+        const status = tierSubscription.subscription.status;
+        return (
+            status === "past_due" ||
+            status === "unpaid" ||
+            status === "incomplete" ||
+            status === "incomplete_expired"
+        );
+    };
+
+    const isProblematicState = hasProblematicSubscription();
+
+    // Get user-friendly subscription status message
+    const getSubscriptionStatusMessage = (): { title: string; description: string } | null => {
+        if (!tierSubscription?.subscription || !isProblematicState) return null;
+        
+        const status = tierSubscription.subscription.status;
+        
+        switch (status) {
+            case "past_due":
+                return {
+                    title: t("billingPastDueTitle") || "Payment Past Due",
+                    description: t("billingPastDueDescription") || "Your payment is past due. Please update your payment method to continue using your current plan features. If not resolved, your subscription will be canceled and you'll be reverted to the free tier."
+                };
+            case "unpaid":
+                return {
+                    title: t("billingUnpaidTitle") || "Subscription Unpaid",
+                    description: t("billingUnpaidDescription") || "Your subscription is unpaid and you have been reverted to the free tier. Please update your payment method to restore your subscription."
+                };
+            case "incomplete":
+                return {
+                    title: t("billingIncompleteTitle") || "Payment Incomplete",
+                    description: t("billingIncompleteDescription") || "Your payment is incomplete. Please complete the payment process to activate your subscription."
+                };
+            case "incomplete_expired":
+                return {
+                    title: t("billingIncompleteExpiredTitle") || "Payment Expired",
+                    description: t("billingIncompleteExpiredDescription") || "Your payment was never completed and has expired. You have been reverted to the free tier. Please subscribe again to restore access to paid features."
+                };
+            default:
+                return null;
+        }
+    };
+
+    const statusMessage = getSubscriptionStatusMessage();
+
     // Get button label and action for each plan
     const getPlanAction = (plan: PlanOption) => {
         if (plan.id === "enterprise") {
@@ -458,7 +506,7 @@ export default function BillingPage() {
 
         if (plan.id === currentPlanId) {
             // If it's the basic plan (basic with no subscription), show as current but disabled
-            if (plan.id === "basic" && !hasSubscription) {
+            if (plan.id === "basic" && !hasSubscription && !isProblematicState) {
                 return {
                     label: "Current Plan",
                     action: () => {},
@@ -466,8 +514,17 @@ export default function BillingPage() {
                     disabled: true
                 };
             }
+            // If on free tier but has a problematic subscription, allow them to manage it
+            if (plan.id === "basic" && isProblematicState) {
+                return {
+                    label: "Manage Subscription",
+                    action: handleModifySubscription,
+                    variant: "default" as const,
+                    disabled: false
+                };
+            }
             return {
-                label: "Modify Current Plan",
+                label: "Manage Current Plan",
                 action: handleModifySubscription,
                 variant: "default" as const,
                 disabled: false
@@ -503,7 +560,7 @@ export default function BillingPage() {
                     }
                 },
                 variant: "outline" as const,
-                disabled: false
+                disabled: isProblematicState
             };
         }
 
@@ -522,7 +579,7 @@ export default function BillingPage() {
                 }
             },
             variant: "outline" as const,
-            disabled: false
+            disabled: isProblematicState
         };
     };
 
@@ -648,6 +705,26 @@ export default function BillingPage() {
 
     return (
         <SettingsContainer>
+            {/* Subscription Status Alert */}
+            {isProblematicState && statusMessage && (
+                <Alert variant="destructive" className="mb-6">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>
+                        {statusMessage.title}
+                    </AlertTitle>
+                    <AlertDescription>
+                        {statusMessage.description}
+                        {" "}
+                        <button
+                            onClick={handleModifySubscription}
+                            className="underline font-semibold hover:no-underline"
+                        >
+                            {t("billingManageSubscription") || "Manage your subscription"}
+                        </button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Your Plan Section */}
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -692,22 +769,50 @@ export default function BillingPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4">
-                                        <Button
-                                            variant={
-                                                isCurrentPlan
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            size="sm"
-                                            className="w-full"
-                                            onClick={planAction.action}
-                                            disabled={
-                                                isLoading || planAction.disabled
-                                            }
-                                            loading={isLoading && isCurrentPlan}
-                                        >
-                                            {planAction.label}
-                                        </Button>
+                                        {isProblematicState && planAction.disabled && !isCurrentPlan && plan.id !== "enterprise" ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div>
+                                                        <Button
+                                                            variant={
+                                                                isCurrentPlan
+                                                                    ? "default"
+                                                                    : "outline"
+                                                            }
+                                                            size="sm"
+                                                            className="w-full"
+                                                            onClick={planAction.action}
+                                                            disabled={
+                                                                isLoading || planAction.disabled
+                                                            }
+                                                            loading={isLoading && isCurrentPlan}
+                                                        >
+                                                            {planAction.label}
+                                                        </Button>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{t("billingResolvePaymentIssue") || "Please resolve your payment issue before upgrading or downgrading"}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ) : (
+                                            <Button
+                                                variant={
+                                                    isCurrentPlan
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={planAction.action}
+                                                disabled={
+                                                    isLoading || planAction.disabled
+                                                }
+                                                loading={isLoading && isCurrentPlan}
+                                            >
+                                                {planAction.label}
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             );

@@ -56,6 +56,41 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
+            - name: Download MaxMind GeoLite2 databases
+              env:
+                MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+              run: |
+                echo "Downloading MaxMind GeoLite2 databases..."
+
+                # Download GeoLite2-Country
+                curl -L "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
+                  -o GeoLite2-Country.tar.gz
+
+                # Download GeoLite2-ASN
+                curl -L "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
+                  -o GeoLite2-ASN.tar.gz
+
+                # Extract the .mmdb files
+                tar -xzf GeoLite2-Country.tar.gz --strip-components=1 --wildcards '*.mmdb'
+                tar -xzf GeoLite2-ASN.tar.gz --strip-components=1 --wildcards '*.mmdb'
+
+                # Verify files exist
+                if [ ! -f "GeoLite2-Country.mmdb" ]; then
+                  echo "ERROR: Failed to download GeoLite2-Country.mmdb"
+                  exit 1
+                fi
+
+                if [ ! -f "GeoLite2-ASN.mmdb" ]; then
+                  echo "ERROR: Failed to download GeoLite2-ASN.mmdb"
+                  exit 1
+                fi
+
+                # Clean up tar files
+                rm -f GeoLite2-Country.tar.gz GeoLite2-ASN.tar.gz
+
+                echo "MaxMind databases downloaded successfully"
+                ls -lh GeoLite2-*.mmdb
+
             - name: Monitor storage space
               run: |
                   THRESHOLD=75

@@ -72,15 +72,15 @@ export const privateConfigSchema = z.object({
                         db: z.int().nonnegative().optional().default(0)
                     })
                 )
+                .optional(),
+            tls: z
+                .object({
+                    rejectUnauthorized: z
+                        .boolean()
+                        .optional()
+                        .default(true)
+                })
                 .optional()
-            // tls: z
-            //     .object({
-            //         reject_unauthorized: z
-            //             .boolean()
-            //             .optional()
-            //             .default(true)
-            //     })
-            //     .optional()
         })
         .optional(),
     gerbil: z
