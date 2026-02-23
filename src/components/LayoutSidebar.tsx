@@ -146,6 +146,46 @@ export function LayoutSidebar({
             />
             <div className="flex-1 overflow-y-auto relative">
                 <div className="px-2 pt-3">
+                    {!isAdminPage && user.serverAdmin && (
+                        <div
+                            className={cn(
+                                "shrink-0",
+                                isSidebarCollapsed ? "mb-4" : "mb-1"
+                            )}
+                        >
+                            <Link
+                                href="/admin"
+                                className={cn(
+                                    "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
+                                    isSidebarCollapsed
+                                        ? "px-2 py-2 justify-center"
+                                        : "px-3 py-1.5"
+                                )}
+                                title={
+                                    isSidebarCollapsed
+                                        ? t("serverAdmin")
+                                        : undefined
+                                }
+                            >
+                                <span
+                                    className={cn(
+                                        "shrink-0",
+                                        !isSidebarCollapsed && "mr-2"
+                                    )}
+                                >
+                                    <Server className="h-4 w-4" />
+                                </span>
+                                {!isSidebarCollapsed && (
+                                    <>
+                                        <span className="flex-1">
+                                            {t("serverAdmin")}
+                                        </span>
+                                        <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
+                                    </>
+                                )}
+                            </Link>
+                        </div>
+                    )}
                     <SidebarNav
                         sections={navItems}
                         isCollapsed={isSidebarCollapsed}
@@ -155,40 +195,6 @@ export function LayoutSidebar({
                 {/* Fade gradient at bottom to indicate scrollable content */}
                 <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
             </div>
-
-            {!isAdminPage && user.serverAdmin && (
-                <div className="shrink-0 px-2 pb-2">
-                    <Link
-                        href="/admin"
-                        className={cn(
-                            "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-secondary/80 dark:hover:bg-secondary/50 rounded-md",
-                            isSidebarCollapsed
-                                ? "px-2 py-2 justify-center"
-                                : "px-3 py-1.5"
-                        )}
-                        title={
-                            isSidebarCollapsed ? t("serverAdmin") : undefined
-                        }
-                    >
-                        <span
-                            className={cn(
-                                "shrink-0",
-                                !isSidebarCollapsed && "mr-2"
-                            )}
-                        >
-                            <Server className="h-4 w-4" />
-                        </span>
-                        {!isSidebarCollapsed && (
-                            <>
-                                <span className="flex-1">
-                                    {t("serverAdmin")}
-                                </span>
-                                <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
-                            </>
-                        )}
-                    </Link>
-                </div>
-            )}
 
             {isSidebarCollapsed && (
                 <div className="shrink-0 flex justify-center py-2">
@@ -218,7 +224,7 @@ export function LayoutSidebar({
 
             <div className="w-full border-t border-border mb-3" />
 
-            <div className="p-4 pt-0 mt-0 flex flex-col shrink-0">
+            <div className="p-4 pt-1 flex flex-col shrink-0">
                 {canShowProductUpdates && (
                     <div className="mb-3 empty:mb-0">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />

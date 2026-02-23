@@ -5,13 +5,11 @@ import { SidebarNav } from "@app/components/SidebarNav";
 import { OrgSelector } from "@app/components/OrgSelector";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
-import SupporterStatus from "@app/components/SupporterStatus";
 import { Button } from "@app/components/ui/button";
-import { ExternalLink, Menu, Server } from "lucide-react";
+import { ArrowRight, Menu, Server } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUserContext } from "@app/hooks/useUserContext";
-import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
 import ProfileIcon from "@app/components/ProfileIcon";
 import ThemeSwitcher from "@app/components/ThemeSwitcher";
@@ -44,7 +42,6 @@ export function LayoutMobileMenu({
     const pathname = usePathname();
     const isAdminPage = pathname?.startsWith("/admin");
     const { user } = useUserContext();
-    const { env } = useEnvContext();
     const t = useTranslations();
 
     return (
@@ -83,7 +80,7 @@ export function LayoutMobileMenu({
                                         <div className="px-3 pt-3">
                                             {!isAdminPage &&
                                                 user.serverAdmin && (
-                                                    <div className="py-2">
+                                                    <div className="mb-1">
                                                         <Link
                                                             href="/admin"
                                                             className={cn(
@@ -98,11 +95,12 @@ export function LayoutMobileMenu({
                                                             <span className="flex-shrink-0 mr-2">
                                                                 <Server className="h-4 w-4" />
                                                             </span>
-                                                            <span>
+                                                            <span className="flex-1">
                                                                 {t(
                                                                     "serverAdmin"
                                                                 )}
                                                             </span>
+                                                            <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
                                                         </Link>
                                                     </div>
                                                 )}
@@ -114,22 +112,6 @@ export function LayoutMobileMenu({
                                             />
                                         </div>
                                         <div className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent" />
-                                    </div>
-                                    <div className="px-3 pt-3 pb-3 space-y-4 border-t shrink-0">
-                                        <SupporterStatus />
-                                        {env?.app?.version && (
-                                            <div className="text-xs text-muted-foreground text-center">
-                                                <Link
-                                                    href={`https://github.com/fosrl/pangolin/releases/tag/${env.app.version}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center justify-center gap-1"
-                                                >
-                                                    v{env.app.version}
-                                                    <ExternalLink size={12} />
-                                                </Link>
-                                            </div>
-                                        )}
                                     </div>
                                 </SheetContent>
                             </Sheet>
