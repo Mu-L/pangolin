@@ -122,8 +122,6 @@ export function queryAccess(data: Q) {
             actorType: accessAuditLog.actorType,
             actorId: accessAuditLog.actorId,
             resourceId: accessAuditLog.resourceId,
-            resourceName: resources.name,
-            resourceNiceId: resources.niceId,
             ip: accessAuditLog.ip,
             location: accessAuditLog.location,
             userAgent: accessAuditLog.userAgent,
@@ -143,7 +141,7 @@ async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryAc
     const resourceIds = logs
         .map(log => log.resourceId)
         .filter((id): id is number => id !== null && id !== undefined);
-    
+
     if (resourceIds.length === 0) {
         return logs.map(log => ({ ...log, resourceName: null, resourceNiceId: null }));
     }
@@ -218,9 +216,9 @@ async function queryUniqueFilterAttributes(
     const resourceIds = uniqueResources
         .map(row => row.id)
         .filter((id): id is number => id !== null);
-    
+
     let resourcesWithNames: Array<{ id: number; name: string | null }> = [];
-    
+
     if (resourceIds.length > 0) {
         const resourceDetails = await primaryDb
             .select({
@@ -229,7 +227,7 @@ async function queryUniqueFilterAttributes(
             })
             .from(resources)
             .where(inArray(resources.resourceId, resourceIds));
-        
+
         resourcesWithNames = resourceDetails.map(r => ({
             id: r.resourceId,
             name: r.name
@@ -289,7 +287,7 @@ export async function queryAccessAuditLogs(
         const baseQuery = queryAccess(data);
 
         const logsRaw = await baseQuery.limit(data.limit).offset(data.offset);
-        
+
         // Enrich with resource details (handles cross-database scenario)
         const log = await enrichWithResourceDetails(logsRaw);
 
