@@ -480,9 +480,9 @@ authenticated.get(
 
 authenticated.post(
     "/re-key/:clientId/regenerate-client-secret",
+    verifyClientAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
-    verifyClientAccess, // this is first to set the org id
     verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateClientSecret
@@ -490,9 +490,9 @@ authenticated.post(
 
 authenticated.post(
     "/re-key/:siteId/regenerate-site-secret",
+    verifySiteAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
-    verifySiteAccess, // this is first to set the org id
     verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateSiteSecret
