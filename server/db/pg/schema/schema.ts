@@ -232,7 +232,11 @@ export const siteResources = pgTable("siteResources", {
     aliasAddress: varchar("aliasAddress"),
     tcpPortRangeString: varchar("tcpPortRangeString").notNull().default("*"),
     udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
-    disableIcmp: boolean("disableIcmp").notNull().default(false)
+    disableIcmp: boolean("disableIcmp").notNull().default(false),
+    authDaemonPort: integer("authDaemonPort").default(22123),
+    authDaemonMode: varchar("authDaemonMode", { length: 32 })
+        .$type<"site" | "remote">()
+        .default("site")
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
@@ -372,7 +376,11 @@ export const roles = pgTable("roles", {
     isAdmin: boolean("isAdmin"),
     name: varchar("name").notNull(),
     description: varchar("description"),
-    requireDeviceApproval: boolean("requireDeviceApproval").default(false)
+    requireDeviceApproval: boolean("requireDeviceApproval").default(false),
+    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("none"), // "none" | "full" | "commands"
+    sshSudoCommands: text("sshSudoCommands").default("[]"),
+    sshCreateHomeDir: boolean("sshCreateHomeDir").default(true),
+    sshUnixGroups: text("sshUnixGroups").default("[]")
 });
 
 export const roleActions = pgTable("roleActions", {
@@ -1059,4 +1067,6 @@ export type SecurityKey = InferSelectModel<typeof securityKeys>;
 export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
-export type RoundTripMessageTracker = InferSelectModel<typeof roundTripMessageTracker>;
+export type RoundTripMessageTracker = InferSelectModel<
+    typeof roundTripMessageTracker
+>;

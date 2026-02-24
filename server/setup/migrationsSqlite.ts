@@ -37,6 +37,7 @@ import m32 from "./scriptsSqlite/1.14.0";
 import m33 from "./scriptsSqlite/1.15.0";
 import m34 from "./scriptsSqlite/1.15.3";
 import m35 from "./scriptsSqlite/1.15.4";
+import { build } from "@server/build";
 
 // THIS CANNOT IMPORT ANYTHING FROM THE SERVER
 // EXCEPT FOR THE DATABASE AND THE SCHEMA
@@ -105,6 +106,10 @@ function backupDb() {
 }
 
 export async function runMigrations() {
+    if (build == "saas") {
+        console.log("Running in SaaS mode, skipping migrations...");
+        return;
+    }
     if (process.env.DISABLE_MIGRATIONS) {
         console.log("Migrations are disabled. Skipping...");
         return;

@@ -25,7 +25,8 @@ import {
     loginPageOrg,
     orgs,
     resources,
-    roles
+    roles,
+    siteResources
 } from "@server/db";
 import { eq } from "drizzle-orm";
 
@@ -286,6 +287,10 @@ async function disableFeature(
                 await disableAutoProvisioning(orgId);
                 break;
 
+            case TierFeature.SshPam:
+                await disableSshPam(orgId);
+                break;
+
             default:
                 logger.warn(
                     `Unknown feature ${feature} for org ${orgId}, skipping`
@@ -313,6 +318,12 @@ async function disableDeviceApprovals(orgId: string): Promise<void> {
         .where(eq(roles.orgId, orgId));
 
     logger.info(`Disabled device approvals on all roles for org ${orgId}`);
+}
+
+async function disableSshPam(orgId: string): Promise<void> {
+    logger.info(
+        `Disabled SSH PAM options on all roles and site resources for org ${orgId}`
+    );
 }
 
 async function disableLoginPageBranding(orgId: string): Promise<void> {

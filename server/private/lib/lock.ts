@@ -14,6 +14,9 @@
 import { config } from "@server/lib/config";
 import logger from "@server/logger";
 import { redis } from "#private/lib/redis";
+import { v4 as uuidv4 } from "uuid";
+
+const instanceId = uuidv4();
 
 export class LockManager {
     /**
@@ -33,7 +36,7 @@ export class LockManager {
         }
 
         const lockValue = `${
-            config.getRawConfig().gerbil.exit_node_name
+            instanceId
         }:${Date.now()}`;
         const redisKey = `lock:${lockKey}`;
 
@@ -52,7 +55,7 @@ export class LockManager {
                 if (result === "OK") {
                     logger.debug(
                         `Lock acquired: ${lockKey} by ${
-                            config.getRawConfig().gerbil.exit_node_name
+                            instanceId
                         }`
                     );
                     return true;
@@ -63,14 +66,14 @@ export class LockManager {
                 if (
                     existingValue &&
                     existingValue.startsWith(
-                        `${config.getRawConfig().gerbil.exit_node_name}:`
+                        `${instanceId}:`
                     )
                 ) {
                     // Extend the lock TTL since it's the same worker
                     await redis.pexpire(redisKey, ttlMs);
                     logger.debug(
                         `Lock extended: ${lockKey} by ${
-                            config.getRawConfig().gerbil.exit_node_name
+                            instanceId
                         }`
                     );
                     return true;
@@ -116,7 +119,7 @@ export class LockManager {
       local key = KEYS[1]
       local worker_prefix = ARGV[1]
       local current_value = redis.call('GET', key)
-      
+
       if current_value and string.find(current_value, worker_prefix, 1, true) == 1 then
         return redis.call('DEL', key)
       else
@@ -129,19 +132,19 @@ export class LockManager {
                 luaScript,
                 1,
                 redisKey,
-                `${config.getRawConfig().gerbil.exit_node_name}:`
+                `${instanceId}:`
             )) as number;
 
             if (result === 1) {
                 logger.debug(
                     `Lock released: ${lockKey} by ${
-                        config.getRawConfig().gerbil.exit_node_name
+                        instanceId
                     }`
                 );
             } else {
                 logger.warn(
                     `Lock not released - not owned by worker: ${lockKey} by ${
-                        config.getRawConfig().gerbil.exit_node_name
+                        instanceId
                     }`
                 );
             }
@@ -198,7 +201,7 @@ export class LockManager {
             const ownedByMe =
                 exists &&
                 value!.startsWith(
-                    `${config.getRawConfig().gerbil.exit_node_name}:`
+                    `${instanceId}:`
                 );
             const owner = exists ? value!.split(":")[0] : undefined;
 
@@ -233,7 +236,7 @@ export class LockManager {
       local worker_prefix = ARGV[1]
       local ttl = tonumber(ARGV[2])
       local current_value = redis.call('GET', key)
-      
+
       if current_value and string.find(current_value, worker_prefix, 1, true) == 1 then
         return redis.call('PEXPIRE', key, ttl)
       else
@@ -246,14 +249,14 @@ export class LockManager {
                 luaScript,
                 1,
                 redisKey,
-                `${config.getRawConfig().gerbil.exit_node_name}:`,
+                `${instanceId}:`,
                 ttlMs.toString()
             )) as number;
 
             if (result === 1) {
                 logger.debug(
                     `Lock extended: ${lockKey} by ${
-                        config.getRawConfig().gerbil.exit_node_name
+                        instanceId
                     } for ${ttlMs}ms`
                 );
                 return true;
@@ -356,7 +359,7 @@ export class LockManager {
                     (value) =>
                         value &&
                         value.startsWith(
-                            `${config.getRawConfig().gerbil.exit_node_name}:`
+                            `${instanceId}:`
                         )
                 ).length;
             }

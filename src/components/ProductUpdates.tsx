@@ -105,7 +105,7 @@ export default function ProductUpdates({
             <div className="flex flex-col gap-1">
                 <small
                     className={cn(
-                        "text-xs text-muted-foreground flex items-center gap-1 mt-2",
+                        "text-xs text-muted-foreground flex items-center gap-1 mt-2 empty:mt-0",
                         showMoreUpdatesText
                             ? "animate-in fade-in duration-300"
                             : "opacity-0"

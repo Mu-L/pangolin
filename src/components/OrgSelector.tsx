@@ -6,8 +6,7 @@ import {
     CommandGroup,
     CommandInput,
     CommandItem,
-    CommandList,
-    CommandSeparator
+    CommandList
 } from "@app/components/ui/command";
 import {
     Popover,
@@ -25,6 +24,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { cn } from "@app/lib/cn";
 import { ListUserOrgsResponse } from "@server/routers/org";
 import { Check, ChevronsUpDown, Plus, Building2, Users } from "lucide-react";
+import { Button } from "@app/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
@@ -71,7 +71,7 @@ export function OrgSelector({
                         "cursor-pointer transition-colors",
                         isCollapsed
                             ? "w-full h-16 flex items-center justify-center hover:bg-muted"
-                            : "w-full px-4 py-4 hover:bg-muted"
+                            : "w-full px-5 py-4 hover:bg-muted"
                     )}
                 >
                     {isCollapsed ? (
@@ -93,68 +93,45 @@ export function OrgSelector({
                     )}
                 </div>
             </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0" align="start">
-                <Command className="rounded-lg">
+            <PopoverContent
+                className="w-[320px] p-0 ml-4 flex flex-col relative overflow-visible"
+                align="start"
+                sideOffset={12}
+            >
+                <Command className="rounded-lg border-0 flex-1 min-h-0">
                     <CommandInput
                         placeholder={t("searchPlaceholder")}
-                        className="border-0 focus:ring-0"
+                        className="border-0 focus:ring-0 h-9 rounded-b-none"
                     />
-                    <CommandEmpty className="py-6 text-center">
-                        <div className="text-muted-foreground text-sm">
-                            {t("orgNotFound2")}
-                        </div>
-                    </CommandEmpty>
-                    {(!env.flags.disableUserCreateOrg || user.serverAdmin) && (
-                        <>
-                            <CommandGroup
-                                heading={t("create")}
-                                className="py-2"
-                            >
-                                <CommandList>
-                                    <CommandItem
-                                        onSelect={() => {
-                                            setOpen(false);
-                                            router.push("/setup");
-                                        }}
-                                        className="mx-2 rounded-md"
-                                    >
-                                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 mr-3">
-                                            <Plus className="h-4 w-4 text-primary" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">
-                                                {t("setupNewOrg")}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {t("createNewOrgDescription")}
-                                            </span>
-                                        </div>
-                                    </CommandItem>
-                                </CommandList>
-                            </CommandGroup>
-                            <CommandSeparator className="my-2" />
-                        </>
-                    )}
-                    <CommandGroup heading={t("orgs")} className="py-2">
-                        <CommandList>
+                    <CommandList className="max-h-[280px]">
+                        <CommandEmpty className="py-4 text-center">
+                            <div className="text-muted-foreground text-sm">
+                                {t("orgNotFound2")}
+                            </div>
+                        </CommandEmpty>
+                        <CommandGroup className="p-1" heading={t("orgs")}>
                             {sortedOrgs.map((org) => (
                                 <CommandItem
                                     key={org.orgId}
                                     onSelect={() => {
                                         setOpen(false);
-                                        const newPath = pathname.replace(
-                                            /^\/[^/]+/,
-                                            `/${org.orgId}`
-                                        );
+                                        const newPath = pathname.includes(
+                                            "/settings/"
+                                        )
+                                            ? pathname.replace(
+                                                  /^\/[^/]+/,
+                                                  `/${org.orgId}`
+                                              )
+                                            : `/${org.orgId}`;
                                         router.push(newPath);
                                     }}
-                                    className="mx-2 rounded-md"
+                                    className="mx-1 rounded-md py-1.5 h-auto min-h-0"
                                 >
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted mr-3">
-                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-muted mr-2.5 flex-shrink-0">
+                                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
                                     </div>
-                                    <div className="flex flex-col flex-1 min-w-0">
-                                        <span className="font-medium truncate">
+                                    <div className="flex flex-col flex-1 min-w-0 gap-0.5">
+                                        <span className="font-medium truncate text-sm">
                                             {org.name}
                                         </span>
                                         <div className="flex items-center gap-2 min-w-0">
@@ -173,7 +150,7 @@ export function OrgSelector({
                                     </div>
                                     <Check
                                         className={cn(
-                                            "h-4 w-4 text-primary",
+                                            "h-4 w-4 text-primary flex-shrink-0",
                                             orgId === org.orgId
                                                 ? "opacity-100"
                                                 : "opacity-0"
@@ -181,9 +158,25 @@ export function OrgSelector({
                                     />
                                 </CommandItem>
                             ))}
-                        </CommandList>
-                    </CommandGroup>
+                        </CommandGroup>
+                    </CommandList>
                 </Command>
+                {(!env.flags.disableUserCreateOrg || user.serverAdmin) && (
+                    <div className="p-2 border-t border-border">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start h-8 font-normal text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                                setOpen(false);
+                                router.push("/setup");
+                            }}
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-2" />
+                            {t("setupNewOrg")}
+                        </Button>
+                    </div>
+                )}
             </PopoverContent>
         </Popover>
     );
