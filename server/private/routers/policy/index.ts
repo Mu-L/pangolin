@@ -11,4 +11,5 @@
  * This file is not licensed under the AGPLv3.
  */
 
-export * from "./getMaintenanceInfo";
+export * from "./createResourcePolicy";
+export * from "./listResourcePolicies";

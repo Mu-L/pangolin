@@ -26,6 +26,7 @@ import * as misc from "#private/routers/misc";
 import * as reKey from "#private/routers/re-key";
 import * as approval from "#private/routers/approvals";
 import * as resource from "#private/routers/resource";
+import * as policy from "#private/routers/policy";
 
 import {
     verifyOrgAccess,
@@ -349,9 +350,19 @@ authenticated.get(
     verifyLimits,
     verifyUserHasAction(ActionsEnum.listResourcePolicies),
     logActionAudit(ActionsEnum.listResourcePolicies),
-    resource.listResourcePolicies
+    policy.listResourcePolicies
 );
 
+authenticated.post(
+    "/org/:orgId/resource-policy",
+    verifyValidLicense,
+    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createResourcePolicy),
+    logActionAudit(ActionsEnum.createResourcePolicy),
+    policy.createResourcePolicy
+);
 
 authenticated.put(
     "/org/:orgId/approvals/:approvalId",

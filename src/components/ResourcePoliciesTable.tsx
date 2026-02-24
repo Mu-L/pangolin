@@ -5,9 +5,14 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
 import type { PaginationState } from "@tanstack/react-table";
+import { ArrowRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { useDebouncedCallback } from "use-debounce";
+import { Button } from "./ui/button";
+import { ControlledDataTable } from "./ui/controlled-data-table";
 import type { ExtendedColumnDef } from "./ui/data-table";
 import {
     DropdownMenu,
@@ -15,12 +20,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "./ui/dropdown-menu";
-import { Button } from "./ui/button";
-import { MoreHorizontal, ArrowRight } from "lucide-react";
-import Link from "next/link";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import { useDebouncedCallback } from "use-debounce";
-import { Badge } from "./ui/badge";
 
 type ResourcePolicyRow = ListResourcePoliciesResponse["policies"][number];
 

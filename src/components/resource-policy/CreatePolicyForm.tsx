@@ -42,6 +42,11 @@ import {
     PolicyUsersRolesSection
 } from "./ResourcePolicySubForms";
 import { type PolicyFormValues, createPolicySchema } from ".";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { orgs, type ResourcePolicy } from "@server/db";
+import type { AxiosResponse } from "axios";
+import { useRouter } from "next/navigation";
 
 // ─── CreatePolicyForm ─────────────────────────────────────────────────────────
 
@@ -51,8 +56,11 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
     const { env } = useEnvContext();
+    const api = createApiClient({ env });
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
     const { isPaidUser } = usePaidStatus();
+
+    const router = useRouter();
 
     const isMaxmindAvailable = !!(
         env.server.maxmind_db_path && env.server.maxmind_db_path.length > 0
@@ -96,6 +104,52 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
         const isValid = await form.trigger();
 
         if (!isValid) return;
+
+        const payload = form.getValues();
+
+        try {
+            const res = await api
+                .post<AxiosResponse<ResourcePolicy>>(
+                    `/org/${org.org.orgId}/resource-policy/`,
+                    {
+                        name: payload.name,
+                        sso: payload.sso,
+                        roleIds: payload.roles.map((r) => r.id),
+                        userIds: payload.users.map((u) => u.id)
+                    }
+                )
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorCreate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorCreateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 201) {
+                const id = res.data.data.resourcePolicyId;
+                const niceId = res.data.data.niceId;
+
+                router.push(`/${org.org.orgId}/settings/policies/resources/`);
+                // should redirect to the details page
+                // router.push(
+                //     `/${org.org.orgId}/settings/policies/resources/${niceId}`
+                // );
+                toast({
+                    title: t("success"),
+                    description: t("policyCreatedSuccess")
+                });
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorCreate"),
+                description: t("policyErrorCreateMessageDescription")
+            });
+        }
     }
 
     const allRoles = useMemo(

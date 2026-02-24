@@ -1,9 +1,8 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { db, loginPage } from "@server/db";
+import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { build } from "@server/build";
 import {
-    domains,
-    orgDomains,
+    db,
+    loginPage,
     orgs,
     Resource,
     resources,
@@ -11,19 +10,19 @@ import {
     roles,
     userResources
 } from "@server/db";
-import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import { eq, and } from "drizzle-orm";
-import { fromError } from "zod-validation-error";
-import logger from "@server/logger";
-import { subdomainSchema } from "@server/lib/schemas";
-import config from "@server/lib/config";
-import { OpenAPITags, registry } from "@server/openApi";
-import { build } from "@server/build";
-import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { getUniqueResourceName } from "@server/db/names";
+import config from "@server/lib/config";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
+import response from "@server/lib/response";
+import { subdomainSchema } from "@server/lib/schemas";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import { and, eq } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const createResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -298,7 +297,7 @@ async function createHttpResource(
         );
     }
 
-    if (build != "oss") {
+    if (build !== "oss") {
         await createCertificate(domainId, fullDomain, db);
     }
 
