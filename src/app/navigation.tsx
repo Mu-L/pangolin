@@ -7,6 +7,7 @@ import {
     CreditCard,
     Fingerprint,
     Globe,
+    GlobeIcon,
     GlobeLock,
     KeyRound,
     Laptop,
@@ -63,18 +64,7 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                         title: "sidebarClientResources",
                         href: "/{orgId}/settings/resources/client",
                         icon: <GlobeLock className="size-4 flex-none" />
-                    },
-                    ...(build !== "oss"
-                        ? [
-                              {
-                                  title: "sidebarResourcePolicies",
-                                  href: "/{orgId}/settings/resources/policies",
-                                  icon: (
-                                      <ShieldIcon className="size-4 flex-none" />
-                                  )
-                              }
-                          ]
-                        : [])
+                    }
                 ]
             },
             {
@@ -133,6 +123,24 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                 href: "/{orgId}/settings/access/roles",
                 icon: <Users className="size-4 flex-none" />
             },
+            ...(build !== "oss"
+                ? [
+                      {
+                          title: "sidebarPolicies",
+
+                          icon: <ShieldIcon className="size-4 flex-none" />,
+                          items: [
+                              {
+                                  title: "sidebarResourcePolicies",
+                                  href: "/{orgId}/settings/policies/resources",
+                                  icon: (
+                                      <GlobeIcon className="size-4 flex-none" />
+                                  )
+                              }
+                          ]
+                      }
+                  ]
+                : []),
             // PaidFeaturesAlert
             ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
             build === "saas" ||

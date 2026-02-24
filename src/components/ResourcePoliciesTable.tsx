@@ -72,24 +72,7 @@ export function ResourcePoliciesTable({
             enableHiding: false,
             friendlyName: t("name"),
             header: () => <span className="p-3">{t("name")}</span>,
-            cell({ row }) {
-                const r = row.original;
-                return (
-                    <div className="flex items-center gap-2">
-                        <span>{r.name}</span>
-                        {r.isDefault && (
-                            <>
-                                <Badge
-                                    variant="outlinePrimary"
-                                    className="flex items-center gap-1"
-                                >
-                                    {t("resourcePoliciesDefaultBadgeText")}
-                                </Badge>
-                            </>
-                        )}
-                    </div>
-                );
-            }
+            cell: ({ row }) => <span>{row.original.name}</span>
         },
         {
             id: "niceId",
@@ -183,7 +166,7 @@ export function ResourcePoliciesTable({
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(
-                            `/${orgId}/settings/resources/policies/create`
+                            `/${orgId}/settings/policies/resources/create`
                         )
                     )
                 }

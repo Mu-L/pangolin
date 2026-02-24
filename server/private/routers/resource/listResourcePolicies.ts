@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, resourcePolicies, roleResources, userResources } from "@server/db";
+import { db, resourcePolicies, rolePolicies, userPolicies } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -51,8 +51,7 @@ function queryResourcePoliciesBase() {
             resourcePolicyId: resourcePolicies.resourcePolicyId,
             name: resourcePolicies.name,
             niceId: resourcePolicies.niceId,
-            orgId: resourcePolicies.orgId,
-            isDefault: resourcePolicies.isDefault
+            orgId: resourcePolicies.orgId
         })
         .from(resourcePolicies);
 }
@@ -124,20 +123,20 @@ export async function listResourcePolicies(
         if (req.user) {
             accessibleResourcePolicies = await db
                 .select({
-                    resourcePolicyId: sql<number>`COALESCE(${userResources.resourcePolicyId}, ${roleResources.resourcePolicyId})`
+                    resourcePolicyId: sql<number>`COALESCE(${userPolicies.resourcePolicyId}, ${rolePolicies.resourcePolicyId})`
                 })
-                .from(userResources)
+                .from(userPolicies)
                 .fullJoin(
-                    roleResources,
+                    rolePolicies,
                     eq(
-                        userResources.resourcePolicyId,
-                        roleResources.resourcePolicyId
+                        userPolicies.resourcePolicyId,
+                        rolePolicies.resourcePolicyId
                     )
                 )
                 .where(
                     or(
-                        eq(userResources.userId, req.user!.userId),
-                        eq(roleResources.roleId, req.userOrgRoleId!)
+                        eq(userPolicies.userId, req.user!.userId),
+                        eq(rolePolicies.roleId, req.userOrgRoleId!)
                     )
                 );
         } else {
@@ -159,7 +158,8 @@ export async function listResourcePolicies(
                     resourcePolicies.resourcePolicyId,
                     accessibleResourceIds
                 ),
-                eq(resourcePolicies.orgId, orgId)
+                eq(resourcePolicies.orgId, orgId),
+                eq(resourcePolicies.scope, "global")
             )
         ];
 

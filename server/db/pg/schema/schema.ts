@@ -94,8 +94,10 @@ export const sites = pgTable("sites", {
 
 export const resources = pgTable("resources", {
     resourceId: serial("resourceId").primaryKey(),
-    resourcePolicyId: integer("resourcePolicyId")
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId").references(
+        () => resourcePolicies.resourcePolicyId,
+        { onDelete: "cascade" }
+    ),
     resourceGuid: varchar("resourceGuid", { length: 36 })
         .unique()
         .notNull()
@@ -420,10 +422,7 @@ export const roleResources = pgTable("roleResources", {
         .references(() => roles.roleId, { onDelete: "cascade" }),
     resourceId: integer("resourceId")
         .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
 export const userResources = pgTable("userResources", {
@@ -432,10 +431,29 @@ export const userResources = pgTable("userResources", {
         .references(() => users.userId, { onDelete: "cascade" }),
     resourceId: integer("resourceId")
         .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" }),
+        .references(() => resources.resourceId, { onDelete: "cascade" })
+});
+
+export const rolePolicies = pgTable("rolePolicies", {
+    roleId: integer("roleId")
+        .notNull()
+        .references(() => roles.roleId, { onDelete: "cascade" }),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const userPolicies = pgTable("userPolicies", {
+    userId: varchar("userId")
+        .notNull()
+        .references(() => users.userId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
 });
 
 export const userInvites = pgTable("userInvites", {
@@ -460,7 +478,9 @@ export const resourcePincode = pgTable("resourcePincode", {
     digitLength: integer("digitLength").notNull(),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
 });
 
 export const resourcePassword = pgTable("resourcePassword", {
@@ -471,7 +491,9 @@ export const resourcePassword = pgTable("resourcePassword", {
     passwordHash: varchar("passwordHash").notNull(),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
 });
 
 export const resourceHeaderAuth = pgTable("resourceHeaderAuth", {
@@ -482,7 +504,9 @@ export const resourceHeaderAuth = pgTable("resourceHeaderAuth", {
     headerAuthHash: varchar("headerAuthHash").notNull(),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
 });
 
 export const resourceHeaderAuthExtendedCompatibility = pgTable(
@@ -496,7 +520,9 @@ export const resourceHeaderAuthExtendedCompatibility = pgTable(
             .references(() => resources.resourceId, { onDelete: "cascade" }),
         resourcePolicyId: integer("resourcePolicyId")
             .notNull()
-            .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+            .references(() => resourcePolicies.resourcePolicyId, {
+                onDelete: "cascade"
+            }),
         extendedCompatibilityIsActivated: boolean(
             "extendedCompatibilityIsActivated"
         )
@@ -571,7 +597,9 @@ export const resourceWhitelist = pgTable("resourceWhitelist", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
 });
 
 export const resourceOtp = pgTable("resourceOtp", {
@@ -581,7 +609,9 @@ export const resourceOtp = pgTable("resourceOtp", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        }),
     email: varchar("email").notNull(),
     otpHash: varchar("otpHash").notNull(),
     expiresAt: bigint("expiresAt", { mode: "number" }).notNull()
@@ -599,7 +629,9 @@ export const resourceRules = pgTable("resourceRules", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        }),
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
     action: varchar("action").notNull(), // ACCEPT, DROP, PASS
@@ -607,21 +639,40 @@ export const resourceRules = pgTable("resourceRules", {
     value: varchar("value").notNull()
 });
 
+export const policyRules = pgTable("policyRules", {
+    ruleId: serial("ruleId").primaryKey(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        }),
+    enabled: boolean("enabled").notNull().default(true),
+    priority: integer("priority").notNull(),
+    action: varchar("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
+    match: varchar("match").$type<"CIDR" | "PATH" | "IP">().notNull(),
+    value: varchar("value").notNull()
+});
+
 export const resourcePolicies = pgTable("resourcePolicies", {
-    resourcePolicyId: serial('resourcePolicyId').primaryKey(),
+    resourcePolicyId: serial("resourcePolicyId").primaryKey(),
     sso: boolean("sso").notNull().default(true),
-    emailWhitelistEnabled: boolean("emailWhitelistEnabled").notNull().default(false),
+    scope: varchar("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    emailWhitelistEnabled: boolean("emailWhitelistEnabled")
+        .notNull()
+        .default(false),
     idpId: integer("idpId").references(() => idp.idpId, {
         onDelete: "set null"
     }),
     niceId: text("niceId").notNull(),
-    isDefault: boolean("isDefault").notNull().default(true),
     name: varchar("name").notNull(),
     orgId: varchar("orgId")
         .references(() => orgs.orgId, {
             onDelete: "cascade"
         })
-        .notNull(),
+        .notNull()
 });
 
 export const supporterKey = pgTable("supporterKey", {
