@@ -1,8 +1,8 @@
-FROM node:24-alpine AS base
+FROM node:24-slim AS base
 
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 
@@ -27,11 +27,11 @@ FROM base AS builder
 
 RUN npm ci --omit=dev
 
-FROM node:24-alpine AS runner
+FROM node:24-slim AS runner
 
 WORKDIR /app
 
-RUN apk add --no-cache curl tzdata
+RUN apt-get update && apt-get install -y curl tzdata && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
