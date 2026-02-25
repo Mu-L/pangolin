@@ -55,12 +55,13 @@ function getServerSecret(): string {
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
 
+    // Ensure server secret exists before running migration (required for org CA key generation)
+    getServerSecret();
+
     const location = path.join(APP_PATH, "db", "db.sqlite");
     const db = new Database(location);
 
     try {
-        const secret = getServerSecret();
-
         db.pragma("foreign_keys = OFF");
 
         db.transaction(() => {
@@ -123,6 +124,8 @@ export default async function migration() {
         }[];
 
         // Generate and store encrypted SSH CA keys for all orgs
+        const secret = getServerSecret();
+
         const updateOrgCaKeys = db.prepare(
             "UPDATE orgs SET sshCaPrivateKey = ?, sshCaPublicKey = ? WHERE orgId = ?"
         );
