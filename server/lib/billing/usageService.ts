@@ -230,7 +230,7 @@ export class UsageService {
         const orgIdToUse = await this.getBillingOrg(orgId);
 
         const cacheKey = `customer_${orgIdToUse}_${featureId}`;
-        const cached = cache.get<string>(cacheKey);
+        const cached = await cache.get<string>(cacheKey);
 
         if (cached) {
             return cached;
@@ -253,7 +253,7 @@ export class UsageService {
             const customerId = customer.customerId;
 
             // Cache the result
-            cache.set(cacheKey, customerId, 300); // 5 minute TTL
+            await cache.set(cacheKey, customerId, 300); // 5 minute TTL
 
             return customerId;
         } catch (error) {

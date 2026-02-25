@@ -23,7 +23,7 @@ import { fromError } from "zod-validation-error";
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
-        const cachedVersion = cache.get<string>("latestNewtVersion");
+        const cachedVersion = await cache.get<string>("latestNewtVersion");
         if (cachedVersion) {
             return cachedVersion;
         }
@@ -55,7 +55,7 @@ async function getLatestNewtVersion(): Promise<string | null> {
         tags = tags.filter((version) => !version.name.includes("rc"));
         const latestVersion = tags[0].name;
 
-        cache.set("latestNewtVersion", latestVersion);
+        await cache.set("latestNewtVersion", latestVersion);
 
         return latestVersion;
     } catch (error: any) {

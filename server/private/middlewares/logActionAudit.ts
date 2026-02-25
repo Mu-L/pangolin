@@ -23,7 +23,7 @@ import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 
 async function getActionDays(orgId: string): Promise<number> {
     // check cache first
-    const cached = cache.get<number>(`org_${orgId}_actionDays`);
+    const cached = await cache.get<number>(`org_${orgId}_actionDays`);
     if (cached !== undefined) {
         return cached;
     }
@@ -41,7 +41,7 @@ async function getActionDays(orgId: string): Promise<number> {
     }
 
     // store the result in cache
-    cache.set(
+    await cache.set(
         `org_${orgId}_actionDays`,
         org.settingsLogRetentionDaysAction,
         300

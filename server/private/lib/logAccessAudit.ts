@@ -21,7 +21,7 @@ import { stripPortFromHost } from "@server/lib/ip";
 
 async function getAccessDays(orgId: string): Promise<number> {
     // check cache first
-    const cached = cache.get<number>(`org_${orgId}_accessDays`);
+    const cached = await cache.get<number>(`org_${orgId}_accessDays`);
     if (cached !== undefined) {
         return cached;
     }
@@ -39,7 +39,7 @@ async function getAccessDays(orgId: string): Promise<number> {
     }
 
     // store the result in cache
-    cache.set(
+    await cache.set(
         `org_${orgId}_accessDays`,
         org.settingsLogRetentionDaysAction,
         300
@@ -146,14 +146,14 @@ export async function logAccessAudit(data: {
 async function getCountryCodeFromIp(ip: string): Promise<string | undefined> {
     const geoIpCacheKey = `geoip_access:${ip}`;
 
-    let cachedCountryCode: string | undefined = cache.get(geoIpCacheKey);
+    let cachedCountryCode: string | undefined = await cache.get(geoIpCacheKey);
 
     if (!cachedCountryCode) {
         cachedCountryCode = await getCountryCodeForIp(ip); // do it locally
         // Only cache successful lookups to avoid filling cache with undefined values
         if (cachedCountryCode) {
             // Cache for longer since IP geolocation doesn't change frequently
-            cache.set(geoIpCacheKey, cachedCountryCode, 300); // 5 minutes
+            await cache.set(geoIpCacheKey, cachedCountryCode, 300); // 5 minutes
         }
     }
 

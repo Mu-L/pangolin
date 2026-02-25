@@ -191,7 +191,7 @@ export async function inviteUser(
         }
 
         if (existingInvite.length) {
-            const attempts = cache.get<number>(email) || 0;
+            const attempts = (await cache.get<number>(email)) || 0;
             if (attempts >= 3) {
                 return next(
                     createHttpError(
@@ -201,7 +201,7 @@ export async function inviteUser(
                 );
             }
 
-            cache.set(email, attempts + 1);
+            await cache.set(email, attempts + 1);
 
             const inviteId = existingInvite[0].inviteId; // Retrieve the original inviteId
             const token = generateRandomString(

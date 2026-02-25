@@ -150,7 +150,7 @@ async function triggerFetch(siteId: number) {
 
     // clear the cache for this Newt ID so that the site has to keep asking for the containers
     // this is to ensure that the site always gets the latest data
-    cache.del(`${newt.newtId}:dockerContainers`);
+    await cache.del(`${newt.newtId}:dockerContainers`);
 
     return { siteId, newtId: newt.newtId };
 }
@@ -158,7 +158,7 @@ async function triggerFetch(siteId: number) {
 async function queryContainers(siteId: number) {
     const { newt } = await getSiteAndNewt(siteId);
 
-    const result = cache.get(`${newt.newtId}:dockerContainers`) as Container[];
+    const result = await cache.get<Container[]>(`${newt.newtId}:dockerContainers`);
     if (!result) {
         throw createHttpError(
             HttpCode.TOO_EARLY,
@@ -173,7 +173,7 @@ async function isDockerAvailable(siteId: number): Promise<boolean> {
     const { newt } = await getSiteAndNewt(siteId);
 
     const key = `${newt.newtId}:isAvailable`;
-    const isAvailable = cache.get(key);
+    const isAvailable = await cache.get(key);
 
     return !!isAvailable;
 }
@@ -186,9 +186,11 @@ async function getDockerStatus(
     const keys = ["isAvailable", "socketPath"];
     const mappedKeys = keys.map((x) => `${newt.newtId}:${x}`);
 
+    const values = await cache.mget<boolean | string>(mappedKeys);
+
     const result = {
-        isAvailable: cache.get(mappedKeys[0]) as boolean,
-        socketPath: cache.get(mappedKeys[1]) as string | undefined
+        isAvailable: values[0] as boolean,
+        socketPath: values[1] as string | undefined
     };
 
     return result;

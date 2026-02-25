@@ -130,7 +130,7 @@ export async function shutdownAuditLogger() {
 
 async function getRetentionDays(orgId: string): Promise<number> {
     // check cache first
-    const cached = cache.get<number>(`org_${orgId}_retentionDays`);
+    const cached = await cache.get<number>(`org_${orgId}_retentionDays`);
     if (cached !== undefined) {
         return cached;
     }
@@ -149,7 +149,7 @@ async function getRetentionDays(orgId: string): Promise<number> {
     }
 
     // store the result in cache
-    cache.set(
+    await cache.set(
         `org_${orgId}_retentionDays`,
         org.settingsLogRetentionDaysRequest,
         300
