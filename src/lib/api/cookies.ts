@@ -6,8 +6,6 @@ export async function authCookieHeader() {
         Array.from(otherHeaders.entries()).map(([k, v]) => [k.toLowerCase(), v])
     );
 
-    console.info(`Setting cookie... x-forwarded-for: ${otherHeadersObject["x-forwarded-for"]}`)
-
     return {
         headers: {
             cookie: otherHeadersObject["cookie"],
