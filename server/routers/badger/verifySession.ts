@@ -37,7 +37,7 @@ import {
     enforceResourceSessionLength
 } from "#dynamic/lib/checkOrgAccessPolicy";
 import { logRequestAudit } from "./logRequestAudit";
-import cache from "@server/lib/cache";
+import { localCache } from "@server/lib/cache";
 import { APP_VERSION } from "@server/lib/consts";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -137,7 +137,7 @@ export async function verifyResourceSession(
                   headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
                   org: Org;
               }
-            | undefined = await cache.get(resourceCacheKey);
+            | undefined = localCache.get(resourceCacheKey);
 
         if (!resourceData) {
             const result = await getResourceByDomain(cleanHost);
@@ -161,7 +161,7 @@ export async function verifyResourceSession(
             }
 
             resourceData = result;
-            await cache.set(resourceCacheKey, resourceData, 5);
+            localCache.set(resourceCacheKey, resourceData, 5);
         }
 
         const {
@@ -405,7 +405,7 @@ export async function verifyResourceSession(
         // check for HTTP Basic Auth header
         const clientHeaderAuthKey = `headerAuth:${clientHeaderAuth}`;
         if (headerAuth && clientHeaderAuth) {
-            if (await cache.get(clientHeaderAuthKey)) {
+            if (localCache.get(clientHeaderAuthKey)) {
                 logger.debug(
                     "Resource allowed because header auth is valid (cached)"
                 );
@@ -428,7 +428,7 @@ export async function verifyResourceSession(
                     headerAuth.headerAuthHash
                 )
             ) {
-                await cache.set(clientHeaderAuthKey, clientHeaderAuth, 5);
+                localCache.set(clientHeaderAuthKey, clientHeaderAuth, 5);
                 logger.debug("Resource allowed because header auth is valid");
 
                 logRequestAudit(
@@ -520,7 +520,7 @@ export async function verifyResourceSession(
 
         if (resourceSessionToken) {
             const sessionCacheKey = `session:${resourceSessionToken}`;
-            let resourceSession: any = await cache.get(sessionCacheKey);
+            let resourceSession: any = localCache.get(sessionCacheKey);
 
             if (!resourceSession) {
                 const result = await validateResourceSessionToken(
@@ -529,7 +529,7 @@ export async function verifyResourceSession(
                 );
 
                 resourceSession = result?.resourceSession;
-                await cache.set(sessionCacheKey, resourceSession, 5);
+                localCache.set(sessionCacheKey, resourceSession, 5);
             }
 
             if (resourceSession?.isRequestToken) {
@@ -662,7 +662,7 @@ export async function verifyResourceSession(
                     }:${resource.resourceId}`;
 
                     let allowedUserData: BasicUserData | null | undefined =
-                        await cache.get(userAccessCacheKey);
+                        localCache.get(userAccessCacheKey);
 
                     if (allowedUserData === undefined) {
                         allowedUserData = await isUserAllowedToAccessResource(
@@ -671,7 +671,7 @@ export async function verifyResourceSession(
                             resourceData.org
                         );
 
-                        await cache.set(userAccessCacheKey, allowedUserData, 5);
+                        localCache.set(userAccessCacheKey, allowedUserData, 5);
                     }
 
                     if (
@@ -974,11 +974,11 @@ async function checkRules(
 ): Promise<"ACCEPT" | "DROP" | "PASS" | undefined> {
     const ruleCacheKey = `rules:${resourceId}`;
 
-    let rules: ResourceRule[] | undefined = await cache.get(ruleCacheKey);
+    let rules: ResourceRule[] | undefined = localCache.get(ruleCacheKey);
 
     if (!rules) {
         rules = await getResourceRules(resourceId);
-        await cache.set(ruleCacheKey, rules, 5);
+        localCache.set(ruleCacheKey, rules, 5);
     }
 
     if (rules.length === 0) {
@@ -1208,13 +1208,13 @@ async function isIpInAsn(
 async function getAsnFromIp(ip: string): Promise<number | undefined> {
     const asnCacheKey = `asn:${ip}`;
 
-    let cachedAsn: number | undefined = await cache.get(asnCacheKey);
+    let cachedAsn: number | undefined = localCache.get(asnCacheKey);
 
     if (!cachedAsn) {
         cachedAsn = await getAsnForIp(ip); // do it locally
         // Cache for longer since IP ASN doesn't change frequently
         if (cachedAsn) {
-            await cache.set(asnCacheKey, cachedAsn, 300); // 5 minutes
+            localCache.set(asnCacheKey, cachedAsn, 300); // 5 minutes
         }
     }
 
@@ -1224,14 +1224,14 @@ async function getAsnFromIp(ip: string): Promise<number | undefined> {
 async function getCountryCodeFromIp(ip: string): Promise<string | undefined> {
     const geoIpCacheKey = `geoip:${ip}`;
 
-    let cachedCountryCode: string | undefined = await cache.get(geoIpCacheKey);
+    let cachedCountryCode: string | undefined = localCache.get(geoIpCacheKey);
 
     if (!cachedCountryCode) {
         cachedCountryCode = await getCountryCodeForIp(ip); // do it locally
         // Only cache successful lookups to avoid filling cache with undefined values
         if (cachedCountryCode) {
             // Cache for longer since IP geolocation doesn't change frequently
-            await cache.set(geoIpCacheKey, cachedCountryCode, 300); // 5 minutes
+            localCache.set(geoIpCacheKey, cachedCountryCode, 300); // 5 minutes
         }
     }
 

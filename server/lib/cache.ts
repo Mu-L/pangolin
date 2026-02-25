@@ -4,7 +4,7 @@ import { redisManager } from "@server/private/lib/redis";
 
 // Create local cache with maxKeys limit to prevent memory leaks
 // With ~10k requests/day and 5min TTL, 10k keys should be more than sufficient
-const localCache = new NodeCache({
+export const localCache = new NodeCache({
     stdTTL: 3600,
     checkperiod: 120,
     maxKeys: 10000
@@ -41,12 +41,12 @@ class AdaptiveCache {
             try {
                 const serialized = JSON.stringify(value);
                 const success = await redisManager.set(key, serialized, effectiveTtl);
-                
+
                 if (success) {
                     logger.debug(`Set key in Redis: ${key}`);
                     return true;
                 }
-                
+
                 // Redis failed, fall through to local cache
                 logger.debug(`Redis set failed for key ${key}, falling back to local cache`);
             } catch (error) {
@@ -72,12 +72,12 @@ class AdaptiveCache {
         if (this.useRedis()) {
             try {
                 const value = await redisManager.get(key);
-                
+
                 if (value !== null) {
                     logger.debug(`Cache hit in Redis: ${key}`);
                     return JSON.parse(value) as T;
                 }
-                
+
                 logger.debug(`Cache miss in Redis: ${key}`);
                 return undefined;
             } catch (error) {
@@ -114,11 +114,11 @@ class AdaptiveCache {
                         logger.debug(`Deleted key from Redis: ${k}`);
                     }
                 }
-                
+
                 if (deletedCount === keys.length) {
                     return deletedCount;
                 }
-                
+
                 // Some Redis deletes failed, fall through to local cache
                 logger.debug(`Some Redis deletes failed, falling back to local cache`);
             } catch (error) {
@@ -169,7 +169,7 @@ class AdaptiveCache {
         if (this.useRedis()) {
             try {
                 const results: (T | undefined)[] = [];
-                
+
                 for (const key of keys) {
                     const value = await redisManager.get(key);
                     if (value !== null) {
@@ -178,7 +178,7 @@ class AdaptiveCache {
                         results.push(undefined);
                     }
                 }
-                
+
                 return results;
             } catch (error) {
                 logger.error(`Redis mget error:`, error);
@@ -241,7 +241,7 @@ class AdaptiveCache {
         if (this.useRedis()) {
             logger.warn(`getTtl called for key ${key} but Redis TTL lookup is not implemented`);
         }
-        
+
         const ttl = localCache.getTtl(key);
         if (ttl === undefined) {
             return -1;
