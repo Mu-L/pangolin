@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
+	"crypto/rand"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
-	"crypto/rand"
-	"encoding/base64"
 	"net"
 	"net/http"
 	"net/url"
@@ -82,14 +81,12 @@ func main() {
 		}
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-
 	var config Config
 	var alreadyInstalled = false
 
 	// check if there is already a config file
 	if _, err := os.Stat("config/config.yml"); err != nil {
-		config = collectUserInput(reader)
+		config = collectUserInput()
 
 		loadVersions(&config)
 		config.DoCrowdsecInstall = false
@@ -117,12 +114,12 @@ func main() {
 
 		fmt.Println("\n=== Starting installation ===")
 
-		if readBool(reader, "Would you like to install and start the containers?", true) {
+		if readBool("Would you like to install and start the containers?", true) {
 
-			config.InstallationContainerType = podmanOrDocker(reader)
+			config.InstallationContainerType = podmanOrDocker()
 
 			if !isDockerInstalled() && runtime.GOOS == "linux" && config.InstallationContainerType == Docker {
-				if readBool(reader, "Docker is not installed. Would you like to install it?", true) {
+				if readBool("Docker is not installed. Would you like to install it?", true) {
 					installDocker()
 					// try to start docker service but ignore errors
 					if err := startDockerService(); err != nil {
@@ -167,7 +164,7 @@ func main() {
 		fmt.Println("\n=== MaxMind Database Update ===")
 		if _, err := os.Stat("config/GeoLite2-Country.mmdb"); err == nil {
 			fmt.Println("MaxMind GeoLite2 Country database found.")
-			if readBool(reader, "Would you like to update the MaxMind database to the latest version?", false) {
+			if readBool("Would you like to update the MaxMind database to the latest version?", false) {
 				if err := downloadMaxMindDatabase(); err != nil {
 					fmt.Printf("Error updating MaxMind database: %v\n", err)
 					fmt.Println("You can try updating it manually later if needed.")
@@ -175,7 +172,7 @@ func main() {
 			}
 		} else {
 			fmt.Println("MaxMind GeoLite2 Country database not found.")
-			if readBool(reader, "Would you like to download the MaxMind GeoLite2 database for geoblocking functionality?", false) {
+			if readBool("Would you like to download the MaxMind GeoLite2 database for geoblocking functionality?", false) {
 				if err := downloadMaxMindDatabase(); err != nil {
 					fmt.Printf("Error downloading MaxMind database: %v\n", err)
 					fmt.Println("You can try downloading it manually later if needed.")
@@ -192,11 +189,11 @@ func main() {
 	if !checkIsCrowdsecInstalledInCompose() {
 		fmt.Println("\n=== CrowdSec Install ===")
 		// check if crowdsec is installed
-		if readBool(reader, "Would you like to install CrowdSec?", false) {
+		if readBool("Would you like to install CrowdSec?", false) {
 			fmt.Println("This installer constitutes a minimal viable CrowdSec deployment. CrowdSec will add extra complexity to your Pangolin installation and may not work to the best of its abilities out of the box. Users are expected to implement configuration adjustments on their own to achieve the best security posture. Consult the CrowdSec documentation for detailed configuration instructions.")
 
 			// BUG: crowdsec installation will be skipped if the user chooses to install on the first installation.
-			if readBool(reader, "Are you willing to manage CrowdSec?", false) {
+			if readBool("Are you willing to manage CrowdSec?", false) {
 				if config.DashboardDomain == "" {
 					traefikConfig, err := ReadTraefikConfig("config/traefik/traefik_config.yml")
 					if err != nil {
@@ -225,8 +222,8 @@ func main() {
 					fmt.Printf("Let's Encrypt Email: %s\n", config.LetsEncryptEmail)
 					fmt.Printf("Badger Version: %s\n", config.BadgerVersion)
 
-					if !readBool(reader, "Are these values correct?", true) {
-						config = collectUserInput(reader)
+					if !readBool("Are these values correct?", true) {
+						config = collectUserInput()
 					}
 				}
 
@@ -235,7 +232,7 @@ func main() {
 				if detectedType == Undefined {
 					// If detection fails, prompt the user
 					fmt.Println("Unable to detect container type from existing installation.")
-					config.InstallationContainerType = podmanOrDocker(reader)
+					config.InstallationContainerType = podmanOrDocker()
 				} else {
 					config.InstallationContainerType = detectedType
 					fmt.Printf("Detected container type: %s\n", config.InstallationContainerType)
@@ -277,8 +274,8 @@ func main() {
 	fmt.Printf("\nTo complete the initial setup, please visit:\nhttps://%s/auth/initial-setup\n", config.DashboardDomain)
 }
 
-func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
-	inputContainer := readString(reader, "Would you like to run Pangolin as Docker or Podman containers?", "docker")
+func podmanOrDocker() SupportedContainer {
+	inputContainer := readString("Would you like to run Pangolin as Docker or Podman containers?", "docker")
 
 	chosenContainer := Docker
 	if strings.EqualFold(inputContainer, "docker") {
@@ -299,7 +296,7 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 		if err := exec.Command("bash", "-c", "cat /etc/sysctl.d/99-podman.conf 2>/dev/null | grep 'net.ipv4.ip_unprivileged_port_start=' || cat /etc/sysctl.conf 2>/dev/null | grep 'net.ipv4.ip_unprivileged_port_start='").Run(); err != nil {
 			fmt.Println("Would you like to configure ports >= 80 as unprivileged ports? This enables podman containers to listen on low-range ports.")
 			fmt.Println("Pangolin will experience startup issues if this is not configured, because it needs to listen on port 80/443 by default.")
-			approved := readBool(reader, "The installer is about to execute \"echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system\". Approve?", true)
+			approved := readBool("The installer is about to execute \"echo 'net.ipv4.ip_unprivileged_port_start=80' > /etc/sysctl.d/99-podman.conf && sysctl --system\". Approve?", true)
 			if approved {
 				if os.Geteuid() != 0 {
 					fmt.Println("You need to run the installer as root for such a configuration.")
@@ -344,35 +341,35 @@ func podmanOrDocker(reader *bufio.Reader) SupportedContainer {
 	return chosenContainer
 }
 
-func collectUserInput(reader *bufio.Reader) Config {
+func collectUserInput() Config {
 	config := Config{}
 
 	// Basic configuration
 	fmt.Println("\n=== Basic Configuration ===")
 
-	config.IsEnterprise = readBoolNoDefault(reader, "Do you want to install the Enterprise version of Pangolin? The EE is free for personal use or for businesses making less than 100k USD annually.")
+	config.IsEnterprise = readBoolNoDefault("Do you want to install the Enterprise version of Pangolin? The EE is free for personal use or for businesses making less than 100k USD annually.")
 
-	config.BaseDomain = readString(reader, "Enter your base domain (no subdomain e.g. example.com)", "")
+	config.BaseDomain = readString("Enter your base domain (no subdomain e.g. example.com)", "")
 
 	// Set default dashboard domain after base domain is collected
 	defaultDashboardDomain := ""
 	if config.BaseDomain != "" {
 		defaultDashboardDomain = "pangolin." + config.BaseDomain
 	}
-	config.DashboardDomain = readString(reader, "Enter the domain for the Pangolin dashboard", defaultDashboardDomain)
-	config.LetsEncryptEmail = readString(reader, "Enter email for Let's Encrypt certificates", "")
-	config.InstallGerbil = readBool(reader, "Do you want to use Gerbil to allow tunneled connections", true)
+	config.DashboardDomain = readString("Enter the domain for the Pangolin dashboard", defaultDashboardDomain)
+	config.LetsEncryptEmail = readString("Enter email for Let's Encrypt certificates", "")
+	config.InstallGerbil = readBool("Do you want to use Gerbil to allow tunneled connections", true)
 
 	// Email configuration
 	fmt.Println("\n=== Email Configuration ===")
-	config.EnableEmail = readBool(reader, "Enable email functionality (SMTP)", false)
+	config.EnableEmail = readBool("Enable email functionality (SMTP)", false)
 
 	if config.EnableEmail {
-		config.EmailSMTPHost = readString(reader, "Enter SMTP host", "")
-		config.EmailSMTPPort = readInt(reader, "Enter SMTP port (default 587)", 587)
-		config.EmailSMTPUser = readString(reader, "Enter SMTP username", "")
-		config.EmailSMTPPass = readString(reader, "Enter SMTP password", "") // Should this be readPassword?
-		config.EmailNoReply = readString(reader, "Enter no-reply email address (often the same as SMTP username)", "")
+		config.EmailSMTPHost = readString("Enter SMTP host", "")
+		config.EmailSMTPPort = readInt("Enter SMTP port (default 587)", 587)
+		config.EmailSMTPUser = readString("Enter SMTP username", "")
+		config.EmailSMTPPass = readPassword("Enter SMTP password")
+		config.EmailNoReply = readString("Enter no-reply email address (often the same as SMTP username)", "")
 	}
 
 	// Validate required fields
@@ -393,8 +390,8 @@ func collectUserInput(reader *bufio.Reader) Config {
 
 	fmt.Println("\n=== Advanced Configuration ===")
 
-	config.EnableIPv6 = readBool(reader, "Is your server IPv6 capable?", true)
-	config.EnableGeoblocking = readBool(reader, "Do you want to download the MaxMind GeoLite2 database for geoblocking functionality?", true)
+	config.EnableIPv6 = readBool("Is your server IPv6 capable?", true)
+	config.EnableGeoblocking = readBool("Do you want to download the MaxMind GeoLite2 database for geoblocking functionality?", true)
 
 	if config.DashboardDomain == "" {
 		fmt.Println("Error: Dashboard Domain name is required")
