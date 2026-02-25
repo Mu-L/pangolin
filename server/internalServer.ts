@@ -16,6 +16,11 @@ const internalPort = config.getRawConfig().server.internal_port;
 export function createInternalServer() {
     const internalServer = express();
 
+    const trustProxy = config.getRawConfig().server.trust_proxy;
+    if (trustProxy) {
+        internalServer.set("trust proxy", trustProxy);
+    }
+
     internalServer.use(helmet());
     internalServer.use(cors());
     internalServer.use(stripDuplicateSesions);

@@ -212,7 +212,10 @@ export async function updateProxyResources(
             } else {
                 // Update existing resource
 
-                const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.maintencePage);
+                const isLicensed = await isLicensedOrSubscribed(
+                    orgId,
+                    tierMatrix.maintencePage
+                );
                 if (!isLicensed) {
                     resourceData.maintenance = undefined;
                 }
@@ -590,7 +593,10 @@ export async function updateProxyResources(
                         existingRule.action !== getRuleAction(rule.action) ||
                         existingRule.match !== rule.match.toUpperCase() ||
                         existingRule.value !==
-                        getRuleValue(rule.match.toUpperCase(), rule.value) ||
+                            getRuleValue(
+                                rule.match.toUpperCase(),
+                                rule.value
+                            ) ||
                         existingRule.priority !== intendedPriority
                     ) {
                         validateRule(rule);
@@ -648,7 +654,10 @@ export async function updateProxyResources(
                 );
             }
 
-            const isLicensed = await isLicensedOrSubscribed(orgId, tierMatrix.maintencePage);
+            const isLicensed = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix.maintencePage
+            );
             if (!isLicensed) {
                 resourceData.maintenance = undefined;
             }
@@ -935,7 +944,12 @@ async function syncUserResources(
             .select()
             .from(users)
             .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-            .where(and(eq(users.username, username), eq(userOrgs.orgId, orgId)))
+            .where(
+                and(
+                    or(eq(users.username, username), eq(users.email, username)),
+                    eq(userOrgs.orgId, orgId)
+                )
+            )
             .limit(1);
 
         if (!user) {

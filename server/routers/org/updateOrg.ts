@@ -194,9 +194,9 @@ export async function updateOrg(
         }
 
         // invalidate the cache for all of the orgs retention days
-        cache.del(`org_${orgId}_retentionDays`);
-        cache.del(`org_${orgId}_actionDays`);
-        cache.del(`org_${orgId}_accessDays`);
+        await cache.del(`org_${orgId}_retentionDays`);
+        await cache.del(`org_${orgId}_actionDays`);
+        await cache.del(`org_${orgId}_accessDays`);
 
         return response(res, {
             data: updatedOrg[0],

@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { actionAuditLog, db } from "@server/db";
+import { actionAuditLog, logsDb } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -97,7 +97,7 @@ function getWhere(data: Q) {
 }
 
 export function queryAction(data: Q) {
-    return db
+    return logsDb
         .select({
             orgId: actionAuditLog.orgId,
             action: actionAuditLog.action,
@@ -113,7 +113,7 @@ export function queryAction(data: Q) {
 }
 
 export function countActionQuery(data: Q) {
-    const countQuery = db
+    const countQuery = logsDb
         .select({ count: count() })
         .from(actionAuditLog)
         .where(getWhere(data));
@@ -132,14 +132,14 @@ async function queryUniqueFilterAttributes(
     );
 
     // Get unique actors
-    const uniqueActors = await db
+    const uniqueActors = await logsDb
         .selectDistinct({
             actor: actionAuditLog.actor
         })
         .from(actionAuditLog)
         .where(baseConditions);
 
-    const uniqueActions = await db
+    const uniqueActions = await logsDb
         .selectDistinct({
             action: actionAuditLog.action
         })
