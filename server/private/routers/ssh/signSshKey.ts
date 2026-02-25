@@ -310,6 +310,15 @@ export async function signSshKey(
             );
         }
 
+        if (resource.mode == "cidr") {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "SSHing is not supported for CIDR resources"
+                )
+            );
+        }
+
         // Check if the user has access to the resource
         const hasAccess = await canUserAccessSiteResource({
             userId: userId,
