@@ -29,7 +29,7 @@ jobs:
         permissions: write-all
         steps:
             - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v5
+              uses: aws-actions/configure-aws-credentials@v6
               with:
                   role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
                   role-duration-seconds: 3600
@@ -62,7 +62,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Monitor storage space
               run: |
@@ -77,7 +77,7 @@ jobs:
                   fi
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -134,7 +134,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Monitor storage space
               run: |
@@ -149,7 +149,7 @@ jobs:
                   fi
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -201,10 +201,10 @@ jobs:
         timeout-minutes: 30
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -256,7 +256,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Extract tag name
               id: get-tag
@@ -407,7 +407,7 @@ jobs:
               shell: bash
 
             - name: Login to GitHub Container Registry (for cosign)
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                 registry: ghcr.io
                 username: ${{ github.actor }}
@@ -570,7 +570,7 @@ jobs:
         permissions: write-all
         steps:
             - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v5
+              uses: aws-actions/configure-aws-credentials@v6
               with:
                   role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
                   role-duration-seconds: 3600
