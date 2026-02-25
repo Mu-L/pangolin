@@ -10,10 +10,12 @@ import {
     resourcePolicies,
     rolePolicies,
     roles,
+    userOrgs,
     userPolicies,
+    users,
     type ResourcePolicy
 } from "@server/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, not, type InferInsertModel } from "drizzle-orm";
 import logger from "@server/logger";
 import { getUniqueResourcePolicyName } from "@server/db/names";
 import response from "@server/lib/response";
@@ -26,21 +28,24 @@ const createResourcePolicyBodySchema = z.strictObject({
     name: z.string().min(1).max(255),
     sso: z.boolean(),
     skipToIdpId: z.string().optional(),
-    roleIds: z.array(z.string()).optional().default([]),
+    roleIds: z
+        .array(z.string().transform(Number).pipe(z.int().positive()))
+        .optional()
+        .default([]),
     userIds: z.array(z.string()).optional().default([])
 });
 
 registry.registerPath({
     method: "post",
     path: "/org/{orgId}/resource-policy",
-    description: "Create a resource.",
-    tags: [OpenAPITags.Org, OpenAPITags.Resource],
+    description: "Create a resource policy.",
+    tags: [OpenAPITags.Org, OpenAPITags.Policy],
     request: {
         params: createResourcePolicyParamsSchema,
         body: {
             content: {
                 "application/json": {
-                    schema: createResourcePolicyParamsSchema
+                    schema: createResourcePolicyBodySchema
                 }
             }
         }
@@ -125,6 +130,28 @@ export async function createResourcePolicy(
             );
         }
 
+        const existingRoles = await db
+            .select()
+            .from(roles)
+            .where(and(inArray(roles.roleId, roleIds)));
+
+        const hasAdminRole = existingRoles.some((role) => role.isAdmin);
+
+        if (hasAdminRole) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Admin role cannot be assigned to resource policy"
+                )
+            );
+        }
+
+        const existingUsers = await db
+            .select()
+            .from(users)
+            .innerJoin(userOrgs, eq(userOrgs.userId, users.userId))
+            .where(and(inArray(users.userId, userIds)));
+
         const niceId = await getUniqueResourcePolicyName(orgId);
 
         const policy = await db.transaction(async (trx) => {
@@ -138,17 +165,41 @@ export async function createResourcePolicy(
                 })
                 .returning();
 
-            await trx.insert(rolePolicies).values({
-                roleId: adminRole[0].roleId,
-                resourcePolicyId: newPolicy.resourcePolicyId
-            });
+            const rolesToAdd = [
+                {
+                    roleId: adminRole[0].roleId,
+                    resourcePolicyId: newPolicy.resourcePolicyId
+                }
+            ] satisfies InferInsertModel<typeof rolePolicies>[];
+
+            rolesToAdd.push(
+                ...existingRoles.map((role) => ({
+                    roleId: role.roleId,
+                    resourcePolicyId: newPolicy.resourcePolicyId
+                }))
+            );
+
+            await trx.insert(rolePolicies).values(rolesToAdd);
+
+            const usersToAdd: InferInsertModel<typeof userPolicies>[] = [];
 
             if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
                 // make sure the user can access the policy
-                await trx.insert(userPolicies).values({
+                usersToAdd.push({
                     userId: req.user?.userId!,
                     resourcePolicyId: newPolicy.resourcePolicyId
                 });
+            }
+
+            usersToAdd.push(
+                ...existingUsers.map(({ user }) => ({
+                    userId: user.userId,
+                    resourcePolicyId: newPolicy.resourcePolicyId
+                }))
+            );
+
+            if (usersToAdd.length > 0) {
+                await trx.insert(userPolicies).values(usersToAdd);
             }
 
             return newPolicy;

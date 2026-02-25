@@ -6,6 +6,7 @@ export enum OpenAPITags {
     Site = "Site",
     Org = "Organization",
     Resource = "Resource",
+    Policy = "Policy",
     Role = "Role",
     User = "User",
     Invitation = "Invitation",

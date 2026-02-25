@@ -1142,3 +1142,5 @@ export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
+export type RolePolicy = InferSelectModel<typeof rolePolicies>;
+export type UserPolicy = InferSelectModel<typeof userPolicies>;
