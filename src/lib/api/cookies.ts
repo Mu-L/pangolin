@@ -2,31 +2,22 @@ import { headers } from "next/headers";
 
 export async function authCookieHeader() {
     const otherHeaders = await headers();
-    const otherHeadersObject = Object.fromEntries(otherHeaders.entries());
+    const otherHeadersObject = Object.fromEntries(
+        Array.from(otherHeaders.entries()).map(([k, v]) => [k.toLowerCase(), v])
+    );
+
+    console.info(`Setting cookie... x-forwarded-for: ${otherHeadersObject["x-forwarded-for"]}`)
 
     return {
         headers: {
-            cookie:
-                otherHeadersObject["cookie"] || otherHeadersObject["Cookie"],
-            host: otherHeadersObject["host"] || otherHeadersObject["Host"],
-            "user-agent":
-                otherHeadersObject["user-agent"] ||
-                otherHeadersObject["User-Agent"],
-            "x-forwarded-for":
-                otherHeadersObject["x-forwarded-for"] ||
-                otherHeadersObject["X-Forwarded-For"],
-            "x-forwarded-host":
-                otherHeadersObject["fx-forwarded-host"] ||
-                otherHeadersObject["Fx-Forwarded-Host"],
-            "x-forwarded-port":
-                otherHeadersObject["x-forwarded-port"] ||
-                otherHeadersObject["X-Forwarded-Port"],
-            "x-forwarded-proto":
-                otherHeadersObject["x-forwarded-proto"] ||
-                otherHeadersObject["X-Forwarded-Proto"],
-            "x-real-ip":
-                otherHeadersObject["x-real-ip"] ||
-                otherHeadersObject["X-Real-IP"]
+            cookie: otherHeadersObject["cookie"],
+            host: otherHeadersObject["host"],
+            "user-agent": otherHeadersObject["user-agent"],
+            "x-forwarded-for": otherHeadersObject["x-forwarded-for"],
+            "x-forwarded-host": otherHeadersObject["x-forwarded-host"],
+            "x-forwarded-port": otherHeadersObject["x-forwarded-port"],
+            "x-forwarded-proto": otherHeadersObject["x-forwarded-proto"],
+            "x-real-ip": otherHeadersObject["x-real-ip"]
         }
     };
 }
