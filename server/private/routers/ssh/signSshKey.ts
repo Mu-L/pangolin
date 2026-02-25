@@ -176,7 +176,7 @@ export async function signSshKey(
             } else if (req.user?.username) {
                 usernameToUse = req.user.username;
                 // We need to clean out any spaces or special characters from the username to ensure it's valid for SSH certificates
-                usernameToUse = usernameToUse.replace(/[^a-zA-Z0-9_-]/g, "");
+                usernameToUse = usernameToUse.replace(/[^a-zA-Z0-9_-]/g, "-");
                 if (!usernameToUse) {
                     return next(
                         createHttpError(
@@ -185,17 +185,6 @@ export async function signSshKey(
                         )
                     );
                 }
-
-                // save it to the database for future use so we dont have to keep doing this
-                await db
-                    .update(userOrgs)
-                    .set({ pamUsername: usernameToUse })
-                    .where(
-                        and(
-                            eq(userOrgs.orgId, orgId),
-                            eq(userOrgs.userId, userId)
-                        )
-                    );
             } else {
                 return next(
                     createHttpError(
@@ -204,6 +193,9 @@ export async function signSshKey(
                     )
                 );
             }
+
+            // prefix with p-
+            usernameToUse = `p-${usernameToUse}`;
 
             // check if we have a existing user in this org with the same
             const [existingUserWithSameName] = await db
@@ -250,6 +242,16 @@ export async function signSshKey(
                     );
                 }
             }
+
+            await db
+                .update(userOrgs)
+                .set({ pamUsername: usernameToUse })
+                .where(
+                    and(
+                        eq(userOrgs.orgId, orgId),
+                        eq(userOrgs.userId, userId)
+                    )
+                );
         } else {
             usernameToUse = userOrg.pamUsername;
         }
