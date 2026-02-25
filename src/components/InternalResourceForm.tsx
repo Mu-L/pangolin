@@ -640,7 +640,7 @@ export function InternalResourceForm({
                             title: t("editInternalResourceDialogAccessPolicy"),
                             href: "#"
                         },
-                        ...(disableEnterpriseFeatures
+                        ...(disableEnterpriseFeatures || mode === "cidr"
                             ? []
                             : [{ title: t("sshAccess"), href: "#" }])
                     ]}
@@ -1188,7 +1188,7 @@ export function InternalResourceForm({
                     </div>
 
                     {/* SSH Access tab */}
-                    {!disableEnterpriseFeatures && (
+                    {!disableEnterpriseFeatures && mode !== "cidr" && (
                     <div className="space-y-4 mt-4">
                         <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
                         <div className="mb-8">
