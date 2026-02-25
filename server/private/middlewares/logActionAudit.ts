@@ -12,7 +12,7 @@
  */
 
 import { ActionsEnum } from "@server/auth/actions";
-import { actionAuditLog, db, orgs } from "@server/db";
+import { actionAuditLog, logsDb, db, orgs } from "@server/db";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import { Request, Response, NextFunction } from "express";
@@ -23,7 +23,7 @@ import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 
 async function getActionDays(orgId: string): Promise<number> {
     // check cache first
-    const cached = cache.get<number>(`org_${orgId}_actionDays`);
+    const cached = await cache.get<number>(`org_${orgId}_actionDays`);
     if (cached !== undefined) {
         return cached;
     }
@@ -41,7 +41,7 @@ async function getActionDays(orgId: string): Promise<number> {
     }
 
     // store the result in cache
-    cache.set(
+    await cache.set(
         `org_${orgId}_actionDays`,
         org.settingsLogRetentionDaysAction,
         300
@@ -54,7 +54,7 @@ export async function cleanUpOldLogs(orgId: string, retentionDays: number) {
     const cutoffTimestamp = calculateCutoffTimestamp(retentionDays);
 
     try {
-        await db
+        await logsDb
             .delete(actionAuditLog)
             .where(
                 and(
@@ -123,7 +123,7 @@ export function logActionAudit(action: ActionsEnum) {
                 metadata = JSON.stringify(req.params);
             }
 
-            await db.insert(actionAuditLog).values({
+            await logsDb.insert(actionAuditLog).values({
                 timestamp,
                 orgId,
                 actorType,

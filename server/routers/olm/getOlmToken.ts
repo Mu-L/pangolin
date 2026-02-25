@@ -1,4 +1,7 @@
-import { generateSessionToken } from "@server/auth/sessions/app";
+import {
+    generateSessionToken,
+    validateSessionToken
+} from "@server/auth/sessions/app";
 import {
     clients,
     db,
@@ -26,8 +29,9 @@ import { APP_VERSION } from "@server/lib/consts";
 
 export const olmGetTokenBodySchema = z.object({
     olmId: z.string(),
-    secret: z.string(),
-    token: z.string().optional(),
+    secret: z.string().optional(),
+    userToken: z.string().optional(),
+    token: z.string().optional(), // this is the olm token
     orgId: z.string().optional()
 });
 
@@ -49,7 +53,7 @@ export async function getOlmToken(
         );
     }
 
-    const { olmId, secret, token, orgId } = parsedBody.data;
+    const { olmId, secret, token, orgId, userToken } = parsedBody.data;
 
     try {
         if (token) {
@@ -84,19 +88,45 @@ export async function getOlmToken(
             );
         }
 
-        const validSecret = await verifyPassword(
-            secret,
-            existingOlm.secretHash
-        );
-
-        if (!validSecret) {
-            if (config.getRawConfig().app.log_failed_attempts) {
-                logger.info(
-                    `Olm id or secret is incorrect. Olm: ID ${olmId}. IP: ${req.ip}.`
+        if (userToken) {
+            const { session: userSession, user } =
+                await validateSessionToken(userToken);
+            if (!userSession || !user) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, "Invalid user token")
                 );
             }
+            if (user.userId !== existingOlm.userId) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "User token does not match olm"
+                    )
+                );
+            }
+        } else if (secret) {
+            // this is for backward compatibility, we want to move towards userToken but some old clients may still be using secret so we will support both for now
+            const validSecret = await verifyPassword(
+                secret,
+                existingOlm.secretHash
+            );
+
+            if (!validSecret) {
+                if (config.getRawConfig().app.log_failed_attempts) {
+                    logger.info(
+                        `Olm id or secret is incorrect. Olm: ID ${olmId}. IP: ${req.ip}.`
+                    );
+                }
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, "Secret is incorrect")
+                );
+            }
+        } else {
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Secret is incorrect")
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Either secret or userToken is required"
+                )
             );
         }
 

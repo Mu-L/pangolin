@@ -55,7 +55,7 @@ export async function getValidCertificatesForDomains(
     if (useCache) {
         for (const domain of domains) {
             const cacheKey = `cert:${domain}`;
-            const cachedCert = cache.get<CertificateResult>(cacheKey);
+            const cachedCert = await cache.get<CertificateResult>(cacheKey);
             if (cachedCert) {
                 finalResults.push(cachedCert); // Valid cache hit
             } else {
@@ -169,7 +169,7 @@ export async function getValidCertificatesForDomains(
             // Add to cache for future requests, using the *requested domain* as the key
             if (useCache) {
                 const cacheKey = `cert:${domain}`;
-                cache.set(cacheKey, resultCert, 180);
+                await cache.set(cacheKey, resultCert, 180);
             }
         }
     }

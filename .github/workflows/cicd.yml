@@ -289,22 +289,14 @@ jobs:
                   echo "LATEST_BADGER_TAG=$LATEST_TAG" >> $GITHUB_ENV
               shell: bash
 
-            - name: Update install/main.go
-              run: |
-                  PANGOLIN_VERSION=${{ env.TAG }}
-                  GERBIL_VERSION=${{ env.LATEST_GERBIL_TAG }}
-                  BADGER_VERSION=${{ env.LATEST_BADGER_TAG }}
-                  sed -i "s/config.PangolinVersion = \".*\"/config.PangolinVersion = \"$PANGOLIN_VERSION\"/" install/main.go
-                  sed -i "s/config.GerbilVersion = \".*\"/config.GerbilVersion = \"$GERBIL_VERSION\"/" install/main.go
-                  sed -i "s/config.BadgerVersion = \".*\"/config.BadgerVersion = \"$BADGER_VERSION\"/" install/main.go
-                  echo "Updated install/main.go with Pangolin version $PANGOLIN_VERSION, Gerbil version $GERBIL_VERSION, and Badger version $BADGER_VERSION"
-                  cat install/main.go
-              shell: bash
-
             - name: Build installer
               working-directory: install
               run: |
-                  make go-build-release
+                  make go-build-release \
+                    PANGOLIN_VERSION=${{ env.TAG }} \
+                    GERBIL_VERSION=${{ env.LATEST_GERBIL_TAG }} \
+                    BADGER_VERSION=${{ env.LATEST_BADGER_TAG }}
+              shell: bash
 
             - name: Upload artifacts from /install/bin
               uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
