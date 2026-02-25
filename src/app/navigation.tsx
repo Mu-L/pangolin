@@ -107,7 +107,7 @@ export const orgNavSections = (
         ]
     },
     {
-        heading: "access",
+        heading: "accessControl",
         items: [
             {
                 title: "sidebarTeam",
