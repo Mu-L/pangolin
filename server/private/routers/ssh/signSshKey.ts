@@ -185,6 +185,17 @@ export async function signSshKey(
                         )
                     );
                 }
+
+                // save it to the database for future use so we dont have to keep doing this
+                await db
+                    .update(userOrgs)
+                    .set({ pamUsername: usernameToUse })
+                    .where(
+                        and(
+                            eq(userOrgs.orgId, orgId),
+                            eq(userOrgs.userId, userId)
+                        )
+                    );
             } else {
                 return next(
                     createHttpError(
