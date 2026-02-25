@@ -27,9 +27,18 @@ func installCrowdsec(config Config) error {
 		os.Exit(1)
 	}
 
-	os.MkdirAll("config/crowdsec/db", 0755)
-	os.MkdirAll("config/crowdsec/acquis.d", 0755)
-	os.MkdirAll("config/traefik/logs", 0755)
+	if err := os.MkdirAll("config/crowdsec/db", 0755); err != nil {
+		fmt.Printf("Error creating config files: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.MkdirAll("config/crowdsec/acquis.d", 0755); err != nil {
+		fmt.Printf("Error creating config files: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.MkdirAll("config/traefik/logs", 0755); err != nil {
+		fmt.Printf("Error creating config files: %v\n", err)
+		os.Exit(1)
+	}
 
 	if err := copyDockerService("config/crowdsec/docker-compose.yml", "docker-compose.yml", "crowdsec"); err != nil {
 		fmt.Printf("Error copying docker service: %v\n", err)
@@ -153,34 +162,34 @@ func CheckAndAddCrowdsecDependency(composePath string) error {
 	}
 
 	// Parse YAML into a generic map
-	var compose map[string]interface{}
+	var compose map[string]any
 	if err := yaml.Unmarshal(data, &compose); err != nil {
 		return fmt.Errorf("error parsing compose file: %w", err)
 	}
 
 	// Get services section
-	services, ok := compose["services"].(map[string]interface{})
+	services, ok := compose["services"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("services section not found or invalid")
 	}
 
 	// Get traefik service
-	traefik, ok := services["traefik"].(map[string]interface{})
+	traefik, ok := services["traefik"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("traefik service not found or invalid")
 	}
 
 	// Get dependencies
-	dependsOn, ok := traefik["depends_on"].(map[string]interface{})
+	dependsOn, ok := traefik["depends_on"].(map[string]any)
 	if ok {
 		// Append the new block for crowdsec
-		dependsOn["crowdsec"] = map[string]interface{}{
+		dependsOn["crowdsec"] = map[string]any{
 			"condition": "service_healthy",
 		}
 	} else {
 		// No dependencies exist, create it
-		traefik["depends_on"] = map[string]interface{}{
-			"crowdsec": map[string]interface{}{
+		traefik["depends_on"] = map[string]any{
+			"crowdsec": map[string]any{
 				"condition": "service_healthy",
 			},
 		}

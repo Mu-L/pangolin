@@ -7,6 +7,7 @@ import { versionMigrations } from "../db/sqlite";
 import { __DIRNAME, APP_PATH, APP_VERSION } from "@server/lib/consts";
 import { SqliteError } from "better-sqlite3";
 import fs from "fs";
+import { build } from "@server/build";
 import m1 from "./scriptsSqlite/1.0.0-beta1";
 import m2 from "./scriptsSqlite/1.0.0-beta2";
 import m3 from "./scriptsSqlite/1.0.0-beta3";
@@ -37,7 +38,7 @@ import m32 from "./scriptsSqlite/1.14.0";
 import m33 from "./scriptsSqlite/1.15.0";
 import m34 from "./scriptsSqlite/1.15.3";
 import m35 from "./scriptsSqlite/1.15.4";
-import { build } from "@server/build";
+import m36 from "./scriptsSqlite/1.16.0";
 
 // THIS CANNOT IMPORT ANYTHING FROM THE SERVER
 // EXCEPT FOR THE DATABASE AND THE SCHEMA
@@ -73,7 +74,8 @@ const migrations = [
     { version: "1.14.0", run: m32 },
     { version: "1.15.0", run: m33 },
     { version: "1.15.3", run: m34 },
-    { version: "1.15.4", run: m35 }
+    { version: "1.15.4", run: m35 },
+    { version: "1.16.0", run: m36 }
     // Add new migrations here as they are created
 ] as const;
 

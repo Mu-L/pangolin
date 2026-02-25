@@ -176,7 +176,7 @@ export async function signSshKey(
             } else if (req.user?.username) {
                 usernameToUse = req.user.username;
                 // We need to clean out any spaces or special characters from the username to ensure it's valid for SSH certificates
-                usernameToUse = usernameToUse.replace(/[^a-zA-Z0-9_-]/g, "");
+                usernameToUse = usernameToUse.replace(/[^a-zA-Z0-9_-]/g, "-");
                 if (!usernameToUse) {
                     return next(
                         createHttpError(
@@ -193,6 +193,9 @@ export async function signSshKey(
                     )
                 );
             }
+
+            // prefix with p-
+            usernameToUse = `p-${usernameToUse}`;
 
             // check if we have a existing user in this org with the same
             const [existingUserWithSameName] = await db
@@ -239,6 +242,16 @@ export async function signSshKey(
                     );
                 }
             }
+
+            await db
+                .update(userOrgs)
+                .set({ pamUsername: usernameToUse })
+                .where(
+                    and(
+                        eq(userOrgs.orgId, orgId),
+                        eq(userOrgs.userId, userId)
+                    )
+                );
         } else {
             usernameToUse = userOrg.pamUsername;
         }
@@ -306,6 +319,15 @@ export async function signSshKey(
                 createHttpError(
                     HttpCode.FORBIDDEN,
                     "Resource does not belong to the specified organization"
+                )
+            );
+        }
+
+        if (resource.mode == "cidr") {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "SSHing is not supported for CIDR resources"
                 )
             );
         }

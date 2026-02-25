@@ -87,7 +87,7 @@ export async function validateResourceSessionToken(
     if (Date.now() >= resourceSession.expiresAt) {
         await db
             .delete(resourceSessions)
-            .where(eq(resourceSessions.sessionId, resourceSessions.sessionId));
+            .where(eq(resourceSessions.sessionId, sessionId));
         return { resourceSession: null };
     } else if (
         Date.now() >=
@@ -181,7 +181,7 @@ export function serializeResourceSessionCookie(
         return `${cookieName}_s.${now}=${token}; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()}; Path=/; Secure; Domain=${domain}`;
     } else {
         if (expiresAt === undefined) {
-            return `${cookieName}.${now}=${token}; HttpOnly; SameSite=Lax; Path=/; Domain=$domain}`;
+            return `${cookieName}.${now}=${token}; HttpOnly; SameSite=Lax; Path=/; Domain=${domain}`;
         }
         return `${cookieName}.${now}=${token}; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()}; Path=/; Domain=${domain}`;
     }

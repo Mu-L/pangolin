@@ -689,6 +689,13 @@ authenticated.get(
     user.getOrgUser
 );
 
+authenticated.get(
+    "/org/:orgId/user-by-username",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getOrgUser),
+    user.getOrgUserByUsername
+);
+
 authenticated.post(
     "/user/:userId/2fa",
     verifyApiKeyIsRoot,

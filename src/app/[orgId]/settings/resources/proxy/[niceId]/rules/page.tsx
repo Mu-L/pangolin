@@ -113,7 +113,12 @@ export default function ResourceRules(props: {
     const [rulesToRemove, setRulesToRemove] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
-    const [rulesEnabled, setRulesEnabled] = useState(resource.applyRules);
+    const [rulesEnabled, setRulesEnabled] = useState(resource.applyRules ?? false);
+
+    useEffect(() => {
+        setRulesEnabled(resource.applyRules);
+    }, [resource.applyRules]);
+
     const [openCountrySelect, setOpenCountrySelect] = useState(false);
     const [countrySelectValue, setCountrySelectValue] = useState("");
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
@@ -836,7 +841,7 @@ export default function ResourceRules(props: {
                             <SwitchInput
                                 id="rules-toggle"
                                 label={t("rulesEnable")}
-                                defaultChecked={rulesEnabled}
+                                checked={rulesEnabled}
                                 onCheckedChange={(val) => setRulesEnabled(val)}
                             />
                         </div>
