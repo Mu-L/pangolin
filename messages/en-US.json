@@ -2543,7 +2543,7 @@
     "internalResourceAuthDaemonSite": "On Site",
     "internalResourceAuthDaemonSiteDescription": "Auth daemon runs on the site (Newt).",
     "internalResourceAuthDaemonRemote": "Remote Host",
-    "internalResourceAuthDaemonRemoteDescription": "Auth daemon runs on a host that is not the site.",
+    "internalResourceAuthDaemonRemoteDescription": "Auth daemon runs on this resource's destination - not the site.",
     "internalResourceAuthDaemonPort": "Daemon Port (optional)",
     "orgAuthWhatsThis": "Where can I find my organization ID?",
     "learnMore": "Learn more",
