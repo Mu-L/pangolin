@@ -3,11 +3,12 @@ import { redirect } from "next/navigation";
 import DeviceLoginForm from "@/components/DeviceLoginForm";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { cache } from "react";
+import { cleanRedirect } from "@app/lib/cleanRedirect";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-    searchParams: Promise<{ code?: string; user?: string }>;
+    searchParams: Promise<{ code?: string; user?: string; authPath?: string }>;
 };
 
 function deviceRedirectSearchParams(params: {
@@ -30,11 +31,11 @@ export default async function DeviceLoginPage({ searchParams }: Props) {
 
     if (!user) {
         const redirectDestination = `/auth/login/device${deviceRedirectSearchParams({ code, user: params.user })}`;
-        const loginUrl = new URL("/auth/login", "http://x");
+        const authPath = cleanRedirect(params.authPath || "/auth/login");
+        const loginUrl = new URL(authPath, "http://x");
         loginUrl.searchParams.set("forceLogin", "true");
         loginUrl.searchParams.set("redirect", redirectDestination);
         if (defaultUser) loginUrl.searchParams.set("user", defaultUser);
-        console.log("loginUrl", loginUrl.pathname + loginUrl.search);
         redirect(loginUrl.pathname + loginUrl.search);
     }
 
