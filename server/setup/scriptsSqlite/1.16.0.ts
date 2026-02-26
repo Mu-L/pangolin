@@ -1,6 +1,6 @@
 import { APP_PATH, configFilePath1, configFilePath2 } from "@server/lib/consts";
 import { encrypt } from "@server/lib/crypto";
-import { generateCA } from "@server/private/lib/sshCA";
+import { generateCA } from "@server/lib/sshCA";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";

@@ -2,7 +2,7 @@ import { db } from "@server/db/pg/driver";
 import { sql } from "drizzle-orm";
 import { configFilePath1, configFilePath2 } from "@server/lib/consts";
 import { encrypt } from "@server/lib/crypto";
-import { generateCA } from "@server/private/lib/sshCA";
+import { generateCA } from "@server/lib/sshCA";
 import fs from "fs";
 import yaml from "js-yaml";
 

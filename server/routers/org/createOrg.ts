@@ -28,7 +28,7 @@ import { FeatureId, limitsService, freeLimitSet } from "@server/lib/billing";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { doCidrsOverlap } from "@server/lib/ip";
-import { generateCA } from "@server/private/lib/sshCA";
+import { generateCA } from "@server/lib/sshCA";
 import { encrypt } from "@server/lib/crypto";
 
 const validOrgIdRegex = /^[a-z0-9_]+(-[a-z0-9_]+)*$/;
