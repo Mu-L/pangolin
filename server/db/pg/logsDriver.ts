@@ -1,7 +1,6 @@
 import { drizzle as DrizzlePostgres } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { readConfigFile } from "@server/lib/readConfigFile";
-import { readPrivateConfigFile } from "@server/private/lib/readConfigFile";
 import { withReplicas } from "drizzle-orm/pg-core";
 import { build } from "@server/build";
 import { db as mainDb, primaryDb as mainPrimaryDb } from "./driver";
@@ -13,10 +12,9 @@ function createLogsDb() {
     }
 
     const config = readConfigFile();
-    const privateConfig = readPrivateConfigFile();
 
     // Merge configs, prioritizing private config
-    const logsConfig = privateConfig.postgres_logs || config.postgres_logs;
+    const logsConfig = config.postgres_logs;
 
     // Check environment variable first
     let connectionString = process.env.POSTGRES_LOGS_CONNECTION_STRING;
