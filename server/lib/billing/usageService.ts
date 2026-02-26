@@ -12,7 +12,7 @@ import {
 import { FeatureId, getFeatureMeterId } from "./features";
 import logger from "@server/logger";
 import { build } from "@server/build";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 
 export function noop() {
     if (build !== "saas") {

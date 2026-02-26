@@ -17,7 +17,7 @@ import { and, eq, isNotNull, or, inArray, sql } from "drizzle-orm";
 import { decryptData } from "@server/lib/encryption";
 import * as fs from "fs";
 import logger from "@server/logger";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 
 let encryptionKeyHex = "";
 let encryptionKey: Buffer;

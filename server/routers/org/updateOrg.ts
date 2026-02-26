@@ -10,7 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
-import { cache } from "@server/lib/cache";
+import { cache } from "#dynamic/lib/cache";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { getOrgTierData } from "#dynamic/lib/billing";

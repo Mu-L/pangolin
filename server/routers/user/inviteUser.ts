@@ -19,7 +19,7 @@ import { UserType } from "@server/types/UserTypes";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { build } from "@server/build";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 
 const inviteUserParamsSchema = z.strictObject({
     orgId: z.string()

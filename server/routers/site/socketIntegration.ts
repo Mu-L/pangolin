@@ -11,7 +11,7 @@ import { fromError } from "zod-validation-error";
 import stoi from "@server/lib/stoi";
 import { sendToClient } from "#dynamic/routers/ws";
 import { fetchContainers, dockerSocket } from "../newt/dockerSocket";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 
 export interface ContainerNetwork {
     networkId: string;

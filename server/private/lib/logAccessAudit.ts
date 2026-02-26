@@ -15,7 +15,7 @@ import { accessAuditLog, logsDb, db, orgs } from "@server/db";
 import { getCountryCodeForIp } from "@server/lib/geoip";
 import logger from "@server/logger";
 import { and, eq, lt } from "drizzle-orm";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 import { stripPortFromHost } from "@server/lib/ip";
 
