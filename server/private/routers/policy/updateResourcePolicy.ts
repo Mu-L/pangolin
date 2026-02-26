@@ -10,7 +10,6 @@ import {
     resourcePolicies,
     rolePolicies,
     userPolicies,
-    type ResourcePolicy,
     type ResourcePolicy
 } from "@server/db";
 import { and, eq } from "drizzle-orm";

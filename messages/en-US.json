@@ -238,6 +238,8 @@
     "rules": "Rules",
     "resourceSettingDescription": "Configure the settings on the resource",
     "resourceSetting": "{resourceName} Settings",
+    "resourcePolicySettingDescription": "Configure the settings on the resource policy",
+    "resourcePolicySetting": "{policyName} Settings",
     "alwaysAllow": "Bypass Auth",
     "alwaysDeny": "Block Access",
     "passToAuth": "Pass to Auth",

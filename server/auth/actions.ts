@@ -133,6 +133,7 @@ export enum ActionsEnum {
     listApprovals = "listApprovals",
     updateApprovals = "updateApprovals",
     listResourcePolicies = "listResourcePolicies",
+    getResourcePolicy = "getResourcePolicy",
     createResourcePolicy = "createResourcePolicy",
     updateResourcePolicy = "updateResourcePolicy",
     deleteResourcePolicy = "deleteResourcePolicy",

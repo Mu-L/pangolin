@@ -132,7 +132,7 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                           items: [
                               {
                                   title: "sidebarResourcePolicies",
-                                  href: "/{orgId}/settings/policies/resources",
+                                  href: "/{orgId}/settings/policies/resource",
                                   icon: (
                                       <GlobeIcon className="size-4 flex-none" />
                                   )

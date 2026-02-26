@@ -103,7 +103,7 @@ export function ResourcePoliciesTable({
                             <DropdownMenuContent align="end">
                                 <Link
                                     className="block w-full"
-                                    href={`/${policyRow.orgId}/settings/resources/proxy/${policyRow.niceId}`}
+                                    href={`/${policyRow.orgId}/settings/policies/resource/${policyRow.niceId}`}
                                 >
                                     <DropdownMenuItem>
                                         {t("viewSettings")}
@@ -122,7 +122,7 @@ export function ResourcePoliciesTable({
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
-                            href={`/${policyRow.orgId}/settings/resources/proxy/${policyRow.niceId}`}
+                            href={`/${policyRow.orgId}/settings/policies/resource/${policyRow.niceId}`}
                         >
                             <Button variant={"outline"}>
                                 {t("edit")}
@@ -165,7 +165,7 @@ export function ResourcePoliciesTable({
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(
-                            `/${orgId}/settings/policies/resources/create`
+                            `/${orgId}/settings/policies/resource/create`
                         )
                     )
                 }

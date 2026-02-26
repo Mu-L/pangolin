@@ -2,6 +2,7 @@ import * as site from "./site";
 import * as org from "./org";
 import * as blueprints from "./blueprints";
 import * as resource from "./resource";
+import * as policy from "./policy";
 import * as domain from "./domain";
 import * as target from "./target";
 import * as user from "./user";
@@ -27,7 +28,8 @@ import {
     verifyApiKeyClientAccess,
     verifyApiKeySiteResourceAccess,
     verifyApiKeySetResourceClients,
-    verifyLimits
+    verifyLimits,
+    verifyApiKeyResourcePolicyAccess
 } from "@server/middlewares";
 import HttpCode from "@server/types/HttpCode";
 import { Router } from "express";
@@ -390,6 +392,13 @@ authenticated.get(
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getResource),
     resource.getResource
+);
+
+authenticated.get(
+    "/resource-policy/:resourcePolicyId",
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyHasAction(ActionsEnum.getResourcePolicy),
+    policy.getResourcePolicy
 );
 
 authenticated.post(

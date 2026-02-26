@@ -14,3 +14,4 @@ export * from "./verifyApiKeyApiKeyAccess";
 export * from "./verifyApiKeyClientAccess";
 export * from "./verifyApiKeySiteResourceAccess";
 export * from "./verifyApiKeyIdpAccess";
+export * from "./verifyApiKeyResourcePolicyAccess";

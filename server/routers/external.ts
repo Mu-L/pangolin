@@ -3,6 +3,7 @@ import config from "@server/lib/config";
 import * as site from "./site";
 import * as org from "./org";
 import * as resource from "./resource";
+import * as policy from "./policy";
 import * as domain from "./domain";
 import * as target from "./target";
 import * as user from "./user";
@@ -521,6 +522,7 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.getResource),
     resource.getResource
 );
+
 authenticated.post(
     "/resource/:resourceId",
     verifyResourceAccess,
@@ -627,6 +629,15 @@ authenticated.post(
     logActionAudit(ActionsEnum.updateRole),
     role.updateRole
 );
+
+authenticated.get(
+    "/org/:orgId/resource-policy/:niceId",
+    verifyOrgAccess,
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.getResourcePolicy),
+    policy.getResourcePolicy
+);
+
 // authenticated.get(
 //     "/role/:roleId",
 //     verifyRoleAccess,

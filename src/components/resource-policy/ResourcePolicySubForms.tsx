@@ -121,14 +121,68 @@ type LocalRule = {
     updated?: boolean;
 };
 
+// ─── PolicyNameSection ──────────────────────────────────────────────────
+type PolicyNameSectionProps = {
+    form: UseFormReturn<PolicyFormValues, any, any>;
+    isEditing?: boolean;
+};
+
+export function PolicyNameSection({ form }: PolicyNameSectionProps) {
+    const t = useTranslations();
+    return (
+        <SettingsSection>
+            <SettingsSectionHeader>
+                <SettingsSectionTitle>
+                    {t("resourcePolicyName")}
+                </SettingsSectionTitle>
+                <SettingsSectionDescription>
+                    {t("resourcePolicyNameDescription")}
+                </SettingsSectionDescription>
+            </SettingsSectionHeader>
+            <SettingsSectionBody>
+                <SettingsSectionForm>
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>{t("name")}</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        placeholder={t(
+                                            "resourcePolicyNamePlaceholder"
+                                        )}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </SettingsSectionForm>
+            </SettingsSectionBody>
+
+            <div className="flex py-6 justify-end">
+                <Button
+                    type="submit"
+                    // loading={isSubmitting}
+                    // disabled={isSubmitting}
+                >
+                    {t("resourcePoliciesCreate")}
+                </Button>
+            </div>
+        </SettingsSection>
+    );
+}
+
+// ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
+
 type PolicyUsersRolesSectionProps = {
     form: UseFormReturn<PolicyFormValues, any, any>;
     allRoles: { id: string; text: string }[];
     allUsers: { id: string; text: string }[];
     allIdps: { id: number; text: string }[];
 };
-
-// ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
 
 export function PolicyUsersRolesSection({
     form,

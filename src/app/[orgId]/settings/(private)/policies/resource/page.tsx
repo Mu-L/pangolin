@@ -55,17 +55,15 @@ export default async function ResourcePoliciesPage(
                 description={t("resourcePoliciesDescription")}
             />
 
-            <OrgProvider org={org}>
-                <ResourcePoliciesTable
-                    policies={policies}
-                    orgId={params.orgId}
-                    rowCount={pagination.total}
-                    pagination={{
-                        pageIndex: pagination.page - 1,
-                        pageSize: pagination.pageSize
-                    }}
-                />
-            </OrgProvider>
+            <ResourcePoliciesTable
+                policies={policies}
+                orgId={params.orgId}
+                rowCount={pagination.total}
+                pagination={{
+                    pageIndex: pagination.page - 1,
+                    pageSize: pagination.pageSize
+                }}
+            />
         </>
     );
 }
