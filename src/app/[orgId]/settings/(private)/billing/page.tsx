@@ -210,7 +210,8 @@ export default function BillingPage() {
                     ({ subscription }) =>
                         subscription?.type === "tier1" ||
                         subscription?.type === "tier2" ||
-                        subscription?.type === "tier3"
+                        subscription?.type === "tier3" ||
+                        subscription?.type === "enterprise"
                 );
                 setTierSubscription(tierSub || null);
 
@@ -439,6 +440,8 @@ export default function BillingPage() {
     // Get current plan ID from tier
     const getCurrentPlanId = (): PlanId => {
         if (!hasSubscription || !currentTier) return "basic";
+        // Handle enterprise subscription type directly
+        if (currentTier === "enterprise") return "enterprise";
         const plan = planOptions.find((p) => p.tierType === currentTier);
         return plan?.id || "basic";
     };
