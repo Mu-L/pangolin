@@ -37,7 +37,7 @@ import {
     enforceResourceSessionLength
 } from "#dynamic/lib/checkOrgAccessPolicy";
 import { logRequestAudit } from "./logRequestAudit";
-import { localCache } from "@server/lib/cache";
+import { localCache } from "#dynamic/lib/cache";
 import { APP_VERSION } from "@server/lib/consts";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";

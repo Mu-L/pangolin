@@ -8,7 +8,7 @@ import {
     sites,
     userSites
 } from "@server/db";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";

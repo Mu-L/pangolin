@@ -18,7 +18,7 @@ import HttpCode from "@server/types/HttpCode";
 import { Request, Response, NextFunction } from "express";
 import createHttpError from "http-errors";
 import { and, eq, lt } from "drizzle-orm";
-import cache from "@server/lib/cache";
+import cache from "#private/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 
 async function getActionDays(orgId: string): Promise<number> {

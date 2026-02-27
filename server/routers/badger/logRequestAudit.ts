@@ -1,7 +1,7 @@
 import { logsDb, primaryLogsDb, db, orgs, requestAuditLog } from "@server/db";
 import logger from "@server/logger";
 import { and, eq, lt, sql } from "drizzle-orm";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 import { stripPortFromHost } from "@server/lib/ip";
 

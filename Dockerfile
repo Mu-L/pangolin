@@ -23,6 +23,10 @@ RUN if [ "$BUILD" = "oss" ]; then rm -rf server/private; fi && \
     npm run build:cli && \
     test -f dist/server.mjs
 
+# Create placeholder files for MaxMind databases to avoid COPY errors
+# Real files should be present for saas builds, placeholders for oss builds
+RUN touch /app/GeoLite2-Country.mmdb /app/GeoLite2-ASN.mmdb
+
 FROM base AS builder
 
 RUN npm ci --omit=dev
@@ -51,11 +55,15 @@ COPY public ./public
 
 # Copy MaxMind databases for SaaS builds
 ARG BUILD=oss
+
 RUN mkdir -p ./maxmind
 
-# This is only for saas
+# Copy MaxMind databases (placeholders exist for oss builds, real files for saas)
 COPY --from=builder-dev /app/GeoLite2-Country.mmdb ./maxmind/GeoLite2-Country.mmdb
 COPY --from=builder-dev /app/GeoLite2-ASN.mmdb ./maxmind/GeoLite2-ASN.mmdb
+
+# Remove MaxMind databases for non-saas builds (keep only for saas)
+RUN if [ "$BUILD" != "saas" ]; then rm -rf ./maxmind; fi
 
 # OCI Image Labels - Build Args for dynamic values
 ARG VERSION="dev"

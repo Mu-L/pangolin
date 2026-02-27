@@ -2,7 +2,7 @@ import { MessageHandler } from "@server/routers/ws";
 import logger from "@server/logger";
 import { Newt } from "@server/db";
 import { applyNewtDockerBlueprint } from "@server/lib/blueprints/applyNewtDockerBlueprint";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 
 export const handleDockerStatusMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
