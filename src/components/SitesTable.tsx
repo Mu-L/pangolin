@@ -141,7 +141,24 @@ export default function SitesTable({
             accessorKey: "name",
             enableHiding: false,
             header: () => {
-                return <span className="p-3">{t("name")}</span>;
+                const nameOrder = getSortDirection("name", searchParams);
+                const Icon =
+                    nameOrder === "asc"
+                        ? ArrowDown01Icon
+                        : nameOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
+
+                return (
+                    <Button
+                        variant="ghost"
+                        className="p-3"
+                        onClick={() => toggleSort("name")}
+                    >
+                        {t("name")}
+                        <Icon className="ml-2 h-4 w-4" />
+                    </Button>
+                );
             }
         },
         {

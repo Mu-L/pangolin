@@ -119,12 +119,12 @@ const listClientsSchema = z.object({
         }),
     query: z.string().optional(),
     sort_by: z
-        .enum(["megabytesIn", "megabytesOut"])
+        .enum(["name", "megabytesIn", "megabytesOut"])
         .optional()
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["megabytesIn", "megabytesOut"],
+            enum: ["name", "megabytesIn", "megabytesOut"],
             description: "Field to sort by"
         }),
     order: z
@@ -363,7 +363,7 @@ export async function listClients(
         const countQuery = db.$count(baseQuery.as("filtered_clients"));
 
         const listMachinesQuery = baseQuery
-            .limit(page)
+            .limit(pageSize)
             .offset(pageSize * (page - 1))
             .orderBy(
                 sort_by
