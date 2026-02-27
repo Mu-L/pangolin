@@ -363,7 +363,7 @@ export async function listClients(
         const countQuery = db.$count(baseQuery.as("filtered_clients"));
 
         const listMachinesQuery = baseQuery
-            .limit(page)
+            .limit(pageSize)
             .offset(pageSize * (page - 1))
             .orderBy(
                 sort_by
