@@ -4,14 +4,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import { fromError } from "zod-validation-error";
-import {
-    db,
-    orgs,
-    resourcePolicies,
-    rolePolicies,
-    userPolicies,
-    type ResourcePolicy
-} from "@server/db";
+import { db, orgs, resourcePolicies, type ResourcePolicy } from "@server/db";
 import { and, eq } from "drizzle-orm";
 import logger from "@server/logger";
 import response from "@server/lib/response";

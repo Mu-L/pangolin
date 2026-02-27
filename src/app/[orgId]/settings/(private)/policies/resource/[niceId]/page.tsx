@@ -3,7 +3,7 @@ import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
-import type { ResourcePolicy } from "@server/db";
+import { ResourcePolicyProvider } from "@app/providers/ResourcePolicyProvider";
 import type { GetResourcePolicyResponse } from "@server/routers/policy";
 import type { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
@@ -18,7 +18,7 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
     const params = await props.params;
     const t = await getTranslations();
 
-    let policy: ResourcePolicy | null = null;
+    let policyResponse: GetResourcePolicyResponse | null = null;
     try {
         const res = await internal.get<
             AxiosResponse<GetResourcePolicyResponse>
@@ -26,12 +26,12 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
             `/org/${params.orgId}/resource-policy/${params.niceId}`,
             await authCookieHeader()
         );
-        policy = res.data.data.policy;
+        policyResponse = res.data.data;
     } catch {
         redirect(`/${params.orgId}/settings/policies/resource`);
     }
 
-    if (!policy) {
+    if (!policyResponse) {
         redirect(`/${params.orgId}/settings/policies/resource`);
     }
 
@@ -40,7 +40,7 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
             <div className="flex justify-between">
                 <SettingsSectionTitle
                     title={t("resourcePolicySetting", {
-                        policyName: policy.name
+                        policyName: policyResponse.policy.name
                     })}
                     description={t("resourcePolicySettingDescription")}
                 />
@@ -52,7 +52,9 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
                 </Button>
             </div>
 
-            <EditPolicyForm policy={policy} />
+            <ResourcePolicyProvider policy={policyResponse}>
+                <EditPolicyForm />
+            </ResourcePolicyProvider>
         </>
     );
 }

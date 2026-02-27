@@ -204,14 +204,10 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                 });
 
             if (res && res.status === 201) {
-                const id = res.data.data.resourcePolicyId;
                 const niceId = res.data.data.niceId;
-
-                router.push(`/${org.org.orgId}/settings/policies/resources/`);
-                // should redirect to the details page
-                // router.push(
-                //     `/${org.org.orgId}/settings/policies/resources/${niceId}`
-                // );
+                router.push(
+                    `/${org.org.orgId}/settings/policies/resource/${niceId}`
+                );
                 toast({
                     title: t("success"),
                     description: t("policyCreatedSuccess")

@@ -121,23 +121,21 @@ import {
 
 import { useCallback, useMemo, useState, useActionState } from "react";
 import { UseFormReturn, useForm, useWatch } from "react-hook-form";
+import router from "next/navigation";
+import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 
 // ─── EditPolicyForm ─────────────────────────────────────────────────────────
 
 export type EditPolicyFormProps = {
-    policy: ResourcePolicy;
     hidePolicyNameForm?: boolean;
 };
 
-export function EditPolicyForm({
-    hidePolicyNameForm,
-    policy
-}: EditPolicyFormProps) {
+export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
     const { env } = useEnvContext();
     const api = createApiClient({ env });
-    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+    // const [, formAction, isSubmitting] = useActionState(onSubmit, null);
     const { isPaidUser } = usePaidStatus();
 
     const router = useRouter();
@@ -145,7 +143,7 @@ export function EditPolicyForm({
     const isMaxmindAvailable = !!(
         env.server.maxmind_db_path && env.server.maxmind_db_path.length > 0
     );
-    const isMaxmindAsnAvailable = !!(
+    const isMaxmindASNAvailable = !!(
         env.server.maxmind_asn_path && env.server.maxmind_asn_path.length > 0
     );
 
@@ -162,75 +160,76 @@ export function EditPolicyForm({
         })
     );
 
-    const form = useForm<PolicyFormValues>({
-        resolver: zodResolver(createPolicySchema) as any,
-        defaultValues: {
-            name: policy.name,
-            sso: true,
-            skipToIdpId: null,
-            emailWhitelistEnabled: false,
-            roles: [],
-            users: [],
-            emails: [],
-            applyRules: false,
-            rules: [],
-            password: null,
-            headerAuth: null,
-            pincode: null
-        }
-    });
+    // const form = useForm<PolicyFormValues>({
+    //     resolver: zodResolver(createPolicySchema) as any,
+    //     defaultValues: {
+    //         name: "",
+    //         sso: true,
+    //         skipToIdpId: null,
+    //         emailWhitelistEnabled: false,
+    //         roles: [],
+    //         users: [],
+    //         emails: [],
+    //         applyRules: false,
+    //         rules: [],
+    //         password: null,
+    //         headerAuth: null,
+    //         pincode: null
+    //     }
+    // });
 
-    async function onSubmit() {
-        const isValid = await form.trigger();
+    // async function onSubmit() {
+    //     return;
+    //     // const isValid = await form.trigger();
 
-        if (!isValid) return;
+    //     // if (!isValid) return;
 
-        const payload = form.getValues();
+    //     // const payload = form.getValues();
 
-        try {
-            const res = await api
-                .post<AxiosResponse<ResourcePolicy>>(
-                    `/org/${org.org.orgId}/resource-policy/`,
-                    {
-                        name: payload.name,
-                        sso: payload.sso,
-                        roleIds: payload.roles.map((r) => r.id),
-                        userIds: payload.users.map((u) => u.id)
-                    }
-                )
-                .catch((e) => {
-                    toast({
-                        variant: "destructive",
-                        title: t("policyErrorCreate"),
-                        description: formatAxiosError(
-                            e,
-                            t("policyErrorCreateDescription")
-                        )
-                    });
-                });
+    //     // try {
+    //     //     const res = await api
+    //     //         .post<AxiosResponse<ResourcePolicy>>(
+    //     //             `/org/${org.org.orgId}/resource-policy/`,
+    //     //             {
+    //     //                 name: payload.name,
+    //     //                 sso: payload.sso,
+    //     //                 roleIds: payload.roles.map((r) => r.id),
+    //     //                 userIds: payload.users.map((u) => u.id)
+    //     //             }
+    //     //         )
+    //     //         .catch((e) => {
+    //     //             toast({
+    //     //                 variant: "destructive",
+    //     //                 title: t("policyErrorCreate"),
+    //     //                 description: formatAxiosError(
+    //     //                     e,
+    //     //                     t("policyErrorCreateDescription")
+    //     //                 )
+    //     //             });
+    //     //         });
 
-            if (res && res.status === 201) {
-                const id = res.data.data.resourcePolicyId;
-                const niceId = res.data.data.niceId;
+    //     //     if (res && res.status === 201) {
+    //     //         const id = res.data.data.resourcePolicyId;
+    //     //         const niceId = res.data.data.niceId;
 
-                router.push(`/${org.org.orgId}/settings/policies/resources/`);
-                // should redirect to the details page
-                // router.push(
-                //     `/${org.org.orgId}/settings/policies/resources/${niceId}`
-                // );
-                toast({
-                    title: t("success"),
-                    description: t("policyCreatedSuccess")
-                });
-            }
-        } catch (e) {
-            toast({
-                variant: "destructive",
-                title: t("policyErrorCreate"),
-                description: t("policyErrorCreateMessageDescription")
-            });
-        }
-    }
+    //     //         router.push(`/${org.org.orgId}/settings/policies/resources/`);
+    //     //         // should redirect to the details page
+    //     //         // router.push(
+    //     //         //     `/${org.org.orgId}/settings/policies/resources/${niceId}`
+    //     //         // );
+    //     //         toast({
+    //     //             title: t("success"),
+    //     //             description: t("policyCreatedSuccess")
+    //     //         });
+    //     //     }
+    //     // } catch (e) {
+    //     //     toast({
+    //     //         variant: "destructive",
+    //     //         title: t("policyErrorCreate"),
+    //     //         description: t("policyErrorCreateMessageDescription")
+    //     //     });
+    //     // }
+    // }
 
     const allRoles = useMemo(
         () =>
@@ -271,12 +270,12 @@ export function EditPolicyForm({
     }
 
     return (
-        <Form {...form}>
-            <form action={formAction}>
-                <SettingsContainer>
-                    {/* Name */}
-                    {!hidePolicyNameForm && <PolicyNameSection form={form} />}
-                    <PolicyUsersRolesSection
+        // <Form {...form}>
+        // <form action={formAction}>
+        <SettingsContainer>
+            {/* Name */}
+            {!hidePolicyNameForm && <PolicyNameSection />}
+            {/* <PolicyUsersRolesSection
                         form={form}
                         allRoles={allRoles}
                         allUsers={allUsers}
@@ -290,65 +289,123 @@ export function EditPolicyForm({
                     <PolicyRulesSection
                         form={form}
                         isMaxmindAvailable={isMaxmindAvailable}
-                        isMaxmindAsnAvailable={isMaxmindAsnAvailable}
-                    />
-                </SettingsContainer>
-            </form>
-        </Form>
+                        isMaxmindAsnAvailable={isMaxmindASNAvailable}
+                    /> */}
+        </SettingsContainer>
+        // </form>
+        // </Form>
     );
 }
 
 // ─── PolicyNameSection ──────────────────────────────────────────────────
-type PolicyNameSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
-    isEditing?: boolean;
-};
 
-export function PolicyNameSection({ form }: PolicyNameSectionProps) {
+export function PolicyNameSection() {
     const t = useTranslations();
-    return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>
-                    {t("resourcePolicyName")}
-                </SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {t("resourcePolicyNameDescription")}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-            <SettingsSectionBody>
-                <SettingsSectionForm>
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{t("name")}</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        {...field}
-                                        placeholder={t(
-                                            "resourcePolicyNamePlaceholder"
-                                        )}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </SettingsSectionForm>
-            </SettingsSectionBody>
+    const api = createApiClient(useEnvContext());
 
-            <div className="flex py-6 justify-end">
-                <Button
-                    type="submit"
-                    // loading={isSubmitting}
-                    // disabled={isSubmitting}
-                >
-                    {t("saveSettings")}
-                </Button>
-            </div>
-        </SettingsSection>
+    const { policy } = useResourcePolicyContext();
+    const { org } = useOrgContext();
+    const form = useForm({
+        resolver: zodResolver(
+            z.object({
+                name: z.string()
+            })
+        ),
+        defaultValues: {
+            name: policy.name
+        }
+    });
+
+    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+
+    async function onSubmit() {
+        const isValid = await form.trigger();
+
+        if (!isValid) return;
+
+        const payload = form.getValues();
+
+        try {
+            const res = await api
+                .put<AxiosResponse<ResourcePolicy>>(
+                    `/resource-policy/${policy.resourcePolicyId}`,
+                    {
+                        name: payload.name
+                    }
+                )
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorUpdate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorUpdateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("success"),
+                    description: t("policyUpdatedSuccess")
+                });
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: t("policyErrorUpdateMessageDescription")
+            });
+        }
+    }
+
+    return (
+        <Form {...form}>
+            <form action={formAction}>
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("resourcePolicyName")}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            {t("resourcePolicyNameDescription")}
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+                    <SettingsSectionBody>
+                        <SettingsSectionForm>
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t("name")}</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                placeholder={t(
+                                                    "resourcePolicyNamePlaceholder"
+                                                )}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </SettingsSectionForm>
+                    </SettingsSectionBody>
+
+                    <div className="flex py-6 justify-end">
+                        <Button
+                            type="submit"
+                            loading={isSubmitting}
+                            disabled={isSubmitting}
+                        >
+                            {t("saveSettings")}
+                        </Button>
+                    </div>
+                </SettingsSection>
+            </form>
+        </Form>
     );
 }
 
