@@ -289,7 +289,7 @@ export async function listSites(
                     ? order === "asc"
                         ? asc(sites[sort_by])
                         : desc(sites[sort_by])
-                    : asc(sites.siteId)
+                    : asc(sites.name)
             );
 
         const [totalCount, rows] = await Promise.all([

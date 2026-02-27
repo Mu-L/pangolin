@@ -370,7 +370,7 @@ export async function listClients(
                     ? order === "asc"
                         ? asc(clients[sort_by])
                         : desc(clients[sort_by])
-                    : asc(clients.clientId)
+                    : asc(clients.name)
             );
 
         const [clientsList, totalCount] = await Promise.all([

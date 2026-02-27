@@ -205,7 +205,7 @@ export async function listAllSiteResourcesByOrg(
                         ? order === "asc"
                             ? asc(siteResources[sort_by])
                             : desc(siteResources[sort_by])
-                        : asc(siteResources.siteResourceId)
+                        : asc(siteResources.name)
                 ),
             countQuery
         ]);

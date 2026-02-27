@@ -429,7 +429,7 @@ export async function listResources(
                         ? order === "asc"
                             ? asc(resources[sort_by])
                             : desc(resources[sort_by])
-                        : asc(resources.resourceId)
+                        : asc(resources.name)
                 ),
             countQuery
         ]);
