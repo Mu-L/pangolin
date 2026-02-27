@@ -410,6 +410,13 @@ authenticated.post(
     resource.updateResource
 );
 
+authenticated.put(
+    "/resource-policy/:resourcePolicyId",
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyHasAction(ActionsEnum.updateResourcePolicy),
+    policy.updateResourcePolicy
+);
+
 authenticated.delete(
     "/resource/:resourceId",
     verifyApiKeyResourceAccess,
