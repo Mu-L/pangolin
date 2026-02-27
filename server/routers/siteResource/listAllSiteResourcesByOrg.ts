@@ -4,7 +4,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { and, asc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -48,6 +48,26 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
             type: "string",
             enum: ["host", "cidr"],
             description: "Filter site resources by mode"
+        }),
+    sort_by: z
+        .enum(["name"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["name"],
+            description: "Field to sort by"
+        }),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
+        .openapi({
+            type: "string",
+            enum: ["asc", "desc"],
+            default: "asc",
+            description: "Sort order"
         })
 });
 
@@ -131,7 +151,8 @@ export async function listAllSiteResourcesByOrg(
         }
 
         const { orgId } = parsedParams.data;
-        const { page, pageSize, query, mode } = parsedQuery.data;
+        const { page, pageSize, query, mode, sort_by, order } =
+            parsedQuery.data;
 
         const conditions = [and(eq(siteResources.orgId, orgId))];
         if (query) {
@@ -179,7 +200,13 @@ export async function listAllSiteResourcesByOrg(
             baseQuery
                 .limit(pageSize)
                 .offset(pageSize * (page - 1))
-                .orderBy(asc(siteResources.siteResourceId)),
+                .orderBy(
+                    sort_by
+                        ? order === "asc"
+                            ? asc(siteResources[sort_by])
+                            : desc(siteResources[sort_by])
+                        : asc(siteResources.siteResourceId)
+                ),
             countQuery
         ]);
 

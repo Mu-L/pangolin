@@ -108,12 +108,12 @@ const listSitesSchema = z.object({
         }),
     query: z.string().optional(),
     sort_by: z
-        .enum(["megabytesIn", "megabytesOut"])
+        .enum(["name", "megabytesIn", "megabytesOut"])
         .optional()
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["megabytesIn", "megabytesOut"],
+            enum: ["name", "megabytesIn", "megabytesOut"],
             description: "Field to sort by"
         }),
     order: z

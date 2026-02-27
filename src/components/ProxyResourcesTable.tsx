@@ -14,15 +14,19 @@ import { InfoPopup } from "@app/components/ui/info-popup";
 import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import type { PaginationState } from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
 import {
+    ArrowDown01Icon,
     ArrowRight,
+    ArrowUp10Icon,
     CheckCircle2,
     ChevronDown,
+    ChevronsUpDownIcon,
     Clock,
     MoreHorizontal,
     ShieldCheck,
@@ -318,7 +322,26 @@ export default function ProxyResourcesTable({
             accessorKey: "name",
             enableHiding: false,
             friendlyName: t("name"),
-            header: () => <span className="p-3">{t("name")}</span>
+            header: () => {
+                const nameOrder = getSortDirection("name", searchParams);
+                const Icon =
+                    nameOrder === "asc"
+                        ? ArrowDown01Icon
+                        : nameOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
+
+                return (
+                    <Button
+                        variant="ghost"
+                        className="p-3"
+                        onClick={() => toggleSort("name")}
+                    >
+                        {t("name")}
+                        <Icon className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            }
         },
         {
             id: "niceId",
@@ -560,6 +583,14 @@ export default function ProxyResourcesTable({
         }
         filter({
             searchParams
+        });
+    }
+
+    function toggleSort(column: string) {
+        const newSearch = getNextSortOrder(column, searchParams);
+
+        filter({
+            searchParams: newSearch
         });
     }
 

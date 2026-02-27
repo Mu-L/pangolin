@@ -15,7 +15,15 @@ import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import {
+    ArrowDown01Icon,
+    ArrowUp10Icon,
+    ArrowUpDown,
+    ArrowUpRight,
+    ChevronsUpDownIcon,
+    MoreHorizontal
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -133,7 +141,26 @@ export default function ClientResourcesTable({
             accessorKey: "name",
             enableHiding: false,
             friendlyName: t("name"),
-            header: () => <span className="p-3">{t("name")}</span>
+            header: () => {
+                const nameOrder = getSortDirection("name", searchParams);
+                const Icon =
+                    nameOrder === "asc"
+                        ? ArrowDown01Icon
+                        : nameOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
+
+                return (
+                    <Button
+                        variant="ghost"
+                        className="p-3"
+                        onClick={() => toggleSort("name")}
+                    >
+                        {t("name")}
+                        <Icon className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            }
         },
         {
             id: "niceId",
@@ -326,6 +353,14 @@ export default function ClientResourcesTable({
         }
         filter({
             searchParams
+        });
+    }
+
+    function toggleSort(column: string) {
+        const newSearch = getNextSortOrder(column, searchParams);
+
+        filter({
+            searchParams: newSearch
         });
     }
 
