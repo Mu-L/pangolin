@@ -1189,137 +1189,151 @@ export function InternalResourceForm({
 
                     {/* SSH Access tab */}
                     {!disableEnterpriseFeatures && mode !== "cidr" && (
-                    <div className="space-y-4 mt-4">
-                        <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
-                        <div className="mb-8">
-                            <label className="font-medium block">
-                                {t("internalResourceAuthDaemonStrategy")}
-                            </label>
-                            <div className="text-sm text-muted-foreground">
-                                {t.rich(
-                                    "internalResourceAuthDaemonDescription",
-                                    {
-                                        docsLink: (chunks) => (
-                                            <a
-                                                href={
-                                                    "https://docs.pangolin.net/manage/ssh#setup-choose-your-architecture"
-                                                }
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className={
-                                                    "text-primary inline-flex items-center gap-1"
-                                                }
-                                            >
-                                                {chunks}
-                                                <ExternalLink className="size-3.5 shrink-0" />
-                                            </a>
-                                        )
-                                    }
-                                )}
+                        <div className="space-y-4 mt-4">
+                            <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
+                            <div className="mb-8">
+                                <label className="font-medium block">
+                                    {t("internalResourceAuthDaemonStrategy")}
+                                </label>
+                                <div className="text-sm text-muted-foreground">
+                                    {t.rich(
+                                        "internalResourceAuthDaemonDescription",
+                                        {
+                                            docsLink: (chunks) => (
+                                                <a
+                                                    href={
+                                                        "https://docs.pangolin.net/manage/ssh#setup-choose-your-architecture"
+                                                    }
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className={
+                                                        "text-primary inline-flex items-center gap-1"
+                                                    }
+                                                >
+                                                    {chunks}
+                                                    <ExternalLink className="size-3.5 shrink-0" />
+                                                </a>
+                                            )
+                                        }
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                        <div className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="authDaemonMode"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t(
-                                                "internalResourceAuthDaemonStrategyLabel"
-                                            )}
-                                        </FormLabel>
-                                        <FormControl>
-                                            <StrategySelect<"site" | "remote">
-                                                value={field.value ?? undefined}
-                                                options={[
-                                                    {
-                                                        id: "site",
-                                                        title: t(
-                                                            "internalResourceAuthDaemonSite"
-                                                        ),
-                                                        description: t(
-                                                            "internalResourceAuthDaemonSiteDescription"
-                                                        ),
-                                                        disabled: sshSectionDisabled
-                                                    },
-                                                    {
-                                                        id: "remote",
-                                                        title: t(
-                                                            "internalResourceAuthDaemonRemote"
-                                                        ),
-                                                        description: t(
-                                                            "internalResourceAuthDaemonRemoteDescription"
-                                                        ),
-                                                        disabled: sshSectionDisabled
-                                                    }
-                                                ]}
-                                                onChange={(v) => {
-                                                    if (sshSectionDisabled) return;
-                                                    field.onChange(v);
-                                                    if (v === "site") {
-                                                        form.setValue(
-                                                            "authDaemonPort",
-                                                            null
-                                                        );
-                                                    }
-                                                }}
-                                                cols={2}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            {authDaemonMode === "remote" && (
+                            <div className="space-y-4">
                                 <FormField
                                     control={form.control}
-                                    name="authDaemonPort"
+                                    name="authDaemonMode"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>
                                                 {t(
-                                                    "internalResourceAuthDaemonPort"
+                                                    "internalResourceAuthDaemonStrategyLabel"
                                                 )}
                                             </FormLabel>
                                             <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={65535}
-                                                    placeholder="22123"
-                                                    {...field}
-                                                    disabled={sshSectionDisabled}
-                                                    value={field.value ?? ""}
-                                                    onChange={(e) => {
-                                                        if (sshSectionDisabled) return;
-                                                        const v =
-                                                            e.target.value;
-                                                        if (v === "") {
-                                                            field.onChange(
+                                                <StrategySelect<
+                                                    "site" | "remote"
+                                                >
+                                                    value={
+                                                        field.value ?? undefined
+                                                    }
+                                                    options={[
+                                                        {
+                                                            id: "site",
+                                                            title: t(
+                                                                "internalResourceAuthDaemonSite"
+                                                            ),
+                                                            description: t(
+                                                                "internalResourceAuthDaemonSiteDescription"
+                                                            ),
+                                                            disabled:
+                                                                sshSectionDisabled
+                                                        },
+                                                        {
+                                                            id: "remote",
+                                                            title: t(
+                                                                "internalResourceAuthDaemonRemote"
+                                                            ),
+                                                            description: t(
+                                                                "internalResourceAuthDaemonRemoteDescription"
+                                                            ),
+                                                            disabled:
+                                                                sshSectionDisabled
+                                                        }
+                                                    ]}
+                                                    onChange={(v) => {
+                                                        if (sshSectionDisabled)
+                                                            return;
+                                                        field.onChange(v);
+                                                        if (v === "site") {
+                                                            form.setValue(
+                                                                "authDaemonPort",
                                                                 null
                                                             );
-                                                            return;
                                                         }
-                                                        const num = parseInt(
-                                                            v,
-                                                            10
-                                                        );
-                                                        field.onChange(
-                                                            Number.isNaN(num)
-                                                                ? null
-                                                                : num
-                                                        );
                                                     }}
+                                                    cols={2}
                                                 />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                            )}
+                                {authDaemonMode === "remote" && (
+                                    <FormField
+                                        control={form.control}
+                                        name="authDaemonPort"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t(
+                                                        "internalResourceAuthDaemonPort"
+                                                    )}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={65535}
+                                                        placeholder="22123"
+                                                        {...field}
+                                                        disabled={
+                                                            sshSectionDisabled
+                                                        }
+                                                        value={
+                                                            field.value ?? ""
+                                                        }
+                                                        onChange={(e) => {
+                                                            if (
+                                                                sshSectionDisabled
+                                                            )
+                                                                return;
+                                                            const v =
+                                                                e.target.value;
+                                                            if (v === "") {
+                                                                field.onChange(
+                                                                    null
+                                                                );
+                                                                return;
+                                                            }
+                                                            const num =
+                                                                parseInt(v, 10);
+                                                            field.onChange(
+                                                                Number.isNaN(
+                                                                    num
+                                                                )
+                                                                    ? null
+                                                                    : num
+                                                            );
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+                            </div>
                         </div>
-                    </div>
                     )}
                 </HorizontalTabs>
             </form>

@@ -278,7 +278,7 @@ export async function listSites(
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase().where(and(...conditions))
+            querySitesBase().where(and(...conditions)).as("filtered_sites")
         );
 
         const siteListQuery = baseQuery
