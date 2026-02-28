@@ -112,7 +112,7 @@ export async function listSiteResources(
                     ? order === "asc"
                         ? asc(siteResources[sort_by])
                         : desc(siteResources[sort_by])
-                    : asc(siteResources.siteResourceId)
+                    : asc(siteResources.name)
             )
             .limit(limit)
             .offset(offset);
