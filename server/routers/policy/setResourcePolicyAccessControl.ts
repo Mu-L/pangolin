@@ -10,8 +10,11 @@ import { fromError } from "zod-validation-error";
 import { eq } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 
-const setUserResourcesBodySchema = z.strictObject({
-    userIds: z.array(z.string())
+const setResourcePolicyAcccessControlBodySchema = z.strictObject({
+    sso: z.boolean(),
+    userIds: z.array(z.string()),
+    roleIds: z.array(z.int().positive()),
+    skipToIdpId: z.string().optional()
 });
 
 const setResourcePolicyAccessControlParamsSchema = z.strictObject({
@@ -22,14 +25,14 @@ registry.registerPath({
     method: "post",
     path: "/resource-policy/{resourceId}/access-control",
     description:
-        "Set access control users for a resource policy, including SSO, users, authentication.",
+        "Set access control users for a resource policy, including SSO, users, roles, Identity provider.",
     tags: [OpenAPITags.Resource, OpenAPITags.User],
     request: {
         params: setResourcePolicyAccessControlParamsSchema,
         body: {
             content: {
                 "application/json": {
-                    schema: setUserResourcesBodySchema
+                    schema: setResourcePolicyAcccessControlBodySchema
                 }
             }
         }
@@ -43,7 +46,9 @@ export async function setResourceUsers(
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedBody = setUserResourcesBodySchema.safeParse(req.body);
+        const parsedBody = setResourcePolicyAcccessControlBodySchema.safeParse(
+            req.body
+        );
         if (!parsedBody.success) {
             return next(
                 createHttpError(
