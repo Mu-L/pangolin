@@ -4,7 +4,8 @@ import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
 import type {
     GetResourceWhitelistResponse,
-    ListResourceNamesResponse
+    ListResourceNamesResponse,
+    ListResourcesResponse
 } from "@server/routers/resource";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
@@ -90,23 +91,13 @@ export const productUpdatesQueries = {
         })
 };
 
-export const clientFilterSchema = z.object({
-    pageSize: z.int().prefault(1000).optional()
-});
-
 export const orgQueries = {
-    clients: ({
-        orgId,
-        filters
-    }: {
-        orgId: string;
-        filters?: z.infer<typeof clientFilterSchema>;
-    }) =>
+    clients: ({ orgId }: { orgId: string }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "CLIENTS", filters] as const,
+            queryKey: ["ORG", orgId, "CLIENTS"] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    pageSize: (filters?.pageSize ?? 1000).toString()
+                    pageSize: "10000"
                 });
 
                 const res = await meta!.api.get<
@@ -143,9 +134,13 @@ export const orgQueries = {
         queryOptions({
             queryKey: ["ORG", orgId, "SITES"] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: "10000"
+                });
+
                 const res = await meta!.api.get<
                     AxiosResponse<ListSitesResponse>
-                >(`/org/${orgId}/sites`, { signal });
+                >(`/org/${orgId}/sites?${sp.toString()}`, { signal });
                 return res.data.data.sites;
             }
         }),
@@ -181,6 +176,22 @@ export const orgQueries = {
                     { signal }
                 );
                 return res.data.data.idps;
+            }
+        }),
+
+    resources: ({ orgId }: { orgId: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "RESOURCES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: "10000"
+                });
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourcesResponse>
+                >(`/org/${orgId}/resources?${sp.toString()}`, { signal });
+
+                return res.data.data.resources;
             }
         })
 };
