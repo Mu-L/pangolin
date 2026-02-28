@@ -26,7 +26,7 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
     return (
         <Alert>
             <AlertDescription>
-                <InfoSections cols={4}>
+                <InfoSections cols={3}>
                     <InfoSection>
                         <InfoSectionTitle>{t("name")}</InfoSectionTitle>
                         <InfoSectionContent>{client.name}</InfoSectionContent>
@@ -53,12 +53,6 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
                                     <span>{t("offline")}</span>
                                 </div>
                             )}
-                        </InfoSectionContent>
-                    </InfoSection>
-                    <InfoSection>
-                        <InfoSectionTitle>{t("address")}</InfoSectionTitle>
-                        <InfoSectionContent>
-                            {client.subnet.split("/")[0]}
                         </InfoSectionContent>
                     </InfoSection>
                 </InfoSections>

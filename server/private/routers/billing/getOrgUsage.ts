@@ -85,10 +85,14 @@ export async function getOrgUsage(
             orgId,
             FeatureId.REMOTE_EXIT_NODES
         );
-        const egressData = await usageService.getUsage(
+        const organizations = await usageService.getUsage(
             orgId,
-            FeatureId.EGRESS_DATA_MB
+            FeatureId.ORGINIZATIONS
         );
+        // const egressData = await usageService.getUsage(
+        //     orgId,
+        //     FeatureId.EGRESS_DATA_MB
+        // );
 
         if (sites) {
             usageData.push(sites);
@@ -96,14 +100,17 @@ export async function getOrgUsage(
         if (users) {
             usageData.push(users);
         }
-        if (egressData) {
-            usageData.push(egressData);
-        }
+        // if (egressData) {
+        //     usageData.push(egressData);
+        // }
         if (domains) {
             usageData.push(domains);
         }
         if (remoteExitNodes) {
             usageData.push(remoteExitNodes);
+        }
+        if (organizations) {
+            usageData.push(organizations);
         }
 
         const orgLimits = await db

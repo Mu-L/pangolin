@@ -6,7 +6,7 @@ import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
@@ -93,7 +93,8 @@ export async function updateClient(
                 .where(
                     and(
                         eq(clients.niceId, niceId),
-                        eq(clients.orgId, clients.orgId)
+                        eq(clients.orgId, clients.orgId),
+                        ne(clients.clientId, clientId)
                     )
                 )
                 .limit(1);

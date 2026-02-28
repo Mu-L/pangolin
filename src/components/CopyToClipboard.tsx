@@ -31,6 +31,18 @@ const CopyToClipboard = ({
 
     return (
         <div className="flex items-center space-x-2 min-w-0 max-w-full">
+            <button
+                type="button"
+                className="h-6 w-6 p-0 flex items-center justify-center cursor-pointer flex-shrink-0"
+                onClick={handleCopy}
+            >
+                {!copied ? (
+                    <Copy className="h-4 w-4" />
+                ) : (
+                    <Check className="text-green-500 h-4 w-4" />
+                )}
+                <span className="sr-only">{t("copyText")}</span>
+            </button>
             {isLink ? (
                 <Link
                     href={text}
@@ -54,18 +66,6 @@ const CopyToClipboard = ({
                     {displayValue}
                 </span>
             )}
-            <button
-                type="button"
-                className="h-6 w-6 p-0 flex items-center justify-center cursor-pointer flex-shrink-0"
-                onClick={handleCopy}
-            >
-                {!copied ? (
-                    <Copy className="h-4 w-4" />
-                ) : (
-                    <Check className="text-green-500 h-4 w-4" />
-                )}
-                <span className="sr-only">{t("copyText")}</span>
-            </button>
         </div>
     );
 };

@@ -69,7 +69,7 @@ export const AuthSchema = z.object({
         .refine((roles) => !roles.includes("Admin"), {
             error: "Admin role cannot be included in sso-roles"
         }),
-    "sso-users": z.array(z.email()).optional().default([]),
+    "sso-users": z.array(z.string()).optional().default([]),
     "whitelist-users": z.array(z.email()).optional().default([]),
     "auto-login-idp": z.int().positive().optional()
 });
@@ -335,7 +335,7 @@ export const ClientResourceSchema = z
             .refine((roles) => !roles.includes("Admin"), {
                 error: "Admin role cannot be included in roles"
             }),
-        users: z.array(z.email()).optional().default([]),
+        users: z.array(z.string()).optional().default([]),
         machines: z.array(z.string()).optional().default([])
     })
     .refine(

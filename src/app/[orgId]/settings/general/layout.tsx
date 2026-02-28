@@ -78,7 +78,7 @@ export default async function GeneralSettingsPage({
                         description={t("orgSettingsDescription")}
                     />
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         <OrgInfoCard />
                         <HorizontalTabs items={navItems}>
                             {children}

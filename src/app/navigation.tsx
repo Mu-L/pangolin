@@ -2,6 +2,7 @@ import { SidebarNavItem } from "@app/components/SidebarNav";
 import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
+    Building2,
     ChartLine,
     Combine,
     CreditCard,
@@ -12,10 +13,11 @@ import {
     KeyRound,
     Laptop,
     Link as LinkIcon,
-    Logs, // Added from 'dev' branch
+    Logs,
     MonitorUp,
+    Plug,
     ReceiptText,
-    ScanEye, // Added from 'dev' branch
+    ScanEye,
     Server,
     Settings,
     ShieldIcon,
@@ -33,6 +35,10 @@ export type SidebarNavSection = {
     items: SidebarNavItem[];
 };
 
+export type OrgNavSectionsOptions = {
+    isPrimaryOrg?: boolean;
+};
+
 // Merged from 'user-management-and-resources' branch
 export const orgLangingNavItems: SidebarNavItem[] = [
     {
@@ -42,14 +48,17 @@ export const orgLangingNavItems: SidebarNavItem[] = [
     }
 ];
 
-export const orgNavSections = (env?: Env): SidebarNavSection[] => [
+export const orgNavSections = (
+    env?: Env,
+    options?: OrgNavSectionsOptions
+): SidebarNavSection[] => [
     {
-        heading: "sidebarGeneral",
+        heading: "network",
         items: [
             {
                 title: "sidebarSites",
                 href: "/{orgId}/settings/sites",
-                icon: <Combine className="size-4 flex-none" />
+                icon: <Plug className="size-4 flex-none" />
             },
             {
                 title: "sidebarResources",
@@ -100,11 +109,11 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
         ]
     },
     {
-        heading: "access",
+        heading: "accessControl",
         items: [
             {
-                title: "sidebarUsers",
-                icon: <User className="size-4 flex-none" />,
+                title: "sidebarTeam",
+                icon: <Users className="size-4 flex-none" />,
                 items: [
                     {
                         title: "sidebarUsers",
@@ -112,16 +121,16 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
                         icon: <User className="size-4 flex-none" />
                     },
                     {
+                        title: "sidebarRoles",
+                        href: "/{orgId}/settings/access/roles",
+                        icon: <Users className="size-4 flex-none" />
+                    },
+                    {
                         title: "sidebarInvitations",
                         href: "/{orgId}/settings/access/invitations",
                         icon: <TicketCheck className="size-4 flex-none" />
                     }
                 ]
-            },
-            {
-                title: "sidebarRoles",
-                href: "/{orgId}/settings/access/roles",
-                icon: <Users className="size-4 flex-none" />
             },
             ...(build !== "oss"
                 ? [
@@ -171,89 +180,85 @@ export const orgNavSections = (env?: Env): SidebarNavSection[] => [
         ]
     },
     {
-        heading: "sidebarLogsAndAnalytics",
-        items: (() => {
-            const logItems: SidebarNavItem[] = [
-                {
-                    title: "sidebarLogsRequest",
-                    href: "/{orgId}/settings/logs/request",
-                    icon: <SquareMousePointer className="size-4 flex-none" />
-                },
-                ...(!env?.flags.disableEnterpriseFeatures
-                    ? [
-                          {
-                              title: "sidebarLogsAccess",
-                              href: "/{orgId}/settings/logs/access",
-                              icon: <ScanEye className="size-4 flex-none" />
-                          },
-                          {
-                              title: "sidebarLogsAction",
-                              href: "/{orgId}/settings/logs/action",
-                              icon: <Logs className="size-4 flex-none" />
-                          }
-                      ]
-                    : [])
-            ];
-
-            const analytics = {
-                title: "sidebarLogsAnalytics",
-                href: "/{orgId}/settings/logs/analytics",
-                icon: <ChartLine className="h-4 w-4" />
-            };
-
-            // If only one log item, return it directly without grouping
-            if (logItems.length === 1) {
-                return [analytics, ...logItems];
-            }
-
-            // If multiple log items, create a group
-            return [
-                analytics,
-                {
-                    title: "sidebarLogs",
-                    icon: <Logs className="size-4 flex-none" />,
-                    items: logItems
-                }
-            ];
-        })()
-    },
-    {
         heading: "sidebarOrganization",
         items: [
             {
-                title: "sidebarApiKeys",
-                href: "/{orgId}/settings/api-keys",
-                icon: <KeyRound className="size-4 flex-none" />
+                title: "sidebarLogsAndAnalytics",
+                icon: <ChartLine className="size-4 flex-none" />,
+                items: [
+                    {
+                        title: "sidebarLogsAnalytics",
+                        href: "/{orgId}/settings/logs/analytics",
+                        icon: <ChartLine className="size-4 flex-none" />
+                    },
+                    {
+                        title: "sidebarLogsRequest",
+                        href: "/{orgId}/settings/logs/request",
+                        icon: (
+                            <SquareMousePointer className="size-4 flex-none" />
+                        )
+                    },
+                    ...(!env?.flags.disableEnterpriseFeatures
+                        ? [
+                              {
+                                  title: "sidebarLogsAccess",
+                                  href: "/{orgId}/settings/logs/access",
+                                  icon: <ScanEye className="size-4 flex-none" />
+                              },
+                              {
+                                  title: "sidebarLogsAction",
+                                  href: "/{orgId}/settings/logs/action",
+                                  icon: <Logs className="size-4 flex-none" />
+                              }
+                          ]
+                        : [])
+                ]
             },
             {
-                title: "sidebarBluePrints",
-                href: "/{orgId}/settings/blueprints",
-                icon: <ReceiptText className="size-4 flex-none" />
+                title: "sidebarManagement",
+                icon: <Building2 className="size-4 flex-none" />,
+                items: [
+                    {
+                        title: "sidebarApiKeys",
+                        href: "/{orgId}/settings/api-keys",
+                        icon: <KeyRound className="size-4 flex-none" />
+                    },
+                    {
+                        title: "sidebarBluePrints",
+                        href: "/{orgId}/settings/blueprints",
+                        icon: <ReceiptText className="size-4 flex-none" />
+                    }
+                ]
             },
+            ...(build == "saas" && options?.isPrimaryOrg
+                ? [
+                      {
+                          title: "sidebarBillingAndLicenses",
+                          icon: <CreditCard className="size-4 flex-none" />,
+                          items: [
+                              {
+                                  title: "sidebarBilling",
+                                  href: "/{orgId}/settings/billing",
+                                  icon: (
+                                      <CreditCard className="size-4 flex-none" />
+                                  )
+                              },
+                              {
+                                  title: "sidebarEnterpriseLicenses",
+                                  href: "/{orgId}/settings/license",
+                                  icon: (
+                                      <TicketCheck className="size-4 flex-none" />
+                                  )
+                              }
+                          ]
+                      }
+                  ]
+                : []),
             {
                 title: "sidebarSettings",
                 href: "/{orgId}/settings/general",
                 icon: <Settings className="size-4 flex-none" />
-            },
-
-            ...(build == "saas"
-                ? [
-                      {
-                          title: "sidebarBilling",
-                          href: "/{orgId}/settings/billing",
-                          icon: <CreditCard className="size-4 flex-none" />
-                      }
-                  ]
-                : []),
-            ...(build == "saas"
-                ? [
-                      {
-                          title: "sidebarEnterpriseLicenses",
-                          href: "/{orgId}/settings/license",
-                          icon: <TicketCheck className="size-4 flex-none" />
-                      }
-                  ]
-                : [])
+            }
         ]
     }
 ];

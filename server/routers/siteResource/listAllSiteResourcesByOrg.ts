@@ -4,7 +4,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { and, asc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -21,16 +21,54 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
         .positive()
         .optional()
         .catch(20)
-        .default(20),
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
         .min(0)
         .optional()
         .catch(1)
-        .default(1),
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
     query: z.string().optional(),
-    mode: z.enum(["host", "cidr"]).optional().catch(undefined)
+    mode: z
+        .enum(["host", "cidr"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["host", "cidr"],
+            description: "Filter site resources by mode"
+        }),
+    sort_by: z
+        .enum(["name"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["name"],
+            description: "Field to sort by"
+        }),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
+        .openapi({
+            type: "string",
+            enum: ["asc", "desc"],
+            default: "asc",
+            description: "Sort order"
+        })
 });
 
 export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
@@ -60,6 +98,8 @@ function querySiteResourcesBase() {
             tcpPortRangeString: siteResources.tcpPortRangeString,
             udpPortRangeString: siteResources.udpPortRangeString,
             disableIcmp: siteResources.disableIcmp,
+            authDaemonMode: siteResources.authDaemonMode,
+            authDaemonPort: siteResources.authDaemonPort,
             siteName: sites.name,
             siteNiceId: sites.niceId,
             siteAddress: sites.address
@@ -111,7 +151,8 @@ export async function listAllSiteResourcesByOrg(
         }
 
         const { orgId } = parsedParams.data;
-        const { page, pageSize, query, mode } = parsedQuery.data;
+        const { page, pageSize, query, mode, sort_by, order } =
+            parsedQuery.data;
 
         const conditions = [and(eq(siteResources.orgId, orgId))];
         if (query) {
@@ -159,7 +200,13 @@ export async function listAllSiteResourcesByOrg(
             baseQuery
                 .limit(pageSize)
                 .offset(pageSize * (page - 1))
-                .orderBy(asc(siteResources.siteResourceId)),
+                .orderBy(
+                    sort_by
+                        ? order === "asc"
+                            ? asc(siteResources[sort_by])
+                            : desc(siteResources[sort_by])
+                        : asc(siteResources.siteResourceId)
+                ),
             countQuery
         ]);
 

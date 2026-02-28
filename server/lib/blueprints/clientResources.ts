@@ -11,7 +11,7 @@ import {
     userSiteResources
 } from "@server/db";
 import { sites } from "@server/db";
-import { eq, and, ne, inArray } from "drizzle-orm";
+import { eq, and, ne, inArray, or } from "drizzle-orm";
 import { Config } from "./types";
 import logger from "@server/logger";
 import { getNextAvailableAliasAddress } from "../ip";
@@ -142,7 +142,10 @@ export async function updateClientResources(
                     .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
                     .where(
                         and(
-                            inArray(users.username, resourceData.users),
+                            or(
+                                inArray(users.username, resourceData.users),
+                                inArray(users.email, resourceData.users)
+                            ),
                             eq(userOrgs.orgId, orgId)
                         )
                     );
@@ -276,7 +279,10 @@ export async function updateClientResources(
                     .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
                     .where(
                         and(
-                            inArray(users.username, resourceData.users),
+                            or(
+                                inArray(users.username, resourceData.users),
+                                inArray(users.email, resourceData.users)
+                            ),
                             eq(userOrgs.orgId, orgId)
                         )
                     );

@@ -56,7 +56,7 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
             />
 
             <SiteProvider site={site}>
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <SiteInfoCard />
                     <HorizontalTabs items={navItems}>{children}</HorizontalTabs>
                 </div>

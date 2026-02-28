@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, UserOrg } from "@server/db";
+import { db, orgs, UserOrg } from "@server/db";
 import { roles, userInvites, userOrgs, users } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray, ne } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -14,6 +14,7 @@ import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { build } from "@server/build";
+import { assignUserToOrg } from "@server/lib/userOrg";
 
 const acceptInviteBodySchema = z.strictObject({
     token: z.string(),
@@ -125,8 +126,22 @@ export async function acceptInvite(
             }
         }
 
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, existingInvite.orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Organization does not exist. Please contact an admin."
+                )
+            );
+        }
+
         let roleId: number;
-        let totalUsers: UserOrg[] | undefined;
         // get the role to make sure it exists
         const existingRole = await db
             .select()
@@ -146,12 +161,15 @@ export async function acceptInvite(
         }
 
         await db.transaction(async (trx) => {
-            // add the user to the org
-            await trx.insert(userOrgs).values({
-                userId: existingUser[0].userId,
-                orgId: existingInvite.orgId,
-                roleId: existingInvite.roleId
-            });
+            await assignUserToOrg(
+                org,
+                {
+                    userId: existingUser[0].userId,
+                    orgId: existingInvite.orgId,
+                    roleId: existingInvite.roleId
+                },
+                trx
+            );
 
             // delete the invite
             await trx
@@ -160,24 +178,10 @@ export async function acceptInvite(
 
             await calculateUserClientsForOrgs(existingUser[0].userId, trx);
 
-            // Get the total number of users in the org now
-            totalUsers = await trx
-                .select()
-                .from(userOrgs)
-                .where(eq(userOrgs.orgId, existingInvite.orgId));
-
             logger.debug(
-                `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}. Total users in org: ${totalUsers.length}`
+                `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}`
             );
         });
-
-        if (totalUsers) {
-            await usageService.updateCount(
-                existingInvite.orgId,
-                FeatureId.USERS,
-                totalUsers.length
-            );
-        }
 
         return response<AcceptInviteResponse>(res, {
             data: { accepted: true, orgId: existingInvite.orgId },

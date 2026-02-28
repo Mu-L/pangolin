@@ -2,9 +2,13 @@ import { db, dnsRecords } from "@server/db";
 import { domains, exitNodes, orgDomains, orgs, resources } from "@server/db";
 import config from "@server/lib/config";
 import { eq, ne } from "drizzle-orm";
-import logger from "@server/logger";
+import { build } from "@server/build";
 
 export async function copyInConfig() {
+    if (build == "saas") {
+        return;
+    }
+
     const endpoint = config.getRawConfig().gerbil.base_endpoint;
     const listenPort = config.getRawConfig().gerbil.start_port;
 

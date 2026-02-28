@@ -53,3 +53,4 @@ tsconfig.json
 hydrateSaas.ts
 CLAUDE.md
 drizzle.config.ts
+server/setup/migrations.ts

@@ -15,9 +15,8 @@ import config from "./config";
 import { certificates, db } from "@server/db";
 import { and, eq, isNotNull, or, inArray, sql } from "drizzle-orm";
 import { decryptData } from "@server/lib/encryption";
-import * as fs from "fs";
 import logger from "@server/logger";
-import cache from "@server/lib/cache";
+import cache from "#private/lib/cache";
 
 let encryptionKeyHex = "";
 let encryptionKey: Buffer;
@@ -55,7 +54,7 @@ export async function getValidCertificatesForDomains(
     if (useCache) {
         for (const domain of domains) {
             const cacheKey = `cert:${domain}`;
-            const cachedCert = cache.get<CertificateResult>(cacheKey);
+            const cachedCert = await cache.get<CertificateResult>(cacheKey);
             if (cachedCert) {
                 finalResults.push(cachedCert); // Valid cache hit
             } else {
@@ -169,7 +168,7 @@ export async function getValidCertificatesForDomains(
             // Add to cache for future requests, using the *requested domain* as the key
             if (useCache) {
                 const cacheKey = `cert:${domain}`;
-                cache.set(cacheKey, resultCert, 180);
+                await cache.set(cacheKey, resultCert, 180);
             }
         }
     }

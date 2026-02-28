@@ -12,7 +12,14 @@
  */
 
 import { NextFunction, Request, Response } from "express";
-import { db, exitNodes, exitNodeOrgs, ExitNode, ExitNodeOrg } from "@server/db";
+import {
+    db,
+    exitNodes,
+    exitNodeOrgs,
+    ExitNode,
+    ExitNodeOrg,
+    orgs
+} from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import { z } from "zod";
 import { remoteExitNodes } from "@server/db";
@@ -25,7 +32,7 @@ import { createRemoteExitNodeSession } from "#private/auth/sessions/remoteExitNo
 import { fromError } from "zod-validation-error";
 import { hashPassword, verifyPassword } from "@server/auth/password";
 import logger from "@server/logger";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { getNextAvailableSubnet } from "@server/lib/exitNodes";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
@@ -169,7 +176,17 @@ export async function createRemoteExitNode(
             );
         }
 
-        let numExitNodeOrgs: ExitNodeOrg[] | undefined;
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, orgId))
+            .limit(1);
+
+        if (!org) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Organization not found")
+            );
+        }
 
         await db.transaction(async (trx) => {
             if (!existingExitNode) {
@@ -217,19 +234,43 @@ export async function createRemoteExitNode(
                 });
             }
 
-            numExitNodeOrgs = await trx
-                .select()
-                .from(exitNodeOrgs)
-                .where(eq(exitNodeOrgs.orgId, orgId));
-        });
+            // calculate if the node is in any other of the orgs before we count it as an add to the billing org
+            if (org.billingOrgId) {
+                const otherBillingOrgs = await trx
+                    .select()
+                    .from(orgs)
+                    .where(
+                        and(
+                            eq(orgs.billingOrgId, org.billingOrgId),
+                            ne(orgs.orgId, orgId)
+                        )
+                    );
 
-        if (numExitNodeOrgs) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.REMOTE_EXIT_NODES,
-                numExitNodeOrgs.length
-            );
-        }
+                const billingOrgIds = otherBillingOrgs.map((o) => o.orgId);
+
+                const orgsInBillingDomainThatTheNodeIsStillIn = await trx
+                    .select()
+                    .from(exitNodeOrgs)
+                    .where(
+                        and(
+                            eq(
+                                exitNodeOrgs.exitNodeId,
+                                existingExitNode.exitNodeId
+                            ),
+                            inArray(exitNodeOrgs.orgId, billingOrgIds)
+                        )
+                    );
+
+                if (orgsInBillingDomainThatTheNodeIsStillIn.length === 0) {
+                    await usageService.add(
+                        orgId,
+                        FeatureId.REMOTE_EXIT_NODES,
+                        1,
+                        trx
+                    );
+                }
+            }
+        });
 
         const token = generateSessionToken();
         await createRemoteExitNodeSession(token, remoteExitNodeId);

@@ -14,6 +14,7 @@ export interface StrategyOption<TValue extends string> {
 
 interface StrategySelectProps<TValue extends string> {
     options: ReadonlyArray<StrategyOption<TValue>>;
+    value?: TValue | null;
     defaultValue?: TValue;
     onChange?: (value: TValue) => void;
     cols?: number;
@@ -21,18 +22,21 @@ interface StrategySelectProps<TValue extends string> {
 
 export function StrategySelect<TValue extends string>({
     options,
+    value: controlledValue,
     defaultValue,
     onChange,
     cols
 }: StrategySelectProps<TValue>) {
-    const [selected, setSelected] = useState<TValue | undefined>(defaultValue);
+    const [uncontrolledSelected, setUncontrolledSelected] = useState<TValue | undefined>(defaultValue);
+    const isControlled = controlledValue !== undefined;
+    const selected = isControlled ? (controlledValue ?? undefined) : uncontrolledSelected;
 
     return (
         <RadioGroup
-            defaultValue={defaultValue}
+            value={selected ?? ""}
             onValueChange={(value: string) => {
                 const typedValue = value as TValue;
-                setSelected(typedValue);
+                if (!isControlled) setUncontrolledSelected(typedValue);
                 onChange?.(typedValue);
             }}
             className={`grid md:grid-cols-${cols ? cols : 1} gap-4`}

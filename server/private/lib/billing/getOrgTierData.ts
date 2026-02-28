@@ -12,7 +12,8 @@
  */
 
 import { build } from "@server/build";
-import { db, customers, subscriptions } from "@server/db";
+import { db, customers, subscriptions, orgs } from "@server/db";
+import logger from "@server/logger";
 import { Tier } from "@server/types/Tiers";
 import { eq, and, ne } from "drizzle-orm";
 
@@ -27,37 +28,61 @@ export async function getOrgTierData(
     }
 
     try {
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, orgId))
+            .limit(1);
+
+        if (!org) {
+            return { tier, active };
+        }
+
+        let orgIdToUse = org.orgId;
+        if (!org.isBillingOrg) {
+            if (!org.billingOrgId) {
+                logger.warn(
+                    `Org ${orgId} is not a billing org and does not have a billingOrgId`
+                );
+                return { tier, active };
+            }
+            orgIdToUse = org.billingOrgId;
+        }
+
         // Get customer for org
         const [customer] = await db
             .select()
             .from(customers)
-            .where(eq(customers.orgId, orgId))
+            .where(eq(customers.orgId, orgIdToUse))
             .limit(1);
 
-        if (customer) {
-            // Query for active subscriptions that are not license type
-            const [subscription] = await db
-                .select()
-                .from(subscriptions)
-                .where(
-                    and(
-                        eq(subscriptions.customerId, customer.customerId),
-                        eq(subscriptions.status, "active"),
-                        ne(subscriptions.type, "license")
-                    )
-                )
-                .limit(1);
+        if (!customer) {
+            return { tier, active };
+        }
 
-            if (subscription) {
-                // Validate that subscription.type is one of the expected tier values
-                if (
-                    subscription.type === "tier1" ||
-                    subscription.type === "tier2" ||
-                    subscription.type === "tier3"
-                ) {
-                    tier = subscription.type;
-                    active = true;
-                }
+        // Query for active subscriptions that are not license type
+        const [subscription] = await db
+            .select()
+            .from(subscriptions)
+            .where(
+                and(
+                    eq(subscriptions.customerId, customer.customerId),
+                    eq(subscriptions.status, "active"),
+                    ne(subscriptions.type, "license")
+                )
+            )
+            .limit(1);
+
+        if (subscription) {
+            // Validate that subscription.type is one of the expected tier values
+            if (
+                subscription.type === "tier1" ||
+                subscription.type === "tier2" ||
+                subscription.type === "tier3" ||
+                subscription.type === "enterprise"
+            ) {
+                tier = subscription.type;
+                active = true;
             }
         }
     } catch (error) {

@@ -10,7 +10,7 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "./Settings";
-import { Button } from "./ui/button";
+import { OptionSelect, type OptionSelectOption } from "./OptionSelect";
 
 export type CommandItem = string | { title: string; command: string };
 
@@ -88,6 +88,15 @@ curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/ol
     };
 
     const commands = commandList[platform][architecture];
+
+    const platformOptions: OptionSelectOption<Platform>[] = PLATFORMS.map(
+        (os) => ({
+            value: os,
+            label: getPlatformName(os),
+            icon: getPlatformIcon(os)
+        })
+    );
+
     return (
         <SettingsSection>
             <SettingsSectionHeader>
@@ -99,54 +108,35 @@ curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/ol
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <div>
-                    <p className="font-bold mb-3">{t("operatingSystem")}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                        {PLATFORMS.map((os) => (
-                            <Button
-                                key={os}
-                                variant={
-                                    platform === os
-                                        ? "squareOutlinePrimary"
-                                        : "squareOutline"
-                                }
-                                className={`flex-1 min-w-30 ${platform === os ? "bg-primary/10" : ""} shadow-none`}
-                                onClick={() => {
-                                    setPlatform(os);
-                                    const architectures = getArchitectures(os);
-                                    setArchitecture(architectures[0]);
-                                }}
-                            >
-                                {getPlatformIcon(os)}
-                                {getPlatformName(os)}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                <OptionSelect<Platform>
+                    label={t("operatingSystem")}
+                    options={platformOptions}
+                    value={platform}
+                    onChange={(os) => {
+                        setPlatform(os);
+                        const architectures = getArchitectures(os);
+                        setArchitecture(architectures[0]);
+                    }}
+                    cols={5}
+                />
 
-                <div>
-                    <p className="font-bold mb-3">
-                        {["docker", "podman"].includes(platform)
+                <OptionSelect<string>
+                    label={
+                        platform === "docker"
                             ? t("method")
-                            : t("architecture")}
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                        {getArchitectures(platform).map((arch) => (
-                            <Button
-                                key={arch}
-                                variant={
-                                    architecture === arch
-                                        ? "squareOutlinePrimary"
-                                        : "squareOutline"
-                                }
-                                className={`flex-1 min-w-30 ${architecture === arch ? "bg-primary/10" : ""} shadow-none`}
-                                onClick={() => setArchitecture(arch)}
-                            >
-                                {arch}
-                            </Button>
-                        ))}
-                    </div>
-                    <div className="pt-4">
+                            : t("architecture")
+                    }
+                    options={getArchitectures(platform).map((arch) => ({
+                        value: arch,
+                        label: arch
+                    }))}
+                    value={architecture}
+                    onChange={setArchitecture}
+                    cols={5}
+                    className="mt-4"
+                />
+
+                <div className="pt-4">
                         <p className="font-bold mb-3">{t("commands")}</p>
                         <div className="mt-2 space-y-3">
                             {commands.map((item, index) => {
@@ -174,7 +164,6 @@ curl -o olm.exe -L "https://github.com/fosrl/olm/releases/download/${version}/ol
                                 );
                             })}
                         </div>
-                    </div>
                 </div>
             </SettingsSectionBody>
         </SettingsSection>

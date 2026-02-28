@@ -5,7 +5,7 @@ import { siteResources, sites, SiteResource } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { eq, and } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -27,7 +27,16 @@ const listSiteResourcesQuerySchema = z.object({
         .optional()
         .default("0")
         .transform(Number)
-        .pipe(z.int().nonnegative())
+        .pipe(z.int().nonnegative()),
+    sort_by: z
+        .enum(["name"])
+        .optional()
+        .catch(undefined),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
 });
 
 export type ListSiteResourcesResponse = {
@@ -75,7 +84,7 @@ export async function listSiteResources(
         }
 
         const { siteId, orgId } = parsedParams.data;
-        const { limit, offset } = parsedQuery.data;
+        const { limit, offset, sort_by, order } = parsedQuery.data;
 
         // Verify the site exists and belongs to the org
         const site = await db
@@ -97,6 +106,13 @@ export async function listSiteResources(
                     eq(siteResources.siteId, siteId),
                     eq(siteResources.orgId, orgId)
                 )
+            )
+            .orderBy(
+                sort_by
+                    ? order === "asc"
+                        ? asc(siteResources[sort_by])
+                        : desc(siteResources[sort_by])
+                    : asc(siteResources.siteResourceId)
             )
             .limit(limit)
             .offset(offset);

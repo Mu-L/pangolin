@@ -132,6 +132,7 @@ export enum ActionsEnum {
     exportLogs = "exportLogs",
     listApprovals = "listApprovals",
     updateApprovals = "updateApprovals",
+    signSshKey = "signSshKey",
     listResourcePolicies = "listResourcePolicies",
     getResourcePolicy = "getResourcePolicy",
     createResourcePolicy = "createResourcePolicy",

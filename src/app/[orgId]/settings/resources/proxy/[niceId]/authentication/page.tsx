@@ -187,7 +187,11 @@ export default function ResourceAuthenticationPage() {
         number | null
     >(null);
 
-    const [ssoEnabled, setSsoEnabled] = useState(resource.sso);
+    const [ssoEnabled, setSsoEnabled] = useState(resource.sso ?? false);
+
+    useEffect(() => {
+        setSsoEnabled(resource.sso ?? false);
+    }, [resource.sso]);
 
     const [selectedIdpId, setSelectedIdpId] = useState<number | null>(
         resource.skipToIdpId || null
@@ -472,7 +476,7 @@ export default function ResourceAuthenticationPage() {
                             <SwitchInput
                                 id="sso-toggle"
                                 label={t("ssoUse")}
-                                defaultChecked={resource.sso}
+                                checked={ssoEnabled}
                                 onCheckedChange={(val) => setSsoEnabled(val)}
                             />
 
@@ -800,8 +804,13 @@ function OneTimePasswordFormSection({
 }: OneTimePasswordFormSectionProps) {
     const { env } = useEnvContext();
     const [whitelistEnabled, setWhitelistEnabled] = useState(
-        resource.emailWhitelistEnabled
+        resource.emailWhitelistEnabled ?? false
     );
+
+    useEffect(() => {
+        setWhitelistEnabled(resource.emailWhitelistEnabled);
+    }, [resource.emailWhitelistEnabled]);
+
     const queryClient = useQueryClient();
 
     const [loadingSaveWhitelist, startTransition] = useTransition();
@@ -894,7 +903,7 @@ function OneTimePasswordFormSection({
                     <SwitchInput
                         id="whitelist-toggle"
                         label={t("otpEmailWhitelist")}
-                        defaultChecked={resource.emailWhitelistEnabled}
+                        checked={whitelistEnabled}
                         onCheckedChange={setWhitelistEnabled}
                         disabled={!env.email.emailEnabled}
                     />

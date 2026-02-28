@@ -45,7 +45,11 @@ export const orgs = sqliteTable("orgs", {
         .default(0),
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
-        .default(0)
+        .default(0),
+    sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
+    sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
+    isBillingOrg: integer("isBillingOrg", { mode: "boolean" }),
+    billingOrgId: text("billingOrgId")
 });
 
 export const userDomains = sqliteTable("userDomains", {
@@ -255,7 +259,11 @@ export const siteResources = sqliteTable("siteResources", {
     udpPortRangeString: text("udpPortRangeString").notNull().default("*"),
     disableIcmp: integer("disableIcmp", { mode: "boolean" })
         .notNull()
-        .default(false)
+        .default(false),
+    authDaemonPort: integer("authDaemonPort").default(22123),
+    authDaemonMode: text("authDaemonMode")
+        .$type<"site" | "remote">()
+        .default("site")
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -635,7 +643,8 @@ export const userOrgs = sqliteTable("userOrgs", {
     isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
     autoProvisioned: integer("autoProvisioned", {
         mode: "boolean"
-    }).default(false)
+    }).default(false),
+    pamUsername: text("pamUsername") // cleaned username for ssh and such
 });
 
 export const emailVerificationCodes = sqliteTable("emailVerificationCodes", {
@@ -676,7 +685,13 @@ export const roles = sqliteTable("roles", {
     description: text("description"),
     requireDeviceApproval: integer("requireDeviceApproval", {
         mode: "boolean"
-    }).default(false)
+    }).default(false),
+    sshSudoMode: text("sshSudoMode").default("none"), // "none" | "full" | "commands"
+    sshSudoCommands: text("sshSudoCommands").default("[]"),
+    sshCreateHomeDir: integer("sshCreateHomeDir", { mode: "boolean" }).default(
+        true
+    ),
+    sshUnixGroups: text("sshUnixGroups").default("[]")
 });
 
 export const roleActions = sqliteTable("roleActions", {
@@ -1122,6 +1137,16 @@ export const deviceWebAuthCodes = sqliteTable("deviceWebAuthCodes", {
     })
 });
 
+export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
+    messageId: integer("messageId").primaryKey({ autoIncrement: true }),
+    wsClientId: text("clientId"),
+    messageType: text("messageType"),
+    sentAt: integer("sentAt").notNull(),
+    receivedAt: integer("receivedAt"),
+    error: text("error"),
+    complete: integer("complete", { mode: "boolean" }).notNull().default(false)
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1183,3 +1208,6 @@ export type SecurityKey = InferSelectModel<typeof securityKeys>;
 export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
+export type RoundTripMessageTracker = InferSelectModel<
+    typeof roundTripMessageTracker
+>;

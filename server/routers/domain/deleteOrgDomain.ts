@@ -36,8 +36,6 @@ export async function deleteAccountDomain(
         }
         const { domainId, orgId } = parsed.data;
 
-        let numOrgDomains: OrgDomains[] | undefined;
-
         await db.transaction(async (trx) => {
             const [existing] = await trx
                 .select()
@@ -79,19 +77,8 @@ export async function deleteAccountDomain(
 
             await trx.delete(domains).where(eq(domains.domainId, domainId));
 
-            numOrgDomains = await trx
-                .select()
-                .from(orgDomains)
-                .where(eq(orgDomains.orgId, orgId));
+            await usageService.add(orgId, FeatureId.DOMAINS, -1, trx);
         });
-
-        if (numOrgDomains) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.DOMAINS,
-                numOrgDomains.length
-            );
-        }
 
         return response<DeleteAccountDomainResponse>(res, {
             data: { success: true },

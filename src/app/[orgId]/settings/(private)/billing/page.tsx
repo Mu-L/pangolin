@@ -61,7 +61,7 @@ import {
 import { FeatureId } from "@server/lib/billing/features";
 
 // Plan tier definitions matching the mockup
-type PlanId = "starter" | "home" | "team" | "business" | "enterprise";
+type PlanId = "basic" | "home" | "team" | "business" | "enterprise";
 
 type PlanOption = {
     id: PlanId;
@@ -73,8 +73,8 @@ type PlanOption = {
 
 const planOptions: PlanOption[] = [
     {
-        id: "starter",
-        name: "Starter",
+        id: "basic",
+        name: "Basic",
         price: "Free",
         tierType: null
     },
@@ -109,38 +109,43 @@ const planOptions: PlanOption[] = [
 
 // Tier limits mapping derived from limit sets
 const tierLimits: Record<
-    Tier | "starter",
-    { users: number; sites: number; domains: number; remoteNodes: number }
+    Tier | "basic",
+    { users: number; sites: number; domains: number; remoteNodes: number; organizations: number }
 > = {
-    starter: {
+    basic: {
         users: freeLimitSet[FeatureId.USERS]?.value ?? 0,
         sites: freeLimitSet[FeatureId.SITES]?.value ?? 0,
         domains: freeLimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: freeLimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: freeLimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: freeLimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     tier1: {
         users: tier1LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier1LimitSet[FeatureId.SITES]?.value ?? 0,
         domains: tier1LimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: tier1LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: tier1LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: tier1LimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     tier2: {
         users: tier2LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier2LimitSet[FeatureId.SITES]?.value ?? 0,
         domains: tier2LimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: tier2LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: tier2LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: tier2LimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     tier3: {
         users: tier3LimitSet[FeatureId.USERS]?.value ?? 0,
         sites: tier3LimitSet[FeatureId.SITES]?.value ?? 0,
         domains: tier3LimitSet[FeatureId.DOMAINS]?.value ?? 0,
-        remoteNodes: tier3LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0
+        remoteNodes: tier3LimitSet[FeatureId.REMOTE_EXIT_NODES]?.value ?? 0,
+        organizations: tier3LimitSet[FeatureId.ORGINIZATIONS]?.value ?? 0
     },
     enterprise: {
         users: 0, // Custom for enterprise
         sites: 0, // Custom for enterprise
         domains: 0, // Custom for enterprise
-        remoteNodes: 0 // Custom for enterprise
+        remoteNodes: 0, // Custom for enterprise
+        organizations: 0 // Custom for enterprise
     }
 };
 
@@ -179,11 +184,12 @@ export default function BillingPage() {
     const SITES = "sites";
     const DOMAINS = "domains";
     const REMOTE_EXIT_NODES = "remoteExitNodes";
+    const ORGINIZATIONS = "organizations";
 
     // Confirmation dialog state
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingTier, setPendingTier] = useState<{
-        tier: Tier | "starter";
+        tier: Tier | "basic";
         action: "upgrade" | "downgrade";
         planName: string;
         price: string;
@@ -204,7 +210,8 @@ export default function BillingPage() {
                     ({ subscription }) =>
                         subscription?.type === "tier1" ||
                         subscription?.type === "tier2" ||
-                        subscription?.type === "tier3"
+                        subscription?.type === "tier3" ||
+                        subscription?.type === "enterprise"
                 );
                 setTierSubscription(tierSub || null);
 
@@ -402,8 +409,8 @@ export default function BillingPage() {
             pendingTier.action === "upgrade" ||
             pendingTier.action === "downgrade"
         ) {
-            // If downgrading to starter (free tier), go to Stripe portal
-            if (pendingTier.tier === "starter") {
+            // If downgrading to basic (free tier), go to Stripe portal
+            if (pendingTier.tier === "basic") {
                 handleModifySubscription();
             } else if (hasSubscription) {
                 handleChangeTier(pendingTier.tier);
@@ -417,7 +424,7 @@ export default function BillingPage() {
     };
 
     const showTierConfirmation = (
-        tier: Tier | "starter",
+        tier: Tier | "basic",
         action: "upgrade" | "downgrade",
         planName: string,
         price: string
@@ -432,12 +439,62 @@ export default function BillingPage() {
 
     // Get current plan ID from tier
     const getCurrentPlanId = (): PlanId => {
-        if (!hasSubscription || !currentTier) return "starter";
+        if (!hasSubscription || !currentTier) return "basic";
+        // Handle enterprise subscription type directly
+        if (currentTier === "enterprise") return "enterprise";
         const plan = planOptions.find((p) => p.tierType === currentTier);
-        return plan?.id || "starter";
+        return plan?.id || "basic";
     };
 
     const currentPlanId = getCurrentPlanId();
+
+    // Check if subscription is in a problematic state that requires attention
+    const hasProblematicSubscription = (): boolean => {
+        if (!tierSubscription?.subscription) return false;
+        const status = tierSubscription.subscription.status;
+        return (
+            status === "past_due" ||
+            status === "unpaid" ||
+            status === "incomplete" ||
+            status === "incomplete_expired"
+        );
+    };
+
+    const isProblematicState = hasProblematicSubscription();
+
+    // Get user-friendly subscription status message
+    const getSubscriptionStatusMessage = (): { title: string; description: string } | null => {
+        if (!tierSubscription?.subscription || !isProblematicState) return null;
+        
+        const status = tierSubscription.subscription.status;
+        
+        switch (status) {
+            case "past_due":
+                return {
+                    title: t("billingPastDueTitle") || "Payment Past Due",
+                    description: t("billingPastDueDescription") || "Your payment is past due. Please update your payment method to continue using your current plan features. If not resolved, your subscription will be canceled and you'll be reverted to the free tier."
+                };
+            case "unpaid":
+                return {
+                    title: t("billingUnpaidTitle") || "Subscription Unpaid",
+                    description: t("billingUnpaidDescription") || "Your subscription is unpaid and you have been reverted to the free tier. Please update your payment method to restore your subscription."
+                };
+            case "incomplete":
+                return {
+                    title: t("billingIncompleteTitle") || "Payment Incomplete",
+                    description: t("billingIncompleteDescription") || "Your payment is incomplete. Please complete the payment process to activate your subscription."
+                };
+            case "incomplete_expired":
+                return {
+                    title: t("billingIncompleteExpiredTitle") || "Payment Expired",
+                    description: t("billingIncompleteExpiredDescription") || "Your payment was never completed and has expired. You have been reverted to the free tier. Please subscribe again to restore access to paid features."
+                };
+            default:
+                return null;
+        }
+    };
+
+    const statusMessage = getSubscriptionStatusMessage();
 
     // Get button label and action for each plan
     const getPlanAction = (plan: PlanOption) => {
@@ -451,8 +508,8 @@ export default function BillingPage() {
         }
 
         if (plan.id === currentPlanId) {
-            // If it's the starter plan (starter with no subscription), show as current but disabled
-            if (plan.id === "starter" && !hasSubscription) {
+            // If it's the basic plan (basic with no subscription), show as current but disabled
+            if (plan.id === "basic" && !hasSubscription && !isProblematicState) {
                 return {
                     label: "Current Plan",
                     action: () => {},
@@ -460,8 +517,17 @@ export default function BillingPage() {
                     disabled: true
                 };
             }
+            // If on free tier but has a problematic subscription, allow them to manage it
+            if (plan.id === "basic" && isProblematicState) {
+                return {
+                    label: "Manage Subscription",
+                    action: handleModifySubscription,
+                    variant: "default" as const,
+                    disabled: false
+                };
+            }
             return {
-                label: "Modify Current Plan",
+                label: "Manage Current Plan",
                 action: handleModifySubscription,
                 variant: "default" as const,
                 disabled: false
@@ -484,10 +550,10 @@ export default function BillingPage() {
                             plan.name,
                             plan.price + (" " + plan.priceDetail || "")
                         );
-                    } else if (plan.id === "starter") {
-                        // Show confirmation for downgrading to starter (free tier)
+                    } else if (plan.id === "basic") {
+                        // Show confirmation for downgrading to basic (free tier)
                         showTierConfirmation(
-                            "starter",
+                            "basic",
                             "downgrade",
                             plan.name,
                             plan.price
@@ -497,7 +563,7 @@ export default function BillingPage() {
                     }
                 },
                 variant: "outline" as const,
-                disabled: false
+                disabled: isProblematicState
             };
         }
 
@@ -516,7 +582,7 @@ export default function BillingPage() {
                 }
             },
             variant: "outline" as const,
-            disabled: false
+            disabled: isProblematicState
         };
     };
 
@@ -566,7 +632,7 @@ export default function BillingPage() {
     };
 
     // Check if downgrading to a tier would violate current usage limits
-    const checkLimitViolations = (targetTier: Tier | "starter"): Array<{
+    const checkLimitViolations = (targetTier: Tier | "basic"): Array<{
         feature: string;
         currentUsage: number;
         newLimit: number;
@@ -619,6 +685,16 @@ export default function BillingPage() {
             });
         }
 
+        // Check organizations
+        const organizationsUsage = getUsageValue(ORGINIZATIONS);
+        if (limits.organizations > 0 && organizationsUsage > limits.organizations) {
+            violations.push({
+                feature: "Organizations",
+                currentUsage: organizationsUsage,
+                newLimit: limits.organizations
+            });
+        }
+
         return violations;
     };
 
@@ -632,6 +708,26 @@ export default function BillingPage() {
 
     return (
         <SettingsContainer>
+            {/* Subscription Status Alert */}
+            {isProblematicState && statusMessage && (
+                <Alert variant="destructive" className="mb-6">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>
+                        {statusMessage.title}
+                    </AlertTitle>
+                    <AlertDescription>
+                        {statusMessage.description}
+                        {" "}
+                        <button
+                            onClick={handleModifySubscription}
+                            className="underline font-semibold hover:no-underline"
+                        >
+                            {t("billingManageSubscription") || "Manage your subscription"}
+                        </button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Your Plan Section */}
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -676,22 +772,50 @@ export default function BillingPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4">
-                                        <Button
-                                            variant={
-                                                isCurrentPlan
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            size="sm"
-                                            className="w-full"
-                                            onClick={planAction.action}
-                                            disabled={
-                                                isLoading || planAction.disabled
-                                            }
-                                            loading={isLoading && isCurrentPlan}
-                                        >
-                                            {planAction.label}
-                                        </Button>
+                                        {isProblematicState && planAction.disabled && !isCurrentPlan && plan.id !== "enterprise" ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div>
+                                                        <Button
+                                                            variant={
+                                                                isCurrentPlan
+                                                                    ? "default"
+                                                                    : "outline"
+                                                            }
+                                                            size="sm"
+                                                            className="w-full"
+                                                            onClick={planAction.action}
+                                                            disabled={
+                                                                isLoading || planAction.disabled
+                                                            }
+                                                            loading={isLoading && isCurrentPlan}
+                                                        >
+                                                            {planAction.label}
+                                                        </Button>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{t("billingResolvePaymentIssue") || "Please resolve your payment issue before upgrading or downgrading"}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ) : (
+                                            <Button
+                                                variant={
+                                                    isCurrentPlan
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={planAction.action}
+                                                disabled={
+                                                    isLoading || planAction.disabled
+                                                }
+                                                loading={isLoading && isCurrentPlan}
+                                            >
+                                                {planAction.label}
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -752,7 +876,7 @@ export default function BillingPage() {
                             <div className="text-sm text-muted-foreground mb-3">
                                 {t("billingMaximumLimits") || "Maximum Limits"}
                             </div>
-                            <InfoSections cols={4}>
+                            <InfoSections cols={5}>
                                 <InfoSection>
                                     <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingUsers") || "Users"}
@@ -857,6 +981,41 @@ export default function BillingPage() {
                                 </InfoSection>
                                 <InfoSection>
                                     <InfoSectionTitle className="flex items-center gap-1 text-xs">
+                                        {t("billingOrganizations") ||
+                                            "Organizations"}
+                                    </InfoSectionTitle>
+                                    <InfoSectionContent className="text-sm">
+                                        {isOverLimit(ORGINIZATIONS) ? (
+                                            <Tooltip>
+                                                <TooltipTrigger className="flex items-center gap-1">
+                                                    <AlertTriangle className="h-3 w-3 text-orange-400" />
+                                                    <span className={cn(
+                                                        "text-orange-600 dark:text-orange-400 font-medium"
+                                                    )}>
+                                                        {getLimitValue(ORGINIZATIONS) ??
+                                                            t("billingUnlimited") ??
+                                                            "∞"}{" "}
+                                                        {getLimitValue(ORGINIZATIONS) !==
+                                                            null && "orgs"}
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(ORGINIZATIONS), limit: getLimitValue(ORGINIZATIONS) ?? 0 }) || `Current usage (${getUsageValue(ORGINIZATIONS)}) exceeds limit (${getLimitValue(ORGINIZATIONS)})`}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        ) : (
+                                            <>
+                                                {getLimitValue(ORGINIZATIONS) ??
+                                                    t("billingUnlimited") ??
+                                                    "∞"}{" "}
+                                                {getLimitValue(ORGINIZATIONS) !==
+                                                    null && "orgs"}
+                                            </>
+                                        )}
+                                    </InfoSectionContent>
+                                </InfoSection>
+                                <InfoSection>
+                                    <InfoSectionTitle className="flex items-center gap-1 text-xs">
                                         {t("billingRemoteNodes") ||
                                             "Remote Nodes"}
                                     </InfoSectionTitle>
@@ -872,7 +1031,7 @@ export default function BillingPage() {
                                                             t("billingUnlimited") ??
                                                             "∞"}{" "}
                                                         {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                            null && "remote nodes"}
+                                                            null && "nodes"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
@@ -885,7 +1044,7 @@ export default function BillingPage() {
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
                                                 {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                    null && "remote nodes"}
+                                                    null && "nodes"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -1014,6 +1173,17 @@ export default function BillingPage() {
                                                     }{" "}
                                                     {t("billingDomains") ||
                                                         "Domains"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span>
+                                                    {
+                                                        tierLimits[pendingTier.tier]
+                                                            .organizations
+                                                    }{" "}
+                                                    {t("billingOrganizations") ||
+                                                        "Organizations"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">

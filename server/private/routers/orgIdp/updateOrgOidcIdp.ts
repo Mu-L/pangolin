@@ -27,6 +27,7 @@ import config from "@server/lib/config";
 import { isSubscribed } from "#private/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import privateConfig from "#private/lib/config";
+import { build } from "@server/build";
 
 const paramsSchema = z
     .object({
@@ -127,12 +128,15 @@ export async function updateOrgOidcIdp(
 
         let { autoProvision } = parsedBody.data;
 
-        const subscribed = await isSubscribed(
-            orgId,
-            tierMatrix.deviceApprovals
-        );
-        if (!subscribed) {
-            autoProvision = false;
+        if (build == "saas") {
+            // this is not paywalled with a ee license because this whole endpoint is restricted
+            const subscribed = await isSubscribed(
+                orgId,
+                tierMatrix.deviceApprovals
+            );
+            if (!subscribed) {
+                autoProvision = false;
+            }
         }
 
         // Check if IDP exists and is of type OIDC

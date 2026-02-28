@@ -112,11 +112,13 @@ export async function getOrgSubscriptionsData(
         throw new Error(`Not found`);
     }
 
+    const billingOrgId = org[0].billingOrgId || org[0].orgId;
+
     // Get customer for org
     const customer = await db
         .select()
         .from(customers)
-        .where(eq(customers.orgId, orgId))
+        .where(eq(customers.orgId, billingOrgId))
         .limit(1);
 
     const subscriptionsWithItems: Array<{

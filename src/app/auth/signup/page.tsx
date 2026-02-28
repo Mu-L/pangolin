@@ -15,6 +15,7 @@ export default async function Page(props: {
         redirect: string | undefined;
         email: string | undefined;
         fromSmartLogin: string | undefined;
+        skipVerificationEmail: string | undefined;
     }>;
 }) {
     const searchParams = await props.searchParams;
@@ -75,6 +76,10 @@ export default async function Page(props: {
                 inviteId={inviteId}
                 emailParam={searchParams.email}
                 fromSmartLogin={searchParams.fromSmartLogin === "true"}
+                skipVerificationEmail={
+                    searchParams.skipVerificationEmail === "true" ||
+                    searchParams.skipVerificationEmail === "1"
+                }
             />
 
             <p className="text-center text-muted-foreground mt-4">

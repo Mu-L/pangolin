@@ -53,7 +53,11 @@ export const orgs = pgTable("orgs", {
         .default(0),
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
-        .default(0)
+        .default(0),
+    sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
+    sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
+    isBillingOrg: boolean("isBillingOrg"),
+    billingOrgId: varchar("billingOrgId")
 });
 
 export const orgDomains = pgTable("orgDomains", {
@@ -232,7 +236,11 @@ export const siteResources = pgTable("siteResources", {
     aliasAddress: varchar("aliasAddress"),
     tcpPortRangeString: varchar("tcpPortRangeString").notNull().default("*"),
     udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
-    disableIcmp: boolean("disableIcmp").notNull().default(false)
+    disableIcmp: boolean("disableIcmp").notNull().default(false),
+    authDaemonPort: integer("authDaemonPort").default(22123),
+    authDaemonMode: varchar("authDaemonMode", { length: 32 })
+        .$type<"site" | "remote">()
+        .default("site")
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
@@ -332,7 +340,8 @@ export const userOrgs = pgTable("userOrgs", {
         .notNull()
         .references(() => roles.roleId),
     isOwner: boolean("isOwner").notNull().default(false),
-    autoProvisioned: boolean("autoProvisioned").default(false)
+    autoProvisioned: boolean("autoProvisioned").default(false),
+    pamUsername: varchar("pamUsername") // cleaned username for ssh and such
 });
 
 export const emailVerificationCodes = pgTable("emailVerificationCodes", {
@@ -371,7 +380,11 @@ export const roles = pgTable("roles", {
     isAdmin: boolean("isAdmin"),
     name: varchar("name").notNull(),
     description: varchar("description"),
-    requireDeviceApproval: boolean("requireDeviceApproval").default(false)
+    requireDeviceApproval: boolean("requireDeviceApproval").default(false),
+    sshSudoMode: varchar("sshSudoMode", { length: 32 }).default("none"), // "none" | "full" | "commands"
+    sshSudoCommands: text("sshSudoCommands").default("[]"),
+    sshCreateHomeDir: boolean("sshCreateHomeDir").default(true),
+    sshUnixGroups: text("sshUnixGroups").default("[]")
 });
 
 export const roleActions = pgTable("roleActions", {
@@ -1081,6 +1094,16 @@ export const deviceWebAuthCodes = pgTable("deviceWebAuthCodes", {
     })
 });
 
+export const roundTripMessageTracker = pgTable("roundTripMessageTracker", {
+    messageId: serial("messageId").primaryKey(),
+    wsClientId: varchar("clientId"),
+    messageType: varchar("messageType"),
+    sentAt: bigint("sentAt", { mode: "number" }).notNull(),
+    receivedAt: bigint("receivedAt", { mode: "number" }),
+    error: text("error"),
+    complete: boolean("complete").notNull().default(false)
+});
+
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
 export type Site = InferSelectModel<typeof sites>;
@@ -1141,6 +1164,9 @@ export type SecurityKey = InferSelectModel<typeof securityKeys>;
 export type WebauthnChallenge = InferSelectModel<typeof webauthnChallenge>;
 export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
+export type RoundTripMessageTracker = InferSelectModel<
+    typeof roundTripMessageTracker
+>;
 export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
 export type RolePolicy = InferSelectModel<typeof rolePolicies>;
 export type UserPolicy = InferSelectModel<typeof userPolicies>;

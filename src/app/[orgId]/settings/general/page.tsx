@@ -3,11 +3,7 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
-import {
-    useState,
-    useTransition,
-    useActionState
-} from "react";
+import { useState, useTransition, useActionState } from "react";
 import {
     Form,
     FormControl,
@@ -54,7 +50,7 @@ export default function GeneralPage() {
     return (
         <SettingsContainer>
             <GeneralSectionForm org={org.org} />
-            {build !== "saas" && <DeleteForm org={org.org} />}
+            {!org.org.isBillingOrg && <DeleteForm org={org.org} />}
         </SettingsContainer>
     );
 }

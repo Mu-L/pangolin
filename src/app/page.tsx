@@ -73,7 +73,7 @@ export default async function Page(props: {
 
     if (!orgs.length) {
         if (!env.flags.disableUserCreateOrg || user.serverAdmin) {
-            redirect("/setup");
+            redirect("/setup?firstOrg");
         }
     }
 
@@ -86,6 +86,14 @@ export default async function Page(props: {
         targetOrgId = lastOrgCookie;
     } else {
         let ownedOrg = orgs.find((org) => org.isOwner);
+        let primaryOrg = orgs.find((org) => org.isPrimaryOrg);
+        if (!ownedOrg) {
+            if (primaryOrg) {
+                ownedOrg = primaryOrg;
+            } else {
+                ownedOrg = orgs[0];
+            }
+        }
         if (!ownedOrg) {
             ownedOrg = orgs[0];
         }

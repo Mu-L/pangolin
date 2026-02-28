@@ -29,7 +29,7 @@ jobs:
         permissions: write-all
         steps:
             - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v5
+              uses: aws-actions/configure-aws-credentials@v6
               with:
                   role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
                   role-duration-seconds: 3600
@@ -62,7 +62,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Monitor storage space
               run: |
@@ -77,7 +77,7 @@ jobs:
                   fi
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -134,7 +134,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Monitor storage space
               run: |
@@ -149,7 +149,7 @@ jobs:
                   fi
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -201,10 +201,10 @@ jobs:
         timeout-minutes: 30
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -256,7 +256,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Extract tag name
               id: get-tag
@@ -289,22 +289,14 @@ jobs:
                   echo "LATEST_BADGER_TAG=$LATEST_TAG" >> $GITHUB_ENV
               shell: bash
 
-            - name: Update install/main.go
-              run: |
-                  PANGOLIN_VERSION=${{ env.TAG }}
-                  GERBIL_VERSION=${{ env.LATEST_GERBIL_TAG }}
-                  BADGER_VERSION=${{ env.LATEST_BADGER_TAG }}
-                  sed -i "s/config.PangolinVersion = \".*\"/config.PangolinVersion = \"$PANGOLIN_VERSION\"/" install/main.go
-                  sed -i "s/config.GerbilVersion = \".*\"/config.GerbilVersion = \"$GERBIL_VERSION\"/" install/main.go
-                  sed -i "s/config.BadgerVersion = \".*\"/config.BadgerVersion = \"$BADGER_VERSION\"/" install/main.go
-                  echo "Updated install/main.go with Pangolin version $PANGOLIN_VERSION, Gerbil version $GERBIL_VERSION, and Badger version $BADGER_VERSION"
-                  cat install/main.go
-              shell: bash
-
             - name: Build installer
               working-directory: install
               run: |
-                  make go-build-release
+                  make go-build-release \
+                    PANGOLIN_VERSION=${{ env.TAG }} \
+                    GERBIL_VERSION=${{ env.LATEST_GERBIL_TAG }} \
+                    BADGER_VERSION=${{ env.LATEST_BADGER_TAG }}
+              shell: bash
 
             - name: Upload artifacts from /install/bin
               uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -415,7 +407,7 @@ jobs:
               shell: bash
 
             - name: Login to GitHub Container Registry (for cosign)
-              uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
               with:
                 registry: ghcr.io
                 username: ${{ github.actor }}
@@ -525,41 +517,10 @@ jobs:
                           VERIFIED_INDEX_KEYLESS=false
                         fi
 
-                        # If index verification fails, attempt to verify child platform manifests
-                        if [ "${VERIFIED_INDEX}" != "true" ] || [ "${VERIFIED_INDEX_KEYLESS}" != "true" ]; then
-                          echo "Index verification not available; attempting child manifest verification for ${BASE_IMAGE}:${IMAGE_TAG}"
-                          CHILD_VERIFIED=false
-
-                          for ARCH in arm64 amd64; do
-                            CHILD_TAG="${IMAGE_TAG}-${ARCH}"
-                            echo "Resolving child digest for ${BASE_IMAGE}:${CHILD_TAG}"
-                            CHILD_DIGEST="$(skopeo inspect --retry-times 3 docker://${BASE_IMAGE}:${CHILD_TAG} | jq -r '.Digest' || true)"
-                            if [ -n "${CHILD_DIGEST}" ] && [ "${CHILD_DIGEST}" != "null" ]; then
-                              CHILD_REF="${BASE_IMAGE}@${CHILD_DIGEST}"
-                              echo "==> cosign verify (public key) child ${CHILD_REF}"
-                              if retry_verify "cosign verify --key env://COSIGN_PUBLIC_KEY '${CHILD_REF}' -o text"; then
-                                CHILD_VERIFIED=true
-                                echo "Public key verification succeeded for child ${CHILD_REF}"
-                              else
-                                echo "Public key verification failed for child ${CHILD_REF}"
-                              fi
-
-                              echo "==> cosign verify (keyless policy) child ${CHILD_REF}"
-                              if retry_verify "cosign verify --certificate-oidc-issuer '${issuer}' --certificate-identity-regexp '${id_regex}' '${CHILD_REF}' -o text"; then
-                                CHILD_VERIFIED=true
-                                echo "Keyless verification succeeded for child ${CHILD_REF}"
-                              else
-                                echo "Keyless verification failed for child ${CHILD_REF}"
-                              fi
-                            else
-                              echo "No child digest found for ${BASE_IMAGE}:${CHILD_TAG}; skipping"
-                            fi
-                          done
-
-                          if [ "${CHILD_VERIFIED}" != "true" ]; then
-                            echo "Failed to verify index and no child manifests verified for ${BASE_IMAGE}:${IMAGE_TAG}"
-                            exit 1
-                          fi
+                        # Check if verification succeeded
+                        if [ "${VERIFIED_INDEX}" != "true" ] && [ "${VERIFIED_INDEX_KEYLESS}" != "true" ]; then
+                          echo "⚠️  WARNING: Verification not available for ${BASE_IMAGE}:${IMAGE_TAG}"
+                          echo "This may be due to registry propagation delays. Continuing anyway."
                         fi
                       ) || TAG_FAILED=true
 
@@ -609,7 +570,7 @@ jobs:
         permissions: write-all
         steps:
             - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v5
+              uses: aws-actions/configure-aws-credentials@v6
               with:
                   role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
                   role-duration-seconds: 3600

@@ -42,7 +42,8 @@ export function SubscriptionStatusProvider({
                 if (
                     subscription.type == "tier1" ||
                     subscription.type == "tier2" ||
-                    subscription.type == "tier3"
+                    subscription.type == "tier3" ||
+                    subscription.type == "enterprise"
                 ) {
                     return {
                         tier: subscription.type,
@@ -61,7 +62,7 @@ export function SubscriptionStatusProvider({
     const isSubscribed = () => {
         const { tier, active } = getTier();
         return (
-            (tier == "tier1" || tier == "tier2" || tier == "tier3") &&
+            (tier == "tier1" || tier == "tier2" || tier == "tier3" || tier == "enterprise") &&
             active
         );
     };

@@ -74,7 +74,9 @@ export default async function ClientResourcesPage(
                 niceId: siteResource.niceId,
                 tcpPortRangeString: siteResource.tcpPortRangeString || null,
                 udpPortRangeString: siteResource.udpPortRangeString || null,
-                disableIcmp: siteResource.disableIcmp || false
+                disableIcmp: siteResource.disableIcmp || false,
+                authDaemonMode: siteResource.authDaemonMode ?? null,
+                authDaemonPort: siteResource.authDaemonPort ?? null
             };
         }
     );

@@ -58,6 +58,18 @@ type Resource = {
     siteName?: string | null;
 };
 
+type SiteResource = {
+    siteResourceId: number;
+    name: string;
+    destination: string;
+    mode: string;
+    protocol: string | null;
+    enabled: boolean;
+    alias: string | null;
+    aliasAddress: string | null;
+    type: 'site';
+};
+
 type MemberResourcesPortalProps = {
     orgId: string;
 };
@@ -334,7 +346,9 @@ export default function MemberResourcesPortal({
     const { toast } = useToast();
 
     const [resources, setResources] = useState<Resource[]>([]);
+    const [siteResources, setSiteResources] = useState<SiteResource[]>([]);
     const [filteredResources, setFilteredResources] = useState<Resource[]>([]);
+    const [filteredSiteResources, setFilteredSiteResources] = useState<SiteResource[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -360,7 +374,9 @@ export default function MemberResourcesPortal({
 
             if (response.data.success) {
                 setResources(response.data.data.resources);
+                setSiteResources(response.data.data.siteResources || []);
                 setFilteredResources(response.data.data.resources);
+                setFilteredSiteResources(response.data.data.siteResources || []);
             } else {
                 setError("Failed to load resources");
             }
@@ -417,17 +433,61 @@ export default function MemberResourcesPortal({
 
         setFilteredResources(filtered);
 
+        // Filter and sort site resources
+        const filteredSites = siteResources.filter(
+            (resource) =>
+                resource.name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()) ||
+                resource.destination
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase())
+        );
+
+        // Sort site resources
+        filteredSites.sort((a, b) => {
+            switch (sortBy) {
+                case "name-asc":
+                    return a.name.localeCompare(b.name);
+                case "name-desc":
+                    return b.name.localeCompare(a.name);
+                case "domain-asc":
+                case "domain-desc":
+                    // Sort by destination for site resources
+                    const destCompare = sortBy === "domain-asc" 
+                        ? a.destination.localeCompare(b.destination)
+                        : b.destination.localeCompare(a.destination);
+                    return destCompare;
+                case "status-enabled":
+                    return b.enabled ? 1 : -1;
+                case "status-disabled":
+                    return a.enabled ? 1 : -1;
+                default:
+                    return a.name.localeCompare(b.name);
+            }
+        });
+
+        setFilteredSiteResources(filteredSites);
+
         // Reset to first page when search/sort changes
         setCurrentPage(1);
-    }, [resources, searchQuery, sortBy]);
+    }, [resources, siteResources, searchQuery, sortBy]);
 
     // Calculate pagination
-    const totalPages = Math.ceil(filteredResources.length / itemsPerPage);
+    const totalItems = filteredResources.length + filteredSiteResources.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedResources = filteredResources.slice(
         startIndex,
         startIndex + itemsPerPage
     );
+    const remainingSlots = itemsPerPage - paginatedResources.length;
+    const paginatedSiteResources = remainingSlots > 0 
+        ? filteredSiteResources.slice(
+            Math.max(0, startIndex - filteredResources.length),
+            Math.max(0, startIndex - filteredResources.length) + remainingSlots
+          )
+        : [];
 
     const handleOpenResource = (resource: Resource) => {
         // Open the resource in a new tab
@@ -575,7 +635,7 @@ export default function MemberResourcesPortal({
             </div>
 
             {/* Resources Content */}
-            {filteredResources.length === 0 ? (
+            {filteredResources.length === 0 && filteredSiteResources.length === 0 ? (
                 /* Enhanced Empty State */
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-20 text-center">
@@ -623,9 +683,20 @@ export default function MemberResourcesPortal({
                 </Card>
             ) : (
                 <>
-                    {/* Resources Grid */}
-                    <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 auto-cols-fr">
-                        {paginatedResources.map((resource) => (
+                    {/* Public Resources Section */}
+                    {paginatedResources.length > 0 && (
+                        <>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                    <Globe className="h-5 w-5" />
+                                    Public Resources
+                                </h3>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Web applications and services accessible via browser
+                                </p>
+                            </div>
+                            <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 auto-cols-fr mb-8">
+                                {paginatedResources.map((resource) => (
                             <Card key={resource.resourceId}>
                                 <div className="p-6">
                                     <div className="flex items-center justify-between gap-3">
@@ -702,13 +773,167 @@ export default function MemberResourcesPortal({
                             </Card>
                         ))}
                     </div>
+                        </>
+                    )}
+
+                    {/* Private Resources (Site Resources) Section */}
+                    {paginatedSiteResources.length > 0 && (
+                        <>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                    <Combine className="h-5 w-5" />
+                                    Private Resources
+                                </h3>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Internal network resources accessible via client
+                                </p>
+                            </div>
+                            <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 auto-cols-fr mb-8">
+                                {paginatedSiteResources.map((siteResource) => (
+                                    <Card key={siteResource.siteResourceId}>
+                                        <div className="p-6">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center min-w-0 flex-1 gap-3 overflow-hidden">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger className="min-w-0 max-w-full">
+                                                                <CardTitle className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                                                                    {siteResource.name}
+                                                                </CardTitle>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p className="max-w-xs break-words">
+                                                                    {siteResource.name}
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+
+                                                <div className="flex-shrink-0">
+                                                    <InfoPopup>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="text-xs font-medium mb-1.5">Resource Details</div>
+                                                            <div>
+                                                                <span className="font-medium">Mode:</span>
+                                                                <span className="ml-2 text-muted-foreground capitalize">
+                                                                    {siteResource.mode}
+                                                                </span>
+                                                            </div>
+                                                            {siteResource.protocol && (
+                                                                <div>
+                                                                    <span className="font-medium">Protocol:</span>
+                                                                    <span className="ml-2 text-muted-foreground uppercase">
+                                                                        {siteResource.protocol}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {siteResource.alias && (
+                                                                <div>
+                                                                    <span className="font-medium">Alias:</span>
+                                                                    <span className="ml-2 text-muted-foreground">
+                                                                        {siteResource.alias}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {siteResource.aliasAddress && (
+                                                                <div>
+                                                                    <span className="font-medium">Alias Address:</span>
+                                                                    <span className="ml-2 text-muted-foreground">
+                                                                        {siteResource.aliasAddress}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <span className="font-medium">Status:</span>
+                                                                <span className={`ml-2 ${siteResource.enabled ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {siteResource.enabled ? 'Enabled' : 'Disabled'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </InfoPopup>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3">
+                                                {siteResource.alias ? (
+                                                    <>
+                                                        {/* Alias as primary */}
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <div className="text-base font-semibold text-foreground text-left truncate flex-1">
+                                                                {siteResource.alias}
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-muted-foreground"
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(
+                                                                        siteResource.alias!
+                                                                    );
+                                                                    toast({
+                                                                        title: "Copied to clipboard",
+                                                                        description:
+                                                                            "Resource alias has been copied to your clipboard.",
+                                                                        duration: 2000
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <Copy className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                        {/* Destination as secondary */}
+                                                        <div className="text-xs text-muted-foreground truncate">
+                                                            {siteResource.destination}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    /* Destination as primary when no alias */
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-sm text-muted-foreground font-medium text-left truncate flex-1">
+                                                            {siteResource.destination}
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(
+                                                                    siteResource.destination
+                                                                );
+                                                                toast({
+                                                                    title: "Copied to clipboard",
+                                                                    description:
+                                                                        "Resource destination has been copied to your clipboard.",
+                                                                    duration: 2000
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Copy className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 pt-0 mt-auto">
+                                            <div className="flex items-center justify-center py-2 px-4 bg-muted/50 rounded text-sm text-muted-foreground">
+                                                <Combine className="h-3.5 w-3.5 mr-2" />
+                                                Requires Client Connection
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        </>
+                    )}
 
                     {/* Pagination Controls */}
                     <PaginationControls
                         currentPage={currentPage}
                         totalPages={totalPages}
                         onPageChange={handlePageChange}
-                        totalItems={filteredResources.length}
+                        totalItems={totalItems}
                         itemsPerPage={itemsPerPage}
                     />
                 </>

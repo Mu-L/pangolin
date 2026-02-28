@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
 import { sites } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -19,8 +19,8 @@ const updateSiteBodySchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
         niceId: z.string().min(1).max(255).optional(),
-        dockerSocketEnabled: z.boolean().optional(),
-        remoteSubnets: z.string().optional()
+        dockerSocketEnabled: z.boolean().optional()
+        // remoteSubnets: z.string().optional()
         // subdomain: z
         //     .string()
         //     .min(1)
@@ -86,18 +86,19 @@ export async function updateSite(
 
         // if niceId is provided, check if it's already in use by another site
         if (updateData.niceId) {
-            const existingSite = await db
+            const [existingSite] = await db
                 .select()
                 .from(sites)
                 .where(
                     and(
                         eq(sites.niceId, updateData.niceId),
-                        eq(sites.orgId, sites.orgId)
+                        eq(sites.orgId, sites.orgId),
+                        ne(sites.siteId, siteId)
                     )
                 )
                 .limit(1);
 
-            if (existingSite.length > 0 && existingSite[0].siteId !== siteId) {
+            if (existingSite) {
                 return next(
                     createHttpError(
                         HttpCode.CONFLICT,
@@ -107,22 +108,22 @@ export async function updateSite(
             }
         }
 
-        // if remoteSubnets is provided, ensure it's a valid comma-separated list of cidrs
-        if (updateData.remoteSubnets) {
-            const subnets = updateData.remoteSubnets
-                .split(",")
-                .map((s) => s.trim());
-            for (const subnet of subnets) {
-                if (!isValidCIDR(subnet)) {
-                    return next(
-                        createHttpError(
-                            HttpCode.BAD_REQUEST,
-                            `Invalid CIDR format: ${subnet}`
-                        )
-                    );
-                }
-            }
-        }
+        // // if remoteSubnets is provided, ensure it's a valid comma-separated list of cidrs
+        // if (updateData.remoteSubnets) {
+        //     const subnets = updateData.remoteSubnets
+        //         .split(",")
+        //         .map((s) => s.trim());
+        //     for (const subnet of subnets) {
+        //         if (!isValidCIDR(subnet)) {
+        //             return next(
+        //                 createHttpError(
+        //                     HttpCode.BAD_REQUEST,
+        //                     `Invalid CIDR format: ${subnet}`
+        //                 )
+        //             );
+        //         }
+        //     }
+        // }
 
         const updatedSite = await db
             .update(sites)

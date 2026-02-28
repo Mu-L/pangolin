@@ -80,6 +80,17 @@ export async function createOidcIdp(
             tags
         } = parsedBody.data;
 
+        if (
+            process.env.IDENTITY_PROVIDER_MODE === "org"
+        ) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Global IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'global' in the private configuration to enable this feature."
+                )
+            );
+        }
+
         const key = config.getRawConfig().server.secret!;
 
         const encryptedSecret = encrypt(clientSecret, key);

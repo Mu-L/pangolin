@@ -25,6 +25,7 @@ import * as logs from "#private/routers/auditLogs";
 import * as misc from "#private/routers/misc";
 import * as reKey from "#private/routers/re-key";
 import * as approval from "#private/routers/approvals";
+import * as ssh from "#private/routers/ssh";
 import * as resource from "#private/routers/resource";
 import * as policy from "#private/routers/policy";
 
@@ -34,6 +35,7 @@ import {
     verifyUserIsServerAdmin,
     verifySiteAccess,
     verifyClientAccess,
+    verifyLimits,
     verifyLimits
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
@@ -503,9 +505,9 @@ authenticated.get(
 
 authenticated.post(
     "/re-key/:clientId/regenerate-client-secret",
+    verifyClientAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
-    verifyClientAccess, // this is first to set the org id
     verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateClientSecret
@@ -513,9 +515,9 @@ authenticated.post(
 
 authenticated.post(
     "/re-key/:siteId/regenerate-site-secret",
+    verifySiteAccess, // this is first to set the org id
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.rotateCredentials),
-    verifySiteAccess, // this is first to set the org id
     verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateSiteSecret
@@ -529,4 +531,15 @@ authenticated.put(
     verifyLimits,
     verifyUserHasAction(ActionsEnum.reGenerateSecret),
     reKey.reGenerateExitNodeSecret
+);
+
+authenticated.post(
+    "/org/:orgId/ssh/sign-key",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.sshPam),
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.signSshKey),
+    logActionAudit(ActionsEnum.signSshKey),
+    ssh.signSshKey
 );

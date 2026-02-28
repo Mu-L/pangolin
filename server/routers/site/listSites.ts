@@ -8,7 +8,7 @@ import {
     sites,
     userSites
 } from "@server/db";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -23,7 +23,7 @@ import { fromError } from "zod-validation-error";
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
-        const cachedVersion = cache.get<string>("latestNewtVersion");
+        const cachedVersion = await cache.get<string>("latestNewtVersion");
         if (cachedVersion) {
             return cachedVersion;
         }
@@ -55,7 +55,7 @@ async function getLatestNewtVersion(): Promise<string | null> {
         tags = tags.filter((version) => !version.name.includes("rc"));
         const latestVersion = tags[0].name;
 
-        cache.set("latestNewtVersion", latestVersion);
+        await cache.set("latestNewtVersion", latestVersion);
 
         return latestVersion;
     } catch (error: any) {
@@ -88,25 +88,54 @@ const listSitesSchema = z.object({
         .positive()
         .optional()
         .catch(20)
-        .default(20),
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
         .min(0)
         .optional()
         .catch(1)
-        .default(1),
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
     query: z.string().optional(),
     sort_by: z
-        .enum(["megabytesIn", "megabytesOut"])
+        .enum(["name", "megabytesIn", "megabytesOut"])
         .optional()
-        .catch(undefined),
-    order: z.enum(["asc", "desc"]).optional().default("asc").catch("asc"),
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["name", "megabytesIn", "megabytesOut"],
+            description: "Field to sort by"
+        }),
+    order: z
+        .enum(["asc", "desc"])
+        .optional()
+        .default("asc")
+        .catch("asc")
+        .openapi({
+            type: "string",
+            enum: ["asc", "desc"],
+            default: "asc",
+            description: "Sort order"
+        }),
     online: z
         .enum(["true", "false"])
         .transform((v) => v === "true")
         .optional()
         .catch(undefined)
+        .openapi({
+            type: "boolean",
+            description: "Filter by online status"
+        })
 });
 
 function querySitesBase() {

@@ -6,7 +6,7 @@ import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { getUniqueSiteName } from "../../db/names";
 import { addPeer } from "../gerbil/peers";
 import { fromError } from "zod-validation-error";
@@ -288,7 +288,6 @@ export async function createSite(
         const niceId = await getUniqueSiteName(orgId);
 
         let newSite: Site | undefined;
-        let numSites: Site[] | undefined;
         await db.transaction(async (trx) => {
             if (type == "newt") {
                 [newSite] = await trx
@@ -443,19 +442,8 @@ export async function createSite(
                 });
             }
 
-            numSites = await trx
-                .select()
-                .from(sites)
-                .where(eq(sites.orgId, orgId));
+            await usageService.add(orgId, FeatureId.SITES, 1, trx);
         });
-
-        if (numSites) {
-            await usageService.updateCount(
-                orgId,
-                FeatureId.SITES,
-                numSites.length
-            );
-        }
 
         if (!newSite) {
             return next(

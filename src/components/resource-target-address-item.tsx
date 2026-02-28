@@ -20,6 +20,7 @@ import {
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "./ui/select";
+import { useEffect } from "react";
 
 type SiteWithUpdateAvailable = ListSitesResponse["sites"][number];
 

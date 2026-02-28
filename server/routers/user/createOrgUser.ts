@@ -6,8 +6,8 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { db, UserOrg } from "@server/db";
-import { and, eq } from "drizzle-orm";
+import { db, orgs, UserOrg } from "@server/db";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { idp, idpOidcConfig, roles, userOrgs, users } from "@server/db";
 import { generateId } from "@server/auth/sessions/app";
 import { usageService } from "@server/lib/billing/usageService";
@@ -16,6 +16,7 @@ import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { assignUserToOrg } from "@server/lib/userOrg";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -151,6 +152,21 @@ export async function createOrgUser(
                 );
             }
 
+            const [org] = await db
+                .select()
+                .from(orgs)
+                .where(eq(orgs.orgId, orgId))
+                .limit(1);
+
+            if (!org) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "Organization not found"
+                    )
+                );
+            }
+
             const [idpRes] = await db
                 .select()
                 .from(idp)
@@ -171,8 +187,6 @@ export async function createOrgUser(
                     )
                 );
             }
-
-            let orgUsers: UserOrg[] | undefined;
 
             await db.transaction(async (trx) => {
                 const [existingUser] = await trx
@@ -207,15 +221,12 @@ export async function createOrgUser(
                         );
                     }
 
-                    await trx
-                        .insert(userOrgs)
-                        .values({
-                            orgId,
-                            userId: existingUser.userId,
-                            roleId: role.roleId,
-                            autoProvisioned: false
-                        })
-                        .returning();
+                    await assignUserToOrg(org, {
+                        orgId,
+                        userId: existingUser.userId,
+                        roleId: role.roleId,
+                        autoProvisioned: false
+                    }, trx);
                 } else {
                     userId = generateId(15);
 
@@ -233,33 +244,16 @@ export async function createOrgUser(
                         })
                         .returning();
 
-                    await trx
-                        .insert(userOrgs)
-                        .values({
+                        await assignUserToOrg(org, {
                             orgId,
                             userId: newUser.userId,
                             roleId: role.roleId,
                             autoProvisioned: false
-                        })
-                        .returning();
+                        }, trx);
                 }
-
-                // List all of the users in the org
-                orgUsers = await trx
-                    .select()
-                    .from(userOrgs)
-                    .where(eq(userOrgs.orgId, orgId));
 
                 await calculateUserClientsForOrgs(userId, trx);
             });
-
-            if (orgUsers) {
-                await usageService.updateCount(
-                    orgId,
-                    FeatureId.USERS,
-                    orgUsers.length
-                );
-            }
         } else {
             return next(
                 createHttpError(HttpCode.BAD_REQUEST, "User type is required")

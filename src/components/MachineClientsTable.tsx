@@ -204,7 +204,26 @@ export default function MachineClientsTable({
                 accessorKey: "name",
                 enableHiding: false,
                 friendlyName: t("name"),
-                header: () => <span className="px-3">{t("name")}</span>,
+                header: () => {
+                    const nameOrder = getSortDirection("name", searchParams);
+                    const Icon =
+                        nameOrder === "asc"
+                            ? ArrowDown01Icon
+                            : nameOrder === "desc"
+                              ? ArrowUp10Icon
+                              : ChevronsUpDownIcon;
+
+                    return (
+                        <Button
+                            variant="ghost"
+                            onClick={() => toggleSort("name")}
+                            className="px-3"
+                        >
+                            {t("name")}
+                            <Icon className="ml-2 h-4 w-4" />
+                        </Button>
+                    );
+                },
                 cell: ({ row }) => {
                     const r = row.original;
                     return (

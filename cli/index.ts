@@ -8,6 +8,7 @@ import { clearExitNodes } from "./commands/clearExitNodes";
 import { rotateServerSecret } from "./commands/rotateServerSecret";
 import { clearLicenseKeys } from "./commands/clearLicenseKeys";
 import { deleteClient } from "./commands/deleteClient";
+import { generateOrgCaKeys } from "./commands/generateOrgCaKeys";
 
 yargs(hideBin(process.argv))
     .scriptName("pangctl")
@@ -17,5 +18,6 @@ yargs(hideBin(process.argv))
     .command(rotateServerSecret)
     .command(clearLicenseKeys)
     .command(deleteClient)
+    .command(generateOrgCaKeys)
     .demandCommand()
     .help().argv;

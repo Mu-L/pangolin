@@ -2,7 +2,7 @@ import { MessageHandler } from "@server/routers/ws";
 import logger from "@server/logger";
 import { Newt } from "@server/db";
 import { applyNewtDockerBlueprint } from "@server/lib/blueprints/applyNewtDockerBlueprint";
-import cache from "@server/lib/cache";
+import cache from "#dynamic/lib/cache";
 
 export const handleDockerStatusMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -24,8 +24,8 @@ export const handleDockerStatusMessage: MessageHandler = async (context) => {
 
     if (available) {
         logger.info(`Newt ${newt.newtId} has Docker socket access`);
-        cache.set(`${newt.newtId}:socketPath`, socketPath, 0);
-        cache.set(`${newt.newtId}:isAvailable`, available, 0);
+        await cache.set(`${newt.newtId}:socketPath`, socketPath, 0);
+        await cache.set(`${newt.newtId}:isAvailable`, available, 0);
     } else {
         logger.warn(`Newt ${newt.newtId} does not have Docker socket access`);
     }
@@ -54,7 +54,7 @@ export const handleDockerContainersMessage: MessageHandler = async (
     );
 
     if (containers && containers.length > 0) {
-        cache.set(`${newt.newtId}:dockerContainers`, containers, 0);
+        await cache.set(`${newt.newtId}:dockerContainers`, containers, 0);
     } else {
         logger.warn(`Newt ${newt.newtId} does not have Docker containers`);
     }
