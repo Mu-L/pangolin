@@ -275,12 +275,11 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
         <SettingsContainer>
             {/* Name */}
             {!hidePolicyNameForm && <PolicyNameSection />}
-            {/* <PolicyUsersRolesSection
-                       
-                        allRoles={allRoles}
-                        allUsers={allUsers}
-                        allIdps={allIdps}
-                    /> */}
+            <PolicyUsersRolesSection
+                allRoles={allRoles}
+                allUsers={allUsers}
+                allIdps={allIdps}
+            />
             {/* 
                     <PolicyAuthMethodsSection form={form} />
                     <PolicyOtpEmailSection
@@ -413,19 +412,35 @@ export function PolicyNameSection() {
 // ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
 
 type PolicyUsersRolesSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
     allRoles: { id: string; text: string }[];
     allUsers: { id: string; text: string }[];
     allIdps: { id: number; text: string }[];
 };
 
 export function PolicyUsersRolesSection({
-    form,
     allRoles,
     allUsers,
     allIdps
 }: PolicyUsersRolesSectionProps) {
     const t = useTranslations();
+
+    const { policy } = useResourcePolicyContext();
+
+    const form = useForm({
+        resolver: zodResolver(
+            createPolicySchema.pick({
+                sso: true,
+                skipToIdpId: true,
+                users: true,
+                roles: true
+            })
+        ),
+        defaultValues: {
+            sso: policy.sso,
+            skipToIdpId: policy.idpId
+        }
+    });
+
     const ssoEnabled = useWatch({ control: form.control, name: "sso" });
     const selectedIdpId = useWatch({
         control: form.control,

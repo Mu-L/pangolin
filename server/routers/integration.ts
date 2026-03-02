@@ -30,7 +30,8 @@ import {
     verifyApiKeySetResourceClients,
     verifyLimits,
     verifyApiKeyDomainAccess,
-    verifyApiKeyResourcePolicyAccess
+    verifyApiKeyResourcePolicyAccess,
+    verifyUserHasAction
 } from "@server/middlewares";
 import HttpCode from "@server/types/HttpCode";
 import { Router } from "express";
@@ -617,6 +618,18 @@ authenticated.post(
     verifyApiKeyHasAction(ActionsEnum.setResourceUsers),
     logActionAudit(ActionsEnum.setResourceUsers),
     resource.setResourceUsers
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/access-control",
+    verifyApiKeyResourcePolicyAccess,
+    verifyApiKeyRoleAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
+    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
+    logActionAudit(ActionsEnum.setResourcePolicyUsers),
+    logActionAudit(ActionsEnum.setResourcePolicyRoles),
+    policy.setResourcePolicyAccessControl
 );
 
 authenticated.post(

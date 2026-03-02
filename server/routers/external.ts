@@ -700,6 +700,14 @@ authenticated.get(
     resource.listResourcePolicyRoles
 );
 
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/access-control",
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
+    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
+    policy.setResourcePolicyAccessControl
+);
+
 authenticated.get(
     "/resource-policy/:resourcePolicyId/users",
     verifyResourcePolicyAccess,

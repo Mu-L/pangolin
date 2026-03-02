@@ -49,7 +49,7 @@ registry.registerPath({
     responses: {}
 });
 
-export async function setResourceUsers(
+export async function setResourcePolicyAccessControl(
     req: Request,
     res: Response,
     next: NextFunction
