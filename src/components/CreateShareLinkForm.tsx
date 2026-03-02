@@ -20,7 +20,7 @@ import {
 import { toast } from "@app/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosResponse } from "axios";
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import CopyTextBox from "@app/components/CopyTextBox";
@@ -39,7 +39,8 @@ import { formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { ListResourcesResponse } from "@server/routers/resource";
+import { useQuery } from "@tanstack/react-query";
+import { orgQueries } from "@app/lib/queries";
 import {
     Popover,
     PopoverContent,
@@ -94,14 +95,22 @@ export default function CreateShareLinkForm({
     const [isOpen, setIsOpen] = useState(false);
     const t = useTranslations();
 
-    const [resources, setResources] = useState<
-        {
-            resourceId: number;
-            name: string;
-            niceId: string;
-            resourceUrl: string;
-        }[]
-    >([]);
+    const { data: allResources = [] } = useQuery(
+        orgQueries.resources({ orgId: org?.org.orgId ?? "" })
+    );
+
+    const resources = useMemo(
+        () =>
+            allResources
+                .filter((r) => r.http)
+                .map((r) => ({
+                    resourceId: r.resourceId,
+                    name: r.name,
+                    niceId: r.niceId,
+                    resourceUrl: `${r.ssl ? "https://" : "http://"}${toUnicode(r.fullDomain || "")}/`
+                })),
+        [allResources]
+    );
 
     const formSchema = z.object({
         resourceId: z.number({ message: t("shareErrorSelectResource") }),
@@ -129,47 +138,6 @@ export default function CreateShareLinkForm({
             title: ""
         }
     });
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        async function fetchResources() {
-            const res = await api
-                .get<
-                    AxiosResponse<ListResourcesResponse>
-                >(`/org/${org?.org.orgId}/resources`)
-                .catch((e) => {
-                    console.error(e);
-                    toast({
-                        variant: "destructive",
-                        title: t("shareErrorFetchResource"),
-                        description: formatAxiosError(
-                            e,
-                            t("shareErrorFetchResourceDescription")
-                        )
-                    });
-                });
-
-            if (res?.status === 200) {
-                setResources(
-                    res.data.data.resources
-                        .filter((r) => {
-                            return r.http;
-                        })
-                        .map((r) => ({
-                            resourceId: r.resourceId,
-                            name: r.name,
-                            niceId: r.niceId,
-                            resourceUrl: `${r.ssl ? "https://" : "http://"}${toUnicode(r.fullDomain || "")}/`
-                        }))
-                );
-            }
-        }
-
-        fetchResources();
-    }, [open]);
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setLoading(true);

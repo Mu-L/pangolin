@@ -193,7 +193,7 @@ export async function listAllSiteResourcesByOrg(
         const baseQuery = querySiteResourcesBase().where(and(...conditions));
 
         const countQuery = db.$count(
-            querySiteResourcesBase().where(and(...conditions))
+            querySiteResourcesBase().where(and(...conditions)).as("filtered_site_resources")
         );
 
         const [siteResourcesList, totalCount] = await Promise.all([

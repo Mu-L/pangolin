@@ -89,7 +89,14 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { use, useActionState, useCallback, useEffect, useMemo, useState } from "react";
+import {
+    use,
+    useActionState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
+} from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -184,29 +191,35 @@ function ProxyResourceTargetsForm({
         setDockerStates((prev) => new Map(prev.set(siteId, dockerState)));
     };
 
-    const refreshContainersForSite = useCallback(async (siteId: number) => {
-        const dockerManager = new DockerManager(api, siteId);
-        const containers = await dockerManager.fetchContainers();
+    const refreshContainersForSite = useCallback(
+        async (siteId: number) => {
+            const dockerManager = new DockerManager(api, siteId);
+            const containers = await dockerManager.fetchContainers();
 
-        setDockerStates((prev) => {
-            const newMap = new Map(prev);
-            const existingState = newMap.get(siteId);
-            if (existingState) {
-                newMap.set(siteId, { ...existingState, containers });
-            }
-            return newMap;
-        });
-    }, [api]);
+            setDockerStates((prev) => {
+                const newMap = new Map(prev);
+                const existingState = newMap.get(siteId);
+                if (existingState) {
+                    newMap.set(siteId, { ...existingState, containers });
+                }
+                return newMap;
+            });
+        },
+        [api]
+    );
 
-    const getDockerStateForSite = useCallback((siteId: number): DockerState => {
-        return (
-            dockerStates.get(siteId) || {
-                isEnabled: false,
-                isAvailable: false,
-                containers: []
-            }
-        );
-    }, [dockerStates]);
+    const getDockerStateForSite = useCallback(
+        (siteId: number): DockerState => {
+            return (
+                dockerStates.get(siteId) || {
+                    isEnabled: false,
+                    isAvailable: false,
+                    containers: []
+                }
+            );
+        },
+        [dockerStates]
+    );
 
     const [isAdvancedMode, setIsAdvancedMode] = useState(() => {
         if (typeof window !== "undefined") {
@@ -220,7 +233,9 @@ function ProxyResourceTargetsForm({
 
     const removeTarget = useCallback((targetId: number) => {
         setTargets((prevTargets) => {
-            const targetToRemove = prevTargets.find((target) => target.targetId === targetId);
+            const targetToRemove = prevTargets.find(
+                (target) => target.targetId === targetId
+            );
             if (targetToRemove && !targetToRemove.new) {
                 setTargetsToRemove((prev) => [...prev, targetId]);
             }
@@ -228,21 +243,24 @@ function ProxyResourceTargetsForm({
         });
     }, []);
 
-    const updateTarget = useCallback((targetId: number, data: Partial<LocalTarget>) => {
-        setTargets((prevTargets) => {
-            const site = sites.find((site) => site.siteId === data.siteId);
-            return prevTargets.map((target) =>
-                target.targetId === targetId
-                    ? {
-                          ...target,
-                          ...data,
-                          updated: true,
-                          siteType: site ? site.type : target.siteType
-                      }
-                    : target
-            );
-        });
-    }, [sites]);
+    const updateTarget = useCallback(
+        (targetId: number, data: Partial<LocalTarget>) => {
+            setTargets((prevTargets) => {
+                const site = sites.find((site) => site.siteId === data.siteId);
+                return prevTargets.map((target) =>
+                    target.targetId === targetId
+                        ? {
+                              ...target,
+                              ...data,
+                              updated: true,
+                              siteType: site ? site.type : target.siteType
+                          }
+                        : target
+                );
+            });
+        },
+        [sites]
+    );
 
     const openHealthCheckDialog = useCallback((target: LocalTarget) => {
         setSelectedTargetForHealthCheck(target);
@@ -250,7 +268,6 @@ function ProxyResourceTargetsForm({
     }, []);
 
     const columns = useMemo((): ColumnDef<LocalTarget>[] => {
-
         const priorityColumn: ColumnDef<LocalTarget> = {
             id: "priority",
             header: () => (
@@ -581,7 +598,17 @@ function ProxyResourceTargetsForm({
                 actionsColumn
             ];
         }
-    }, [isAdvancedMode, isHttp, sites, updateTarget, getDockerStateForSite, refreshContainersForSite, openHealthCheckDialog, removeTarget, t]);
+    }, [
+        isAdvancedMode,
+        isHttp,
+        sites,
+        updateTarget,
+        getDockerStateForSite,
+        refreshContainersForSite,
+        openHealthCheckDialog,
+        removeTarget,
+        t
+    ]);
 
     function addNewTarget() {
         const isHttp = resource.http;
