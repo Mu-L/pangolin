@@ -60,7 +60,8 @@ export async function setResourceUsers(
 
         const { userIds } = parsedBody.data;
 
-        const parsedParams = setUserResourcesParamsSchema.safeParse(req.params);
+        const parsedParams =
+            setResourcePolicyAccessControlParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -70,7 +71,7 @@ export async function setResourceUsers(
             );
         }
 
-        const { resourceId } = parsedParams.data;
+        const { resourcePolicyId } = parsedParams.data;
 
         await db.transaction(async (trx) => {
             await trx
@@ -85,14 +86,13 @@ export async function setResourceUsers(
                         .returning()
                 )
             );
-
-            return response(res, {
-                data: {},
-                success: true,
-                error: false,
-                message: "Users set for resource successfully",
-                status: HttpCode.CREATED
-            });
+        });
+        return response(res, {
+            data: {},
+            success: true,
+            error: false,
+            message: "Users set for resource successfully",
+            status: HttpCode.CREATED
         });
     } catch (error) {
         logger.error(error);

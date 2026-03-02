@@ -276,11 +276,12 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
             {/* Name */}
             {!hidePolicyNameForm && <PolicyNameSection />}
             {/* <PolicyUsersRolesSection
-                        form={form}
+                       
                         allRoles={allRoles}
                         allUsers={allUsers}
                         allIdps={allIdps}
-                    />
+                    /> */}
+            {/* 
                     <PolicyAuthMethodsSection form={form} />
                     <PolicyOtpEmailSection
                         form={form}
