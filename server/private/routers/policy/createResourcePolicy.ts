@@ -27,7 +27,7 @@ const createResourcePolicyParamsSchema = z.strictObject({
 const createResourcePolicyBodySchema = z.strictObject({
     name: z.string().min(1).max(255),
     sso: z.boolean(),
-    skipToIdpId: z.string().optional(),
+    skipToIdpId: z.int().positive().optional(),
     roleIds: z
         .array(z.string().transform(Number).pipe(z.int().positive()))
         .optional()
@@ -150,7 +150,9 @@ export async function createResourcePolicy(
             .select()
             .from(users)
             .innerJoin(userOrgs, eq(userOrgs.userId, users.userId))
-            .where(and(inArray(users.userId, userIds)));
+            .where(
+                and(eq(userOrgs.orgId, orgId), inArray(users.userId, userIds))
+            );
 
         const niceId = await getUniqueResourcePolicyName(orgId);
 
