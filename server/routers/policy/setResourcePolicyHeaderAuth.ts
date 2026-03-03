@@ -15,9 +15,13 @@ const setResourcePolicyHeaderAuthParamsSchema = z.object({
 });
 
 const setResourcePolicyHeaderAuthBodySchema = z.strictObject({
-    user: z.string().min(4).max(100).nullable(),
-    password: z.string().min(4).max(100).nullable(),
-    extendedCompatibility: z.boolean().nullable()
+    headerAuth: z
+        .object({
+            user: z.string().min(4).max(100),
+            password: z.string().min(4).max(100),
+            extendedCompatibility: z.boolean()
+        })
+        .nullable()
 });
 
 registry.registerPath({
@@ -70,7 +74,7 @@ export async function setResourcePolicyHeaderAuth(
         }
 
         const { resourcePolicyId } = parsedParams.data;
-        const { user, password, extendedCompatibility } = parsedBody.data;
+        const { headerAuth } = parsedBody.data;
 
         await db.transaction(async (trx) => {
             await trx
@@ -82,15 +86,17 @@ export async function setResourcePolicyHeaderAuth(
                     )
                 );
 
-            if (user && password && extendedCompatibility !== null) {
+            if (headerAuth !== null) {
                 const headerAuthHash = await hashPassword(
-                    Buffer.from(`${user}:${password}`).toString("base64")
+                    Buffer.from(
+                        `${headerAuth.user}:${headerAuth.password}`
+                    ).toString("base64")
                 );
 
                 await trx.insert(resourcePolicyHeaderAuth).values({
                     resourcePolicyId,
                     headerAuthHash,
-                    extendedCompatibility: extendedCompatibility
+                    extendedCompatibility: headerAuth.extendedCompatibility
                 });
             }
         });

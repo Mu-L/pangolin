@@ -93,11 +93,21 @@ export function EditPolicyAuthMethodsSectionForm() {
     const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
     const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
 
-    const hasPassword = Boolean(form.watch("password") ?? policy.passwordId);
-    const hasPincode = Boolean(form.watch("pincode") ?? policy.pincodeId);
-    const hasHeaderAuth = Boolean(
-        form.watch("headerAuth") ?? policy.headerAuth
-    );
+    const password = form.watch("password");
+    const pincode = form.watch("pincode");
+    const headerAuth = form.watch("headerAuth");
+
+    // If explicitly removed (set to `null`) it means the value has been removed
+    // in the other case (`undefined` or object value), check if the value has been modified
+    // and fallback to the policy default value
+    const hasPassword =
+        password !== null ? Boolean(password ?? policy.passwordId) : false;
+
+    const hasPincode =
+        pincode !== null ? Boolean(pincode ?? policy.pincodeId) : false;
+
+    const hasHeaderAuth =
+        headerAuth !== null ? Boolean(headerAuth ?? policy.headerAuth) : false;
 
     const [isExpanded, setIsExpanded] = useState(
         hasPassword || hasPincode || hasHeaderAuth
@@ -128,28 +138,78 @@ export function EditPolicyAuthMethodsSectionForm() {
         const payload = form.getValues();
         console.log({ payload, policy });
 
-        return;
+        const responseArray: Array<Promise<AxiosResponse<{}> | void>> = [];
+
+        if (typeof payload.password !== "undefined") {
+            responseArray.push(
+                api
+                    .put<AxiosResponse<{}>>(
+                        `/resource-policy/${policy.resourcePolicyId}/password`,
+                        {
+                            password: payload.password?.password ?? null
+                        }
+                    )
+                    .catch((e) => {
+                        toast({
+                            variant: "destructive",
+                            title: t("policyErrorUpdate"),
+                            description: formatAxiosError(
+                                e,
+                                t("policyErrorUpdateDescription")
+                            )
+                        });
+                    })
+            );
+        }
+
+        if (typeof payload.pincode !== "undefined") {
+            responseArray.push(
+                api
+                    .put<AxiosResponse<{}>>(
+                        `/resource-policy/${policy.resourcePolicyId}/pincode`,
+                        {
+                            pincode: payload.pincode?.pincode ?? null
+                        }
+                    )
+                    .catch((e) => {
+                        toast({
+                            variant: "destructive",
+                            title: t("policyErrorUpdate"),
+                            description: formatAxiosError(
+                                e,
+                                t("policyErrorUpdateDescription")
+                            )
+                        });
+                    })
+            );
+        }
+
+        if (typeof payload.headerAuth !== "undefined") {
+            responseArray.push(
+                api
+                    .put<AxiosResponse<{}>>(
+                        `/resource-policy/${policy.resourcePolicyId}/header-auth`,
+                        {
+                            headerAuth: payload.headerAuth
+                        }
+                    )
+                    .catch((e) => {
+                        toast({
+                            variant: "destructive",
+                            title: t("policyErrorUpdate"),
+                            description: formatAxiosError(
+                                e,
+                                t("policyErrorUpdateDescription")
+                            )
+                        });
+                    })
+            );
+        }
 
         try {
-            const res = await api
-                .put<AxiosResponse<{}>>(
-                    `/resource-policy/${policy.resourcePolicyId}/password`,
-                    {
-                        password: payload.password?.password ?? null
-                    }
-                )
-                .catch((e) => {
-                    toast({
-                        variant: "destructive",
-                        title: t("policyErrorUpdate"),
-                        description: formatAxiosError(
-                            e,
-                            t("policyErrorUpdateDescription")
-                        )
-                    });
-                });
+            const responseList = await Promise.all(responseArray);
 
-            if (res && res.status === 200) {
+            if (responseList.every((res) => res && res.status === 200)) {
                 toast({
                     title: t("success"),
                     description: t("policyUpdatedSuccess")
