@@ -2,6 +2,9 @@ import {
     db,
     idp,
     resourcePolicies,
+    resourcePolicyHeaderAuth,
+    resourcePolicyPassword,
+    resourcePolicyPincode,
     rolePolicies,
     roles,
     userPolicies,
@@ -42,8 +45,43 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
     }
 
     const [res] = await db
-        .select()
+        .select({
+            resourcePolicyId: resourcePolicies.resourcePolicyId,
+            sso: resourcePolicies.sso,
+            emailWhitelistEnabled: resourcePolicies.emailWhitelistEnabled,
+            idpId: resourcePolicies.idpId,
+            niceId: resourcePolicies.niceId,
+            name: resourcePolicies.name,
+            passwordId: resourcePolicyPassword.passwordId,
+            pincodeId: resourcePolicyPincode.pincodeId,
+            headerAuth: {
+                id: resourcePolicyHeaderAuth.headerAuthId,
+                extendedCompability:
+                    resourcePolicyHeaderAuth.extendedCompatibility
+            }
+        })
         .from(resourcePolicies)
+        .leftJoin(
+            resourcePolicyPassword,
+            eq(
+                resourcePolicyPassword.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            resourcePolicyPincode,
+            eq(
+                resourcePolicyPincode.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            resourcePolicyHeaderAuth,
+            eq(
+                resourcePolicyHeaderAuth.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
         .where(and(...conditions))
         .limit(1);
 
