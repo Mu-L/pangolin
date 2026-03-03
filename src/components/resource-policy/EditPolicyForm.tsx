@@ -281,8 +281,8 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
                 allUsers={allUsers}
                 allIdps={allIdps}
             />
+            <PolicyAuthMethodsSection />
             {/* 
-                    <PolicyAuthMethodsSection form={form} />
                     <PolicyOtpEmailSection
                         form={form}
                         emailEnabled={env.email.emailEnabled}
@@ -428,8 +428,6 @@ export function PolicyUsersRolesSection({
     const { policy } = useResourcePolicyContext();
 
     const api = createApiClient(useEnvContext());
-
-    console.log({ policy });
 
     const form = useForm({
         resolver: zodResolver(
@@ -736,15 +734,24 @@ const setHeaderAuthSchema = z.object({
     extendedCompatibility: z.boolean()
 });
 
-type PolicyAuthMethodsSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
-};
+export function PolicyAuthMethodsSection() {
+    const { policy } = useResourcePolicyContext();
 
-export function PolicyAuthMethodsSection({
-    form
-}: PolicyAuthMethodsSectionProps) {
+    const api = createApiClient(useEnvContext());
+
+    const form = useForm({
+        resolver: zodResolver(
+            createPolicySchema.pick({
+                password: true,
+                pincode: true,
+                headerAuth: true
+            })
+        ),
+        defaultValues: {}
+    });
+
     const t = useTranslations();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
     const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
     const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
@@ -768,7 +775,18 @@ export function PolicyAuthMethodsSection({
         defaultValues: { user: "", password: "", extendedCompatibility: true }
     });
 
-    if (!isOpen) {
+    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+
+    async function onSubmit() {
+        const isValid = await form.trigger();
+
+        if (!isValid) return;
+
+        const payload = form.getValues();
+        console.log({ payload });
+    }
+
+    if (!isExpanded) {
         return (
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -783,7 +801,7 @@ export function PolicyAuthMethodsSection({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsExpanded(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         {t("resourcePolicyAuthMethodAdd")}
@@ -1050,110 +1068,142 @@ export function PolicyAuthMethodsSection({
                 </CredenzaContent>
             </Credenza>
 
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>
-                        {t("resourceAuthMethods")}
-                    </SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        {t("resourcePolicyAuthMethodsDescription")}
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
-                <SettingsSectionBody>
-                    <SettingsSectionForm>
-                        {/* Password row */}
-                        <div className="flex items-center justify-between border rounded-md p-2 mb-4">
-                            <div
-                                className={`flex items-center ${password ? "text-green-500" : ""} text-sm space-x-2`}
-                            >
-                                <Key size="14" />
-                                <span>
-                                    {t("resourcePasswordProtection", {
-                                        status: password
-                                            ? t("enabled")
-                                            : t("disabled")
-                                    })}
-                                </span>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={
-                                    password
-                                        ? () => form.setValue("password", null)
-                                        : () => setIsSetPasswordOpen(true)
-                                }
-                            >
-                                {password
-                                    ? t("passwordRemove")
-                                    : t("passwordAdd")}
-                            </Button>
-                        </div>
+            <Form {...form}>
+                <form action={() => {}}>
+                    <SettingsSection>
+                        <SettingsSectionHeader>
+                            <SettingsSectionTitle>
+                                {t("resourceAuthMethods")}
+                            </SettingsSectionTitle>
+                            <SettingsSectionDescription>
+                                {t("resourcePolicyAuthMethodsDescription")}
+                            </SettingsSectionDescription>
+                        </SettingsSectionHeader>
+                        <SettingsSectionBody>
+                            <SettingsSectionForm>
+                                {/* Password row */}
+                                <div className="flex items-center justify-between border rounded-md p-2 mb-4">
+                                    <div
+                                        className={`flex items-center ${password ? "text-green-500" : ""} text-sm space-x-2`}
+                                    >
+                                        <Key size="14" />
+                                        <span>
+                                            {t("resourcePasswordProtection", {
+                                                status: password
+                                                    ? t("enabled")
+                                                    : t("disabled")
+                                            })}
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={
+                                            password
+                                                ? () =>
+                                                      form.setValue(
+                                                          "password",
+                                                          null
+                                                      )
+                                                : () =>
+                                                      setIsSetPasswordOpen(true)
+                                        }
+                                    >
+                                        {password
+                                            ? t("passwordRemove")
+                                            : t("passwordAdd")}
+                                    </Button>
+                                </div>
 
-                        {/* Pincode row */}
-                        <div className="flex items-center justify-between border rounded-md p-2">
-                            <div
-                                className={`flex items-center ${pincode ? "text-green-500" : ""} space-x-2 text-sm`}
-                            >
-                                <Binary size="14" />
-                                <span>
-                                    {t("resourcePincodeProtection", {
-                                        status: pincode
-                                            ? t("enabled")
-                                            : t("disabled")
-                                    })}
-                                </span>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={
-                                    pincode
-                                        ? () => form.setValue("pincode", null)
-                                        : () => setIsSetPincodeOpen(true)
-                                }
-                            >
-                                {pincode ? t("pincodeRemove") : t("pincodeAdd")}
-                            </Button>
-                        </div>
+                                {/* Pincode row */}
+                                <div className="flex items-center justify-between border rounded-md p-2">
+                                    <div
+                                        className={`flex items-center ${pincode ? "text-green-500" : ""} space-x-2 text-sm`}
+                                    >
+                                        <Binary size="14" />
+                                        <span>
+                                            {t("resourcePincodeProtection", {
+                                                status: pincode
+                                                    ? t("enabled")
+                                                    : t("disabled")
+                                            })}
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={
+                                            pincode
+                                                ? () =>
+                                                      form.setValue(
+                                                          "pincode",
+                                                          null
+                                                      )
+                                                : () =>
+                                                      setIsSetPincodeOpen(true)
+                                        }
+                                    >
+                                        {pincode
+                                            ? t("pincodeRemove")
+                                            : t("pincodeAdd")}
+                                    </Button>
+                                </div>
 
-                        {/* Header auth row */}
-                        <div className="flex items-center justify-between border rounded-md p-2">
-                            <div
-                                className={`flex items-center ${headerAuth ? "text-green-500" : ""} space-x-2 text-sm`}
-                            >
-                                <Bot size="14" />
-                                <span>
-                                    {headerAuth
-                                        ? t(
-                                              "resourceHeaderAuthProtectionEnabled"
-                                          )
-                                        : t(
-                                              "resourceHeaderAuthProtectionDisabled"
-                                          )}
-                                </span>
-                            </div>
+                                {/* Header auth row */}
+                                <div className="flex items-center justify-between border rounded-md p-2">
+                                    <div
+                                        className={`flex items-center ${headerAuth ? "text-green-500" : ""} space-x-2 text-sm`}
+                                    >
+                                        <Bot size="14" />
+                                        <span>
+                                            {headerAuth
+                                                ? t(
+                                                      "resourceHeaderAuthProtectionEnabled"
+                                                  )
+                                                : t(
+                                                      "resourceHeaderAuthProtectionDisabled"
+                                                  )}
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={
+                                            headerAuth
+                                                ? () =>
+                                                      form.setValue(
+                                                          "headerAuth",
+                                                          null
+                                                      )
+                                                : () =>
+                                                      setIsSetHeaderAuthOpen(
+                                                          true
+                                                      )
+                                        }
+                                    >
+                                        {headerAuth
+                                            ? t("headerAuthRemove")
+                                            : t("headerAuthAdd")}
+                                    </Button>
+                                </div>
+                            </SettingsSectionForm>
+                        </SettingsSectionBody>
+
+                        <div className="flex py-6 justify-end">
                             <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={
-                                    headerAuth
-                                        ? () =>
-                                              form.setValue("headerAuth", null)
-                                        : () => setIsSetHeaderAuthOpen(true)
-                                }
+                                type="submit"
+                                loading={isSubmitting}
+                                disabled={isSubmitting}
                             >
-                                {headerAuth
-                                    ? t("headerAuthRemove")
-                                    : t("headerAuthAdd")}
+                                {t("saveSettings")}
                             </Button>
                         </div>
-                    </SettingsSectionForm>
-                </SettingsSectionBody>
-            </SettingsSection>
+                    </SettingsSection>
+                </form>
+            </Form>
         </>
     );
 }
@@ -1170,13 +1220,13 @@ export function PolicyOtpEmailSection({
     emailEnabled
 }: PolicyOtpEmailSectionProps) {
     const t = useTranslations();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [whitelistEnabled, setWhitelistEnabled] = useState(false);
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
 
-    if (!isOpen) {
+    if (!isExpanded) {
         return (
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -1191,7 +1241,7 @@ export function PolicyOtpEmailSection({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsExpanded(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         {t("resourcePolicyOtpEmailAdd")}
@@ -1332,7 +1382,7 @@ export function PolicyRulesSection({
     isMaxmindAsnAvailable
 }: PolicyRulesSectionProps) {
     const t = useTranslations();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [rules, setRules] = useState<LocalRule[]>([]);
     const [rulesEnabled, setRulesEnabled] = useState(false);
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
@@ -1829,7 +1879,7 @@ export function PolicyRulesSection({
         state: { pagination: { pageIndex: 0, pageSize: 1000 } }
     });
 
-    if (!isOpen) {
+    if (!isExpanded) {
         return (
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -1844,7 +1894,7 @@ export function PolicyRulesSection({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsExpanded(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         {t("resourcePolicyRulesAdd")}
