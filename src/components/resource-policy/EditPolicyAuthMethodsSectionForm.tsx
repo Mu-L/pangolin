@@ -4,6 +4,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
@@ -136,7 +137,6 @@ export function EditPolicyAuthMethodsSectionForm() {
         if (!isValid) return;
 
         const payload = form.getValues();
-        console.log({ payload, policy });
 
         const responseArray: Array<Promise<AxiosResponse<{}> | void>> = [];
 
@@ -640,7 +640,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                             </SettingsSectionForm>
                         </SettingsSectionBody>
 
-                        <div className="flex py-6 justify-end">
+                        <SettingsSectionFooter>
                             <Button
                                 type="submit"
                                 loading={isSubmitting}
@@ -648,7 +648,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                             >
                                 {t("saveSettings")}
                             </Button>
-                        </div>
+                        </SettingsSectionFooter>
                     </SettingsSection>
                 </form>
             </Form>

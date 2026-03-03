@@ -5,6 +5,7 @@ import {
     resourcePolicyHeaderAuth,
     resourcePolicyPassword,
     resourcePolicyPincode,
+    resourcePolicyWhiteList,
     rolePolicies,
     roles,
     userPolicies,
@@ -116,7 +117,19 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
         )
         .where(eq(rolePolicies.resourcePolicyId, res.resourcePolicyId));
 
-    return { ...res, roles: policyRoles, users: policyUsers };
+    const policyEmailWhiteList = await db
+        .select()
+        .from(resourcePolicyWhiteList)
+        .where(
+            eq(resourcePolicyWhiteList.resourcePolicyId, res.resourcePolicyId)
+        );
+
+    return {
+        ...res,
+        roles: policyRoles,
+        users: policyUsers,
+        emailWhiteList: policyEmailWhiteList
+    };
 }
 
 export type GetResourcePolicyResponse = NonNullable<

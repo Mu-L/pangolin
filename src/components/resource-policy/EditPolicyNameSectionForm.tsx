@@ -4,6 +4,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
@@ -136,7 +137,7 @@ export function EditPolicyNameSectionForm() {
                         </SettingsSectionForm>
                     </SettingsSectionBody>
 
-                    <div className="flex py-6 justify-end">
+                    <SettingsSectionFooter>
                         <Button
                             type="submit"
                             loading={isSubmitting}
@@ -144,7 +145,7 @@ export function EditPolicyNameSectionForm() {
                         >
                             {t("saveSettings")}
                         </Button>
-                    </div>
+                    </SettingsSectionFooter>
                 </SettingsSection>
             </form>
         </Form>

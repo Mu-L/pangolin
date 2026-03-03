@@ -4,6 +4,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
@@ -342,7 +343,7 @@ export function EditPolicyUsersRolesSectionForm({
                         </SettingsSectionForm>
                     </SettingsSectionBody>
 
-                    <div className="flex py-6 justify-end">
+                    <SettingsSectionFooter>
                         <Button
                             type="submit"
                             loading={isSubmitting}
@@ -350,7 +351,7 @@ export function EditPolicyUsersRolesSectionForm({
                         >
                             {t("resourceUsersRolesSubmit")}
                         </Button>
-                    </div>
+                    </SettingsSectionFooter>
                 </SettingsSection>
             </form>
         </Form>

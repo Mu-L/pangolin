@@ -4,6 +4,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
@@ -13,13 +14,14 @@ import { useTranslations } from "next-intl";
 
 import z from "zod";
 
-import { type PolicyFormValues } from ".";
+import { createPolicySchema, type PolicyFormValues } from ".";
 
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import {
+    Form,
     FormControl,
     FormDescription,
     FormField,
@@ -30,26 +32,63 @@ import { InfoPopup } from "@app/components/ui/info-popup";
 
 import { InfoIcon, Plus } from "lucide-react";
 
-import { useState } from "react";
-import { UseFormReturn } from "react-hook-form";
+import { useActionState, useState } from "react";
+import { useForm, UseFormReturn, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 
 // ─── PolicyOtpEmailSection ────────────────────────────────────────────────────
 
 type PolicyOtpEmailSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
     emailEnabled: boolean;
 };
 
-export function PolicyOtpEmailSection({
-    form,
+export function EditPolicyOtpEmailSectionForm({
     emailEnabled
 }: PolicyOtpEmailSectionProps) {
     const t = useTranslations();
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [whitelistEnabled, setWhitelistEnabled] = useState(false);
+
+    const { policy } = useResourcePolicyContext();
+    const router = useRouter();
+
+    const form = useForm({
+        resolver: zodResolver(
+            createPolicySchema.pick({
+                emailWhitelistEnabled: true,
+                emails: true
+            })
+        ),
+        defaultValues: {
+            emailWhitelistEnabled: policy.emailWhitelistEnabled,
+            emails: policy.emailWhiteList.map((email) => ({
+                id: email.whitelistId.toString(),
+                text: email.email
+            }))
+        }
+    });
+
+    const whitelistEnabled = useWatch({
+        control: form.control,
+        name: "emailWhitelistEnabled"
+    });
+
+    const [isExpanded, setIsExpanded] = useState(whitelistEnabled);
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
+
+    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+
+    async function onSubmit() {
+        const isValid = await form.trigger();
+
+        if (!isValid) return;
+
+        const payload = form.getValues();
+
+        console.log({ payload, policy });
+    }
 
     if (!isExpanded) {
         return (
@@ -77,100 +116,127 @@ export function PolicyOtpEmailSection({
     }
 
     return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>
-                    {t("otpEmailTitle")}
-                </SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {t("otpEmailTitleDescription")}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-            <SettingsSectionBody>
-                <SettingsSectionForm>
-                    {!emailEnabled && (
-                        <Alert variant="neutral" className="mb-4">
-                            <InfoIcon className="h-4 w-4" />
-                            <AlertTitle className="font-semibold">
-                                {t("otpEmailSmtpRequired")}
-                            </AlertTitle>
-                            <AlertDescription>
-                                {t("otpEmailSmtpRequiredDescription")}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    <SwitchInput
-                        id="whitelist-toggle"
-                        label={t("otpEmailWhitelist")}
-                        defaultChecked={false}
-                        onCheckedChange={(val) => {
-                            setWhitelistEnabled(val);
-                            form.setValue("emailWhitelistEnabled", val);
-                        }}
-                        disabled={!emailEnabled}
-                    />
-
-                    {whitelistEnabled && emailEnabled && (
-                        <FormField
-                            control={form.control}
-                            name="emails"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>
-                                        <InfoPopup
-                                            text={t("otpEmailWhitelistList")}
-                                            info={t(
-                                                "otpEmailWhitelistListDescription"
-                                            )}
-                                        />
-                                    </FormLabel>
-                                    <FormControl>
-                                        {/* @ts-ignore */}
-                                        <TagInput
-                                            {...field}
-                                            activeTagIndex={activeEmailTagIndex}
-                                            size="sm"
-                                            validateTag={(tag) => {
-                                                return z
-                                                    .email()
-                                                    .or(
-                                                        z
-                                                            .string()
-                                                            .regex(
-                                                                /^\*@[\w.-]+\.[a-zA-Z]{2,}$/,
-                                                                {
-                                                                    message: t(
-                                                                        "otpEmailErrorInvalid"
-                                                                    )
-                                                                }
-                                                            )
-                                                    )
-                                                    .safeParse(tag).success;
-                                            }}
-                                            setActiveTagIndex={
-                                                setActiveEmailTagIndex
-                                            }
-                                            placeholder={t("otpEmailEnter")}
-                                            tags={form.getValues().emails}
-                                            setTags={(newEmails) => {
-                                                form.setValue(
-                                                    "emails",
-                                                    newEmails as [Tag, ...Tag[]]
-                                                );
-                                            }}
-                                            allowDuplicates={false}
-                                            sortTags={true}
-                                        />
-                                    </FormControl>
-                                    <FormDescription>
-                                        {t("otpEmailEnterDescription")}
-                                    </FormDescription>
-                                </FormItem>
+        <Form {...form}>
+            <form action={formAction}>
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("otpEmailTitle")}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            {t("otpEmailTitleDescription")}
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+                    <SettingsSectionBody>
+                        <SettingsSectionForm>
+                            {!emailEnabled && (
+                                <Alert variant="neutral" className="mb-4">
+                                    <InfoIcon className="h-4 w-4" />
+                                    <AlertTitle className="font-semibold">
+                                        {t("otpEmailSmtpRequired")}
+                                    </AlertTitle>
+                                    <AlertDescription>
+                                        {t("otpEmailSmtpRequiredDescription")}
+                                    </AlertDescription>
+                                </Alert>
                             )}
-                        />
-                    )}
-                </SettingsSectionForm>
-            </SettingsSectionBody>
-        </SettingsSection>
+                            <SwitchInput
+                                id="whitelist-toggle"
+                                label={t("otpEmailWhitelist")}
+                                defaultChecked={false}
+                                onCheckedChange={(val) => {
+                                    form.setValue("emailWhitelistEnabled", val);
+                                }}
+                                disabled={!emailEnabled}
+                            />
+
+                            {whitelistEnabled && emailEnabled && (
+                                <FormField
+                                    control={form.control}
+                                    name="emails"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                <InfoPopup
+                                                    text={t(
+                                                        "otpEmailWhitelistList"
+                                                    )}
+                                                    info={t(
+                                                        "otpEmailWhitelistListDescription"
+                                                    )}
+                                                />
+                                            </FormLabel>
+                                            <FormControl>
+                                                {/* @ts-ignore */}
+                                                <TagInput
+                                                    {...field}
+                                                    activeTagIndex={
+                                                        activeEmailTagIndex
+                                                    }
+                                                    size="sm"
+                                                    validateTag={(tag) => {
+                                                        return z
+                                                            .email()
+                                                            .or(
+                                                                z
+                                                                    .string()
+                                                                    .regex(
+                                                                        /^\*@[\w.-]+\.[a-zA-Z]{2,}$/,
+                                                                        {
+                                                                            message:
+                                                                                t(
+                                                                                    "otpEmailErrorInvalid"
+                                                                                )
+                                                                        }
+                                                                    )
+                                                            )
+                                                            .safeParse(tag)
+                                                            .success;
+                                                    }}
+                                                    setActiveTagIndex={
+                                                        setActiveEmailTagIndex
+                                                    }
+                                                    placeholder={t(
+                                                        "otpEmailEnter"
+                                                    )}
+                                                    tags={
+                                                        form.getValues()
+                                                            .emails ?? []
+                                                    }
+                                                    setTags={(newEmails) => {
+                                                        form.setValue(
+                                                            "emails",
+                                                            newEmails as [
+                                                                Tag,
+                                                                ...Tag[]
+                                                            ]
+                                                        );
+                                                    }}
+                                                    allowDuplicates={false}
+                                                    sortTags={true}
+                                                />
+                                            </FormControl>
+                                            <FormDescription>
+                                                {t("otpEmailEnterDescription")}
+                                            </FormDescription>
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                        </SettingsSectionForm>
+
+                        <SettingsSectionFooter>
+                            <Button
+                                type="submit"
+                                loading={isSubmitting}
+                                disabled={isSubmitting || !emailEnabled}
+                            >
+                                {t("otpEmailWhitelistSave")}
+                            </Button>
+                        </SettingsSectionFooter>
+                    </SettingsSectionBody>
+                </SettingsSection>
+            </form>
+        </Form>
     );
 }

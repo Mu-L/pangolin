@@ -21,6 +21,7 @@ import { useMemo } from "react";
 import { EditPolicyAuthMethodsSectionForm } from "./EditPolicyAuthMethodsSectionForm";
 import { EditPolicyNameSectionForm } from "./EditPolicyNameSectionForm";
 import { EditPolicyUsersRolesSectionForm } from "./EditPolicyUserRolesSectionForm";
+import { EditPolicyOtpEmailSectionForm } from "./EditPolicyOtpEmailSectionForm";
 
 // ─── EditPolicyForm ─────────────────────────────────────────────────────────
 
@@ -107,11 +108,11 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
             />
             <EditPolicyAuthMethodsSectionForm />
 
+            <EditPolicyOtpEmailSectionForm
+                emailEnabled={env.email.emailEnabled}
+            />
+
             {/* 
-                <PolicyOtpEmailSection
-                    form={form}
-                    emailEnabled={env.email.emailEnabled}
-                />
                 <PolicyRulesSection
                     form={form}
                     isMaxmindAvailable={isMaxmindAvailable}
