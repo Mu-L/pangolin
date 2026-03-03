@@ -20,7 +20,7 @@ const setResourcePolicyPasswordBodySchema = z.strictObject({
 });
 
 registry.registerPath({
-    method: "post",
+    method: "put",
     path: "/resource-policy/{resourcePolicyId}/password",
     description:
         "Set the password for a resource policy. Setting the password to null will remove it.",
@@ -95,7 +95,7 @@ export async function setResourcePolicyPassword(
             success: true,
             error: false,
             message: "Resource policy password set successfully",
-            status: HttpCode.CREATED
+            status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);

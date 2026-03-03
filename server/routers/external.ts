@@ -734,7 +734,7 @@ authenticated.post(
     resource.setResourcePolicyUsers
 );
 
-authenticated.post(
+authenticated.put(
     "/resource-policy/:resourcePolicyId/password",
     verifyResourcePolicyAccess,
     verifyLimits,
@@ -743,7 +743,7 @@ authenticated.post(
     policy.setResourcePolicyPassword
 );
 
-authenticated.post(
+authenticated.put(
     "/resource-policy/:resourcePolicyId/pincode",
     verifyResourcePolicyAccess,
     verifyLimits,
@@ -752,7 +752,7 @@ authenticated.post(
     policy.setResourcePolicyPincode
 );
 
-authenticated.post(
+authenticated.put(
     "/resource-policy/:resourcePolicyId/header-auth",
     verifyResourcePolicyAccess,
     verifyLimits,

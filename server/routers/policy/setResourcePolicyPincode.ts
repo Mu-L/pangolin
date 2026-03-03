@@ -23,7 +23,7 @@ const setResourcePolicyPincodeBodySchema = z.strictObject({
 });
 
 registry.registerPath({
-    method: "post",
+    method: "put",
     path: "/resource-policy/{resourcePolicyId}/pincode",
     description:
         "Set the PIN code for a resource policy. Setting the PIN code to null will remove it.",
@@ -98,7 +98,7 @@ export async function setResourcePolicyPincode(
             success: true,
             error: false,
             message: "Resource policy PIN code set successfully",
-            status: HttpCode.CREATED
+            status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);

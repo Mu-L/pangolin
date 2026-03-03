@@ -21,7 +21,7 @@ const setResourcePolicyHeaderAuthBodySchema = z.strictObject({
 });
 
 registry.registerPath({
-    method: "post",
+    method: "put",
     path: "/resource-policy/{resourcePolicyId}/header-auth",
     description:
         "Set or update the header authentication for a resource policy. If user and password is not provided, it will remove the header authentication.",
@@ -100,7 +100,7 @@ export async function setResourcePolicyHeaderAuth(
             success: true,
             error: false,
             message: "Header Authentication set successfully",
-            status: HttpCode.CREATED
+            status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);

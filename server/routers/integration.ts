@@ -632,7 +632,7 @@ authenticated.put(
     policy.setResourcePolicyAccessControl
 );
 
-authenticated.post(
+authenticated.put(
     "/resource-policy/:resourcePolicyId/password",
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
@@ -641,7 +641,7 @@ authenticated.post(
     policy.setResourcePolicyPassword
 );
 
-authenticated.post(
+authenticated.put(
     "/resource-policy/:resourcePolicyId/pincode",
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
@@ -650,7 +650,7 @@ authenticated.post(
     policy.setResourcePolicyPincode
 );
 
-authenticated.post(
+authenticated.put(
     "/resource-policy/:resourcePolicyId/header-auth",
     verifyApiKeyResourcePolicyAccess,
     verifyLimits,
