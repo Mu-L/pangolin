@@ -16,14 +16,14 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import { and, eq, inArray, ne, type InferInsertModel } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const setResourcePolicyAcccessControlBodySchema = z.strictObject({
     sso: z.boolean(),
     userIds: z.array(z.string()),
     roleIds: z.array(z.int().positive()),
-    skipToIdpId: z.int().positive().optional()
+    skipToIdpId: z.int().positive().optional().nullish()
 });
 
 const setResourcePolicyAccessControlParamsSchema = z.strictObject({

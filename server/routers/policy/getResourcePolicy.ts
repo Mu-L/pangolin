@@ -1,9 +1,17 @@
-import { db, resourcePolicies, rolePolicies, userPolicies } from "@server/db";
+import {
+    db,
+    idp,
+    resourcePolicies,
+    rolePolicies,
+    roles,
+    userPolicies,
+    users
+} from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, eq, isNull, not, or, type SQL } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import z from "zod";
@@ -34,26 +42,48 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
     }
 
     const [res] = await db
-        .select({
-            policy: resourcePolicies,
-            userPolicies,
-            rolePolicies
-        })
+        .select()
         .from(resourcePolicies)
-        .leftJoin(
-            userPolicies,
-            eq(userPolicies.resourcePolicyId, resourcePolicies.resourcePolicyId)
-        )
-        .leftJoin(
-            rolePolicies,
-            eq(rolePolicies.resourcePolicyId, resourcePolicies.resourcePolicyId)
-        )
         .where(and(...conditions))
         .limit(1);
-    return res;
+
+    if (!res) return null;
+
+    const policyUsers = await db
+        .select({
+            userId: userPolicies.userId,
+            email: users.email,
+            name: users.name,
+            username: users.username,
+            type: users.type,
+            idpName: idp.name
+        })
+        .from(userPolicies)
+        .innerJoin(users, eq(userPolicies.userId, users.userId))
+        .leftJoin(idp, eq(idp.idpId, users.idpId))
+        .where(eq(userPolicies.resourcePolicyId, res.resourcePolicyId));
+
+    const policyRoles = await db
+        .select({
+            roleId: rolePolicies.roleId,
+            name: roles.name
+        })
+        .from(rolePolicies)
+        .innerJoin(
+            roles,
+            and(
+                eq(rolePolicies.roleId, roles.roleId),
+                or(isNull(roles.isAdmin), not(roles.isAdmin))
+            )
+        )
+        .where(eq(rolePolicies.resourcePolicyId, res.resourcePolicyId));
+
+    return { ...res, roles: policyRoles, users: policyUsers };
 }
 
-export type GetResourcePolicyResponse = Awaited<ReturnType<typeof query>>;
+export type GetResourcePolicyResponse = NonNullable<
+    Awaited<ReturnType<typeof query>>
+>;
 
 registry.registerPath({
     method: "get",

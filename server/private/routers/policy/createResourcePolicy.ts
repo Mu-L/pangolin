@@ -6,6 +6,8 @@ import createHttpError from "http-errors";
 import { fromError } from "zod-validation-error";
 import {
     db,
+    idp,
+    idpOrg,
     orgs,
     resourcePolicies,
     rolePolicies,
@@ -107,15 +109,23 @@ export async function createResourcePolicy(
 
         const { name, sso, userIds, roleIds, skipToIdpId } = parsedBody.data;
 
-        const isAuthEnabeld = sso; // other conditions will follow
+        // Check if Identity provider in `skipToIdpId` exists
+        if (skipToIdpId) {
+            const [provider] = await db
+                .select()
+                .from(idp)
+                .innerJoin(idpOrg, eq(idpOrg.idpId, idp.idpId))
+                .where(and(eq(idp.idpId, skipToIdpId), eq(idpOrg.orgId, orgId)))
+                .limit(1);
 
-        if (!isAuthEnabeld) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "At least one authentication policy must be set: platform SSO, an authentication method, one-time password, or a rule."
-                )
-            );
+            if (!provider) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        "Identity provider not found in this organization"
+                    )
+                );
+            }
         }
 
         const adminRole = await db
@@ -163,7 +173,8 @@ export async function createResourcePolicy(
                     niceId,
                     orgId,
                     name,
-                    sso
+                    sso,
+                    idpId: skipToIdpId
                 })
                 .returning();
 

@@ -38,13 +38,14 @@ export function ResourcePolicyProvider({
     };
 
     return (
-        <ResourcePolicyContext value={{ ...policy, updatePolicy }}>
+        <ResourcePolicyContext value={{ policy, updatePolicy }}>
             {children}
         </ResourcePolicyContext>
     );
 }
 
-export type ResourcePolicyContextType = GetResourcePolicyResponse & {
+export type ResourcePolicyContextType = {
+    policy: GetResourcePolicyResponse;
     updatePolicy: (updatedPolicy: Partial<GetResourcePolicyResponse>) => void;
 };
 

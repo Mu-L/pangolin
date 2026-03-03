@@ -123,6 +123,7 @@ import { useCallback, useMemo, useState, useActionState } from "react";
 import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 import router from "next/navigation";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
+import { t } from "@faker-js/faker/dist/airline-CWrCIUHH";
 
 // ─── EditPolicyForm ─────────────────────────────────────────────────────────
 
@@ -426,6 +427,10 @@ export function PolicyUsersRolesSection({
 
     const { policy } = useResourcePolicyContext();
 
+    const api = createApiClient(useEnvContext());
+
+    console.log({ policy });
+
     const form = useForm({
         resolver: zodResolver(
             createPolicySchema.pick({
@@ -437,7 +442,15 @@ export function PolicyUsersRolesSection({
         ),
         defaultValues: {
             sso: policy.sso,
-            skipToIdpId: policy.idpId
+            skipToIdpId: policy.idpId,
+            roles: policy.roles.map((role) => ({
+                id: role.roleId.toString(),
+                text: role.name
+            })),
+            users: policy.users.map((user) => ({
+                id: user.userId,
+                text: `${getUserDisplayName({ email: user.email, username: user.username })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
+            }))
         }
     });
 
@@ -453,167 +466,257 @@ export function PolicyUsersRolesSection({
         number | null
     >(null);
 
+    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+
+    async function onSubmit() {
+        const isValid = await form.trigger();
+
+        if (!isValid) return;
+
+        const payload = form.getValues();
+
+        try {
+            const res = await api
+                .put<AxiosResponse<{}>>(
+                    `/resource-policy/${policy.resourcePolicyId}/access-control`,
+                    {
+                        sso: payload.sso,
+                        userIds: payload.users.map((user) => user.id),
+                        roleIds: payload.roles.map((role) => Number(role.id)),
+                        skipToIdpId: payload.skipToIdpId
+                    }
+                )
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorUpdate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorUpdateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("success"),
+                    description: t("policyUpdatedSuccess")
+                });
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: t("policyErrorUpdateMessageDescription")
+            });
+        }
+    }
+
     return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>
-                    {t("resourceUsersRoles")}
-                </SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {t("resourcePolicyUsersRolesDescription")}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-            <SettingsSectionBody>
-                <SettingsSectionForm>
-                    <SwitchInput
-                        id="sso-toggle"
-                        label={t("ssoUse")}
-                        defaultChecked={ssoEnabled}
-                        onCheckedChange={(val) => {
-                            console.log(`form.setValue("sso", ${val})`);
-                            form.setValue("sso", val);
-                        }}
-                    />
-
-                    {ssoEnabled && (
-                        <>
-                            <FormField
-                                control={form.control}
-                                name="roles"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col items-start">
-                                        <FormLabel>{t("roles")}</FormLabel>
-                                        <FormControl>
-                                            <TagInput
-                                                {...field}
-                                                activeTagIndex={
-                                                    activeRolesTagIndex
-                                                }
-                                                setActiveTagIndex={
-                                                    setActiveRolesTagIndex
-                                                }
-                                                placeholder={t(
-                                                    "accessRoleSelect2"
-                                                )}
-                                                size="sm"
-                                                tags={form.getValues().roles}
-                                                setTags={(newRoles) => {
-                                                    form.setValue(
-                                                        "roles",
-                                                        newRoles as [
-                                                            Tag,
-                                                            ...Tag[]
-                                                        ]
-                                                    );
-                                                }}
-                                                enableAutocomplete={true}
-                                                autocompleteOptions={allRoles}
-                                                allowDuplicates={false}
-                                                restrictTagsToAutocompleteOptions={
-                                                    true
-                                                }
-                                                sortTags={true}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                        <FormDescription>
-                                            {t("resourceRoleDescription")}
-                                        </FormDescription>
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="users"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col items-start">
-                                        <FormLabel>{t("users")}</FormLabel>
-                                        <FormControl>
-                                            <TagInput
-                                                {...field}
-                                                activeTagIndex={
-                                                    activeUsersTagIndex
-                                                }
-                                                setActiveTagIndex={
-                                                    setActiveUsersTagIndex
-                                                }
-                                                placeholder={t(
-                                                    "accessUserSelect"
-                                                )}
-                                                size="sm"
-                                                tags={form.getValues().users}
-                                                setTags={(newUsers) => {
-                                                    form.setValue(
-                                                        "users",
-                                                        newUsers as [
-                                                            Tag,
-                                                            ...Tag[]
-                                                        ]
-                                                    );
-                                                }}
-                                                enableAutocomplete={true}
-                                                autocompleteOptions={allUsers}
-                                                allowDuplicates={false}
-                                                restrictTagsToAutocompleteOptions={
-                                                    true
-                                                }
-                                                sortTags={true}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </>
-                    )}
-
-                    {ssoEnabled && allIdps.length > 0 && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">
-                                {t("defaultIdentityProvider")}
-                            </label>
-                            <Select
-                                onValueChange={(value) => {
-                                    if (value === "none") {
-                                        form.setValue("skipToIdpId", null);
-                                    } else {
-                                        const id = parseInt(value);
-                                        form.setValue("skipToIdpId", id);
-                                    }
+        <Form {...form}>
+            <form action={formAction}>
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("resourceUsersRoles")}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            {t("resourcePolicyUsersRolesDescription")}
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+                    <SettingsSectionBody>
+                        <SettingsSectionForm>
+                            <SwitchInput
+                                id="sso-toggle"
+                                label={t("ssoUse")}
+                                defaultChecked={ssoEnabled}
+                                onCheckedChange={(val) => {
+                                    console.log(`form.setValue("sso", ${val})`);
+                                    form.setValue("sso", val);
                                 }}
-                                value={
-                                    selectedIdpId
-                                        ? selectedIdpId.toString()
-                                        : "none"
-                                }
-                            >
-                                <SelectTrigger className="w-full mt-1">
-                                    <SelectValue
-                                        placeholder={t("selectIdpPlaceholder")}
+                            />
+
+                            {ssoEnabled && (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="roles"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col items-start">
+                                                <FormLabel>
+                                                    {t("roles")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <TagInput
+                                                        {...field}
+                                                        activeTagIndex={
+                                                            activeRolesTagIndex
+                                                        }
+                                                        setActiveTagIndex={
+                                                            setActiveRolesTagIndex
+                                                        }
+                                                        placeholder={t(
+                                                            "accessRoleSelect2"
+                                                        )}
+                                                        size="sm"
+                                                        tags={
+                                                            form.getValues()
+                                                                .roles
+                                                        }
+                                                        setTags={(newRoles) => {
+                                                            form.setValue(
+                                                                "roles",
+                                                                newRoles as [
+                                                                    Tag,
+                                                                    ...Tag[]
+                                                                ]
+                                                            );
+                                                        }}
+                                                        enableAutocomplete={
+                                                            true
+                                                        }
+                                                        autocompleteOptions={
+                                                            allRoles
+                                                        }
+                                                        allowDuplicates={false}
+                                                        restrictTagsToAutocompleteOptions={
+                                                            true
+                                                        }
+                                                        sortTags={true}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                                <FormDescription>
+                                                    {t(
+                                                        "resourceRoleDescription"
+                                                    )}
+                                                </FormDescription>
+                                            </FormItem>
+                                        )}
                                     />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">
-                                        {t("none")}
-                                    </SelectItem>
-                                    {allIdps.map((idp) => (
-                                        <SelectItem
-                                            key={idp.id}
-                                            value={idp.id.toString()}
-                                        >
-                                            {idp.text}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <p className="text-sm text-muted-foreground">
-                                {t("defaultIdentityProviderDescription")}
-                            </p>
-                        </div>
-                    )}
-                </SettingsSectionForm>
-            </SettingsSectionBody>
-        </SettingsSection>
+                                    <FormField
+                                        control={form.control}
+                                        name="users"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col items-start">
+                                                <FormLabel>
+                                                    {t("users")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <TagInput
+                                                        {...field}
+                                                        activeTagIndex={
+                                                            activeUsersTagIndex
+                                                        }
+                                                        setActiveTagIndex={
+                                                            setActiveUsersTagIndex
+                                                        }
+                                                        placeholder={t(
+                                                            "accessUserSelect"
+                                                        )}
+                                                        size="sm"
+                                                        tags={
+                                                            form.getValues()
+                                                                .users
+                                                        }
+                                                        setTags={(newUsers) => {
+                                                            form.setValue(
+                                                                "users",
+                                                                newUsers as [
+                                                                    Tag,
+                                                                    ...Tag[]
+                                                                ]
+                                                            );
+                                                        }}
+                                                        enableAutocomplete={
+                                                            true
+                                                        }
+                                                        autocompleteOptions={
+                                                            allUsers
+                                                        }
+                                                        allowDuplicates={false}
+                                                        restrictTagsToAutocompleteOptions={
+                                                            true
+                                                        }
+                                                        sortTags={true}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                            )}
+
+                            {ssoEnabled && allIdps.length > 0 && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">
+                                        {t("defaultIdentityProvider")}
+                                    </label>
+                                    <Select
+                                        onValueChange={(value) => {
+                                            if (value === "none") {
+                                                form.setValue(
+                                                    "skipToIdpId",
+                                                    null
+                                                );
+                                            } else {
+                                                const id = parseInt(value);
+                                                form.setValue(
+                                                    "skipToIdpId",
+                                                    id
+                                                );
+                                            }
+                                        }}
+                                        value={
+                                            selectedIdpId
+                                                ? selectedIdpId.toString()
+                                                : "none"
+                                        }
+                                    >
+                                        <SelectTrigger className="w-full mt-1">
+                                            <SelectValue
+                                                placeholder={t(
+                                                    "selectIdpPlaceholder"
+                                                )}
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">
+                                                {t("none")}
+                                            </SelectItem>
+                                            {allIdps.map((idp) => (
+                                                <SelectItem
+                                                    key={idp.id}
+                                                    value={idp.id.toString()}
+                                                >
+                                                    {idp.text}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            "defaultIdentityProviderDescription"
+                                        )}
+                                    </p>
+                                </div>
+                            )}
+                        </SettingsSectionForm>
+                    </SettingsSectionBody>
+
+                    <div className="flex py-6 justify-end">
+                        <Button
+                            type="submit"
+                            loading={isSubmitting}
+                            disabled={isSubmitting}
+                        >
+                            {t("saveSettings")}
+                        </Button>
+                    </div>
+                </SettingsSection>
+            </form>
+        </Form>
     );
 }
 

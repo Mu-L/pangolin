@@ -40,7 +40,7 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
             <div className="flex justify-between">
                 <SettingsSectionTitle
                     title={t("resourcePolicySetting", {
-                        policyName: policyResponse.policy.name
+                        policyName: policyResponse.name
                     })}
                     description={t("resourcePolicySettingDescription")}
                 />
