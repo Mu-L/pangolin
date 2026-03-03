@@ -516,11 +516,6 @@ export const resourceHeaderAuthExtendedCompatibility = pgTable(
         resourceId: integer("resourceId")
             .notNull()
             .references(() => resources.resourceId, { onDelete: "cascade" }),
-        resourcePolicyId: integer("resourcePolicyId")
-            .notNull()
-            .references(() => resourcePolicies.resourcePolicyId, {
-                onDelete: "cascade"
-            }),
         extendedCompatibilityIsActivated: boolean(
             "extendedCompatibilityIsActivated"
         )
@@ -571,9 +566,6 @@ export const resourcePolicyPassword = pgTable("resourcePolicyPassword", {
 
 export const resourcePolicyHeaderAuth = pgTable("resourcePolicyHeaderAuth", {
     headerAuthId: serial("headerAuthId").primaryKey(),
-    resourceId: integer("resourceId")
-        .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" }),
     headerAuthHash: varchar("headerAuthHash").notNull(),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()

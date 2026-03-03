@@ -735,6 +735,33 @@ authenticated.post(
 );
 
 authenticated.post(
+    "/resource-policy/:resourcePolicyId/password",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyPassword),
+    logActionAudit(ActionsEnum.setResourcePolicyPassword),
+    policy.setResourcePolicyPassword
+);
+
+authenticated.post(
+    "/resource-policy/:resourcePolicyId/pincode",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyPincode),
+    logActionAudit(ActionsEnum.setResourcePolicyPincode),
+    policy.setResourcePolicyPincode
+);
+
+authenticated.post(
+    "/resource-policy/:resourcePolicyId/header-auth",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyHeaderAuth),
+    logActionAudit(ActionsEnum.setResourcePolicyHeaderAuth),
+    policy.setResourcePolicyHeaderAuth
+);
+
+authenticated.post(
     `/resource/:resourceId/password`,
     verifyResourceAccess,
     verifyLimits,

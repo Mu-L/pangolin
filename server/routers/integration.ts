@@ -633,6 +633,33 @@ authenticated.put(
 );
 
 authenticated.post(
+    "/resource-policy/:resourcePolicyId/password",
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPassword),
+    logActionAudit(ActionsEnum.setResourcePolicyPassword),
+    policy.setResourcePolicyPassword
+);
+
+authenticated.post(
+    "/resource-policy/:resourcePolicyId/pincode",
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyPincode),
+    logActionAudit(ActionsEnum.setResourcePolicyPincode),
+    policy.setResourcePolicyPincode
+);
+
+authenticated.post(
+    "/resource-policy/:resourcePolicyId/header-auth",
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyHeaderAuth),
+    logActionAudit(ActionsEnum.setResourcePolicyHeaderAuth),
+    policy.setResourcePolicyHeaderAuth
+);
+
+authenticated.post(
     "/resource/:resourceId/roles/add",
     verifyApiKeyResourceAccess,
     verifyApiKeyRoleAccess,
