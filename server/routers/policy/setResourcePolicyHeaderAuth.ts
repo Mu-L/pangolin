@@ -1,10 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import {
-    db,
-    resourcePolicyHeaderAuth,
-    resourcePolicyHeaderAuthExtendedCompatibility
-} from "@server/db";
+import { db, resourcePolicyHeaderAuth } from "@server/db";
 import { eq } from "drizzle-orm";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -85,32 +81,17 @@ export async function setResourcePolicyHeaderAuth(
                         resourcePolicyId
                     )
                 );
-            await trx
-                .delete(resourcePolicyHeaderAuthExtendedCompatibility)
-                .where(
-                    eq(
-                        resourcePolicyHeaderAuthExtendedCompatibility.resourcePolicyId,
-                        resourcePolicyId
-                    )
-                );
 
             if (user && password && extendedCompatibility !== null) {
                 const headerAuthHash = await hashPassword(
                     Buffer.from(`${user}:${password}`).toString("base64")
                 );
 
-                await Promise.all([
-                    trx
-                        .insert(resourcePolicyHeaderAuth)
-                        .values({ resourcePolicyId, headerAuthHash }),
-                    trx
-                        .insert(resourcePolicyHeaderAuthExtendedCompatibility)
-                        .values({
-                            resourcePolicyId,
-                            extendedCompatibilityIsActivated:
-                                extendedCompatibility
-                        })
-                ]);
+                await trx.insert(resourcePolicyHeaderAuth).values({
+                    resourcePolicyId,
+                    headerAuthHash,
+                    extendedCompatibility: extendedCompatibility
+                });
             }
         });
 
