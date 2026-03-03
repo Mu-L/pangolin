@@ -488,12 +488,7 @@ export const resourcePincode = pgTable("resourcePincode", {
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     pincodeHash: varchar("pincodeHash").notNull(),
-    digitLength: integer("digitLength").notNull(),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, {
-            onDelete: "cascade"
-        })
+    digitLength: integer("digitLength").notNull()
 });
 
 export const resourcePassword = pgTable("resourcePassword", {
@@ -501,12 +496,7 @@ export const resourcePassword = pgTable("resourcePassword", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    passwordHash: varchar("passwordHash").notNull(),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, {
-            onDelete: "cascade"
-        })
+    passwordHash: varchar("passwordHash").notNull()
 });
 
 export const resourceHeaderAuth = pgTable("resourceHeaderAuth", {
@@ -514,12 +504,7 @@ export const resourceHeaderAuth = pgTable("resourceHeaderAuth", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    headerAuthHash: varchar("headerAuthHash").notNull(),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, {
-            onDelete: "cascade"
-        })
+    headerAuthHash: varchar("headerAuthHash").notNull()
 });
 
 export const resourceHeaderAuthExtendedCompatibility = pgTable(
@@ -543,6 +528,59 @@ export const resourceHeaderAuthExtendedCompatibility = pgTable(
             .default(true)
     }
 );
+
+export const resourcePolicyHeaderAuthExtendedCompatibility = pgTable(
+    "resourcePolicyHeaderAuthExtendedCompatibility",
+    {
+        headerAuthExtendedCompatibilityId: serial(
+            "headerAuthExtendedCompatibilityId"
+        ).primaryKey(),
+        resourcePolicyId: integer("resourcePolicyId")
+            .notNull()
+            .references(() => resourcePolicies.resourcePolicyId, {
+                onDelete: "cascade"
+            }),
+        extendedCompatibilityIsActivated: boolean(
+            "extendedCompatibilityIsActivated"
+        )
+            .notNull()
+            .default(true)
+    }
+);
+
+export const resourcePolicyPincode = pgTable("resourcePolicyPincode", {
+    pincodeId: serial("pincodeId").primaryKey(),
+    pincodeHash: varchar("pincodeHash").notNull(),
+    digitLength: integer("digitLength").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyPassword = pgTable("resourcePolicyPassword", {
+    passwordId: serial("passwordId").primaryKey(),
+    passwordHash: varchar("passwordHash").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyHeaderAuth = pgTable("resourcePolicyHeaderAuth", {
+    headerAuthId: serial("headerAuthId").primaryKey(),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" }),
+    headerAuthHash: varchar("headerAuthHash").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
 
 export const resourceAccessToken = pgTable("resourceAccessToken", {
     accessTokenId: varchar("accessTokenId").primaryKey(),
