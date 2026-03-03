@@ -16,7 +16,7 @@ import { useTranslations } from "next-intl";
 
 import z from "zod";
 
-import { createApiClient } from "@app/lib/api";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useRouter } from "next/navigation";
 import { createPolicySchema } from ".";
 
@@ -53,6 +53,8 @@ import { cn } from "@app/lib/cn";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 import { useActionState, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "@app/hooks/useToast";
+import type { AxiosResponse } from "axios";
 
 // ─── PolicyAuthMethodsSection ─────────────────────────────────────────────────
 
@@ -87,7 +89,6 @@ export function EditPolicyAuthMethodsSectionForm() {
     });
 
     const t = useTranslations();
-    const [isExpanded, setIsExpanded] = useState(false);
     const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
     const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
     const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
@@ -96,6 +97,10 @@ export function EditPolicyAuthMethodsSectionForm() {
     const hasPincode = Boolean(form.watch("pincode") ?? policy.pincodeId);
     const hasHeaderAuth = Boolean(
         form.watch("headerAuth") ?? policy.headerAuth
+    );
+
+    const [isExpanded, setIsExpanded] = useState(
+        hasPassword || hasPincode || hasHeaderAuth
     );
 
     const passwordForm = useForm({
@@ -121,7 +126,43 @@ export function EditPolicyAuthMethodsSectionForm() {
         if (!isValid) return;
 
         const payload = form.getValues();
-        console.log({ payload });
+        console.log({ payload, policy });
+
+        return;
+
+        try {
+            const res = await api
+                .put<AxiosResponse<{}>>(
+                    `/resource-policy/${policy.resourcePolicyId}/password`,
+                    {
+                        password: payload.password?.password ?? null
+                    }
+                )
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorUpdate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorUpdateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("success"),
+                    description: t("policyUpdatedSuccess")
+                });
+                router.refresh();
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: t("policyErrorUpdateMessageDescription")
+            });
+        }
     }
 
     if (!isExpanded) {
@@ -407,7 +448,7 @@ export function EditPolicyAuthMethodsSectionForm() {
             </Credenza>
 
             <Form {...form}>
-                <form action={() => {}}>
+                <form action={formAction}>
                     <SettingsSection>
                         <SettingsSectionHeader>
                             <SettingsSectionTitle>
