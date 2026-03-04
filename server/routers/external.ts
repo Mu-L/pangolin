@@ -761,6 +761,15 @@ authenticated.put(
     policy.setResourcePolicyHeaderAuth
 );
 
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/whitelist",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyWhitelist),
+    logActionAudit(ActionsEnum.setResourcePolicyWhitelist),
+    policy.setResourcePolicyWhitelist
+);
+
 authenticated.post(
     `/resource/:resourceId/password`,
     verifyResourceAccess,

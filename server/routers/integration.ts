@@ -659,6 +659,15 @@ authenticated.put(
     policy.setResourcePolicyHeaderAuth
 );
 
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/whitelist",
+    verifyApiKeyResourcePolicyAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.setResourcePolicyWhitelist),
+    logActionAudit(ActionsEnum.setResourcePolicyWhitelist),
+    policy.setResourcePolicyWhitelist
+);
+
 authenticated.post(
     "/resource/:resourceId/roles/add",
     verifyApiKeyResourceAccess,
