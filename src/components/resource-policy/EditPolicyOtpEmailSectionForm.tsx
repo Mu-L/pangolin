@@ -182,7 +182,7 @@ export function EditPolicyOtpEmailSectionForm({
                             <SwitchInput
                                 id="whitelist-toggle"
                                 label={t("otpEmailWhitelist")}
-                                defaultChecked={false}
+                                defaultChecked={whitelistEnabled}
                                 onCheckedChange={(val) => {
                                     form.setValue("emailWhitelistEnabled", val);
                                 }}
