@@ -22,6 +22,7 @@ import { EditPolicyAuthMethodsSectionForm } from "./EditPolicyAuthMethodsSection
 import { EditPolicyNameSectionForm } from "./EditPolicyNameSectionForm";
 import { EditPolicyUsersRolesSectionForm } from "./EditPolicyUserRolesSectionForm";
 import { EditPolicyOtpEmailSectionForm } from "./EditPolicyOtpEmailSectionForm";
+import { EditPolicyRulesSectionForm } from "./EditPolicyRulesSectionForm";
 
 // ─── EditPolicyForm ─────────────────────────────────────────────────────────
 
@@ -112,12 +113,10 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
                 emailEnabled={env.email.emailEnabled}
             />
 
-            {/* 
-                <PolicyRulesSection
-                    form={form}
-                    isMaxmindAvailable={isMaxmindAvailable}
-                    isMaxmindAsnAvailable={isMaxmindASNAvailable}
-                /> */}
+            <EditPolicyRulesSectionForm
+                isMaxmindAvailable={isMaxmindAvailable}
+                isMaxmindAsnAvailable={isMaxmindASNAvailable}
+            />
         </SettingsContainer>
     );
 }

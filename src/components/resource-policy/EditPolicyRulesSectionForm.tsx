@@ -1,40 +1,22 @@
 "use client";
 
 import {
-    SettingsContainer,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
-    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
 
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useOrgContext } from "@app/hooks/useOrgContext";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
-
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { orgQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { build } from "@server/build";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { UserType } from "@server/types/UserTypes";
-import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import z from "zod";
 
-import { type PolicyFormValues, createPolicySchema } from ".";
 import { toast } from "@app/hooks/useToast";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { orgs, type ResourcePolicy } from "@server/db";
-import type { AxiosResponse } from "axios";
-import { useRouter } from "next/navigation";
+import { createPolicySchema, type PolicyFormValues } from ".";
 
 import { SwitchInput } from "@app/components/SwitchInput";
-import { Tag, TagInput } from "@app/components/tags/tag-input";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import {
     Command,
@@ -47,7 +29,6 @@ import {
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -76,21 +57,6 @@ import {
     TableHeader,
     TableRow
 } from "@app/components/ui/table";
-import {
-    Credenza,
-    CredenzaBody,
-    CredenzaClose,
-    CredenzaContent,
-    CredenzaDescription,
-    CredenzaFooter,
-    CredenzaHeader,
-    CredenzaTitle
-} from "@app/components/Credenza";
-import {
-    InputOTP,
-    InputOTPGroup,
-    InputOTPSlot
-} from "@app/components/ui/input-otp";
 
 import { MAJOR_ASNS } from "@server/db/asns";
 import { COUNTRIES } from "@server/db/countries";
@@ -108,21 +74,10 @@ import {
     getSortedRowModel,
     useReactTable
 } from "@tanstack/react-table";
-import {
-    ArrowUpDown,
-    Binary,
-    Bot,
-    Check,
-    ChevronsUpDown,
-    InfoIcon,
-    Key,
-    Plus
-} from "lucide-react";
+import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
 
-import { useCallback, useMemo, useState, useActionState } from "react";
-import { UseFormReturn, useForm, useWatch } from "react-hook-form";
-import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
-import { cn } from "@app/lib/cn";
+import { useCallback, useMemo, useState } from "react";
+import { UseFormReturn, useForm } from "react-hook-form";
 
 // ─── PolicyRulesSection ───────────────────────────────────────────────────────
 
@@ -145,17 +100,24 @@ type LocalRule = {
 };
 
 type PolicyRulesSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
     isMaxmindAvailable: boolean;
     isMaxmindAsnAvailable: boolean;
 };
 
-export function PolicyRulesSection({
-    form,
+export function EditPolicyRulesSectionForm({
     isMaxmindAvailable,
     isMaxmindAsnAvailable
 }: PolicyRulesSectionProps) {
     const t = useTranslations();
+
+    const form = useForm({
+        resolver: zodResolver(
+            createPolicySchema.pick({
+                rules: true,
+                applyRules: true
+            })
+        )
+    });
     const [isExpanded, setIsExpanded] = useState(false);
     const [rules, setRules] = useState<LocalRule[]>([]);
     const [rulesEnabled, setRulesEnabled] = useState(false);

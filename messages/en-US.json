@@ -660,6 +660,7 @@
     "policyErrorUpdateMessageDescription": "An unexpected error occurred",
     "policyCreatedSuccess": "Resource policy succesfully created",
     "policyUpdatedSuccess": "Resource policy succesfully updated",
+    "authMethodsSave": "Save auth methods",
     "resourceErrorCreate": "Error creating resource",
     "resourceErrorCreateDescription": "An error occurred when creating the resource",
     "resourceErrorCreateMessage": "Error creating resource:",

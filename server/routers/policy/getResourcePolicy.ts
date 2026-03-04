@@ -118,7 +118,10 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
         .where(eq(rolePolicies.resourcePolicyId, res.resourcePolicyId));
 
     const policyEmailWhiteList = await db
-        .select()
+        .select({
+            whiteListId: resourcePolicyWhiteList.whitelistId,
+            email: resourcePolicyWhiteList.email
+        })
         .from(resourcePolicyWhiteList)
         .where(
             eq(resourcePolicyWhiteList.resourcePolicyId, res.resourcePolicyId)

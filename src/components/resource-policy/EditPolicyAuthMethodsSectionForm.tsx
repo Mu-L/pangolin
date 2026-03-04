@@ -646,7 +646,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                                 loading={isSubmitting}
                                 disabled={isSubmitting}
                             >
-                                {t("saveSettings")}
+                                {t("authMethodsSave")}
                             </Button>
                         </SettingsSectionFooter>
                     </SettingsSection>
