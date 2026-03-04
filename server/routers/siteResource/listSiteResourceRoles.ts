@@ -40,7 +40,7 @@ registry.registerPath({
     method: "get",
     path: "/site-resource/{siteResourceId}/roles",
     description: "List all roles for a site resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Role],
+    tags: [OpenAPITags.PrivateResource, OpenAPITags.Role],
     request: {
         params: listSiteResourceRolesSchema
     },

@@ -54,7 +54,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/invitations",
     description: "List invitations in an organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.Invitation],
+    tags: [OpenAPITags.Invitation],
     request: {
         params: listInvitationsParamsSchema,
         query: listInvitationsQuerySchema

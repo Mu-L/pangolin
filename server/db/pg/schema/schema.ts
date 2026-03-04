@@ -654,11 +654,6 @@ export const resourceRules = pgTable("resourceRules", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, {
-            onDelete: "cascade"
-        }),
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
     action: varchar("action").notNull(), // ACCEPT, DROP, PASS

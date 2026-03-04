@@ -45,7 +45,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/role",
     description: "Create a role.",
-    tags: [OpenAPITags.Org, OpenAPITags.Role],
+    tags: [OpenAPITags.Role],
     request: {
         params: createRoleParamsSchema,
         body: {

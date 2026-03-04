@@ -58,7 +58,7 @@ registry.registerPath({
     method: "put",
     path: "/resource/{resourceId}/target",
     description: "Create a target for a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Target],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Target],
     request: {
         params: createTargetParamsSchema,
         body: {

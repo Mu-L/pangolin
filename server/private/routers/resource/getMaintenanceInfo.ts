@@ -52,7 +52,7 @@ registry.registerPath({
     method: "get",
     path: "/maintenance/info",
     description: "Get maintenance information for a resource by domain.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         query: z.object({
             fullDomain: z.string()

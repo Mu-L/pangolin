@@ -48,7 +48,7 @@ registry.registerPath({
     method: "get",
     path: "/idp/{idpId}/org",
     description: "List all org policies on an IDP.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         params: paramsSchema,
         query: querySchema

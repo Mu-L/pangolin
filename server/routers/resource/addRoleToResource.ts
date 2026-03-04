@@ -29,7 +29,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/roles/add",
     description: "Add a single role to a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Role],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
     request: {
         params: addRoleToResourceParamsSchema,
         body: {

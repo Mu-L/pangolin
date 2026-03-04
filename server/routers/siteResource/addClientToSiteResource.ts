@@ -30,7 +30,7 @@ registry.registerPath({
     path: "/site-resource/{siteResourceId}/clients/add",
     description:
         "Add a single client to a site resource. Clients with a userId cannot be added.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Client],
+    tags: [OpenAPITags.PrivateResource, OpenAPITags.Client],
     request: {
         params: addClientToSiteResourceParamsSchema,
         body: {

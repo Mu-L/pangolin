@@ -34,7 +34,7 @@ registry.registerPath({
     method: "get",
     path: "/idp/{idpId}",
     description: "Get an IDP by its IDP ID.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         params: paramsSchema
     },

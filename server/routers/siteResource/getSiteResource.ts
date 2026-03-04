@@ -65,7 +65,7 @@ registry.registerPath({
     method: "get",
     path: "/site-resource/{siteResourceId}",
     description: "Get a specific site resource by siteResourceId.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.PrivateResource],
     request: {
         params: z.object({
             siteResourceId: z.number(),
@@ -80,7 +80,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/site/{siteId}/resource/nice/{niceId}",
     description: "Get a specific site resource by niceId.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.PrivateResource],
     request: {
         params: z.object({
             niceId: z.string(),

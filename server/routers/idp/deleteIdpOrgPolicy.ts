@@ -19,7 +19,7 @@ registry.registerPath({
     method: "delete",
     path: "/idp/{idpId}/org/{orgId}",
     description: "Create an OIDC IdP for an organization.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         params: paramsSchema
     },

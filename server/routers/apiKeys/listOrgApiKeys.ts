@@ -52,7 +52,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/api-keys",
     description: "List all API keys for an organization",
-    tags: [OpenAPITags.Org, OpenAPITags.ApiKey],
+    tags: [OpenAPITags.ApiKey],
     request: {
         params: paramsSchema,
         query: querySchema

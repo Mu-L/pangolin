@@ -29,7 +29,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/users/add",
     description: "Add a single user to a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
     request: {
         params: addUserToResourceParamsSchema,
         body: {

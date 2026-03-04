@@ -22,7 +22,7 @@ registry.registerPath({
     method: "delete",
     path: "/resource/{resourceId}",
     description: "Delete a resource.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: deleteResourceSchema
     },

@@ -31,7 +31,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/whitelist",
     description: "Get the whitelist of emails for a specific resource.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: getResourceWhitelistSchema
     },

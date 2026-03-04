@@ -35,7 +35,7 @@ registry.registerPath({
     method: "delete",
     path: "/org/{orgId}/idp/{idpId}",
     description: "Delete IDP for a specific organization.",
-    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    tags: [OpenAPITags.OrgIdp],
     request: {
         params: paramsSchema
     },

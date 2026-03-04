@@ -32,7 +32,7 @@ registry.registerPath({
     path: "/resource-policy/{resourcePolicyId}/whitelist",
     description:
         "Set email whitelist for a resource policy. This will replace all existing emails.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.Policy],
     request: {
         params: setResourcePolicyWhitelistParamsSchema,
         body: {

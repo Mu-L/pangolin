@@ -35,7 +35,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/roles",
     description: "List all roles for a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Role],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
     request: {
         params: listResourceRolesSchema
     },

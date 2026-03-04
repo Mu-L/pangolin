@@ -23,7 +23,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/users",
     description:
         "Set users for a resource. This will replace all existing users.",
-    tags: [OpenAPITags.Resource, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
     request: {
         params: setUserResourcesParamsSchema,
         body: {

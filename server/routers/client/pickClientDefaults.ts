@@ -23,7 +23,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/pick-client-defaults",
     description: "Return pre-requisite data for creating a client.",
-    tags: [OpenAPITags.Client, OpenAPITags.Site],
+    tags: [OpenAPITags.Client],
     request: {
         params: pickClientDefaultsSchema
     },

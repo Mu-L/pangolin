@@ -25,7 +25,7 @@ registry.registerPath({
     path: "/org/{orgId}/api-key/{apiKeyId}/actions",
     description:
         "Set actions for an API key. This will replace any existing actions.",
-    tags: [OpenAPITags.Org, OpenAPITags.ApiKey],
+    tags: [OpenAPITags.ApiKey],
     request: {
         params: paramsSchema,
         body: {

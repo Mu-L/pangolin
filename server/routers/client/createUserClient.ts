@@ -49,7 +49,7 @@ registry.registerPath({
     path: "/org/{orgId}/user/{userId}/client",
     description:
         "Create a new client for a user and associate it with an existing olm.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org, OpenAPITags.User],
+    tags: [OpenAPITags.Client],
     request: {
         params: paramsSchema,
         body: {

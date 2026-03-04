@@ -31,7 +31,3 @@ export * from "./addUserToResource";
 export * from "./removeUserFromResource";
 export * from "./listAllResourceNames";
 export * from "./removeEmailFromResourceWhitelist";
-export * from "./listResourcePolicyRoles";
-export * from "./listResourcePolicyUsers";
-export * from "./setResourcePolicyRoles";
-export * from "./setResourcePolicyUsers";

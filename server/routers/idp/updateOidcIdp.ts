@@ -42,7 +42,7 @@ registry.registerPath({
     method: "post",
     path: "/idp/{idpId}/oidc",
     description: "Update an OIDC IdP.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         params: paramsSchema,
         body: {

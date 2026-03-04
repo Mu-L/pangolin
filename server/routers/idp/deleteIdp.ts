@@ -21,7 +21,7 @@ registry.registerPath({
     method: "delete",
     path: "/idp/{idpId}",
     description: "Delete IDP.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         params: paramsSchema
     },

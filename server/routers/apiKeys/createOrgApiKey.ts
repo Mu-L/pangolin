@@ -37,7 +37,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/api-key",
     description: "Create a new API key scoped to the organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.ApiKey],
+    tags: [OpenAPITags.ApiKey],
     request: {
         params: paramsSchema,
         body: {

@@ -151,7 +151,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/logs/analytics",
     description: "Query the request audit analytics for an organization",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Logs],
     request: {
         query: queryAccessAuditLogsQuery,
         params: queryRequestAuditLogsParams

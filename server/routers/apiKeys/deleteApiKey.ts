@@ -18,7 +18,7 @@ registry.registerPath({
     method: "delete",
     path: "/org/{orgId}/api-key/{apiKeyId}",
     description: "Delete an API key.",
-    tags: [OpenAPITags.Org, OpenAPITags.ApiKey],
+    tags: [OpenAPITags.ApiKey],
     request: {
         params: paramsSchema
     },

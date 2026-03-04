@@ -249,7 +249,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/logs/access",
     description: "Query the access audit log for an organization",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Logs],
     request: {
         query: queryAccessAuditLogsQuery,
         params: queryAccessAuditLogsParams

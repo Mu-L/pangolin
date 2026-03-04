@@ -56,7 +56,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/rules",
     description: "List rules for a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Rule],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Rule],
     request: {
         params: listResourceRulesParamsSchema,
         query: listResourceRulesSchema

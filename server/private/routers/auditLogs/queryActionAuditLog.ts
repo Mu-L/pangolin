@@ -160,7 +160,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/logs/action",
     description: "Query the action audit log for an organization",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Logs],
     request: {
         query: queryActionAuditLogsQuery,
         params: queryActionAuditLogsParams

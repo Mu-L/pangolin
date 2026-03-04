@@ -665,7 +665,10 @@ export async function getTraefikConfig(
 
                         // TODO: HOW TO HANDLE ^^^^^^ BETTER
                         const anySitesOnline = targets.some(
-                            (target) => target.site.online
+                            (target) =>
+                            target.site.online ||
+                            target.site.type === "local" ||
+                            target.site.type === "wireguard"
                         );
 
                         return (
@@ -793,7 +796,10 @@ export async function getTraefikConfig(
                     servers: (() => {
                         // Check if any sites are online
                         const anySitesOnline = targets.some(
-                            (target) => target.site.online
+                            (target) =>
+                            target.site.online ||
+                            target.site.type === "local" ||
+                            target.site.type === "wireguard"
                         );
 
                         return targets

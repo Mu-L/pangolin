@@ -59,7 +59,7 @@ registry.registerPath({
     method: "post",
     path: "/org/{orgId}/idp/{idpId}/oidc",
     description: "Update an OIDC IdP for a specific organization.",
-    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    tags: [OpenAPITags.OrgIdp],
     request: {
         params: paramsSchema,
         body: {

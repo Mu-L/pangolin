@@ -48,7 +48,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/client",
     description: "Create a new client for an organization.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.Client],
     request: {
         params: createClientParamsSchema,
         body: {

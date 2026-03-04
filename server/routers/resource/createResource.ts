@@ -78,7 +78,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/resource",
     description: "Create a resource.",
-    tags: [OpenAPITags.Org, OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: createResourceParamsSchema,
         body: {

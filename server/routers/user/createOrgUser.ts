@@ -37,7 +37,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/user",
     description: "Create an organization user.",
-    tags: [OpenAPITags.User, OpenAPITags.Org],
+    tags: [OpenAPITags.User],
     request: {
         params: paramsSchema,
         body: {

@@ -27,7 +27,7 @@ registry.registerPath({
     path: "/resource-policy/{resourcePolicyId}/pincode",
     description:
         "Set the PIN code for a resource policy. Setting the PIN code to null will remove it.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.Policy],
     request: {
         params: setResourcePolicyPincodeParamsSchema,
         body: {
@@ -78,10 +78,7 @@ export async function setResourcePolicyPincode(
             await trx
                 .delete(resourcePolicyPincode)
                 .where(
-                    eq(
-                        resourcePolicyPincode.resourcePolicyId,
-                        resourcePolicyId
-                    )
+                    eq(resourcePolicyPincode.resourcePolicyId, resourcePolicyId)
                 );
 
             if (pincode) {

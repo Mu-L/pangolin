@@ -7,7 +7,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { ActionsEnum } from "@server/auth/actions";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import { z } from "zod";
+import { object, z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const listRolesParamsSchema = z.strictObject({
@@ -64,7 +64,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/roles",
     description: "List roles.",
-    tags: [OpenAPITags.Org, OpenAPITags.Role],
+    tags: [OpenAPITags.Role],
     request: {
         params: listRolesParamsSchema,
         query: listRolesSchema

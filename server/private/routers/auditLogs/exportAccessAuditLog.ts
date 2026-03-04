@@ -32,7 +32,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/logs/access/export",
     description: "Export the access audit log for an organization as CSV",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Logs],
     request: {
         query: queryAccessAuditLogsQuery,
         params: queryAccessAuditLogsParams

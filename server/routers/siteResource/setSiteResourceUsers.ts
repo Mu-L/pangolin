@@ -31,7 +31,7 @@ registry.registerPath({
     path: "/site-resource/{siteResourceId}/users",
     description:
         "Set users for a site resource. This will replace all existing users.",
-    tags: [OpenAPITags.Resource, OpenAPITags.User],
+    tags: [OpenAPITags.PrivateResource, OpenAPITags.User],
     request: {
         params: setSiteResourceUsersParamsSchema,
         body: {

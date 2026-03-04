@@ -19,7 +19,7 @@ registry.registerPath({
     method: "delete",
     path: "/org/{orgId}/invitations/{inviteId}",
     description: "Remove an open invitation from an organization",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Invitation],
     request: {
         params: removeInvitationParamsSchema
     },

@@ -256,7 +256,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/user-devices",
     description: "List all user devices for an organization.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.Client],
     request: {
         query: listUserDevicesSchema,
         params: listUserDevicesParamsSchema

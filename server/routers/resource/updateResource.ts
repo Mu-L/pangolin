@@ -101,6 +101,49 @@ const updateHttpResourceBodySchema = z
         {
             error: "Invalid custom Host Header value. Use domain name format, or save empty to unset custom Host Header."
         }
+    )
+    .refine(
+        (data) => {
+            if (data.headers) {
+                // HTTP header names must be valid token characters (RFC 7230)
+                const validHeaderName = /^[a-zA-Z0-9!#$%&'*+\-.^_`|~]+$/;
+                return data.headers.every((h) => validHeaderName.test(h.name));
+            }
+            return true;
+        },
+        {
+            error: "Header names may only contain valid HTTP token characters (letters, digits, and !#$%&'*+-.^_`|~)."
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.headers) {
+                // HTTP header values must be visible ASCII or horizontal whitespace, no control chars (RFC 7230)
+                const validHeaderValue = /^[\t\x20-\x7E]*$/;
+                return data.headers.every((h) => validHeaderValue.test(h.value));
+            }
+            return true;
+        },
+        {
+            error: "Header values may only contain printable ASCII characters and horizontal whitespace."
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.headers) {
+                // Reject Traefik template syntax {{word}} in names or values
+                const templatePattern = /\{\{[^}]+\}\}/;
+                return data.headers.every(
+                    (h) =>
+                        !templatePattern.test(h.name) &&
+                        !templatePattern.test(h.value)
+                );
+            }
+            return true;
+        },
+        {
+            error: "Header names and values must not contain template expressions such as {{value}}."
+        }
     );
 
 export type UpdateResourceResponse = Resource;
@@ -136,7 +179,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}",
     description: "Update a resource.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: updateResourceParamsSchema,
         body: {

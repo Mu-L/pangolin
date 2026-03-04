@@ -171,8 +171,7 @@ const DockerContainersTable: FC<{
                 ...Object.values(container.networks)
                     .map((n) => n.ipAddress)
                     .filter(Boolean),
-                ...getExposedPorts(container).map((p) => p.toString()),
-                ...Object.entries(container.labels).flat()
+                ...getExposedPorts(container).map((p) => p.toString())
             ];
 
             return searchableFields.some((field) =>

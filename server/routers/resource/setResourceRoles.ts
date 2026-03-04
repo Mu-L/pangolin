@@ -23,7 +23,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/roles",
     description:
         "Set roles for a resource. This will replace all existing roles.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Role],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
     request: {
         params: setResourceRolesParamsSchema,
         body: {

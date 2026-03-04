@@ -180,7 +180,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/sites",
     description: "List all sites in an organization",
-    tags: [OpenAPITags.Org, OpenAPITags.Site],
+    tags: [OpenAPITags.Site],
     request: {
         params: listSitesParamsSchema,
         query: listSitesSchema

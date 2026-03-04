@@ -26,7 +26,7 @@ registry.registerPath({
     method: "post",
     path: "/org/{orgId}/user/{userId}",
     description: "Update a user in an org.",
-    tags: [OpenAPITags.Org, OpenAPITags.User],
+    tags: [OpenAPITags.Org],
     request: {
         params: paramsSchema,
         body: {

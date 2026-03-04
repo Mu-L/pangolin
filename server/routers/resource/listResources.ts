@@ -225,7 +225,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/resources",
     description: "List resources for an organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: z.object({
             orgId: z.string()

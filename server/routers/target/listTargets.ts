@@ -88,7 +88,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/targets",
     description: "List targets for a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.Target],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.Target],
     request: {
         params: listTargetsParamsSchema,
         query: listTargetsSchema

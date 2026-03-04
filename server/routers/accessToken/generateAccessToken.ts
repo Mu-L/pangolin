@@ -43,7 +43,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/access-token",
     description: "Generate a new access token for a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.AccessToken],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.AccessToken],
     request: {
         params: generateAccssTokenParamsSchema,
         body: {

@@ -59,7 +59,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/domains",
     description: "List all domains for a organization.",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Domain],
     request: {
         params: z.object({
             orgId: z.string()

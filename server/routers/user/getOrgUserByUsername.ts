@@ -35,7 +35,7 @@ registry.registerPath({
     path: "/org/{orgId}/user-by-username",
     description:
         "Get a user in an organization by username. When idpId is not passed, only internal users are searched (username is globally unique for them). For external (OIDC) users, pass idpId to search by username within that identity provider.",
-    tags: [OpenAPITags.Org, OpenAPITags.User],
+    tags: [OpenAPITags.User],
     request: {
         params: getOrgUserByUsernameParamsSchema,
         query: getOrgUserByUsernameQuerySchema

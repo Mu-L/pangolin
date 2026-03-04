@@ -29,7 +29,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/whitelist/remove",
     description: "Remove a single email from the resource whitelist.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: removeEmailFromResourceWhitelistParamsSchema,
         body: {

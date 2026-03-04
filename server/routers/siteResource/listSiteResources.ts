@@ -58,7 +58,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/site/{siteId}/resources",
     description: "List site resources for a site.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.PrivateResource],
     request: {
         params: listSiteResourcesParamsSchema,
         query: listSiteResourcesQuerySchema

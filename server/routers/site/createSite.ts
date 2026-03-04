@@ -58,7 +58,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/site",
     description: "Create a new site.",
-    tags: [OpenAPITags.Site, OpenAPITags.Org],
+    tags: [OpenAPITags.Site],
     request: {
         params: createSiteParamsSchema,
         body: {
@@ -292,7 +292,7 @@ export async function createSite(
             if (type == "newt") {
                 [newSite] = await trx
                     .insert(sites)
-                    .values({
+                    .values({ // NOTE: NO SUBNET OR EXIT NODE ID PASSED IN HERE BECAUSE ITS NOW CHOSEN ON CONNECT
                         orgId,
                         name,
                         niceId,

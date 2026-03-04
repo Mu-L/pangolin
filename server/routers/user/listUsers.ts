@@ -69,7 +69,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/users",
     description: "List users in an organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.User],
+    tags: [OpenAPITags.User],
     request: {
         params: listUsersParamsSchema,
         query: listUsersSchema

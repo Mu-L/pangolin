@@ -31,16 +31,16 @@ const getOrgSchema = z.strictObject({
     orgId: z.string()
 });
 
-registry.registerPath({
-    method: "get",
-    path: "/org/{orgId}/billing/usage",
-    description: "Get an organization's billing usage",
-    tags: [OpenAPITags.Org],
-    request: {
-        params: getOrgSchema
-    },
-    responses: {}
-});
+// registry.registerPath({
+//     method: "get",
+//     path: "/org/{orgId}/billing/usage",
+//     description: "Get an organization's billing usage",
+//     tags: [OpenAPITags.Org],
+//     request: {
+//         params: getOrgSchema
+//     },
+//     responses: {}
+// });
 
 export async function getOrgUsage(
     req: Request,

@@ -121,7 +121,7 @@ registry.registerPath({
     method: "post",
     path: "/site-resource/{siteResourceId}",
     description: "Update a site resource.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.PrivateResource],
     request: {
         params: updateSiteResourceParamsSchema,
         body: {

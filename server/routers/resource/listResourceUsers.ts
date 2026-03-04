@@ -38,7 +38,7 @@ registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/users",
     description: "List all users for a resource.",
-    tags: [OpenAPITags.Resource, OpenAPITags.User],
+    tags: [OpenAPITags.PublicResource, OpenAPITags.User],
     request: {
         params: listResourceUsersSchema
     },

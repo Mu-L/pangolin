@@ -237,7 +237,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/clients",
     description: "List all clients for an organization.",
-    tags: [OpenAPITags.Client, OpenAPITags.Org],
+    tags: [OpenAPITags.Client],
     request: {
         query: listClientsSchema,
         params: listClientsParamsSchema

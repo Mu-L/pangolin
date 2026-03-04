@@ -29,7 +29,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/pincode",
     description:
         "Set the PIN code for a resource. Setting the PIN code to null will remove it.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: setResourceAuthMethodsParamsSchema,
         body: {

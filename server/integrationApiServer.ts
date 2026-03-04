@@ -17,6 +17,7 @@ import fs from "fs";
 import path from "path";
 import { APP_PATH } from "./lib/consts";
 import yaml from "js-yaml";
+import { z } from "zod";
 
 const dev = process.env.ENVIRONMENT !== "prod";
 const externalPort = config.getRawConfig().server.integration_port;
@@ -38,11 +39,23 @@ export function createIntegrationApiServer() {
     apiServer.use(cookieParser());
     apiServer.use(express.json());
 
+    const openApiDocumentation = getOpenApiDocumentation();
+
     apiServer.use(
         "/v1/docs",
         swaggerUi.serve,
-        swaggerUi.setup(getOpenApiDocumentation())
+        swaggerUi.setup(openApiDocumentation)
     );
+
+    // Unauthenticated OpenAPI spec endpoints
+    apiServer.get("/v1/openapi.json", (_req, res) => {
+        res.json(openApiDocumentation);
+    });
+
+    apiServer.get("/v1/openapi.yaml", (_req, res) => {
+        const yamlOutput = yaml.dump(openApiDocumentation);
+        res.type("application/yaml").send(yamlOutput);
+    });
 
     // API routes
     const prefix = `/v1`;
@@ -75,16 +88,6 @@ function getOpenApiDocumentation() {
         }
     );
 
-    for (const def of registry.definitions) {
-        if (def.type === "route") {
-            def.route.security = [
-                {
-                    [bearerAuth.name]: []
-                }
-            ];
-        }
-    }
-
     registry.registerPath({
         method: "get",
         path: "/",
@@ -93,6 +96,74 @@ function getOpenApiDocumentation() {
         request: {},
         responses: {}
     });
+
+    registry.registerPath({
+        method: "get",
+        path: "/openapi.json",
+        description: "Get OpenAPI specification as JSON",
+        tags: [],
+        request: {},
+        responses: {
+            "200": {
+                description: "OpenAPI specification as JSON",
+                content: {
+                    "application/json": {
+                        schema: {
+                            type: "object"
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    registry.registerPath({
+        method: "get",
+        path: "/openapi.yaml",
+        description: "Get OpenAPI specification as YAML",
+        tags: [],
+        request: {},
+        responses: {
+            "200": {
+                description: "OpenAPI specification as YAML",
+                content: {
+                    "application/yaml": {
+                        schema: {
+                            type: "string"
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    for (const def of registry.definitions) {
+        if (def.type === "route") {
+            def.route.security = [
+                {
+                    [bearerAuth.name]: []
+                }
+            ];
+
+            // Ensure every route has a generic JSON response schema so Swagger UI can render responses
+            const existingResponses = def.route.responses;
+            const hasExistingResponses =
+                existingResponses && Object.keys(existingResponses).length > 0;
+
+            if (!hasExistingResponses) {
+                def.route.responses = {
+                    "*": {
+                        description: "",
+                        content: {
+                            "application/json": {
+                                schema: z.object({})
+                            }
+                        }
+                    }
+                };
+            }
+        }
+    }
 
     const generator = new OpenApiGeneratorV3(registry.definitions);
 

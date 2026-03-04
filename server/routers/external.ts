@@ -693,45 +693,12 @@ authenticated.post(
     resource.setResourceUsers
 );
 
-authenticated.get(
-    "/resource-policy/:resourcePolicyId/roles",
-    verifyResourcePolicyAccess,
-    verifyUserHasAction(ActionsEnum.listResourcePolicyRoles),
-    resource.listResourcePolicyRoles
-);
-
 authenticated.put(
     "/resource-policy/:resourcePolicyId/access-control",
     verifyResourcePolicyAccess,
     verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
     verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
     policy.setResourcePolicyAccessControl
-);
-
-authenticated.get(
-    "/resource-policy/:resourcePolicyId/users",
-    verifyResourcePolicyAccess,
-    verifyUserHasAction(ActionsEnum.listResourcePolicyUsers),
-    resource.listResourcePolicyUsers
-);
-
-authenticated.post(
-    "/resource-policy/:resourcePolicyId/roles",
-    verifyResourcePolicyAccess,
-    verifyRoleAccess,
-    verifyLimits,
-    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
-    logActionAudit(ActionsEnum.setResourcePolicyRoles),
-    resource.setResourcePolicyRoles
-);
-
-authenticated.post(
-    "/resource-policy/:resourcePolicyId/users",
-    verifyResourcePolicyAccess,
-    verifyLimits,
-    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
-    logActionAudit(ActionsEnum.setResourcePolicyUsers),
-    resource.setResourcePolicyUsers
 );
 
 authenticated.put(

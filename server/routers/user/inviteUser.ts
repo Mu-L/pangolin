@@ -44,7 +44,7 @@ registry.registerPath({
     method: "post",
     path: "/org/{orgId}/create-invite",
     description: "Invite a user to join an organization.",
-    tags: [OpenAPITags.Org],
+    tags: [OpenAPITags.Invitation],
     request: {
         params: inviteUserParamsSchema,
         body: {

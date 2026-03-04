@@ -29,7 +29,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/whitelist/add",
     description: "Add a single email to the resource whitelist.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: addEmailToResourceWhitelistParamsSchema,
         body: {

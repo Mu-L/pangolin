@@ -25,7 +25,7 @@ registry.registerPath({
     path: "/resource/{resourceId}/password",
     description:
         "Set the password for a resource. Setting the password to null will remove it.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.PublicResource],
     request: {
         params: setResourceAuthMethodsParamsSchema,
         body: {

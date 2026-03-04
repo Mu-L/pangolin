@@ -122,7 +122,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/access-tokens",
     description: "List all access tokens in an organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.AccessToken],
+    tags: [OpenAPITags.AccessToken],
     request: {
         params: z.object({
             orgId: z.string()
@@ -135,8 +135,8 @@ registry.registerPath({
 registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/access-tokens",
-    description: "List all access tokens in an organization.",
-    tags: [OpenAPITags.Resource, OpenAPITags.AccessToken],
+    description: "List all access tokens for a resource.",
+    tags: [OpenAPITags.PublicResource, OpenAPITags.AccessToken],
     request: {
         params: z.object({
             resourceId: z.number()

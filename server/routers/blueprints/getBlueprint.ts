@@ -53,7 +53,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/blueprint/{blueprintId}",
     description: "Get a blueprint by its blueprint ID.",
-    tags: [OpenAPITags.Org, OpenAPITags.Blueprint],
+    tags: [OpenAPITags.Blueprint],
     request: {
         params: getBlueprintSchema
     },

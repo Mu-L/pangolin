@@ -192,6 +192,7 @@
     "resourceHTTPDescription": "Proxy requests over HTTPS using a fully qualified domain name.",
     "resourceRaw": "Raw TCP/UDP Resource",
     "resourceRawDescription": "Proxy requests over raw TCP/UDP using a port number.",
+    "resourceRawDescriptionCloud": "Proxy requests over raw TCP/UDP using a port number. REQUIRES THE USE OF A REMOTE NODE.",
     "resourceCreate": "Create Resource",
     "resourceCreateDescription": "Follow the steps below to create a new resource",
     "resourceSeeAll": "See All Resources",

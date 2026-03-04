@@ -37,7 +37,7 @@ registry.registerPath({
     method: "put",
     path: "/idp/oidc",
     description: "Create an OIDC IdP.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         body: {
             content: {

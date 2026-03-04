@@ -61,6 +61,7 @@ import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries } from "@app/lib/queries";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { build } from "@server/build";
 import { Resource } from "@server/db";
 import { isTargetValid } from "@server/lib/validators";
 import { ListTargetsResponse } from "@server/routers/target";
@@ -292,7 +293,7 @@ export default function Page() {
                   {
                       id: "raw" as ResourceType,
                       title: t("resourceRaw"),
-                      description: t("resourceRawDescription")
+                      description: build == "saas" ? t("resourceRawDescriptionCloud") : t("resourceRawDescription")
                   }
               ])
     ];

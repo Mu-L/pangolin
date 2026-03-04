@@ -51,7 +51,7 @@ registry.registerPath({
     path: "/org/{orgId}/site/{niceId}",
     description:
         "Get a site by orgId and niceId. NiceId is a readable ID for the site and unique on a per org basis.",
-    tags: [OpenAPITags.Org, OpenAPITags.Site],
+    tags: [OpenAPITags.Site],
     request: {
         params: z.object({
             orgId: z.string(),

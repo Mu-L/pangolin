@@ -50,9 +50,9 @@ async function query(idpId: number, orgId: string) {
 
 registry.registerPath({
     method: "get",
-    path: "/org/:orgId/idp/:idpId",
+    path: "/org/{orgId}/idp/{idpId}",
     description: "Get an IDP by its IDP ID for a specific organization.",
-    tags: [OpenAPITags.Idp, OpenAPITags.Org],
+    tags: [OpenAPITags.OrgIdp],
     request: {
         params: paramsSchema
     },

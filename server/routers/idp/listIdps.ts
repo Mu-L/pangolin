@@ -58,7 +58,7 @@ registry.registerPath({
     method: "get",
     path: "/idp",
     description: "List all IDP in the system.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         query: querySchema
     },

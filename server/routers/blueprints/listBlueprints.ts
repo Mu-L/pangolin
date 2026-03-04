@@ -67,7 +67,7 @@ registry.registerPath({
     method: "get",
     path: "/org/{orgId}/blueprints",
     description: "List all blueprints for a organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.Blueprint],
+    tags: [OpenAPITags.Blueprint],
     request: {
         params: z.object({
             orgId: z.string()

@@ -26,7 +26,7 @@ registry.registerPath({
     method: "post",
     path: "/idp/{idpId}/org/{orgId}",
     description: "Update an IDP org policy.",
-    tags: [OpenAPITags.Idp],
+    tags: [OpenAPITags.GlobalIdp],
     request: {
         params: paramsSchema,
         body: {

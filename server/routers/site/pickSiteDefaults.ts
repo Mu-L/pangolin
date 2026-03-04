@@ -35,7 +35,7 @@ registry.registerPath({
     path: "/org/{orgId}/pick-site-defaults",
     description:
         "Return pre-requisite data for creating a site, such as the exit node, subnet, Newt credentials, etc.",
-    tags: [OpenAPITags.Org, OpenAPITags.Site],
+    tags: [OpenAPITags.Site],
     request: {
         params: z.object({
             orgId: z.string()

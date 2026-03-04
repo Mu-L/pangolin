@@ -5,18 +5,21 @@ export const registry = new OpenAPIRegistry();
 export enum OpenAPITags {
     Site = "Site",
     Org = "Organization",
-    Resource = "Resource",
+    PublicResource = "Public Resource",
+    PrivateResource = "Private Resource",
     Policy = "Policy",
     Role = "Role",
     User = "User",
-    Invitation = "Invitation",
-    Target = "Target",
+    Invitation = "User Invitation",
+    Target = "Resource Target",
     Rule = "Rule",
     AccessToken = "Access Token",
-    Idp = "Identity Provider",
+    GlobalIdp = "Identity Provider (Global)",
+    OrgIdp = "Identity Provider (Organization Only)",
     Client = "Client",
     ApiKey = "API Key",
     Domain = "Domain",
     Blueprint = "Blueprint",
-    Ssh = "SSH"
+    Ssh = "SSH",
+    Logs = "Logs"
 }

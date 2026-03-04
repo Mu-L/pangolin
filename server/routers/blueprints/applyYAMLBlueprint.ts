@@ -43,7 +43,7 @@ registry.registerPath({
     method: "put",
     path: "/org/{orgId}/blueprint",
     description: "Create and apply a YAML blueprint to an organization",
-    tags: [OpenAPITags.Org, OpenAPITags.Blueprint],
+    tags: [OpenAPITags.Blueprint],
     request: {
         params: applyBlueprintParamsSchema,
         body: {

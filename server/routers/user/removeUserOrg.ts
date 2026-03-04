@@ -33,7 +33,7 @@ registry.registerPath({
     method: "delete",
     path: "/org/{orgId}/user/{userId}",
     description: "Remove a user from an organization.",
-    tags: [OpenAPITags.Org, OpenAPITags.User],
+    tags: [OpenAPITags.User],
     request: {
         params: removeUserSchema
     },

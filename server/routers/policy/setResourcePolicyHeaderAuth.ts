@@ -29,7 +29,7 @@ registry.registerPath({
     path: "/resource-policy/{resourcePolicyId}/header-auth",
     description:
         "Set or update the header authentication for a resource policy. If user and password is not provided, it will remove the header authentication.",
-    tags: [OpenAPITags.Resource],
+    tags: [OpenAPITags.Policy],
     request: {
         params: setResourcePolicyHeaderAuthParamsSchema,
         body: {
