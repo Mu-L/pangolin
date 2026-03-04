@@ -16,6 +16,10 @@ import z from "zod";
 
 import { createPolicySchema, type PolicyFormValues } from ".";
 
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import type { AxiosResponse } from "axios";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
@@ -52,6 +56,8 @@ export function EditPolicyOtpEmailSectionForm({
     const { policy } = useResourcePolicyContext();
     const router = useRouter();
 
+    const api = createApiClient(useEnvContext());
+
     const form = useForm({
         resolver: zodResolver(
             createPolicySchema.pick({
@@ -87,7 +93,40 @@ export function EditPolicyOtpEmailSectionForm({
 
         const payload = form.getValues();
 
-        console.log({ payload, policy });
+        try {
+            const res = await api
+                .put<AxiosResponse<{}>>(
+                    `/resource-policy/${policy.resourcePolicyId}/whitelist`,
+                    {
+                        emailWhitelistEnabled: payload.emailWhitelistEnabled,
+                        emails: payload.emails?.map((e) => e.text) ?? []
+                    }
+                )
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorUpdate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorUpdateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("success"),
+                    description: t("policyUpdatedSuccess")
+                });
+                router.refresh();
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: t("policyErrorUpdateMessageDescription")
+            });
+        }
     }
 
     if (!isExpanded) {
