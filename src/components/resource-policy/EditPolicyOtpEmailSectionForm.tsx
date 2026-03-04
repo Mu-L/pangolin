@@ -68,7 +68,7 @@ export function EditPolicyOtpEmailSectionForm({
         defaultValues: {
             emailWhitelistEnabled: policy.emailWhitelistEnabled,
             emails: policy.emailWhiteList.map((email) => ({
-                id: email.whitelistId.toString(),
+                id: email.whiteListId.toString(),
                 text: email.email
             }))
         }

@@ -678,6 +678,7 @@ export const policyRules = pgTable("policyRules", {
 export const resourcePolicies = pgTable("resourcePolicies", {
     resourcePolicyId: serial("resourcePolicyId").primaryKey(),
     sso: boolean("sso").notNull().default(true),
+    applyRules: boolean("applyRules").notNull().default(false),
     scope: varchar("scope")
         .$type<"global" | "resource">()
         .notNull()

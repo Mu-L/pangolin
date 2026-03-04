@@ -4,6 +4,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
@@ -76,7 +77,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { UseFormReturn, useForm } from "react-hook-form";
 
 // ─── PolicyRulesSection ───────────────────────────────────────────────────────
@@ -615,6 +616,8 @@ export function EditPolicyRulesSectionForm({
         state: { pagination: { pageIndex: 0, pageSize: 1000 } }
     });
 
+    const [isPending, startTransition] = useTransition();
+
     if (!isExpanded) {
         return (
             <SettingsSection>
@@ -1070,6 +1073,15 @@ export function EditPolicyRulesSectionForm({
                     </Table>
                 </div>
             </SettingsSectionBody>
+            <SettingsSectionFooter>
+                <Button
+                // onClick={saveAllSettings}
+                // loading={loading}
+                // disabled={loading}
+                >
+                    {t("rulesSave")}
+                </Button>
+            </SettingsSectionFooter>
         </SettingsSection>
     );
 }
