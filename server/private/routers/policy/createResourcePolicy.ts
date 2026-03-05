@@ -10,6 +10,11 @@ import {
     idpOrg,
     orgs,
     resourcePolicies,
+    resourcePolicyHeaderAuth,
+    resourcePolicyPassword,
+    resourcePolicyPincode,
+    resourcePolicyRules,
+    resourcePolicyWhiteList,
     rolePolicies,
     roles,
     userOrgs,
@@ -21,6 +26,12 @@ import { and, eq, inArray, not, type InferInsertModel } from "drizzle-orm";
 import logger from "@server/logger";
 import { getUniqueResourcePolicyName } from "@server/db/names";
 import response from "@server/lib/response";
+import { hashPassword } from "@server/auth/password";
+import {
+    isValidCIDR,
+    isValidIP,
+    isValidUrlGlobPattern
+} from "@server/lib/validators";
 
 const createResourcePolicyParamsSchema = z.strictObject({
     orgId: z.string()
@@ -164,7 +175,20 @@ export async function createResourcePolicy(
             );
         }
 
-        const { name, sso, userIds, roleIds, skipToIdpId } = parsedBody.data;
+        const {
+            name,
+            sso,
+            userIds,
+            roleIds,
+            skipToIdpId,
+            applyRules,
+            emailWhitelistEnabled,
+            password,
+            pincode,
+            headerAuth,
+            emails,
+            rules
+        } = parsedBody.data;
 
         // Check if Identity provider in `skipToIdpId` exists
         if (skipToIdpId) {
@@ -223,6 +247,31 @@ export async function createResourcePolicy(
 
         const niceId = await getUniqueResourcePolicyName(orgId);
 
+        for (const rule of rules) {
+            if (rule.match === "CIDR" && !isValidCIDR(rule.value)) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "Invalid CIDR provided"
+                    )
+                );
+            } else if (rule.match === "IP" && !isValidIP(rule.value)) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, "Invalid IP provided")
+                );
+            } else if (
+                rule.match === "PATH" &&
+                !isValidUrlGlobPattern(rule.value)
+            ) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "Invalid URL glob pattern provided"
+                    )
+                );
+            }
+        }
+
         const policy = await db.transaction(async (trx) => {
             const [newPolicy] = await trx
                 .insert(resourcePolicies)
@@ -231,7 +280,9 @@ export async function createResourcePolicy(
                     orgId,
                     name,
                     sso,
-                    idpId: skipToIdpId
+                    idpId: skipToIdpId,
+                    applyRules,
+                    emailWhitelistEnabled
                 })
                 .returning();
 
@@ -270,6 +321,57 @@ export async function createResourcePolicy(
 
             if (usersToAdd.length > 0) {
                 await trx.insert(userPolicies).values(usersToAdd);
+            }
+
+            if (password) {
+                const passwordHash = await hashPassword(password);
+
+                await trx.insert(resourcePolicyPassword).values({
+                    resourcePolicyId: newPolicy.resourcePolicyId,
+                    passwordHash
+                });
+            }
+
+            if (pincode) {
+                const pincodeHash = await hashPassword(pincode);
+
+                await trx.insert(resourcePolicyPincode).values({
+                    resourcePolicyId: newPolicy.resourcePolicyId,
+                    pincodeHash,
+                    digitLength: 6
+                });
+            }
+
+            if (headerAuth) {
+                const headerAuthHash = await hashPassword(
+                    Buffer.from(
+                        `${headerAuth.user}:${headerAuth.password}`
+                    ).toString("base64")
+                );
+
+                await trx.insert(resourcePolicyHeaderAuth).values({
+                    resourcePolicyId: newPolicy.resourcePolicyId,
+                    headerAuthHash,
+                    extendedCompatibility: headerAuth.extendedCompatibility
+                });
+            }
+
+            if (emailWhitelistEnabled && emails.length > 0) {
+                await trx.insert(resourcePolicyWhiteList).values(
+                    emails.map((email) => ({
+                        email,
+                        resourcePolicyId: newPolicy.resourcePolicyId
+                    }))
+                );
+            }
+
+            if (rules.length > 0) {
+                await trx.insert(resourcePolicyRules).values(
+                    rules.map((rule) => ({
+                        resourcePolicyId: newPolicy.resourcePolicyId,
+                        ...rule
+                    }))
+                );
             }
 
             return newPolicy;
