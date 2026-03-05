@@ -100,13 +100,14 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
 
     return (
         <SettingsContainer>
-            {/* Name */}
             {!hidePolicyNameForm && <EditPolicyNameSectionForm />}
+
             <EditPolicyUsersRolesSectionForm
                 allRoles={allRoles}
                 allUsers={allUsers}
                 allIdps={allIdps}
             />
+
             <EditPolicyAuthMethodsSectionForm />
 
             <EditPolicyOtpEmailSectionForm
