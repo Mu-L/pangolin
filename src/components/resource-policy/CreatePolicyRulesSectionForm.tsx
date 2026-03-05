@@ -74,12 +74,7 @@ import {
     getSortedRowModel,
     useReactTable
 } from "@tanstack/react-table";
-import {
-    ArrowUpDown,
-    Check,
-    ChevronsUpDown,
-    Plus
-} from "lucide-react";
+import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
@@ -674,8 +669,8 @@ export function CreatePolicyRulesSectionForm({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <div className="space-y-6">
-                    <div className="flex items-center space-x-2">
+                <div className="flex flex-col gap-y-6 pb-20">
+                    <div className="flex items-center gap-x-2">
                         <SwitchInput
                             id="rules-toggle"
                             label={t("rulesEnable")}
