@@ -26,7 +26,10 @@ const ruleSchema = z.strictObject({
         description: "rule match"
     }),
     value: z.string().min(1),
-    priority: z.int(),
+    priority: z.int().openapi({
+        type: "integer",
+        description: "Rule priority"
+    }),
     enabled: z.boolean().optional()
 });
 

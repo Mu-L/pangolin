@@ -97,7 +97,7 @@ const listSitesSchema = z.object({
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
-        .min(0)
+        .positive()
         .optional()
         .catch(1)
         .default(1)
@@ -278,7 +278,9 @@ export async function listSites(
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase().where(and(...conditions)).as("filtered_sites")
+            querySitesBase()
+                .where(and(...conditions))
+                .as("filtered_sites")
         );
 
         const siteListQuery = baseQuery

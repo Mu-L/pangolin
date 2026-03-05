@@ -22,8 +22,13 @@ import { OpenAPITags, registry } from "@server/openApi";
 const setResourcePolicyAcccessControlBodySchema = z.strictObject({
     sso: z.boolean(),
     userIds: z.array(z.string()),
-    roleIds: z.array(z.int().positive()),
-    skipToIdpId: z.int().positive().optional().nullish()
+    roleIds: z.array(z.int().positive()).openapi({
+        type: "array"
+    }),
+    skipToIdpId: z.int().positive().optional().nullable().openapi({
+        type: "integer",
+        description: "Page number to retrieve"
+    })
 });
 
 const setResourcePolicyAccessControlParamsSchema = z.strictObject({

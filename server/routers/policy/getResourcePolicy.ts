@@ -28,7 +28,14 @@ const getResourcePolicySchema = z
     })
     .or(
         z.strictObject({
-            resourcePolicyId: z.coerce.number<string>().int().positive()
+            resourcePolicyId: z.coerce
+                .number<string>()
+                .int()
+                .positive()
+                .openapi({
+                    type: "integer",
+                    description: "Resource policy ID"
+                })
         })
     );
 
