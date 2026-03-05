@@ -43,7 +43,7 @@ import {
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
 
-import { useMemo, useActionState } from "react";
+import { useMemo, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { CreatePolicyUsersRolesSectionForm } from "./CreatePolicyUserRolesSectionForm";
 import { CreatePolicyAuthMethodsSectionForm } from "./CreatePolicyAuthMethodsSectionForm";
@@ -59,7 +59,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
     const api = createApiClient({ env });
-    const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+    const [isSubmitting, startTransition] = useTransition();
     const { isPaidUser } = usePaidStatus();
 
     const router = useRouter();
@@ -202,8 +202,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
 
     return (
         <Form {...form}>
-            <form action={formAction}>
-                <SettingsContainer>
+            <SettingsContainer>
                     {/* Name */}
                     <SettingsSection>
                         <SettingsSectionHeader>
@@ -258,14 +257,14 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
 
                 <div className="flex py-6 justify-end">
                     <Button
-                        type="submit"
+                        type="button"
+                        onClick={() => startTransition(onSubmit)}
                         loading={isSubmitting}
                         disabled={isSubmitting}
                     >
                         {t("resourcePoliciesCreate")}
                     </Button>
                 </div>
-            </form>
         </Form>
     );
 }

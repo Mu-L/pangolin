@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl";
 
 import z from "zod";
 
-import { type PolicyFormValues } from ".";
+import { createPolicySchema, type PolicyFormValues } from ".";
 import { toast } from "@app/hooks/useToast";
 
 import { SwitchInput } from "@app/components/SwitchInput";
@@ -81,8 +81,8 @@ import {
     Plus
 } from "lucide-react";
 
-import { useCallback, useMemo, useState } from "react";
-import { type UseFormReturn, useForm } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
 
 // ─── CreatePolicyRulesSectionForm ─────────────────────────────────────────────
 
@@ -111,17 +111,42 @@ export type CreatePolicyRulesSectionFormProps = {
 };
 
 export function CreatePolicyRulesSectionForm({
-    form,
+    form: parentForm,
     isMaxmindAvailable,
     isMaxmindAsnAvailable
 }: CreatePolicyRulesSectionFormProps) {
     const t = useTranslations();
     const [isExpanded, setIsExpanded] = useState(false);
     const [rules, setRules] = useState<LocalRule[]>([]);
-    const [rulesEnabled, setRulesEnabled] = useState(false);
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
         useState(false);
     const [openAddRuleAsnSelect, setOpenAddRuleAsnSelect] = useState(false);
+
+    const form = useForm({
+        resolver: zodResolver(
+            createPolicySchema.pick({
+                applyRules: true,
+                rules: true
+            })
+        ),
+        defaultValues: {
+            applyRules: false,
+            rules: []
+        }
+    });
+
+    useEffect(() => {
+        const subscription = form.watch((values) => {
+            parentForm.setValue("applyRules", values.applyRules as boolean);
+            parentForm.setValue("rules", values.rules as any);
+        });
+        return () => subscription.unsubscribe();
+    }, [form, parentForm]);
+
+    const rulesEnabled = useWatch({
+        control: form.control,
+        name: "applyRules"
+    });
 
     const addRuleForm = useForm({
         resolver: zodResolver(addRuleSchema),
@@ -656,7 +681,6 @@ export function CreatePolicyRulesSectionForm({
                             label={t("rulesEnable")}
                             defaultChecked={false}
                             onCheckedChange={(val) => {
-                                setRulesEnabled(val);
                                 form.setValue("applyRules", val);
                             }}
                         />

@@ -14,7 +14,7 @@ import { useTranslations } from "next-intl";
 
 import z from "zod";
 
-import { type PolicyFormValues } from ".";
+import { createPolicySchema, type PolicyFormValues } from ".";
 
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
@@ -46,7 +46,7 @@ import {
 import { cn } from "@app/lib/cn";
 import { Binary, Bot, Key, Plus } from "lucide-react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
 
 // ─── CreatePolicyAuthMethodsSectionForm ───────────────────────────────────────
@@ -70,13 +70,37 @@ export type CreatePolicyAuthMethodsSectionFormProps = {
 };
 
 export function CreatePolicyAuthMethodsSectionForm({
-    form
+    form: parentForm
 }: CreatePolicyAuthMethodsSectionFormProps) {
     const t = useTranslations();
     const [isExpanded, setIsExpanded] = useState(false);
     const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
     const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
     const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
+
+    const form = useForm({
+        resolver: zodResolver(
+            createPolicySchema.pick({
+                password: true,
+                pincode: true,
+                headerAuth: true
+            })
+        ),
+        defaultValues: {
+            password: null,
+            pincode: null,
+            headerAuth: null
+        }
+    });
+
+    useEffect(() => {
+        const subscription = form.watch((values) => {
+            parentForm.setValue("password", values.password as any);
+            parentForm.setValue("pincode", values.pincode as any);
+            parentForm.setValue("headerAuth", values.headerAuth as any);
+        });
+        return () => subscription.unsubscribe();
+    }, [form, parentForm]);
 
     const password = useWatch({
         control: form.control,
