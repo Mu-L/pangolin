@@ -26,15 +26,72 @@ const createResourcePolicyParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
+const ruleSchema = z.strictObject({
+    action: z.enum(["ACCEPT", "DROP", "PASS"]).openapi({
+        type: "string",
+        enum: ["ACCEPT", "DROP", "PASS"],
+        description: "rule action"
+    }),
+    match: z.enum(["CIDR", "IP", "PATH"]).openapi({
+        type: "string",
+        enum: ["CIDR", "IP", "PATH"],
+        description: "rule match"
+    }),
+    value: z.string().min(1),
+    priority: z.int().openapi({
+        type: "integer",
+        description: "Rule priority"
+    }),
+    enabled: z.boolean().optional()
+});
+
 const createResourcePolicyBodySchema = z.strictObject({
     name: z.string().min(1).max(255),
-    sso: z.boolean(),
-    skipToIdpId: z.int().positive().optional(),
+    // Access control
+    sso: z.boolean().default(true),
+    skipToIdpId: z
+        .int()
+        .positive()
+        .optional()
+        .nullable()
+        .openapi({ type: "integer" }),
     roleIds: z
         .array(z.string().transform(Number).pipe(z.int().positive()))
         .optional()
         .default([]),
-    userIds: z.array(z.string()).optional().default([])
+    userIds: z.array(z.string()).optional().default([]),
+    // auth methods
+    password: z.string().min(4).max(100).nullable().optional(),
+    pincode: z
+        .string()
+        .regex(/^\d{6}$/)
+        .or(z.null())
+        .optional(),
+    headerAuth: z
+        .object({
+            user: z.string().min(4).max(100),
+            password: z.string().min(4).max(100),
+            extendedCompatibility: z.boolean()
+        })
+        .nullable()
+        .optional(),
+    // email OTP
+    emailWhitelistEnabled: z.boolean().optional().default(false),
+    emails: z
+        .array(
+            z.email().or(
+                z.string().regex(/^\*@[\w.-]+\.[a-zA-Z]{2,}$/, {
+                    error: "Invalid email address. Wildcard (*) must be the entire local part."
+                })
+            )
+        )
+        .max(50)
+        .transform((v) => v.map((e) => e.toLowerCase()))
+        .optional()
+        .default([]),
+    // rules
+    applyRules: z.boolean().default(false),
+    rules: z.array(ruleSchema).optional().default([])
 });
 
 registry.registerPath({
