@@ -43,10 +43,11 @@ import {
     InputOTPSlot
 } from "@app/components/ui/input-otp";
 
+import { cn } from "@app/lib/cn";
 import { Binary, Bot, Key, Plus } from "lucide-react";
 
 import { useState } from "react";
-import { type UseFormReturn, useForm } from "react-hook-form";
+import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
 
 // ─── CreatePolicyAuthMethodsSectionForm ───────────────────────────────────────
 
@@ -72,14 +73,23 @@ export function CreatePolicyAuthMethodsSectionForm({
     form
 }: CreatePolicyAuthMethodsSectionFormProps) {
     const t = useTranslations();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
     const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
     const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
 
-    const password = form.watch("password");
-    const pincode = form.watch("pincode");
-    const headerAuth = form.watch("headerAuth");
+    const password = useWatch({
+        control: form.control,
+        name: "password"
+    });
+    const pincode = useWatch({
+        control: form.control,
+        name: "pincode"
+    });
+    const headerAuth = useWatch({
+        control: form.control,
+        name: "headerAuth"
+    });
 
     const passwordForm = useForm({
         resolver: zodResolver(setPasswordSchema),
@@ -96,7 +106,7 @@ export function CreatePolicyAuthMethodsSectionForm({
         defaultValues: { user: "", password: "", extendedCompatibility: true }
     });
 
-    if (!isOpen) {
+    if (!isExpanded) {
         return (
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -111,7 +121,7 @@ export function CreatePolicyAuthMethodsSectionForm({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsExpanded(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         {t("resourcePolicyAuthMethodAdd")}
@@ -392,7 +402,7 @@ export function CreatePolicyAuthMethodsSectionForm({
                         {/* Password row */}
                         <div className="flex items-center justify-between border rounded-md p-2 mb-4">
                             <div
-                                className={`flex items-center ${password ? "text-green-500" : ""} text-sm space-x-2`}
+                                className={cn("flex items-center text-sm space-x-2", password && "text-green-500")}
                             >
                                 <Key size="14" />
                                 <span>
@@ -422,7 +432,7 @@ export function CreatePolicyAuthMethodsSectionForm({
                         {/* Pincode row */}
                         <div className="flex items-center justify-between border rounded-md p-2">
                             <div
-                                className={`flex items-center ${pincode ? "text-green-500" : ""} space-x-2 text-sm`}
+                                className={cn("flex items-center space-x-2 text-sm", pincode && "text-green-500")}
                             >
                                 <Binary size="14" />
                                 <span>
@@ -450,7 +460,7 @@ export function CreatePolicyAuthMethodsSectionForm({
                         {/* Header auth row */}
                         <div className="flex items-center justify-between border rounded-md p-2">
                             <div
-                                className={`flex items-center ${headerAuth ? "text-green-500" : ""} space-x-2 text-sm`}
+                                className={cn("flex items-center space-x-2 text-sm", headerAuth && "text-green-500")}
                             >
                                 <Bot size="14" />
                                 <span>

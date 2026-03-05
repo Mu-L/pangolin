@@ -46,13 +46,13 @@ export function CreatePolicyOtpEmailSectionForm({
     emailEnabled
 }: CreatePolicyOtpEmailSectionFormProps) {
     const t = useTranslations();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [whitelistEnabled, setWhitelistEnabled] = useState(false);
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
 
-    if (!isOpen) {
+    if (!isExpanded) {
         return (
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -67,7 +67,7 @@ export function CreatePolicyOtpEmailSectionForm({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsExpanded(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         {t("resourcePolicyOtpEmailAdd")}

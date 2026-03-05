@@ -116,7 +116,7 @@ export function CreatePolicyRulesSectionForm({
     isMaxmindAsnAvailable
 }: CreatePolicyRulesSectionFormProps) {
     const t = useTranslations();
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [rules, setRules] = useState<LocalRule[]>([]);
     const [rulesEnabled, setRulesEnabled] = useState(false);
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
@@ -613,7 +613,7 @@ export function CreatePolicyRulesSectionForm({
         state: { pagination: { pageIndex: 0, pageSize: 1000 } }
     });
 
-    if (!isOpen) {
+    if (!isExpanded) {
         return (
             <SettingsSection>
                 <SettingsSectionHeader>
@@ -628,7 +628,7 @@ export function CreatePolicyRulesSectionForm({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsExpanded(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         {t("resourcePolicyRulesAdd")}
