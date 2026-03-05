@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, policyRules, resourcePolicies } from "@server/db";
+import { db, resourcePolicyRules, resourcePolicies } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -136,11 +136,13 @@ export async function setResourcePolicyRules(
                 .where(eq(resourcePolicies.resourcePolicyId, resourcePolicyId));
 
             await trx
-                .delete(policyRules)
-                .where(eq(policyRules.resourcePolicyId, resourcePolicyId));
+                .delete(resourcePolicyRules)
+                .where(
+                    eq(resourcePolicyRules.resourcePolicyId, resourcePolicyId)
+                );
 
             if (rules.length > 0) {
-                await trx.insert(policyRules).values(
+                await trx.insert(resourcePolicyRules).values(
                     rules.map((rule) => ({
                         resourcePolicyId,
                         ...rule

@@ -1,6 +1,7 @@
 import {
     db,
     idp,
+    resourcePolicyRules,
     resourcePolicies,
     resourcePolicyHeaderAuth,
     resourcePolicyPassword,
@@ -56,6 +57,7 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
         .select({
             resourcePolicyId: resourcePolicies.resourcePolicyId,
             sso: resourcePolicies.sso,
+            applyRules: resourcePolicies.applyRules,
             emailWhitelistEnabled: resourcePolicies.emailWhitelistEnabled,
             idpId: resourcePolicies.idpId,
             niceId: resourcePolicies.niceId,
@@ -134,11 +136,24 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
             eq(resourcePolicyWhiteList.resourcePolicyId, res.resourcePolicyId)
         );
 
+    const policyRules = await db
+        .select({
+            ruleId: resourcePolicyRules.ruleId,
+            enabled: resourcePolicyRules.enabled,
+            priority: resourcePolicyRules.priority,
+            action: resourcePolicyRules.action,
+            match: resourcePolicyRules.match,
+            value: resourcePolicyRules.value
+        })
+        .from(resourcePolicyRules)
+        .where(eq(resourcePolicyRules.resourcePolicyId, res.resourcePolicyId));
+
     return {
         ...res,
         roles: policyRoles,
         users: policyUsers,
-        emailWhiteList: policyEmailWhiteList
+        emailWhiteList: policyEmailWhiteList,
+        rules: policyRules
     };
 }
 

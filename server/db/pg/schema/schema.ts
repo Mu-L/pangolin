@@ -661,7 +661,7 @@ export const resourceRules = pgTable("resourceRules", {
     value: varchar("value").notNull()
 });
 
-export const policyRules = pgTable("policyRules", {
+export const resourcePolicyRules = pgTable("resourcePolicyRules", {
     ruleId: serial("ruleId").primaryKey(),
     resourcePolicyId: integer("resourcePolicyId")
         .notNull()

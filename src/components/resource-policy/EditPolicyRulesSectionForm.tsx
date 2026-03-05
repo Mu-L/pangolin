@@ -78,7 +78,12 @@ import {
 import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
-import { UseFormReturn, useForm } from "react-hook-form";
+import { UseFormReturn, useForm, useWatch } from "react-hook-form";
+import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import type { AxiosResponse } from "axios";
+import { useRouter } from "next/navigation";
 
 // ─── PolicyRulesSection ───────────────────────────────────────────────────────
 
@@ -111,17 +116,31 @@ export function EditPolicyRulesSectionForm({
 }: PolicyRulesSectionProps) {
     const t = useTranslations();
 
+    const { policy } = useResourcePolicyContext();
+    const api = createApiClient(useEnvContext());
+    const router = useRouter();
+
     const form = useForm({
         resolver: zodResolver(
             createPolicySchema.pick({
                 rules: true,
                 applyRules: true
             })
-        )
+        ),
+        defaultValues: {
+            applyRules: policy.applyRules,
+            rules: policy.rules
+        }
     });
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [rules, setRules] = useState<LocalRule[]>([]);
-    const [rulesEnabled, setRulesEnabled] = useState(false);
+
+    const rulesEnabled = useWatch({
+        control: form.control,
+        name: "applyRules"
+    });
+
+    const [rules, setRules] = useState<LocalRule[]>(policy.rules);
+    const [isExpanded, setIsExpanded] = useState(rulesEnabled);
+
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
         useState(false);
     const [openAddRuleAsnSelect, setOpenAddRuleAsnSelect] = useState(false);
@@ -618,6 +637,45 @@ export function EditPolicyRulesSectionForm({
 
     const [isPending, startTransition] = useTransition();
 
+    async function saveRules() {
+        const isValid = form.trigger();
+        if (!isValid) return;
+
+        const payload = form.getValues();
+        console.log({ payload });
+
+        try {
+            const res = await api
+                .put<
+                    AxiosResponse<{}>
+                >(`/resource-policy/${policy.resourcePolicyId}/rules`, payload)
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorUpdate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorUpdateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("success"),
+                    description: t("policyUpdatedSuccess")
+                });
+                router.refresh();
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: t("policyErrorUpdateMessageDescription")
+            });
+        }
+    }
+
     if (!isExpanded) {
         return (
             <SettingsSection>
@@ -659,9 +717,8 @@ export function EditPolicyRulesSectionForm({
                         <SwitchInput
                             id="rules-toggle"
                             label={t("rulesEnable")}
-                            defaultChecked={false}
+                            defaultChecked={rulesEnabled}
                             onCheckedChange={(val) => {
-                                setRulesEnabled(val);
                                 form.setValue("applyRules", val);
                             }}
                         />
@@ -1075,9 +1132,9 @@ export function EditPolicyRulesSectionForm({
             </SettingsSectionBody>
             <SettingsSectionFooter>
                 <Button
-                // onClick={saveAllSettings}
-                // loading={loading}
-                // disabled={loading}
+                    onClick={() => startTransition(() => saveRules())}
+                    loading={isPending}
+                    disabled={isPending}
                 >
                     {t("rulesSave")}
                 </Button>
