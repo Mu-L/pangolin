@@ -1,9 +1,4 @@
-import { Request, Response, NextFunction } from "express";
-import z from "zod";
-import { OpenAPITags, registry } from "@server/openApi";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import { fromError } from "zod-validation-error";
+import { hashPassword } from "@server/auth/password";
 import {
     db,
     idp,
@@ -22,16 +17,21 @@ import {
     users,
     type ResourcePolicy
 } from "@server/db";
-import { and, eq, inArray, not, type InferInsertModel } from "drizzle-orm";
-import logger from "@server/logger";
 import { getUniqueResourcePolicyName } from "@server/db/names";
 import response from "@server/lib/response";
-import { hashPassword } from "@server/auth/password";
 import {
     isValidCIDR,
     isValidIP,
     isValidUrlGlobPattern
 } from "@server/lib/validators";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import { and, eq, inArray, type InferInsertModel } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import z from "zod";
+import { fromError } from "zod-validation-error";
 
 const createResourcePolicyParamsSchema = z.strictObject({
     orgId: z.string()
