@@ -12,11 +12,16 @@ export type GetMaintenanceInfoResponse = {
     maintenanceEstimatedTime: string | null;
 };
 
+export type AttachedResource = Pick<
+    Resource,
+    "resourceId" | "name" | "fullDomain"
+>;
+
 export type ResourcePolicyWithResources = Pick<
     ResourcePolicy,
     "resourcePolicyId" | "niceId" | "name" | "orgId"
 > & {
-    resources: Array<Pick<Resource, "resourceId" | "name" | "fullDomain">>;
+    resources: Array<AttachedResource>;
 };
 
 export type ListResourcePoliciesResponse = PaginatedResponse<{

@@ -3,9 +3,17 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
-import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import type {
+    AttachedResource,
+    ListResourcePoliciesResponse
+} from "@server/routers/resource/types";
 import type { PaginationState } from "@tanstack/react-table";
-import { ArrowRight, MoreHorizontal } from "lucide-react";
+import {
+    ArrowRight,
+    ChevronDown,
+    MoreHorizontal,
+    Waypoints
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +28,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "./ui/dropdown-menu";
+import type { targets } from "@server/db";
+import type { TargetHealth } from "./ProxyResourcesTable";
 
 type ResourcePolicyRow = ListResourcePoliciesResponse["policies"][number];
 
@@ -65,6 +75,63 @@ export function ResourcePoliciesTable({
         });
     };
 
+    function ResourceListCell({
+        resources
+    }: {
+        resources?: AttachedResource[];
+    }) {
+        if (!resources || resources.length === 0) {
+            return (
+                <div
+                    id="LOOK_FOR_ME"
+                    className="flex items-center gap-2 text-muted-foreground"
+                >
+                    <Waypoints className="size-4 flex-none" />
+                    <span className="text-sm">
+                        {t("resourcePoliciesAttachedResourcesEmpty")}
+                    </span>
+                </div>
+            );
+        }
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center gap-2 h-8 px-0 font-normal"
+                    >
+                        <Waypoints className="size-4 flex-none" />
+                        <span className="text-sm">
+                            {t("resourcePoliciesAttachedResources", {
+                                count: resources.length
+                            })}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-70">
+                    {resources.map((resource) => (
+                        <DropdownMenuItem
+                            key={resource.resourceId}
+                            className="flex items-center justify-between gap-4"
+                        >
+                            <div className="flex items-center gap-2">
+                                {resource.name}
+                            </div>
+                            <span
+                                className={`capitalize text-muted-foreground`}
+                            >
+                                {resource.fullDomain}
+                            </span>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
+
     const proxyColumns: ExtendedColumnDef<ResourcePolicyRow>[] = [
         {
             accessorKey: "name",
@@ -81,6 +148,19 @@ export function ResourcePoliciesTable({
             header: () => <span className="p-3">{t("identifier")}</span>,
             cell: ({ row }) => {
                 return <span>{row.original.niceId || "-"}</span>;
+            }
+        },
+        {
+            id: "resources",
+            accessorKey: "resources",
+            friendlyName: t("resourcePoliciesAttachedResourcesColumnTitle"),
+            header: () => (
+                <span className="p-3">
+                    {t("resourcePoliciesAttachedResourcesColumnTitle")}
+                </span>
+            ),
+            cell: ({ row }) => {
+                return <ResourceListCell resources={row.original.resources} />;
             }
         },
         {
