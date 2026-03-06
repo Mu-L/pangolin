@@ -1,4 +1,4 @@
-import type { ResourcePolicy } from "@server/db";
+import type { Resource, ResourcePolicy } from "@server/db";
 import type { PaginatedResponse } from "@server/types/Pagination";
 
 export type GetMaintenanceInfoResponse = {
@@ -12,8 +12,13 @@ export type GetMaintenanceInfoResponse = {
     maintenanceEstimatedTime: string | null;
 };
 
+export type ResourcePolicyWithResources = Pick<
+    ResourcePolicy,
+    "resourcePolicyId" | "niceId" | "name" | "orgId"
+> & {
+    resources: Array<Pick<Resource, "resourceId" | "name" | "fullDomain">>;
+};
+
 export type ListResourcePoliciesResponse = PaginatedResponse<{
-    policies: Array<
-        Pick<ResourcePolicy, "resourcePolicyId" | "niceId" | "name" | "orgId">
-    >;
+    policies: Array<ResourcePolicyWithResources>;
 }>;

@@ -11,11 +11,20 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, resourcePolicies, rolePolicies, userPolicies } from "@server/db";
+import {
+    db,
+    resourcePolicies,
+    resources,
+    rolePolicies,
+    userPolicies
+} from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
-import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import type {
+    ListResourcePoliciesResponse,
+    ResourcePolicyWithResources
+} from "@server/routers/resource/types";
 import HttpCode from "@server/types/HttpCode";
 import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
@@ -191,9 +200,48 @@ export async function listResourcePolicies(
             countQuery
         ]);
 
+        const attachedResources =
+            rows.length === 0
+                ? []
+                : await db
+                      .select({
+                          resourceId: resources.resourceId,
+                          name: resources.name,
+                          fullDomain: resources.fullDomain,
+                          resourcePolicyId: resources.resourcePolicyId
+                      })
+                      .from(resources)
+                      .where(
+                          inArray(
+                              resources.resourcePolicyId,
+                              rows.map((row) => row.resourcePolicyId)
+                          )
+                      );
+        const entries: ResourcePolicyWithResources[] = [];
+
+        // avoids TS issues with reduce/never[]
+        const map = new Map<number, ResourcePolicyWithResources>();
+
+        for (const row of rows) {
+            let entry = map.get(row.resourcePolicyId);
+            if (!entry) {
+                entry = {
+                    ...row,
+                    resources: []
+                };
+                map.set(row.resourcePolicyId, entry);
+            }
+
+            entry.resources = attachedResources.filter(
+                (r) => r.resourcePolicyId === entry?.resourcePolicyId
+            );
+        }
+
+        const policiesList = Array.from(map.values());
+
         return response<ListResourcePoliciesResponse>(res, {
             data: {
-                policies: rows,
+                policies: policiesList,
                 pagination: {
                     total: totalCount,
                     pageSize,
