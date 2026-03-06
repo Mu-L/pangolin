@@ -2,7 +2,7 @@
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
-import { createApiClient } from "@app/lib/api";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import type {
     AttachedResource,
     ListResourcePoliciesResponse
@@ -17,7 +17,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Button } from "./ui/button";
 import { ControlledDataTable } from "./ui/controlled-data-table";
@@ -28,8 +28,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "./ui/dropdown-menu";
-import type { targets } from "@server/db";
-import type { TargetHealth } from "./ProxyResourcesTable";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 type ResourcePolicyRow = ListResourcePoliciesResponse["policies"][number];
 
@@ -57,6 +56,27 @@ export function ResourcePoliciesTable({
     const { env } = useEnvContext();
 
     const api = createApiClient({ env });
+
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedResourcePolicy, setSelectedResourcePolicy] =
+        useState<ResourcePolicyRow | null>(null);
+
+    const deleteResourcePolicy = async (resourcePolicyId: number) => {
+        await api
+            .delete(`/resource-policy/${resourcePolicyId}`)
+            .catch((e) => {
+                console.error(t("resourceErrorDelte"), e);
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorDelte"),
+                    description: formatAxiosError(e, t("resourceErrorDelte"))
+                });
+            })
+            .then(() => {
+                router.refresh();
+                setIsDeleteModalOpen(false);
+            });
+    };
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
@@ -191,8 +211,8 @@ export function ResourcePoliciesTable({
                                 </Link>
                                 <DropdownMenuItem
                                     onClick={() => {
-                                        // setSelectedResource(resourceRow);
-                                        // setIsDeleteModalOpen(true);
+                                        setSelectedResourcePolicy(policyRow);
+                                        setIsDeleteModalOpen(true);
                                     }}
                                 >
                                     <span className="text-red-500">
@@ -233,6 +253,29 @@ export function ResourcePoliciesTable({
 
     return (
         <>
+            {selectedResourcePolicy && (
+                <ConfirmDeleteDialog
+                    open={isDeleteModalOpen}
+                    setOpen={(val) => {
+                        setIsDeleteModalOpen(val);
+                        setSelectedResourcePolicy(null);
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("resourcePolicyQuestionRemove")}</p>
+                            <p>{t("resourcePolicyMessageRemove")}</p>
+                        </div>
+                    }
+                    buttonText={t("resourcePolicyDeleteConfirm")}
+                    onConfirm={async () =>
+                        deleteResourcePolicy(
+                            selectedResourcePolicy.resourcePolicyId
+                        )
+                    }
+                    string={selectedResourcePolicy.name}
+                    title={t("resourcePolicyDelete")}
+                />
+            )}
             <ControlledDataTable
                 columns={proxyColumns}
                 rows={policies}

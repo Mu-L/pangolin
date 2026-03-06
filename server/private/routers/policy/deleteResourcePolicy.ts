@@ -29,9 +29,9 @@ const deleteResourcePolicySchema = z.strictObject({
 
 registry.registerPath({
     method: "delete",
-    path: "/resource/{resourceId}",
-    description: "Delete a resource.",
-    tags: [OpenAPITags.PublicResource],
+    path: "/resource-policy/{resourcePolicyId}",
+    description: "Delete a resource policy.",
+    tags: [OpenAPITags.Policy],
     request: {
         params: deleteResourcePolicySchema
     },
