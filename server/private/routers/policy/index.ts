@@ -13,3 +13,4 @@
 
 export * from "./createResourcePolicy";
 export * from "./listResourcePolicies";
+export * from "./deleteResourcePolicy";

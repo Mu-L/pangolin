@@ -1,17 +1,13 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { db } from "@server/db";
-import { newts, resources, sites, targets } from "@server/db";
-import { eq } from "drizzle-orm";
+import { db, resources, targets } from "@server/db";
 import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
 import logger from "@server/logger";
-import { fromError } from "zod-validation-error";
-import { addPeer } from "../gerbil/peers";
-import { removeTargets } from "../newt/targets";
-import { getAllowedIps } from "../target/helpers";
 import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import { eq } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // Define Zod schema for request parameters validation
 const deleteResourceSchema = z.strictObject({

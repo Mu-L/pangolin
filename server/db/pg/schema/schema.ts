@@ -100,7 +100,7 @@ export const resources = pgTable("resources", {
     resourceId: serial("resourceId").primaryKey(),
     resourcePolicyId: integer("resourcePolicyId").references(
         () => resourcePolicies.resourcePolicyId,
-        { onDelete: "cascade" }
+        { onDelete: "set null" }
     ),
     resourceGuid: varchar("resourceGuid", { length: 36 })
         .unique()

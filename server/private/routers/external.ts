@@ -35,7 +35,8 @@ import {
     verifyUserIsServerAdmin,
     verifySiteAccess,
     verifyClientAccess,
-    verifyLimits
+    verifyLimits,
+    verifyResourcePolicyAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -352,6 +353,18 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.listResourcePolicies),
     logActionAudit(ActionsEnum.listResourcePolicies),
     policy.listResourcePolicies
+);
+
+authenticated.delete(
+    "/resource-policy/:resourcePolicyId",
+    verifyResourcePolicyAccess,
+    verifyValidLicense,
+    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.deleteResourcePolicy),
+    logActionAudit(ActionsEnum.deleteResourcePolicy),
+    policy.deleteResourcePolicy
 );
 
 authenticated.post(
