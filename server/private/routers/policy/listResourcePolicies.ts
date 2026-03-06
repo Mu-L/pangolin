@@ -217,7 +217,6 @@ export async function listResourcePolicies(
                               rows.map((row) => row.resourcePolicyId)
                           )
                       );
-        const entries: ResourcePolicyWithResources[] = [];
 
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourcePolicyWithResources>();
