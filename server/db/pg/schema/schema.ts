@@ -102,6 +102,12 @@ export const resources = pgTable("resources", {
         () => resourcePolicies.resourcePolicyId,
         { onDelete: "set null" }
     ),
+    defaultResourcePolicyId: integer("defaultResourcePolicyId").references(
+        () => resourcePolicies.resourcePolicyId,
+        {
+            onDelete: "restrict"
+        }
+    ),
     resourceGuid: varchar("resourceGuid", { length: 36 })
         .unique()
         .notNull()

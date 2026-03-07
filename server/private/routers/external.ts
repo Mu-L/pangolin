@@ -344,6 +344,17 @@ authenticated.get(
     approval.countApprovals
 );
 
+authenticated.delete(
+    "/resource-policy/:resourcePolicyId",
+    verifyResourcePolicyAccess,
+    verifyValidLicense,
+    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.deleteResourcePolicy),
+    logActionAudit(ActionsEnum.deleteResourcePolicy),
+    policy.deleteResourcePolicy
+);
+
 authenticated.get(
     "/org/:orgId/resource-policies",
     verifyValidLicense,
@@ -353,18 +364,6 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.listResourcePolicies),
     logActionAudit(ActionsEnum.listResourcePolicies),
     policy.listResourcePolicies
-);
-
-authenticated.delete(
-    "/resource-policy/:resourcePolicyId",
-    verifyResourcePolicyAccess,
-    verifyValidLicense,
-    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
-    verifyOrgAccess,
-    verifyLimits,
-    verifyUserHasAction(ActionsEnum.deleteResourcePolicy),
-    logActionAudit(ActionsEnum.deleteResourcePolicy),
-    policy.deleteResourcePolicy
 );
 
 authenticated.post(

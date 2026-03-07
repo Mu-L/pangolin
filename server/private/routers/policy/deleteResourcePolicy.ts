@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, resourcePolicies } from "@server/db";
+import { db, resourcePolicies, resources } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -56,12 +56,12 @@ export async function deleteResourcePolicy(
 
         const { resourcePolicyId } = parsedParams.data;
 
-        const [deletedResource] = await db
-            .delete(resourcePolicies)
-            .where(eq(resourcePolicies.resourcePolicyId, resourcePolicyId))
-            .returning();
+        const [existingResource] = await db
+            .select()
+            .from(resourcePolicies)
+            .where(eq(resourcePolicies.resourcePolicyId, resourcePolicyId));
 
-        if (!deletedResource) {
+        if (!existingResource) {
             return next(
                 createHttpError(
                     HttpCode.NOT_FOUND,
@@ -69,6 +69,27 @@ export async function deleteResourcePolicy(
                 )
             );
         }
+
+        const totalAffectedResources = await db.$count(
+            db
+                .select()
+                .from(resources)
+                .where(eq(resources.resourcePolicyId, resourcePolicyId))
+        );
+
+        if (totalAffectedResources > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    `Cannot delete Policy '${existingResource.name}' as it's being used by at least one resource`
+                )
+            );
+        }
+
+        // delete policy
+        await db
+            .delete(resourcePolicies)
+            .where(eq(resourcePolicies.resourcePolicyId, resourcePolicyId));
 
         return response(res, {
             data: null,
