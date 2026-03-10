@@ -453,6 +453,13 @@ authenticated.get(
     policy.getResourcePolicy
 );
 
+authenticated.get(
+    "/resource/:resourceId/policies",
+    verifyApiKeyResourceAccess,
+    verifyApiKeyHasAction(ActionsEnum.getResourcePolicies),
+    resource.getResourcePolicies
+);
+
 authenticated.post(
     "/resource/:resourceId",
     verifyApiKeyResourceAccess,

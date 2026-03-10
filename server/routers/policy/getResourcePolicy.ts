@@ -40,7 +40,9 @@ const getResourcePolicySchema = z
         })
     );
 
-async function query(params: z.infer<typeof getResourcePolicySchema>) {
+export async function queryResourcePolicy(
+    params: z.infer<typeof getResourcePolicySchema>
+) {
     const conditions: SQL<unknown>[] = [];
     if ("resourcePolicyId" in params) {
         conditions.push(
@@ -158,7 +160,7 @@ async function query(params: z.infer<typeof getResourcePolicySchema>) {
 }
 
 export type GetResourcePolicyResponse = NonNullable<
-    Awaited<ReturnType<typeof query>>
+    Awaited<ReturnType<typeof queryResourcePolicy>>
 >;
 
 registry.registerPath({
@@ -205,7 +207,7 @@ export async function getResourcePolicy(
             );
         }
 
-        const policy = await query(parsedParams.data);
+        const policy = await queryResourcePolicy(parsedParams.data);
 
         if (!policy) {
             return next(

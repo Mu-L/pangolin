@@ -4,6 +4,7 @@ import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
 import type {
     GetResourceWhitelistResponse,
+    GetResourcePoliciesResponse,
     ListResourceNamesResponse,
     ListResourcesResponse,
     ListResourceRolesResponse,
@@ -320,6 +321,17 @@ export const resourceQueries = {
                 >(`/resource/${resourceId}/whitelist`, { signal });
 
                 return res.data.data.whitelist;
+            }
+        }),
+    policies: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "POLICIES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetResourcePoliciesResponse>
+                >(`/resource/${resourceId}/policies`, { signal });
+
+                return res.data.data;
             }
         }),
     listNamesPerOrg: (orgId: string) =>

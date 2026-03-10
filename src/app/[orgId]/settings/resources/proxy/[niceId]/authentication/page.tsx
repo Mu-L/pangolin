@@ -12,6 +12,10 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
+import {
+    StrategySelect,
+    type StrategyOption
+} from "@app/components/StrategySelect";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
@@ -42,6 +46,7 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
+import { ResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -86,6 +91,8 @@ const whitelistSchema = z.object({
     )
 });
 
+type ResourcePolicyType = StrategyOption<"inline" | "shared">;
+
 export default function ResourceAuthenticationPage() {
     const { org } = useOrgContext();
     const { resource, updateResource, authInfo, updateAuthInfo } =
@@ -118,6 +125,11 @@ export default function ResourceAuthenticationPage() {
             resourceId: resource.resourceId
         })
     );
+    const { data: policies, isLoading: isLoadingPolicies } = useQuery(
+        resourceQueries.policies({
+            resourceId: resource.resourceId
+        })
+    );
 
     const { data: orgRoles = [], isLoading: isLoadingOrgRoles } = useQuery(
         orgQueries.roles({
@@ -142,7 +154,8 @@ export default function ResourceAuthenticationPage() {
         isLoadingResourceRoles ||
         isLoadingResourceUsers ||
         isLoadingWhiteList ||
-        isLoadingOrgIdps;
+        isLoadingOrgIdps ||
+        isLoadingPolicies;
 
     const allRoles = useMemo(() => {
         return orgRoles
@@ -413,6 +426,22 @@ export default function ResourceAuthenticationPage() {
             .finally(() => setLoadingRemoveResourceHeaderAuth(false));
     }
 
+    const resourcePolicyTypes: Array<ResourcePolicyType> = [
+        {
+            id: "inline",
+            title: t("resourcePolicyInline"),
+            description: t("resourcePolicyInlineDescription")
+        },
+        {
+            id: "shared",
+            title: t("resourcePolicyShared"),
+            description: t("resourcePolicySharedDescription")
+        }
+    ];
+
+    const [selectedResourceType, setSelectedResourceType] =
+        useState<ResourcePolicyType["id"]>("inline");
+
     if (pageLoading) {
         return <></>;
     }
@@ -465,324 +494,39 @@ export default function ResourceAuthenticationPage() {
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
-                            {t("resourceUsersRoles")}
+                            {t("resourcePolicySelectTitle")}
                         </SettingsSectionTitle>
                         <SettingsSectionDescription>
-                            {t("resourceUsersRolesDescription")}
+                            {t("resourcePolicySelectDescription")}
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <SettingsSectionForm>
-                            <SwitchInput
-                                id="sso-toggle"
-                                label={t("ssoUse")}
-                                checked={ssoEnabled}
-                                onCheckedChange={(val) => setSsoEnabled(val)}
-                            />
-
-                            <Form {...usersRolesForm}>
-                                <form
-                                    action={submitUserRolesForm}
-                                    id="users-roles-form"
-                                    className="space-y-4"
-                                >
-                                    {ssoEnabled && (
-                                        <>
-                                            <FormField
-                                                control={usersRolesForm.control}
-                                                name="roles"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-col items-start">
-                                                        <FormLabel>
-                                                            {t("roles")}
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <TagInput
-                                                                {...field}
-                                                                activeTagIndex={
-                                                                    activeRolesTagIndex
-                                                                }
-                                                                setActiveTagIndex={
-                                                                    setActiveRolesTagIndex
-                                                                }
-                                                                placeholder={t(
-                                                                    "accessRoleSelect2"
-                                                                )}
-                                                                size="sm"
-                                                                tags={
-                                                                    usersRolesForm.getValues()
-                                                                        .roles
-                                                                }
-                                                                setTags={(
-                                                                    newRoles
-                                                                ) => {
-                                                                    usersRolesForm.setValue(
-                                                                        "roles",
-                                                                        newRoles as [
-                                                                            Tag,
-                                                                            ...Tag[]
-                                                                        ]
-                                                                    );
-                                                                }}
-                                                                enableAutocomplete={
-                                                                    true
-                                                                }
-                                                                autocompleteOptions={
-                                                                    allRoles
-                                                                }
-                                                                allowDuplicates={
-                                                                    false
-                                                                }
-                                                                restrictTagsToAutocompleteOptions={
-                                                                    true
-                                                                }
-                                                                sortTags={true}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                        <FormDescription>
-                                                            {t(
-                                                                "resourceRoleDescription"
-                                                            )}
-                                                        </FormDescription>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={usersRolesForm.control}
-                                                name="users"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-col items-start">
-                                                        <FormLabel>
-                                                            {t("users")}
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <TagInput
-                                                                {...field}
-                                                                activeTagIndex={
-                                                                    activeUsersTagIndex
-                                                                }
-                                                                setActiveTagIndex={
-                                                                    setActiveUsersTagIndex
-                                                                }
-                                                                placeholder={t(
-                                                                    "accessUserSelect"
-                                                                )}
-                                                                tags={
-                                                                    usersRolesForm.getValues()
-                                                                        .users
-                                                                }
-                                                                size="sm"
-                                                                setTags={(
-                                                                    newUsers
-                                                                ) => {
-                                                                    usersRolesForm.setValue(
-                                                                        "users",
-                                                                        newUsers as [
-                                                                            Tag,
-                                                                            ...Tag[]
-                                                                        ]
-                                                                    );
-                                                                }}
-                                                                enableAutocomplete={
-                                                                    true
-                                                                }
-                                                                autocompleteOptions={
-                                                                    allUsers
-                                                                }
-                                                                allowDuplicates={
-                                                                    false
-                                                                }
-                                                                restrictTagsToAutocompleteOptions={
-                                                                    true
-                                                                }
-                                                                sortTags={true}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </>
-                                    )}
-
-                                    {ssoEnabled && allIdps.length > 0 && (
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">
-                                                {t("defaultIdentityProvider")}
-                                            </label>
-                                            <Select
-                                                onValueChange={(value) => {
-                                                    if (value === "none") {
-                                                        setSelectedIdpId(null);
-                                                    } else {
-                                                        setSelectedIdpId(
-                                                            parseInt(value)
-                                                        );
-                                                    }
-                                                }}
-                                                value={
-                                                    selectedIdpId
-                                                        ? selectedIdpId.toString()
-                                                        : "none"
-                                                }
-                                            >
-                                                <SelectTrigger className="w-full mt-1">
-                                                    <SelectValue
-                                                        placeholder={t(
-                                                            "selectIdpPlaceholder"
-                                                        )}
-                                                    />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">
-                                                        {t("none")}
-                                                    </SelectItem>
-                                                    {allIdps.map((idp) => (
-                                                        <SelectItem
-                                                            key={idp.id}
-                                                            value={idp.id.toString()}
-                                                        >
-                                                            {idp.text}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "defaultIdentityProviderDescription"
-                                                )}
-                                            </p>
-                                        </div>
-                                    )}
-                                </form>
-                            </Form>
-                        </SettingsSectionForm>
+                        <StrategySelect
+                            options={resourcePolicyTypes}
+                            defaultValue="inline"
+                            onChange={(value) => {
+                                // baseForm.setValue(
+                                //     "http",
+                                //     value === "http"
+                                // );
+                                // // Update method default when switching resource type
+                            }}
+                            cols={2}
+                        />
                     </SettingsSectionBody>
                     <SettingsSectionFooter>
                         <Button
                             type="submit"
-                            loading={loadingSaveUsersRoles}
-                            disabled={loadingSaveUsersRoles}
-                            form="users-roles-form"
+                            disabled
+                            form="policies-type-form"
                         >
                             {t("resourceUsersRolesSubmit")}
                         </Button>
                     </SettingsSectionFooter>
                 </SettingsSection>
+                {/* <ResourcePolicyContext value={policies?.defaultPolicy}>
 
-                <SettingsSection>
-                    <SettingsSectionHeader>
-                        <SettingsSectionTitle>
-                            {t("resourceAuthMethods")}
-                        </SettingsSectionTitle>
-                        <SettingsSectionDescription>
-                            {t("resourceAuthMethodsDescriptions")}
-                        </SettingsSectionDescription>
-                    </SettingsSectionHeader>
-                    <SettingsSectionBody>
-                        <SettingsSectionForm>
-                            {/* Password Protection */}
-                            <div className="flex items-center justify-between border rounded-md p-2 mb-4">
-                                <div
-                                    className={`flex items-center ${!authInfo.password ? "" : "text-green-500"} text-sm space-x-2`}
-                                >
-                                    <Key size="14" />
-                                    <span>
-                                        {t("resourcePasswordProtection", {
-                                            status: authInfo.password
-                                                ? t("enabled")
-                                                : t("disabled")
-                                        })}
-                                    </span>
-                                </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={
-                                        authInfo.password
-                                            ? removeResourcePassword
-                                            : () => setIsSetPasswordOpen(true)
-                                    }
-                                    loading={loadingRemoveResourcePassword}
-                                >
-                                    {authInfo.password
-                                        ? t("passwordRemove")
-                                        : t("passwordAdd")}
-                                </Button>
-                            </div>
-
-                            {/* PIN Code Protection */}
-                            <div className="flex items-center justify-between border rounded-md p-2">
-                                <div
-                                    className={`flex items-center ${!authInfo.pincode ? "" : "text-green-500"} space-x-2 text-sm`}
-                                >
-                                    <Binary size="14" />
-                                    <span>
-                                        {t("resourcePincodeProtection", {
-                                            status: authInfo.pincode
-                                                ? t("enabled")
-                                                : t("disabled")
-                                        })}
-                                    </span>
-                                </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={
-                                        authInfo.pincode
-                                            ? removeResourcePincode
-                                            : () => setIsSetPincodeOpen(true)
-                                    }
-                                    loading={loadingRemoveResourcePincode}
-                                >
-                                    {authInfo.pincode
-                                        ? t("pincodeRemove")
-                                        : t("pincodeAdd")}
-                                </Button>
-                            </div>
-
-                            {/* Header Authentication Protection */}
-                            <div className="flex items-center justify-between border rounded-md p-2">
-                                <div
-                                    className={`flex items-center ${!authInfo.headerAuth ? "" : "text-green-500"} space-x-2 text-sm`}
-                                >
-                                    <Bot size="14" />
-                                    <span>
-                                        {authInfo.headerAuth
-                                            ? t(
-                                                  "resourceHeaderAuthProtectionEnabled"
-                                              )
-                                            : t(
-                                                  "resourceHeaderAuthProtectionDisabled"
-                                              )}
-                                    </span>
-                                </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={
-                                        authInfo.headerAuth
-                                            ? removeResourceHeaderAuth
-                                            : () => setIsSetHeaderAuthOpen(true)
-                                    }
-                                    loading={loadingRemoveResourceHeaderAuth}
-                                >
-                                    {authInfo.headerAuth
-                                        ? t("headerAuthRemove")
-                                        : t("headerAuthAdd")}
-                                </Button>
-                            </div>
-                        </SettingsSectionForm>
-                    </SettingsSectionBody>
-                </SettingsSection>
-
-                <OneTimePasswordFormSection
-                    resource={resource}
-                    updateResource={updateResource}
-                    whitelist={whitelist}
-                    isLoadingWhiteList={isLoadingWhiteList}
-                />
+                </ResourcePolicyContext> */}
             </SettingsContainer>
         </>
     );
