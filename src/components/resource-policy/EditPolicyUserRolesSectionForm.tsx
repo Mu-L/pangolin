@@ -53,12 +53,14 @@ type PolicyUsersRolesSectionProps = {
     allRoles: { id: string; text: string }[];
     allUsers: { id: string; text: string }[];
     allIdps: { id: number; text: string }[];
+    readonly?: boolean;
 };
 
 export function EditPolicyUsersRolesSectionForm({
     allRoles,
     allUsers,
-    allIdps
+    allIdps,
+    readonly
 }: PolicyUsersRolesSectionProps) {
     const t = useTranslations();
 
@@ -106,6 +108,8 @@ export function EditPolicyUsersRolesSectionForm({
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
 
     async function onSubmit() {
+        if (readonly) return;
+
         const isValid = await form.trigger();
 
         if (!isValid) return;
@@ -172,6 +176,7 @@ export function EditPolicyUsersRolesSectionForm({
                                     console.log(`form.setValue("sso", ${val})`);
                                     form.setValue("sso", val);
                                 }}
+                                disabled={readonly}
                             />
 
                             {ssoEnabled && (
@@ -221,6 +226,7 @@ export function EditPolicyUsersRolesSectionForm({
                                                             true
                                                         }
                                                         sortTags={true}
+                                                        disabled={readonly}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -277,6 +283,7 @@ export function EditPolicyUsersRolesSectionForm({
                                                             true
                                                         }
                                                         sortTags={true}
+                                                        disabled={readonly}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -292,6 +299,7 @@ export function EditPolicyUsersRolesSectionForm({
                                         {t("defaultIdentityProvider")}
                                     </label>
                                     <Select
+                                        disabled={readonly}
                                         onValueChange={(value) => {
                                             if (value === "none") {
                                                 form.setValue(
@@ -347,7 +355,7 @@ export function EditPolicyUsersRolesSectionForm({
                         <Button
                             type="submit"
                             loading={isSubmitting}
-                            disabled={isSubmitting}
+                            disabled={readonly || isSubmitting}
                         >
                             {t("resourceUsersRolesSubmit")}
                         </Button>

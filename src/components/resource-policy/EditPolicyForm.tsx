@@ -28,9 +28,13 @@ import { EditPolicyRulesSectionForm } from "./EditPolicyRulesSectionForm";
 
 export type EditPolicyFormProps = {
     hidePolicyNameForm?: boolean;
+    readonly?: boolean;
 };
 
-export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
+export function EditPolicyForm({
+    hidePolicyNameForm,
+    readonly
+}: EditPolicyFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
     const { env } = useEnvContext();
@@ -100,23 +104,26 @@ export function EditPolicyForm({ hidePolicyNameForm }: EditPolicyFormProps) {
 
     return (
         <SettingsContainer>
-            {!hidePolicyNameForm && <EditPolicyNameSectionForm />}
+            {!hidePolicyNameForm && <EditPolicyNameSectionForm readonly={readonly} />}
 
             <EditPolicyUsersRolesSectionForm
                 allRoles={allRoles}
                 allUsers={allUsers}
                 allIdps={allIdps}
+                readonly={readonly}
             />
 
-            <EditPolicyAuthMethodsSectionForm />
+            <EditPolicyAuthMethodsSectionForm readonly={readonly} />
 
             <EditPolicyOtpEmailSectionForm
                 emailEnabled={env.email.emailEnabled}
+                readonly={readonly}
             />
 
             <EditPolicyRulesSectionForm
                 isMaxmindAvailable={isMaxmindAvailable}
                 isMaxmindAsnAvailable={isMaxmindASNAvailable}
+                readonly={readonly}
             />
         </SettingsContainer>
     );

@@ -147,7 +147,7 @@ export enum ActionsEnum {
     setResourcePolicyHeaderAuth = "setResourcePolicyHeaderAuth",
     setResourcePolicyWhitelist = "setResourcePolicyWhitelist",
     setResourcePolicyRules = "setResourcePolicyRules",
-    getResourcePolicies = "getResourcePolicies"
+
 }
 
 export async function checkUserActionPermission(

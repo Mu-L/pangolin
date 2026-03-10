@@ -46,10 +46,12 @@ import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider"
 
 type PolicyOtpEmailSectionProps = {
     emailEnabled: boolean;
+    readonly?: boolean;
 };
 
 export function EditPolicyOtpEmailSectionForm({
-    emailEnabled
+    emailEnabled,
+    readonly
 }: PolicyOtpEmailSectionProps) {
     const t = useTranslations();
 
@@ -87,6 +89,7 @@ export function EditPolicyOtpEmailSectionForm({
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
 
     async function onSubmit() {
+        if (readonly) return;
         const isValid = await form.trigger();
 
         if (!isValid) return;
@@ -141,14 +144,16 @@ export function EditPolicyOtpEmailSectionForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsExpanded(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t("resourcePolicyOtpEmailAdd")}
-                    </Button>
+                    {!readonly && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsExpanded(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t("resourcePolicyOtpEmailAdd")}
+                        </Button>
+                    )}
                 </SettingsSectionBody>
             </SettingsSection>
         );
@@ -186,7 +191,7 @@ export function EditPolicyOtpEmailSectionForm({
                                 onCheckedChange={(val) => {
                                     form.setValue("emailWhitelistEnabled", val);
                                 }}
-                                disabled={!emailEnabled}
+                                disabled={readonly || !emailEnabled}
                             />
 
                             {whitelistEnabled && emailEnabled && (
@@ -268,7 +273,9 @@ export function EditPolicyOtpEmailSectionForm({
                             <Button
                                 type="submit"
                                 loading={isSubmitting}
-                                disabled={isSubmitting || !emailEnabled}
+                                disabled={
+                                    readonly || isSubmitting || !emailEnabled
+                                }
                             >
                                 {t("otpEmailWhitelistSave")}
                             </Button>

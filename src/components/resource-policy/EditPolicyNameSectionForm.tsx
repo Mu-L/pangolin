@@ -40,7 +40,7 @@ import { useForm } from "react-hook-form";
 
 // ─── PolicyNameSection ──────────────────────────────────────────────────
 
-export function EditPolicyNameSectionForm() {
+export function EditPolicyNameSectionForm({ readonly }: { readonly?: boolean }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const router = useRouter();
@@ -61,6 +61,7 @@ export function EditPolicyNameSectionForm() {
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
 
     async function onSubmit() {
+        if (readonly) return;
         const isValid = await form.trigger();
 
         if (!isValid) return;
@@ -125,6 +126,7 @@ export function EditPolicyNameSectionForm() {
                                         <FormControl>
                                             <Input
                                                 {...field}
+                                                disabled={readonly}
                                                 placeholder={t(
                                                     "resourcePolicyNamePlaceholder"
                                                 )}
@@ -141,7 +143,7 @@ export function EditPolicyNameSectionForm() {
                         <Button
                             type="submit"
                             loading={isSubmitting}
-                            disabled={isSubmitting}
+                            disabled={readonly || isSubmitting}
                         >
                             {t("saveSettings")}
                         </Button>

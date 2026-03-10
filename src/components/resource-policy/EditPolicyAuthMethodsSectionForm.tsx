@@ -73,7 +73,11 @@ const setHeaderAuthSchema = z.object({
     extendedCompatibility: z.boolean()
 });
 
-export function EditPolicyAuthMethodsSectionForm() {
+export function EditPolicyAuthMethodsSectionForm({
+    readonly
+}: {
+    readonly?: boolean;
+}) {
     const { policy } = useResourcePolicyContext();
     const router = useRouter();
 
@@ -132,6 +136,7 @@ export function EditPolicyAuthMethodsSectionForm() {
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
 
     async function onSubmit() {
+        if (readonly) return;
         const isValid = await form.trigger();
 
         if (!isValid) return;
@@ -237,14 +242,16 @@ export function EditPolicyAuthMethodsSectionForm() {
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsExpanded(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t("resourcePolicyAuthMethodAdd")}
-                    </Button>
+                    {!readonly && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsExpanded(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t("resourcePolicyAuthMethodAdd")}
+                        </Button>
+                    )}
                 </SettingsSectionBody>
             </SettingsSection>
         );
@@ -541,6 +548,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                                         type="button"
                                         variant="secondary"
                                         size="sm"
+                                        disabled={readonly}
                                         onClick={
                                             hasPassword
                                                 ? () =>
@@ -579,6 +587,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                                         type="button"
                                         variant="secondary"
                                         size="sm"
+                                        disabled={readonly}
                                         onClick={
                                             hasPincode
                                                 ? () =>
@@ -619,6 +628,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                                         type="button"
                                         variant="secondary"
                                         size="sm"
+                                        disabled={readonly}
                                         onClick={
                                             hasHeaderAuth
                                                 ? () =>
@@ -644,7 +654,7 @@ export function EditPolicyAuthMethodsSectionForm() {
                             <Button
                                 type="submit"
                                 loading={isSubmitting}
-                                disabled={isSubmitting}
+                                disabled={readonly || isSubmitting}
                             >
                                 {t("authMethodsSave")}
                             </Button>

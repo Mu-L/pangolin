@@ -108,11 +108,13 @@ type LocalRule = {
 type PolicyRulesSectionProps = {
     isMaxmindAvailable: boolean;
     isMaxmindAsnAvailable: boolean;
+    readonly?: boolean;
 };
 
 export function EditPolicyRulesSectionForm({
     isMaxmindAvailable,
-    isMaxmindAsnAvailable
+    isMaxmindAsnAvailable,
+    readonly
 }: PolicyRulesSectionProps) {
     const t = useTranslations();
 
@@ -331,6 +333,7 @@ export function EditPolicyRulesSectionForm({
                         defaultValue={row.original.priority}
                         className="w-[75px]"
                         type="number"
+                        disabled={readonly}
                         onClick={(e) => e.currentTarget.focus()}
                         onBlur={(e) => {
                             const parsed = z.coerce
@@ -361,6 +364,7 @@ export function EditPolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Select
                         defaultValue={row.original.action}
+                        disabled={readonly}
                         onValueChange={(value: "ACCEPT" | "DROP" | "PASS") =>
                             updateRule(row.original.ruleId, { action: value })
                         }
@@ -390,6 +394,7 @@ export function EditPolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Select
                         defaultValue={row.original.match}
+                        disabled={readonly}
                         onValueChange={(
                             value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN"
                         ) =>
@@ -439,6 +444,7 @@ export function EditPolicyRulesSectionForm({
                                 <Button
                                     variant="outline"
                                     role="combobox"
+                                    disabled={readonly}
                                     className="min-w-50 justify-between"
                                 >
                                     {row.original.value
@@ -494,6 +500,7 @@ export function EditPolicyRulesSectionForm({
                                 <Button
                                     variant="outline"
                                     role="combobox"
+                                    disabled={readonly}
                                     className="min-w-50 justify-between"
                                 >
                                     {row.original.value
@@ -579,6 +586,7 @@ export function EditPolicyRulesSectionForm({
                         <Input
                             defaultValue={row.original.value}
                             className="min-w-50"
+                            disabled={readonly}
                             onBlur={(e) =>
                                 updateRule(row.original.ruleId, {
                                     value: e.target.value
@@ -593,6 +601,7 @@ export function EditPolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Switch
                         defaultChecked={row.original.enabled}
+                        disabled={readonly}
                         onCheckedChange={(val) =>
                             updateRule(row.original.ruleId, { enabled: val })
                         }
@@ -606,6 +615,7 @@ export function EditPolicyRulesSectionForm({
                     <div className="flex items-center space-x-2">
                         <Button
                             variant="outline"
+                            disabled={readonly}
                             onClick={() => removeRule(row.original.ruleId)}
                         >
                             {t("delete")}
@@ -621,7 +631,8 @@ export function EditPolicyRulesSectionForm({
             isMaxmindAvailable,
             isMaxmindAsnAvailable,
             updateRule,
-            removeRule
+            removeRule,
+            readonly
         ]
     );
 
@@ -638,6 +649,8 @@ export function EditPolicyRulesSectionForm({
     const [isPending, startTransition] = useTransition();
 
     async function saveRules() {
+        if (readonly) return;
+
         const isValid = form.trigger();
         if (!isValid) return;
 
@@ -688,14 +701,16 @@ export function EditPolicyRulesSectionForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsExpanded(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t("resourcePolicyRulesAdd")}
-                    </Button>
+                    {!readonly && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsExpanded(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t("resourcePolicyRulesAdd")}
+                        </Button>
+                    )}
                 </SettingsSectionBody>
             </SettingsSection>
         );
@@ -721,6 +736,7 @@ export function EditPolicyRulesSectionForm({
                             onCheckedChange={(val) => {
                                 form.setValue("applyRules", val);
                             }}
+                            disabled={readonly}
                         />
                     </div>
 
@@ -741,6 +757,7 @@ export function EditPolicyRulesSectionForm({
                                             <FormControl>
                                                 <Select
                                                     value={field.value}
+                                                    disabled={readonly || !rulesEnabled}
                                                     onValueChange={
                                                         field.onChange
                                                     }
@@ -776,6 +793,7 @@ export function EditPolicyRulesSectionForm({
                                             <FormControl>
                                                 <Select
                                                     value={field.value}
+                                                    disabled={readonly || !rulesEnabled}
                                                     onValueChange={
                                                         field.onChange
                                                     }
@@ -842,6 +860,7 @@ export function EditPolicyRulesSectionForm({
                                                             <Button
                                                                 variant="outline"
                                                                 role="combobox"
+                                                                disabled={readonly || !rulesEnabled}
                                                                 aria-expanded={
                                                                     openAddRuleCountrySelect
                                                                 }
@@ -931,6 +950,7 @@ export function EditPolicyRulesSectionForm({
                                                             <Button
                                                                 variant="outline"
                                                                 role="combobox"
+                                                                disabled={readonly || !rulesEnabled}
                                                                 aria-expanded={
                                                                     openAddRuleAsnSelect
                                                                 }
@@ -1043,7 +1063,7 @@ export function EditPolicyRulesSectionForm({
                                                         </PopoverContent>
                                                     </Popover>
                                                 ) : (
-                                                    <Input {...field} />
+                                                    <Input {...field} disabled={readonly || !rulesEnabled} />
                                                 )}
                                             </FormControl>
                                             <FormMessage />
@@ -1053,7 +1073,7 @@ export function EditPolicyRulesSectionForm({
                                 <Button
                                     type="submit"
                                     variant="outline"
-                                    disabled={!rulesEnabled}
+                                    disabled={readonly || !rulesEnabled}
                                 >
                                     {t("ruleSubmit")}
                                 </Button>
@@ -1134,7 +1154,7 @@ export function EditPolicyRulesSectionForm({
                 <Button
                     onClick={() => startTransition(() => saveRules())}
                     loading={isPending}
-                    disabled={isPending}
+                    disabled={readonly || isPending}
                 >
                     {t("rulesSave")}
                 </Button>

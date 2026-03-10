@@ -17,13 +17,11 @@ const getResourcePoliciesParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())
 });
 
-export type GetResourcePoliciesResponse = {
-    defaultPolicy: GetResourcePolicyResponse | null;
-};
+export type GetDefaultResourcePolicyResponse = GetResourcePolicyResponse;
 
 registry.registerPath({
     method: "get",
-    path: "/resource/{resourceId}/policies",
+    path: "/resource/{resourceId}/default-policy",
     description: "Get the default policy for a resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.Policy],
     request: {
@@ -32,7 +30,7 @@ registry.registerPath({
     responses: {}
 });
 
-export async function getResourcePolicies(
+export async function getDefaultResourcePolicy(
     req: Request,
     res: Response,
     next: NextFunction
@@ -66,14 +64,20 @@ export async function getResourcePolicies(
             );
         }
 
-        const defaultPolicy = resource.defaultResourcePolicyId
-            ? await queryResourcePolicy({
-                  resourcePolicyId: resource.defaultResourcePolicyId
-              })
-            : null;
+        if (!resource.defaultResourcePolicyId) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    "Resource has no default policy"
+                )
+            );
+        }
 
-        return response<GetResourcePoliciesResponse>(res, {
-            data: { defaultPolicy },
+        const defaultPolicy = await queryResourcePolicy({
+            resourcePolicyId: resource.defaultResourcePolicyId
+        });
+        return response<GetDefaultResourcePolicyResponse>(res, {
+            data: defaultPolicy,
             success: true,
             error: false,
             message: "Resource policies retrieved successfully",
