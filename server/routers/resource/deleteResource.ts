@@ -1,4 +1,4 @@
-import { db, resources, targets } from "@server/db";
+import { db, resourcePolicies, resources, targets } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -60,6 +60,18 @@ export async function deleteResource(
                     `Resource with ID ${resourceId} not found`
                 )
             );
+        }
+
+        // Also delete default resource policy
+        if (deletedResource.defaultResourcePolicyId) {
+            await db
+                .delete(resourcePolicies)
+                .where(
+                    eq(
+                        resourcePolicies.resourcePolicyId,
+                        deletedResource.defaultResourcePolicyId
+                    )
+                );
         }
 
         // const [site] = await db
