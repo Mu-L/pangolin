@@ -701,7 +701,7 @@ export function EditPolicyRulesSectionForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    {!readonly && (
+                    {!readonly ? (
                         <Button
                             type="button"
                             variant="outline"
@@ -710,6 +710,10 @@ export function EditPolicyRulesSectionForm({
                             <Plus className="mr-2 h-4 w-4" />
                             {t("resourcePolicyRulesAdd")}
                         </Button>
+                    ) : (
+                        <div className="text-muted-foreground flex items-center h-full size-full bg-muted rounded-md px-8 py-6 border-dashed text-sm">
+                            <p>{t("resourcePolicyRulesEmpty")}</p>
+                        </div>
                     )}
                 </SettingsSectionBody>
             </SettingsSection>
@@ -757,7 +761,10 @@ export function EditPolicyRulesSectionForm({
                                             <FormControl>
                                                 <Select
                                                     value={field.value}
-                                                    disabled={readonly || !rulesEnabled}
+                                                    disabled={
+                                                        readonly ||
+                                                        !rulesEnabled
+                                                    }
                                                     onValueChange={
                                                         field.onChange
                                                     }
@@ -793,7 +800,10 @@ export function EditPolicyRulesSectionForm({
                                             <FormControl>
                                                 <Select
                                                     value={field.value}
-                                                    disabled={readonly || !rulesEnabled}
+                                                    disabled={
+                                                        readonly ||
+                                                        !rulesEnabled
+                                                    }
                                                     onValueChange={
                                                         field.onChange
                                                     }
@@ -860,7 +870,10 @@ export function EditPolicyRulesSectionForm({
                                                             <Button
                                                                 variant="outline"
                                                                 role="combobox"
-                                                                disabled={readonly || !rulesEnabled}
+                                                                disabled={
+                                                                    readonly ||
+                                                                    !rulesEnabled
+                                                                }
                                                                 aria-expanded={
                                                                     openAddRuleCountrySelect
                                                                 }
@@ -950,7 +963,10 @@ export function EditPolicyRulesSectionForm({
                                                             <Button
                                                                 variant="outline"
                                                                 role="combobox"
-                                                                disabled={readonly || !rulesEnabled}
+                                                                disabled={
+                                                                    readonly ||
+                                                                    !rulesEnabled
+                                                                }
                                                                 aria-expanded={
                                                                     openAddRuleAsnSelect
                                                                 }
@@ -1063,7 +1079,13 @@ export function EditPolicyRulesSectionForm({
                                                         </PopoverContent>
                                                     </Popover>
                                                 ) : (
-                                                    <Input {...field} disabled={readonly || !rulesEnabled} />
+                                                    <Input
+                                                        {...field}
+                                                        disabled={
+                                                            readonly ||
+                                                            !rulesEnabled
+                                                        }
+                                                    />
                                                 )}
                                             </FormControl>
                                             <FormMessage />

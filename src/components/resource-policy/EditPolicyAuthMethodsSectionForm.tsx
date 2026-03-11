@@ -242,7 +242,7 @@ export function EditPolicyAuthMethodsSectionForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    {!readonly && (
+                    {!readonly ? (
                         <Button
                             type="button"
                             variant="outline"
@@ -251,6 +251,10 @@ export function EditPolicyAuthMethodsSectionForm({
                             <Plus className="mr-2 h-4 w-4" />
                             {t("resourcePolicyAuthMethodAdd")}
                         </Button>
+                    ) : (
+                        <div className="text-muted-foreground flex items-center h-full size-full bg-muted rounded-md px-8 py-6 border-dashed text-sm">
+                            <p>{t("resourcePolicyAuthMethodsEmpty")}</p>
+                        </div>
                     )}
                 </SettingsSectionBody>
             </SettingsSection>

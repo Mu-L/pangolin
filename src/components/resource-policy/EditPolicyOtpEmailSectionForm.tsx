@@ -144,7 +144,7 @@ export function EditPolicyOtpEmailSectionForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    {!readonly && (
+                    {!readonly ? (
                         <Button
                             type="button"
                             variant="outline"
@@ -153,6 +153,10 @@ export function EditPolicyOtpEmailSectionForm({
                             <Plus className="mr-2 h-4 w-4" />
                             {t("resourcePolicyOtpEmailAdd")}
                         </Button>
+                    ) : (
+                        <div className="text-muted-foreground flex items-center h-full size-full bg-muted rounded-md px-8 py-6 border-dashed text-sm">
+                            <p>{t("resourcePolicyOtpEmpty")}</p>
+                        </div>
                     )}
                 </SettingsSectionBody>
             </SettingsSection>
