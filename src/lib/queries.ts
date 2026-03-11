@@ -30,6 +30,7 @@ import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
 import { wait } from "./wait";
+import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
 
 export type ProductUpdate = {
     link: string | null;
@@ -196,6 +197,41 @@ export const orgQueries = {
 
                 return res.data.data.resources;
             }
+        }),
+    policies: ({ orgId, name }: { orgId: string; name?: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "RESOURCES_POLICIES", name] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: "10"
+                });
+
+                if (name) {
+                    sp.set("query", name);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourcePoliciesResponse>
+                >(`/org/${orgId}/resource-policies?${sp.toString()}`, {
+                    signal
+                });
+
+                return res.data.data.policies;
+            }
+        })
+};
+
+export const resourcePolicyQueries = {
+    single: ({ resourcePolicyId }: { resourcePolicyId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCE_POLICIES", resourcePolicyId] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDefaultResourcePolicyResponse>
+                >(`/resource-policy/${resourcePolicyId}`, { signal });
+
+                return res.data.data;
+            }
         })
 };
 
@@ -325,7 +361,7 @@ export const resourceQueries = {
         }),
     defaultPolicy: ({ resourceId }: { resourceId: number }) =>
         queryOptions({
-            queryKey: ["RESOURCES", resourceId, "POLICIES"] as const,
+            queryKey: ["RESOURCES", resourceId, "DEFAULT_POLICY"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<GetDefaultResourcePolicyResponse>

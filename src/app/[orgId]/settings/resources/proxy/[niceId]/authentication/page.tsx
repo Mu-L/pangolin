@@ -22,6 +22,14 @@ import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList
+} from "@app/components/ui/command";
+import {
     Form,
     FormControl,
     FormDescription,
@@ -31,6 +39,11 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import {
     Select,
     SelectContent,
@@ -45,19 +58,25 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { cn } from "@app/lib/cn";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { orgQueries, resourceQueries } from "@app/lib/queries";
+import {
+    orgQueries,
+    resourcePolicyQueries,
+    resourceQueries
+} from "@app/lib/queries";
 import {
     ResourcePolicyContext,
     ResourcePolicyProvider
 } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CaretSortIcon } from "@radix-ui/react-icons";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SetResourcePasswordForm from "components/SetResourcePasswordForm";
-import { Binary, Bot, InfoIcon, Key } from "lucide-react";
+import { Binary, Bot, CheckIcon, InfoIcon, Key } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -103,6 +122,41 @@ export default function ResourceAuthenticationPage() {
         })
     );
 
+    const form = useForm({
+        resolver: zodResolver(resourceTypeSchema),
+        defaultValues: {
+            type: "inline"
+        }
+    });
+
+    const selectedResourceType = useWatch({
+        control: form.control,
+        name: "type"
+    });
+
+    const [resourcePolicysearchQuery, setResourcePolicySearchQuery] =
+        useState("");
+
+    const { data: policiesList = [] } = useQuery({
+        ...orgQueries.policies({
+            orgId: org.org.orgId,
+            name: resourcePolicysearchQuery
+        }),
+        enabled: selectedResourceType === "shared"
+    });
+
+    const { data: sharedPolicy } = useQuery({
+        ...resourcePolicyQueries.single({
+            resourcePolicyId: resource.resourcePolicyId ?? 1
+        }),
+        enabled: !!resource.resourcePolicyId
+    });
+
+    const [selectedPolicy, setSelectedPolicy] = useState<{
+        name: string;
+        id: number;
+    } | null>(null);
+
     const pageLoading = isLoadingPolicies || !defaultPolicy;
 
     const [
@@ -127,66 +181,12 @@ export default function ResourceAuthenticationPage() {
         }
     ];
 
-    const form = useForm({
-        resolver: zodResolver(resourceTypeSchema),
-        defaultValues: {
-            type: "inline"
-        }
-    });
-
-    const selectedResourceType = useWatch({
-        control: form.control,
-        name: "type"
-    });
-
     if (pageLoading) {
         return <></>;
     }
 
     return (
         <>
-            {isSetPasswordOpen && (
-                <SetResourcePasswordForm
-                    open={isSetPasswordOpen}
-                    setOpen={setIsSetPasswordOpen}
-                    resourceId={resource.resourceId}
-                    onSetPassword={() => {
-                        setIsSetPasswordOpen(false);
-                        updateAuthInfo({
-                            password: true
-                        });
-                    }}
-                />
-            )}
-
-            {isSetPincodeOpen && (
-                <SetResourcePincodeForm
-                    open={isSetPincodeOpen}
-                    setOpen={setIsSetPincodeOpen}
-                    resourceId={resource.resourceId}
-                    onSetPincode={() => {
-                        setIsSetPincodeOpen(false);
-                        updateAuthInfo({
-                            pincode: true
-                        });
-                    }}
-                />
-            )}
-
-            {isSetHeaderAuthOpen && (
-                <SetResourceHeaderAuthForm
-                    open={isSetHeaderAuthOpen}
-                    setOpen={setIsSetHeaderAuthOpen}
-                    resourceId={resource.resourceId}
-                    onSetHeaderAuth={() => {
-                        setIsSetHeaderAuthOpen(false);
-                        updateAuthInfo({
-                            headerAuth: true
-                        });
-                    }}
-                />
-            )}
-
             <SettingsContainer>
                 <SettingsSection>
                     <SettingsSectionHeader>
@@ -206,20 +206,94 @@ export default function ResourceAuthenticationPage() {
                             }}
                             cols={2}
                         />
+                        {selectedResourceType === "shared" && (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={
+                                            "w-full md:w-1/2 justify-between"
+                                            // "w-45 justify-between text-sm border-r pr-4 rounded-none h-8 hover:bg-transparent",
+                                            // "rounded-l-md rounded-r-xs"
+                                            // !proxyTarget.siteId && "text-muted-foreground"
+                                        }
+                                    >
+                                        <span className="truncate max-w-37.5">
+                                            {selectedPolicy
+                                                ? selectedPolicy.name
+                                                : t("resourcePolicySelect")}
+                                        </span>
+                                        <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 w-45">
+                                    <Command shouldFilter={false}>
+                                        <CommandInput
+                                            placeholder={t("siteSearch")}
+                                            value={resourcePolicysearchQuery}
+                                            onValueChange={
+                                                setResourcePolicySearchQuery
+                                            }
+                                        />
+                                        <CommandList>
+                                            <CommandEmpty>
+                                                {t("siteNotFound")}
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                                {policiesList.map((policy) => (
+                                                    <CommandItem
+                                                        key={
+                                                            policy.resourcePolicyId
+                                                        }
+                                                        value={policy.resourcePolicyId.toString()}
+                                                        onSelect={() =>
+                                                            setSelectedPolicy({
+                                                                id: policy.resourcePolicyId,
+                                                                name: policy.name
+                                                            })
+                                                        }
+                                                    >
+                                                        <CheckIcon
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                policy.resourcePolicyId ===
+                                                                    selectedPolicy?.id
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {policy.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        )}
                     </SettingsSectionBody>
-                    <SettingsSectionFooter>
+                    <SettingsSectionFooter className="justify-start">
                         <Button
-                            type="submit"
-                            disabled
-                            form="policies-type-form"
+                            onClick={() => {
+                                //...
+                            }}
                         >
-                            {t("resourceUsersRolesSubmit")}
+                            {t("resourcePolicyTypeSave")}
                         </Button>
                     </SettingsSectionFooter>
                 </SettingsSection>
-                <ResourcePolicyProvider policy={defaultPolicy}>
-                    <EditPolicyForm hidePolicyNameForm />
-                </ResourcePolicyProvider>
+                {selectedResourceType === "inline" ? (
+                    <ResourcePolicyProvider policy={defaultPolicy}>
+                        <EditPolicyForm hidePolicyNameForm />
+                    </ResourcePolicyProvider>
+                ) : (
+                    sharedPolicy && (
+                        <ResourcePolicyProvider policy={sharedPolicy}>
+                            <EditPolicyForm readonly />
+                        </ResourcePolicyProvider>
+                    )
+                )}
             </SettingsContainer>
         </>
     );
