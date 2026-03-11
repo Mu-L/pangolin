@@ -17,12 +17,15 @@ const getResourcePoliciesParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())
 });
 
-export type GetDefaultResourcePolicyResponse = GetResourcePolicyResponse;
+export type GetResourcePoliciesResponse = {
+    defaultPolicy: GetResourcePolicyResponse;
+    sharedPolicy: GetResourcePolicyResponse | null;
+};
 
 registry.registerPath({
     method: "get",
-    path: "/resource/{resourceId}/default-policy",
-    description: "Get the default policy for a resource.",
+    path: "/resource/{resourceId}/policies",
+    description: "Get the inline and shared policies associated with a resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.Policy],
     request: {
         params: getResourcePoliciesParamsSchema
@@ -30,7 +33,7 @@ registry.registerPath({
     responses: {}
 });
 
-export async function getDefaultResourcePolicy(
+export async function getResourcePolicies(
     req: Request,
     res: Response,
     next: NextFunction
@@ -52,7 +55,8 @@ export async function getDefaultResourcePolicy(
 
         const [resource] = await db
             .select({
-                defaultResourcePolicyId: resources.defaultResourcePolicyId
+                defaultResourcePolicyId: resources.defaultResourcePolicyId,
+                resourcePolicyId: resources.resourcePolicyId
             })
             .from(resources)
             .where(eq(resources.resourceId, resourceId))
@@ -73,11 +77,24 @@ export async function getDefaultResourcePolicy(
             );
         }
 
-        const defaultPolicy = await queryResourcePolicy({
-            resourcePolicyId: resource.defaultResourcePolicyId
-        });
-        return response<GetDefaultResourcePolicyResponse>(res, {
-            data: defaultPolicy,
+        const [defaultPolicy, sharedPolicy] = await Promise.all([
+            queryResourcePolicy({
+                resourcePolicyId: resource.defaultResourcePolicyId
+            }),
+            resource.resourcePolicyId
+                ? queryResourcePolicy({
+                      resourcePolicyId: resource.resourcePolicyId
+                  })
+                : null
+        ]);
+
+        return response<GetResourcePoliciesResponse>(res, {
+            data: {
+                defaultPolicy:
+                    // the policy will always be non nullable
+                    defaultPolicy as unknown as GetResourcePolicyResponse,
+                sharedPolicy
+            },
             success: true,
             error: false,
             message: "Resource policies retrieved successfully",

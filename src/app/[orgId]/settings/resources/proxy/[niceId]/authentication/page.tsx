@@ -79,7 +79,7 @@ import SetResourcePasswordForm from "components/SetResourcePasswordForm";
 import { Binary, Bot, CheckIcon, InfoIcon, Key } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import {
+import React, {
     useActionState,
     useEffect,
     useMemo,
@@ -105,8 +105,7 @@ type ResourcePolicyType = StrategyOption<"inline" | "shared">;
 
 export default function ResourceAuthenticationPage() {
     const { org } = useOrgContext();
-    const { resource, updateResource, authInfo, updateAuthInfo } =
-        useResourceContext();
+    const { resource, updateResource } = useResourceContext();
 
     const { env } = useEnvContext();
 
@@ -125,7 +124,7 @@ export default function ResourceAuthenticationPage() {
     const form = useForm({
         resolver: zodResolver(resourceTypeSchema),
         defaultValues: {
-            type: "inline"
+            type: resource.resourcePolicyId ? "shared" : "inline"
         }
     });
 
@@ -145,7 +144,7 @@ export default function ResourceAuthenticationPage() {
         enabled: selectedResourceType === "shared"
     });
 
-    const { data: sharedPolicy } = useQuery({
+    const { data: sharedPolicy, isLoading: isLoadingSharedPolicy } = useQuery({
         ...resourcePolicyQueries.single({
             resourcePolicyId: resource.resourcePolicyId ?? 1
         }),
@@ -156,17 +155,6 @@ export default function ResourceAuthenticationPage() {
         name: string;
         id: number;
     } | null>(null);
-
-    const pageLoading = isLoadingPolicies || !defaultPolicy;
-
-    const [
-        loadingRemoveResourceHeaderAuth,
-        setLoadingRemoveResourceHeaderAuth
-    ] = useState(false);
-
-    const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
-    const [isSetPincodeOpen, setIsSetPincodeOpen] = useState(false);
-    const [isSetHeaderAuthOpen, setIsSetHeaderAuthOpen] = useState(false);
 
     const resourcePolicyTypes: Array<ResourcePolicyType> = [
         {
@@ -180,6 +168,49 @@ export default function ResourceAuthenticationPage() {
             description: t("resourcePolicySharedDescription")
         }
     ];
+
+    useEffect(() => {
+        if (!isLoadingSharedPolicy && sharedPolicy) {
+            setSelectedPolicy({
+                id: sharedPolicy.resourcePolicyId,
+                name: sharedPolicy.name
+            });
+        }
+    }, [isLoadingSharedPolicy, sharedPolicy]);
+
+    const [isUpdatingResource, startTransition] = useTransition();
+
+    async function handleSaveResourcePolicyType() {
+        try {
+            if (selectedResourceType === "inline") {
+                await api.post(`/resource/${resource.resourceId}`, {
+                    resourcePolicyId: null
+                });
+            } else {
+                if (!selectedPolicy) {
+                    toast({
+                        title: t("error"),
+                        description: t("resourcePolicySelectError"),
+                        variant: "destructive"
+                    });
+                    return;
+                }
+                await api.post(`/resource/${resource.resourceId}`, {
+                    resourcePolicyId: selectedPolicy.id
+                });
+            }
+            router.refresh();
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e),
+                variant: "destructive"
+            });
+        }
+    }
+
+    const pageLoading =
+        isLoadingPolicies || !defaultPolicy || isLoadingSharedPolicy;
 
     if (pageLoading) {
         return <></>;
@@ -214,9 +245,6 @@ export default function ResourceAuthenticationPage() {
                                         role="combobox"
                                         className={
                                             "w-full md:w-1/2 justify-between"
-                                            // "w-45 justify-between text-sm border-r pr-4 rounded-none h-8 hover:bg-transparent",
-                                            // "rounded-l-md rounded-r-xs"
-                                            // !proxyTarget.siteId && "text-muted-foreground"
                                         }
                                     >
                                         <span className="truncate max-w-37.5">
@@ -238,7 +266,7 @@ export default function ResourceAuthenticationPage() {
                                         />
                                         <CommandList>
                                             <CommandEmpty>
-                                                {t("siteNotFound")}
+                                                {t("resourcePolicyNotFound")}
                                             </CommandEmpty>
                                             <CommandGroup>
                                                 {policiesList.map((policy) => (
@@ -275,9 +303,10 @@ export default function ResourceAuthenticationPage() {
                     </SettingsSectionBody>
                     <SettingsSectionFooter className="justify-start">
                         <Button
-                            onClick={() => {
-                                //...
-                            }}
+                            onClick={() =>
+                                startTransition(handleSaveResourcePolicyType)
+                            }
+                            loading={isUpdatingResource}
                         >
                             {t("resourcePolicyTypeSave")}
                         </Button>

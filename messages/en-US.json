@@ -735,6 +735,7 @@
     "resourcePolicyOtpEmpty": "No one time password",
     "resourcePolicyTypeSave": "Save Resource type",
     "resourcePolicySelect": "Select resource policy",
+    "resourcePolicyNotFound": "Policy not found",
     "resourcePolicyRulesEmpty": "No authentication rules",
     "resourceAuthMethodsDescriptions": "Allow access to the resource via additional auth methods",
     "resourceAuthSettingsSave": "Saved successfully",

@@ -454,10 +454,10 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/resource/:resourceId/default-policy",
+    "/resource/:resourceId/policies",
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.getResourcePolicy),
-    resource.getDefaultResourcePolicy
+    resource.getResourcePolicies
 );
 
 authenticated.post(

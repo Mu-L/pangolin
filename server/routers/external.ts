@@ -637,10 +637,10 @@ authenticated.get(
 );
 
 authenticated.get(
-    "/resource/:resourceId/default-policy",
+    "/resource/:resourceId/policies",
     verifyResourceAccess,
     verifyUserHasAction(ActionsEnum.getResourcePolicy),
-    resource.getDefaultResourcePolicy
+    resource.getResourcePolicies
 );
 
 authenticated.put(

@@ -4,7 +4,7 @@ import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
 import type {
     GetResourceWhitelistResponse,
-    GetDefaultResourcePolicyResponse,
+    GetResourcePoliciesResponse,
     ListResourceNamesResponse,
     ListResourcesResponse,
     ListResourceRolesResponse,
@@ -31,6 +31,7 @@ import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
 import { wait } from "./wait";
 import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import type { GetResourcePolicyResponse } from "@server/routers/policy";
 
 export type ProductUpdate = {
     link: string | null;
@@ -227,7 +228,7 @@ export const resourcePolicyQueries = {
             queryKey: ["RESOURCE_POLICIES", resourcePolicyId] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<GetDefaultResourcePolicyResponse>
+                    AxiosResponse<GetResourcePolicyResponse>
                 >(`/resource-policy/${resourcePolicyId}`, { signal });
 
                 return res.data.data;
@@ -364,8 +365,8 @@ export const resourceQueries = {
             queryKey: ["RESOURCES", resourceId, "DEFAULT_POLICY"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<GetDefaultResourcePolicyResponse>
-                >(`/resource/${resourceId}/default-policy`, { signal });
+                    AxiosResponse<GetResourcePoliciesResponse>
+                >(`/resource/${resourceId}/policies`, { signal });
 
                 return res.data.data;
             }
