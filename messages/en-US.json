@@ -734,7 +734,7 @@
     "resourcePolicyAuthMethodsEmpty": "No authentication method",
     "resourcePolicyOtpEmpty": "No one time password",
     "resourcePolicyReadOnly": "This policy is Read only",
-    "resourcePolicyReadOnlyDescription": "This resource policy is shared accross multiple resources, you cannot edit it in this page. Please go to the policy settings to edit",
+    "resourcePolicyReadOnlyDescription": "This resource policy is shared accross multiple resources, you cannot edit it in this page.",
     "resourcePolicyTypeSave": "Save Resource type",
     "resourcePolicySelect": "Select resource policy",
     "resourcePolicyNotFound": "Policy not found",
