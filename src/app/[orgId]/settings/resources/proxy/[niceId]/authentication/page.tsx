@@ -153,6 +153,10 @@ export default function ResourceAuthenticationPage() {
                 });
             }
             router.refresh();
+            toast({
+                title: t("resourceUpdated"),
+                description: t("resourceUpdatedDescription")
+            });
         } catch (e) {
             toast({
                 title: t("error"),
