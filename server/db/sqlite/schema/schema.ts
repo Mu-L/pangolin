@@ -104,8 +104,16 @@ export const sites = sqliteTable("sites", {
 
 export const resources = sqliteTable("resources", {
     resourceId: integer("resourceId").primaryKey({ autoIncrement: true }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId").references(
+        () => resourcePolicies.resourcePolicyId,
+        { onDelete: "set null" }
+    ),
+    defaultResourcePolicyId: integer("defaultResourcePolicyId").references(
+        () => resourcePolicies.resourcePolicyId,
+        {
+            onDelete: "restrict"
+        }
+    ),
     resourceGuid: text("resourceGuid", { length: 36 })
         .unique()
         .notNull()
@@ -764,10 +772,7 @@ export const roleResources = sqliteTable("roleResources", {
         .references(() => roles.roleId, { onDelete: "cascade" }),
     resourceId: integer("resourceId")
         .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
 export const userResources = sqliteTable("userResources", {
@@ -776,10 +781,7 @@ export const userResources = sqliteTable("userResources", {
         .references(() => users.userId, { onDelete: "cascade" }),
     resourceId: integer("resourceId")
         .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
 export const userInvites = sqliteTable("userInvites", {
@@ -802,9 +804,6 @@ export const resourcePincode = sqliteTable("resourcePincode", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     pincodeHash: text("pincodeHash").notNull(),
     digitLength: integer("digitLength").notNull()
 });
@@ -816,9 +815,6 @@ export const resourcePassword = sqliteTable("resourcePassword", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     passwordHash: text("passwordHash").notNull()
 });
 
@@ -829,11 +825,49 @@ export const resourceHeaderAuth = sqliteTable("resourceHeaderAuth", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     headerAuthHash: text("headerAuthHash").notNull()
 });
+
+export const resourcePolicyPincode = sqliteTable("resourcePolicyPincode", {
+    pincodeId: integer("pincodeId").primaryKey({ autoIncrement: true }),
+    pincodeHash: text("pincodeHash").notNull(),
+    digitLength: integer("digitLength").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyPassword = sqliteTable("resourcePolicyPassword", {
+    passwordId: integer("passwordId").primaryKey({ autoIncrement: true }),
+    passwordHash: text("passwordHash").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyHeaderAuth = sqliteTable(
+    "resourcePolicyHeaderAuth",
+    {
+        headerAuthId: integer("headerAuthId").primaryKey({
+            autoIncrement: true
+        }),
+        headerAuthHash: text("headerAuthHash").notNull(),
+        extendedCompatibility: integer("extendedCompatibility", {
+            mode: "boolean"
+        })
+            .notNull()
+            .default(true),
+        resourcePolicyId: integer("resourcePolicyId")
+            .notNull()
+            .references(() => resourcePolicies.resourcePolicyId, {
+                onDelete: "cascade"
+            })
+    }
+);
 
 export const resourceHeaderAuthExtendedCompatibility = sqliteTable(
     "resourceHeaderAuthExtendedCompatibility",
@@ -846,9 +880,6 @@ export const resourceHeaderAuthExtendedCompatibility = sqliteTable(
         resourceId: integer("resourceId")
             .notNull()
             .references(() => resources.resourceId, { onDelete: "cascade" }),
-        resourcePolicyId: integer("resourcePolicyId")
-            .notNull()
-            .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
         extendedCompatibilityIsActivated: integer(
             "extendedCompatibilityIsActivated",
             { mode: "boolean" }
@@ -920,10 +951,7 @@ export const resourceWhitelist = sqliteTable("resourceWhitelist", {
     email: text("email").notNull(),
     resourceId: integer("resourceId")
         .notNull()
-        .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
+        .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
 export const resourceOtp = sqliteTable("resourceOtp", {
@@ -933,9 +961,6 @@ export const resourceOtp = sqliteTable("resourceOtp", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     email: text("email").notNull(),
     otpHash: text("otpHash").notNull(),
     expiresAt: integer("expiresAt").notNull()
@@ -951,9 +976,6 @@ export const resourceRules = sqliteTable("resourceRules", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
-    resourcePolicyId: integer("resourcePolicyId")
-        .notNull()
-        .references(() => resourcePolicies.resourcePolicyId, { onDelete: "cascade" }),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     priority: integer("priority").notNull(),
     action: text("action").notNull(), // ACCEPT, DROP, PASS
@@ -961,12 +983,66 @@ export const resourceRules = sqliteTable("resourceRules", {
     value: text("value").notNull()
 });
 
+export const rolePolicies = sqliteTable("rolePolicies", {
+    roleId: integer("roleId")
+        .notNull()
+        .references(() => roles.roleId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const userPolicies = sqliteTable("userPolicies", {
+    userId: text("userId")
+        .notNull()
+        .references(() => users.userId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyWhiteList = sqliteTable("resourcePolicyWhitelist", {
+    whitelistId: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyRules = sqliteTable("resourcePolicyRules", {
+    ruleId: integer("ruleId").primaryKey({ autoIncrement: true }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        }),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    priority: integer("priority").notNull(),
+    action: text("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
+    match: text("match").$type<"CIDR" | "PATH" | "IP">().notNull(),
+    value: text("value").notNull()
+});
+
 export const resourcePolicies = sqliteTable("resourcePolicies", {
-    resourcePolicyId: integer('resourcePolicyId').primaryKey(),
-    sso: integer("sso", { mode: 'boolean' }).notNull().default(true),
-    emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: 'boolean' }).notNull().default(false),
+    resourcePolicyId: integer("resourcePolicyId").primaryKey(),
+    sso: integer("sso", { mode: "boolean" }).notNull().default(true),
+    applyRules: integer("applyRules", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    scope: text("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
     niceId: text("niceId").notNull(),
-    isDefault: integer("isDefault", { mode: 'boolean' }).notNull().default(true),
     idpId: integer("idpId").references(() => idp.idpId, {
         onDelete: "set null"
     }),
@@ -975,9 +1051,8 @@ export const resourcePolicies = sqliteTable("resourcePolicies", {
         .references(() => orgs.orgId, {
             onDelete: "cascade"
         })
-        .notNull(),
+        .notNull()
 });
-
 
 export const supporterKey = sqliteTable("supporterKey", {
     keyId: integer("keyId").primaryKey({ autoIncrement: true }),
@@ -1215,3 +1290,6 @@ export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
+export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
+export type RolePolicy = InferSelectModel<typeof rolePolicies>;
+export type UserPolicy = InferSelectModel<typeof userPolicies>;
