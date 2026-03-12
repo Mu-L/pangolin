@@ -1,15 +1,12 @@
 "use client";
 
 import { EditPolicyForm } from "@app/components/resource-policy/EditPolicyForm";
-import SetResourceHeaderAuthForm from "@app/components/SetResourceHeaderAuthForm";
-import SetResourcePincodeForm from "@app/components/SetResourcePincodeForm";
 import {
     SettingsContainer,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionFooter,
-    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
@@ -17,9 +14,6 @@ import {
     StrategySelect,
     type StrategyOption
 } from "@app/components/StrategySelect";
-import { SwitchInput } from "@app/components/SwitchInput";
-import { Tag, TagInput } from "@app/components/tags/tag-input";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import {
     Command,
@@ -30,28 +24,10 @@ import {
     CommandList
 } from "@app/components/ui/command";
 import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage
-} from "@app/components/ui/form";
-import { InfoPopup } from "@app/components/ui/info-popup";
-import {
     Popover,
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
-import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -59,34 +35,15 @@ import { useResourceContext } from "@app/hooks/useResourceContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import {
-    orgQueries,
-    resourcePolicyQueries,
-    resourceQueries
-} from "@app/lib/queries";
-import {
-    ResourcePolicyContext,
-    ResourcePolicyProvider
-} from "@app/providers/ResourcePolicyProvider";
+import { orgQueries, resourceQueries } from "@app/lib/queries";
+import { ResourcePolicyProvider } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CaretSortIcon } from "@radix-ui/react-icons";
-import { build } from "@server/build";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { UserType } from "@server/types/UserTypes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import SetResourcePasswordForm from "components/SetResourcePasswordForm";
-import { Binary, Bot, CheckIcon, InfoIcon, Key } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import React, {
-    useActionState,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    useTransition
-} from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -106,6 +63,7 @@ type ResourcePolicyType = StrategyOption<"inline" | "shared">;
 export default function ResourceAuthenticationPage() {
     const { org } = useOrgContext();
     const { resource, updateResource } = useResourceContext();
+    const queryClient = useQueryClient();
 
     const { env } = useEnvContext();
 
@@ -115,8 +73,8 @@ export default function ResourceAuthenticationPage() {
 
     const { isPaidUser } = usePaidStatus();
 
-    const { data: defaultPolicy, isLoading: isLoadingPolicies } = useQuery(
-        resourceQueries.defaultPolicy({
+    const { data: policies, isLoading: isLoadingPolicies } = useQuery(
+        resourceQueries.policies({
             resourceId: resource.resourceId
         })
     );
@@ -144,13 +102,6 @@ export default function ResourceAuthenticationPage() {
         enabled: selectedResourceType === "shared"
     });
 
-    const { data: sharedPolicy, isLoading: isLoadingSharedPolicy } = useQuery({
-        ...resourcePolicyQueries.single({
-            resourcePolicyId: resource.resourcePolicyId ?? 1
-        }),
-        enabled: !!resource.resourcePolicyId
-    });
-
     const [selectedPolicy, setSelectedPolicy] = useState<{
         name: string;
         id: number;
@@ -170,13 +121,13 @@ export default function ResourceAuthenticationPage() {
     ];
 
     useEffect(() => {
-        if (!isLoadingSharedPolicy && sharedPolicy) {
+        if (!isLoadingPolicies && policies?.sharedPolicy) {
             setSelectedPolicy({
-                id: sharedPolicy.resourcePolicyId,
-                name: sharedPolicy.name
+                id: policies?.sharedPolicy.resourcePolicyId,
+                name: policies?.sharedPolicy.name
             });
         }
-    }, [isLoadingSharedPolicy, sharedPolicy]);
+    }, [isLoadingPolicies, policies?.sharedPolicy]);
 
     const [isUpdatingResource, startTransition] = useTransition();
 
@@ -206,15 +157,24 @@ export default function ResourceAuthenticationPage() {
                 description: formatAxiosError(e),
                 variant: "destructive"
             });
+        } finally {
+            await queryClient.invalidateQueries(
+                resourceQueries.policies({
+                    resourceId: resource.resourceId
+                })
+            );
         }
     }
 
-    const pageLoading =
-        isLoadingPolicies || !defaultPolicy || isLoadingSharedPolicy;
+    const pageLoading = isLoadingPolicies || !policies;
 
     if (pageLoading) {
         return <></>;
     }
+
+    console.log({
+        shared: policies.sharedPolicy
+    });
 
     return (
         <>
@@ -313,12 +273,15 @@ export default function ResourceAuthenticationPage() {
                     </SettingsSectionFooter>
                 </SettingsSection>
                 {selectedResourceType === "inline" ? (
-                    <ResourcePolicyProvider policy={defaultPolicy}>
+                    <ResourcePolicyProvider policy={policies.defaultPolicy}>
                         <EditPolicyForm hidePolicyNameForm />
                     </ResourcePolicyProvider>
                 ) : (
-                    sharedPolicy && (
-                        <ResourcePolicyProvider policy={sharedPolicy}>
+                    policies.sharedPolicy && (
+                        <ResourcePolicyProvider
+                            policy={policies.sharedPolicy}
+                            key={policies.sharedPolicy.resourcePolicyId}
+                        >
                             <EditPolicyForm readonly />
                         </ResourcePolicyProvider>
                     )

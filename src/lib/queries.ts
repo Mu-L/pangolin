@@ -222,20 +222,6 @@ export const orgQueries = {
         })
 };
 
-export const resourcePolicyQueries = {
-    single: ({ resourcePolicyId }: { resourcePolicyId: number }) =>
-        queryOptions({
-            queryKey: ["RESOURCE_POLICIES", resourcePolicyId] as const,
-            queryFn: async ({ signal, meta }) => {
-                const res = await meta!.api.get<
-                    AxiosResponse<GetResourcePolicyResponse>
-                >(`/resource-policy/${resourcePolicyId}`, { signal });
-
-                return res.data.data;
-            }
-        })
-};
-
 export const logAnalyticsFiltersSchema = z.object({
     timeStart: z
         .string()
@@ -360,9 +346,9 @@ export const resourceQueries = {
                 return res.data.data.whitelist;
             }
         }),
-    defaultPolicy: ({ resourceId }: { resourceId: number }) =>
+    policies: ({ resourceId }: { resourceId: number }) =>
         queryOptions({
-            queryKey: ["RESOURCES", resourceId, "DEFAULT_POLICY"] as const,
+            queryKey: ["RESOURCES", resourceId, "POLICIES"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<GetResourcePoliciesResponse>
