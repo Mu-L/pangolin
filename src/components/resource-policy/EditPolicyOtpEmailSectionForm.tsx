@@ -252,13 +252,15 @@ export function EditPolicyOtpEmailSectionForm({
                                                             .emails ?? []
                                                     }
                                                     setTags={(newEmails) => {
-                                                        form.setValue(
-                                                            "emails",
-                                                            newEmails as [
-                                                                Tag,
-                                                                ...Tag[]
-                                                            ]
-                                                        );
+                                                        if (!readonly) {
+                                                            form.setValue(
+                                                                "emails",
+                                                                newEmails as [
+                                                                    Tag,
+                                                                    ...Tag[]
+                                                                ]
+                                                            );
+                                                        }
                                                     }}
                                                     allowDuplicates={false}
                                                     sortTags={true}
