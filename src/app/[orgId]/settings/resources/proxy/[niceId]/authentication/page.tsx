@@ -1,5 +1,6 @@
 "use client";
 
+import ActionBanner from "@app/components/ActionBanner";
 import { EditPolicyForm } from "@app/components/resource-policy/EditPolicyForm";
 import {
     SettingsContainer,
@@ -40,8 +41,9 @@ import { ResourcePolicyProvider } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, ShieldAlertIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -282,6 +284,30 @@ export default function ResourceAuthenticationPage() {
                             policy={policies.sharedPolicy}
                             key={policies.sharedPolicy.resourcePolicyId}
                         >
+                            <ActionBanner
+                                variant="warning"
+                                title={t("resourcePolicyReadOnly")}
+                                titleIcon={
+                                    <ShieldAlertIcon className="w-5 h-5" />
+                                }
+                                description={t(
+                                    "resourcePolicyReadOnlyDescription"
+                                )}
+                                actions={
+                                    <Button
+                                        variant="outline"
+                                        className="gap-2"
+                                        asChild
+                                    >
+                                        <Link
+                                            href={`/${org.org.orgId}/settings/policies/resource/${policies.sharedPolicy.niceId}`}
+                                        >
+                                            {t("edit")}
+                                            <ArrowRightIcon className="size-4" />
+                                        </Link>
+                                    </Button>
+                                }
+                            />
                             <EditPolicyForm readonly />
                         </ResourcePolicyProvider>
                     )
