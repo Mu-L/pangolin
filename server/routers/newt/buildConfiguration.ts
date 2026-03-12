@@ -188,7 +188,8 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcTimeout: targetHealthCheck.hcTimeout,
             hcHeaders: targetHealthCheck.hcHeaders,
             hcMethod: targetHealthCheck.hcMethod,
-            hcTlsServerName: targetHealthCheck.hcTlsServerName
+            hcTlsServerName: targetHealthCheck.hcTlsServerName,
+            hcStatus: targetHealthCheck.hcStatus
         })
         .from(targets)
         .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
@@ -261,7 +262,8 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcTimeout: target.hcTimeout, // in seconds
             hcHeaders: hcHeadersSend,
             hcMethod: target.hcMethod,
-            hcTlsServerName: target.hcTlsServerName
+            hcTlsServerName: target.hcTlsServerName,
+            hcStatus: target.hcStatus
         };
     });
 

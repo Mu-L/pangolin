@@ -69,6 +69,7 @@ export default async function DomainSettingsPage({
                     failed={domain.failed}
                     verified={domain.verified}
                     type={domain.type}
+                    errorMessage={domain.errorMessage}
                 />
 
                 <DNSRecordsTable records={dnsRecords} type={domain.type} />

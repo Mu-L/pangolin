@@ -54,6 +54,7 @@ import {
     TooltipProvider,
     TooltipTrigger
 } from "@app/components/ui/tooltip";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -65,6 +66,7 @@ import { build } from "@server/build";
 import { Resource } from "@server/db";
 import { isTargetValid } from "@server/lib/validators";
 import { ListTargetsResponse } from "@server/routers/target";
+import { ListRemoteExitNodesResponse } from "@server/routers/remoteExitNode/types";
 import { ArrayElement } from "@server/types/ArrayElement";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -81,6 +83,7 @@ import {
     CircleCheck,
     CircleX,
     Info,
+    InfoIcon,
     Plus,
     Settings,
     SquareArrowOutUpRight
@@ -216,6 +219,11 @@ export default function Page() {
         orgQueries.sites({ orgId: orgId as string })
     );
 
+    const [remoteExitNodes, setRemoteExitNodes] = useState<
+        ListRemoteExitNodesResponse["remoteExitNodes"]
+    >([]);
+    const [loadingExitNodes, setLoadingExitNodes] = useState(build === "saas");
+
     const [createLoading, startTransition] = useTransition();
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
@@ -229,6 +237,27 @@ export default function Page() {
     const [selectedTargetForHealthCheck, setSelectedTargetForHealthCheck] =
         useState<LocalTarget | null>(null);
     const [healthCheckDialogOpen, setHealthCheckDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (build !== "saas") return;
+
+        const fetchExitNodes = async () => {
+            try {
+                const res = await api.get<
+                    AxiosResponse<ListRemoteExitNodesResponse>
+                >(`/org/${orgId}/remote-exit-nodes`);
+                if (res && res.status === 200) {
+                    setRemoteExitNodes(res.data.data.remoteExitNodes);
+                }
+            } catch (e) {
+                console.error("Failed to fetch remote exit nodes:", e);
+            } finally {
+                setLoadingExitNodes(false);
+            }
+        };
+
+        fetchExitNodes();
+    }, [orgId]);
 
     const [isAdvancedMode, setIsAdvancedMode] = useState(() => {
         if (typeof window !== "undefined") {
@@ -295,17 +324,23 @@ export default function Page() {
         },
         ...(!env.flags.allowRawResources
             ? []
-            : [
-                  {
-                      id: "raw" as ResourceType,
-                      title: t("resourceRaw"),
-                      description:
-                          build == "saas"
-                              ? t("resourceRawDescriptionCloud")
-                              : t("resourceRawDescription")
-                  }
-              ])
+            : build === "saas" && remoteExitNodes.length === 0
+              ? []
+              : [
+                    {
+                        id: "raw" as ResourceType,
+                        title: t("resourceRaw"),
+                        description:
+                            build === "saas"
+                                ? t("resourceRawDescriptionCloud")
+                                : t("resourceRawDescription")
+                    }
+                ])
     ];
+
+    // In saas mode with no exit nodes, force HTTP
+    const showTypeSelector =
+        build !== "saas" || (!loadingExitNodes && remoteExitNodes.length > 0);
 
     const baseForm = useForm({
         resolver: zodResolver(baseResourceFormSchema),
@@ -566,7 +601,10 @@ export default function Page() {
             toast({
                 variant: "destructive",
                 title: t("resourceErrorCreate"),
-                description: t("resourceErrorCreateMessageDescription")
+                description: formatAxiosError(
+                    e,
+                    t("resourceErrorCreateMessageDescription")
+                )
             });
         }
     }
@@ -989,34 +1027,35 @@ export default function Page() {
                                     </SettingsSectionTitle>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    {resourceTypes.length > 1 && (
-                                        <>
-                                            <div className="mb-2">
-                                                <span className="text-sm font-medium">
-                                                    {t("type")}
-                                                </span>
-                                            </div>
+                                    {showTypeSelector &&
+                                        resourceTypes.length > 1 && (
+                                            <>
+                                                <div className="mb-2">
+                                                    <span className="text-sm font-medium">
+                                                        {t("type")}
+                                                    </span>
+                                                </div>
 
-                                            <StrategySelect
-                                                options={resourceTypes}
-                                                defaultValue="http"
-                                                onChange={(value) => {
-                                                    baseForm.setValue(
-                                                        "http",
-                                                        value === "http"
-                                                    );
-                                                    // Update method default when switching resource type
-                                                    addTargetForm.setValue(
-                                                        "method",
-                                                        value === "http"
-                                                            ? "http"
-                                                            : null
-                                                    );
-                                                }}
-                                                cols={2}
-                                            />
-                                        </>
-                                    )}
+                                                <StrategySelect
+                                                    options={resourceTypes}
+                                                    defaultValue="http"
+                                                    onChange={(value) => {
+                                                        baseForm.setValue(
+                                                            "http",
+                                                            value === "http"
+                                                        );
+                                                        // Update method default when switching resource type
+                                                        addTargetForm.setValue(
+                                                            "method",
+                                                            value === "http"
+                                                                ? "http"
+                                                                : null
+                                                        );
+                                                    }}
+                                                    cols={2}
+                                                />
+                                            </>
+                                        )}
 
                                     <SettingsSectionForm>
                                         <Form {...baseForm}>

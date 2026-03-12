@@ -35,11 +35,7 @@ import {
 } from "@app/components/Credenza";
 import { cn } from "@app/lib/cn";
 import { CreditCard, ExternalLink, Check, AlertTriangle } from "lucide-react";
-import {
-    Alert,
-    AlertTitle,
-    AlertDescription
-} from "@app/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@app/components/ui/alert";
 import {
     Tooltip,
     TooltipTrigger,
@@ -69,6 +65,7 @@ type PlanOption = {
     price: string;
     priceDetail?: string;
     tierType: Tier | null;
+    features: string[];
 };
 
 const planOptions: PlanOption[] = [
@@ -76,41 +73,87 @@ const planOptions: PlanOption[] = [
         id: "basic",
         name: "Basic",
         price: "Free",
-        tierType: null
+        tierType: null,
+        features: [
+            "Basic Pangolin features",
+            "Free provided domains",
+            "Web-based proxy resources",
+            "Private resources and clients",
+            "Peer-to-peer connections"
+        ]
     },
     {
         id: "home",
         name: "Home",
         price: "$12.50",
         priceDetail: "/ month",
-        tierType: "tier1"
+        tierType: "tier1",
+        features: [
+            "Everything in Basic",
+            "OAuth2/OIDC, Google, & Azure SSO",
+            "Bring your own identity provider",
+            "Pangolin SSH",
+            "Custom branding",
+            "Device admin approvals"
+        ]
     },
     {
         id: "team",
         name: "Team",
         price: "$4",
         priceDetail: "per user / month",
-        tierType: "tier2"
+        tierType: "tier2",
+        features: [
+            "Everything in Basic",
+            "Custom domains",
+            "OAuth2/OIDC, Google, & Azure SSO",
+            "Access and action audit logs",
+            "Device posture information"
+        ]
     },
     {
         id: "business",
         name: "Business",
         price: "$9",
         priceDetail: "per user / month",
-        tierType: "tier3"
+        tierType: "tier3",
+        features: [
+            "Everything in Team",
+            "Multiple organizations (multi-tenancy)",
+            "Auto-provisioning via IdP",
+            "Pangolin SSH",
+            "Device approvals",
+            "Custom branding",
+            "Business support"
+        ]
     },
     {
         id: "enterprise",
         name: "Enterprise",
         price: "Custom",
-        tierType: null
+        tierType: null,
+        features: [
+            "Everything in Business",
+            "Custom limits",
+            "Priority support and SLA",
+            "Log push and export",
+            "Private and Gov-Cloud deployment options",
+            "Dedicated, premium relay/exit nodes",
+            "Pay by invoice "
+        ]
     }
 ];
 
 // Tier limits mapping derived from limit sets
 const tierLimits: Record<
     Tier | "basic",
-    { users: number; sites: number; domains: number; remoteNodes: number; organizations: number }
+    {
+        users: number;
+        sites: number;
+        domains: number;
+        remoteNodes: number;
+        organizations: number;
+    }
 > = {
     basic: {
         users: freeLimitSet[FeatureId.USERS]?.value ?? 0,
@@ -463,31 +506,43 @@ export default function BillingPage() {
     const isProblematicState = hasProblematicSubscription();
 
     // Get user-friendly subscription status message
-    const getSubscriptionStatusMessage = (): { title: string; description: string } | null => {
+    const getSubscriptionStatusMessage = (): {
+        title: string;
+        description: string;
+    } | null => {
         if (!tierSubscription?.subscription || !isProblematicState) return null;
-        
+
         const status = tierSubscription.subscription.status;
-        
+
         switch (status) {
             case "past_due":
                 return {
                     title: t("billingPastDueTitle") || "Payment Past Due",
-                    description: t("billingPastDueDescription") || "Your payment is past due. Please update your payment method to continue using your current plan features. If not resolved, your subscription will be canceled and you'll be reverted to the free tier."
+                    description:
+                        t("billingPastDueDescription") ||
+                        "Your payment is past due. Please update your payment method to continue using your current plan features. If not resolved, your subscription will be canceled and you'll be reverted to the free tier."
                 };
             case "unpaid":
                 return {
                     title: t("billingUnpaidTitle") || "Subscription Unpaid",
-                    description: t("billingUnpaidDescription") || "Your subscription is unpaid and you have been reverted to the free tier. Please update your payment method to restore your subscription."
+                    description:
+                        t("billingUnpaidDescription") ||
+                        "Your subscription is unpaid and you have been reverted to the free tier. Please update your payment method to restore your subscription."
                 };
             case "incomplete":
                 return {
                     title: t("billingIncompleteTitle") || "Payment Incomplete",
-                    description: t("billingIncompleteDescription") || "Your payment is incomplete. Please complete the payment process to activate your subscription."
+                    description:
+                        t("billingIncompleteDescription") ||
+                        "Your payment is incomplete. Please complete the payment process to activate your subscription."
                 };
             case "incomplete_expired":
                 return {
-                    title: t("billingIncompleteExpiredTitle") || "Payment Expired",
-                    description: t("billingIncompleteExpiredDescription") || "Your payment was never completed and has expired. You have been reverted to the free tier. Please subscribe again to restore access to paid features."
+                    title:
+                        t("billingIncompleteExpiredTitle") || "Payment Expired",
+                    description:
+                        t("billingIncompleteExpiredDescription") ||
+                        "Your payment was never completed and has expired. You have been reverted to the free tier. Please subscribe again to restore access to paid features."
                 };
             default:
                 return null;
@@ -509,7 +564,11 @@ export default function BillingPage() {
 
         if (plan.id === currentPlanId) {
             // If it's the basic plan (basic with no subscription), show as current but disabled
-            if (plan.id === "basic" && !hasSubscription && !isProblematicState) {
+            if (
+                plan.id === "basic" &&
+                !hasSubscription &&
+                !isProblematicState
+            ) {
                 return {
                     label: "Current Plan",
                     action: () => {},
@@ -632,7 +691,9 @@ export default function BillingPage() {
     };
 
     // Check if downgrading to a tier would violate current usage limits
-    const checkLimitViolations = (targetTier: Tier | "basic"): Array<{
+    const checkLimitViolations = (
+        targetTier: Tier | "basic"
+    ): Array<{
         feature: string;
         currentUsage: number;
         newLimit: number;
@@ -687,7 +748,10 @@ export default function BillingPage() {
 
         // Check organizations
         const organizationsUsage = getUsageValue(ORGINIZATIONS);
-        if (limits.organizations > 0 && organizationsUsage > limits.organizations) {
+        if (
+            limits.organizations > 0 &&
+            organizationsUsage > limits.organizations
+        ) {
             violations.push({
                 feature: "Organizations",
                 currentUsage: organizationsUsage,
@@ -712,17 +776,15 @@ export default function BillingPage() {
             {isProblematicState && statusMessage && (
                 <Alert variant="destructive" className="mb-6">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>
-                        {statusMessage.title}
-                    </AlertTitle>
+                    <AlertTitle>{statusMessage.title}</AlertTitle>
                     <AlertDescription>
-                        {statusMessage.description}
-                        {" "}
+                        {statusMessage.description}{" "}
                         <button
                             onClick={handleModifySubscription}
                             className="underline font-semibold hover:no-underline"
                         >
-                            {t("billingManageSubscription") || "Manage your subscription"}
+                            {t("billingManageSubscription") ||
+                                "Manage your subscription"}
                         </button>
                     </AlertDescription>
                 </Alert>
@@ -772,7 +834,10 @@ export default function BillingPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4">
-                                        {isProblematicState && planAction.disabled && !isCurrentPlan && plan.id !== "enterprise" ? (
+                                        {isProblematicState &&
+                                        planAction.disabled &&
+                                        !isCurrentPlan &&
+                                        plan.id !== "enterprise" ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <div>
@@ -784,18 +849,29 @@ export default function BillingPage() {
                                                             }
                                                             size="sm"
                                                             className="w-full"
-                                                            onClick={planAction.action}
-                                                            disabled={
-                                                                isLoading || planAction.disabled
+                                                            onClick={
+                                                                planAction.action
                                                             }
-                                                            loading={isLoading && isCurrentPlan}
+                                                            disabled={
+                                                                isLoading ||
+                                                                planAction.disabled
+                                                            }
+                                                            loading={
+                                                                isLoading &&
+                                                                isCurrentPlan
+                                                            }
                                                         >
                                                             {planAction.label}
                                                         </Button>
                                                     </div>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>{t("billingResolvePaymentIssue") || "Please resolve your payment issue before upgrading or downgrading"}</p>
+                                                    <p>
+                                                        {t(
+                                                            "billingResolvePaymentIssue"
+                                                        ) ||
+                                                            "Please resolve your payment issue before upgrading or downgrading"}
+                                                    </p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : (
@@ -809,9 +885,12 @@ export default function BillingPage() {
                                                 className="w-full"
                                                 onClick={planAction.action}
                                                 disabled={
-                                                    isLoading || planAction.disabled
+                                                    isLoading ||
+                                                    planAction.disabled
                                                 }
-                                                loading={isLoading && isCurrentPlan}
+                                                loading={
+                                                    isLoading && isCurrentPlan
+                                                }
                                             >
                                                 {planAction.label}
                                             </Button>
@@ -886,18 +965,38 @@ export default function BillingPage() {
                                             <Tooltip>
                                                 <TooltipTrigger className="flex items-center gap-1">
                                                     <AlertTriangle className="h-3 w-3 text-orange-400" />
-                                                    <span className={cn(
-                                                        "text-orange-600 dark:text-orange-400 font-medium"
-                                                    )}>
+                                                    <span
+                                                        className={cn(
+                                                            "text-orange-600 dark:text-orange-400 font-medium"
+                                                        )}
+                                                    >
                                                         {getLimitValue(USERS) ??
-                                                            t("billingUnlimited") ??
+                                                            t(
+                                                                "billingUnlimited"
+                                                            ) ??
                                                             "∞"}{" "}
-                                                        {getLimitValue(USERS) !== null &&
-                                                            "users"}
+                                                        {getLimitValue(
+                                                            USERS
+                                                        ) !== null && "users"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(USERS), limit: getLimitValue(USERS) ?? 0 }) || `Current usage (${getUsageValue(USERS)}) exceeds limit (${getLimitValue(USERS)})`}</p>
+                                                    <p>
+                                                        {t(
+                                                            "billingUsageExceedsLimit",
+                                                            {
+                                                                current:
+                                                                    getUsageValue(
+                                                                        USERS
+                                                                    ),
+                                                                limit:
+                                                                    getLimitValue(
+                                                                        USERS
+                                                                    ) ?? 0
+                                                            }
+                                                        ) ||
+                                                            `Current usage (${getUsageValue(USERS)}) exceeds limit (${getLimitValue(USERS)})`}
+                                                    </p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : (
@@ -905,8 +1004,8 @@ export default function BillingPage() {
                                                 {getLimitValue(USERS) ??
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
-                                                {getLimitValue(USERS) !== null &&
-                                                    "users"}
+                                                {getLimitValue(USERS) !==
+                                                    null && "users"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -920,18 +1019,38 @@ export default function BillingPage() {
                                             <Tooltip>
                                                 <TooltipTrigger className="flex items-center gap-1">
                                                     <AlertTriangle className="h-3 w-3 text-orange-400" />
-                                                    <span className={cn(
-                                                        "text-orange-600 dark:text-orange-400 font-medium"
-                                                    )}>
+                                                    <span
+                                                        className={cn(
+                                                            "text-orange-600 dark:text-orange-400 font-medium"
+                                                        )}
+                                                    >
                                                         {getLimitValue(SITES) ??
-                                                            t("billingUnlimited") ??
+                                                            t(
+                                                                "billingUnlimited"
+                                                            ) ??
                                                             "∞"}{" "}
-                                                        {getLimitValue(SITES) !== null &&
-                                                            "sites"}
+                                                        {getLimitValue(
+                                                            SITES
+                                                        ) !== null && "sites"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(SITES), limit: getLimitValue(SITES) ?? 0 }) || `Current usage (${getUsageValue(SITES)}) exceeds limit (${getLimitValue(SITES)})`}</p>
+                                                    <p>
+                                                        {t(
+                                                            "billingUsageExceedsLimit",
+                                                            {
+                                                                current:
+                                                                    getUsageValue(
+                                                                        SITES
+                                                                    ),
+                                                                limit:
+                                                                    getLimitValue(
+                                                                        SITES
+                                                                    ) ?? 0
+                                                            }
+                                                        ) ||
+                                                            `Current usage (${getUsageValue(SITES)}) exceeds limit (${getLimitValue(SITES)})`}
+                                                    </p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : (
@@ -939,8 +1058,8 @@ export default function BillingPage() {
                                                 {getLimitValue(SITES) ??
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
-                                                {getLimitValue(SITES) !== null &&
-                                                    "sites"}
+                                                {getLimitValue(SITES) !==
+                                                    null && "sites"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -954,18 +1073,40 @@ export default function BillingPage() {
                                             <Tooltip>
                                                 <TooltipTrigger className="flex items-center gap-1">
                                                     <AlertTriangle className="h-3 w-3 text-orange-400" />
-                                                    <span className={cn(
-                                                        "text-orange-600 dark:text-orange-400 font-medium"
-                                                    )}>
-                                                        {getLimitValue(DOMAINS) ??
-                                                            t("billingUnlimited") ??
+                                                    <span
+                                                        className={cn(
+                                                            "text-orange-600 dark:text-orange-400 font-medium"
+                                                        )}
+                                                    >
+                                                        {getLimitValue(
+                                                            DOMAINS
+                                                        ) ??
+                                                            t(
+                                                                "billingUnlimited"
+                                                            ) ??
                                                             "∞"}{" "}
-                                                        {getLimitValue(DOMAINS) !== null &&
-                                                            "domains"}
+                                                        {getLimitValue(
+                                                            DOMAINS
+                                                        ) !== null && "domains"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(DOMAINS), limit: getLimitValue(DOMAINS) ?? 0 }) || `Current usage (${getUsageValue(DOMAINS)}) exceeds limit (${getLimitValue(DOMAINS)})`}</p>
+                                                    <p>
+                                                        {t(
+                                                            "billingUsageExceedsLimit",
+                                                            {
+                                                                current:
+                                                                    getUsageValue(
+                                                                        DOMAINS
+                                                                    ),
+                                                                limit:
+                                                                    getLimitValue(
+                                                                        DOMAINS
+                                                                    ) ?? 0
+                                                            }
+                                                        ) ||
+                                                            `Current usage (${getUsageValue(DOMAINS)}) exceeds limit (${getLimitValue(DOMAINS)})`}
+                                                    </p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : (
@@ -973,8 +1114,8 @@ export default function BillingPage() {
                                                 {getLimitValue(DOMAINS) ??
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
-                                                {getLimitValue(DOMAINS) !== null &&
-                                                    "domains"}
+                                                {getLimitValue(DOMAINS) !==
+                                                    null && "domains"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -989,18 +1130,40 @@ export default function BillingPage() {
                                             <Tooltip>
                                                 <TooltipTrigger className="flex items-center gap-1">
                                                     <AlertTriangle className="h-3 w-3 text-orange-400" />
-                                                    <span className={cn(
-                                                        "text-orange-600 dark:text-orange-400 font-medium"
-                                                    )}>
-                                                        {getLimitValue(ORGINIZATIONS) ??
-                                                            t("billingUnlimited") ??
+                                                    <span
+                                                        className={cn(
+                                                            "text-orange-600 dark:text-orange-400 font-medium"
+                                                        )}
+                                                    >
+                                                        {getLimitValue(
+                                                            ORGINIZATIONS
+                                                        ) ??
+                                                            t(
+                                                                "billingUnlimited"
+                                                            ) ??
                                                             "∞"}{" "}
-                                                        {getLimitValue(ORGINIZATIONS) !==
-                                                            null && "orgs"}
+                                                        {getLimitValue(
+                                                            ORGINIZATIONS
+                                                        ) !== null && "orgs"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(ORGINIZATIONS), limit: getLimitValue(ORGINIZATIONS) ?? 0 }) || `Current usage (${getUsageValue(ORGINIZATIONS)}) exceeds limit (${getLimitValue(ORGINIZATIONS)})`}</p>
+                                                    <p>
+                                                        {t(
+                                                            "billingUsageExceedsLimit",
+                                                            {
+                                                                current:
+                                                                    getUsageValue(
+                                                                        ORGINIZATIONS
+                                                                    ),
+                                                                limit:
+                                                                    getLimitValue(
+                                                                        ORGINIZATIONS
+                                                                    ) ?? 0
+                                                            }
+                                                        ) ||
+                                                            `Current usage (${getUsageValue(ORGINIZATIONS)}) exceeds limit (${getLimitValue(ORGINIZATIONS)})`}
+                                                    </p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : (
@@ -1008,8 +1171,9 @@ export default function BillingPage() {
                                                 {getLimitValue(ORGINIZATIONS) ??
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
-                                                {getLimitValue(ORGINIZATIONS) !==
-                                                    null && "orgs"}
+                                                {getLimitValue(
+                                                    ORGINIZATIONS
+                                                ) !== null && "orgs"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -1024,27 +1188,52 @@ export default function BillingPage() {
                                             <Tooltip>
                                                 <TooltipTrigger className="flex items-center gap-1">
                                                     <AlertTriangle className="h-3 w-3 text-orange-400" />
-                                                    <span className={cn(
-                                                        "text-orange-600 dark:text-orange-400 font-medium"
-                                                    )}>
-                                                        {getLimitValue(REMOTE_EXIT_NODES) ??
-                                                            t("billingUnlimited") ??
+                                                    <span
+                                                        className={cn(
+                                                            "text-orange-600 dark:text-orange-400 font-medium"
+                                                        )}
+                                                    >
+                                                        {getLimitValue(
+                                                            REMOTE_EXIT_NODES
+                                                        ) ??
+                                                            t(
+                                                                "billingUnlimited"
+                                                            ) ??
                                                             "∞"}{" "}
-                                                        {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                            null && "nodes"}
+                                                        {getLimitValue(
+                                                            REMOTE_EXIT_NODES
+                                                        ) !== null && "nodes"}
                                                     </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>{t("billingUsageExceedsLimit", { current: getUsageValue(REMOTE_EXIT_NODES), limit: getLimitValue(REMOTE_EXIT_NODES) ?? 0 }) || `Current usage (${getUsageValue(REMOTE_EXIT_NODES)}) exceeds limit (${getLimitValue(REMOTE_EXIT_NODES)})`}</p>
+                                                    <p>
+                                                        {t(
+                                                            "billingUsageExceedsLimit",
+                                                            {
+                                                                current:
+                                                                    getUsageValue(
+                                                                        REMOTE_EXIT_NODES
+                                                                    ),
+                                                                limit:
+                                                                    getLimitValue(
+                                                                        REMOTE_EXIT_NODES
+                                                                    ) ?? 0
+                                                            }
+                                                        ) ||
+                                                            `Current usage (${getUsageValue(REMOTE_EXIT_NODES)}) exceeds limit (${getLimitValue(REMOTE_EXIT_NODES)})`}
+                                                    </p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : (
                                             <>
-                                                {getLimitValue(REMOTE_EXIT_NODES) ??
+                                                {getLimitValue(
+                                                    REMOTE_EXIT_NODES
+                                                ) ??
                                                     t("billingUnlimited") ??
                                                     "∞"}{" "}
-                                                {getLimitValue(REMOTE_EXIT_NODES) !==
-                                                    null && "nodes"}
+                                                {getLimitValue(
+                                                    REMOTE_EXIT_NODES
+                                                ) !== null && "nodes"}
                                             </>
                                         )}
                                     </InfoSectionContent>
@@ -1072,7 +1261,8 @@ export default function BillingPage() {
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border rounded-lg p-4">
                                 <div>
                                     <div className="text-sm text-muted-foreground mb-1">
-                                        {t("billingCurrentKeys") || "Current Keys"}
+                                        {t("billingCurrentKeys") ||
+                                            "Current Keys"}
                                     </div>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-3xl font-bold">
@@ -1137,61 +1327,101 @@ export default function BillingPage() {
                                     </div>
                                 </div>
 
+                                {/* Features with check marks */}
+                                {(() => {
+                                    const plan = planOptions.find(
+                                        (p) =>
+                                            p.tierType === pendingTier.tier ||
+                                            (pendingTier.tier === "basic" &&
+                                                p.id === "basic")
+                                    );
+                                    return plan?.features?.length ? (
+                                        <div>
+                                            <h4 className="font-semibold mb-3">
+                                                {"What's included:"}
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {plan.features.map(
+                                                    (feature, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="flex items-center gap-2"
+                                                        >
+                                                            <Check className="h-4 w-4 text-green-600 shrink-0" />
+                                                            <span>
+                                                                {feature}
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : null;
+                                })()}
+
+                                {/* Limits without check marks */}
                                 {tierLimits[pendingTier.tier] && (
                                     <div>
                                         <h4 className="font-semibold mb-3">
-                                            {t("billingPlanIncludes") ||
-                                                "Plan Includes:"}
+                                            {"Up to:"}
                                         </h4>
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 text-sm text-muted-foreground">
                                             <div className="flex items-center gap-2">
-                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                                                 <span>
                                                     {
-                                                        tierLimits[pendingTier.tier]
-                                                            .users
+                                                        tierLimits[
+                                                            pendingTier.tier
+                                                        ].users
                                                     }{" "}
-                                                    {t("billingUsers") || "Users"}
+                                                    {t("billingUsers") ||
+                                                        "Users"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                                                 <span>
                                                     {
-                                                        tierLimits[pendingTier.tier]
-                                                            .sites
+                                                        tierLimits[
+                                                            pendingTier.tier
+                                                        ].sites
                                                     }{" "}
-                                                    {t("billingSites") || "Sites"}
+                                                    {t("billingSites") ||
+                                                        "Sites"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                                                 <span>
                                                     {
-                                                        tierLimits[pendingTier.tier]
-                                                            .domains
+                                                        tierLimits[
+                                                            pendingTier.tier
+                                                        ].domains
                                                     }{" "}
                                                     {t("billingDomains") ||
                                                         "Domains"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                                                 <span>
                                                     {
-                                                        tierLimits[pendingTier.tier]
-                                                            .organizations
+                                                        tierLimits[
+                                                            pendingTier.tier
+                                                        ].organizations
                                                     }{" "}
-                                                    {t("billingOrganizations") ||
-                                                        "Organizations"}
+                                                    {t(
+                                                        "billingOrganizations"
+                                                    ) || "Organizations"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <Check className="h-4 w-4 text-green-600" />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                                                 <span>
                                                     {
-                                                        tierLimits[pendingTier.tier]
-                                                            .remoteNodes
+                                                        tierLimits[
+                                                            pendingTier.tier
+                                                        ].remoteNodes
                                                     }{" "}
                                                     {t("billingRemoteNodes") ||
                                                         "Remote Nodes"}
@@ -1202,43 +1432,84 @@ export default function BillingPage() {
                                 )}
 
                                 {/* Warning for limit violations when downgrading */}
-                                {pendingTier.action === "downgrade" && (() => {
-                                    const violations = checkLimitViolations(pendingTier.tier);
-                                    if (violations.length > 0) {
-                                        return (
-                                            <Alert variant="destructive">
-                                                <AlertTriangle className="h-4 w-4" />
-                                                <AlertTitle>
-                                                    {t("billingLimitViolationWarning") || "Usage Exceeds New Plan Limits"}
-                                                </AlertTitle>
-                                                <AlertDescription>
-                                                    <p className="mb-3">
-                                                        {t("billingLimitViolationDescription") || "Your current usage exceeds the limits of this plan. The following features will be disabled until you reduce usage:"}
-                                                    </p>
-                                                    <ul className="space-y-2">
-                                                        {violations.map((violation, index) => (
-                                                            <li key={index} className="flex items-center gap-2">
-                                                                <span className="font-medium">{violation.feature}:</span>
-                                                                <span>Currently using {violation.currentUsage}, new limit is {violation.newLimit}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </AlertDescription>
-                                            </Alert>
+                                {pendingTier.action === "downgrade" &&
+                                    (() => {
+                                        const violations = checkLimitViolations(
+                                            pendingTier.tier
                                         );
-                                    }
-                                    return null;
-                                })()}
+                                        if (violations.length > 0) {
+                                            return (
+                                                <Alert variant="destructive">
+                                                    <AlertTriangle className="h-4 w-4" />
+                                                    <AlertTitle>
+                                                        {t(
+                                                            "billingLimitViolationWarning"
+                                                        ) ||
+                                                            "Usage Exceeds New Plan Limits"}
+                                                    </AlertTitle>
+                                                    <AlertDescription>
+                                                        <p className="mb-3">
+                                                            {t(
+                                                                "billingLimitViolationDescription"
+                                                            ) ||
+                                                                "Your current usage exceeds the limits of this plan. The following features will be disabled until you reduce usage:"}
+                                                        </p>
+                                                        <ul className="space-y-2">
+                                                            {violations.map(
+                                                                (
+                                                                    violation,
+                                                                    index
+                                                                ) => (
+                                                                    <li
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        className="flex items-center gap-2"
+                                                                    >
+                                                                        <span className="font-medium">
+                                                                            {
+                                                                                violation.feature
+                                                                            }
+                                                                            :
+                                                                        </span>
+                                                                        <span>
+                                                                            Currently
+                                                                            using{" "}
+                                                                            {
+                                                                                violation.currentUsage
+                                                                            }
+                                                                            ,
+                                                                            new
+                                                                            limit
+                                                                            is{" "}
+                                                                            {
+                                                                                violation.newLimit
+                                                                            }
+                                                                        </span>
+                                                                    </li>
+                                                                )
+                                                            )}
+                                                        </ul>
+                                                    </AlertDescription>
+                                                </Alert>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
 
                                 {/* Warning for feature loss when downgrading */}
                                 {pendingTier.action === "downgrade" && (
                                     <Alert variant="warning">
                                         <AlertTriangle className="h-4 w-4" />
                                         <AlertTitle>
-                                            {t("billingFeatureLossWarning") || "Feature Availability Notice"}
+                                            {t("billingFeatureLossWarning") ||
+                                                "Feature Availability Notice"}
                                         </AlertTitle>
                                         <AlertDescription>
-                                            {t("billingFeatureLossDescription") || "By downgrading, features not available in the new plan will be automatically disabled. Some settings and configurations may be lost. Please review the pricing matrix to understand which features will no longer be available."}
+                                            {t(
+                                                "billingFeatureLossDescription"
+                                            ) ||
+                                                "By downgrading, features not available in the new plan will be automatically disabled. Some settings and configurations may be lost. Please review the pricing matrix to understand which features will no longer be available."}
                                         </AlertDescription>
                                     </Alert>
                                 )}

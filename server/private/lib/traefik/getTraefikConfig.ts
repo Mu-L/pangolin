@@ -34,7 +34,11 @@ import {
 import logger from "@server/logger";
 import config from "@server/lib/config";
 import { orgs, resources, sites, Target, targets } from "@server/db";
-import { sanitize, validatePathRewriteConfig } from "@server/lib/traefik/utils";
+import {
+    sanitize,
+    encodePath,
+    validatePathRewriteConfig
+} from "@server/lib/traefik/utils";
 import privateConfig from "#private/lib/config";
 import createPathRewriteMiddleware from "@server/lib/traefik/middleware";
 import {
@@ -170,7 +174,7 @@ export async function getTraefikConfig(
     resourcesWithTargetsAndSites.forEach((row) => {
         const resourceId = row.resourceId;
         const resourceName = sanitize(row.resourceName) || "";
-        const targetPath = sanitize(row.path) || ""; // Handle null/undefined paths
+        const targetPath = encodePath(row.path); // Use encodePath to avoid collisions (e.g. "/a/b" vs "/a-b")
         const pathMatchType = row.pathMatchType || "";
         const rewritePath = row.rewritePath || "";
         const rewritePathType = row.rewritePathType || "";
@@ -192,7 +196,7 @@ export async function getTraefikConfig(
         const mapKey = [resourceId, pathKey].filter(Boolean).join("-");
         const key = sanitize(mapKey);
 
-        if (!resourcesMap.has(key)) {
+        if (!resourcesMap.has(mapKey)) {
             const validation = validatePathRewriteConfig(
                 row.path,
                 row.pathMatchType,
@@ -207,9 +211,10 @@ export async function getTraefikConfig(
                 return;
             }
 
-            resourcesMap.set(key, {
+            resourcesMap.set(mapKey, {
                 resourceId: row.resourceId,
                 name: resourceName,
+                key: key,
                 fullDomain: row.fullDomain,
                 ssl: row.ssl,
                 http: row.http,
@@ -243,7 +248,7 @@ export async function getTraefikConfig(
         }
 
         // Add target with its associated site data
-        resourcesMap.get(key).targets.push({
+        resourcesMap.get(mapKey).targets.push({
             resourceId: row.resourceId,
             targetId: row.targetId,
             ip: row.ip,
@@ -296,8 +301,9 @@ export async function getTraefikConfig(
     };
 
     // get the key and the resource
-    for (const [key, resource] of resourcesMap.entries()) {
+    for (const [, resource] of resourcesMap.entries()) {
         const targets = resource.targets as TargetWithSite[];
+        const key = resource.key;
 
         const routerName = `${key}-${resource.name}-router`;
         const serviceName = `${key}-${resource.name}-service`;

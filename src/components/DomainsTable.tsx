@@ -27,6 +27,12 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "./ui/dropdown-menu";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "./ui/tooltip";
 import Link from "next/link";
 
 export type DomainRow = {
@@ -39,6 +45,7 @@ export type DomainRow = {
     configManaged: boolean;
     certResolver: string;
     preferWildcardCert: boolean;
+    errorMessage?: string | null;
 };
 
 type Props = {
@@ -175,7 +182,7 @@ export default function DomainsTable({ domains, orgId }: Props) {
             );
         },
         cell: ({ row }) => {
-            const { verified, failed, type } = row.original;
+            const { verified, failed, type, errorMessage } = row.original;
             if (verified) {
                 return type == "wildcard" ? (
                     <Badge variant="outlinePrimary">{t("manual")}</Badge>
@@ -183,12 +190,44 @@ export default function DomainsTable({ domains, orgId }: Props) {
                     <Badge variant="green">{t("verified")}</Badge>
                 );
             } else if (failed) {
+                if (errorMessage) {
+                    return (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Badge variant="red" className="cursor-help">
+                                        {t("failed", { fallback: "Failed" })}
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                    <p className="break-words">{errorMessage}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    );
+                }
                 return (
                     <Badge variant="red">
                         {t("failed", { fallback: "Failed" })}
                     </Badge>
                 );
             } else {
+                if (errorMessage) {
+                    return (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Badge variant="yellow" className="cursor-help">
+                                        {t("pending")}
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                    <p className="break-words">{errorMessage}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    );
+                }
                 return <Badge variant="yellow">{t("pending")}</Badge>;
             }
         }

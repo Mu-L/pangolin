@@ -85,9 +85,7 @@ export async function deleteOrgById(
                         deletedNewtIds.push(deletedNewt.newtId);
                         await trx
                             .delete(newtSessions)
-                            .where(
-                                eq(newtSessions.newtId, deletedNewt.newtId)
-                            );
+                            .where(eq(newtSessions.newtId, deletedNewt.newtId));
                     }
                 }
             }
@@ -121,33 +119,38 @@ export async function deleteOrgById(
                     eq(clientSitesAssociationsCache.clientId, client.clientId)
                 );
         }
+
+        await trx.delete(resources).where(eq(resources.orgId, orgId));
+
         const allOrgDomains = await trx
             .select()
             .from(orgDomains)
-            .innerJoin(domains, eq(domains.domainId, orgDomains.domainId))
+            .innerJoin(domains, eq(orgDomains.domainId, domains.domainId))
             .where(
                 and(
                     eq(orgDomains.orgId, orgId),
                     eq(domains.configManaged, false)
                 )
             );
+        logger.info(`Found ${allOrgDomains.length} domains to delete`);
         const domainIdsToDelete: string[] = [];
         for (const orgDomain of allOrgDomains) {
             const domainId = orgDomain.domains.domainId;
-            const orgCount = await trx
-                .select({ count: sql<number>`count(*)` })
+            const [orgCount] = await trx
+                .select({ count: count() })
                 .from(orgDomains)
                 .where(eq(orgDomains.domainId, domainId));
-            if (orgCount[0].count === 1) {
+            logger.info(`Found ${orgCount.count} orgs using domain ${domainId}`);
+            if (orgCount.count === 1) {
                 domainIdsToDelete.push(domainId);
             }
         }
+        logger.info(`Found ${domainIdsToDelete.length} domains to delete`);
         if (domainIdsToDelete.length > 0) {
             await trx
                 .delete(domains)
                 .where(inArray(domains.domainId, domainIdsToDelete));
         }
-        await trx.delete(resources).where(eq(resources.orgId, orgId));
 
         await usageService.add(orgId, FeatureId.ORGINIZATIONS, -1, trx); // here we are decreasing the org count BEFORE deleting the org because we need to still be able to get the org to get the billing org inside of here
 
@@ -231,15 +234,13 @@ export function sendTerminationMessages(result: DeleteOrgByIdResult): void {
         );
     }
     for (const olmId of result.olmsToTerminate) {
-        sendTerminateClient(
-            0,
-            OlmErrorCodes.TERMINATED_REKEYED,
-            olmId
-        ).catch((error) => {
-            logger.error(
-                "Failed to send termination message to olm:",
-                error
-            );
-        });
+        sendTerminateClient(0, OlmErrorCodes.TERMINATED_REKEYED, olmId).catch(
+            (error) => {
+                logger.error(
+                    "Failed to send termination message to olm:",
+                    error
+                );
+            }
+        );
     }
 }

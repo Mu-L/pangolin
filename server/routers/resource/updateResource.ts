@@ -375,6 +375,20 @@ async function updateHttpResource(
                 );
             }
 
+            // Prevent updating resource with same domain as dashboard
+            const dashboardUrl = config.getRawConfig().app.dashboard_url;
+            if (dashboardUrl) {
+                const dashboardHost = new URL(dashboardUrl).hostname;
+                if (fullDomain === dashboardHost) {
+                    return next(
+                        createHttpError(
+                            HttpCode.CONFLICT,
+                            "Resource domain cannot be the same as the dashboard domain"
+                        )
+                    );
+                }
+            }
+        
             if (build != "oss") {
                 const existingLoginPages = await db
                     .select()

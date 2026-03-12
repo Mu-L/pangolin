@@ -22,7 +22,8 @@ export const domains = pgTable("domains", {
     tries: integer("tries").notNull().default(0),
     certResolver: varchar("certResolver"),
     customCertResolver: varchar("customCertResolver"),
-    preferWildcardCert: boolean("preferWildcardCert")
+    preferWildcardCert: boolean("preferWildcardCert"),
+    errorMessage: text("errorMessage")
 });
 
 export const dnsRecords = pgTable("dnsRecords", {
@@ -293,6 +294,7 @@ export const users = pgTable("user", {
     dateCreated: varchar("dateCreated").notNull(),
     termsAcceptedTimestamp: varchar("termsAcceptedTimestamp"),
     termsVersion: varchar("termsVersion"),
+    marketingEmailConsent: boolean("marketingEmailConsent").default(false),
     serverAdmin: boolean("serverAdmin").notNull().default(false),
     lastPasswordChange: bigint("lastPasswordChange", { mode: "number" })
 });

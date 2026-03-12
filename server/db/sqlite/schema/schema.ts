@@ -13,7 +13,8 @@ export const domains = sqliteTable("domains", {
     failed: integer("failed", { mode: "boolean" }).notNull().default(false),
     tries: integer("tries").notNull().default(0),
     certResolver: text("certResolver"),
-    preferWildcardCert: integer("preferWildcardCert", { mode: "boolean" })
+    preferWildcardCert: integer("preferWildcardCert", { mode: "boolean" }),
+    errorMessage: text("errorMessage")
 });
 
 export const dnsRecords = sqliteTable("dnsRecords", {
@@ -316,6 +317,9 @@ export const users = sqliteTable("user", {
     dateCreated: text("dateCreated").notNull(),
     termsAcceptedTimestamp: text("termsAcceptedTimestamp"),
     termsVersion: text("termsVersion"),
+    marketingEmailConsent: integer("marketingEmailConsent", {
+        mode: "boolean"
+    }).default(false),
     serverAdmin: integer("serverAdmin", { mode: "boolean" })
         .notNull()
         .default(false),

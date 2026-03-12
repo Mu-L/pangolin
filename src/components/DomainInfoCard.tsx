@@ -10,17 +10,20 @@ import {
 import { useTranslations } from "next-intl";
 import { Badge } from "./ui/badge";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { AlertTriangle } from "lucide-react";
 
 type DomainInfoCardProps = {
     failed: boolean;
     verified: boolean;
     type: string | null;
+    errorMessage?: string | null;
 };
 
 export default function DomainInfoCard({
     failed,
     verified,
-    type
+    type,
+    errorMessage
 }: DomainInfoCardProps) {
     const t = useTranslations();
     const env = useEnvContext();
@@ -39,6 +42,7 @@ export default function DomainInfoCard({
     };
 
     return (
+        <div className="space-y-3">
         <Alert>
             <AlertDescription>
                 <InfoSections cols={3}>
@@ -79,5 +83,19 @@ export default function DomainInfoCard({
                 </InfoSections>
             </AlertDescription>
         </Alert>
+        {errorMessage && (failed || !verified) && (
+            <Alert variant={failed ? "destructive" : "warning"}>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>
+                    {failed
+                        ? t("domainErrorTitle", { fallback: "Domain Error" })
+                        : t("domainPendingErrorTitle", { fallback: "Verification Issue" })}
+                </AlertTitle>
+                <AlertDescription className="font-mono text-xs break-all">
+                    {errorMessage}
+                </AlertDescription>
+            </Alert>
+        )}
+        </div>
     );
 }

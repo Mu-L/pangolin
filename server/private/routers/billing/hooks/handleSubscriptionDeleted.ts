@@ -23,7 +23,6 @@ import {
 import { eq, and } from "drizzle-orm";
 import logger from "@server/logger";
 import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
-import { AudienceIds, moveEmailToAudience } from "#private/lib/resend";
 import { getSubType } from "./getSubType";
 import stripe from "#private/lib/stripe";
 import privateConfig from "#private/lib/config";
@@ -109,7 +108,7 @@ export async function handleSubscriptionDeleted(
                 const email = orgUserRes.user.email;
 
                 if (email) {
-                    moveEmailToAudience(email, AudienceIds.Churned);
+                    // TODO: update user in Sendy
                 }
             }
         } else if (type === "license") {

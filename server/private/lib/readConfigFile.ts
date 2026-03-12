@@ -38,10 +38,6 @@ export const privateConfigSchema = z.object({
                 .string()
                 .optional()
                 .transform(getEnvOrYaml("SERVER_ENCRYPTION_KEY")),
-            resend_api_key: z
-                .string()
-                .optional()
-                .transform(getEnvOrYaml("RESEND_API_KEY")),
             reo_client_id: z
                 .string()
                 .optional()

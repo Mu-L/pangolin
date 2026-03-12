@@ -112,7 +112,7 @@ export async function updateHolePunch(
             destinations: destinations
         });
     } catch (error) {
-        // logger.error(error); // FIX THIS
+        logger.error(error);
         return next(
             createHttpError(
                 HttpCode.INTERNAL_SERVER_ERROR,
@@ -262,7 +262,7 @@ export async function updateAndGenerateEndpointDestinations(
             if (site.subnet && site.listenPort) {
                 destinations.push({
                     destinationIP: site.subnet.split("/")[0],
-                    destinationPort: site.listenPort
+                    destinationPort: site.listenPort || 1 // this satisfies gerbil for now but should be reevaluated
                 });
             }
         }
@@ -339,10 +339,10 @@ export async function updateAndGenerateEndpointDestinations(
             handleSiteEndpointChange(newt.siteId, updatedSite.endpoint!);
         }
 
-        if (!updatedSite || !updatedSite.subnet) {
-            logger.warn(`Site not found: ${newt.siteId}`);
-            throw new Error("Site not found");
-        }
+        // if (!updatedSite || !updatedSite.subnet) {
+        //     logger.warn(`Site not found: ${newt.siteId}`);
+        //     throw new Error("Site not found");
+        // }
 
         // Find all clients that connect to this site
         // const sitesClientPairs = await db
