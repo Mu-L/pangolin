@@ -239,9 +239,6 @@ export const siteResources = sqliteTable("siteResources", {
     siteResourceId: integer("siteResourceId").primaryKey({
         autoIncrement: true
     }),
-    siteId: integer("siteId")
-        .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
     orgId: text("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
@@ -264,6 +261,15 @@ export const siteResources = sqliteTable("siteResources", {
     authDaemonMode: text("authDaemonMode")
         .$type<"site" | "remote">()
         .default("site")
+});
+
+export const siteSiteResources = sqliteTable("siteSiteResources", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, { onDelete: "cascade" }),
+    siteResourceId: integer("siteResourceId")
+        .notNull()
+        .references(() => siteResources.siteResourceId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {

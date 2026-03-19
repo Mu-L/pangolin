@@ -216,9 +216,6 @@ export const exitNodes = pgTable("exitNodes", {
 export const siteResources = pgTable("siteResources", {
     // this is for the clients
     siteResourceId: serial("siteResourceId").primaryKey(),
-    siteId: integer("siteId")
-        .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
     orgId: varchar("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
@@ -239,6 +236,15 @@ export const siteResources = pgTable("siteResources", {
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
         .$type<"site" | "remote">()
         .default("site")
+});
+
+export const siteSiteResources = pgTable("siteSiteResources", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, { onDelete: "cascade" }),
+    siteResourceId: integer("siteResourceId")
+        .notNull()
+        .references(() => siteResources.siteResourceId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
