@@ -366,18 +366,23 @@ export async function createSiteResource(
                 );
             }
 
-            // Not sure what this is doing??
-            // const [newt] = await trx
-            //     .select()
-            //     .from(newts)
-            //     .where(eq(newts.siteId, site.siteId))
-            //     .limit(1);
+            for (const siteToAssign of sitesToAssign) {
+                const [newt] = await trx
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, siteToAssign.siteId))
+                    .limit(1);
 
-            // if (!newt) {
-            //     return next(
-            //         createHttpError(HttpCode.NOT_FOUND, "Newt not found")
-            //     );
-            // }
+                if (!newt) {
+                    return next(
+                        createHttpError(
+                            HttpCode.NOT_FOUND,
+                            `Newt not found for site ${siteToAssign.siteId}`
+                        )
+                    );
+                }
+            }
+
 
             await rebuildClientAssociationsFromSiteResource(
                 newSiteResource,
