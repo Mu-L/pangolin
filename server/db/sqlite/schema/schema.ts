@@ -275,8 +275,8 @@ export const siteResources = sqliteTable("siteResources", {
 
 export const networks = sqliteTable("networks", {
     networkId: integer("networkId").primaryKey({ autoIncrement: true }),
-    niceId: text("niceId").notNull(),
-    name: text("name").notNull(),
+    niceId: text("niceId"),
+    name: text("name"),
     scope: text("scope")
         .$type<"global" | "resource">()
         .notNull()

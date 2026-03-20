@@ -249,8 +249,8 @@ export const siteResources = pgTable("siteResources", {
 
 export const networks = pgTable("networks", {
     networkId: serial("networkId").primaryKey(),
-    niceId: text("niceId").notNull(),
-    name: text("name").notNull(),
+    niceId: text("niceId"),
+    name: text("name"),
     scope: varchar("scope")
         .$type<"global" | "resource">()
         .notNull()

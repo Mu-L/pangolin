@@ -1,4 +1,4 @@
-import { db, SiteResource, siteResources, sites, siteSiteResources } from "@server/db";
+import { db, SiteResource, siteNetworks, siteResources, sites } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -99,13 +99,15 @@ function querySiteResourcesBase() {
             disableIcmp: siteResources.disableIcmp,
             authDaemonMode: siteResources.authDaemonMode,
             authDaemonPort: siteResources.authDaemonPort,
+            networkId: siteResources.networkId,
+            defaultNetworkId: siteResources.defaultNetworkId,
             siteNames: sql<string[]>`array_agg(${sites.name})`,
             siteNiceIds: sql<string[]>`array_agg(${sites.niceId})`,
             siteAddresses: sql<(string | null)[]>`array_agg(${sites.address})`
         })
         .from(siteResources)
-        .innerJoin(siteSiteResources, eq(siteResources.siteResourceId, siteSiteResources.siteResourceId))
-        .innerJoin(sites, eq(siteSiteResources.siteId, sites.siteId))
+        .innerJoin(siteNetworks, eq(siteResources.networkId, siteNetworks.networkId))
+        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
         .groupBy(siteResources.siteResourceId);
 }
 

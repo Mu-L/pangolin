@@ -5,12 +5,13 @@ import {
     roleSiteResources,
     Site,
     SiteResource,
+    siteNetworks,
     siteResources,
-    siteSiteResources,
     Transaction,
     userOrgs,
     users,
-    userSiteResources
+    userSiteResources,
+    networks
 } from "@server/db";
 import { sites } from "@server/db";
 import { eq, and, ne, inArray, or } from "drizzle-orm";
@@ -47,17 +48,12 @@ export async function updateClientResources(
             )
             .limit(1);
 
-        const existingSiteIds = await trx
-            .select({ siteId: sites.siteId })
-            .from(siteSiteResources)
-            .where(
-                and(
-                    eq(
-                        siteSiteResources.siteResourceId,
-                        existingResource.siteResourceId
-                    )
-                )
-            );
+        const existingSiteIds = existingResource?.networkId
+            ? await trx
+                  .select({ siteId: sites.siteId })
+                  .from(siteNetworks)
+                  .where(eq(siteNetworks.networkId, existingResource.networkId))
+            : [];
 
         let allSites: { siteId: number }[] = [];
         if (resourceData.site) {
@@ -144,15 +140,19 @@ export async function updateClientResources(
             const siteResourceId = existingResource.siteResourceId;
             const orgId = existingResource.orgId;
 
-            await trx
-                .delete(siteSiteResources)
-                .where(eq(siteSiteResources.siteResourceId, siteResourceId));
+            if (updatedResource.networkId) {
+                await trx
+                    .delete(siteNetworks)
+                    .where(
+                        eq(siteNetworks.networkId, updatedResource.networkId)
+                    );
 
-            for (const site of allSites) {
-                await trx.insert(siteSiteResources).values({
-                    siteId: site.siteId,
-                    siteResourceId: siteResourceId
-                });
+                for (const site of allSites) {
+                    await trx.insert(siteNetworks).values({
+                        siteId: site.siteId,
+                        networkId: updatedResource.networkId
+                    });
+                }
             }
 
             await trx
@@ -268,12 +268,22 @@ export async function updateClientResources(
                 aliasAddress = await getNextAvailableAliasAddress(orgId);
             }
 
+            const [network] = await trx
+                .insert(networks)
+                .values({
+                    scope: "resource",
+                    orgId: orgId
+                })
+                .returning();
+
             // Create new resource
             const [newResource] = await trx
                 .insert(siteResources)
                 .values({
                     orgId: orgId,
                     niceId: resourceNiceId,
+                    networkId: network.networkId,
+                    defaultNetworkId: network.networkId,
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
                     destination: resourceData.destination,
@@ -290,9 +300,9 @@ export async function updateClientResources(
             const siteResourceId = newResource.siteResourceId;
 
             for (const site of allSites) {
-                await trx.insert(siteSiteResources).values({
+                await trx.insert(siteNetworks).values({
                     siteId: site.siteId,
-                    siteResourceId: siteResourceId
+                    networkId: network.networkId
                 });
             }
 
