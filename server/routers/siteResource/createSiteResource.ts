@@ -5,10 +5,11 @@ import {
     orgs,
     roles,
     roleSiteResources,
+    siteNetworks,
+    networks,
     SiteResource,
     siteResources,
     sites,
-    siteSiteResources,
     userSiteResources
 } from "@server/db";
 import { getUniqueSiteResourceName } from "@server/db/names";
@@ -186,7 +187,9 @@ export async function createSiteResource(
             .limit(1);
 
         if (sitesToAssign.length !== siteIds.length) {
-            return next(createHttpError(HttpCode.NOT_FOUND, "Some site not found"));
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Some site not found")
+            );
         }
 
         const [org] = await db
@@ -288,11 +291,29 @@ export async function createSiteResource(
 
         let newSiteResource: SiteResource | undefined;
         await db.transaction(async (trx) => {
+            const [network] = await trx
+                .insert(networks)
+                .values({
+                    scope: "resource",
+                    orgId: orgId
+                })
+                .returning();
+
+            if (!network) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        `Failed to create network`
+                    )
+                );
+            }
+
             // Create the site resource
             const insertValues: typeof siteResources.$inferInsert = {
                 niceId,
                 orgId,
                 name,
+                networkId: network.networkId,
                 mode: mode as "host" | "cidr",
                 destination,
                 enabled,
@@ -318,9 +339,9 @@ export async function createSiteResource(
             //////////////////// update the associations ////////////////////
 
             for (const siteId of siteIds) {
-                await trx.insert(siteSiteResources).values({
+                await trx.insert(siteNetworks).values({
                     siteId: siteId,
-                    siteResourceId: siteResourceId
+                    networkId: network.networkId
                 });
             }
 
@@ -382,7 +403,6 @@ export async function createSiteResource(
                     );
                 }
             }
-
 
             await rebuildClientAssociationsFromSiteResource(
                 newSiteResource,

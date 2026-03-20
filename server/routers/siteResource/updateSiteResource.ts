@@ -8,8 +8,9 @@ import {
     orgs,
     roles,
     roleSiteResources,
+    siteNetworks,
     sites,
-    siteSiteResources,
+    networks,
     Transaction,
     userSiteResources
 } from "@server/db";
@@ -257,10 +258,14 @@ export async function updateSiteResource(
         }
 
         let sitesChanged = false;
-        const existingSiteIds = await db
-            .select()
-            .from(siteSiteResources)
-            .where(eq(siteSiteResources.siteResourceId, siteResourceId));
+        const existingSiteIds = existingSiteResource.networkId
+            ? await db
+                  .select()
+                  .from(siteNetworks)
+                  .where(
+                      eq(siteNetworks.networkId, existingSiteResource.networkId)
+                  )
+            : [];
 
         const existingSiteIdSet = new Set(existingSiteIds.map((s) => s.siteId));
         const newSiteIdSet = new Set(siteIds);
@@ -460,15 +465,17 @@ export async function updateSiteResource(
 
                 // delete the site - site resources associations
                 await trx
-                    .delete(siteSiteResources)
+                    .delete(siteNetworks)
                     .where(
-                        eq(siteSiteResources.siteResourceId, siteResourceId)
+                        eq(siteNetworks.networkId, updatedSiteResource.networkId!)
+                        // TODO: HERE WE FORCE THE NETWORK TO BE DEFINED BUT THE NETWORK CAN GET DELETED and we need to handle that
                     );
 
                 for (const siteId of siteIds) {
-                    await trx.insert(siteSiteResources).values({
+                    await trx.insert(siteNetworks).values({
                         siteId: siteId,
-                        siteResourceId: siteResourceId
+                        networkId: updatedSiteResource.networkId!
+                        // TODO: HERE WE FORCE THE NETWORK TO BE DEFINED BUT THE NETWORK CAN GET DELETED and we need to handle that
                     });
                 }
 
@@ -664,10 +671,11 @@ export async function handleMessagingForUpdatedSiteResource(
                         )
                     )
                     .innerJoin(
-                        siteSiteResources,
+                        siteNetworks,
                         eq(
-                            siteSiteResources.siteResourceId,
-                            siteResources.siteResourceId
+                            siteNetworks.networkId,
+                            siteResources.networkId
+                            // TODO: HERE WE FORCE THE NETWORK TO BE DEFINED BUT THE NETWORK CAN GET DELETED and we need to handle that
                         )
                     )
                     .where(
@@ -676,7 +684,7 @@ export async function handleMessagingForUpdatedSiteResource(
                                 clientSiteResourcesAssociationsCache.clientId,
                                 client.clientId
                             ),
-                            eq(siteSiteResources.siteId, site.siteId),
+                            eq(siteNetworks.siteId, site.siteId),
                             eq(
                                 siteResources.destination,
                                 existingSiteResource.destination
