@@ -81,6 +81,10 @@ export const sites = pgTable("sites", {
     exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
         onDelete: "set null"
     }),
+    networkId: integer("networkId").references(
+        () => networks.networkId,
+        { onDelete: "set null" }
+    ),
     name: varchar("name").notNull(),
     pubKey: varchar("pubKey"),
     subnet: varchar("subnet"),
@@ -219,6 +223,16 @@ export const siteResources = pgTable("siteResources", {
     orgId: varchar("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
+    networkId: integer("networkId").references(
+        () => networks.networkId,
+        { onDelete: "set null" }
+    ),
+    defaultNetworkId: integer("defaultNetworkId").references(
+        () => networks.networkId,
+        {
+            onDelete: "restrict"
+        }
+    ),
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
     mode: varchar("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
@@ -238,13 +252,19 @@ export const siteResources = pgTable("siteResources", {
         .default("site")
 });
 
-export const siteSiteResources = pgTable("siteSiteResources", {
-    siteId: integer("siteId")
+export const networks = pgTable("networks", {
+    networkId: serial("networkId").primaryKey(),
+    niceId: text("niceId").notNull(),
+    name: text("name").notNull(),
+    scope: varchar("scope")
+        .$type<"global" | "resource">()
         .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
-    siteResourceId: integer("siteResourceId")
+        .default("global"),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
         .notNull()
-        .references(() => siteResources.siteResourceId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
@@ -1080,3 +1100,4 @@ export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
+export type Network = InferSelectModel<typeof networks>;

@@ -82,6 +82,9 @@ export const sites = sqliteTable("sites", {
     exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
         onDelete: "set null"
     }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
     name: text("name").notNull(),
     pubKey: text("pubKey"),
     subnet: text("subnet"),
@@ -242,6 +245,13 @@ export const siteResources = sqliteTable("siteResources", {
     orgId: text("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
+    defaultNetworkId: integer("defaultNetworkId").references(
+        () => networks.networkId,
+        { onDelete: "restrict" }
+    ),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
     mode: text("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
@@ -263,13 +273,17 @@ export const siteResources = sqliteTable("siteResources", {
         .default("site")
 });
 
-export const siteSiteResources = sqliteTable("siteSiteResources", {
-    siteId: integer("siteId")
+export const networks = sqliteTable("networks", {
+    networkId: integer("networkId").primaryKey({ autoIncrement: true }),
+    niceId: text("niceId").notNull(),
+    name: text("name").notNull(),
+    scope: text("scope")
+        .$type<"global" | "resource">()
         .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
-    siteResourceId: integer("siteResourceId")
+        .default("global"),
+    orgId: text("orgId")
         .notNull()
-        .references(() => siteResources.siteResourceId, { onDelete: "cascade" })
+        .references(() => orgs.orgId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -1164,6 +1178,7 @@ export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type ApiKeyAction = InferSelectModel<typeof apiKeyActions>;
 export type ApiKeyOrg = InferSelectModel<typeof apiKeyOrg>;
 export type SiteResource = InferSelectModel<typeof siteResources>;
+export type Network = InferSelectModel<typeof networks>;
 export type OrgDomains = InferSelectModel<typeof orgDomains>;
 export type SetupToken = InferSelectModel<typeof setupTokens>;
 export type HostMeta = InferSelectModel<typeof hostMeta>;
