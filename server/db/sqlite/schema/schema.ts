@@ -286,6 +286,17 @@ export const networks = sqliteTable("networks", {
         .references(() => orgs.orgId, { onDelete: "cascade" })
 });
 
+export const siteNetworks = sqliteTable("siteNetworks", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+    networkId: integer("networkId")
+        .notNull()
+        .references(() => networks.networkId, { onDelete: "cascade" })
+});
+
 export const clientSiteResources = sqliteTable("clientSiteResources", {
     clientId: integer("clientId")
         .notNull()

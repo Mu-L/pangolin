@@ -81,10 +81,6 @@ export const sites = pgTable("sites", {
     exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
         onDelete: "set null"
     }),
-    networkId: integer("networkId").references(
-        () => networks.networkId,
-        { onDelete: "set null" }
-    ),
     name: varchar("name").notNull(),
     pubKey: varchar("pubKey"),
     subnet: varchar("subnet"),
@@ -223,10 +219,9 @@ export const siteResources = pgTable("siteResources", {
     orgId: varchar("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
-    networkId: integer("networkId").references(
-        () => networks.networkId,
-        { onDelete: "set null" }
-    ),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
     defaultNetworkId: integer("defaultNetworkId").references(
         () => networks.networkId,
         {
@@ -265,6 +260,17 @@ export const networks = pgTable("networks", {
             onDelete: "cascade"
         })
         .notNull()
+});
+
+export const siteNetworks = pgTable("siteNetworks", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+    networkId: integer("networkId")
+        .notNull()
+        .references(() => networks.networkId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
