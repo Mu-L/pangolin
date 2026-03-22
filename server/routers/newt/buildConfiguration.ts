@@ -4,8 +4,10 @@ import {
     clientSitesAssociationsCache,
     db,
     ExitNode,
+    networks,
     resources,
     Site,
+    siteNetworks,
     siteResources,
     targetHealthCheck,
     targets
@@ -137,11 +139,14 @@ export async function buildClientConfigurationForNewtClient(
     // Filter out any null values from peers that didn't have an olm
     const validPeers = peers.filter((peer) => peer !== null);
 
-    // Get all enabled site resources for this site
+    // Get all enabled site resources for this site by joining through siteNetworks and networks
     const allSiteResources = await db
         .select()
         .from(siteResources)
-        .where(eq(siteResources.siteId, siteId));
+        .innerJoin(networks, eq(siteResources.networkId, networks.networkId))
+        .innerJoin(siteNetworks, eq(networks.networkId, siteNetworks.networkId))
+        .where(eq(siteNetworks.siteId, siteId))
+        .then((rows) => rows.map((r) => r.siteResources));
 
     const targetsToSend: SubnetProxyTarget[] = [];
 
