@@ -21,6 +21,7 @@ import {
     ArrowUp10Icon,
     ArrowUpDown,
     ArrowUpRight,
+    ChevronDown,
     ChevronsUpDownIcon,
     MoreHorizontal
 } from "lucide-react";
@@ -43,14 +44,14 @@ export type InternalResourceRow = {
     id: number;
     name: string;
     orgId: string;
-    siteName: string;
-    siteAddress: string | null;
+    siteNames: string[];
+    siteAddresses: (string | null)[];
+    siteIds: number[];
+    siteNiceIds: string[];
     // mode: "host" | "cidr" | "port";
     mode: "host" | "cidr";
     // protocol: string | null;
     // proxyPort: number | null;
-    siteId: number;
-    siteNiceId: string;
     destination: string;
     // destinationPort: number | null;
     alias: string | null;
@@ -136,6 +137,60 @@ export default function ClientResourcesTable({
         }
     };
 
+    function SiteCell({ resourceRow }: { resourceRow: InternalResourceRow }) {
+        const { siteNames, siteNiceIds, orgId } = resourceRow;
+
+        if (!siteNames || siteNames.length === 0) {
+            return <span>-</span>;
+        }
+
+        if (siteNames.length === 1) {
+            return (
+                <Link
+                    href={`/${orgId}/settings/sites/${siteNiceIds[0]}`}
+                >
+                    <Button variant="outline">
+                        {siteNames[0]}
+                        <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
+            );
+        }
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                    >
+                        <span>
+                            {siteNames.length} {t("sites")}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                    {siteNames.map((siteName, idx) => (
+                        <DropdownMenuItem
+                            key={siteNiceIds[idx]}
+                            asChild
+                        >
+                            <Link
+                                href={`/${orgId}/settings/sites/${siteNiceIds[idx]}`}
+                                className="flex items-center gap-2 cursor-pointer"
+                            >
+                                {siteName}
+                                <ArrowUpRight className="h-3 w-3" />
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
+
     const internalColumns: ExtendedColumnDef<InternalResourceRow>[] = [
         {
             accessorKey: "name",
@@ -185,21 +240,11 @@ export default function ClientResourcesTable({
             }
         },
         {
-            accessorKey: "siteName",
+            accessorKey: "siteNames",
             friendlyName: t("site"),
             header: () => <span className="p-3">{t("site")}</span>,
             cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <Link
-                        href={`/${resourceRow.orgId}/settings/sites/${resourceRow.siteNiceId}`}
-                    >
-                        <Button variant="outline">
-                            {resourceRow.siteName}
-                            <ArrowUpRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </Link>
-                );
+                return <SiteCell resourceRow={row.original} />;
             }
         },
         {
@@ -399,7 +444,7 @@ export default function ClientResourcesTable({
                     onConfirm={async () =>
                         deleteInternalResource(
                             selectedInternalResource!.id,
-                            selectedInternalResource!.siteId
+                            selectedInternalResource!.siteIds[0]
                         )
                     }
                     string={selectedInternalResource.name}
@@ -433,7 +478,11 @@ export default function ClientResourcesTable({
                 <EditInternalResourceDialog
                     open={isEditDialogOpen}
                     setOpen={setIsEditDialogOpen}
-                    resource={editingResource}
+                    resource={{
+                        ...editingResource,
+                        siteName: editingResource.siteNames[0] ?? "",
+                        siteId: editingResource.siteIds[0]
+                    }}
                     orgId={orgId}
                     sites={sites}
                     onSuccess={() => {

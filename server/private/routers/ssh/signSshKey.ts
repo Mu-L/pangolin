@@ -63,10 +63,12 @@ const bodySchema = z
 export type SignSshKeyResponse = {
     certificate: string;
     messageIds: number[];
+    messageId: number;
     sshUsername: string;
     sshHost: string;
     resourceId: number;
     siteIds: number[];
+    siteId: number;
     keyId: string;
     validPrincipals: string[];
     validAfter: string;
@@ -472,16 +474,16 @@ export async function signSshKey(
             })
         });
 
-        // TODO: WE NEED TO MAKE SURE THE MESSAGEIDS ARE BACKWARD COMPATABILE AND THE SITEIDS TOO AND UPDATE THE CLI TO HANDLE THE MESSAGE IDS
-
         return response<SignSshKeyResponse>(res, {
             data: {
                 certificate: cert.certificate,
                 messageIds: messageIds,
+                messageId: messageIds[0], // just pick the first one for backward compatibility
                 sshUsername: usernameToUse,
                 sshHost: sshHost,
                 resourceId: resource.siteResourceId,
                 siteIds: siteIds,
+                siteId: siteIds[0], // just pick the first one for backward compatibility
                 keyId: cert.keyId,
                 validPrincipals: cert.validPrincipals,
                 validAfter: cert.validAfter.toISOString(),

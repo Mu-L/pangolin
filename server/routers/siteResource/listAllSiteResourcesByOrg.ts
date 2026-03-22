@@ -73,6 +73,7 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
 
 export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
     siteResources: (SiteResource & {
+        siteIds: number[];
         siteNames: string[];
         siteNiceIds: string[];
         siteAddresses: (string | null)[];
@@ -103,6 +104,7 @@ function querySiteResourcesBase() {
             defaultNetworkId: siteResources.defaultNetworkId,
             siteNames: sql<string[]>`array_agg(${sites.name})`,
             siteNiceIds: sql<string[]>`array_agg(${sites.niceId})`,
+            siteIds: sql<number[]>`array_agg(${sites.siteId})`,
             siteAddresses: sql<(string | null)[]>`array_agg(${sites.address})`
         })
         .from(siteResources)
