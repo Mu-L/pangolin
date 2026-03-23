@@ -2,33 +2,31 @@
 
 import CreateRoleForm from "@app/components/CreateRoleForm";
 import DeleteRoleForm from "@app/components/DeleteRoleForm";
-import { RolesDataTable } from "@app/components/RolesDataTable";
 import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { toast } from "@app/hooks/useToast";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { Role } from "@server/db";
+import type { PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
     ArrowUp10Icon,
-    ArrowUpDown,
     ChevronsUpDownIcon,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useDebouncedCallback } from "use-debounce";
+import EditRoleForm from "./EditRoleForm";
+import { ControlledDataTable } from "./ui/controlled-data-table";
 import {
     DropdownMenu,
-    DropdownMenuTrigger,
     DropdownMenuContent,
-    DropdownMenuItem
+    DropdownMenuItem,
+    DropdownMenuTrigger
 } from "./ui/dropdown-menu";
-import EditRoleForm from "./EditRoleForm";
-import type { PaginationState } from "@tanstack/react-table";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
-import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
-import { useDebouncedCallback } from "use-debounce";
 
 export type RoleRow = Role;
 
