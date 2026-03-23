@@ -188,7 +188,7 @@ export default function UsersTable({
                                         }
                                     >
                                         <DropdownMenuItem disabled={isDisabled}>
-                                            {t("accessUsersManage")}
+                                            {t("accessUserManage")}
                                         </DropdownMenuItem>
                                     </Link>
                                     {!isDisabled && (
