@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, type PaginationState } from "@tanstack/react-table";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
@@ -9,14 +9,22 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { Button } from "@app/components/ui/button";
-import { ArrowRight, ArrowUpDown, Crown, MoreHorizontal } from "lucide-react";
+import {
+    ArrowDown01Icon,
+    ArrowRight,
+    ArrowUp10Icon,
+    ArrowUpDown,
+    ChevronsUpDownIcon,
+    Crown,
+    MoreHorizontal
+} from "lucide-react";
 import { UsersDataTable } from "@app/components/UsersDataTable";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { toast } from "@app/hooks/useToast";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
@@ -24,6 +32,11 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
 import IdpTypeBadge from "./IdpTypeBadge";
+import { ControlledDataTable } from "./ui/controlled-data-table";
+import type { filter } from "d3";
+import { useDebouncedCallback } from "use-debounce";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 
 export type UserRow = {
     id: string;
@@ -42,39 +55,44 @@ export type UserRow = {
 
 type UsersTableProps = {
     users: UserRow[];
+    pagination: PaginationState;
+    rowCount: number;
 };
 
-export default function UsersTable({ users: u }: UsersTableProps) {
+export default function UsersTable({
+    users,
+    pagination,
+    rowCount
+}: UsersTableProps) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
-    const [users, setUsers] = useState<UserRow[]>(u);
     const router = useRouter();
     const api = createApiClient(useEnvContext());
     const { user, updateUser } = useUserContext();
     const { org } = useOrgContext();
     const t = useTranslations();
-    const [isRefreshing, setIsRefreshing] = useState(false);
-
-    // Update local state when props change (e.g., after refresh)
-    useEffect(() => {
-        setUsers(u);
-    }, [u]);
+    const [isNavigatingToAddPage, startNavigation] = useTransition();
+    const [isRefreshing, startTransition] = useTransition();
+    const pathname = usePathname();
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
 
     const refreshData = async () => {
-        console.log("Data refreshed");
-        setIsRefreshing(true);
-        try {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            router.refresh();
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsRefreshing(false);
-        }
+        startTransition(async () => {
+            try {
+                await new Promise((resolve) => setTimeout(resolve, 200));
+                router.refresh();
+            } catch (error) {
+                toast({
+                    title: t("error"),
+                    description: t("refreshError"),
+                    variant: "destructive"
+                });
+            }
+        });
     };
 
     const columns: ExtendedColumnDef<UserRow>[] = [
@@ -83,15 +101,21 @@ export default function UsersTable({ users: u }: UsersTableProps) {
             enableHiding: false,
             friendlyName: t("username"),
             header: ({ column }) => {
+                const nameOrder = getSortDirection("username", searchParams);
+                const Icon =
+                    nameOrder === "asc"
+                        ? ArrowDown01Icon
+                        : nameOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
                 return (
                     <Button
                         variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
+                        className="p-3"
+                        onClick={() => toggleSort("username")}
                     >
                         {t("username")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <Icon className="ml-2 h-4 w-4" />
                     </Button>
                 );
             }
@@ -100,17 +124,7 @@ export default function UsersTable({ users: u }: UsersTableProps) {
             accessorKey: "idpName",
             friendlyName: t("identityProvider"),
             header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("identityProvider")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+                return <span className="px-3">{t("identityProvider")}</span>;
             },
             cell: ({ row }) => {
                 const userRow = row.original;
@@ -127,17 +141,7 @@ export default function UsersTable({ users: u }: UsersTableProps) {
             accessorKey: "role",
             friendlyName: t("role"),
             header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("role")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
+                return <span className="px-3">{t("role")}</span>;
             },
             cell: ({ row }) => {
                 const userRow = row.original;
@@ -184,9 +188,7 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                                             isDisabled && e.preventDefault()
                                         }
                                     >
-                                        <DropdownMenuItem
-                                            disabled={isDisabled}
-                                        >
+                                        <DropdownMenuItem disabled={isDisabled}>
                                             {t("accessUsersManage")}
                                         </DropdownMenuItem>
                                     </Link>
@@ -218,10 +220,7 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                             <Link
                                 href={`/${org?.org.orgId}/settings/access/users/${userRow.id}`}
                             >
-                                <Button
-                                    variant={"outline"}
-                                    className="ml-2"
-                                >
+                                <Button variant={"outline"} className="ml-2">
                                     {t("manage")}
                                     <ArrowRight className="ml-2 w-4 h-4" />
                                 </Button>
@@ -256,14 +255,35 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                         email: selectedUser.email || ""
                     })
                 });
-
-                setUsers((prev) =>
-                    prev.filter((u) => u.id !== selectedUser?.id)
-                );
             }
         }
+        router.refresh();
         setIsDeleteModalOpen(false);
     }
+
+    function toggleSort(column: string) {
+        const newSearch = getNextSortOrder(column, searchParams);
+
+        filter({
+            searchParams: newSearch
+        });
+    }
+
+    const handlePaginationChange = (newPage: PaginationState) => {
+        searchParams.set("page", (newPage.pageIndex + 1).toString());
+        searchParams.set("pageSize", newPage.pageSize.toString());
+        filter({
+            searchParams
+        });
+    };
+
+    const handleSearchChange = useDebouncedCallback((query: string) => {
+        searchParams.set("query", query);
+        searchParams.delete("page");
+        filter({
+            searchParams
+        });
+    }, 300);
 
     return (
         <>
@@ -280,7 +300,7 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                     </div>
                 }
                 buttonText={t("userRemoveOrgConfirm")}
-                onConfirm={removeUser}
+                onConfirm={async () => startTransition(removeUser)}
                 string={
                     selectedUser
                         ? getUserDisplayName({
@@ -293,12 +313,22 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                 title={t("userRemoveOrg")}
             />
 
-            <UsersDataTable
+            <ControlledDataTable
                 columns={columns}
-                data={users}
-                inviteUser={() => {
-                    router.push(
-                        `/${org?.org.orgId}/settings/access/users/create`
+                pagination={pagination}
+                rowCount={rowCount}
+                isNavigatingToAddPage={isNavigatingToAddPage}
+                searchQuery={searchParams.get("query")?.toString()}
+                onSearch={handleSearchChange}
+                onPaginationChange={handlePaginationChange}
+                rows={users}
+                searchPlaceholder={t("accessUsersSearch")}
+                tableId="users-table"
+                onAdd={() => {
+                    startNavigation(() =>
+                        router.push(
+                            `/${org?.org.orgId}/settings/access/users/create`
+                        )
                     );
                 }}
                 onRefresh={refreshData}

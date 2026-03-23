@@ -3,40 +3,46 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { ListUsersResponse } from "@server/routers/user";
 import { AxiosResponse } from "axios";
-import UsersTable, { UserRow } from "../../../../../components/UsersTable";
+import UsersTable, { UserRow } from "@app/components/UsersTable";
 import { GetOrgResponse } from "@server/routers/org";
 import { cache } from "react";
 import OrgProvider from "@app/providers/OrgProvider";
 import UserProvider from "@app/providers/UserProvider";
 import { verifySession } from "@app/lib/auth/verifySession";
-import AccessPageHeaderAndNav from "../../../../../components/AccessPageHeaderAndNav";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
 
 type UsersPageProps = {
     params: Promise<{ orgId: string }>;
+    searchParams: Promise<Record<string, string>>;
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage(props: UsersPageProps) {
     const params = await props.params;
+    const searchParams = new URLSearchParams(await props.searchParams);
 
-    const getUser = cache(verifySession);
-    const user = await getUser();
+    const user = await verifySession();
     const t = await getTranslations();
 
     let users: ListUsersResponse["users"] = [];
+    let pagination: ListUsersResponse["pagination"] = {
+        total: 0,
+        page: 1,
+        pageSize: 20
+    };
     let hasInvitations = false;
 
     const res = await internal
         .get<
             AxiosResponse<ListUsersResponse>
-        >(`/org/${params.orgId}/users`, await authCookieHeader())
+        >(`/org/${params.orgId}/users?${searchParams.toString()}`, await authCookieHeader())
         .catch((e) => {});
 
     if (res && res.status === 200) {
         users = res.data.data.users;
+        pagination = res.data.data.pagination;
     }
 
     const invitationsRes = await internal
