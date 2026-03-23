@@ -1,6 +1,7 @@
 "use client";
 
-import { ColumnDef, type PaginationState } from "@tanstack/react-table";
+import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
+import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
@@ -8,35 +9,29 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
-import { Button } from "@app/components/ui/button";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
+import { toast } from "@app/hooks/useToast";
+import { useUserContext } from "@app/hooks/useUserContext";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import { type PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
     ArrowRight,
     ArrowUp10Icon,
-    ArrowUpDown,
     ChevronsUpDownIcon,
-    Crown,
     MoreHorizontal
 } from "lucide-react";
-import { UsersDataTable } from "@app/components/UsersDataTable";
-import { useState, useEffect, useTransition } from "react";
-import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import { useOrgContext } from "@app/hooks/useOrgContext";
-import { toast } from "@app/hooks/useToast";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { formatAxiosError } from "@app/lib/api";
-import { createApiClient } from "@app/lib/api";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { useDebouncedCallback } from "use-debounce";
 import IdpTypeBadge from "./IdpTypeBadge";
 import { ControlledDataTable } from "./ui/controlled-data-table";
-import type { filter } from "d3";
-import { useDebouncedCallback } from "use-debounce";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
-import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 
 export type UserRow = {
     id: string;
