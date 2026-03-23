@@ -107,7 +107,14 @@ export default async function UsersPage(props: UsersPageProps) {
             />
             <UserProvider user={user!}>
                 <OrgProvider org={org}>
-                    <UsersTable users={userRows} />
+                    <UsersTable
+                        users={userRows}
+                        rowCount={pagination.total}
+                        pagination={{
+                            pageIndex: pagination.page - 1,
+                            pageSize: pagination.pageSize
+                        }}
+                    />
                 </OrgProvider>
             </UserProvider>
         </>

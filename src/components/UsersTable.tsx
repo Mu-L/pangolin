@@ -68,12 +68,11 @@ export default function UsersTable({
     const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
     const router = useRouter();
     const api = createApiClient(useEnvContext());
-    const { user, updateUser } = useUserContext();
+    const { user } = useUserContext();
     const { org } = useOrgContext();
     const t = useTranslations();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
     const [isRefreshing, startTransition] = useTransition();
-    const pathname = usePathname();
     const {
         navigate: filter,
         isNavigating: isFiltering,
@@ -332,7 +331,7 @@ export default function UsersTable({
                     );
                 }}
                 onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                isRefreshing={isRefreshing || isFiltering}
             />
         </>
     );
