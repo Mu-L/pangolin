@@ -2,6 +2,7 @@ import { SidebarNavItem } from "@app/components/SidebarNav";
 import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
+    BellRing,
     Boxes,
     Building2,
     Cable,
@@ -219,6 +220,11 @@ export const orgNavSections = (
                         title: "sidebarBluePrints",
                         href: "/{orgId}/settings/blueprints",
                         icon: <ReceiptText className="size-4 flex-none" />
+                    },
+                    {
+                        title: "sidebarAlerting",
+                        href: "/{orgId}/settings/alerting",
+                        icon: <BellRing className="size-4 flex-none" />
                     }
                 ]
             },
