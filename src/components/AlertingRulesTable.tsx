@@ -1,12 +1,8 @@
 "use client";
 
-import AlertRuleCredenza from "@app/components/AlertRuleCredenza";
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
-import {
-    DataTable,
-    ExtendedColumnDef
-} from "@app/components/ui/data-table";
+import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,6 +20,8 @@ import {
 } from "@app/lib/alertRulesLocalStorage";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import moment from "moment";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@app/components/ui/badge";
@@ -32,7 +30,14 @@ type AlertingRulesTableProps = {
     orgId: string;
 };
 
-function sourceSummary(rule: AlertRule, t: (k: string, o?: Record<string, number | string>) => string) {
+function ruleHref(orgId: string, ruleId: string) {
+    return `/${orgId}/settings/alerting/${ruleId}`;
+}
+
+function sourceSummary(
+    rule: AlertRule,
+    t: (k: string, o?: Record<string, number | string>) => string
+) {
     if (rule.source.type === "site") {
         return t("alertingSummarySites", {
             count: rule.source.siteIds.length
@@ -83,10 +88,9 @@ function actionBadges(rule: AlertRule, t: (k: string) => string) {
 }
 
 export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
+    const router = useRouter();
     const t = useTranslations();
     const [rows, setRows] = useState<AlertRule[]>([]);
-    const [credenzaOpen, setCredenzaOpen] = useState(false);
-    const [credenzaRule, setCredenzaRule] = useState<AlertRule | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<AlertRule | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -146,10 +150,10 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
         {
             id: "source",
             friendlyName: t("alertingColumnSource"),
-            header: () => <span className="p-3">{t("alertingColumnSource")}</span>,
-            cell: ({ row }) => (
-                <span>{sourceSummary(row.original, t)}</span>
-            )
+            header: () => (
+                <span className="p-3">{t("alertingColumnSource")}</span>
+            ),
+            cell: ({ row }) => <span>{sourceSummary(row.original, t)}</span>
         },
         {
             id: "trigger",
@@ -190,9 +194,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
         {
             accessorKey: "createdAt",
             friendlyName: t("createdAt"),
-            header: () => (
-                <span className="p-3">{t("createdAt")}</span>
-            ),
+            header: () => <span className="p-3">{t("createdAt")}</span>,
             cell: ({ row }) => (
                 <span>{moment(row.original.createdAt).format("lll")}</span>
             )
@@ -204,13 +206,10 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
             cell: ({ row }) => {
                 const r = row.original;
                 return (
-                    <div className="flex justify-end">
+                    <div className="flex items-center gap-2 justify-end">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    className="h-8 w-8 p-0"
-                                >
+                                <Button variant="ghost" className="h-8 w-8 p-0">
                                     <span className="sr-only">
                                         {t("openMenu")}
                                     </span>
@@ -218,14 +217,6 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setCredenzaRule(r);
-                                        setCredenzaOpen(true);
-                                    }}
-                                >
-                                    {t("edit")}
-                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelected(r);
@@ -238,6 +229,11 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <Button variant="outline" asChild>
+                            <Link href={ruleHref(orgId, r.id)}>
+                                {t("edit")}
+                            </Link>
+                        </Button>
                     </div>
                 );
             }
@@ -246,16 +242,6 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
 
     return (
         <>
-            <AlertRuleCredenza
-                open={credenzaOpen}
-                setOpen={(v) => {
-                    setCredenzaOpen(v);
-                    if (!v) setCredenzaRule(null);
-                }}
-                orgId={orgId}
-                rule={credenzaRule}
-                onSaved={refreshFromStorage}
-            />
             {selected && (
                 <ConfirmDeleteDialog
                     open={deleteOpen}
@@ -282,8 +268,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                 searchPlaceholder={t("alertingSearchRules")}
                 searchColumn="name"
                 onAdd={() => {
-                    setCredenzaRule(null);
-                    setCredenzaOpen(true);
+                    router.push(`/${orgId}/settings/alerting/create`);
                 }}
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing}

@@ -64,6 +64,10 @@ function storageKey(orgId: string) {
     return `${STORAGE_PREFIX}${orgId}`;
 }
 
+export function getRule(orgId: string, ruleId: string): AlertRule | undefined {
+    return loadRules(orgId).find((r) => r.id === ruleId);
+}
+
 export function loadRules(orgId: string): AlertRule[] {
     if (typeof window === "undefined") {
         return [];

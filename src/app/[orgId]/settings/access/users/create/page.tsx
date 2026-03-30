@@ -340,15 +340,16 @@ export default function Page() {
 
         const roleIds = values.roles.map((r) => parseInt(r.id, 10));
 
-        const res = await api.post<AxiosResponse<InviteUserResponse>>(
-            `/org/${orgId}/create-invite`,
-            {
-                email: values.email,
-                roleIds,
-                validHours: parseInt(values.validForHours),
-                sendEmail
-            }
-        )
+        const res = await api
+            .post<AxiosResponse<InviteUserResponse>>(
+                `/org/${orgId}/create-invite`,
+                {
+                    email: values.email,
+                    roleIds,
+                    validHours: parseInt(values.validForHours),
+                    sendEmail
+                }
+            )
             .catch((e) => {
                 if (e.response?.status === 409) {
                     toast({
