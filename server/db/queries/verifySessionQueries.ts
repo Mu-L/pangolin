@@ -1,4 +1,12 @@
-import { db, loginPage, LoginPage, loginPageOrg, Org, orgs, roles } from "@server/db";
+import {
+    db,
+    loginPage,
+    LoginPage,
+    loginPageOrg,
+    Org,
+    orgs,
+    roles
+} from "@server/db";
 import {
     Resource,
     ResourcePassword,
@@ -12,13 +20,12 @@ import {
     resources,
     roleResources,
     sessions,
-    userOrgs,
     userResources,
     users,
     ResourceHeaderAuthExtendedCompatibility,
     resourceHeaderAuthExtendedCompatibility
 } from "@server/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 export type ResourceWithAuth = {
     resource: Resource | null;
@@ -104,24 +111,15 @@ export async function getUserSessionWithUser(
 }
 
 /**
- * Get user organization role
+ * Get role name by role ID (for display).
  */
-export async function getUserOrgRole(userId: string, orgId: string) {
-    const userOrgRole = await db
-        .select({
-            userId: userOrgs.userId,
-            orgId: userOrgs.orgId,
-            roleId: userOrgs.roleId,
-            isOwner: userOrgs.isOwner,
-            autoProvisioned: userOrgs.autoProvisioned,
-            roleName: roles.name
-        })
-        .from(userOrgs)
-        .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
-        .leftJoin(roles, eq(userOrgs.roleId, roles.roleId))
+export async function getRoleName(roleId: number): Promise<string | null> {
+    const [row] = await db
+        .select({ name: roles.name })
+        .from(roles)
+        .where(eq(roles.roleId, roleId))
         .limit(1);
-
-    return userOrgRole.length > 0 ? userOrgRole[0] : null;
+    return row?.name ?? null;
 }
 
 /**
@@ -129,7 +127,7 @@ export async function getUserOrgRole(userId: string, orgId: string) {
  */
 export async function getRoleResourceAccess(
     resourceId: number,
-    roleId: number
+    roleIds: number[]
 ) {
     const roleResourceAccess = await db
         .select()
@@ -137,12 +135,11 @@ export async function getRoleResourceAccess(
         .where(
             and(
                 eq(roleResources.resourceId, resourceId),
-                eq(roleResources.roleId, roleId)
+                inArray(roleResources.roleId, roleIds)
             )
-        )
-        .limit(1);
+        );
 
-    return roleResourceAccess.length > 0 ? roleResourceAccess[0] : null;
+    return roleResourceAccess.length > 0 ? roleResourceAccess : null;
 }
 
 /**

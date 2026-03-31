@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxy zapytań przez HTTPS przy użyciu w pełni kwalifikowanej nazwy domeny.",
     "resourceRaw": "Surowy zasób TCP/UDP",
     "resourceRawDescription": "Proxy zapytań przez surowe TCP/UDP przy użyciu numeru portu.",
-    "resourceRawDescriptionCloud": "Proxy żądania przesyłania danych nad surowym TCP/UDP przy użyciu numeru portu. Wymaga UŻYTKOWANIA PALIWA węzła.",
+    "resourceRawDescriptionCloud": "Żądania proxy nad surowym TCP/UDP przy użyciu numeru portu. Wymaga stron aby połączyć się ze zdalnym węzłem.",
     "resourceCreate": "Utwórz zasób",
     "resourceCreateDescription": "Wykonaj poniższe kroki, aby utworzyć nowy zasób",
     "resourceSeeAll": "Zobacz wszystkie zasoby",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Usuń użytkownika",
     "actionListUsers": "Lista użytkowników",
     "actionAddUserRole": "Dodaj rolę użytkownika",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Wygeneruj token dostępu",
     "actionDeleteAccessToken": "Usuń token dostępu",
     "actionListAccessTokens": "Lista tokenów dostępu",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Przestrzeń nazw: {namespace}",
     "domainPickerShowMore": "Pokaż więcej",
     "regionSelectorTitle": "Wybierz region",
+    "domainPickerRemoteExitNodeWarning": "Podane domeny nie są obsługiwane, gdy witryny łączą się ze zdalnymi węzłami wyjścia. Aby zasoby były dostępne w węzłach zdalnych, użyj domeny niestandardowej.",
     "regionSelectorInfo": "Wybór regionu pomaga nam zapewnić lepszą wydajność dla Twojej lokalizacji. Nie musisz być w tym samym regionie co Twój serwer.",
     "regionSelectorPlaceholder": "Wybierz region",
     "regionSelectorComingSoon": "Wkrótce dostępne",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Koniec następnego roku",
     "actionLogsDescription": "Zobacz historię działań wykonywanych w tej organizacji",
     "accessLogsDescription": "Wyświetl prośby o autoryzację dostępu do zasobów w tej organizacji",
-    "licenseRequiredToUse": "Do korzystania z tej funkcji wymagana jest licencja <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> . Ta funkcja jest również dostępna w <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> jest wymagany do korzystania z tej funkcji. Ta funkcja jest również dostępna w <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Do korzystania z tej funkcji wymagana jest licencja <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> lub <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> . <bookADemoLink>Zarezerwuj wersję demonstracyjną lub wersję próbną POC</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> jest wymagany do korzystania z tej funkcji. Ta funkcja jest również dostępna w <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Zarezerwuj demo lub okres próbny POC</bookADemoLink>.",
     "certResolver": "Rozwiązywanie certyfikatów",
     "certResolverDescription": "Wybierz resolver certyfikatów do użycia dla tego zasobu.",
     "selectCertResolver": "Wybierz Resolver certyfikatów",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Włącz zatwierdzanie urządzenia",
     "approvalsEmptyStateStep2Description": "Edytuj rolę i włącz opcję \"Wymagaj zatwierdzenia urządzenia\". Użytkownicy z tą rolą będą potrzebowali zatwierdzenia administratora dla nowych urządzeń.",
     "approvalsEmptyStatePreviewDescription": "Podgląd: Gdy włączone, oczekujące prośby o sprawdzenie pojawią się tutaj",
-    "approvalsEmptyStateButtonText": "Zarządzaj rolami"
+    "approvalsEmptyStateButtonText": "Zarządzaj rolami",
+    "domainErrorTitle": "Mamy problem z weryfikacją Twojej domeny"
 }

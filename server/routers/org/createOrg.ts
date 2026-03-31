@@ -9,6 +9,7 @@ import {
     orgs,
     roleActions,
     roles,
+    userOrgRoles,
     userOrgs,
     users,
     actions
@@ -312,8 +313,12 @@ export async function createOrg(
                 await trx.insert(userOrgs).values({
                     userId: req.user!.userId,
                     orgId: newOrg[0].orgId,
-                    roleId: roleId,
                     isOwner: true
+                });
+                await trx.insert(userOrgRoles).values({
+                    userId: req.user!.userId,
+                    orgId: newOrg[0].orgId,
+                    roleId
                 });
                 ownerUserId = req.user!.userId;
             } else {
@@ -332,8 +337,12 @@ export async function createOrg(
                 await trx.insert(userOrgs).values({
                     userId: serverAdmin.userId,
                     orgId: newOrg[0].orgId,
-                    roleId: roleId,
                     isOwner: true
+                });
+                await trx.insert(userOrgRoles).values({
+                    userId: serverAdmin.userId,
+                    orgId: newOrg[0].orgId,
+                    roleId
                 });
                 ownerUserId = serverAdmin.userId;
             }

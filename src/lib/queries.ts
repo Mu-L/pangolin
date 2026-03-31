@@ -92,13 +92,25 @@ export const productUpdatesQueries = {
 };
 
 export const orgQueries = {
-    clients: ({ orgId }: { orgId: string }) =>
+    machineClients: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "CLIENTS"] as const,
+            queryKey: ["ORG", orgId, "CLIENTS", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    pageSize: "10000"
+                    pageSize: perPage.toString()
                 });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
 
                 const res = await meta!.api.get<
                     AxiosResponse<ListClientsResponse>
@@ -130,13 +142,25 @@ export const orgQueries = {
             }
         }),
 
-    sites: ({ orgId }: { orgId: string }) =>
+    sites: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "SITES"] as const,
+            queryKey: ["ORG", orgId, "SITES", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    pageSize: "10000"
+                    pageSize: perPage.toString()
                 });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
 
                 const res = await meta!.api.get<
                     AxiosResponse<ListSitesResponse>
@@ -179,13 +203,25 @@ export const orgQueries = {
             }
         }),
 
-    resources: ({ orgId }: { orgId: string }) =>
+    resources: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "RESOURCES"] as const,
+            queryKey: ["ORG", orgId, "RESOURCES", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    pageSize: "10000"
+                    pageSize: perPage.toString()
                 });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
 
                 const res = await meta!.api.get<
                     AxiosResponse<ListResourcesResponse>

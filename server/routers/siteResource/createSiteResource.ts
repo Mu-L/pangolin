@@ -88,7 +88,7 @@ const createSiteResourceSchema = z
         },
         {
             message:
-                "Destination must be a valid IP address or valid domain AND alias is required"
+                "Destination must be a valid IPV4 address or valid domain AND alias is required"
         }
     )
     .refine(

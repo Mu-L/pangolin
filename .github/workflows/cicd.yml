@@ -77,7 +77,7 @@ jobs:
                   fi
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+              uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -149,7 +149,7 @@ jobs:
                   fi
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+              uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -204,7 +204,7 @@ jobs:
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Log in to Docker Hub
-              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+              uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -264,7 +264,7 @@ jobs:
               shell: bash
 
             - name: Install Go
-              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+              uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
               with:
                   go-version: 1.24
 
@@ -299,7 +299,7 @@ jobs:
               shell: bash
 
             - name: Upload artifacts from /install/bin
-              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
               with:
                   name: install-bin
                   path: install/bin/
@@ -407,7 +407,7 @@ jobs:
               shell: bash
 
             - name: Login to GitHub Container Registry (for cosign)
-              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+              uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
               with:
                 registry: ghcr.io
                 username: ${{ github.actor }}
@@ -415,7 +415,7 @@ jobs:
 
             - name: Install cosign
               # cosign is used to sign and verify container images (key and keyless)
-              uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+              uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
 
             - name: Dual-sign and verify (GHCR & Docker Hub)
               # Sign each image by digest using keyless (OIDC) and key-based signing,

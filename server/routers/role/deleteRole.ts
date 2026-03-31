@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { roles, userOrgs } from "@server/db";
-import { eq } from "drizzle-orm";
+import { roles, userOrgRoles } from "@server/db";
+import { and, eq, exists, aliasedTable } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -114,13 +114,32 @@ export async function deleteRole(
         }
 
         await db.transaction(async (trx) => {
-            // move all users from the userOrgs table with roleId to newRoleId
-            await trx
-                .update(userOrgs)
-                .set({ roleId: newRoleId })
-                .where(eq(userOrgs.roleId, roleId));
+            const uorNewRole = aliasedTable(userOrgRoles, "user_org_roles_new");
 
-            // delete the old role
+            // Users who already have newRoleId: drop the old assignment only (unique on userId+orgId+roleId).
+            await trx.delete(userOrgRoles).where(
+                and(
+                    eq(userOrgRoles.roleId, roleId),
+                    exists(
+                        trx
+                            .select()
+                            .from(uorNewRole)
+                            .where(
+                                and(
+                                    eq(uorNewRole.userId, userOrgRoles.userId),
+                                    eq(uorNewRole.orgId, userOrgRoles.orgId),
+                                    eq(uorNewRole.roleId, newRoleId)
+                                )
+                            )
+                    )
+                )
+            );
+
+            await trx
+                .update(userOrgRoles)
+                .set({ roleId: newRoleId })
+                .where(eq(userOrgRoles.roleId, roleId));
+
             await trx.delete(roles).where(eq(roles.roleId, roleId));
         });
 

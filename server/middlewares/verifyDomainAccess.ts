@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { db, domains, orgDomains } from "@server/db";
-import { userOrgs, apiKeyOrg } from "@server/db";
+import { userOrgs } from "@server/db";
 import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
+import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 export async function verifyDomainAccess(
     req: Request,
@@ -63,7 +64,7 @@ export async function verifyDomainAccess(
                 .where(
                     and(
                         eq(userOrgs.userId, userId),
-                        eq(userOrgs.orgId, apiKeyOrg.orgId)
+                        eq(userOrgs.orgId, orgId)
                     )
                 )
                 .limit(1);
@@ -97,8 +98,7 @@ export async function verifyDomainAccess(
             }
         }
 
-        const userOrgRoleId = req.userOrg.roleId;
-        req.userOrgRoleId = userOrgRoleId;
+        req.userOrgRoleIds = await getUserOrgRoleIds(req.userOrg.userId, orgId);
 
         return next();
     } catch (error) {

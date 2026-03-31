@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxyverzoeken via HTTPS met een volledig gekwalificeerde domeinnaam.",
     "resourceRaw": "TCP/UDP bron",
     "resourceRawDescription": "Proxyverzoeken via ruwe TCP/UDP met een poortnummer.",
-    "resourceRawDescriptionCloud": "Proxy vraagt om onbewerkte TCP/UDP met behulp van een poortnummer. VEREIST HET GEBRUIK VAN EEN AFSTANDSBEDIENING NODE.",
+    "resourceRawDescriptionCloud": "Proxy verzoeken over rauwe TCP/UDP met behulp van een poortnummer. Vereist sites om verbinding te maken met een remote node.",
     "resourceCreate": "Bron maken",
     "resourceCreateDescription": "Volg de onderstaande stappen om een nieuwe bron te maken",
     "resourceSeeAll": "Alle bronnen bekijken",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Gebruiker verwijderen",
     "actionListUsers": "Gebruikers weergeven",
     "actionAddUserRole": "Gebruikersrol toevoegen",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Genereer Toegangstoken",
     "actionDeleteAccessToken": "Verwijder toegangstoken",
     "actionListAccessTokens": "Lijst toegangstokens",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Naamruimte: {namespace}",
     "domainPickerShowMore": "Meer weergeven",
     "regionSelectorTitle": "Selecteer Regio",
+    "domainPickerRemoteExitNodeWarning": "Opgegeven domeinen worden niet ondersteund wanneer websites verbinding maken met externe sluitnodes. Gebruik in plaats daarvan een aangepast domein. Om bronnen beschikbaar te maken op externe nodes.",
     "regionSelectorInfo": "Het selecteren van een regio helpt ons om betere prestaties te leveren voor uw locatie. U hoeft niet in dezelfde regio als uw server te zijn.",
     "regionSelectorPlaceholder": "Kies een regio",
     "regionSelectorComingSoon": "Komt binnenkort",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Einde van volgend jaar",
     "actionLogsDescription": "Bekijk een geschiedenis van acties die worden uitgevoerd in deze organisatie",
     "accessLogsDescription": "Toegangsverificatieverzoeken voor resources in deze organisatie bekijken",
-    "licenseRequiredToUse": "Een <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> licentie is vereist om deze functie te gebruiken. Deze functie is ook beschikbaar in <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "De <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> is vereist om deze functie te gebruiken. Deze functie is ook beschikbaar in <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Een <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> licentie of <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> is vereist om deze functie te gebruiken. <bookADemoLink>Boek een demo of POC trial</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "De <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> is vereist om deze functie te gebruiken. Deze functie is ook beschikbaar in <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Boek een demo of POC trial</bookADemoLink>.",
     "certResolver": "Certificaat Resolver",
     "certResolverDescription": "Selecteer de certificaat resolver die moet worden gebruikt voor deze resource.",
     "selectCertResolver": "Certificaat Resolver selecteren",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Toestel goedkeuringen inschakelen",
     "approvalsEmptyStateStep2Description": "Bewerk een rol en schakel de optie 'Vereist Apparaat Goedkeuringen' in. Gebruikers met deze rol hebben admin goedkeuring nodig voor nieuwe apparaten.",
     "approvalsEmptyStatePreviewDescription": "Voorbeeld: Indien ingeschakeld, zullen in afwachting van apparaatverzoeken hier verschijnen om te beoordelen",
-    "approvalsEmptyStateButtonText": "Rollen beheren"
+    "approvalsEmptyStateButtonText": "Rollen beheren",
+    "domainErrorTitle": "We ondervinden problemen bij het controleren van uw domein"
 }

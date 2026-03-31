@@ -1,14 +1,27 @@
+/*
+ * This file is part of a proprietary work.
+ *
+ * Copyright (c) 2025 Fossorial, Inc.
+ * All rights reserved.
+ *
+ * This file is licensed under the Fossorial Commercial License.
+ * You may not use this file except in compliance with the License.
+ * Unauthorized use, copying, modification, or distribution is strictly prohibited.
+ *
+ * This file is not licensed under the AGPLv3.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { clients, db, UserOrg } from "@server/db";
-import { userOrgs, roles } from "@server/db";
+import stoi from "@server/lib/stoi";
+import { clients, db } from "@server/db";
+import { userOrgRoles, userOrgs, roles } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import stoi from "@server/lib/stoi";
 import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 
@@ -17,11 +30,9 @@ const addUserRoleParamsSchema = z.strictObject({
     roleId: z.string().transform(stoi).pipe(z.number())
 });
 
-export type AddUserRoleResponse = z.infer<typeof addUserRoleParamsSchema>;
-
 registry.registerPath({
     method: "post",
-    path: "/role/{roleId}/add/{userId}",
+    path: "/user/{userId}/add-role/{roleId}",
     description: "Add a role to a user.",
     tags: [OpenAPITags.Role, OpenAPITags.User],
     request: {
@@ -111,20 +122,23 @@ export async function addUserRole(
             );
         }
 
-        let newUserRole: UserOrg | null = null;
+        let newUserRole: { userId: string; orgId: string; roleId: number } | null =
+            null;
         await db.transaction(async (trx) => {
-            [newUserRole] = await trx
-                .update(userOrgs)
-                .set({ roleId })
-                .where(
-                    and(
-                        eq(userOrgs.userId, userId),
-                        eq(userOrgs.orgId, role.orgId)
-                    )
-                )
+            const inserted = await trx
+                .insert(userOrgRoles)
+                .values({
+                    userId,
+                    orgId: role.orgId,
+                    roleId
+                })
+                .onConflictDoNothing()
                 .returning();
 
-            // get the client associated with this user in this org
+            if (inserted.length > 0) {
+                newUserRole = inserted[0];
+            }
+
             const orgClients = await trx
                 .select()
                 .from(clients)
@@ -133,17 +147,15 @@ export async function addUserRole(
                         eq(clients.userId, userId),
                         eq(clients.orgId, role.orgId)
                     )
-                )
-                .limit(1);
+                );
 
             for (const orgClient of orgClients) {
-                // we just changed the user's role, so we need to rebuild client associations and what they have access to
                 await rebuildClientAssociationsFromClient(orgClient, trx);
             }
         });
 
         return response(res, {
-            data: newUserRole,
+            data: newUserRole ?? { userId, orgId: role.orgId, roleId },
             success: true,
             error: false,
             message: "Role added to user successfully",

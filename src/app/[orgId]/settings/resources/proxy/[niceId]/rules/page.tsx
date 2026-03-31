@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
@@ -76,6 +78,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { COUNTRIES } from "@server/db/countries";
 import { MAJOR_ASNS } from "@server/db/asns";
+import { REGIONS, getRegionNameById, isValidRegionId } from "@server/db/regions";
 import {
     Command,
     CommandEmpty,
@@ -123,7 +126,10 @@ export default function ResourceRules(props: {
     const [countrySelectValue, setCountrySelectValue] = useState("");
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
         useState(false);
-    const [openAddRuleAsnSelect, setOpenAddRuleAsnSelect] = useState(false);
+    const [openAddRuleAsnSelect, setOpenAddRuleAsnSelect] =
+        useState(false);
+    const [openAddRuleRegionSelect, setOpenAddRuleRegionSelect] =
+        useState(false);
     const router = useRouter();
     const t = useTranslations();
     const { env } = useEnvContext();
@@ -143,14 +149,15 @@ export default function ResourceRules(props: {
         IP: "IP",
         CIDR: t("ipAddressRange"),
         COUNTRY: t("country"),
-        ASN: "ASN"
+        ASN: "ASN",
+        REGION: t("region")
     } as const;
 
     const addRuleForm = useForm({
         resolver: zodResolver(addRuleSchema),
         defaultValues: {
             action: "ACCEPT",
-            match: "IP",
+            match: "PATH",
             value: ""
         }
     });
@@ -263,6 +270,20 @@ export default function ResourceRules(props: {
             setLoading(false);
             return;
         }
+        if (
+            data.match === "REGION" &&
+            !isValidRegionId(data.value)
+        ) {
+            toast({
+                variant: "destructive",
+                title: t("rulesErrorInvalidRegion"),
+                description:
+                    t("rulesErrorInvalidRegionDescription") ||
+                    "Invalid region."
+            });
+            setLoading(false);
+            return;
+        }
 
         // find the highest priority and add one
         let priority = data.priority;
@@ -316,6 +337,8 @@ export default function ResourceRules(props: {
                 return t("rulesMatchCountry");
             case "ASN":
                 return "Enter an Autonomous System Number (e.g., AS15169 or 15169)";
+            case "REGION":
+                return t("rulesMatchRegion");
         }
     }
 
@@ -541,16 +564,12 @@ export default function ResourceRules(props: {
                 <Select
                     defaultValue={row.original.match}
                     onValueChange={(
-                        value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN"
+                        value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN" | "REGION"
                     ) =>
                         updateRule(row.original.ruleId, {
                             match: value,
                             value:
-                                value === "COUNTRY"
-                                    ? "US"
-                                    : value === "ASN"
-                                      ? "AS15169"
-                                      : row.original.value
+                                value === "COUNTRY" ? "US" : value === "ASN" ? "AS15169" : value === "REGION" ? "021" : row.original.value
                         })
                     }
                 >
@@ -564,6 +583,11 @@ export default function ResourceRules(props: {
                         {isMaxmindAvailable && (
                             <SelectItem value="COUNTRY">
                                 {RuleMatch.COUNTRY}
+                            </SelectItem>
+                        )}
+                        {isMaxmindAvailable && (
+                            <SelectItem value="REGION">
+                                {RuleMatch.REGION}
                             </SelectItem>
                         )}
                         {isMaxmindAsnAvailable && (
@@ -645,14 +669,14 @@ export default function ResourceRules(props: {
                             >
                                 {row.original.value
                                     ? (() => {
-                                          const found = MAJOR_ASNS.find(
+                                    const found = MAJOR_ASNS.find(
                                               (asn) =>
                                                   asn.code ===
                                                   row.original.value
-                                          );
-                                          return found
-                                              ? `${found.name} (${row.original.value})`
-                                              : `Custom (${row.original.value})`;
+                                    );
+                                    return found
+                                        ? `${found.name} (${row.original.value})`
+                                        : `Custom (${row.original.value})`;
                                       })()
                                     : "Select ASN"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -720,6 +744,88 @@ export default function ResourceRules(props: {
                                     className="text-sm"
                                 />
                             </div>
+                        </PopoverContent>
+                    </Popover>
+                ) : row.original.match === "REGION" ? (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className="min-w-[200px] justify-between"
+                            >
+                                {(() => {
+                                    const regionName = getRegionNameById(row.original.value);
+                                    if (!regionName) {
+                                        return t("selectRegion");
+                                    }
+                                    return `${t(regionName)} (${row.original.value})`;
+                                })()}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="min-w-[200px] p-0">
+                            <Command>
+                                <CommandInput
+                                    placeholder={t("searchRegions")}
+                                />
+                                <CommandList>
+                                    <CommandEmpty>
+                                        {t("noRegionFound")}
+                                    </CommandEmpty>
+                                    {REGIONS.map((continent) => (
+                                        <CommandGroup key={continent.id} heading={t(continent.name)}>
+                                            <CommandItem
+                                                value={continent.id}
+                                                keywords={[
+                                                    t(continent.name),
+                                                    continent.id
+                                                ]}
+                                                onSelect={() => {
+                                                    updateRule(
+                                                        row.original.ruleId,
+                                                        { value: continent.id }
+                                                    );
+                                                }}
+                                            >
+                                                <Check
+                                                    className={`mr-2 h-4 w-4 ${
+                                                        row.original.value === continent.id
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                    }`}
+                                                />
+                                                {t(continent.name)} ({continent.id})
+                                            </CommandItem>
+                                            {continent.includes.map((subregion) => (
+                                                <CommandItem
+                                                    key={subregion.id}
+                                                    value={subregion.id}
+                                                    keywords={[
+                                                        t(subregion.name),
+                                                        subregion.id
+                                                    ]}
+                                                    onSelect={() => {
+                                                        updateRule(
+                                                            row.original.ruleId,
+                                                            { value: subregion.id }
+                                                        );
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={`mr-2 h-4 w-4 ${
+                                                            row.original.value === subregion.id
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        }`}
+                                                    />
+                                                    {t(subregion.name)} ({subregion.id})
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    ))}
+                                </CommandList>
+                            </Command>
                         </PopoverContent>
                     </Popover>
                 ) : (
@@ -929,6 +1035,13 @@ export default function ResourceRules(props: {
                                                                 <SelectItem value="COUNTRY">
                                                                     {
                                                                         RuleMatch.COUNTRY
+                                                                    }
+                                                                </SelectItem>
+                                                            )}
+                                                            {isMaxmindAvailable && (
+                                                                <SelectItem value="REGION">
+                                                                    {
+                                                                        RuleMatch.REGION
                                                                     }
                                                                 </SelectItem>
                                                             )}
@@ -1195,6 +1308,112 @@ export default function ResourceRules(props: {
                                                                         className="text-sm"
                                                                     />
                                                                 </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    ) : addRuleForm.watch(
+                                                        "match"
+                                                    ) === "REGION" ? (
+                                                        <Popover
+                                                            open={
+                                                                openAddRuleRegionSelect
+                                                            }
+                                                            onOpenChange={
+                                                                setOpenAddRuleRegionSelect
+                                                            }
+                                                        >
+                                                            <PopoverTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    aria-expanded={
+                                                                        openAddRuleRegionSelect
+                                                                    }
+                                                                    className="w-full justify-between"
+                                                                >
+                                                                    {field.value
+                                                                        ? (() => {
+                                                                              const regionName = getRegionNameById(field.value);
+                                                                              const translatedName = regionName ? t(regionName) : field.value;
+                                                                              return `${translatedName} (${field.value})`;
+                                                                          })()
+                                                                        : t(
+                                                                              "selectRegion"
+                                                                          )}
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-full p-0">
+                                                                <Command>
+                                                                    <CommandInput
+                                                                        placeholder={t(
+                                                                            "searchRegions"
+                                                                        )}
+                                                                    />
+                                                                    <CommandList>
+                                                                        <CommandEmpty>
+                                                                            {t(
+                                                                                "noRegionFound"
+                                                                            )}
+                                                                        </CommandEmpty>
+                                                                        {REGIONS.map((continent) => (
+                                                                            <CommandGroup key={continent.id} heading={t(continent.name)}>
+                                                                                <CommandItem
+                                                                                    value={continent.id}
+                                                                                    keywords={[
+                                                                                        t(continent.name),
+                                                                                        continent.id
+                                                                                    ]}
+                                                                                    onSelect={() => {
+                                                                                        field.onChange(
+                                                                                            continent.id
+                                                                                        );
+                                                                                        setOpenAddRuleRegionSelect(
+                                                                                            false
+                                                                                        );
+                                                                                    }}
+                                                                                >
+                                                                                    <Check
+                                                                                        className={`mr-2 h-4 w-4 ${
+                                                                                            field.value === continent.id
+                                                                                                ? "opacity-100"
+                                                                                                : "opacity-0"
+                                                                                        }`}
+                                                                                    />
+                                                                                    {t(continent.name)} ({continent.id})
+                                                                                </CommandItem>
+                                                                                {continent.includes.map((subregion) => (
+                                                                                    <CommandItem
+                                                                                        key={subregion.id}
+                                                                                        value={subregion.id}
+                                                                                        keywords={[
+                                                                                            t(subregion.name),
+                                                                                            subregion.id
+                                                                                        ]}
+                                                                                        onSelect={() => {
+                                                                                            field.onChange(
+                                                                                                subregion.id
+                                                                                            );
+                                                                                            setOpenAddRuleRegionSelect(
+                                                                                                false
+                                                                                            );
+                                                                                        }}
+                                                                                    >
+                                                                                        <Check
+                                                                                            className={`mr-2 h-4 w-4 ${
+                                                                                                field.value === subregion.id
+                                                                                                    ? "opacity-100"
+                                                                                                    : "opacity-0"
+                                                                                            }`}
+                                                                                        />
+                                                                                        {t(subregion.name)} ({subregion.id})
+                                                                                    </CommandItem>
+                                                                                ))}
+                                                                            </CommandGroup>
+                                                                        ))}
+                                                                    </CommandList>
+                                                                </Command>
                                                             </PopoverContent>
                                                         </Popover>
                                                     ) : (

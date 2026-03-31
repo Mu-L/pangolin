@@ -92,9 +92,14 @@ export default async function UsersPage(props: UsersPageProps) {
             idpId: user.idpId,
             idpName: user.idpName || t("idpNameInternal"),
             status: t("userConfirmed"),
-            role: user.isOwner
-                ? t("accessRoleOwner")
-                : user.roleName || t("accessRoleMember"),
+            roleLabels: user.isOwner
+                ? [t("accessRoleOwner")]
+                : (() => {
+                      const names = (user.roles ?? [])
+                          .map((r) => r.roleName)
+                          .filter((n): n is string => Boolean(n?.length));
+                      return names.length ? names : [t("accessRoleMember")];
+                  })(),
             isOwner: user.isOwner || false
         };
     });

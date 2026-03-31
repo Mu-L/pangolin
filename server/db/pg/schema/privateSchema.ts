@@ -7,7 +7,8 @@ import {
     bigint,
     real,
     text,
-    index
+    index,
+    primaryKey
 } from "drizzle-orm/pg-core";
 import { InferSelectModel } from "drizzle-orm";
 import {
@@ -17,7 +18,9 @@ import {
     users,
     exitNodes,
     sessions,
-    clients
+    clients,
+    siteResources,
+    sites
 } from "./schema";
 
 export const certificates = pgTable("certificates", {
@@ -89,7 +92,9 @@ export const subscriptions = pgTable("subscriptions", {
 
 export const subscriptionItems = pgTable("subscriptionItems", {
     subscriptionItemId: serial("subscriptionItemId").primaryKey(),
-    stripeSubscriptionItemId: varchar("stripeSubscriptionItemId", { length: 255 }),
+    stripeSubscriptionItemId: varchar("stripeSubscriptionItemId", {
+        length: 255
+    }),
     subscriptionId: varchar("subscriptionId", { length: 255 })
         .notNull()
         .references(() => subscriptions.subscriptionId, {
@@ -286,6 +291,7 @@ export const accessAuditLog = pgTable(
         actor: varchar("actor", { length: 255 }),
         actorId: varchar("actorId", { length: 255 }),
         resourceId: integer("resourceId"),
+        siteResourceId: integer("siteResourceId"),
         ip: varchar("ip", { length: 45 }),
         type: varchar("type", { length: 100 }).notNull(),
         action: boolean("action").notNull(),
@@ -299,6 +305,45 @@ export const accessAuditLog = pgTable(
             table.orgId,
             table.timestamp
         )
+    ]
+);
+
+export const connectionAuditLog = pgTable(
+    "connectionAuditLog",
+    {
+        id: serial("id").primaryKey(),
+        sessionId: text("sessionId").notNull(),
+        siteResourceId: integer("siteResourceId").references(
+            () => siteResources.siteResourceId,
+            { onDelete: "cascade" }
+        ),
+        orgId: text("orgId").references(() => orgs.orgId, {
+            onDelete: "cascade"
+        }),
+        siteId: integer("siteId").references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+        clientId: integer("clientId").references(() => clients.clientId, {
+            onDelete: "cascade"
+        }),
+        userId: text("userId").references(() => users.userId, {
+            onDelete: "cascade"
+        }),
+        sourceAddr: text("sourceAddr").notNull(),
+        destAddr: text("destAddr").notNull(),
+        protocol: text("protocol").notNull(),
+        startedAt: integer("startedAt").notNull(),
+        endedAt: integer("endedAt"),
+        bytesTx: integer("bytesTx"),
+        bytesRx: integer("bytesRx")
+    },
+    (table) => [
+        index("idx_accessAuditLog_startedAt").on(table.startedAt),
+        index("idx_accessAuditLog_org_startedAt").on(
+            table.orgId,
+            table.startedAt
+        ),
+        index("idx_accessAuditLog_siteResourceId").on(table.siteResourceId)
     ]
 );
 
@@ -329,12 +374,48 @@ export const approvals = pgTable("approvals", {
 });
 
 export const bannedEmails = pgTable("bannedEmails", {
-    email: varchar("email", { length: 255 }).primaryKey(),
+    email: varchar("email", { length: 255 }).primaryKey()
 });
 
 export const bannedIps = pgTable("bannedIps", {
-    ip: varchar("ip", { length: 255 }).primaryKey(),
+    ip: varchar("ip", { length: 255 }).primaryKey()
 });
+
+export const siteProvisioningKeys = pgTable("siteProvisioningKeys", {
+    siteProvisioningKeyId: varchar("siteProvisioningKeyId", {
+        length: 255
+    }).primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    siteProvisioningKeyHash: text("siteProvisioningKeyHash").notNull(),
+    lastChars: varchar("lastChars", { length: 4 }).notNull(),
+    createdAt: varchar("dateCreated", { length: 255 }).notNull(),
+    lastUsed: varchar("lastUsed", { length: 255 }),
+    maxBatchSize: integer("maxBatchSize"), // null = no limit
+    numUsed: integer("numUsed").notNull().default(0),
+    validUntil: varchar("validUntil", { length: 255 }),
+    approveNewSites: boolean("approveNewSites").notNull().default(true)
+});
+
+export const siteProvisioningKeyOrg = pgTable(
+    "siteProvisioningKeyOrg",
+    {
+        siteProvisioningKeyId: varchar("siteProvisioningKeyId", {
+            length: 255
+        })
+            .notNull()
+            .references(() => siteProvisioningKeys.siteProvisioningKeyId, {
+                onDelete: "cascade"
+            }),
+        orgId: varchar("orgId", { length: 255 })
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" })
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.siteProvisioningKeyId, table.orgId]
+        })
+    ]
+);
 
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
@@ -357,3 +438,4 @@ export type LoginPage = InferSelectModel<typeof loginPage>;
 export type LoginPageBranding = InferSelectModel<typeof loginPageBranding>;
 export type ActionAuditLog = InferSelectModel<typeof actionAuditLog>;
 export type AccessAuditLog = InferSelectModel<typeof accessAuditLog>;
+export type ConnectionAuditLog = InferSelectModel<typeof connectionAuditLog>;

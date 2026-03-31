@@ -6,6 +6,7 @@ import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { canUserAccessResource } from "@server/auth/canUserAccessResource";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
+import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 export async function verifyAccessTokenAccess(
     req: Request,
@@ -93,7 +94,10 @@ export async function verifyAccessTokenAccess(
                 )
             );
         } else {
-            req.userOrgRoleId = req.userOrg.roleId;
+            req.userOrgRoleIds = await getUserOrgRoleIds(
+                req.userOrg.userId,
+                resource[0].orgId!
+            );
             req.userOrgId = resource[0].orgId!;
         }
 
@@ -118,7 +122,7 @@ export async function verifyAccessTokenAccess(
         const resourceAllowed = await canUserAccessResource({
             userId,
             resourceId,
-            roleId: req.userOrgRoleId!
+            roleIds: req.userOrgRoleIds ?? []
         });
 
         if (!resourceAllowed) {

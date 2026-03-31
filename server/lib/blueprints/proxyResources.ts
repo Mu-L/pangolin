@@ -31,6 +31,7 @@ import { pickPort } from "@server/routers/target/helpers";
 import { resourcePassword } from "@server/db";
 import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
+import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "../billing/tierMatrix";
 
@@ -862,6 +863,10 @@ function validateRule(rule: any) {
     } else if (rule.match === "path") {
         if (!isValidUrlGlobPattern(rule.value)) {
             throw new Error(`Invalid URL glob pattern: ${rule.value}`);
+        }
+    } else if (rule.match === "region") {
+        if (!isValidRegionId(rule.value)) {
+            throw new Error(`Invalid region ID provided: ${rule.value}`);
         }
     }
 }

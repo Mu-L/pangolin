@@ -13,6 +13,7 @@ import {
     orgs,
     Role,
     roles,
+    userOrgRoles,
     userOrgs,
     users
 } from "@server/db";
@@ -35,11 +36,13 @@ import { usageService } from "@server/lib/billing/usageService";
 import { build } from "@server/build";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     assignUserToOrg,
     removeUserFromOrg
 } from "@server/lib/userOrg";
+import { unwrapRoleMapping } from "@app/lib/idpRoleMapping";
 
 const ensureTrailingSlash = (url: string): string => {
     return url;
@@ -366,7 +369,7 @@ export async function validateOidcCallback(
             const defaultRoleMapping = existingIdp.idp.defaultRoleMapping;
             const defaultOrgMapping = existingIdp.idp.defaultOrgMapping;
 
-            const userOrgInfo: { orgId: string; roleId: number }[] = [];
+            const userOrgInfo: { orgId: string; roleIds: number[] }[] = [];
             for (const org of allOrgs) {
                 const [idpOrgRes] = await db
                     .select()
@@ -377,8 +380,6 @@ export async function validateOidcCallback(
                             eq(idpOrg.orgId, org.orgId)
                         )
                     );
-
-                let roleId: number | undefined = undefined;
 
                 const orgMapping = idpOrgRes?.orgMapping || defaultOrgMapping;
                 const hydratedOrgMapping = hydrateOrgMapping(
@@ -404,38 +405,55 @@ export async function validateOidcCallback(
                     idpOrgRes?.roleMapping || defaultRoleMapping;
                 if (roleMapping) {
                     logger.debug("Role Mapping", { roleMapping });
-                    const roleName = jmespath.search(claims, roleMapping);
+                    const roleMappingJmes = unwrapRoleMapping(
+                        roleMapping
+                    ).evaluationExpression;
+                    const roleMappingResult = jmespath.search(
+                        claims,
+                        roleMappingJmes
+                    );
+                    const roleNames = normalizeRoleMappingResult(
+                        roleMappingResult
+                    );
 
-                    if (!roleName) {
-                        logger.error("Role name not found in the ID token", {
-                            roleName
+                    const supportsMultiRole = await isLicensedOrSubscribed(
+                        org.orgId,
+                        tierMatrix.fullRbac
+                    );
+                    const effectiveRoleNames = supportsMultiRole
+                        ? roleNames
+                        : roleNames.slice(0, 1);
+
+                    if (!effectiveRoleNames.length) {
+                        logger.error("Role mapping returned no valid roles", {
+                            roleMappingResult
                         });
                         continue;
                     }
 
-                    const [roleRes] = await db
+                    const roleRes = await db
                         .select()
                         .from(roles)
                         .where(
                             and(
                                 eq(roles.orgId, org.orgId),
-                                eq(roles.name, roleName)
+                                inArray(roles.name, effectiveRoleNames)
                             )
                         );
 
-                    if (!roleRes) {
-                        logger.error("Role not found", {
+                    if (!roleRes.length) {
+                        logger.error("No mapped roles found in organization", {
                             orgId: org.orgId,
-                            roleName
+                            roleNames: effectiveRoleNames
                         });
                         continue;
                     }
 
-                    roleId = roleRes.roleId;
+                    const roleIds = [...new Set(roleRes.map((r) => r.roleId))];
 
                     userOrgInfo.push({
                         orgId: org.orgId,
-                        roleId
+                        roleIds
                     });
                 }
             }
@@ -570,32 +588,28 @@ export async function validateOidcCallback(
                     }
                 }
 
-                // Update roles for existing auto-provisioned orgs where the role has changed
-                const orgsToUpdate = autoProvisionedOrgs.filter(
-                    (currentOrg) => {
-                        const newOrg = userOrgInfo.find(
-                            (newOrg) => newOrg.orgId === currentOrg.orgId
-                        );
-                        return newOrg && newOrg.roleId !== currentOrg.roleId;
-                    }
-                );
+                // Sync roles 1:1 with IdP policy for existing auto-provisioned orgs
+                for (const currentOrg of autoProvisionedOrgs) {
+                    const newRole = userOrgInfo.find(
+                        (newOrg) => newOrg.orgId === currentOrg.orgId
+                    );
+                    if (!newRole) continue;
 
-                if (orgsToUpdate.length > 0) {
-                    for (const org of orgsToUpdate) {
-                        const newRole = userOrgInfo.find(
-                            (newOrg) => newOrg.orgId === org.orgId
+                    await trx
+                        .delete(userOrgRoles)
+                        .where(
+                            and(
+                                eq(userOrgRoles.userId, userId!),
+                                eq(userOrgRoles.orgId, currentOrg.orgId)
+                            )
                         );
-                        if (newRole) {
-                            await trx
-                                .update(userOrgs)
-                                .set({ roleId: newRole.roleId })
-                                .where(
-                                    and(
-                                        eq(userOrgs.userId, userId!),
-                                        eq(userOrgs.orgId, org.orgId)
-                                    )
-                                );
-                        }
+
+                    for (const roleId of newRole.roleIds) {
+                        await trx.insert(userOrgRoles).values({
+                            userId: userId!,
+                            orgId: currentOrg.orgId,
+                            roleId
+                        });
                     }
                 }
 
@@ -609,6 +623,10 @@ export async function validateOidcCallback(
 
                 if (orgsToAdd.length > 0) {
                     for (const org of orgsToAdd) {
+                        if (org.roleIds.length === 0) {
+                            continue;
+                        }
+
                         const [fullOrg] = await trx
                             .select()
                             .from(orgs)
@@ -619,9 +637,9 @@ export async function validateOidcCallback(
                                 {
                                     orgId: org.orgId,
                                     userId: userId!,
-                                    roleId: org.roleId,
                                     autoProvisioned: true,
                                 },
+                                org.roleIds,
                                 trx
                             );
                         }
@@ -747,4 +765,26 @@ function hydrateOrgMapping(
         return undefined;
     }
     return orgMapping.split("{{orgId}}").join(orgId);
+}
+
+function normalizeRoleMappingResult(
+    result: unknown
+): string[] {
+    if (typeof result === "string") {
+        const role = result.trim();
+        return role ? [role] : [];
+    }
+
+    if (Array.isArray(result)) {
+        return [
+            ...new Set(
+                result
+                    .filter((value): value is string => typeof value === "string")
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+            )
+        ];
+    }
+
+    return [];
 }

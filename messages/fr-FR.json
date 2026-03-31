@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxy les demandes sur HTTPS en utilisant un nom de domaine entièrement qualifié.",
     "resourceRaw": "Ressource TCP/UDP brute",
     "resourceRawDescription": "Proxy les demandes sur TCP/UDP brut en utilisant un numéro de port.",
-    "resourceRawDescriptionCloud": "Requêtes de proxy sur TCP/UDP brute en utilisant un numéro de port. REQUISE L'UTILISATION D'UN Nœud DE REMOTE.",
+    "resourceRawDescriptionCloud": "Requêtes de proxy sur TCP/UDP brute en utilisant un numéro de port. Nécessite des sites pour se connecter à un noeud distant.",
     "resourceCreate": "Créer une ressource",
     "resourceCreateDescription": "Suivez les étapes ci-dessous pour créer une nouvelle ressource",
     "resourceSeeAll": "Voir toutes les ressources",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Supprimer un utilisateur",
     "actionListUsers": "Lister les utilisateurs",
     "actionAddUserRole": "Ajouter un rôle utilisateur",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Générer un jeton d'accès",
     "actionDeleteAccessToken": "Supprimer un jeton d'accès",
     "actionListAccessTokens": "Lister les jetons d'accès",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Espace de noms : {namespace}",
     "domainPickerShowMore": "Afficher plus",
     "regionSelectorTitle": "Sélectionner Région",
+    "domainPickerRemoteExitNodeWarning": "Les domaines fournis ne sont pas pris en charge lorsque les sites se connectent à des nœuds de sortie distants. Pour que les ressources soient disponibles sur des nœuds distants, utilisez un domaine personnalisé à la place.",
     "regionSelectorInfo": "Sélectionner une région nous aide à offrir de meilleures performances pour votre localisation. Vous n'avez pas besoin d'être dans la même région que votre serveur.",
     "regionSelectorPlaceholder": "Choisissez une région",
     "regionSelectorComingSoon": "Bientôt disponible",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Fin de l'année suivante",
     "actionLogsDescription": "Voir l'historique des actions effectuées dans cette organisation",
     "accessLogsDescription": "Voir les demandes d'authentification d'accès aux ressources de cette organisation",
-    "licenseRequiredToUse": "Une licence <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> est nécessaire pour utiliser cette fonctionnalité. Cette fonctionnalité est également disponible dans <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "La version <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> est requise pour utiliser cette fonctionnalité. Cette fonctionnalité est également disponible dans <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Une <enterpriseLicenseLink>licence Enterprise Edition</enterpriseLicenseLink> ou <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> est requise pour utiliser cette fonctionnalité. <bookADemoLink>Réservez une démonstration ou une évaluation de POC</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "La version <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> est requise pour utiliser cette fonctionnalité. Cette fonctionnalité est également disponible dans <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Réservez une démo ou un essai POC</bookADemoLink>.",
     "certResolver": "Résolveur de certificat",
     "certResolverDescription": "Sélectionnez le solveur de certificat à utiliser pour cette ressource.",
     "selectCertResolver": "Sélectionnez le résolveur de certificat",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Activer les autorisations de l'appareil",
     "approvalsEmptyStateStep2Description": "Modifier un rôle et activer l'option 'Exiger les autorisations de l'appareil'. Les utilisateurs avec ce rôle auront besoin de l'approbation de l'administrateur pour les nouveaux appareils.",
     "approvalsEmptyStatePreviewDescription": "Aperçu: Lorsque cette option est activée, les demandes de périphérique en attente apparaîtront ici pour vérification",
-    "approvalsEmptyStateButtonText": "Gérer les rôles"
+    "approvalsEmptyStateButtonText": "Gérer les rôles",
+    "domainErrorTitle": "Nous avons des difficultés à vérifier votre domaine"
 }

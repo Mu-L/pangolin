@@ -38,6 +38,7 @@ services:
       - 51820:51820/udp
       - 21820:21820/udp
       - 443:443
+      - 443:443/udp # For http3 QUIC if desired
       - 80:80
 {{end}}
   traefik:

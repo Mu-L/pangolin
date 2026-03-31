@@ -29,9 +29,8 @@ export default async function InvitationsPage(props: InvitationsPageProps) {
     let invitations: {
         inviteId: string;
         email: string;
-        expiresAt: string;
-        roleId: number;
-        roleName?: string;
+        expiresAt: number;
+        roles: { roleId: number; roleName: string | null }[];
     }[] = [];
     let hasInvitations = false;
 
@@ -66,12 +65,15 @@ export default async function InvitationsPage(props: InvitationsPageProps) {
     }
 
     const invitationRows: InvitationRow[] = invitations.map((invite) => {
+        const names = invite.roles
+            .map((r) => r.roleName || t("accessRoleUnknown"))
+            .filter(Boolean);
         return {
             id: invite.inviteId,
             email: invite.email,
             expiresAt: new Date(Number(invite.expiresAt)).toISOString(),
-            role: invite.roleName || t("accessRoleUnknown"),
-            roleId: invite.roleId
+            roleLabels: names,
+            roleIds: invite.roles.map((r) => r.roleId)
         };
     });
 

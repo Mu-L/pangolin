@@ -112,7 +112,7 @@ export async function createResource(
 
         const { orgId } = parsedParams.data;
 
-        if (req.user && !req.userOrgRoleId) {
+        if (req.user && (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );
@@ -292,7 +292,7 @@ async function createHttpResource(
             resourceId: newResource[0].resourceId
         });
 
-        if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
+        if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
             // make sure the user can access the resource
             await trx.insert(userResources).values({
                 userId: req.user?.userId!,
@@ -385,7 +385,7 @@ async function createRawResource(
             resourceId: newResource[0].resourceId
         });
 
-        if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
+        if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
             // make sure the user can access the resource
             await trx.insert(userResources).values({
                 userId: req.user?.userId!,

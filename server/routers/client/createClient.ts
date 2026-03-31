@@ -92,7 +92,7 @@ export async function createClient(
 
         const { orgId } = parsedParams.data;
 
-        if (req.user && !req.userOrgRoleId) {
+        if (req.user && (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );
@@ -234,7 +234,7 @@ export async function createClient(
                 clientId: newClient.clientId
             });
 
-            if (req.user && req.userOrgRoleId != adminRole.roleId) {
+            if (req.user && !req.userOrgRoleIds?.includes(adminRole.roleId)) {
                 // make sure the user can access the client
                 trx.insert(userClients).values({
                     userId: req.user.userId,

@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "通过使用完全限定的域名的HTTPS代理请求。",
     "resourceRaw": "TCP/UDP 资源",
     "resourceRawDescription": "通过使用端口号的原始TCP/UDP代理请求。",
-    "resourceRawDescriptionCloud": "正在使用端口号的 TCP/UDP 代理请求。请使用一个REMOTE",
+    "resourceRawDescriptionCloud": "正在使用端口号使用 TCP/UDP 代理请求。需要站点连接到远程节点。",
     "resourceCreate": "创建资源",
     "resourceCreateDescription": "按照下面的步骤创建新资源",
     "resourceSeeAll": "查看所有资源",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "删除用户",
     "actionListUsers": "列出用户",
     "actionAddUserRole": "添加用户角色",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "生成访问令牌",
     "actionDeleteAccessToken": "删除访问令牌",
     "actionListAccessTokens": "访问令牌",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "命名空间：{namespace}",
     "domainPickerShowMore": "显示更多",
     "regionSelectorTitle": "选择区域",
+    "domainPickerRemoteExitNodeWarning": "当站点连接到远程退出节点时不支持所提供的域。为了资源可在远程节点上使用，请使用自定义域名。",
     "regionSelectorInfo": "选择区域以帮助提升您所在地的性能。您不必与服务器在相同的区域。",
     "regionSelectorPlaceholder": "选择一个区域",
     "regionSelectorComingSoon": "即将推出",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "下一年结束",
     "actionLogsDescription": "查看此机构执行的操作历史",
     "accessLogsDescription": "查看此机构资源的访问认证请求",
-    "licenseRequiredToUse": "需要 <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> 许可才能使用此功能。此功能也可在 <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> 中使用。",
-    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> 需要使用此功能。此功能也可在 <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> 中使用。",
+    "licenseRequiredToUse": "使用此功能需要<enterpriseLicenseLink>企业版</enterpriseLicenseLink>许可证或<pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>。<bookADemoLink>预约演示或POC试用</bookADemoLink>。",
+    "ossEnterpriseEditionRequired": "需要 <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> 才能使用此功能。 此功能也可在 <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>上获取。 <bookADemoLink>预订演示或POC 试用</bookADemoLink>。",
     "certResolver": "证书解决器",
     "certResolverDescription": "选择用于此资源的证书解析器。",
     "selectCertResolver": "选择证书解析",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "启用设备批准",
     "approvalsEmptyStateStep2Description": "编辑角色并启用“需要设备审批”选项。具有此角色的用户需要管理员批准新设备。",
     "approvalsEmptyStatePreviewDescription": "预览：如果启用，待处理设备请求将出现在这里供审核",
-    "approvalsEmptyStateButtonText": "管理角色"
+    "approvalsEmptyStateButtonText": "管理角色",
+    "domainErrorTitle": "我们在验证您的域名时遇到了问题"
 }

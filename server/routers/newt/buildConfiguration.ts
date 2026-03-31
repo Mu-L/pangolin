@@ -16,8 +16,8 @@ import { eq, and } from "drizzle-orm";
 import config from "@server/lib/config";
 import {
     formatEndpoint,
-    generateSubnetProxyTargets,
-    SubnetProxyTarget
+    generateSubnetProxyTargetV2,
+    SubnetProxyTargetV2
 } from "@server/lib/ip";
 
 export async function buildClientConfigurationForNewtClient(
@@ -143,7 +143,7 @@ export async function buildClientConfigurationForNewtClient(
         .from(siteResources)
         .where(eq(siteResources.siteId, siteId));
 
-    const targetsToSend: SubnetProxyTarget[] = [];
+    const targetsToSend: SubnetProxyTargetV2[] = [];
 
     for (const resource of allSiteResources) {
         // Get clients associated with this specific resource
@@ -168,12 +168,14 @@ export async function buildClientConfigurationForNewtClient(
                 )
             );
 
-        const resourceTargets = generateSubnetProxyTargets(
+        const resourceTarget = generateSubnetProxyTargetV2(
             resource,
             resourceClients
         );
 
-        targetsToSend.push(...resourceTargets);
+        if (resourceTarget) {
+            targetsToSend.push(resourceTarget);
+        }
     }
 
     return {

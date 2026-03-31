@@ -1,6 +1,13 @@
 import { randomUUID } from "crypto";
 import { InferSelectModel } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+    index,
+    integer,
+    primaryKey,
+    sqliteTable,
+    text,
+    unique
+} from "drizzle-orm/sqlite-core";
 
 export const domains = sqliteTable("domains", {
     domainId: text("domainId").primaryKey(),
@@ -45,6 +52,9 @@ export const orgs = sqliteTable("orgs", {
         .notNull()
         .default(0),
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
+        .notNull()
+        .default(0),
+    settingsLogRetentionDaysConnection: integer("settingsLogRetentionDaysConnection") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
@@ -100,7 +110,8 @@ export const sites = sqliteTable("sites", {
     listenPort: integer("listenPort"),
     dockerSocketEnabled: integer("dockerSocketEnabled", { mode: "boolean" })
         .notNull()
-        .default(true)
+        .default(true),
+    status: text("status").$type<"pending" | "approved">()
 });
 
 export const resources = sqliteTable("resources", {
@@ -322,7 +333,8 @@ export const users = sqliteTable("user", {
     serverAdmin: integer("serverAdmin", { mode: "boolean" })
         .notNull()
         .default(false),
-    lastPasswordChange: integer("lastPasswordChange")
+    lastPasswordChange: integer("lastPasswordChange"),
+    locale: text("locale")
 });
 
 export const securityKeys = sqliteTable("webauthnCredentials", {
@@ -643,9 +655,6 @@ export const userOrgs = sqliteTable("userOrgs", {
             onDelete: "cascade"
         })
         .notNull(),
-    roleId: integer("roleId")
-        .notNull()
-        .references(() => roles.roleId),
     isOwner: integer("isOwner", { mode: "boolean" }).notNull().default(false),
     autoProvisioned: integer("autoProvisioned", {
         mode: "boolean"
@@ -699,6 +708,22 @@ export const roles = sqliteTable("roles", {
     ),
     sshUnixGroups: text("sshUnixGroups").default("[]")
 });
+
+export const userOrgRoles = sqliteTable(
+    "userOrgRoles",
+    {
+        userId: text("userId")
+            .notNull()
+            .references(() => users.userId, { onDelete: "cascade" }),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        roleId: integer("roleId")
+            .notNull()
+            .references(() => roles.roleId, { onDelete: "cascade" })
+    },
+    (t) => [unique().on(t.userId, t.orgId, t.roleId)]
+);
 
 export const roleActions = sqliteTable("roleActions", {
     roleId: integer("roleId")
@@ -785,11 +810,21 @@ export const userInvites = sqliteTable("userInvites", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     email: text("email").notNull(),
     expiresAt: integer("expiresAt").notNull(),
-    tokenHash: text("token").notNull(),
-    roleId: integer("roleId")
-        .notNull()
-        .references(() => roles.roleId, { onDelete: "cascade" })
+    tokenHash: text("token").notNull()
 });
+
+export const userInviteRoles = sqliteTable(
+    "userInviteRoles",
+    {
+        inviteId: text("inviteId")
+            .notNull()
+            .references(() => userInvites.inviteId, { onDelete: "cascade" }),
+        roleId: integer("roleId")
+            .notNull()
+            .references(() => roles.roleId, { onDelete: "cascade" })
+    },
+    (t) => [primaryKey({ columns: [t.inviteId, t.roleId] })]
+);
 
 export const resourcePincode = sqliteTable("resourcePincode", {
     pincodeId: integer("pincodeId").primaryKey({
@@ -1133,7 +1168,9 @@ export type UserSite = InferSelectModel<typeof userSites>;
 export type RoleResource = InferSelectModel<typeof roleResources>;
 export type UserResource = InferSelectModel<typeof userResources>;
 export type UserInvite = InferSelectModel<typeof userInvites>;
+export type UserInviteRole = InferSelectModel<typeof userInviteRoles>;
 export type UserOrg = InferSelectModel<typeof userOrgs>;
+export type UserOrgRole = InferSelectModel<typeof userOrgRoles>;
 export type ResourceSession = InferSelectModel<typeof resourceSessions>;
 export type ResourcePincode = InferSelectModel<typeof resourcePincode>;
 export type ResourcePassword = InferSelectModel<typeof resourcePassword>;

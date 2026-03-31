@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { type VariantProps } from "class-variance-authority";
@@ -434,14 +434,6 @@ const TagInput = React.forwardRef<HTMLInputElement, TagInputProps>(
         // const filteredAutocompleteOptions = autocompleteFilter
         //   ? autocompleteOptions?.filter((option) => autocompleteFilter(option.text))
         //   : autocompleteOptions;
-        const filteredAutocompleteOptions = useMemo(() => {
-            return (autocompleteOptions || []).filter((option) =>
-                option.text
-                    .toLowerCase()
-                    .includes(inputValue ? inputValue.toLowerCase() : "")
-            );
-        }, [inputValue, autocompleteOptions]);
-
         const displayedTags = sortTags ? [...tags].sort() : tags;
 
         const truncatedTags = truncate
@@ -571,9 +563,9 @@ const TagInput = React.forwardRef<HTMLInputElement, TagInputProps>(
                             tags={tags}
                             setTags={setTags}
                             setInputValue={setInputValue}
-                            autocompleteOptions={
-                                filteredAutocompleteOptions as Tag[]
-                            }
+                            autocompleteOptions={(autocompleteOptions ||
+                                []) as Tag[]}
+                            filterQuery={inputValue}
                             setTagCount={setTagCount}
                             maxTags={maxTags}
                             onTagAdd={onTagAdd}

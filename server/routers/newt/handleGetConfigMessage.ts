@@ -6,14 +6,8 @@ import { db, ExitNode, exitNodes, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
+import { convertTargetsIfNessicary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
-
-const inputSchema = z.object({
-    publicKey: z.string(),
-    port: z.int().positive()
-});
-
-type Input = z.infer<typeof inputSchema>;
 
 export const handleGetConfigMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -33,16 +27,7 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         return;
     }
 
-    const parsed = inputSchema.safeParse(message.data);
-    if (!parsed.success) {
-        logger.error(
-            "handleGetConfigMessage: Invalid input: " +
-                fromError(parsed.error).toString()
-        );
-        return;
-    }
-
-    const { publicKey, port } = message.data as Input;
+    const { publicKey, port, chainId } = message.data;
     const siteId = newt.siteId;
 
     // Get the current site data
@@ -127,13 +112,16 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
+    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets);
+
     return {
         message: {
             type: "newt/wg/receive-config",
             data: {
                 ipAddress: site.address,
                 peers,
-                targets
+                targets: targetsToSend,
+                chainId: chainId
             }
         },
         options: {

@@ -29,6 +29,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
+import { build } from "@server/build";
 
 interface OrgSelectorProps {
     orgId?: string;
@@ -49,6 +50,11 @@ export function OrgSelector({
     const t = useTranslations();
 
     const selectedOrg = orgs?.find((org) => org.orgId === orgId);
+
+    let canCreateOrg = !env.flags.disableUserCreateOrg || user.serverAdmin;
+    if (build === "saas" && user.type !== "internal") {
+        canCreateOrg = false;
+    }
 
     const sortedOrgs = useMemo(() => {
         if (!orgs?.length) return orgs ?? [];
@@ -161,7 +167,7 @@ export function OrgSelector({
                         </CommandGroup>
                     </CommandList>
                 </Command>
-                {(!env.flags.disableUserCreateOrg || user.serverAdmin) && (
+                {canCreateOrg && (
                     <div className="p-2 border-t border-border">
                         <Button
                             variant="ghost"

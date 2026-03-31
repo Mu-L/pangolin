@@ -20,8 +20,11 @@ import {
     verifyApiKeyIsRoot,
     verifyApiKeyOrgAccess,
     verifyApiKeyIdpAccess,
+    verifyApiKeyRoleAccess,
+    verifyApiKeyUserAccess,
     verifyLimits
 } from "@server/middlewares";
+import * as user from "#private/routers/user";
 import {
     verifyValidSubscription,
     verifyValidLicense
@@ -91,6 +94,25 @@ authenticated.get(
     logs.exportAccessAuditLogs
 );
 
+authenticated.get(
+    "/org/:orgId/logs/connection",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.connectionLogs),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.exportLogs),
+    logs.queryConnectionAuditLogs
+);
+
+authenticated.get(
+    "/org/:orgId/logs/connection/export",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.logExport),
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.exportLogs),
+    logActionAudit(ActionsEnum.exportLogs),
+    logs.exportConnectionAuditLogs
+);
+
 authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
@@ -139,4 +161,24 @@ authenticated.get(
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction(ActionsEnum.listIdps),
     orgIdp.listOrgIdps
+);
+
+authenticated.post(
+    "/user/:userId/add-role/:roleId",
+    verifyApiKeyRoleAccess,
+    verifyApiKeyUserAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.addUserRole),
+    logActionAudit(ActionsEnum.addUserRole),
+    user.addUserRole
+);
+
+authenticated.delete(
+    "/user/:userId/remove-role/:roleId",
+    verifyApiKeyRoleAccess,
+    verifyApiKeyUserAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.removeUserRole),
+    logActionAudit(ActionsEnum.removeUserRole),
+    user.removeUserRole
 );

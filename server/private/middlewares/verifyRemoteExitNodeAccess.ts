@@ -12,11 +12,12 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import { db, exitNodeOrgs, exitNodes, remoteExitNodes } from "@server/db";
-import { sites, userOrgs, userSites, roleSites, roles } from "@server/db";
-import { and, eq, or } from "drizzle-orm";
+import { db, exitNodeOrgs, remoteExitNodes } from "@server/db";
+import { userOrgs } from "@server/db";
+import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
+import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 export async function verifyRemoteExitNodeAccess(
     req: Request,
@@ -103,8 +104,10 @@ export async function verifyRemoteExitNodeAccess(
             );
         }
 
-        const userOrgRoleId = req.userOrg.roleId;
-        req.userOrgRoleId = userOrgRoleId;
+        req.userOrgRoleIds = await getUserOrgRoleIds(
+            req.userOrg.userId,
+            exitNodeOrg.orgId
+        );
 
         return next();
     } catch (error) {

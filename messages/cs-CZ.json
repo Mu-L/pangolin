@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxy požadavky přes HTTPS pomocí plně kvalifikovaného názvu domény.",
     "resourceRaw": "Surový TCP/UDP zdroj",
     "resourceRawDescription": "Proxy požadavky přes nezpracovaný TCP/UDP pomocí čísla portu.",
-    "resourceRawDescriptionCloud": "Požadavky na proxy přes syrové TCP/UDP pomocí portového čísla. ŽÁDOSTI POUŽÍVAT POUŽITÍ Z REMOTE NODE.",
+    "resourceRawDescriptionCloud": "Proxy požadavky na syrové TCP/UDP pomocí čísla portu. Vyžaduje připojení stránek ke vzdálenému uzlu.",
     "resourceCreate": "Vytvořit zdroj",
     "resourceCreateDescription": "Postupujte podle níže uvedených kroků, abyste vytvořili a připojili nový zdroj",
     "resourceSeeAll": "Zobrazit všechny zdroje",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Odstranit uživatele",
     "actionListUsers": "Seznam uživatelů",
     "actionAddUserRole": "Přidat uživatelskou roli",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Generovat přístupový token",
     "actionDeleteAccessToken": "Odstranit přístupový token",
     "actionListAccessTokens": "Seznam přístupových tokenů",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Jmenný prostor: {namespace}",
     "domainPickerShowMore": "Zobrazit více",
     "regionSelectorTitle": "Vybrat region",
+    "domainPickerRemoteExitNodeWarning": "Poskytnuté domény nejsou podporovány, když se stránky připojují k vzdáleným výstupním uzlům. Pro dostupné zdroje na vzdálených uzlech použijte vlastní doménu.",
     "regionSelectorInfo": "Výběr regionu nám pomáhá poskytovat lepší výkon pro vaši polohu. Nemusíte být ve stejném regionu jako váš server.",
     "regionSelectorPlaceholder": "Vyberte region",
     "regionSelectorComingSoon": "Již brzy",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Konec následujícího roku",
     "actionLogsDescription": "Zobrazit historii akcí provedených v této organizaci",
     "accessLogsDescription": "Zobrazit žádosti o ověření přístupu pro zdroje v této organizaci",
-    "licenseRequiredToUse": "Pro použití této funkce je vyžadována licence <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> . Tato funkce je také dostupná v <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> je vyžadována pro použití této funkce. Tato funkce je také k dispozici v <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Pro použití této funkce je vyžadována licence <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> nebo <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> . <bookADemoLink>Zarezervujte si demo nebo POC zkušební verzi</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> je vyžadována pro použití této funkce. Tato funkce je také k dispozici v <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Rezervujte si demo nebo POC zkušební verzi</bookADemoLink>.",
     "certResolver": "Oddělovač certifikátů",
     "certResolverDescription": "Vyberte řešitele certifikátů pro tento dokument.",
     "selectCertResolver": "Vyberte řešič certifikátů",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Povolit schválení zařízení",
     "approvalsEmptyStateStep2Description": "Upravte roli a povolte možnost 'Vyžadovat schválení zařízení'. Uživatelé s touto rolí budou potřebovat schválení pro nová zařízení správce.",
     "approvalsEmptyStatePreviewDescription": "Náhled: Pokud je povoleno, čekající na zařízení se zde zobrazí žádosti o recenzi",
-    "approvalsEmptyStateButtonText": "Spravovat role"
+    "approvalsEmptyStateButtonText": "Spravovat role",
+    "domainErrorTitle": "Máme problém s ověřením tvé domény"
 }

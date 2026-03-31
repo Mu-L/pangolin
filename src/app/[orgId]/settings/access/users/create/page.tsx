@@ -32,7 +32,7 @@ import {
 } from "@app/components/ui/select";
 import { toast } from "@app/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { InviteUserBody, InviteUserResponse } from "@server/routers/user";
+import { InviteUserResponse } from "@server/routers/user";
 import { AxiosResponse } from "axios";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -49,6 +49,7 @@ import { build } from "@server/build";
 import Image from "next/image";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import OrgRolesTagField from "@app/components/OrgRolesTagField";
 
 type UserType = "internal" | "oidc";
 
@@ -76,7 +77,14 @@ export default function Page() {
     const api = createApiClient({ env });
     const t = useTranslations();
 
-    const { hasSaasSubscription } = usePaidStatus();
+    const { hasSaasSubscription, isPaidUser } = usePaidStatus();
+    const isPaid = isPaidUser(tierMatrix.fullRbac);
+    const supportsMultipleRolesPerUser = isPaid;
+    const showMultiRolePaywallMessage =
+        !env.flags.disableEnterpriseFeatures &&
+        ((build === "saas" && !isPaid) ||
+            (build === "enterprise" && !isPaid) ||
+            (build === "oss" && !isPaid));
 
     const [selectedOption, setSelectedOption] = useState<string | null>(
         "internal"
@@ -89,19 +97,34 @@ export default function Page() {
     const [sendEmail, setSendEmail] = useState(env.email.emailEnabled);
     const [userOptions, setUserOptions] = useState<UserOption[]>([]);
     const [dataLoaded, setDataLoaded] = useState(false);
+    const [activeInviteRoleTagIndex, setActiveInviteRoleTagIndex] = useState<
+        number | null
+    >(null);
+    const [activeOidcRoleTagIndex, setActiveOidcRoleTagIndex] = useState<
+        number | null
+    >(null);
+
+    const roleTagsFieldSchema = z
+        .array(
+            z.object({
+                id: z.string(),
+                text: z.string()
+            })
+        )
+        .min(1, { message: t("accessRoleSelectPlease") });
 
     const internalFormSchema = z.object({
         email: z.email({ message: t("emailInvalid") }),
         validForHours: z
             .string()
             .min(1, { message: t("inviteValidityDuration") }),
-        roleId: z.string().min(1, { message: t("accessRoleSelectPlease") })
+        roles: roleTagsFieldSchema
     });
 
     const googleAzureFormSchema = z.object({
         email: z.email({ message: t("emailInvalid") }),
         name: z.string().optional(),
-        roleId: z.string().min(1, { message: t("accessRoleSelectPlease") })
+        roles: roleTagsFieldSchema
     });
 
     const genericOidcFormSchema = z.object({
@@ -111,7 +134,7 @@ export default function Page() {
             .optional()
             .or(z.literal("")),
         name: z.string().optional(),
-        roleId: z.string().min(1, { message: t("accessRoleSelectPlease") })
+        roles: roleTagsFieldSchema
     });
 
     const formatIdpType = (type: string) => {
@@ -166,12 +189,22 @@ export default function Page() {
         { hours: 168, name: t("day", { count: 7 }) }
     ];
 
+    const allRoleOptions = roles.map((role) => ({
+        id: role.roleId.toString(),
+        text: role.name
+    }));
+
+    const invitePaywallMessage =
+        build === "saas"
+            ? t("singleRolePerUserPlanNotice")
+            : t("singleRolePerUserEditionNotice");
+
     const internalForm = useForm({
         resolver: zodResolver(internalFormSchema),
         defaultValues: {
             email: "",
             validForHours: "72",
-            roleId: ""
+            roles: [] as { id: string; text: string }[]
         }
     });
 
@@ -180,7 +213,7 @@ export default function Page() {
         defaultValues: {
             email: "",
             name: "",
-            roleId: ""
+            roles: [] as { id: string; text: string }[]
         }
     });
 
@@ -190,7 +223,7 @@ export default function Page() {
             username: "",
             email: "",
             name: "",
-            roleId: ""
+            roles: [] as { id: string; text: string }[]
         }
     });
 
@@ -305,16 +338,17 @@ export default function Page() {
     ) {
         setLoading(true);
 
-        const res = await api
-            .post<AxiosResponse<InviteUserResponse>>(
-                `/org/${orgId}/create-invite`,
-                {
-                    email: values.email,
-                    roleId: parseInt(values.roleId),
-                    validHours: parseInt(values.validForHours),
-                    sendEmail: sendEmail
-                } as InviteUserBody
-            )
+        const roleIds = values.roles.map((r) => parseInt(r.id, 10));
+
+        const res = await api.post<AxiosResponse<InviteUserResponse>>(
+            `/org/${orgId}/create-invite`,
+            {
+                email: values.email,
+                roleIds,
+                validHours: parseInt(values.validForHours),
+                sendEmail
+            }
+        )
             .catch((e) => {
                 if (e.response?.status === 409) {
                     toast({
@@ -358,6 +392,8 @@ export default function Page() {
 
         setLoading(true);
 
+        const roleIds = values.roles.map((r) => parseInt(r.id, 10));
+
         const res = await api
             .put(`/org/${orgId}/user`, {
                 username: values.email, // Use email as username for Google/Azure
@@ -365,7 +401,7 @@ export default function Page() {
                 name: values.name,
                 type: "oidc",
                 idpId: selectedUserOption.idpId,
-                roleId: parseInt(values.roleId)
+                roleIds
             })
             .catch((e) => {
                 toast({
@@ -400,6 +436,8 @@ export default function Page() {
 
         setLoading(true);
 
+        const roleIds = values.roles.map((r) => parseInt(r.id, 10));
+
         const res = await api
             .put(`/org/${orgId}/user`, {
                 username: values.username,
@@ -407,7 +445,7 @@ export default function Page() {
                 name: values.name,
                 type: "oidc",
                 idpId: selectedUserOption.idpId,
-                roleId: parseInt(values.roleId)
+                roleIds
             })
             .catch((e) => {
                 toast({
@@ -575,52 +613,32 @@ export default function Page() {
                                                         )}
                                                     />
 
-                                                    <FormField
-                                                        control={
-                                                            internalForm.control
-                                                        }
-                                                        name="roleId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t("role")}
-                                                                </FormLabel>
-                                                                <Select
-                                                                    onValueChange={
-                                                                        field.onChange
-                                                                    }
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger className="w-full">
-                                                                            <SelectValue
-                                                                                placeholder={t(
-                                                                                    "accessRoleSelect"
-                                                                                )}
-                                                                            />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {roles.map(
-                                                                            (
-                                                                                role
-                                                                            ) => (
-                                                                                <SelectItem
-                                                                                    key={
-                                                                                        role.roleId
-                                                                                    }
-                                                                                    value={role.roleId.toString()}
-                                                                                >
-                                                                                    {
-                                                                                        role.name
-                                                                                    }
-                                                                                </SelectItem>
-                                                                            )
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
+                                                    <OrgRolesTagField
+                                                        form={internalForm}
+                                                        name="roles"
+                                                        label={t("roles")}
+                                                        placeholder={t(
+                                                            "accessRoleSelect2"
                                                         )}
+                                                        allRoleOptions={
+                                                            allRoleOptions
+                                                        }
+                                                        supportsMultipleRolesPerUser={
+                                                            supportsMultipleRolesPerUser
+                                                        }
+                                                        showMultiRolePaywallMessage={
+                                                            showMultiRolePaywallMessage
+                                                        }
+                                                        paywallMessage={
+                                                            invitePaywallMessage
+                                                        }
+                                                        loading={loading}
+                                                        activeTagIndex={
+                                                            activeInviteRoleTagIndex
+                                                        }
+                                                        setActiveTagIndex={
+                                                            setActiveInviteRoleTagIndex
+                                                        }
                                                     />
 
                                                     {env.email.emailEnabled && (
@@ -764,52 +782,32 @@ export default function Page() {
                                                         )}
                                                     />
 
-                                                    <FormField
-                                                        control={
-                                                            googleAzureForm.control
-                                                        }
-                                                        name="roleId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t("role")}
-                                                                </FormLabel>
-                                                                <Select
-                                                                    onValueChange={
-                                                                        field.onChange
-                                                                    }
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger className="w-full">
-                                                                            <SelectValue
-                                                                                placeholder={t(
-                                                                                    "accessRoleSelect"
-                                                                                )}
-                                                                            />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {roles.map(
-                                                                            (
-                                                                                role
-                                                                            ) => (
-                                                                                <SelectItem
-                                                                                    key={
-                                                                                        role.roleId
-                                                                                    }
-                                                                                    value={role.roleId.toString()}
-                                                                                >
-                                                                                    {
-                                                                                        role.name
-                                                                                    }
-                                                                                </SelectItem>
-                                                                            )
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
+                                                    <OrgRolesTagField
+                                                        form={googleAzureForm}
+                                                        name="roles"
+                                                        label={t("roles")}
+                                                        placeholder={t(
+                                                            "accessRoleSelect2"
                                                         )}
+                                                        allRoleOptions={
+                                                            allRoleOptions
+                                                        }
+                                                        supportsMultipleRolesPerUser={
+                                                            supportsMultipleRolesPerUser
+                                                        }
+                                                        showMultiRolePaywallMessage={
+                                                            showMultiRolePaywallMessage
+                                                        }
+                                                        paywallMessage={
+                                                            invitePaywallMessage
+                                                        }
+                                                        loading={loading}
+                                                        activeTagIndex={
+                                                            activeOidcRoleTagIndex
+                                                        }
+                                                        setActiveTagIndex={
+                                                            setActiveOidcRoleTagIndex
+                                                        }
                                                     />
                                                 </form>
                                             </Form>
@@ -909,52 +907,32 @@ export default function Page() {
                                                         )}
                                                     />
 
-                                                    <FormField
-                                                        control={
-                                                            genericOidcForm.control
-                                                        }
-                                                        name="roleId"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t("role")}
-                                                                </FormLabel>
-                                                                <Select
-                                                                    onValueChange={
-                                                                        field.onChange
-                                                                    }
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger className="w-full">
-                                                                            <SelectValue
-                                                                                placeholder={t(
-                                                                                    "accessRoleSelect"
-                                                                                )}
-                                                                            />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {roles.map(
-                                                                            (
-                                                                                role
-                                                                            ) => (
-                                                                                <SelectItem
-                                                                                    key={
-                                                                                        role.roleId
-                                                                                    }
-                                                                                    value={role.roleId.toString()}
-                                                                                >
-                                                                                    {
-                                                                                        role.name
-                                                                                    }
-                                                                                </SelectItem>
-                                                                            )
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
+                                                    <OrgRolesTagField
+                                                        form={genericOidcForm}
+                                                        name="roles"
+                                                        label={t("roles")}
+                                                        placeholder={t(
+                                                            "accessRoleSelect2"
                                                         )}
+                                                        allRoleOptions={
+                                                            allRoleOptions
+                                                        }
+                                                        supportsMultipleRolesPerUser={
+                                                            supportsMultipleRolesPerUser
+                                                        }
+                                                        showMultiRolePaywallMessage={
+                                                            showMultiRolePaywallMessage
+                                                        }
+                                                        paywallMessage={
+                                                            invitePaywallMessage
+                                                        }
+                                                        loading={loading}
+                                                        activeTagIndex={
+                                                            activeOidcRoleTagIndex
+                                                        }
+                                                        setActiveTagIndex={
+                                                            setActiveOidcRoleTagIndex
+                                                        }
                                                     />
                                                 </form>
                                             </Form>

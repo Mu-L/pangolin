@@ -1,5 +1,4 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import {
     clientSiteResources,
     clientSiteResourcesAssociationsCache,
@@ -8,32 +7,31 @@ import {
     orgs,
     roles,
     roleSiteResources,
+    SiteResource,
+    siteResources,
     sites,
     Transaction,
     userSiteResources
 } from "@server/db";
-import { siteResources, SiteResource } from "@server/db";
-import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
-import { eq, and, ne } from "drizzle-orm";
-import { fromError } from "zod-validation-error";
-import logger from "@server/logger";
-import { OpenAPITags, registry } from "@server/openApi";
-import { updatePeerData, updateTargets } from "@server/routers/client/targets";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     generateAliasConfig,
     generateRemoteSubnets,
-    generateSubnetProxyTargets,
+    generateSubnetProxyTargetV2,
     isIpInCidr,
     portRangeStringSchema
 } from "@server/lib/ip";
-import {
-    getClientSiteResourceAccess,
-    rebuildClientAssociationsFromSiteResource
-} from "@server/lib/rebuildClientAssociations";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import response from "@server/lib/response";
+import logger from "@server/logger";
+import { OpenAPITags, registry } from "@server/openApi";
+import { updatePeerData, updateTargets } from "@server/routers/client/targets";
+import HttpCode from "@server/types/HttpCode";
+import { and, eq, ne } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const updateSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -43,7 +41,15 @@ const updateSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
         siteId: z.int(),
-        // niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
+        niceId: z
+            .string()
+            .min(1)
+            .max(255)
+            .regex(
+                /^[a-zA-Z0-9-]+$/,
+                "niceId can only contain letters, numbers, and dashes"
+            )
+            .optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
         mode: z.enum(["host", "cidr"]).optional(),
         // protocol: z.enum(["tcp", "udp"]).nullish(),
@@ -167,6 +173,7 @@ export async function updateSiteResource(
         const {
             name,
             siteId, // because it can change
+            niceId,
             mode,
             destination,
             alias,
@@ -321,7 +328,8 @@ export async function updateSiteResource(
 
                 const sshPamSet =
                     isLicensedSshPam &&
-                    (authDaemonPort !== undefined || authDaemonMode !== undefined)
+                    (authDaemonPort !== undefined ||
+                        authDaemonMode !== undefined)
                         ? {
                               ...(authDaemonPort !== undefined && {
                                   authDaemonPort
@@ -334,15 +342,16 @@ export async function updateSiteResource(
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
-                        name: name,
-                        siteId: siteId,
-                        mode: mode,
-                        destination: destination,
-                        enabled: enabled,
+                        name,
+                        siteId,
+                        niceId,
+                        mode,
+                        destination,
+                        enabled,
                         alias: alias && alias.trim() ? alias : null,
-                        tcpPortRangeString: tcpPortRangeString,
-                        udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp,
+                        tcpPortRangeString,
+                        udpPortRangeString,
+                        disableIcmp,
                         ...sshPamSet
                     })
                     .where(
@@ -423,7 +432,8 @@ export async function updateSiteResource(
                 // Update the site resource
                 const sshPamSet =
                     isLicensedSshPam &&
-                    (authDaemonPort !== undefined || authDaemonMode !== undefined)
+                    (authDaemonPort !== undefined ||
+                        authDaemonMode !== undefined)
                         ? {
                               ...(authDaemonPort !== undefined && {
                                   authDaemonPort
@@ -608,19 +618,23 @@ export async function handleMessagingForUpdatedSiteResource(
 
         // Only update targets on newt if destination changed
         if (destinationChanged || portRangesChanged) {
-            const oldTargets = generateSubnetProxyTargets(
+            const oldTarget = generateSubnetProxyTargetV2(
                 existingSiteResource,
                 mergedAllClients
             );
-            const newTargets = generateSubnetProxyTargets(
+            const newTarget = generateSubnetProxyTargetV2(
                 updatedSiteResource,
                 mergedAllClients
             );
 
-            await updateTargets(newt.newtId, {
-                oldTargets: oldTargets,
-                newTargets: newTargets
-            }, newt.version);
+            await updateTargets(
+                newt.newtId,
+                {
+                    oldTargets: oldTarget ? [oldTarget] : [],
+                    newTargets: newTarget ? [newTarget] : []
+                },
+                newt.version
+            );
         }
 
         const olmJobs: Promise<void>[] = [];

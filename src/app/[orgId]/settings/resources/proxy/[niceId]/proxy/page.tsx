@@ -124,20 +124,15 @@ export default function ReverseProxyTargetsPage(props: {
             resourceId: resource.resourceId
         })
     );
-    const { data: sites = [], isLoading: isLoadingSites } = useQuery(
-        orgQueries.sites({
-            orgId: params.orgId
-        })
-    );
 
-    if (isLoadingSites || isLoadingTargets) {
+    if (isLoadingTargets) {
         return null;
     }
 
     return (
         <SettingsContainer>
             <ProxyResourceTargetsForm
-                sites={sites}
+                orgId={params.orgId}
                 initialTargets={remoteTargets}
                 resource={resource}
             />
@@ -160,12 +155,12 @@ export default function ReverseProxyTargetsPage(props: {
 }
 
 function ProxyResourceTargetsForm({
-    sites,
+    orgId,
     initialTargets,
     resource
 }: {
     initialTargets: LocalTarget[];
-    sites: ListSitesResponse["sites"];
+    orgId: string;
     resource: GetResourceResponse;
 }) {
     const t = useTranslations();
@@ -243,17 +238,21 @@ function ProxyResourceTargetsForm({
         });
     }, []);
 
+    const { data: sites = [] } = useQuery(
+        orgQueries.sites({
+            orgId
+        })
+    );
+
     const updateTarget = useCallback(
         (targetId: number, data: Partial<LocalTarget>) => {
             setTargets((prevTargets) => {
-                const site = sites.find((site) => site.siteId === data.siteId);
                 return prevTargets.map((target) =>
                     target.targetId === targetId
                         ? {
                               ...target,
                               ...data,
-                              updated: true,
-                              siteType: site ? site.type : target.siteType
+                              updated: true
                           }
                         : target
                 );
@@ -453,7 +452,7 @@ function ProxyResourceTargetsForm({
                 return (
                     <ResourceTargetAddressItem
                         isHttp={isHttp}
-                        sites={sites}
+                        orgId={orgId}
                         getDockerStateForSite={getDockerStateForSite}
                         proxyTarget={row.original}
                         refreshContainersForSite={refreshContainersForSite}
@@ -619,6 +618,7 @@ function ProxyResourceTargetsForm({
             method: isHttp ? "http" : null,
             port: 0,
             siteId: sites.length > 0 ? sites[0].siteId : 0,
+            siteName: sites.length > 0 ? sites[0].name : "",
             path: isHttp ? null : null,
             pathMatchType: isHttp ? null : null,
             rewritePath: isHttp ? null : null,

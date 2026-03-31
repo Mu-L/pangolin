@@ -188,6 +188,8 @@ export async function updateTarget(
             );
         }
 
+        const pathMatchTypeRemoved = parsedBody.data.pathMatchType === null;
+
         const [updatedTarget] = await db
             .update(targets)
             .set({
@@ -200,8 +202,8 @@ export async function updateTarget(
                 path: parsedBody.data.path,
                 pathMatchType: parsedBody.data.pathMatchType,
                 priority: parsedBody.data.priority,
-                rewritePath: parsedBody.data.rewritePath,
-                rewritePathType: parsedBody.data.rewritePathType
+                rewritePath: pathMatchTypeRemoved ? null : parsedBody.data.rewritePath,
+                rewritePathType: pathMatchTypeRemoved ? null : parsedBody.data.rewritePathType
             })
             .where(eq(targets.targetId, targetId))
             .returning();

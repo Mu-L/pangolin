@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Tam nitelikli bir etki alanı adı kullanarak HTTPS üzerinden proxy isteklerini yönlendirin.",
     "resourceRaw": "Ham TCP/UDP Kaynağı",
     "resourceRawDescription": "Port numarası kullanarak ham TCP/UDP üzerinden proxy isteklerini yönlendirin.",
-    "resourceRawDescriptionCloud": "Bir port numarası kullanarak ham TCP/UDP üzerinden istekleri proxy ile yönlendirin. UZAKTAN BİR DÜĞÜM KULLANIMINI GEREKTİRİR.",
+    "resourceRawDescriptionCloud": "Proxy isteklerini bir port numarası kullanarak ham TCP/UDP üzerinden yapın. Sitelerin uzak bir düğüme bağlanması gereklidir.",
     "resourceCreate": "Kaynak Oluştur",
     "resourceCreateDescription": "Yeni bir kaynak oluşturmak için aşağıdaki adımları izleyin",
     "resourceSeeAll": "Tüm Kaynakları Gör",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Kullanıcıyı Kaldır",
     "actionListUsers": "Kullanıcıları Listele",
     "actionAddUserRole": "Kullanıcı Rolü Ekle",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Erişim Jetonu Oluştur",
     "actionDeleteAccessToken": "Erişim Jetonunu Sil",
     "actionListAccessTokens": "Erişim Jetonlarını Listele",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Ad Alanı: {namespace}",
     "domainPickerShowMore": "Daha Fazla Göster",
     "regionSelectorTitle": "Bölge Seç",
+    "domainPickerRemoteExitNodeWarning": "Belirtilen alan adları, siteler uzak çıkış düğümlerine bağlandığında desteklenmez. Kaynakların uzak düğümlerde kullanılabilir olması için özel bir alan adı kullanın.",
     "regionSelectorInfo": "Bir bölge seçmek, konumunuz için daha iyi performans sağlamamıza yardımcı olur. Sunucunuzla aynı bölgede olmanıza gerek yoktur.",
     "regionSelectorPlaceholder": "Bölge Seçin",
     "regionSelectorComingSoon": "Yakında Geliyor",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Bir sonraki yılın sonu",
     "actionLogsDescription": "Bu organizasyondaki eylemler geçmişini görüntüleyin",
     "accessLogsDescription": "Bu organizasyondaki kaynaklar için erişim kimlik doğrulama isteklerini görüntüleyin",
-    "licenseRequiredToUse": "Bu özelliği kullanmak için bir <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> lisansı gereklidir. Bu özellik ayrıca <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>'da da mevcuttur.",
-    "ossEnterpriseEditionRequired": "Bu özelliği kullanmak için <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> gereklidir. Bu özellik ayrıca <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>'da da mevcuttur.",
+    "licenseRequiredToUse": "Bu özelliği kullanmak için bir <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> lisansı veya <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> gereklidir. <bookADemoLink>Tanıtım veya POC denemesi ayarlayın</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "Bu özelliği kullanmak için <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> gereklidir. Bu özellik ayrıca <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>’da da mevcuttur. <bookADemoLink>Tanıtım veya POC denemesi ayarlayın</bookADemoLink>.",
     "certResolver": "Sertifika Çözücü",
     "certResolverDescription": "Bu kaynak için kullanılacak sertifika çözücüsünü seçin.",
     "selectCertResolver": "Sertifika Çözücü Seçin",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Cihaz Onaylarını Etkinleştir",
     "approvalsEmptyStateStep2Description": "Bir rolü düzenleyin ve 'Cihaz Onaylarını Gerektir' seçeneğini etkinleştirin. Bu role sahip kullanıcıların yeni cihazlar için yönetici onayına ihtiyacı olacaktır.",
     "approvalsEmptyStatePreviewDescription": "Önizleme: Etkinleştirildiğinde, bekleyen cihaz talepleri incelenmek üzere burada görünecektir.",
-    "approvalsEmptyStateButtonText": "Rolleri Yönet"
+    "approvalsEmptyStateButtonText": "Rolleri Yönet",
+    "domainErrorTitle": "Alan adınızı doğrulamada sorun yaşıyoruz"
 }

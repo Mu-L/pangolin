@@ -3,6 +3,7 @@ import { db } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { clients, olms, Olm } from "@server/db";
 import { eq, lt, isNull, and, or } from "drizzle-orm";
+import { recordClientPing } from "@server/routers/newt/pingAccumulator";
 import logger from "@server/logger";
 import { validateSessionToken } from "@server/auth/sessions/app";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
@@ -201,22 +202,12 @@ export const handleOlmPingMessage: MessageHandler = async (context) => {
             await sendOlmSyncMessage(olm, client);
         }
 
-        // Update the client's last ping timestamp
-        await db
-            .update(clients)
-            .set({
-                lastPing: Math.floor(Date.now() / 1000),
-                online: true,
-                archived: false
-            })
-            .where(eq(clients.clientId, olm.clientId));
-
-        if (olm.archived) {
-            await db
-                .update(olms)
-                .set({ archived: false })
-                .where(eq(olms.olmId, olm.olmId));
-        }
+        // Record the ping in memory; it will be flushed to the database
+        // periodically by the ping accumulator (every ~10s) in a single
+        // batched UPDATE instead of one query per ping. This prevents
+        // connection pool exhaustion under load, especially with
+        // cross-region latency to the database.
+        recordClientPing(olm.clientId, olm.olmId, !!olm.archived);
     } catch (error) {
         logger.error("Error handling ping message", { error });
     }

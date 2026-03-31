@@ -19,17 +19,14 @@ import { Socket } from "net";
 import {
     Newt,
     newts,
-    NewtSession,
-    olms,
     Olm,
-    OlmSession,
+    olms,
     RemoteExitNode,
-    RemoteExitNodeSession,
     remoteExitNodes,
-    sites
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import { db } from "@server/db";
+import { recordPing } from "@server/routers/newt/pingAccumulator";
 import { validateNewtSessionToken } from "@server/auth/sessions/newt";
 import { validateOlmSessionToken } from "@server/auth/sessions/olm";
 import logger from "@server/logger";
@@ -197,11 +194,7 @@ const connectedClients: Map<string, AuthenticatedWebSocket[]> = new Map();
 // Config version tracking map (local to this node, resets on server restart)
 const clientConfigVersions: Map<string, number> = new Map();
 
-// Tracks the last Unix timestamp (seconds) at which a ping was flushed to the
-// DB for a given siteId. Resets on server restart which is fine – the first
-// ping after startup will always write, re-establishing the online state.
-const lastPingDbWrite: Map<number, number> = new Map();
-const PING_DB_WRITE_INTERVAL = 45; // seconds
+
 
 // Recovery tracking
 let isRedisRecoveryInProgress = false;
@@ -853,32 +846,16 @@ const setupConnection = async (
         );
     });
 
-    // Handle WebSocket protocol-level pings from older newt clients that do
-    // not send application-level "newt/ping" messages. Update the site's
-    // online state and lastPing timestamp so the offline checker treats them
-    // the same as modern newt clients.
     if (clientType === "newt") {
         const newtClient = client as Newt;
-        ws.on("ping", async () => {
+        ws.on("ping", () => {
             if (!newtClient.siteId) return;
-            const now = Math.floor(Date.now() / 1000);
-            const lastWrite = lastPingDbWrite.get(newtClient.siteId) ?? 0;
-            if (now - lastWrite < PING_DB_WRITE_INTERVAL) return;
-            lastPingDbWrite.set(newtClient.siteId, now);
-            try {
-                await db
-                    .update(sites)
-                    .set({
-                        online: true,
-                        lastPing: now
-                    })
-                    .where(eq(sites.siteId, newtClient.siteId));
-            } catch (error) {
-                logger.error(
-                    "Error updating newt site online state on WS ping",
-                    { error }
-                );
-            }
+            // Record the ping in the accumulator instead of writing to the
+            // database on every WS ping frame. The accumulator flushes all
+            // pending pings in a single batched UPDATE every ~10s, which
+            // prevents connection pool exhaustion under load (especially
+            // with cross-region latency to the database).
+            recordPing(newtClient.siteId);
         });
     }
 

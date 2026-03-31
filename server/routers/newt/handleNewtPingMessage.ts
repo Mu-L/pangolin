@@ -5,6 +5,7 @@ import { Newt } from "@server/db";
 import { eq, lt, isNull, and, or } from "drizzle-orm";
 import logger from "@server/logger";
 import { sendNewtSyncMessage } from "./sync";
+import { recordPing } from "./pingAccumulator";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -114,18 +115,12 @@ export const handleNewtPingMessage: MessageHandler = async (context) => {
         return;
     }
 
-    try {
-        // Mark the site as online and record the ping timestamp.
-        await db
-            .update(sites)
-            .set({
-                online: true,
-                lastPing: Math.floor(Date.now() / 1000)
-            })
-            .where(eq(sites.siteId, newt.siteId));
-    } catch (error) {
-        logger.error("Error updating online state on newt ping", { error });
-    }
+    // Record the ping in memory; it will be flushed to the database
+    // periodically by the ping accumulator (every ~10s) in a single
+    // batched UPDATE instead of one query per ping. This prevents
+    // connection pool exhaustion under load, especially with
+    // cross-region latency to the database.
+    recordPing(newt.siteId);
 
     // Check config version and sync if stale.
     const configVersion = await getClientConfigVersion(newt.newtId);

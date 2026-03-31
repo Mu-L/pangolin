@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { orgs, roles, userInvites, userOrgs, users } from "@server/db";
-import { and, eq } from "drizzle-orm";
+import { orgs, roles, userInviteRoles, userInvites, userOrgs, users } from "@server/db";
+import { and, eq, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -18,22 +18,44 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { UserType } from "@server/types/UserTypes";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
 import cache from "#dynamic/lib/cache";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 
 const inviteUserParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
-const inviteUserBodySchema = z.strictObject({
-    email: z.email().toLowerCase(),
-    roleId: z.number(),
-    validHours: z.number().gt(0).lte(168),
-    sendEmail: z.boolean().optional(),
-    regenerate: z.boolean().optional()
-});
+const inviteUserBodySchema = z
+    .strictObject({
+        email: z.email().toLowerCase(),
+        roleIds: z.array(z.number().int().positive()).min(1).optional(),
+        roleId: z.number().int().positive().optional(),
+        validHours: z.number().gt(0).lte(168),
+        sendEmail: z.boolean().optional(),
+        regenerate: z.boolean().optional()
+    })
+    .refine(
+        (d) =>
+            (d.roleIds != null && d.roleIds.length > 0) || d.roleId != null,
+        { message: "roleIds or roleId is required", path: ["roleIds"] }
+    )
+    .transform((data) => ({
+        email: data.email,
+        validHours: data.validHours,
+        sendEmail: data.sendEmail,
+        regenerate: data.regenerate,
+        roleIds: [
+            ...new Set(
+                data.roleIds && data.roleIds.length > 0
+                    ? data.roleIds
+                    : [data.roleId!]
+            )
+        ]
+    }));
 
-export type InviteUserBody = z.infer<typeof inviteUserBodySchema>;
+export type InviteUserBody = z.input<typeof inviteUserBodySchema>;
 
 export type InviteUserResponse = {
     inviteLink: string;
@@ -88,7 +110,7 @@ export async function inviteUser(
         const {
             email,
             validHours,
-            roleId,
+            roleIds: uniqueRoleIds,
             sendEmail: doEmail,
             regenerate
         } = parsedBody.data;
@@ -105,14 +127,30 @@ export async function inviteUser(
             );
         }
 
-        // Validate that the roleId belongs to the target organization
-        const [role] = await db
-            .select()
-            .from(roles)
-            .where(and(eq(roles.roleId, roleId), eq(roles.orgId, orgId)))
-            .limit(1);
+        const supportsMultiRole = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix[TierFeature.FullRbac]
+        );
+        if (!supportsMultiRole && uniqueRoleIds.length > 1) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "Multiple roles per user require a subscription or license that includes full RBAC."
+                )
+            );
+        }
 
-        if (!role) {
+        const orgRoles = await db
+            .select({ roleId: roles.roleId })
+            .from(roles)
+            .where(
+                and(
+                    eq(roles.orgId, orgId),
+                    inArray(roles.roleId, uniqueRoleIds)
+                )
+            );
+
+        if (orgRoles.length !== uniqueRoleIds.length) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
@@ -191,7 +229,8 @@ export async function inviteUser(
         }
 
         if (existingInvite.length) {
-            const attempts = (await cache.get<number>(email)) || 0;
+            const attempts =
+                (await cache.get<number>("regenerateInvite:" + email)) || 0;
             if (attempts >= 3) {
                 return next(
                     createHttpError(
@@ -201,7 +240,7 @@ export async function inviteUser(
                 );
             }
 
-            await cache.set(email, attempts + 1);
+            await cache.set("regenerateInvite:" + email, attempts + 1, 3600);
 
             const inviteId = existingInvite[0].inviteId; // Retrieve the original inviteId
             const token = generateRandomString(
@@ -273,9 +312,11 @@ export async function inviteUser(
                 orgId,
                 email,
                 expiresAt,
-                tokenHash,
-                roleId
+                tokenHash
             });
+            await trx.insert(userInviteRoles).values(
+                uniqueRoleIds.map((roleId) => ({ inviteId, roleId }))
+            );
         });
 
         const inviteLink = `${config.getRawConfig().app.dashboard_url}/invite?token=${inviteId}-${token}&email=${encodeURIComponent(email)}`;

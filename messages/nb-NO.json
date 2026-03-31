@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxy forespørsler over HTTPS ved å bruke et fullstendig kvalifisert domenenavn.",
     "resourceRaw": "Rå TCP/UDP-ressurs",
     "resourceRawDescription": "Proxy forespørsler over rå TCP/UDP ved å bruke et portnummer.",
-    "resourceRawDescriptionCloud": "Proxy ber om et portnummer. Om du vil bruke et sportsnummer.",
+    "resourceRawDescriptionCloud": "Proxy forespørsler om rå TCP/UDP ved hjelp av et portnummer. Krever sider for å koble til en ekstern node.",
     "resourceCreate": "Opprett ressurs",
     "resourceCreateDescription": "Følg trinnene nedenfor for å opprette en ny ressurs",
     "resourceSeeAll": "Se alle ressurser",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Fjern bruker",
     "actionListUsers": "List opp brukere",
     "actionAddUserRole": "Legg til brukerrolle",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Generer tilgangstoken",
     "actionDeleteAccessToken": "Slett tilgangstoken",
     "actionListAccessTokens": "List opp tilgangstokener",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Navnerom: {namespace}",
     "domainPickerShowMore": "Vis mer",
     "regionSelectorTitle": "Velg Region",
+    "domainPickerRemoteExitNodeWarning": "Tilbudte domener støttes ikke når sider kobles til eksterne avkjøringsnoder. For ressurser som skal være tilgjengelige på eksterne noder, brukes et egendefinert domene i stedet.",
     "regionSelectorInfo": "Å velge en region hjelper oss med å gi bedre ytelse for din lokasjon. Du trenger ikke være i samme region som serveren.",
     "regionSelectorPlaceholder": "Velg en region",
     "regionSelectorComingSoon": "Kommer snart",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Slutt på neste år",
     "actionLogsDescription": "Vis historikk for handlinger som er utført i denne organisasjonen",
     "accessLogsDescription": "Vis autoriseringsforespørsler for ressurser i denne organisasjonen",
-    "licenseRequiredToUse": "En <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> lisens er påkrevd for å bruke denne funksjonen. Denne funksjonen er også tilgjengelig i <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> er nødvendig for å bruke denne funksjonen. Denne funksjonen er også tilgjengelig i <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "En <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> lisens eller <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> er påkrevd for å bruke denne funksjonen. <bookADemoLink>Bestill en demo eller POC prøveversjon</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> er nødvendig for å bruke denne funksjonen. Denne funksjonen er også tilgjengelig i <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Bestill en demo eller POC studie</bookADemoLink>.",
     "certResolver": "Sertifikat løser",
     "certResolverDescription": "Velg sertifikatløser som skal brukes for denne ressursen.",
     "selectCertResolver": "Velg sertifikatløser",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Aktiver enhetsgodkjenninger",
     "approvalsEmptyStateStep2Description": "Rediger en rolle og aktiver alternativet 'Kreve enhetsgodkjenninger'. Brukere med denne rollen vil trenge administratorgodkjenning for nye enheter.",
     "approvalsEmptyStatePreviewDescription": "Forhåndsvisning: Når aktivert, ventende enhets forespørsler vil vises her for vurdering",
-    "approvalsEmptyStateButtonText": "Administrer Roller"
+    "approvalsEmptyStateButtonText": "Administrer Roller",
+    "domainErrorTitle": "Vi har problemer med å verifisere domenet ditt"
 }

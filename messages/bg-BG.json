@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Прокси заявки чрез HTTPS, използвайки напълно квалифицирано име на домейн.",
     "resourceRaw": "Суров TCP/UDP ресурс",
     "resourceRawDescription": "Прокси заявки чрез сурови TCP/UDP, използвайки порт номер.",
-    "resourceRawDescriptionCloud": "Прокси заявките през суров TCP/UDP, използвайки номер на порт. ИЗИСКВА ИЗПОЛЗВАНЕ НА ОТДАЛЕЧЕН УЗЕЛ.",
+    "resourceRawDescriptionCloud": "Получавайте заявки чрез суров TCP/UDP с използване на портен номер. Изисква се сайтовете да се свързват към отдалечен възел.",
     "resourceCreate": "Създайте ресурс",
     "resourceCreateDescription": "Следвайте стъпките по-долу, за да създадете нов ресурс",
     "resourceSeeAll": "Вижте всички ресурси",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Изтрийте потребител",
     "actionListUsers": "Изброяване на потребители",
     "actionAddUserRole": "Добавяне на роля на потребител",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Генериране на токен за достъп",
     "actionDeleteAccessToken": "Изтриване на токен за достъп",
     "actionListAccessTokens": "Изброяване на токени за достъп",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Име на пространство: {namespace}",
     "domainPickerShowMore": "Покажи повече",
     "regionSelectorTitle": "Избор на регион",
+    "domainPickerRemoteExitNodeWarning": "Предоставените домейни не се поддържат, когато сайтовете се свързват към отдалечени крайни възли. За да бъдат ресурсите налични на отдалечени възли, използвайте персонализиран домейн вместо това.",
     "regionSelectorInfo": "Изборът на регион ни помага да предоставим по-добра производителност за вашето местоположение. Не е необходимо да сте в същия регион като сървъра.",
     "regionSelectorPlaceholder": "Изберете регион",
     "regionSelectorComingSoon": "Очаква се скоро",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Край на следващата година",
     "actionLogsDescription": "Прегледайте историята на действията, извършени в тази организация",
     "accessLogsDescription": "Прегледайте заявките за удостоверяване на достъпа до ресурсите в тази организация",
-    "licenseRequiredToUse": "Изисква се лиценз за <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink>, за да използвате тази функция. Тази функция е също достъпна в <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "Необходимо е <enterpriseEditionLink>изданието Enterprise</enterpriseEditionLink>, за да използвате тази функция. Тази функция е също достъпна в <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Изисква се лиценз за <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> или <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> за използване на тази функция. <bookADemoLink>Резервирайте демонстрация или пробен POC</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "<enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> е необходим за използване на тази функция. Тази функция също е налична в <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Резервирайте демонстрация или пробен POC</bookADemoLink>.",
     "certResolver": "Решавач на сертификати",
     "certResolverDescription": "Изберете решавач на сертификати за използване за този ресурс.",
     "selectCertResolver": "Изберете решавач на сертификати",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Активирайте одобрения на устройства",
     "approvalsEmptyStateStep2Description": "Редактирайте ролята и активирайте опцията 'Изискване на одобрения за устройства'. Потребители с тази роля ще трябва администраторско одобрение за нови устройства.",
     "approvalsEmptyStatePreviewDescription": "Преглед: Когато е активирано, чакащите заявки за устройства ще се появят тук за преглед",
-    "approvalsEmptyStateButtonText": "Управлявайте роли"
+    "approvalsEmptyStateButtonText": "Управлявайте роли",
+    "domainErrorTitle": "Имаме проблем с проверката на вашия домейн"
 }

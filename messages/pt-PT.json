@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxies requests sobre HTTPS usando um nome de domínio totalmente qualificado.",
     "resourceRaw": "Recurso TCP/UDP bruto",
     "resourceRawDescription": "Proxies solicitações sobre TCP/UDP bruto usando um número de porta.",
-    "resourceRawDescriptionCloud": "Proxy solicita sobre TCP/UDP bruto usando um número de porta. OBRIGATÓRIO O USO DE UMA NOTA REMOTA.",
+    "resourceRawDescriptionCloud": "Proxy solicita por TCP/UDP bruto usando um número de porta. Requer que sites se conectem a um nó remoto.",
     "resourceCreate": "Criar Recurso",
     "resourceCreateDescription": "Siga os passos abaixo para criar um novo recurso",
     "resourceSeeAll": "Ver todos os recursos",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Remover Utilizador",
     "actionListUsers": "Listar Utilizadores",
     "actionAddUserRole": "Adicionar Função ao Utilizador",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Gerar Token de Acesso",
     "actionDeleteAccessToken": "Eliminar Token de Acesso",
     "actionListAccessTokens": "Listar Tokens de Acesso",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Namespace: {namespace}",
     "domainPickerShowMore": "Mostrar Mais",
     "regionSelectorTitle": "Selecionar Região",
+    "domainPickerRemoteExitNodeWarning": "Domínios fornecidos não são suportados quando os sites se conectam a nós de saída remota. Para recursos disponíveis em nós remotos, use um domínio personalizado.",
     "regionSelectorInfo": "Selecionar uma região nos ajuda a fornecer melhor desempenho para sua localização. Você não precisa estar na mesma região que seu servidor.",
     "regionSelectorPlaceholder": "Escolher uma região",
     "regionSelectorComingSoon": "Em breve",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Fim do ano seguinte",
     "actionLogsDescription": "Visualizar histórico de ações realizadas nesta organização",
     "accessLogsDescription": "Ver solicitações de autenticação de recursos nesta organização",
-    "licenseRequiredToUse": "Uma licença <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> é necessária para usar este recurso. Este recurso também está disponível no <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "O <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> é necessário para usar este recurso. Este recurso também está disponível no <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Uma licença <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> ou <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> é necessária para usar este recurso. <bookADemoLink>Reserve um teste de demonstração ou POC</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "O <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> é necessário para usar este recurso. Este recurso também está disponível no <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Reserve uma demonstração ou avaliação POC</bookADemoLink>.",
     "certResolver": "Resolvedor de Certificado",
     "certResolverDescription": "Selecione o resolvedor de certificados para este recurso.",
     "selectCertResolver": "Selecionar solucionador de certificado",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Habilitar Aprovações do Dispositivo",
     "approvalsEmptyStateStep2Description": "Editar uma função e habilitar a opção 'Exigir aprovação de dispositivos'. Usuários com essa função precisarão de aprovação de administrador para novos dispositivos.",
     "approvalsEmptyStatePreviewDescription": "Pré-visualização: Quando ativado, solicitações de dispositivo pendentes aparecerão aqui para revisão",
-    "approvalsEmptyStateButtonText": "Gerir Funções"
+    "approvalsEmptyStateButtonText": "Gerir Funções",
+    "domainErrorTitle": "Estamos tendo problemas ao verificar seu domínio"
 }

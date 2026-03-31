@@ -1,15 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, idpOidcConfig } from "@server/db";
-import { idp, roles, userOrgs, users } from "@server/db";
+import { idp, roles, userOrgRoles, userOrgs, users } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { and, asc, desc, like, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { eq } from "drizzle-orm";
 import type { PaginatedResponse } from "@server/types/Pagination";
 
 const listUsersParamsSchema = z.strictObject({
@@ -75,8 +74,6 @@ function queryUsersBase() {
             username: users.username,
             name: users.name,
             type: users.type,
-            roleId: userOrgs.roleId,
-            roleName: roles.name,
             isOwner: userOrgs.isOwner,
             idpName: idp.name,
             idpId: users.idpId,
@@ -86,13 +83,19 @@ function queryUsersBase() {
         })
         .from(users)
         .leftJoin(userOrgs, eq(users.userId, userOrgs.userId))
-        .leftJoin(roles, eq(userOrgs.roleId, roles.roleId))
         .leftJoin(idp, eq(users.idpId, idp.idpId))
         .leftJoin(idpOidcConfig, eq(idpOidcConfig.idpId, idp.idpId));
 }
 
 export type ListUsersResponse = PaginatedResponse<{
-    users: NonNullable<Awaited<ReturnType<typeof queryUsersBase>>>;
+    users: Array<
+        NonNullable<Awaited<ReturnType<typeof queryUsersBase>>>[number] & {
+            roles: Array<{
+                roleId: number;
+                roleName: string;
+            }>;
+        }
+    >;
 }>;
 
 registry.registerPath({
@@ -175,16 +178,55 @@ export async function listUsers(
                     : asc(users.name)
             );
 
-        const [count, usersWithRoles] = await Promise.all([
+        const [total, usersWithoutRoles] = await Promise.all([
             countQuery,
             userListQuery
         ]);
+
+        const userIds = usersWithoutRoles.map((r) => r.id);
+        const roleRows =
+            userIds.length === 0
+                ? []
+                : await db
+                      .select({
+                          userId: userOrgRoles.userId,
+                          roleId: userOrgRoles.roleId,
+                          roleName: roles.name
+                      })
+                      .from(userOrgRoles)
+                      .leftJoin(roles, eq(userOrgRoles.roleId, roles.roleId))
+                      .where(
+                          and(
+                              eq(userOrgRoles.orgId, orgId),
+                              inArray(userOrgRoles.userId, userIds)
+                          )
+                      );
+
+        const rolesByUser = new Map<
+            string,
+            { roleId: number; roleName: string }[]
+        >();
+        for (const r of roleRows) {
+            const list = rolesByUser.get(r.userId) ?? [];
+            list.push({ roleId: r.roleId, roleName: r.roleName ?? "" });
+            rolesByUser.set(r.userId, list);
+        }
+
+        const usersWithRoles: ListUsersResponse["users"] = [];
+
+        for (const user of usersWithoutRoles) {
+            const userRoles = rolesByUser.get(user.id) ?? [];
+            usersWithRoles.push({
+                ...user,
+                roles: userRoles
+            });
+        }
 
         return response<ListUsersResponse>(res, {
             data: {
                 users: usersWithRoles,
                 pagination: {
-                    total: count,
+                    total,
                     page,
                     pageSize
                 }

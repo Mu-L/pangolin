@@ -19,7 +19,8 @@ const updateSiteBodySchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
         niceId: z.string().min(1).max(255).optional(),
-        dockerSocketEnabled: z.boolean().optional()
+        dockerSocketEnabled: z.boolean().optional(),
+        status: z.enum(["pending", "approved"]).optional(),
         // remoteSubnets: z.string().optional()
         // subdomain: z
         //     .string()

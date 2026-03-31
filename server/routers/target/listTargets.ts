@@ -40,6 +40,7 @@ function queryTargets(resourceId: number) {
             resourceId: targets.resourceId,
             siteId: targets.siteId,
             siteType: sites.type,
+            siteName: sites.name,
             hcEnabled: targetHealthCheck.hcEnabled,
             hcPath: targetHealthCheck.hcPath,
             hcScheme: targetHealthCheck.hcScheme,

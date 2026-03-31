@@ -25,7 +25,8 @@ const bodySchema = z.strictObject({
     namePath: z.string().optional(),
     scopes: z.string().nonempty(),
     autoProvision: z.boolean().optional(),
-    tags: z.string().optional()
+    tags: z.string().optional(),
+    variant: z.enum(["oidc", "google", "azure"]).optional().default("oidc")
 });
 
 export type CreateIdpResponse = {
@@ -77,7 +78,8 @@ export async function createOidcIdp(
             namePath,
             name,
             autoProvision,
-            tags
+            tags,
+            variant
         } = parsedBody.data;
 
         if (
@@ -121,7 +123,8 @@ export async function createOidcIdp(
                 scopes,
                 identifierPath,
                 emailPath,
-                namePath
+                namePath,
+                variant
             });
         });
 

@@ -171,6 +171,7 @@ type DataTableProps<TData, TValue> = {
     title?: string;
     addButtonText?: string;
     onAdd?: () => void;
+    addButtonDisabled?: boolean;
     onRefresh?: () => void;
     isRefreshing?: boolean;
     searchPlaceholder?: string;
@@ -203,6 +204,7 @@ export function DataTable<TData, TValue>({
     title,
     addButtonText,
     onAdd,
+    addButtonDisabled = false,
     onRefresh,
     isRefreshing,
     searchPlaceholder = "Search...",
@@ -635,7 +637,7 @@ export function DataTable<TData, TValue>({
                         )}
                         {onAdd && addButtonText && (
                             <div>
-                                <Button onClick={onAdd}>
+                                <Button onClick={onAdd} disabled={addButtonDisabled}>
                                     <Plus className="mr-2 h-4 w-4" />
                                     {addButtonText}
                                 </Button>

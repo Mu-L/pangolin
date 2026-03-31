@@ -5,6 +5,7 @@ import {
     resources,
     userResources,
     roleResources,
+    userOrgRoles,
     userOrgs,
     resourcePassword,
     resourcePincode,
@@ -32,22 +33,29 @@ export async function getUserResources(
             );
         }
 
-        // First get the user's role in the organization
-        const userOrgResult = await db
-            .select({
-                roleId: userOrgs.roleId
-            })
+        // Check user is in organization and get their role IDs
+        const [userOrg] = await db
+            .select()
             .from(userOrgs)
             .where(and(eq(userOrgs.userId, userId), eq(userOrgs.orgId, orgId)))
             .limit(1);
 
-        if (userOrgResult.length === 0) {
+        if (!userOrg) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User not in organization")
             );
         }
 
-        const userRoleId = userOrgResult[0].roleId;
+        const userRoleIds = await db
+            .select({ roleId: userOrgRoles.roleId })
+            .from(userOrgRoles)
+            .where(
+                and(
+                    eq(userOrgRoles.userId, userId),
+                    eq(userOrgRoles.orgId, orgId)
+                )
+            )
+            .then((rows) => rows.map((r) => r.roleId));
 
         // Get resources accessible through direct assignment or role assignment
         const directResourcesQuery = db
@@ -55,20 +63,28 @@ export async function getUserResources(
             .from(userResources)
             .where(eq(userResources.userId, userId));
 
-        const roleResourcesQuery = db
-            .select({ resourceId: roleResources.resourceId })
-            .from(roleResources)
-            .where(eq(roleResources.roleId, userRoleId));
+        const roleResourcesQuery =
+            userRoleIds.length > 0
+                ? db
+                      .select({ resourceId: roleResources.resourceId })
+                      .from(roleResources)
+                      .where(inArray(roleResources.roleId, userRoleIds))
+                : Promise.resolve([]);
 
         const directSiteResourcesQuery = db
             .select({ siteResourceId: userSiteResources.siteResourceId })
             .from(userSiteResources)
             .where(eq(userSiteResources.userId, userId));
 
-        const roleSiteResourcesQuery = db
-            .select({ siteResourceId: roleSiteResources.siteResourceId })
-            .from(roleSiteResources)
-            .where(eq(roleSiteResources.roleId, userRoleId));
+        const roleSiteResourcesQuery =
+            userRoleIds.length > 0
+                ? db
+                      .select({
+                          siteResourceId: roleSiteResources.siteResourceId
+                      })
+                      .from(roleSiteResources)
+                      .where(inArray(roleSiteResources.roleId, userRoleIds))
+                : Promise.resolve([]);
 
         const [directResources, roleResourceResults, directSiteResourceResults, roleSiteResourceResults] = await Promise.all([
             directResourcesQuery,

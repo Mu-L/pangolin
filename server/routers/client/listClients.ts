@@ -70,7 +70,7 @@ async function getLatestOlmVersion(): Promise<string | null> {
         tags = tags.filter((version) => !version.name.includes("rc"));
         const latestVersion = tags[0].name;
 
-        olmVersionCache.set("latestOlmVersion", latestVersion);
+        olmVersionCache.set("latestOlmVersion", latestVersion, 3600);
 
         return latestVersion;
     } catch (error: any) {
@@ -297,7 +297,7 @@ export async function listClients(
                 .where(
                     or(
                         eq(userClients.userId, req.user!.userId),
-                        eq(roleClients.roleId, req.userOrgRoleId!)
+                        inArray(roleClients.roleId, req.userOrgRoleIds!)
                     )
                 );
         } else {

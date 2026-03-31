@@ -8,18 +8,10 @@ import {
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
-import { Input } from "@app/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
 import { Checkbox } from "@app/components/ui/checkbox";
+import OrgRolesTagField from "@app/components/OrgRolesTagField";
 import { toast } from "@app/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { InviteUserResponse } from "@server/routers/user";
 import { AxiosResponse } from "axios";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -44,33 +36,68 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
 import IdpTypeBadge from "@app/components/IdpTypeBadge";
 import { UserType } from "@server/types/UserTypes";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { build } from "@server/build";
+
+const accessControlsFormSchema = z.object({
+    username: z.string(),
+    autoProvisioned: z.boolean(),
+    roles: z.array(
+        z.object({
+            id: z.string(),
+            text: z.string()
+        })
+    )
+});
 
 export default function AccessControlsPage() {
-    const { orgUser: user } = userOrgUserContext();
+    const { orgUser: user, updateOrgUser } = userOrgUserContext();
+    const { env } = useEnvContext();
 
-    const api = createApiClient(useEnvContext());
+    const api = createApiClient({ env });
 
     const { orgId } = useParams();
 
     const [loading, setLoading] = useState(false);
     const [roles, setRoles] = useState<{ roleId: number; name: string }[]>([]);
+    const [activeRoleTagIndex, setActiveRoleTagIndex] = useState<number | null>(
+        null
+    );
 
     const t = useTranslations();
-
-    const formSchema = z.object({
-        username: z.string(),
-        roleId: z.string().min(1, { message: t("accessRoleSelectPlease") }),
-        autoProvisioned: z.boolean()
-    });
+    const { isPaidUser } = usePaidStatus();
+    const isPaid = isPaidUser(tierMatrix.fullRbac);
+    const supportsMultipleRolesPerUser = isPaid;
+    const showMultiRolePaywallMessage =
+        !env.flags.disableEnterpriseFeatures &&
+        ((build === "saas" && !isPaid) ||
+            (build === "enterprise" && !isPaid) ||
+            (build === "oss" && !isPaid));
 
     const form = useForm({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(accessControlsFormSchema),
         defaultValues: {
             username: user.username!,
-            roleId: user.roleId?.toString(),
-            autoProvisioned: user.autoProvisioned || false
+            autoProvisioned: user.autoProvisioned || false,
+            roles: (user.roles ?? []).map((r) => ({
+                id: r.roleId.toString(),
+                text: r.name
+            }))
         }
     });
+
+    const currentRoleIds = user.roleIds ?? [];
+
+    useEffect(() => {
+        form.setValue(
+            "roles",
+            (user.roles ?? []).map((r) => ({
+                id: r.roleId.toString(),
+                text: r.name
+            }))
+        );
+    }, [user.userId, currentRoleIds.join(",")]);
 
     useEffect(() => {
         async function fetchRoles() {
@@ -94,32 +121,59 @@ export default function AccessControlsPage() {
         }
 
         fetchRoles();
-
-        form.setValue("roleId", user.roleId.toString());
         form.setValue("autoProvisioned", user.autoProvisioned || false);
     }, []);
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        setLoading(true);
+    const allRoleOptions = roles.map((role) => ({
+        id: role.roleId.toString(),
+        text: role.name
+    }));
 
+    const paywallMessage =
+        build === "saas"
+            ? t("singleRolePerUserPlanNotice")
+            : t("singleRolePerUserEditionNotice");
+
+    async function onSubmit(values: z.infer<typeof accessControlsFormSchema>) {
+        if (values.roles.length === 0) {
+            toast({
+                variant: "destructive",
+                title: t("accessRoleErrorAdd"),
+                description: t("accessRoleSelectPlease")
+            });
+            return;
+        }
+
+        setLoading(true);
         try {
-            // Execute both API calls simultaneously
-            const [roleRes, userRes] = await Promise.all([
-                api.post<AxiosResponse<InviteUserResponse>>(
-                    `/role/${values.roleId}/add/${user.userId}`
-                ),
+            const roleIds = values.roles.map((r) => parseInt(r.id, 10));
+            const updateRoleRequest = supportsMultipleRolesPerUser
+                ? api.post(`/user/${user.userId}/org/${orgId}/roles`, {
+                      roleIds
+                  })
+                : api.post(`/role/${roleIds[0]}/add/${user.userId}`);
+
+            await Promise.all([
+                updateRoleRequest,
                 api.post(`/org/${orgId}/user/${user.userId}`, {
                     autoProvisioned: values.autoProvisioned
                 })
             ]);
 
-            if (roleRes.status === 200 && userRes.status === 200) {
-                toast({
-                    variant: "default",
-                    title: t("userSaved"),
-                    description: t("userSavedDescription")
-                });
-            }
+            updateOrgUser({
+                roleIds,
+                roles: values.roles.map((r) => ({
+                    roleId: parseInt(r.id, 10),
+                    name: r.text
+                })),
+                autoProvisioned: values.autoProvisioned
+            });
+
+            toast({
+                variant: "default",
+                title: t("userSaved"),
+                description: t("userSavedDescription")
+            });
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -130,7 +184,6 @@ export default function AccessControlsPage() {
                 )
             });
         }
-
         setLoading(false);
     }
 
@@ -154,7 +207,6 @@ export default function AccessControlsPage() {
                                 className="space-y-4"
                                 id="access-controls-form"
                             >
-                                {/* IDP Type Display */}
                                 {user.type !== UserType.Internal &&
                                     user.idpType && (
                                         <div className="flex items-center space-x-2 mb-4">
@@ -171,48 +223,22 @@ export default function AccessControlsPage() {
                                         </div>
                                     )}
 
-                                <FormField
-                                    control={form.control}
-                                    name="roleId"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("role")}</FormLabel>
-                                            <Select
-                                                onValueChange={(value) => {
-                                                    field.onChange(value);
-                                                    // If auto provision is enabled, set it to false when role changes
-                                                    if (user.idpAutoProvision) {
-                                                        form.setValue(
-                                                            "autoProvisioned",
-                                                            false
-                                                        );
-                                                    }
-                                                }}
-                                                value={field.value}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue
-                                                            placeholder={t(
-                                                                "accessRoleSelect"
-                                                            )}
-                                                        />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {roles.map((role) => (
-                                                        <SelectItem
-                                                            key={role.roleId}
-                                                            value={role.roleId.toString()}
-                                                        >
-                                                            {role.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
+                                <OrgRolesTagField
+                                    form={form}
+                                    name="roles"
+                                    label={t("roles")}
+                                    placeholder={t("accessRoleSelect2")}
+                                    allRoleOptions={allRoleOptions}
+                                    supportsMultipleRolesPerUser={
+                                        supportsMultipleRolesPerUser
+                                    }
+                                    showMultiRolePaywallMessage={
+                                        showMultiRolePaywallMessage
+                                    }
+                                    paywallMessage={paywallMessage}
+                                    loading={loading}
+                                    activeTagIndex={activeRoleTagIndex}
+                                    setActiveTagIndex={setActiveRoleTagIndex}
                                 />
 
                                 {user.idpAutoProvision && (

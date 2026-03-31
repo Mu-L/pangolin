@@ -32,6 +32,7 @@ import { useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import IdpTypeBadge from "./IdpTypeBadge";
 import { ControlledDataTable } from "./ui/controlled-data-table";
+import UserRoleBadges from "./UserRoleBadges";
 
 export type UserRow = {
     id: string;
@@ -44,7 +45,7 @@ export type UserRow = {
     type: string;
     idpVariant: string | null;
     status: string;
-    role: string;
+    roleLabels: string[];
     isOwner: boolean;
 };
 
@@ -132,19 +133,14 @@ export default function UsersTable({
             }
         },
         {
-            accessorKey: "role",
+            id: "role",
+            accessorFn: (row) => row.roleLabels.join(", "),
             friendlyName: t("role"),
             header: ({ column }) => {
                 return <span className="px-3">{t("role")}</span>;
             },
             cell: ({ row }) => {
-                const userRow = row.original;
-
-                return (
-                    <div className="flex flex-row items-center gap-2">
-                        <span>{userRow.role}</span>
-                    </div>
-                );
+                return <UserRoleBadges roleLabels={row.original.roleLabels} />;
             }
         },
         {

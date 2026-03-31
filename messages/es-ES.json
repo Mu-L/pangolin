@@ -175,7 +175,7 @@
     "resourceHTTPDescription": "Proxy proporciona solicitudes sobre HTTPS usando un nombre de dominio completamente calificado.",
     "resourceRaw": "Recurso TCP/UDP sin procesar",
     "resourceRawDescription": "Proxy proporciona solicitudes sobre TCP/UDP usando un número de puerto.",
-    "resourceRawDescriptionCloud": "Las peticiones de proxy sobre TCP/UDP crudas usando un número de puerto. REQUIERE EL USO DE UN NODO REMOTE.",
+    "resourceRawDescriptionCloud": "Las peticiones de proxy sobre TCP/UDP crudas usando un número de puerto. Requiere que los sitios se conecten a un nodo remoto.",
     "resourceCreate": "Crear Recurso",
     "resourceCreateDescription": "Siga los siguientes pasos para crear un nuevo recurso",
     "resourceSeeAll": "Ver todos los recursos",
@@ -1148,6 +1148,7 @@
     "actionRemoveUser": "Eliminar usuario",
     "actionListUsers": "Listar usuarios",
     "actionAddUserRole": "Añadir rol de usuario",
+    "actionSetUserOrgRoles": "Set User Roles",
     "actionGenerateAccessToken": "Generar token de acceso",
     "actionDeleteAccessToken": "Eliminar token de acceso",
     "actionListAccessTokens": "Lista de Tokens de Acceso",
@@ -1426,6 +1427,7 @@
     "domainPickerNamespace": "Espacio de nombres: {namespace}",
     "domainPickerShowMore": "Mostrar más",
     "regionSelectorTitle": "Seleccionar Región",
+    "domainPickerRemoteExitNodeWarning": "Los dominios suministrados no son compatibles cuando los sitios se conectan a nodos de salida remotos. Para que los recursos estén disponibles en nodos remotos, utilice un dominio personalizado en su lugar.",
     "regionSelectorInfo": "Seleccionar una región nos ayuda a brindar un mejor rendimiento para tu ubicación. No tienes que estar en la misma región que tu servidor.",
     "regionSelectorPlaceholder": "Elige una región",
     "regionSelectorComingSoon": "Próximamente",
@@ -2342,8 +2344,8 @@
     "logRetentionEndOfFollowingYear": "Fin del año siguiente",
     "actionLogsDescription": "Ver un historial de acciones realizadas en esta organización",
     "accessLogsDescription": "Ver solicitudes de acceso a los recursos de esta organización",
-    "licenseRequiredToUse": "Se requiere una licencia <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> para utilizar esta función. Esta característica también está disponible en <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
-    "ossEnterpriseEditionRequired": "La <enterpriseEditionLink>versión Enterprise</enterpriseEditionLink> es necesaria para utilizar esta función. Esta función también está disponible en <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>.",
+    "licenseRequiredToUse": "Se requiere una licencia <enterpriseLicenseLink>Enterprise Edition</enterpriseLicenseLink> o <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink> para usar esta función. <bookADemoLink>Reserve una demostración o prueba POC</bookADemoLink>.",
+    "ossEnterpriseEditionRequired": "La <enterpriseEditionLink>Enterprise Edition</enterpriseEditionLink> es necesaria para utilizar esta función. Esta función también está disponible en <pangolinCloudLink>Pangolin Cloud</pangolinCloudLink>. <bookADemoLink>Reserva una demostración o prueba POC</bookADemoLink>.",
     "certResolver": "Resolver certificado",
     "certResolverDescription": "Seleccione la resolución de certificados a utilizar para este recurso.",
     "selectCertResolver": "Seleccionar Resolver Certificado",
@@ -2680,5 +2682,6 @@
     "approvalsEmptyStateStep2Title": "Habilitar aprobaciones de dispositivo",
     "approvalsEmptyStateStep2Description": "Editar un rol y habilitar la opción 'Requerir aprobaciones de dispositivos'. Los usuarios con este rol necesitarán la aprobación del administrador para nuevos dispositivos.",
     "approvalsEmptyStatePreviewDescription": "Vista previa: Cuando está habilitado, las solicitudes de dispositivo pendientes aparecerán aquí para su revisión",
-    "approvalsEmptyStateButtonText": "Administrar roles"
+    "approvalsEmptyStateButtonText": "Administrar roles",
+    "domainErrorTitle": "Estamos teniendo problemas para verificar su dominio"
 }

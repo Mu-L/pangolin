@@ -14,6 +14,7 @@ import {
     siteResources,
     sites,
     Transaction,
+    userOrgRoles,
     userOrgs,
     userSiteResources
 } from "@server/db";
@@ -32,7 +33,7 @@ import logger from "@server/logger";
 import {
     generateAliasConfig,
     generateRemoteSubnets,
-    generateSubnetProxyTargets,
+    generateSubnetProxyTargetV2,
     parseEndpoint,
     formatEndpoint
 } from "@server/lib/ip";
@@ -77,10 +78,10 @@ export async function getClientSiteResourceAccess(
     // get all of the users in these roles
     const userIdsFromRoles = await trx
         .select({
-            userId: userOrgs.userId
+            userId: userOrgRoles.userId
         })
-        .from(userOrgs)
-        .where(inArray(userOrgs.roleId, roleIds))
+        .from(userOrgRoles)
+        .where(inArray(userOrgRoles.roleId, roleIds))
         .then((rows) => rows.map((row) => row.userId));
 
     const newAllUserIds = Array.from(
@@ -660,19 +661,16 @@ async function handleSubnetProxyTargetUpdates(
         );
 
         if (addedClients.length > 0) {
-            const targetsToAdd = generateSubnetProxyTargets(
+            const targetToAdd = generateSubnetProxyTargetV2(
                 siteResource,
                 addedClients
             );
 
-            if (targetsToAdd.length > 0) {
-                logger.info(
-                    `Adding ${targetsToAdd.length} subnet proxy targets for siteResource ${siteResource.siteResourceId}`
-                );
+            if (targetToAdd) {
                 proxyJobs.push(
                     addSubnetProxyTargets(
                         newt.newtId,
-                        targetsToAdd,
+                        [targetToAdd],
                         newt.version
                     )
                 );
@@ -700,19 +698,16 @@ async function handleSubnetProxyTargetUpdates(
         );
 
         if (removedClients.length > 0) {
-            const targetsToRemove = generateSubnetProxyTargets(
+            const targetToRemove = generateSubnetProxyTargetV2(
                 siteResource,
                 removedClients
             );
 
-            if (targetsToRemove.length > 0) {
-                logger.info(
-                    `Removing ${targetsToRemove.length} subnet proxy targets for siteResource ${siteResource.siteResourceId}`
-                );
+            if (targetToRemove) {
                 proxyJobs.push(
                     removeSubnetProxyTargets(
                         newt.newtId,
-                        targetsToRemove,
+                        [targetToRemove],
                         newt.version
                     )
                 );
@@ -820,12 +815,12 @@ export async function rebuildClientAssociationsFromClient(
 
         // Role-based access
         const roleIds = await trx
-            .select({ roleId: userOrgs.roleId })
-            .from(userOrgs)
+            .select({ roleId: userOrgRoles.roleId })
+            .from(userOrgRoles)
             .where(
                 and(
-                    eq(userOrgs.userId, client.userId),
-                    eq(userOrgs.orgId, client.orgId)
+                    eq(userOrgRoles.userId, client.userId),
+                    eq(userOrgRoles.orgId, client.orgId)
                 )
             ) // this needs to be locked onto this org or else cross-org access could happen
             .then((rows) => rows.map((row) => row.roleId));
@@ -1169,7 +1164,7 @@ async function handleMessagesForClientResources(
             }
 
             for (const resource of resources) {
-                const targets = generateSubnetProxyTargets(resource, [
+                const target = generateSubnetProxyTargetV2(resource, [
                     {
                         clientId: client.clientId,
                         pubKey: client.pubKey,
@@ -1177,11 +1172,11 @@ async function handleMessagesForClientResources(
                     }
                 ]);
 
-                if (targets.length > 0) {
+                if (target) {
                     proxyJobs.push(
                         addSubnetProxyTargets(
                             newt.newtId,
-                            targets,
+                            [target],
                             newt.version
                         )
                     );
@@ -1246,7 +1241,7 @@ async function handleMessagesForClientResources(
             }
 
             for (const resource of resources) {
-                const targets = generateSubnetProxyTargets(resource, [
+                const target = generateSubnetProxyTargetV2(resource, [
                     {
                         clientId: client.clientId,
                         pubKey: client.pubKey,
@@ -1254,11 +1249,11 @@ async function handleMessagesForClientResources(
                     }
                 ]);
 
-                if (targets.length > 0) {
+                if (target) {
                     proxyJobs.push(
                         removeSubnetProxyTargets(
                             newt.newtId,
-                            targets,
+                            [target],
                             newt.version
                         )
                     );
