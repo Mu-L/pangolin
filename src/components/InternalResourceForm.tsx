@@ -614,6 +614,7 @@ export function InternalResourceForm({
                                         <SitesSelector
                                             orgId={orgId}
                                             selectedSite={selectedSite}
+                                            filterTypes={["newt"]}
                                             onSelectSite={(site) => {
                                                 setSelectedSite(site);
                                                 field.onChange(site.siteId);
