@@ -522,7 +522,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                     onBlur={handleInputBlur}
                                     {...inputProps}
                                     className={cn(
-                                        "border-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                        "border-0 px-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
                                         // className,
                                         styleClasses?.input
                                     )}
@@ -692,7 +692,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                         onBlur={handleInputBlur}
                                         {...inputProps}
                                         className={cn(
-                                            "border-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                            "border-0 px-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
                                             // className,
                                             styleClasses?.input
                                         )}
@@ -770,7 +770,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                     onBlur={handleInputBlur}
                                     {...inputProps}
                                     className={cn(
-                                        "border-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                        "border-0 px-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
                                         // className,
                                         styleClasses?.input
                                     )}
