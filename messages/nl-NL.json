@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Provisie sleutel bijgewerkt",
     "provisioningKeysUpdatedDescription": "Uw wijzigingen zijn opgeslagen.",
     "provisioningKeysBannerTitle": "Bewerkingssleutels voor websites",
-    "provisioningKeysBannerDescription": "Genereer een provisioning-sleutel en gebruik deze met de Newt-connector om automatisch sites aan te maken bij het opstarten van de eerste opstart- het is niet nodig om afzonderlijke inloggegevens in te stellen voor elke site.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Meer informatie",
     "pendingSitesBannerTitle": "Openstaande sites",
-    "pendingSitesBannerDescription": "Sites die met elkaar verbinden met behulp van een provisioning-sleutel verschijnen hier voor beoordeling. Accepteer elke site voordat deze actief wordt en krijgt toegang tot uw bronnen.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Meer informatie",
     "apiKeysSettings": "{apiKeyName} instellingen",
     "userTitle": "Alle gebruikers beheren",
@@ -2346,7 +2346,7 @@
                 "description": "Enterprise functies, 50 gebruikers, 50 sites en prioriteit ondersteuning."
             }
         },
-        "personalUseOnly": "Alleen persoonlijk gebruik (gratis licentie - geen afrekenen)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Doorgaan naar afrekenen"
         },
