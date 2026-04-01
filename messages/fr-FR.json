@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Clé de provisioning mise à jour",
     "provisioningKeysUpdatedDescription": "Vos modifications ont été enregistrées.",
     "provisioningKeysBannerTitle": "Clés de provisioning du site",
-    "provisioningKeysBannerDescription": "Générez une clé de provisioning et utilisez-la avec le connecteur Newt pour créer automatiquement des sites au premier démarrage — pas besoin de configurer des identifiants distincts pour chaque site.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "En savoir plus",
     "pendingSitesBannerTitle": "Sites en attente",
-    "pendingSitesBannerDescription": "Les sites qui se connectent à l'aide d'une clé de provisioning apparaissent ici pour être revus. Approuver chaque site avant qu'il ne devienne actif et qu'il accède à vos ressources.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "En savoir plus",
     "apiKeysSettings": "Paramètres de {apiKeyName}",
     "userTitle": "Gérer tous les utilisateurs",
@@ -2346,7 +2346,7 @@
                 "description": "Fonctionnalités d'entreprise, 50 utilisateurs, 50 sites et une prise en charge prioritaire."
             }
         },
-        "personalUseOnly": "Utilisation personnelle uniquement (licence gratuite — sans checkout)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Continuer vers le paiement"
         },
