@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Zajišťovací klíč byl aktualizován",
     "provisioningKeysUpdatedDescription": "Vaše změny byly uloženy.",
     "provisioningKeysBannerTitle": "Klíče pro poskytování webu",
-    "provisioningKeysBannerDescription": "Vygenerujte konfigurační klíč a používejte jej pomocí nového konektoru k automatickému vytváření stránek při prvním startu – není třeba nastavovat samostatné přihlašovací údaje pro každý web.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Zjistit více",
     "pendingSitesBannerTitle": "Nevyřízené weby",
-    "pendingSitesBannerDescription": "Zde se zobrazují stránky, které se připojují pomocí doplňovacího klíče. Schválte každý web předtím, než bude aktivní, a získejte přístup k vašim zdrojům.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Zjistit více",
     "apiKeysSettings": "Nastavení {apiKeyName}",
     "userTitle": "Spravovat všechny uživatele",
@@ -2346,7 +2346,7 @@
                 "description": "Podnikové funkce, 50 uživatelů, 50 míst a prioritní podpory."
             }
         },
-        "personalUseOnly": "Pouze osobní použití (bezplatná licence – bez platby)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Pokračovat do pokladny"
         },
