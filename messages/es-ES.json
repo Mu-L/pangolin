@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Clave de aprovisionamiento actualizada",
     "provisioningKeysUpdatedDescription": "Sus cambios han sido guardados.",
     "provisioningKeysBannerTitle": "Claves de aprovisionamiento del sitio",
-    "provisioningKeysBannerDescription": "Generar una clave de aprovisionamiento y usarla con el conector Newt para crear automáticamente sitios en el primer inicio — no es necesario configurar credenciales separadas para cada sitio.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Saber más",
     "pendingSitesBannerTitle": "Sitios pendientes",
-    "pendingSitesBannerDescription": "Los sitios que se conectan usando una clave de aprovisionamiento aparecen aquí para su revisión. Aprobar cada sitio antes de que se active y obtenga acceso a sus recursos.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Saber más",
     "apiKeysSettings": "Ajustes {apiKeyName}",
     "userTitle": "Administrar todos los usuarios",
@@ -2346,7 +2346,7 @@
                 "description": "Características de la empresa, 50 usuarios, 50 sitios y soporte prioritario."
             }
         },
-        "personalUseOnly": "Solo uso personal (licencia gratuita, sin pago)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Continuar con el pago"
         },
