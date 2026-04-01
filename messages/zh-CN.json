@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "置备密钥已更新",
     "provisioningKeysUpdatedDescription": "您的更改已保存。",
     "provisioningKeysBannerTitle": "站点置备密钥",
-    "provisioningKeysBannerDescription": "生成一个预配键并使用它来在首次启动时自动创建站点——无需为每个站点设置单独的凭证。",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "了解更多",
     "pendingSitesBannerTitle": "待定站点",
-    "pendingSitesBannerDescription": "使用预配键连接的站点会出现在这里供审核。在站点开始运行之前批准并获取对您资源的访问权限。",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "了解更多",
     "apiKeysSettings": "{apiKeyName} 设置",
     "userTitle": "管理所有用户",
@@ -2346,7 +2346,7 @@
                 "description": "企业特征、50个用户、50个站点和优先支持。"
             }
         },
-        "personalUseOnly": "仅供个人使用 (免费许可证-无签出)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "继续签出"
         },
