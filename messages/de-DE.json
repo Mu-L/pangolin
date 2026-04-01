@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Bereitstellungsschlüssel aktualisiert",
     "provisioningKeysUpdatedDescription": "Ihre Änderungen wurden gespeichert.",
     "provisioningKeysBannerTitle": "Website-Bereitstellungsschlüssel",
-    "provisioningKeysBannerDescription": "Generieren Sie einen Bereitstellungsschlüssel und verwenden Sie ihn mit dem Newt-Konnektor, um beim ersten Start automatisch Sites zu erstellen – keine Notwendigkeit, separate Anmeldeinformationen für jede Seite einzurichten.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Mehr erfahren",
     "pendingSitesBannerTitle": "Ausstehende Seiten",
-    "pendingSitesBannerDescription": "Sites, die sich mit einem Bereitstellungsschlüssel verbinden, erscheinen hier zur Überprüfung. Bestätigen Sie jede Site, bevor sie aktiv wird und erhalten Zugriff auf Ihre Ressourcen.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Mehr erfahren",
     "apiKeysSettings": "{apiKeyName} Einstellungen",
     "userTitle": "Alle Benutzer verwalten",
@@ -2346,7 +2346,7 @@
                 "description": "Enterprise Features, 50 Benutzer, 50 Sites und Prioritätsunterstützung."
             }
         },
-        "personalUseOnly": "Nur persönliche Nutzung (kostenlose Lizenz — keine Kasse)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Weiter zur Kasse"
         },
