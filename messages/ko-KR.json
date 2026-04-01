@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "프로비저닝 키가 업데이트되었습니다",
     "provisioningKeysUpdatedDescription": "변경 사항이 저장되었습니다.",
     "provisioningKeysBannerTitle": "사이트 프로비저닝 키",
-    "provisioningKeysBannerDescription": "프로비저닝 키를 생성하여 Newt 커넥터와 함께 사용해 첫 실행 시 자동으로 사이트를 생성하세요 — 각 사이트마다 별도의 인증을 설정할 필요가 없습니다.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "자세히 알아보기",
     "pendingSitesBannerTitle": "대기중인 사이트",
-    "pendingSitesBannerDescription": "프로비저닝 키를 사용하여 연결하는 사이트는 검토 대기 중입니다. 사이트가 활성화되어 리소스에 액세스하기 전에 각 사이트를 승인하세요.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "자세히 알아보기",
     "apiKeysSettings": "{apiKeyName} 설정",
     "userTitle": "모든 사용자 관리",
@@ -2346,7 +2346,7 @@
                 "description": "기업 기능, 50명의 사용자, 50개의 사이트, 우선 지원."
             }
         },
-        "personalUseOnly": "개인 사용 전용 (무료 라이센스 — 체크아웃 없음)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "결제로 진행"
         },
