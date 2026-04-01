@@ -8,6 +8,7 @@ import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
 import { convertTargetsIfNessicary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
+import config from "@server/lib/config";
 
 export const handleGetConfigMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -55,7 +56,7 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
 
     if (existingSite.lastHolePunch && now - existingSite.lastHolePunch > 5) {
         logger.warn(
-            `handleGetConfigMessage: Site ${existingSite.siteId} last hole punch is too old, skipping`
+            `Site last hole punch is too old; skipping this register. The site is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`
         );
         return;
     }
