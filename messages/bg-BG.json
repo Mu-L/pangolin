@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Ключът за осигуряване е актуализиран",
     "provisioningKeysUpdatedDescription": "Вашите промени бяха запазени.",
     "provisioningKeysBannerTitle": "Ключове за осигуряване на сайта",
-    "provisioningKeysBannerDescription": "Генерирайте ключ за осигуряване и го използвайте с Newt конектора за автоматично създаване на сайтове при първото стартиране — няма нужда от създаване на отделни идентификационни данни за всеки сайт.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Научете повече",
     "pendingSitesBannerTitle": "Чакащи сайтове",
-    "pendingSitesBannerDescription": "Сайтовете, които се свързват чрез ключ за осигуряване, се появяват тук за преглед. Одобрете всеки сайт, преди да стане активен и да получи достъп до вашите ресурси.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Научете повече",
     "apiKeysSettings": "Настройки на {apiKeyName}",
     "userTitle": "Управление на всички потребители",
@@ -2346,7 +2346,7 @@
                 "description": "Предприятие, 50 потребители, 50 сайта и приоритетна поддръжка."
             }
         },
-        "personalUseOnly": "Само за лична употреба (безплатен лиценз — без плащане)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Продължете към плащане"
         },
