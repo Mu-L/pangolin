@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Foreslå nøkkel oppdatert",
     "provisioningKeysUpdatedDescription": "Dine endringer er lagret.",
     "provisioningKeysBannerTitle": "Sidens bestemmende nøkler",
-    "provisioningKeysBannerDescription": "Generer en foreløpig nøkkel og bruk den med Nyhetskontakten for å automatisk opprette sider ved første oppstart — trenger ikke å sette opp separat innloggingsinformasjon for hver side.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Lær mer",
     "pendingSitesBannerTitle": "Ventende nettsteder",
-    "pendingSitesBannerDescription": "Nettsteder som kobler deg til ved hjelp av en bestemmelsestekst, vises her for gjennomgang. Godkjenn hvert nettsted før det blir aktivt og får tilgang til ressursene dine.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Lær mer",
     "apiKeysSettings": "{apiKeyName} Innstillinger",
     "userTitle": "Administrer alle brukere",
@@ -2346,7 +2346,7 @@
                 "description": "Enterprise features, 50 brukere, 50 nettsteder og prioritetsstøtte."
             }
         },
-        "personalUseOnly": "Kun personlig bruk (gratis lisens - ingen utsjekking)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Fortsett til kassen"
         },
