@@ -77,7 +77,8 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
             const [targetCheck] = await db
                 .select({
                     targetId: targets.targetId,
-                    siteId: targets.siteId
+                    siteId: targets.siteId,
+                    hcStatus: targetHealthCheck.hcHealth
                 })
                 .from(targets)
                 .innerJoin(
@@ -85,6 +86,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     eq(targets.resourceId, resources.resourceId)
                 )
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
+                .innerJoin(targetHealthCheck, eq(targets.targetId, targetHealthCheck.targetId))
                 .where(
                     and(
                         eq(targets.targetId, targetIdNum),
@@ -98,6 +100,14 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     `Target ${targetId} not found or does not belong to site ${newt.siteId}`
                 );
                 errorCount++;
+                continue;
+            }
+
+            // check if the status has changed
+            if (targetCheck.hcStatus === healthStatus.status) {
+                logger.debug(
+                    `Health status for target ${targetId} is already ${healthStatus.status}, skipping update`
+                );
                 continue;
             }
 
