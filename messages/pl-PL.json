@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Klucz zaopatrzenia zaktualizowany",
     "provisioningKeysUpdatedDescription": "Twoje zmiany zostały zapisane.",
     "provisioningKeysBannerTitle": "Klucze Zaopatrzenia witryny",
-    "provisioningKeysBannerDescription": "Wygeneruj klucz tworzenia rezerw i użyj go z konektorem Newt do automatycznego tworzenia witryn przy pierwszym uruchomieniu — nie ma potrzeby ustawiania oddzielnych poświadczeń dla każdej witryny.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Dowiedz się więcej",
     "pendingSitesBannerTitle": "Witryny oczekujące",
-    "pendingSitesBannerDescription": "Witryny, które łączą się przy użyciu klucza zaopatrzenia, pojawiają się tutaj, aby przejrzeć. Zatwierdź każdą witrynę, zanim stanie się aktywna i uzyska dostęp do twoich zasobów.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Dowiedz się więcej",
     "apiKeysSettings": "Ustawienia {apiKeyName}",
     "userTitle": "Zarządzaj wszystkimi użytkownikami",
@@ -2346,7 +2346,7 @@
                 "description": "Cechy przedsiębiorstw, 50 użytkowników, 50 obiektów i wsparcie priorytetowe."
             }
         },
-        "personalUseOnly": "Wyłącznie do użytku osobistego (bezpłatna licencja – brak zamówień)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Przejdź do zamówienia"
         },
