@@ -60,7 +60,7 @@ Pangolin is an open-source, identity-based remote access platform built on WireG
 
 | <img width=500 /> | Description |
 |-----------------|--------------|
-| **Pangolin Cloud** | Fully managed service with instant setup and pay-as-you-go pricing — no infrastructure required. Or, self-host your own [remote node](https://docs.pangolin.net/manage/remote-node/understanding-nodes) and connect to our control plane. |
+| **Pangolin Cloud** | Fully managed service with instant setup and pay-as-you-go pricing - no infrastructure required. Or, self-host your own [remote node](https://docs.pangolin.net/manage/remote-node/understanding-nodes) and connect to our control plane. |
 | **Self-Host: Community Edition** | Free, open source, and licensed under AGPL-3. |
 | **Self-Host: Enterprise Edition** | Licensed under Fossorial Commercial License. Free for personal and hobbyist use, and for businesses earning under \$100K USD annually. |
 

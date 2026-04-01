@@ -174,6 +174,7 @@ type DataTableProps<TData, TValue> = {
     addButtonDisabled?: boolean;
     onRefresh?: () => void;
     isRefreshing?: boolean;
+    refreshButtonDisabled?: boolean;
     searchPlaceholder?: string;
     searchColumn?: string;
     defaultSort?: {
@@ -207,6 +208,7 @@ export function DataTable<TData, TValue>({
     addButtonDisabled = false,
     onRefresh,
     isRefreshing,
+    refreshButtonDisabled = false,
     searchPlaceholder = "Search...",
     searchColumn = "name",
     defaultSort,
@@ -624,7 +626,7 @@ export function DataTable<TData, TValue>({
                                 <Button
                                     variant="outline"
                                     onClick={onRefresh}
-                                    disabled={isRefreshing}
+                                    disabled={isRefreshing || refreshButtonDisabled}
                                 >
                                     <RefreshCw
                                         className={`mr-0 sm:mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}

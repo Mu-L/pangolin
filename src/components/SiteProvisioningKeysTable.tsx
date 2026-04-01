@@ -311,6 +311,7 @@ export default function SiteProvisioningKeysTable({
                 addButtonDisabled={!canUseSiteProvisioning}
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing}
+                refreshButtonDisabled={!canUseSiteProvisioning}
                 addButtonText={t("provisioningKeysAdd")}
                 enableColumnVisibility={true}
                 stickyLeftColumn="name"
