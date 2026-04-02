@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Пожалуйста, введите правильный номер порта",
     "targetErrorNoSite": "Сайт не выбран",
     "targetErrorNoSiteDescription": "Пожалуйста, выберите сайт для цели",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Цель создана",
     "targetCreatedDescription": "Цель была успешно создана",
     "targetErrorCreate": "Не удалось создать цель",
