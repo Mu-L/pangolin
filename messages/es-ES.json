@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Por favor, introduzca un número de puerto válido",
     "targetErrorNoSite": "Ningún sitio seleccionado",
     "targetErrorNoSiteDescription": "Por favor, seleccione un sitio para el objetivo",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Objetivo creado",
     "targetCreatedDescription": "El objetivo se ha creado correctamente",
     "targetErrorCreate": "Error al crear el objetivo",
