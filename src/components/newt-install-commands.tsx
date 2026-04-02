@@ -55,7 +55,7 @@ export function NewtSiteInstallCommands({
 
     const commandList: Record<Platform, Record<string, CommandItem[]>> = {
         unix: {
-            All: [
+            Direct: [
                 {
                     title: t("install"),
                     command: `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
@@ -63,6 +63,54 @@ export function NewtSiteInstallCommands({
                 {
                     title: t("run"),
                     command: `newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                }
+            ],
+            "Systemd Service": [
+                {
+                    title: t("install"),
+                    command: `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
+                },
+                {
+                    title: t("envFile"),
+                    command: `# Create the directory and environment file
+sudo install -d -m 0755 /etc/newt
+sudo tee /etc/newt/newt.env > /dev/null << 'EOF'
+NEWT_ID=${id}
+NEWT_SECRET=${secret}
+PANGOLIN_ENDPOINT=${endpoint}${!acceptClients ? `
+DISABLE_CLIENTS=true` : ""}
+EOF
+sudo chmod 600 /etc/newt/newt.env`
+                },
+                {
+                    title: t("serviceFile"),
+                    command: `sudo tee /etc/systemd/system/newt.service > /dev/null << 'EOF'
+[Unit]
+Description=Newt
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/newt/newt.env
+ExecStart=/usr/local/bin/newt
+Restart=always
+RestartSec=2
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF`
+                },
+                {
+                    title: t("enableAndStart"),
+                    command: `sudo systemctl daemon-reload
+sudo systemctl enable --now newt`
                 }
             ]
         },
@@ -298,7 +346,7 @@ function getPlatformName(platformName: Platform) {
 function getArchitectures(platform: Platform) {
     switch (platform) {
         case "unix":
-            return ["All"];
+            return ["Direct", "Systemd Service"];
         case "windows":
             return ["x64"];
         case "docker":
