@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Veuillez entrer un numéro de port valide",
     "targetErrorNoSite": "Aucun site sélectionné",
     "targetErrorNoSiteDescription": "Veuillez sélectionner un site pour la cible",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Cible créée",
     "targetCreatedDescription": "La cible a été créée avec succès",
     "targetErrorCreate": "Impossible de créer la cible",
