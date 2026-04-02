@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Wprowadź prawidłowy numer portu",
     "targetErrorNoSite": "Nie wybrano witryny",
     "targetErrorNoSiteDescription": "Wybierz witrynę docelową",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Cel utworzony",
     "targetCreatedDescription": "Cel został utworzony pomyślnie",
     "targetErrorCreate": "Nie udało się utworzyć celu",
