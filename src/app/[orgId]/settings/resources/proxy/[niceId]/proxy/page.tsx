@@ -774,8 +774,12 @@ function ProxyResourceTargetsForm({
             }
 
             toast({
-                title: t("settingsUpdated"),
-                description: t("settingsUpdatedDescription")
+                title: targets.length === 0
+                    ? t("targetTargetsCleared")
+                    : t("settingsUpdated"),
+                description: targets.length === 0
+                    ? t("targetTargetsClearedDescription")
+                    : t("settingsUpdatedDescription")
             });
 
             setTargetsToRemove([]);
