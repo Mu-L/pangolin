@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "请输入有效的端口号",
     "targetErrorNoSite": "没有选择站点",
     "targetErrorNoSiteDescription": "请选择目标站点",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "目标已创建",
     "targetCreatedDescription": "目标已成功创建",
     "targetErrorCreate": "创建目标失败",
