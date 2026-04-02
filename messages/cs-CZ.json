@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Zadejte platné číslo portu",
     "targetErrorNoSite": "Není vybrán žádný web",
     "targetErrorNoSiteDescription": "Vyberte prosím web pro cíl",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Cíl byl vytvořen",
     "targetCreatedDescription": "Cíl byl úspěšně vytvořen",
     "targetErrorCreate": "Nepodařilo se vytvořit cíl",
