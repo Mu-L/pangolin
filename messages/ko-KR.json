@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "유효한 포트 번호를 입력하세요.",
     "targetErrorNoSite": "선택된 사이트 없음",
     "targetErrorNoSiteDescription": "대상을 위해 사이트를 선택하세요.",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "대상 생성",
     "targetCreatedDescription": "대상이 성공적으로 생성되었습니다.",
     "targetErrorCreate": "대상 생성 실패",
