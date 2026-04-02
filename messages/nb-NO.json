@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Vennligst skriv inn et gyldig portnummer",
     "targetErrorNoSite": "Ingen nettsted valgt",
     "targetErrorNoSiteDescription": "Velg et nettsted for målet",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Mål opprettet",
     "targetCreatedDescription": "Målet har blitt opprettet",
     "targetErrorCreate": "Kunne ikke opprette målet",
