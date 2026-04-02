@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Por favor, digite um número de porta válido",
     "targetErrorNoSite": "Nenhum site selecionado",
     "targetErrorNoSiteDescription": "Selecione um site para o destino",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Destino criado",
     "targetCreatedDescription": "O alvo foi criado com sucesso",
     "targetErrorCreate": "Falha ao criar destino",
