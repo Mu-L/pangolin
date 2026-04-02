@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Voer een geldig poortnummer in",
     "targetErrorNoSite": "Geen site geselecteerd",
     "targetErrorNoSiteDescription": "Selecteer een site voor het doel",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Doel aangemaakt",
     "targetCreatedDescription": "Doel is succesvol aangemaakt",
     "targetErrorCreate": "Kan doel niet aanmaken",
