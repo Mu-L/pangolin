@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Lütfen geçerli bir port numarası girin",
     "targetErrorNoSite": "Hiçbir site seçili değil",
     "targetErrorNoSiteDescription": "Lütfen hedef için bir site seçin",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Hedef oluşturuldu",
     "targetCreatedDescription": "Hedef başarıyla oluşturuldu",
     "targetErrorCreate": "Hedef oluşturma başarısız oldu",
