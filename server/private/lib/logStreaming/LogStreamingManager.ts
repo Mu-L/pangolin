@@ -127,7 +127,7 @@ export class LogStreamingManager {
     start(): void {
         if (this.isRunning) return;
         this.isRunning = true;
-        logger.info("LogStreamingManager: started");
+        logger.debug("LogStreamingManager: started");
         this.schedulePoll(POLL_INTERVAL_MS);
     }
 
