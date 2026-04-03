@@ -23,6 +23,8 @@ import {
 } from "@server/db";
 import logger from "@server/logger";
 import { and, eq, gt, desc, max, sql } from "drizzle-orm";
+import { decrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 import {
     LogType,
     LOG_TYPES,
@@ -272,19 +274,20 @@ export class LogStreamingManager {
             return;
         }
 
-        // Parse config – skip destination if config is unparseable
-        let config: HttpConfig;
+        // Decrypt and parse config – skip destination if either step fails
+        let configFromDb: HttpConfig;
         try {
-            config = JSON.parse(dest.config) as HttpConfig;
+            const decryptedConfig = decrypt(dest.config, config.getRawConfig().server.secret!);
+            configFromDb = JSON.parse(decryptedConfig) as HttpConfig;
         } catch (err) {
             logger.error(
-                `LogStreamingManager: destination ${dest.destinationId} has invalid JSON config`,
+                `LogStreamingManager: destination ${dest.destinationId} has invalid or undecryptable config`,
                 err
             );
             return;
         }
 
-        const provider = this.createProvider(dest.type, config);
+        const provider = this.createProvider(dest.type, configFromDb);
         if (!provider) {
             logger.warn(
                 `LogStreamingManager: unsupported destination type "${dest.type}" ` +
