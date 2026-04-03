@@ -22,8 +22,8 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { encryptData } from "@server/lib/encryption";
-import privateConfig from "#private/lib/config";
+import { encrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -89,12 +89,10 @@ export async function createEventStreamingDestination(
             );
         }
 
-        const { type, config, enabled } = parsedBody.data;
+        const { type, config: configToSet, enabled } = parsedBody.data;
 
-        const encryptionKeyHex =
-            privateConfig.getRawPrivateConfig().server.encryption_key;
-        const encryptionKey = Buffer.from(encryptionKeyHex, "hex");
-        const encryptedConfig = encryptData(config, encryptionKey);
+        const key = config.getRawConfig().server.secret!;
+        const encryptedConfig = encrypt(configToSet, key);
 
         const now = Date.now();
 

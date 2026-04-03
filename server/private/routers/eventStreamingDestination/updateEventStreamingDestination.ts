@@ -22,9 +22,8 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
-import { encryptData } from "@server/lib/encryption";
-import privateConfig from "#private/lib/config";
-
+import { encrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 
 const paramsSchema = z
     .object({
@@ -112,17 +111,16 @@ export async function updateEventStreamingDestination(
             );
         }
 
-        const { type, config, enabled, sendAccessLogs, sendActionLogs, sendConnectionLogs, sendRequestLogs } = parsedBody.data;
+        const { type, config: configToUpdate, enabled, sendAccessLogs, sendActionLogs, sendConnectionLogs, sendRequestLogs } = parsedBody.data;
 
         const updateData: Record<string, unknown> = {
             updatedAt: Date.now()
         };
 
         if (type !== undefined) updateData.type = type;
-        if (config !== undefined) {
-            const encryptionKeyHex = privateConfig.getRawPrivateConfig().server.encryption_key;
-            const encryptionKey = Buffer.from(encryptionKeyHex, "hex");
-            updateData.config = encryptData(config, encryptionKey);
+        if (configToUpdate !== undefined) {
+            const key = config.getRawConfig().server.secret!;
+            updateData.config = encrypt(configToUpdate, key);
         }
         if (enabled !== undefined) updateData.enabled = enabled;
         if (sendAccessLogs !== undefined) updateData.sendAccessLogs = sendAccessLogs;

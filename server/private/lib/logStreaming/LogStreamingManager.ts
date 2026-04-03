@@ -23,8 +23,8 @@ import {
 } from "@server/db";
 import logger from "@server/logger";
 import { and, eq, gt, desc, max, sql } from "drizzle-orm";
-import { decryptData } from "@server/lib/encryption";
-import privateConfig from "#private/lib/config";
+import { decrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 import {
     LogType,
     LOG_TYPES,
@@ -35,21 +35,6 @@ import {
 import { LogDestinationProvider } from "./providers/LogDestinationProvider";
 import { HttpLogDestination } from "./providers/HttpLogDestination";
 import type { EventStreamingDestination } from "@server/db";
-
-// ---------------------------------------------------------------------------
-// Encryption helpers
-// ---------------------------------------------------------------------------
-
-let encryptionKey: Buffer | undefined;
-
-function getEncryptionKey(): Buffer {
-    if (!encryptionKey) {
-        const keyHex =
-            privateConfig.getRawPrivateConfig().server.encryption_key;
-        encryptionKey = Buffer.from(keyHex, "hex");
-    }
-    return encryptionKey;
-}
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -290,10 +275,10 @@ export class LogStreamingManager {
         }
 
         // Decrypt and parse config – skip destination if either step fails
-        let config: HttpConfig;
+        let configFromDb: HttpConfig;
         try {
-            const decryptedConfig = decryptData(dest.config, getEncryptionKey());
-            config = JSON.parse(decryptedConfig) as HttpConfig;
+            const decryptedConfig = decrypt(dest.config, config.getRawConfig().server.secret!);
+            configFromDb = JSON.parse(decryptedConfig) as HttpConfig;
         } catch (err) {
             logger.error(
                 `LogStreamingManager: destination ${dest.destinationId} has invalid or undecryptable config`,
@@ -302,7 +287,7 @@ export class LogStreamingManager {
             return;
         }
 
-        const provider = this.createProvider(dest.type, config);
+        const provider = this.createProvider(dest.type, configFromDb);
         if (!provider) {
             logger.warn(
                 `LogStreamingManager: unsupported destination type "${dest.type}" ` +
