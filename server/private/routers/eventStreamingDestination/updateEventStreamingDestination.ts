@@ -22,6 +22,8 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
+import { encryptData } from "@server/lib/encryption";
+import privateConfig from "#private/lib/config";
 
 
 const paramsSchema = z
@@ -117,7 +119,11 @@ export async function updateEventStreamingDestination(
         };
 
         if (type !== undefined) updateData.type = type;
-        if (config !== undefined) updateData.config = config;
+        if (config !== undefined) {
+            const encryptionKeyHex = privateConfig.getRawPrivateConfig().server.encryption_key;
+            const encryptionKey = Buffer.from(encryptionKeyHex, "hex");
+            updateData.config = encryptData(config, encryptionKey);
+        }
         if (enabled !== undefined) updateData.enabled = enabled;
         if (sendAccessLogs !== undefined) updateData.sendAccessLogs = sendAccessLogs;
         if (sendActionLogs !== undefined) updateData.sendActionLogs = sendActionLogs;

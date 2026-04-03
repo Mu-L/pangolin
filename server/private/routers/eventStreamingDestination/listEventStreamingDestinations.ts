@@ -22,6 +22,19 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { eq, sql } from "drizzle-orm";
+import { decryptData } from "@server/lib/encryption";
+import privateConfig from "#private/lib/config";
+
+let encryptionKey: Buffer;
+
+function getEncryptionKey(): Buffer {
+    if (!encryptionKey) {
+        const keyHex =
+            privateConfig.getRawPrivateConfig().server.encryption_key;
+        encryptionKey = Buffer.from(keyHex, "hex");
+    }
+    return encryptionKey;
+}
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -121,9 +134,22 @@ export async function listEventStreamingDestinations(
             .from(eventStreamingDestinations)
             .where(eq(eventStreamingDestinations.orgId, orgId));
 
+        const key = getEncryptionKey();
+        const decryptedList = list.map((dest) => {
+            try {
+                return { ...dest, config: decryptData(dest.config, key) };
+            } catch (err) {
+                logger.error(
+                    `listEventStreamingDestinations: failed to decrypt config for destination ${dest.destinationId}`,
+                    err
+                );
+                return { ...dest, config: "" };
+            }
+        });
+
         return response<ListEventStreamingDestinationsResponse>(res, {
             data: {
-                destinations: list,
+                destinations: decryptedList,
                 pagination: {
                     total: count,
                     limit,

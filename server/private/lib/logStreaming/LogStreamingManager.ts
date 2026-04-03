@@ -23,6 +23,8 @@ import {
 } from "@server/db";
 import logger from "@server/logger";
 import { and, eq, gt, desc, max, sql } from "drizzle-orm";
+import { decryptData } from "@server/lib/encryption";
+import privateConfig from "#private/lib/config";
 import {
     LogType,
     LOG_TYPES,
@@ -33,6 +35,21 @@ import {
 import { LogDestinationProvider } from "./providers/LogDestinationProvider";
 import { HttpLogDestination } from "./providers/HttpLogDestination";
 import type { EventStreamingDestination } from "@server/db";
+
+// ---------------------------------------------------------------------------
+// Encryption helpers
+// ---------------------------------------------------------------------------
+
+let encryptionKey: Buffer | undefined;
+
+function getEncryptionKey(): Buffer {
+    if (!encryptionKey) {
+        const keyHex =
+            privateConfig.getRawPrivateConfig().server.encryption_key;
+        encryptionKey = Buffer.from(keyHex, "hex");
+    }
+    return encryptionKey;
+}
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -272,13 +289,14 @@ export class LogStreamingManager {
             return;
         }
 
-        // Parse config – skip destination if config is unparseable
+        // Decrypt and parse config – skip destination if either step fails
         let config: HttpConfig;
         try {
-            config = JSON.parse(dest.config) as HttpConfig;
+            const decryptedConfig = decryptData(dest.config, getEncryptionKey());
+            config = JSON.parse(decryptedConfig) as HttpConfig;
         } catch (err) {
             logger.error(
-                `LogStreamingManager: destination ${dest.destinationId} has invalid JSON config`,
+                `LogStreamingManager: destination ${dest.destinationId} has invalid or undecryptable config`,
                 err
             );
             return;
