@@ -27,7 +27,7 @@ import { build } from "@server/build";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 import { INSPECT_MAX_BYTES } from "buffer";
-import { v } from "@faker-js/faker/dist/airline-Dz1uGqgJ";
+import { getNextAvailableClientSubnet } from "@server/lib/ip";
 
 const bodySchema = z.object({
     provisioningKey: z.string().nonempty(),
@@ -152,6 +152,11 @@ export async function registerNewt(
                 createHttpError(HttpCode.NOT_FOUND, "Organization not found")
             );
         }
+        if (!org.subnet) {
+            return next(
+                createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "Organization subnet not found")
+            );
+        }
 
         // SaaS billing check
         if (build == "saas") {
@@ -190,6 +195,20 @@ export async function registerNewt(
         let newSiteId: number | undefined;
 
         await db.transaction(async (trx) => {
+
+            const newClientAddress = await getNextAvailableClientSubnet(orgId);
+            if (!newClientAddress) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        "No available subnet found"
+                    )
+                );
+            }
+
+            let clientAddress = newClientAddress.split("/")[0];
+            clientAddress = `${clientAddress}/${org.subnet!.split("/")[1]}`; // we want the block size of the whole org
+
             // Create the site (type "newt", name = niceId)
             const [newSite] = await trx
                 .insert(sites)
@@ -197,6 +216,7 @@ export async function registerNewt(
                     orgId,
                     name: name || niceId,
                     niceId,
+                    address: clientAddress,
                     type: "newt",
                     dockerSocketEnabled: true,
                     status: keyRecord.approveNewSites ? "approved" : "pending",
