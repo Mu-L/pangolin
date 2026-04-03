@@ -106,7 +106,9 @@ function DestinationCard({
             {/* URL preview */}
             <p className="text-xs text-muted-foreground truncate">
                 {cfg.url || (
-                    <span className="italic">{t("streamingNoUrlConfigured")}</span>
+                    <span className="italic">
+                        {t("streamingNoUrlConfigured")}
+                    </span>
                 )}
             </p>
 
@@ -160,7 +162,9 @@ function AddDestinationCard({ onClick }: { onClick: () => void }) {
                 <div className="flex items-center justify-center w-9 h-9 rounded-md border-2 border-dashed border-current">
                     <Plus className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-medium">{t("streamingAddDestination")}</span>
+                <span className="text-sm font-medium">
+                    {t("streamingAddDestination")}
+                </span>
             </div>
         </button>
     );
@@ -186,7 +190,9 @@ function DestinationTypePicker({
     const t = useTranslations();
     const [selected, setSelected] = useState<DestinationType>("http");
 
-    const destinationTypeOptions: ReadonlyArray<StrategyOption<DestinationType>> = [
+    const destinationTypeOptions: ReadonlyArray<
+        StrategyOption<DestinationType>
+    > = [
         {
             id: "http",
             title: t("streamingHttpWebhookTitle"),
@@ -233,13 +239,19 @@ function DestinationTypePicker({
         <Credenza open={open} onOpenChange={onOpenChange}>
             <CredenzaContent className="sm:max-w-lg">
                 <CredenzaHeader>
-                    <CredenzaTitle>{t("streamingAddDestination")}</CredenzaTitle>
+                    <CredenzaTitle>
+                        {t("streamingAddDestination")}
+                    </CredenzaTitle>
                     <CredenzaDescription>
                         {t("streamingTypePickerDescription")}
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
-                    <div className={isPaywalled ? "pointer-events-none opacity-50" : ""}>
+                    <div
+                        className={
+                            isPaywalled ? "pointer-events-none opacity-50" : ""
+                        }
+                    >
                         <StrategySelect
                             options={destinationTypeOptions}
                             value={selected}
@@ -301,10 +313,7 @@ export default function StreamingDestinationsPage() {
             toast({
                 variant: "destructive",
                 title: t("streamingFailedToLoad"),
-                description: formatAxiosError(
-                    e,
-                    t("streamingUnexpectedError")
-                )
+                description: formatAxiosError(e, t("streamingUnexpectedError"))
             });
         } finally {
             setLoading(false);
@@ -341,10 +350,7 @@ export default function StreamingDestinationsPage() {
             toast({
                 variant: "destructive",
                 title: t("streamingFailedToUpdate"),
-                description: formatAxiosError(
-                    e,
-                    t("streamingUnexpectedError")
-                )
+                description: formatAxiosError(e, t("streamingUnexpectedError"))
             });
         } finally {
             setTogglingIds((prev) => {
@@ -375,10 +381,7 @@ export default function StreamingDestinationsPage() {
             toast({
                 variant: "destructive",
                 title: t("streamingFailedToDelete"),
-                description: formatAxiosError(
-                    e,
-                    t("streamingUnexpectedError")
-                )
+                description: formatAxiosError(e, t("streamingUnexpectedError"))
             });
         } finally {
             setDeleting(false);
@@ -459,13 +462,14 @@ export default function StreamingDestinationsPage() {
                         if (!v) setDeleteTarget(null);
                     }}
                     string={
-                        parseHttpConfig(deleteTarget.config).name || t("streamingDeleteDialogThisDestination")
+                        parseHttpConfig(deleteTarget.config).name ||
+                        t("streamingDeleteDialogThisDestination")
                     }
                     title={t("streamingDeleteTitle")}
                     dialog={
-                        <p className="text-sm text-muted-foreground">
+                        <p>
                             {t("streamingDeleteDialogAreYouSure")}{" "}
-                            <span className="font-semibold text-foreground">
+                            <span>
                                 {parseHttpConfig(deleteTarget.config).name ||
                                     t("streamingDeleteDialogThisDestination")}
                             </span>
