@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Ключ подготовки обновлен",
     "provisioningKeysUpdatedDescription": "Ваши изменения были сохранены.",
     "provisioningKeysBannerTitle": "Ключи подготовки сайта",
-    "provisioningKeysBannerDescription": "Генерировать подготовительный ключ и использовать его вместе с Новым коннектором для автоматического создания сайтов при первом запуске — нет необходимости настраивать отдельные учетные данные для каждого сайта.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Узнать больше",
     "pendingSitesBannerTitle": "Ожидающие сайты",
-    "pendingSitesBannerDescription": "Сайты, связанные с использованием ключа подготовки, появляются здесь для проверки. Одобрите каждый сайт, прежде чем он станет активным и получит доступ к вашим ресурсам.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Узнать больше",
     "apiKeysSettings": "Настройки {apiKeyName}",
     "userTitle": "Управление всеми пользователями",
@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Пожалуйста, введите правильный номер порта",
     "targetErrorNoSite": "Сайт не выбран",
     "targetErrorNoSiteDescription": "Пожалуйста, выберите сайт для цели",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Цель создана",
     "targetCreatedDescription": "Цель была успешно создана",
     "targetErrorCreate": "Не удалось создать цель",
@@ -2346,7 +2348,7 @@
                 "description": "Функции предприятия, 50 пользователей, 50 сайтов, а также приоритетная поддержка."
             }
         },
-        "personalUseOnly": "Только для личного пользования (бесплатная лицензия — без оформления)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Продолжить оформление заказа"
         },
@@ -2607,6 +2609,9 @@
     "machineClients": "Машинные клиенты",
     "install": "Установить",
     "run": "Запустить",
+    "envFile": "Environment File",
+    "serviceFile": "Service File",
+    "enableAndStart": "Enable and Start",
     "clientNameDescription": "Отображаемое имя клиента, которое может быть изменено позже.",
     "clientAddress": "Адрес клиента (Дополнительно)",
     "setupFailedToFetchSubnet": "Не удалось получить подсеть по умолчанию",
