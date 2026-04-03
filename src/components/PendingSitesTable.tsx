@@ -15,6 +15,8 @@ import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { build } from "@server/build";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { type PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
@@ -63,6 +65,10 @@ export default function PendingSitesTable({
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
+    const { isPaidUser } = usePaidStatus();
+    const canUseSiteProvisioning =
+        isPaidUser(tierMatrix[TierFeature.SiteProvisioningKeys]) &&
+        build !== "oss";
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -450,6 +456,7 @@ export default function PendingSitesTable({
             onSearch={handleSearchChange}
             onRefresh={refreshData}
             isRefreshing={isRefreshing || isFiltering}
+            refreshButtonDisabled={!canUseSiteProvisioning}
             rowCount={rowCount}
             columnVisibility={{
                 niceId: false,

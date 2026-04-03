@@ -104,6 +104,42 @@ export default async function migration() {
                	CONSTRAINT "userOrgRoles_userId_orgId_roleId_unique" UNIQUE("userId","orgId","roleId")
             );
         `);
+
+        await db.execute(sql`
+            CREATE TABLE "eventStreamingCursors" (
+               	"cursorId" serial PRIMARY KEY NOT NULL,
+               	"destinationId" integer NOT NULL,
+               	"logType" varchar(50) NOT NULL,
+               	"lastSentId" bigint DEFAULT 0 NOT NULL,
+               	"lastSentAt" bigint
+            );
+        `);
+
+        await db.execute(sql`
+            CREATE TABLE "eventStreamingDestinations" (
+               	"destinationId" serial PRIMARY KEY NOT NULL,
+               	"orgId" varchar(255) NOT NULL,
+               	"sendConnectionLogs" boolean DEFAULT false NOT NULL,
+               	"sendRequestLogs" boolean DEFAULT false NOT NULL,
+               	"sendActionLogs" boolean DEFAULT false NOT NULL,
+               	"sendAccessLogs" boolean DEFAULT false NOT NULL,
+               	"type" varchar(50) NOT NULL,
+               	"config" text NOT NULL,
+               	"enabled" boolean DEFAULT true NOT NULL,
+               	"createdAt" bigint NOT NULL,
+               	"updatedAt" bigint NOT NULL
+            );
+        `);
+
+        await db.execute(
+            sql`ALTER TABLE "eventStreamingCursors" ADD CONSTRAINT "eventStreamingCursors_destinationId_eventStreamingDestinations_destinationId_fk" FOREIGN KEY ("destinationId") REFERENCES "public"."eventStreamingDestinations"("destinationId") ON DELETE cascade ON UPDATE no action;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "eventStreamingDestinations" ADD CONSTRAINT "eventStreamingDestinations_orgId_orgs_orgId_fk" FOREIGN KEY ("orgId") REFERENCES "public"."orgs"("orgId") ON DELETE cascade ON UPDATE no action;`
+        );
+        await db.execute(
+            sql`CREATE UNIQUE INDEX "idx_eventStreamingCursors_dest_type" ON "eventStreamingCursors" USING btree ("destinationId","logType");`
+        );
         await db.execute(
             sql`ALTER TABLE "userOrgs" DROP CONSTRAINT "userOrgs_roleId_roles_roleId_fk";`
         );
@@ -177,8 +213,12 @@ export default async function migration() {
             sql`CREATE INDEX "idx_accessAuditLog_siteResourceId" ON "connectionAuditLog" USING btree ("siteResourceId");`
         );
         await db.execute(sql`ALTER TABLE "userInvites" DROP COLUMN "roleId";`);
-        await db.execute(sql`ALTER TABLE "siteProvisioningKeys" ADD COLUMN "approveNewSites" boolean DEFAULT true NOT NULL;`);
-        await db.execute(sql`ALTER TABLE "sites" ADD COLUMN "status" varchar DEFAULT 'approved';`);
+        await db.execute(
+            sql`ALTER TABLE "siteProvisioningKeys" ADD COLUMN "approveNewSites" boolean DEFAULT true NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "sites" ADD COLUMN "status" varchar DEFAULT 'approved';`
+        );
 
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");

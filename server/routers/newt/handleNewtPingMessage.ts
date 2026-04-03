@@ -1,4 +1,4 @@
-import { db, newts, sites } from "@server/db";
+import { db, newts, sites, targetHealthCheck, targets } from "@server/db";
 import {
     hasActiveConnections,
     getClientConfigVersion
@@ -78,6 +78,32 @@ export const startNewtOfflineChecker = (): void => {
                     .update(sites)
                     .set({ online: false })
                     .where(eq(sites.siteId, staleSite.siteId));
+
+                const healthChecksOnSite = await db
+                    .select()
+                    .from(targetHealthCheck)
+                    .innerJoin(
+                        targets,
+                        eq(targets.targetId, targetHealthCheck.targetId)
+                    )
+                    .innerJoin(sites, eq(sites.siteId, targets.siteId))
+                    .where(eq(sites.siteId, staleSite.siteId));
+
+                for (const healthCheck of healthChecksOnSite) {
+                    logger.info(
+                        `Marking health check ${healthCheck.targetHealthCheck.targetHealthCheckId} offline due to site ${staleSite.siteId} being marked offline`
+                    );
+                    await db
+                        .update(targetHealthCheck)
+                        .set({ hcHealth: "unknown" })
+                        .where(
+                            eq(
+                                targetHealthCheck.targetHealthCheckId,
+                                healthCheck.targetHealthCheck
+                                    .targetHealthCheckId
+                            )
+                        );
+                }
             }
 
             // this part only effects self hosted. Its not efficient but we dont expect people to have very many wireguard sites
@@ -102,7 +128,8 @@ export const startNewtOfflineChecker = (): void => {
 
             // loop over each one. If its offline and there is a new update then mark it online. If its online and there is no update then mark it offline
             for (const site of allWireguardSites) {
-                const lastBandwidthUpdate = new Date(site.lastBandwidthUpdate!).getTime() / 1000;
+                const lastBandwidthUpdate =
+                    new Date(site.lastBandwidthUpdate!).getTime() / 1000;
                 if (
                     lastBandwidthUpdate < wireguardOfflineThreshold &&
                     site.online

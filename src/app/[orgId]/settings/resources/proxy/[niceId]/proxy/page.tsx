@@ -400,7 +400,11 @@ function ProxyResourceTargetsForm({
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -424,7 +428,11 @@ function ProxyResourceTargetsForm({
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
