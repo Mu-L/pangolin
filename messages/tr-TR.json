@@ -371,10 +371,10 @@
     "provisioningKeysUpdated": "Tedarik anahtarı güncellendi",
     "provisioningKeysUpdatedDescription": "Değişiklikleriniz kaydedildi.",
     "provisioningKeysBannerTitle": "Site Tedarik Anahtarları",
-    "provisioningKeysBannerDescription": "Tedarik anahtarı oluşturun ve ilk başlangıçta siteleri otomatik olarak oluşturmak için Newt konektörüyle kullanın — her site için ayrı kimlik bilgileri ayarlamaya gerek yoktur.",
+    "provisioningKeysBannerDescription": "Generate a provisioning key and use it with the Newt connector to automatically create sites on first startup - no need to set up separate credentials for each site.",
     "provisioningKeysBannerButtonText": "Daha fazla bilgi",
     "pendingSitesBannerTitle": "Bekleyen Siteler",
-    "pendingSitesBannerDescription": "Tedarik anahtarı kullanarak bağlanan siteler burada incelenmek için görünür. Aktif hale gelmeden ve kaynaklarınıza erişim kazanmadan önce her siteyi onaylayın.",
+    "pendingSitesBannerDescription": "Sites that connect using a provisioning key appear here for review.",
     "pendingSitesBannerButtonText": "Daha fazla bilgi",
     "apiKeysSettings": "{apiKeyName} Ayarları",
     "userTitle": "Tüm Kullanıcıları Yönet",
@@ -624,6 +624,8 @@
     "targetErrorInvalidPortDescription": "Lütfen geçerli bir port numarası girin",
     "targetErrorNoSite": "Hiçbir site seçili değil",
     "targetErrorNoSiteDescription": "Lütfen hedef için bir site seçin",
+    "targetTargetsCleared": "Targets cleared",
+    "targetTargetsClearedDescription": "All targets have been removed from this resource",
     "targetCreated": "Hedef oluşturuldu",
     "targetCreatedDescription": "Hedef başarıyla oluşturuldu",
     "targetErrorCreate": "Hedef oluşturma başarısız oldu",
@@ -2346,7 +2348,7 @@
                 "description": "Kurumsal özellikler, 50 kullanıcı, 50 site ve öncelikli destek."
             }
         },
-        "personalUseOnly": "Yalnızca kişisel kullanım (ücretsiz lisans — ödeme yapılmaz)",
+        "personalUseOnly": "Personal use only (free license - no checkout)",
         "buttons": {
             "continueToCheckout": "Ödemeye Devam Et"
         },
@@ -2607,6 +2609,9 @@
     "machineClients": "Makine İstemcileri",
     "install": "Yükle",
     "run": "Çalıştır",
+    "envFile": "Environment File",
+    "serviceFile": "Service File",
+    "enableAndStart": "Enable and Start",
     "clientNameDescription": "Daha sonra değiştirilebilecek istemcinin görünen adı.",
     "clientAddress": "İstemci Adresi (Gelişmiş)",
     "setupFailedToFetchSubnet": "Varsayılan alt ağ alınamadı",
