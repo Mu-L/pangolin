@@ -173,7 +173,7 @@ export async function flushSiteBandwidthToDb(): Promise<void> {
                 // PostgreSQL: batch UPDATE … FROM (VALUES …) — single round-trip per chunk.
                 const valuesList = chunk.map(
                     ([publicKey, { bytesIn, bytesOut }]) =>
-                        sql`(${publicKey}, ${bytesIn}, ${bytesOut})`
+                        sql`(${publicKey}, ${bytesIn}::bigint, ${bytesOut}::bigint)`
                 );
                 const valuesClause = sql.join(valuesList, sql`, `);
                 return dbQueryRows<{ orgId: string; pubKey: string }>(sql`
