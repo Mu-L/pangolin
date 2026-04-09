@@ -10,6 +10,7 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import { GetDNSRecordsResponse } from "@server/routers/domain";
 import DNSRecordsTable from "@app/components/DNSRecordTable";
 import DomainCertForm from "@app/components/DomainCertForm";
+import { build } from "@server/build";
 
 interface DomainSettingsPageProps {
     params: Promise<{ domainId: string; orgId: string }>;
@@ -65,12 +66,14 @@ export default async function DomainSettingsPage({
                 )}
             </div>
             <div className="space-y-6">
-                <DomainInfoCard
-                    failed={domain.failed}
-                    verified={domain.verified}
-                    type={domain.type}
-                    errorMessage={domain.errorMessage}
-                />
+                {build != "oss" && env.flags.usePangolinDns ? (
+                    <DomainInfoCard
+                        failed={domain.failed}
+                        verified={domain.verified}
+                        type={domain.type}
+                        errorMessage={domain.errorMessage}
+                    />
+                ) : null}
 
                 <DNSRecordsTable records={dnsRecords} type={domain.type} />
 
