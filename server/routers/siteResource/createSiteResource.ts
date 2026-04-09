@@ -38,7 +38,7 @@ const createSiteResourceSchema = z
         name: z.string().min(1).max(255),
         mode: z.enum(["host", "cidr", "http", "https"]),
         siteId: z.int(),
-        // protocol: z.enum(["tcp", "udp"]).optional(),
+        scheme: z.enum(["http", "https"]).optional(),
         // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1),
@@ -167,7 +167,7 @@ export async function createSiteResource(
             name,
             siteId,
             mode,
-            // protocol,
+            scheme,
             // proxyPort,
             destinationPort,
             destination,
@@ -232,30 +232,6 @@ export async function createSiteResource(
             );
         }
 
-        // // check if resource with same protocol and proxy port already exists (only for port mode)
-        // if (mode === "port" && protocol && proxyPort) {
-        //     const [existingResource] = await db
-        //         .select()
-        //         .from(siteResources)
-        //         .where(
-        //             and(
-        //                 eq(siteResources.siteId, siteId),
-        //                 eq(siteResources.orgId, orgId),
-        //                 eq(siteResources.protocol, protocol),
-        //                 eq(siteResources.proxyPort, proxyPort)
-        //             )
-        //         )
-        //         .limit(1);
-        //     if (existingResource && existingResource.siteResourceId) {
-        //         return next(
-        //             createHttpError(
-        //                 HttpCode.CONFLICT,
-        //                 "A resource with the same protocol and proxy port already exists"
-        //             )
-        //         );
-        //     }
-        // }
-
         // make sure the alias is unique within the org if provided
         if (alias) {
             const [conflict] = await db
@@ -300,6 +276,7 @@ export async function createSiteResource(
                 name,
                 mode,
                 destination,
+                scheme,
                 destinationPort,
                 enabled,
                 alias,

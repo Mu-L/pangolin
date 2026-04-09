@@ -231,7 +231,7 @@ export const siteResources = pgTable("siteResources", {
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
     mode: varchar("mode").$type<"host" | "cidr" | "http" | "https">().notNull(), // "host" | "cidr" | "http" | "https"
-    protocol: varchar("protocol"), // only for port mode
+    scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
     destination: varchar("destination").notNull(), // ip, cidr, hostname; validate against the mode

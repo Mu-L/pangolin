@@ -259,7 +259,7 @@ export const siteResources = sqliteTable("siteResources", {
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
     mode: text("mode").$type<"host" | "cidr" | "http" | "https">().notNull(), // "host" | "cidr" | "http" | "https"
-    protocol: text("protocol"), // only for port mode
+    scheme: text("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
     destination: text("destination").notNull(), // ip, cidr, hostname

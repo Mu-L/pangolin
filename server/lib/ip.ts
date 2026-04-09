@@ -660,9 +660,14 @@ export function generateSubnetProxyTargetV2(
             destination = `${destination}/32`;
         }
 
-        if (!siteResource.alias || !siteResource.aliasAddress) {
+        if (
+            !siteResource.alias ||
+            !siteResource.aliasAddress ||
+            !siteResource.destinationPort ||
+            !siteResource.scheme
+        ) {
             logger.debug(
-                `Site resource ${siteResource.siteResourceId} is in HTTP/HTTPS mode but is missing alias or alias address, skipping alias target generation.`
+                `Site resource ${siteResource.siteResourceId} is in HTTP/HTTPS mode but is missing alias or alias address or destinationPort, skipping alias target generation.`
             );
             return;
         }
@@ -675,9 +680,15 @@ export function generateSubnetProxyTargetV2(
             disableIcmp,
             resourceId: siteResource.siteResourceId,
             protocol: siteResource.mode, // will be either http or https,
-            httpTargets: [],
-            tlsCert: "",
-            tlsKey: ""
+            httpTargets: [
+                {
+                    destAddr: siteResource.destination,
+                    destPort: siteResource.destinationPort,
+                    scheme: siteResource.scheme
+                }
+            ],
+            // tlsCert: "",
+            // tlsKey: ""
         };
     }
 
