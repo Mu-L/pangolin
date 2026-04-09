@@ -36,7 +36,7 @@ const createSiteResourceParamsSchema = z.strictObject({
 const createSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "port", "http", "https"]),
+        mode: z.enum(["host", "cidr", "http", "https"]),
         siteId: z.int(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
@@ -286,8 +286,7 @@ export async function createSiteResource(
 
         const niceId = await getUniqueSiteResourceName(orgId);
         let aliasAddress: string | null = null;
-        if (mode == "host") {
-            // we can only have an alias on a host
+        if (mode === "host" || mode === "http" || mode === "https") {
             aliasAddress = await getNextAvailableAliasAddress(orgId);
         }
 
@@ -299,7 +298,7 @@ export async function createSiteResource(
                 niceId,
                 orgId,
                 name,
-                mode: mode as "host" | "cidr",
+                mode,
                 destination,
                 destinationPort,
                 enabled,

@@ -54,7 +54,12 @@ export default function EditInternalResourceDialog({
     async function handleSubmit(values: InternalResourceFormValues) {
         try {
             let data = { ...values };
-            if (data.mode === "host" && isHostname(data.destination)) {
+            if (
+                (data.mode === "host" ||
+                    data.mode === "http" ||
+                    data.mode === "https") &&
+                isHostname(data.destination)
+            ) {
                 const currentAlias = data.alias?.trim() || "";
                 if (!currentAlias) {
                     let aliasValue = data.destination;

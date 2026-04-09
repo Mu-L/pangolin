@@ -46,7 +46,7 @@ export type InternalResourceRow = {
     siteName: string;
     siteAddress: string | null;
     // mode: "host" | "cidr" | "port";
-    mode: "host" | "cidr";
+    mode: "host" | "cidr" | "http" | "https";
     // protocol: string | null;
     // proxyPort: number | null;
     siteId: number;
@@ -215,6 +215,14 @@ export default function ClientResourcesTable({
                         {
                             value: "cidr",
                             label: t("editInternalResourceDialogModeCidr")
+                        },
+                        {
+                            value: "http",
+                            label: t("editInternalResourceDialogModeHttp")
+                        },
+                        {
+                            value: "https",
+                            label: t("editInternalResourceDialogModeHttps")
                         }
                     ]}
                     selectedValue={searchParams.get("mode") ?? undefined}
@@ -227,10 +235,15 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                const modeLabels: Record<"host" | "cidr" | "port", string> = {
+                const modeLabels: Record<
+                    "host" | "cidr" | "port" | "http" | "https",
+                    string
+                > = {
                     host: t("editInternalResourceDialogModeHost"),
                     cidr: t("editInternalResourceDialogModeCidr"),
-                    port: t("editInternalResourceDialogModePort")
+                    port: t("editInternalResourceDialogModePort"),
+                    http: t("editInternalResourceDialogModeHttp"),
+                    https: t("editInternalResourceDialogModeHttps")
                 };
                 return <span>{modeLabels[resourceRow.mode]}</span>;
             }

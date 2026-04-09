@@ -45,6 +45,7 @@ import { z } from "zod";
 import { SitesSelector, type Selectedsite } from "./site-selector";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import { MachinesSelector } from "./machines-selector";
+import DomainPicker from "@app/components/DomainPicker";
 
 // --- Helpers (shared) ---
 
@@ -120,12 +121,14 @@ export const cleanForFQDN = (name: string): string =>
 
 type Site = ListSitesResponse["sites"][0];
 
+export type InternalResourceMode = "host" | "cidr" | "http" | "https";
+
 export type InternalResourceData = {
     id: number;
     name: string;
     orgId: string;
     siteName: string;
-    mode: "host" | "cidr";
+    mode: InternalResourceMode;
     siteId: number;
     niceId: string;
     destination: string;
@@ -135,6 +138,10 @@ export type InternalResourceData = {
     disableIcmp?: boolean;
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
+    httpHttpsPort?: number | null;
+    httpConfigSubdomain?: string | null;
+    httpConfigDomainId?: string | null;
+    httpConfigFullDomain?: string | null;
 };
 
 const tagSchema = z.object({ id: z.string(), text: z.string() });
@@ -142,7 +149,7 @@ const tagSchema = z.object({ id: z.string(), text: z.string() });
 export type InternalResourceFormValues = {
     name: string;
     siteId: number;
-    mode: "host" | "cidr";
+    mode: InternalResourceMode;
     destination: string;
     alias?: string | null;
     niceId?: string;
@@ -151,6 +158,10 @@ export type InternalResourceFormValues = {
     disableIcmp?: boolean;
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
+    httpHttpsPort?: number | null;
+    httpConfigSubdomain?: string | null;
+    httpConfigDomainId?: string | null;
+    httpConfigFullDomain?: string | null;
     roles?: z.infer<typeof tagSchema>[];
     users?: z.infer<typeof tagSchema>[];
     clients?: z.infer<typeof tagSchema>[];
@@ -211,6 +222,14 @@ export function InternalResourceForm({
         variant === "create"
             ? "createInternalResourceDialogModeCidr"
             : "editInternalResourceDialogModeCidr";
+    const modeHttpKey =
+        variant === "create"
+            ? "createInternalResourceDialogModeHttp"
+            : "editInternalResourceDialogModeHttp";
+    const modeHttpsKey =
+        variant === "create"
+            ? "createInternalResourceDialogModeHttps"
+            : "editInternalResourceDialogModeHttps";
     const destinationLabelKey =
         variant === "create"
             ? "createInternalResourceDialogDestination"
@@ -223,6 +242,18 @@ export function InternalResourceForm({
         variant === "create"
             ? "createInternalResourceDialogAlias"
             : "editInternalResourceDialogAlias";
+    const httpHttpsPortLabelKey =
+        variant === "create"
+            ? "createInternalResourceDialogModePort"
+            : "editInternalResourceDialogModePort";
+    const httpConfigurationTitleKey =
+        variant === "create"
+            ? "createInternalResourceDialogHttpConfiguration"
+            : "editInternalResourceDialogHttpConfiguration";
+    const httpConfigurationDescriptionKey =
+        variant === "create"
+            ? "createInternalResourceDialogHttpConfigurationDescription"
+            : "editInternalResourceDialogHttpConfigurationDescription";
 
     const formSchema = z.object({
         name: z.string().min(1, t(nameRequiredKey)).max(255, t(nameMaxKey)),
@@ -230,7 +261,7 @@ export function InternalResourceForm({
             .number()
             .int()
             .positive(siteRequiredKey ? t(siteRequiredKey) : undefined),
-        mode: z.enum(["host", "cidr"]),
+        mode: z.enum(["host", "cidr", "http", "https"]),
         destination: z
             .string()
             .min(
@@ -240,6 +271,10 @@ export function InternalResourceForm({
                     : undefined
             ),
         alias: z.string().nullish(),
+        httpHttpsPort: z.number().int().min(1).max(65535).optional().nullable(),
+        httpConfigSubdomain: z.string().nullish(),
+        httpConfigDomainId: z.string().nullish(),
+        httpConfigFullDomain: z.string().nullish(),
         niceId: z
             .string()
             .min(1)
@@ -394,6 +429,10 @@ export function InternalResourceForm({
                   disableIcmp: resource.disableIcmp ?? false,
                   authDaemonMode: resource.authDaemonMode ?? "site",
                   authDaemonPort: resource.authDaemonPort ?? null,
+                  httpHttpsPort: resource.httpHttpsPort ?? null,
+                  httpConfigSubdomain: resource.httpConfigSubdomain ?? null,
+                  httpConfigDomainId: resource.httpConfigDomainId ?? null,
+                  httpConfigFullDomain: resource.httpConfigFullDomain ?? null,
                   niceId: resource.niceId,
                   roles: [],
                   users: [],
@@ -405,6 +444,10 @@ export function InternalResourceForm({
                   mode: "host",
                   destination: "",
                   alias: null,
+                  httpHttpsPort: null,
+                  httpConfigSubdomain: null,
+                  httpConfigDomainId: null,
+                  httpConfigFullDomain: null,
                   tcpPortRangeString: "*",
                   udpPortRangeString: "*",
                   disableIcmp: false,
@@ -425,6 +468,10 @@ export function InternalResourceForm({
     });
 
     const mode = form.watch("mode");
+    const httpConfigSubdomain = form.watch("httpConfigSubdomain");
+    const httpConfigDomainId = form.watch("httpConfigDomainId");
+    const httpConfigFullDomain = form.watch("httpConfigFullDomain");
+    const isHttpOrHttps = mode === "http" || mode === "https";
     const authDaemonMode = form.watch("authDaemonMode") ?? "site";
     const hasInitialized = useRef(false);
     const previousResourceId = useRef<number | null>(null);
@@ -448,6 +495,10 @@ export function InternalResourceForm({
                 mode: "host",
                 destination: "",
                 alias: null,
+                httpHttpsPort: null,
+                httpConfigSubdomain: null,
+                httpConfigDomainId: null,
+                httpConfigFullDomain: null,
                 tcpPortRangeString: "*",
                 udpPortRangeString: "*",
                 disableIcmp: false,
@@ -475,6 +526,10 @@ export function InternalResourceForm({
                     mode: resource.mode ?? "host",
                     destination: resource.destination ?? "",
                     alias: resource.alias ?? null,
+                    httpHttpsPort: resource.httpHttpsPort ?? null,
+                    httpConfigSubdomain: resource.httpConfigSubdomain ?? null,
+                    httpConfigDomainId: resource.httpConfigDomainId ?? null,
+                    httpConfigFullDomain: resource.httpConfigFullDomain ?? null,
                     tcpPortRangeString: resource.tcpPortRangeString ?? "*",
                     udpPortRangeString: resource.udpPortRangeString ?? "*",
                     disableIcmp: resource.disableIcmp ?? false,
@@ -701,6 +756,12 @@ export function InternalResourceForm({
                                                         <SelectItem value="cidr">
                                                             {t(modeCidrKey)}
                                                         </SelectItem>
+                                                        <SelectItem value="http">
+                                                            {t(modeHttpKey)}
+                                                        </SelectItem>
+                                                        <SelectItem value="https">
+                                                            {t(modeHttpsKey)}
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <FormMessage />
@@ -731,7 +792,7 @@ export function InternalResourceForm({
                                         )}
                                     />
                                 </div>
-                                {mode !== "cidr" && (
+                                {mode === "host" && (
                                     <div className="col-span-4">
                                         <FormField
                                             control={form.control}
@@ -756,265 +817,405 @@ export function InternalResourceForm({
                                         />
                                     </div>
                                 )}
+                                {(mode === "http" || mode === "https") && (
+                                    <div className="col-span-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="httpHttpsPort"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(
+                                                            httpHttpsPortLabelKey
+                                                        )}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={65535}
+                                                            value={
+                                                                field.value ??
+                                                                ""
+                                                            }
+                                                            onChange={(e) => {
+                                                                const raw =
+                                                                    e.target
+                                                                        .value;
+                                                                if (
+                                                                    raw === ""
+                                                                ) {
+                                                                    field.onChange(
+                                                                        null
+                                                                    );
+                                                                    return;
+                                                                }
+                                                                const n =
+                                                                    Number(raw);
+                                                                field.onChange(
+                                                                    Number.isFinite(
+                                                                        n
+                                                                    )
+                                                                        ? n
+                                                                        : null
+                                                                );
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="my-8">
-                                <label className="font-medium block">
-                                    {t("portRestrictions")}
-                                </label>
-                                <div className="text-sm text-muted-foreground">
-                                    {t(
-                                        "editInternalResourceDialogPortRestrictionsDescription"
+                        {isHttpOrHttps ? (
+                            <div className="space-y-4">
+                                <div className="my-8">
+                                    <label className="font-medium block">
+                                        {t(httpConfigurationTitleKey)}
+                                    </label>
+                                    <div className="text-sm text-muted-foreground">
+                                        {t(httpConfigurationDescriptionKey)}
+                                    </div>
+                                </div>
+                                <DomainPicker
+                                    key={
+                                        variant === "edit" && siteResourceId
+                                            ? `http-domain-${siteResourceId}`
+                                            : "http-domain-create"
+                                    }
+                                    orgId={orgId}
+                                    cols={2}
+                                    hideFreeDomain
+                                    defaultSubdomain={
+                                        httpConfigSubdomain ?? undefined
+                                    }
+                                    defaultDomainId={
+                                        httpConfigDomainId ?? undefined
+                                    }
+                                    defaultFullDomain={
+                                        httpConfigFullDomain ?? undefined
+                                    }
+                                    onDomainChange={(res) => {
+                                        if (res === null) {
+                                            form.setValue(
+                                                "httpConfigSubdomain",
+                                                null
+                                            );
+                                            form.setValue(
+                                                "httpConfigDomainId",
+                                                null
+                                            );
+                                            form.setValue(
+                                                "httpConfigFullDomain",
+                                                null
+                                            );
+                                            return;
+                                        }
+                                        form.setValue(
+                                            "httpConfigSubdomain",
+                                            res.subdomain ?? null
+                                        );
+                                        form.setValue(
+                                            "httpConfigDomainId",
+                                            res.domainId
+                                        );
+                                        form.setValue(
+                                            "httpConfigFullDomain",
+                                            res.fullDomain
+                                        );
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="my-8">
+                                    <label className="font-medium block">
+                                        {t("portRestrictions")}
+                                    </label>
+                                    <div className="text-sm text-muted-foreground">
+                                        {t(
+                                            "editInternalResourceDialogPortRestrictionsDescription"
+                                        )}
+                                    </div>
+                                </div>
+                                <div
+                                    className={cn(
+                                        "grid gap-4 items-start",
+                                        mode === "cidr"
+                                            ? "grid-cols-4"
+                                            : "grid-cols-12"
                                     )}
-                                </div>
-                            </div>
-                            <div
-                                className={cn(
-                                    "grid gap-4 items-start",
-                                    mode === "cidr"
-                                        ? "grid-cols-4"
-                                        : "grid-cols-12"
-                                )}
-                            >
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-1"
-                                            : "col-span-3"
-                                    }
                                 >
-                                    <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        {t("editInternalResourceDialogTcp")}
-                                    </FormLabel>
-                                </div>
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-3"
-                                            : "col-span-9"
-                                    }
-                                >
-                                    <FormField
-                                        control={form.control}
-                                        name="tcpPortRangeString"
-                                        render={() => (
-                                            <FormItem>
-                                                <div className="flex items-center gap-2">
-                                                    <Select
-                                                        value={tcpPortMode}
-                                                        onValueChange={(
-                                                            v: PortMode
-                                                        ) => setTcpPortMode(v)}
-                                                    >
-                                                        <FormControl>
-                                                            <SelectTrigger className="w-[110px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="all">
-                                                                {t("allPorts")}
-                                                            </SelectItem>
-                                                            <SelectItem value="blocked">
-                                                                {t("blocked")}
-                                                            </SelectItem>
-                                                            <SelectItem value="custom">
-                                                                {t("custom")}
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    {tcpPortMode ===
-                                                    "custom" ? (
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="80,443,8000-9000"
-                                                                value={
-                                                                    tcpCustomPorts
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setTcpCustomPorts(
-                                                                        e.target
-                                                                            .value
-                                                                    )
-                                                                }
-                                                            />
-                                                        </FormControl>
-                                                    ) : (
-                                                        <Input
-                                                            disabled
-                                                            placeholder={
-                                                                tcpPortMode ===
-                                                                "all"
-                                                                    ? t(
-                                                                          "allPortsAllowed"
-                                                                      )
-                                                                    : t(
-                                                                          "allPortsBlocked"
-                                                                      )
-                                                            }
-                                                        />
-                                                    )}
-                                                </div>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                            <div
-                                className={cn(
-                                    "grid gap-4 items-start",
-                                    mode === "cidr"
-                                        ? "grid-cols-4"
-                                        : "grid-cols-12"
-                                )}
-                            >
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-1"
-                                            : "col-span-3"
-                                    }
-                                >
-                                    <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        {t("editInternalResourceDialogUdp")}
-                                    </FormLabel>
-                                </div>
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-3"
-                                            : "col-span-9"
-                                    }
-                                >
-                                    <FormField
-                                        control={form.control}
-                                        name="udpPortRangeString"
-                                        render={() => (
-                                            <FormItem>
-                                                <div className="flex items-center gap-2">
-                                                    <Select
-                                                        value={udpPortMode}
-                                                        onValueChange={(
-                                                            v: PortMode
-                                                        ) => setUdpPortMode(v)}
-                                                    >
-                                                        <FormControl>
-                                                            <SelectTrigger className="w-[110px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="all">
-                                                                {t("allPorts")}
-                                                            </SelectItem>
-                                                            <SelectItem value="blocked">
-                                                                {t("blocked")}
-                                                            </SelectItem>
-                                                            <SelectItem value="custom">
-                                                                {t("custom")}
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    {udpPortMode ===
-                                                    "custom" ? (
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="53,123,500-600"
-                                                                value={
-                                                                    udpCustomPorts
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setUdpCustomPorts(
-                                                                        e.target
-                                                                            .value
-                                                                    )
-                                                                }
-                                                            />
-                                                        </FormControl>
-                                                    ) : (
-                                                        <Input
-                                                            disabled
-                                                            placeholder={
-                                                                udpPortMode ===
-                                                                "all"
-                                                                    ? t(
-                                                                          "allPortsAllowed"
-                                                                      )
-                                                                    : t(
-                                                                          "allPortsBlocked"
-                                                                      )
-                                                            }
-                                                        />
-                                                    )}
-                                                </div>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                            <div
-                                className={cn(
-                                    "grid gap-4 items-start",
-                                    mode === "cidr"
-                                        ? "grid-cols-4"
-                                        : "grid-cols-12"
-                                )}
-                            >
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-1"
-                                            : "col-span-3"
-                                    }
-                                >
-                                    <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        {t("editInternalResourceDialogIcmp")}
-                                    </FormLabel>
-                                </div>
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-3"
-                                            : "col-span-9"
-                                    }
-                                >
-                                    <FormField
-                                        control={form.control}
-                                        name="disableIcmp"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <div className="flex items-center gap-2">
-                                                    <FormControl>
-                                                        <Switch
-                                                            checked={
-                                                                !field.value
-                                                            }
-                                                            onCheckedChange={(
-                                                                checked
+                                    <div
+                                        className={
+                                            mode === "cidr"
+                                                ? "col-span-1"
+                                                : "col-span-3"
+                                        }
+                                    >
+                                        <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {t("editInternalResourceDialogTcp")}
+                                        </FormLabel>
+                                    </div>
+                                    <div
+                                        className={
+                                            mode === "cidr"
+                                                ? "col-span-3"
+                                                : "col-span-9"
+                                        }
+                                    >
+                                        <FormField
+                                            control={form.control}
+                                            name="tcpPortRangeString"
+                                            render={() => (
+                                                <FormItem>
+                                                    <div className="flex items-center gap-2">
+                                                        <Select
+                                                            value={tcpPortMode}
+                                                            onValueChange={(
+                                                                v: PortMode
                                                             ) =>
-                                                                field.onChange(
-                                                                    !checked
+                                                                setTcpPortMode(
+                                                                    v
                                                                 )
                                                             }
-                                                        />
-                                                    </FormControl>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {field.value
-                                                            ? t("blocked")
-                                                            : t("allowed")}
-                                                    </span>
-                                                </div>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="w-[110px]">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    {t(
+                                                                        "allPorts"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="blocked">
+                                                                    {t(
+                                                                        "blocked"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="custom">
+                                                                    {t(
+                                                                        "custom"
+                                                                    )}
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {tcpPortMode ===
+                                                        "custom" ? (
+                                                            <FormControl>
+                                                                <Input
+                                                                    placeholder="80,443,8000-9000"
+                                                                    value={
+                                                                        tcpCustomPorts
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        setTcpCustomPorts(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </FormControl>
+                                                        ) : (
+                                                            <Input
+                                                                disabled
+                                                                placeholder={
+                                                                    tcpPortMode ===
+                                                                    "all"
+                                                                        ? t(
+                                                                              "allPortsAllowed"
+                                                                          )
+                                                                        : t(
+                                                                              "allPortsBlocked"
+                                                                          )
+                                                                }
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                <div
+                                    className={cn(
+                                        "grid gap-4 items-start",
+                                        mode === "cidr"
+                                            ? "grid-cols-4"
+                                            : "grid-cols-12"
+                                    )}
+                                >
+                                    <div
+                                        className={
+                                            mode === "cidr"
+                                                ? "col-span-1"
+                                                : "col-span-3"
+                                        }
+                                    >
+                                        <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {t("editInternalResourceDialogUdp")}
+                                        </FormLabel>
+                                    </div>
+                                    <div
+                                        className={
+                                            mode === "cidr"
+                                                ? "col-span-3"
+                                                : "col-span-9"
+                                        }
+                                    >
+                                        <FormField
+                                            control={form.control}
+                                            name="udpPortRangeString"
+                                            render={() => (
+                                                <FormItem>
+                                                    <div className="flex items-center gap-2">
+                                                        <Select
+                                                            value={udpPortMode}
+                                                            onValueChange={(
+                                                                v: PortMode
+                                                            ) =>
+                                                                setUdpPortMode(
+                                                                    v
+                                                                )
+                                                            }
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger className="w-[110px]">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="all">
+                                                                    {t(
+                                                                        "allPorts"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="blocked">
+                                                                    {t(
+                                                                        "blocked"
+                                                                    )}
+                                                                </SelectItem>
+                                                                <SelectItem value="custom">
+                                                                    {t(
+                                                                        "custom"
+                                                                    )}
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {udpPortMode ===
+                                                        "custom" ? (
+                                                            <FormControl>
+                                                                <Input
+                                                                    placeholder="53,123,500-600"
+                                                                    value={
+                                                                        udpCustomPorts
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        setUdpCustomPorts(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </FormControl>
+                                                        ) : (
+                                                            <Input
+                                                                disabled
+                                                                placeholder={
+                                                                    udpPortMode ===
+                                                                    "all"
+                                                                        ? t(
+                                                                              "allPortsAllowed"
+                                                                          )
+                                                                        : t(
+                                                                              "allPortsBlocked"
+                                                                          )
+                                                                }
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                <div
+                                    className={cn(
+                                        "grid gap-4 items-start",
+                                        mode === "cidr"
+                                            ? "grid-cols-4"
+                                            : "grid-cols-12"
+                                    )}
+                                >
+                                    <div
+                                        className={
+                                            mode === "cidr"
+                                                ? "col-span-1"
+                                                : "col-span-3"
+                                        }
+                                    >
+                                        <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                            {t(
+                                                "editInternalResourceDialogIcmp"
+                                            )}
+                                        </FormLabel>
+                                    </div>
+                                    <div
+                                        className={
+                                            mode === "cidr"
+                                                ? "col-span-3"
+                                                : "col-span-9"
+                                        }
+                                    >
+                                        <FormField
+                                            control={form.control}
+                                            name="disableIcmp"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <div className="flex items-center gap-2">
+                                                        <FormControl>
+                                                            <Switch
+                                                                checked={
+                                                                    !field.value
+                                                                }
+                                                                onCheckedChange={(
+                                                                    checked
+                                                                ) =>
+                                                                    field.onChange(
+                                                                        !checked
+                                                                    )
+                                                                }
+                                                            />
+                                                        </FormControl>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {field.value
+                                                                ? t("blocked")
+                                                                : t("allowed")}
+                                                        </span>
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     <div className="space-y-4 mt-4 p-1">
