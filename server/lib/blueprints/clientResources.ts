@@ -84,6 +84,7 @@ export async function updateClientResources(
                     siteId: site.siteId,
                     mode: resourceData.mode,
                     destination: resourceData.destination,
+                    destinationPort: resourceData["destination-port"],
                     enabled: true, // hardcoded for now
                     // enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
@@ -223,6 +224,7 @@ export async function updateClientResources(
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
                     destination: resourceData.destination,
+                    destinationPort: resourceData["destination-port"],
                     enabled: true, // hardcoded for now
                     // enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,

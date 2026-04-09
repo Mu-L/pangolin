@@ -36,11 +36,11 @@ const createSiteResourceParamsSchema = z.strictObject({
 const createSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "port"]),
+        mode: z.enum(["host", "cidr", "port", "http", "https"]),
         siteId: z.int(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
-        // destinationPort: z.int().positive().optional(),
+        destinationPort: z.int().positive().optional(),
         destination: z.string().min(1),
         enabled: z.boolean().default(true),
         alias: z
@@ -163,7 +163,7 @@ export async function createSiteResource(
             mode,
             // protocol,
             // proxyPort,
-            // destinationPort,
+            destinationPort,
             destination,
             enabled,
             alias,
@@ -295,6 +295,7 @@ export async function createSiteResource(
                 name,
                 mode: mode as "host" | "cidr",
                 destination,
+                destinationPort,
                 enabled,
                 alias,
                 aliasAddress,

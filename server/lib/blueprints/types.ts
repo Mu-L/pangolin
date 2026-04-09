@@ -325,11 +325,11 @@ export function isTargetsOnlyResource(resource: any): boolean {
 export const ClientResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr"]),
+        mode: z.enum(["host", "cidr", "http", "https"]),
         site: z.string(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
-        // destinationPort: z.int().positive().optional(),
+        "destination-port": z.int().positive().optional(),
         destination: z.string().min(1),
         // enabled: z.boolean().default(true),
         "tcp-ports": portRangeStringSchema.optional().default("*"),
