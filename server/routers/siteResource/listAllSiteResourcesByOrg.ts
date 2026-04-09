@@ -88,7 +88,7 @@ function querySiteResourcesBase() {
             niceId: siteResources.niceId,
             name: siteResources.name,
             mode: siteResources.mode,
-            protocol: siteResources.protocol,
+            scheme: siteResources.scheme,
             proxyPort: siteResources.proxyPort,
             destinationPort: siteResources.destinationPort,
             destination: siteResources.destination,

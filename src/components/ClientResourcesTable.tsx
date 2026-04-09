@@ -52,7 +52,7 @@ export type InternalResourceRow = {
     siteId: number;
     siteNiceId: string;
     destination: string;
-    // destinationPort: number | null;
+    httpHttpsPort: number | null;
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
@@ -62,6 +62,42 @@ export type InternalResourceRow = {
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
 };
+
+function resolveHttpHttpsDisplayPort(
+    mode: "http" | "https",
+    httpHttpsPort: number | null
+): number {
+    if (httpHttpsPort != null) {
+        return httpHttpsPort;
+    }
+    return mode === "https" ? 443 : 80;
+}
+
+function formatDestinationDisplay(row: InternalResourceRow): string {
+    const { mode, destination, httpHttpsPort } = row;
+    if (mode !== "http" && mode !== "https") {
+        return destination;
+    }
+    const port = resolveHttpHttpsDisplayPort(mode, httpHttpsPort);
+    const hostPart =
+        destination.includes(":") && !destination.startsWith("[")
+            ? `[${destination}]`
+            : destination;
+    return `${hostPart}:${port}`;
+}
+
+function formatHttpHttpsAliasUrl(mode: "http" | "https", alias: string): string {
+    return `${mode}://${alias}`;
+}
+
+function isSafeUrlForLink(href: string): boolean {
+    try {
+        void new URL(href);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 type ClientResourcesTableProps = {
     internalResources: InternalResourceRow[];
@@ -256,11 +292,12 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
+                const display = formatDestinationDisplay(resourceRow);
                 return (
                     <CopyToClipboard
-                        text={resourceRow.destination}
+                        text={display}
                         isLink={false}
-                        displayText={resourceRow.destination}
+                        displayText={display}
                     />
                 );
             }
@@ -273,15 +310,33 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return resourceRow.mode === "host" && resourceRow.alias ? (
-                    <CopyToClipboard
-                        text={resourceRow.alias}
-                        isLink={false}
-                        displayText={resourceRow.alias}
-                    />
-                ) : (
-                    <span>-</span>
-                );
+                if (resourceRow.mode === "host" && resourceRow.alias) {
+                    return (
+                        <CopyToClipboard
+                            text={resourceRow.alias}
+                            isLink={false}
+                            displayText={resourceRow.alias}
+                        />
+                    );
+                }
+                if (
+                    (resourceRow.mode === "http" ||
+                        resourceRow.mode === "https") &&
+                    resourceRow.alias
+                ) {
+                    const url = formatHttpHttpsAliasUrl(
+                        resourceRow.mode,
+                        resourceRow.alias
+                    );
+                    return (
+                        <CopyToClipboard
+                            text={url}
+                            isLink={isSafeUrlForLink(url)}
+                            displayText={url}
+                        />
+                    );
+                }
+                return <span>-</span>;
             }
         },
         {

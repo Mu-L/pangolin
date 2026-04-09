@@ -67,7 +67,7 @@ export default async function ClientResourcesPage(
                 // proxyPort: siteResource.proxyPort,
                 siteId: siteResource.siteId,
                 destination: siteResource.destination,
-                // destinationPort: siteResource.destinationPort,
+                httpHttpsPort: siteResource.destinationPort ?? null,
                 alias: siteResource.alias || null,
                 aliasAddress: siteResource.aliasAddress || null,
                 siteNiceId: siteResource.siteNiceId,

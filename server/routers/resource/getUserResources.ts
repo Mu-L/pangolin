@@ -144,7 +144,7 @@ export async function getUserResources(
             name: string;
             destination: string;
             mode: string;
-            protocol: string | null;
+            scheme: string | null;
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
@@ -156,7 +156,7 @@ export async function getUserResources(
                     name: siteResources.name,
                     destination: siteResources.destination,
                     mode: siteResources.mode,
-                    protocol: siteResources.protocol,
+                    scheme: siteResources.scheme,
                     enabled: siteResources.enabled,
                     alias: siteResources.alias,
                     aliasAddress: siteResources.aliasAddress
@@ -240,7 +240,7 @@ export async function getUserResources(
                 name: siteResource.name,
                 destination: siteResource.destination,
                 mode: siteResource.mode,
-                protocol: siteResource.protocol,
+                protocol: siteResource.scheme,
                 enabled: siteResource.enabled,
                 alias: siteResource.alias,
                 aliasAddress: siteResource.aliasAddress,
@@ -289,7 +289,7 @@ export type GetUserResourcesResponse = {
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
-            type: 'site';
+            type: "site";
         }>;
     };
 };
