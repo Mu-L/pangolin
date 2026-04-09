@@ -38,7 +38,7 @@ export const startRemoteExitNodeOfflineChecker = (): void => {
             );
 
             // Find clients that haven't pinged in the last 2 minutes and mark them as offline
-            const newlyOfflineNodes = await db
+            const offlineNodes = await db
                 .update(exitNodes)
                 .set({ online: false })
                 .where(
@@ -53,32 +53,15 @@ export const startRemoteExitNodeOfflineChecker = (): void => {
                 )
                 .returning();
 
-            // Update the sites to offline if they have not pinged either
-            const exitNodeIds = newlyOfflineNodes.map(
-                (node) => node.exitNodeId
-            );
-
-            const sitesOnNode = await db
-                .select()
-                .from(sites)
-                .where(
-                    and(
-                        eq(sites.online, true),
-                        inArray(sites.exitNodeId, exitNodeIds)
-                    )
+            if (offlineNodes.length > 0) {
+                logger.info(
+                    `checkRemoteExitNodeOffline: Marked ${offlineNodes.length} remoteExitNode client(s) offline due to inactivity`
                 );
 
-            // loop through the sites and process their lastBandwidthUpdate as an iso string and if its more than 1 minute old then mark the site offline
-            for (const site of sitesOnNode) {
-                if (!site.lastBandwidthUpdate) {
-                    continue;
-                }
-                const lastBandwidthUpdate = new Date(site.lastBandwidthUpdate);
-                if (Date.now() - lastBandwidthUpdate.getTime() > 60 * 1000) {
-                    await db
-                        .update(sites)
-                        .set({ online: false })
-                        .where(eq(sites.siteId, site.siteId));
+                for (const offlineClient of offlineNodes) {
+                    logger.debug(
+                        `checkRemoteExitNodeOffline: Client ${offlineClient.exitNodeId} marked offline (lastPing: ${offlineClient.lastPing})`
+                    );
                 }
             }
         } catch (error) {

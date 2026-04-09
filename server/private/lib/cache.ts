@@ -1,3 +1,16 @@
+/*
+ * This file is part of a proprietary work.
+ *
+ * Copyright (c) 2025 Fossorial, Inc.
+ * All rights reserved.
+ *
+ * This file is licensed under the Fossorial Commercial License.
+ * You may not use this file except in compliance with the License.
+ * Unauthorized use, copying, modification, or distribution is strictly prohibited.
+ *
+ * This file is not licensed under the AGPLv3.
+ */
+
 import NodeCache from "node-cache";
 import logger from "@server/logger";
 import { redisManager } from "@server/private/lib/redis";
@@ -24,23 +37,31 @@ setInterval(() => {
  */
 class AdaptiveCache {
     private useRedis(): boolean {
-        return redisManager.isRedisEnabled() && redisManager.getHealthStatus().isHealthy;
+        return (
+            redisManager.isRedisEnabled() &&
+            redisManager.getHealthStatus().isHealthy
+        );
     }
 
     /**
      * Set a value in the cache
      * @param key - Cache key
      * @param value - Value to cache (will be JSON stringified for Redis)
-     * @param ttl - Time to live in seconds (0 = no expiration)
+     * @param ttl - Time to live in seconds (0 = no expiration; omit = 3600s for Redis)
      * @returns boolean indicating success
      */
     async set(key: string, value: any, ttl?: number): Promise<boolean> {
         const effectiveTtl = ttl === 0 ? undefined : ttl;
+        const redisTtl = ttl === 0 ? undefined : (ttl ?? 3600);
 
         if (this.useRedis()) {
             try {
                 const serialized = JSON.stringify(value);
-                const success = await redisManager.set(key, serialized, effectiveTtl);
+                const success = await redisManager.set(
+                    key,
+                    serialized,
+                    redisTtl
+                );
 
                 if (success) {
                     logger.debug(`Set key in Redis: ${key}`);
@@ -48,7 +69,9 @@ class AdaptiveCache {
                 }
 
                 // Redis failed, fall through to local cache
-                logger.debug(`Redis set failed for key ${key}, falling back to local cache`);
+                logger.debug(
+                    `Redis set failed for key ${key}, falling back to local cache`
+                );
             } catch (error) {
                 logger.error(`Redis set error for key ${key}:`, error);
                 // Fall through to local cache
@@ -120,9 +143,14 @@ class AdaptiveCache {
                 }
 
                 // Some Redis deletes failed, fall through to local cache
-                logger.debug(`Some Redis deletes failed, falling back to local cache`);
+                logger.debug(
+                    `Some Redis deletes failed, falling back to local cache`
+                );
             } catch (error) {
-                logger.error(`Redis del error for keys ${keys.join(", ")}:`, error);
+                logger.error(
+                    `Redis del error for keys ${keys.join(", ")}:`,
+                    error
+                );
                 // Fall through to local cache
                 deletedCount = 0;
             }
@@ -195,7 +223,9 @@ class AdaptiveCache {
      */
     async flushAll(): Promise<void> {
         if (this.useRedis()) {
-            logger.warn("Adaptive cache flushAll called - Redis flush not implemented, only local cache will be flushed");
+            logger.warn(
+                "Adaptive cache flushAll called - Redis flush not implemented, only local cache will be flushed"
+            );
         }
 
         localCache.flushAll();
@@ -239,7 +269,9 @@ class AdaptiveCache {
     getTtl(key: string): number {
         // Note: This only works for local cache, Redis TTL is not supported
         if (this.useRedis()) {
-            logger.warn(`getTtl called for key ${key} but Redis TTL lookup is not implemented`);
+            logger.warn(
+                `getTtl called for key ${key} but Redis TTL lookup is not implemented`
+            );
         }
 
         const ttl = localCache.getTtl(key);
@@ -255,7 +287,9 @@ class AdaptiveCache {
      */
     keys(): string[] {
         if (this.useRedis()) {
-            logger.warn("keys() called but Redis keys are not included, only local cache keys returned");
+            logger.warn(
+                "keys() called but Redis keys are not included, only local cache keys returned"
+            );
         }
         return localCache.keys();
     }

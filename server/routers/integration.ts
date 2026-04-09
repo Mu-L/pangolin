@@ -16,6 +16,7 @@ import {
     verifyApiKey,
     verifyApiKeyOrgAccess,
     verifyApiKeyHasAction,
+    verifyApiKeyCanSetUserOrgRoles,
     verifyApiKeySiteAccess,
     verifyApiKeyResourceAccess,
     verifyApiKeyTargetAccess,
@@ -134,6 +135,13 @@ authenticated.post(
     verifyApiKeyHasAction(ActionsEnum.updateSite),
     logActionAudit(ActionsEnum.updateSite),
     site.updateSite
+);
+authenticated.post(
+    "/org/:orgId/reset-bandwidth",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.resetSiteBandwidth),
+    logActionAudit(ActionsEnum.resetSiteBandwidth),
+    org.resetOrgBandwidth
 );
 
 authenticated.delete(
@@ -588,7 +596,7 @@ authenticated.post(
     verifyLimits,
     verifyApiKeyHasAction(ActionsEnum.addUserRole),
     logActionAudit(ActionsEnum.addUserRole),
-    user.addUserRole
+    user.addUserRoleLegacy
 );
 
 authenticated.post(

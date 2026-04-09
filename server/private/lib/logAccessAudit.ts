@@ -74,6 +74,7 @@ export async function logAccessAudit(data: {
     type: string;
     orgId: string;
     resourceId?: number;
+    siteResourceId?: number;
     user?: { username: string; userId: string };
     apiKey?: { name: string | null; apiKeyId: string };
     metadata?: any;
@@ -134,6 +135,7 @@ export async function logAccessAudit(data: {
             type: data.type,
             metadata,
             resourceId: data.resourceId,
+            siteResourceId: data.siteResourceId,
             userAgent: data.userAgent,
             ip: clientIp,
             location: countryCode

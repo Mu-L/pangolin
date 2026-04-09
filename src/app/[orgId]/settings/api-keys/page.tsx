@@ -4,7 +4,7 @@ import { AxiosResponse } from "axios";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import OrgApiKeysTable, {
     OrgApiKeyRow
-} from "../../../../components/OrgApiKeysTable";
+} from "@app/components/OrgApiKeysTable";
 import { ListOrgApiKeysResponse } from "@server/routers/apiKeys";
 import { getTranslations } from "next-intl/server";
 

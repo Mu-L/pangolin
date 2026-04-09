@@ -129,12 +129,13 @@ export default function ResourceAuthenticationPage() {
             orgId: org.org.orgId
         })
     );
-    const { data: orgIdps = [], isLoading: isLoadingOrgIdps } = useQuery(
-        orgQueries.identityProviders({
+    const { data: orgIdps = [], isLoading: isLoadingOrgIdps } = useQuery({
+        ...orgQueries.identityProviders({
             orgId: org.org.orgId,
             useOrgOnlyIdp: env.app.identityProviderMode === "org"
-        })
-    );
+        }),
+        enabled: isPaidUser(tierMatrix.orgOidc)
+    });
 
     const pageLoading =
         isLoadingOrgRoles ||

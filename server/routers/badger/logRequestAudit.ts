@@ -5,6 +5,8 @@ import cache from "#dynamic/lib/cache";
 import { calculateCutoffTimestamp } from "@server/lib/cleanupLogs";
 import { stripPortFromHost } from "@server/lib/ip";
 
+import { sanitizeString } from "@server/lib/sanitize";
+
 /**
 
 Reasons:
@@ -253,24 +255,23 @@ export async function logRequestAudit(
         // Add to buffer instead of writing directly to DB
         auditLogBuffer.push({
             timestamp,
-            orgId: data.orgId,
-            actorType,
-            actor,
-            actorId,
-            metadata,
+            orgId: sanitizeString(data.orgId),
+            actorType: sanitizeString(actorType),
+            actor: sanitizeString(actor),
+            actorId: sanitizeString(actorId),
+            metadata: sanitizeString(metadata),
             action: data.action,
             resourceId: data.resourceId,
             reason: data.reason,
-            location: data.location,
-            originalRequestURL: body.originalRequestURL,
-            scheme: body.scheme,
-            host: body.host,
-            path: body.path,
-            method: body.method,
-            ip: clientIp,
+            location: sanitizeString(data.location),
+            originalRequestURL: sanitizeString(body.originalRequestURL) ?? "",
+            scheme: sanitizeString(body.scheme) ?? "",
+            host: sanitizeString(body.host) ?? "",
+            path: sanitizeString(body.path) ?? "",
+            method: sanitizeString(body.method) ?? "",
+            ip: sanitizeString(clientIp),
             tls: body.tls
         });
-
         // Flush immediately if buffer is full, otherwise schedule a flush
         if (auditLogBuffer.length >= BATCH_SIZE) {
             // Fire and forget - don't block the caller

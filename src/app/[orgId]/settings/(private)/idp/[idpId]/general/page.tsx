@@ -45,8 +45,17 @@ import { useTranslations } from "next-intl";
 import { AxiosResponse } from "axios";
 import { ListRolesResponse } from "@server/routers/role";
 import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
+import IdpAutoProvisionUsersDescription from "@app/components/IdpAutoProvisionUsersDescription";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import {
+    compileRoleMappingExpression,
+    createMappingBuilderRule,
+    detectRoleMappingConfig,
+    ensureMappingBuilderRuleIds,
+    MappingBuilderRule,
+    RoleMappingMode
+} from "@app/lib/idpRoleMapping";
 
 export default function GeneralPage() {
     const { env } = useEnvContext();
@@ -56,9 +65,15 @@ export default function GeneralPage() {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [roles, setRoles] = useState<{ roleId: number; name: string }[]>([]);
-    const [roleMappingMode, setRoleMappingMode] = useState<
-        "role" | "expression"
-    >("role");
+    const [roleMappingMode, setRoleMappingMode] =
+        useState<RoleMappingMode>("fixedRoles");
+    const [fixedRoleNames, setFixedRoleNames] = useState<string[]>([]);
+    const [mappingBuilderClaimPath, setMappingBuilderClaimPath] =
+        useState("groups");
+    const [mappingBuilderRules, setMappingBuilderRules] = useState<
+        MappingBuilderRule[]
+    >([createMappingBuilderRule()]);
+    const [rawRoleExpression, setRawRoleExpression] = useState("");
     const [variant, setVariant] = useState<"oidc" | "google" | "azure">("oidc");
 
     const dashboardRedirectUrl = `${env.app.dashboardUrl}/auth/idp/${idpId}/oidc/callback`;
@@ -190,34 +205,8 @@ export default function GeneralPage() {
                     // Set the variant
                     setVariant(idpVariant as "oidc" | "google" | "azure");
 
-                    // Check if roleMapping matches the basic pattern '{role name}' (simple single role)
-                    // This should NOT match complex expressions like 'Admin' || 'Member'
-                    const isBasicRolePattern =
-                        roleMapping &&
-                        typeof roleMapping === "string" &&
-                        /^'[^']+'$/.test(roleMapping);
-
-                    // Determine if roleMapping is a number (roleId) or matches basic pattern
-                    const isRoleId =
-                        !isNaN(Number(roleMapping)) && roleMapping !== "";
-                    const isRoleName = isBasicRolePattern;
-
-                    // Extract role name from basic pattern for matching
-                    let extractedRoleName = null;
-                    if (isRoleName) {
-                        extractedRoleName = roleMapping.slice(1, -1); // Remove quotes
-                    }
-
-                    // Try to find matching role by name if we have a basic pattern
-                    let matchingRoleId = undefined;
-                    if (extractedRoleName && availableRoles.length > 0) {
-                        const matchingRole = availableRoles.find(
-                            (role) => role.name === extractedRoleName
-                        );
-                        if (matchingRole) {
-                            matchingRoleId = matchingRole.roleId;
-                        }
-                    }
+                    const detectedRoleMappingConfig =
+                        detectRoleMappingConfig(roleMapping);
 
                     // Extract tenant ID from Azure URLs if present
                     let tenantId = "";
@@ -238,9 +227,7 @@ export default function GeneralPage() {
                         clientSecret: data.idpOidcConfig.clientSecret,
                         autoProvision: data.idp.autoProvision,
                         roleMapping: roleMapping || null,
-                        roleId: isRoleId
-                            ? Number(roleMapping)
-                            : matchingRoleId || null
+                        roleId: null
                     };
 
                     // Add variant-specific fields
@@ -259,10 +246,18 @@ export default function GeneralPage() {
 
                     form.reset(formData);
 
-                    // Set the role mapping mode based on the data
-                    // Default to "expression" unless it's a simple roleId or basic '{role name}' pattern
-                    setRoleMappingMode(
-                        matchingRoleId && isRoleName ? "role" : "expression"
+                    setRoleMappingMode(detectedRoleMappingConfig.mode);
+                    setFixedRoleNames(detectedRoleMappingConfig.fixedRoleNames);
+                    setMappingBuilderClaimPath(
+                        detectedRoleMappingConfig.mappingBuilder.claimPath
+                    );
+                    setMappingBuilderRules(
+                        ensureMappingBuilderRuleIds(
+                            detectedRoleMappingConfig.mappingBuilder.rules
+                        )
+                    );
+                    setRawRoleExpression(
+                        detectedRoleMappingConfig.rawExpression
                     );
                 }
             } catch (e) {
@@ -327,7 +322,26 @@ export default function GeneralPage() {
                 return;
             }
 
-            const roleName = roles.find((r) => r.roleId === data.roleId)?.name;
+            const roleMappingExpression = compileRoleMappingExpression({
+                mode: roleMappingMode,
+                fixedRoleNames,
+                mappingBuilder: {
+                    claimPath: mappingBuilderClaimPath,
+                    rules: mappingBuilderRules
+                },
+                rawExpression: rawRoleExpression
+            });
+
+            if (data.autoProvision && !roleMappingExpression) {
+                toast({
+                    title: t("error"),
+                    description:
+                        "A role mapping is required when auto-provisioning is enabled.",
+                    variant: "destructive"
+                });
+                setLoading(false);
+                return;
+            }
 
             // Build payload based on variant
             let payload: any = {
@@ -335,10 +349,7 @@ export default function GeneralPage() {
                 clientId: data.clientId,
                 clientSecret: data.clientSecret,
                 autoProvision: data.autoProvision,
-                roleMapping:
-                    roleMappingMode === "role"
-                        ? `'${roleName}'`
-                        : data.roleMapping || ""
+                roleMapping: roleMappingExpression
             };
 
             // Add variant-specific fields
@@ -438,16 +449,6 @@ export default function GeneralPage() {
                             </InfoSection>
                         </InfoSections>
 
-                        <Alert variant="neutral" className="">
-                            <InfoIcon className="h-4 w-4" />
-                            <AlertTitle className="font-semibold">
-                                {t("redirectUrlAbout")}
-                            </AlertTitle>
-                            <AlertDescription>
-                                {t("redirectUrlAboutDescription")}
-                            </AlertDescription>
-                        </Alert>
-
                         {/* IDP Type Indicator */}
                         <div className="flex items-center space-x-2 mb-4">
                             <span className="text-sm font-medium text-muted-foreground">
@@ -493,46 +494,47 @@ export default function GeneralPage() {
                             {t("idpAutoProvisionUsers")}
                         </SettingsSectionTitle>
                         <SettingsSectionDescription>
-                            {t("idpAutoProvisionUsersDescription")}
+                            <IdpAutoProvisionUsersDescription />
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <SettingsSectionForm>
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.autoProvisioning}
-                            />
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.autoProvisioning}
+                        />
 
-                            <Form {...form}>
-                                <form
-                                    onSubmit={form.handleSubmit(onSubmit)}
-                                    className="space-y-4"
-                                    id="general-settings-form"
-                                >
-                                    <AutoProvisionConfigWidget
-                                        control={form.control}
-                                        autoProvision={form.watch(
-                                            "autoProvision"
-                                        )}
-                                        onAutoProvisionChange={(checked) => {
-                                            form.setValue(
-                                                "autoProvision",
-                                                checked
-                                            );
-                                        }}
-                                        roleMappingMode={roleMappingMode}
-                                        onRoleMappingModeChange={(data) => {
-                                            setRoleMappingMode(data);
-                                            // Clear roleId and roleMapping when mode changes
-                                            form.setValue("roleId", null);
-                                            form.setValue("roleMapping", null);
-                                        }}
-                                        roles={roles}
-                                        roleIdFieldName="roleId"
-                                        roleMappingFieldName="roleMapping"
-                                    />
-                                </form>
-                            </Form>
-                        </SettingsSectionForm>
+                        <Form {...form}>
+                            <form
+                                onSubmit={form.handleSubmit(onSubmit)}
+                                className="space-y-4"
+                                id="general-settings-form"
+                            >
+                                <AutoProvisionConfigWidget
+                                    autoProvision={form.watch("autoProvision")}
+                                    onAutoProvisionChange={(checked) => {
+                                        form.setValue("autoProvision", checked);
+                                    }}
+                                    roleMappingMode={roleMappingMode}
+                                    onRoleMappingModeChange={(data) => {
+                                        setRoleMappingMode(data);
+                                    }}
+                                    roles={roles}
+                                    fixedRoleNames={fixedRoleNames}
+                                    onFixedRoleNamesChange={setFixedRoleNames}
+                                    mappingBuilderClaimPath={
+                                        mappingBuilderClaimPath
+                                    }
+                                    onMappingBuilderClaimPathChange={
+                                        setMappingBuilderClaimPath
+                                    }
+                                    mappingBuilderRules={mappingBuilderRules}
+                                    onMappingBuilderRulesChange={
+                                        setMappingBuilderRules
+                                    }
+                                    rawExpression={rawRoleExpression}
+                                    onRawExpressionChange={setRawRoleExpression}
+                                />
+                            </form>
+                        </Form>
                     </SettingsSectionBody>
                 </SettingsSection>
 
@@ -832,29 +834,6 @@ export default function GeneralPage() {
                                             className="space-y-4"
                                             id="general-settings-form"
                                         >
-                                            <Alert variant="neutral">
-                                                <InfoIcon className="h-4 w-4" />
-                                                <AlertTitle className="font-semibold">
-                                                    {t("idpJmespathAbout")}
-                                                </AlertTitle>
-                                                <AlertDescription>
-                                                    {t(
-                                                        "idpJmespathAboutDescription"
-                                                    )}{" "}
-                                                    <a
-                                                        href="https://jmespath.org"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-primary hover:underline inline-flex items-center"
-                                                    >
-                                                        {t(
-                                                            "idpJmespathAboutDescriptionLink"
-                                                        )}{" "}
-                                                        <ExternalLink className="ml-1 h-4 w-4" />
-                                                    </a>
-                                                </AlertDescription>
-                                            </Alert>
-
                                             <FormField
                                                 control={form.control}
                                                 name="identifierPath"

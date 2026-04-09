@@ -6,7 +6,9 @@ import logger from "@server/logger";
 /**
  * Handles disconnecting messages from sites to show disconnected in the ui
  */
-export const handleNewtDisconnectingMessage: MessageHandler = async (context) => {
+export const handleNewtDisconnectingMessage: MessageHandler = async (
+    context
+) => {
     const { message, client: c, sendToClient } = context;
     const newt = c as Newt;
 
@@ -27,7 +29,7 @@ export const handleNewtDisconnectingMessage: MessageHandler = async (context) =>
             .set({
                 online: false
             })
-            .where(eq(sites.siteId, sites.siteId));
+            .where(eq(sites.siteId, newt.siteId));
     } catch (error) {
         logger.error("Error handling disconnecting message", { error });
     }

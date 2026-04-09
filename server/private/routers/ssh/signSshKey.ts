@@ -24,6 +24,7 @@ import {
     siteNetworks,
     userOrgs
 } from "@server/db";
+import { logAccessAudit } from "#private/lib/logAccessAudit";
 import { isLicensedOrSubscribed } from "#private/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
@@ -31,7 +32,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import { eq, or, and } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "@server/lib/sshCA";
 import config from "@server/lib/config";
@@ -127,11 +128,20 @@ export async function signSshKey(
             resource: resourceQueryString
         } = parsedBody.data;
         const userId = req.user?.userId;
-        const roleId = req.userOrgRoleId!;
+        const roleIds = req.userOrgRoleIds ?? [];
 
         if (!userId) {
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
+            );
+        }
+
+        if (roleIds.length === 0) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "User has no role in organization"
+                )
             );
         }
 
@@ -338,7 +348,7 @@ export async function signSshKey(
         const hasAccess = await canUserAccessSiteResource({
             userId: userId,
             resourceId: resource.siteResourceId,
-            roleId: roleId
+            roleIds
         });
 
         if (!hasAccess) {
@@ -350,28 +360,39 @@ export async function signSshKey(
             );
         }
 
-        const [roleRow] = await db
+        const roleRows = await db
             .select()
             .from(roles)
-            .where(eq(roles.roleId, roleId))
-            .limit(1);
+            .where(inArray(roles.roleId, roleIds));
 
-        let parsedSudoCommands: string[] = [];
-        let parsedGroups: string[] = [];
-        try {
-            parsedSudoCommands = JSON.parse(roleRow?.sshSudoCommands ?? "[]");
-            if (!Array.isArray(parsedSudoCommands)) parsedSudoCommands = [];
-        } catch {
-            parsedSudoCommands = [];
+        const parsedSudoCommands: string[] = [];
+        const parsedGroupsSet = new Set<string>();
+        let homedir: boolean | null = null;
+        const sudoModeOrder = { none: 0, commands: 1, all: 2 };
+        let sudoMode: "none" | "commands" | "all" = "none";
+        for (const roleRow of roleRows) {
+            try {
+                const cmds = JSON.parse(roleRow?.sshSudoCommands ?? "[]");
+                if (Array.isArray(cmds)) parsedSudoCommands.push(...cmds);
+            } catch {
+                // skip
+            }
+            try {
+                const grps = JSON.parse(roleRow?.sshUnixGroups ?? "[]");
+                if (Array.isArray(grps)) grps.forEach((g: string) => parsedGroupsSet.add(g));
+            } catch {
+                // skip
+            }
+            if (roleRow?.sshCreateHomeDir === true) homedir = true;
+            const m = roleRow?.sshSudoMode ?? "none";
+            if (sudoModeOrder[m as keyof typeof sudoModeOrder] > sudoModeOrder[sudoMode]) {
+                sudoMode = m as "none" | "commands" | "all";
+            }
         }
-        try {
-            parsedGroups = JSON.parse(roleRow?.sshUnixGroups ?? "[]");
-            if (!Array.isArray(parsedGroups)) parsedGroups = [];
-        } catch {
-            parsedGroups = [];
+        const parsedGroups = Array.from(parsedGroupsSet);
+        if (homedir === null && roleRows.length > 0) {
+            homedir = roleRows[0].sshCreateHomeDir ?? null;
         }
-        const homedir = roleRow?.sshCreateHomeDir ?? null;
-        const sudoMode = roleRow?.sshSudoMode ?? "none";
 
         const sites = await db
             .select({ siteId: siteNetworks.siteId })
@@ -472,6 +493,24 @@ export async function signSshKey(
                 resource: resource.name,
                 siteIds: siteIds
             })
+        });
+
+        await logAccessAudit({
+            action: true,
+            type: "ssh",
+            orgId: orgId,
+            siteResourceId: resource.siteResourceId,
+            user: req.user
+                ? { username: req.user.username ?? "", userId: req.user.userId }
+                : undefined,
+            metadata: {
+                resourceName: resource.name,
+                siteId: resource.siteId,
+                sshUsername: usernameToUse,
+                sshHost: sshHost
+            },
+            userAgent: req.headers["user-agent"],
+            requestIp: req.ip
         });
 
         return response<SignSshKeyResponse>(res, {

@@ -216,9 +216,7 @@ export default function Page() {
     const [remoteExitNodes, setRemoteExitNodes] = useState<
         ListRemoteExitNodesResponse["remoteExitNodes"]
     >([]);
-    const [loadingExitNodes, setLoadingExitNodes] = useState(
-        build === "saas"
-    );
+    const [loadingExitNodes, setLoadingExitNodes] = useState(build === "saas");
 
     const [createLoading, setCreateLoading] = useState(false);
     const [showSnippets, setShowSnippets] = useState(false);
@@ -282,6 +280,7 @@ export default function Page() {
             method: isHttp ? "http" : null,
             port: 0,
             siteId: sites.length > 0 ? sites[0].siteId : 0,
+            siteName: sites.length > 0 ? sites[0].name : "",
             path: isHttp ? null : null,
             pathMatchType: isHttp ? null : null,
             rewritePath: isHttp ? null : null,
@@ -336,8 +335,7 @@ export default function Page() {
 
     // In saas mode with no exit nodes, force HTTP
     const showTypeSelector =
-        build !== "saas" ||
-        (!loadingExitNodes && remoteExitNodes.length > 0);
+        build !== "saas" || (!loadingExitNodes && remoteExitNodes.length > 0);
 
     const baseForm = useForm({
         resolver: zodResolver(baseResourceFormSchema),
@@ -600,7 +598,10 @@ export default function Page() {
             toast({
                 variant: "destructive",
                 title: t("resourceErrorCreate"),
-                description: formatAxiosError(e, t("resourceErrorCreateMessageDescription"))
+                description: formatAxiosError(
+                    e,
+                    t("resourceErrorCreateMessageDescription")
+                )
             });
         }
 
@@ -775,7 +776,11 @@ export default function Page() {
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -799,7 +804,11 @@ export default function Page() {
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -826,7 +835,8 @@ export default function Page() {
             cell: ({ row }) => (
                 <ResourceTargetAddressItem
                     isHttp={isHttp}
-                    sites={sites}
+                    orgId={orgId!.toString()}
+                    // sites={sites}
                     getDockerStateForSite={getDockerStateForSite}
                     proxyTarget={row.original}
                     refreshContainersForSite={refreshContainersForSite}
@@ -1109,6 +1119,9 @@ export default function Page() {
                                     <SettingsSectionBody>
                                         <DomainPicker
                                             orgId={orgId as string}
+                                            warnOnProvidedDomain={
+                                                remoteExitNodes.length >= 1
+                                            }
                                             onDomainChange={(res) => {
                                                 if (!res) return;
 

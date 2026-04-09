@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, roles } from "@server/db";
-import { Org, orgs, userOrgs } from "@server/db";
+import { Org, orgs, userOrgRoles, userOrgs } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -82,10 +82,7 @@ export async function listUserOrgs(
         const { userId } = parsedParams.data;
 
         const userOrganizations = await db
-            .select({
-                orgId: userOrgs.orgId,
-                roleId: userOrgs.roleId
-            })
+            .select({ orgId: userOrgs.orgId })
             .from(userOrgs)
             .where(eq(userOrgs.userId, userId));
 
@@ -116,9 +113,26 @@ export async function listUserOrgs(
                 userOrgs,
                 and(eq(userOrgs.orgId, orgs.orgId), eq(userOrgs.userId, userId))
             )
-            .leftJoin(roles, eq(userOrgs.roleId, roles.roleId))
             .limit(limit)
             .offset(offset);
+
+        const roleRows = await db
+            .select({
+                orgId: userOrgRoles.orgId,
+                isAdmin: roles.isAdmin
+            })
+            .from(userOrgRoles)
+            .leftJoin(roles, eq(userOrgRoles.roleId, roles.roleId))
+            .where(
+                and(
+                    eq(userOrgRoles.userId, userId),
+                    inArray(userOrgRoles.orgId, userOrgIds)
+                )
+            );
+
+        const orgHasAdmin = new Set(
+            roleRows.filter((r) => r.isAdmin).map((r) => r.orgId)
+        );
 
         const totalCountResult = await db
             .select({ count: sql<number>`cast(count(*) as integer)` })
@@ -133,8 +147,8 @@ export async function listUserOrgs(
             if (val.userOrgs && val.userOrgs.isOwner) {
                 res.isOwner = val.userOrgs.isOwner;
             }
-            if (val.roles && val.roles.isAdmin) {
-                res.isAdmin = val.roles.isAdmin;
+            if (val.orgs && orgHasAdmin.has(val.orgs.orgId)) {
+                res.isAdmin = true;
             }
             if (val.userOrgs?.isOwner && val.orgs?.isBillingOrg) {
                 res.isPrimaryOrg = val.orgs.isBillingOrg;

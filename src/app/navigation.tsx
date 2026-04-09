@@ -2,7 +2,9 @@ import { SidebarNavItem } from "@app/components/SidebarNav";
 import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
+    Boxes,
     Building2,
+    Cable,
     ChartLine,
     Combine,
     CreditCard,
@@ -21,6 +23,7 @@ import {
     Settings,
     SquareMousePointer,
     TicketCheck,
+    Unplug,
     User,
     UserCog,
     Users,
@@ -189,6 +192,16 @@ export const orgNavSections = (
                                   title: "sidebarLogsAction",
                                   href: "/{orgId}/settings/logs/action",
                                   icon: <Logs className="size-4 flex-none" />
+                              },
+                              {
+                                  title: "sidebarLogsConnection",
+                                  href: "/{orgId}/settings/logs/connection",
+                                  icon: <Cable className="size-4 flex-none" />
+                              },
+                              {
+                                  title: "sidebarLogsStreaming",
+                                  href: "/{orgId}/settings/logs/streaming",
+                                  icon: <Unplug className="size-4 flex-none" />
                               }
                           ]
                         : [])
@@ -202,6 +215,11 @@ export const orgNavSections = (
                         title: "sidebarApiKeys",
                         href: "/{orgId}/settings/api-keys",
                         icon: <KeyRound className="size-4 flex-none" />
+                    },
+                    {
+                        title: "sidebarProvisioning",
+                        href: "/{orgId}/settings/provisioning",
+                        icon: <Boxes className="size-4 flex-none" />
                     },
                     {
                         title: "sidebarBluePrints",

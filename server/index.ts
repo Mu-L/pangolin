@@ -74,7 +74,7 @@ declare global {
             session: Session;
             userOrg?: UserOrg;
             apiKeyOrg?: ApiKeyOrg;
-            userOrgRoleId?: number;
+            userOrgRoleIds?: number[];
             userOrgId?: string;
             userOrgIds?: string[];
             remoteExitNode?: RemoteExitNode;

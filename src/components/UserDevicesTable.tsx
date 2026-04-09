@@ -770,7 +770,7 @@ export default function UserDevicesTable({
                 columns={columns}
                 rows={userClients || []}
                 tableId="user-clients"
-                searchPlaceholder={t("resourcesSearch")}
+                searchPlaceholder={t("userDevicesSearch")}
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing || isFiltering}
                 enableColumnVisibility

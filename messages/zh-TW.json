@@ -1091,6 +1091,7 @@
   "actionRemoveUser": "刪除用戶",
   "actionListUsers": "列出用戶",
   "actionAddUserRole": "添加用戶角色",
+  "actionSetUserOrgRoles": "Set User Roles",
   "actionGenerateAccessToken": "生成訪問令牌",
   "actionDeleteAccessToken": "刪除訪問令牌",
   "actionListAccessTokens": "訪問令牌",

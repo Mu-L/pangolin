@@ -6,14 +6,9 @@ import { db, ExitNode, exitNodes, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import { sendToExitNode } from "#dynamic/lib/exitNodes";
 import { buildClientConfigurationForNewtClient } from "./buildConfiguration";
+import { convertTargetsIfNessicary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
-
-const inputSchema = z.object({
-    publicKey: z.string(),
-    port: z.int().positive()
-});
-
-type Input = z.infer<typeof inputSchema>;
+import config from "@server/lib/config";
 
 export const handleGetConfigMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
@@ -33,16 +28,7 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         return;
     }
 
-    const parsed = inputSchema.safeParse(message.data);
-    if (!parsed.success) {
-        logger.error(
-            "handleGetConfigMessage: Invalid input: " +
-                fromError(parsed.error).toString()
-        );
-        return;
-    }
-
-    const { publicKey, port } = message.data as Input;
+    const { publicKey, port, chainId } = message.data;
     const siteId = newt.siteId;
 
     // Get the current site data
@@ -70,7 +56,7 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
 
     if (existingSite.lastHolePunch && now - existingSite.lastHolePunch > 5) {
         logger.warn(
-            `handleGetConfigMessage: Site ${existingSite.siteId} last hole punch is too old, skipping`
+            `Site last hole punch is too old; skipping this register. The site is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`
         );
         return;
     }
@@ -127,13 +113,16 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
+    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets);
+
     return {
         message: {
             type: "newt/wg/receive-config",
             data: {
                 ipAddress: site.address,
                 peers,
-                targets
+                targets: targetsToSend,
+                chainId: chainId
             }
         },
         options: {

@@ -1,6 +1,7 @@
 "use client";
 
 import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
+import IdpAutoProvisionUsersDescription from "@app/components/IdpAutoProvisionUsersDescription";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import {
     SettingsContainer,
@@ -13,7 +14,7 @@ import {
     SettingsSectionTitle
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
-import { StrategySelect } from "@app/components/StrategySelect";
+import { OidcIdpProviderTypeSelect } from "@app/components/idp/OidcIdpProviderTypeSelect";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import {
@@ -27,21 +28,26 @@ import {
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { applyOidcIdpProviderType } from "@app/lib/idp/oidcIdpProviderDefaults";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { ListRolesResponse } from "@server/routers/role";
 import { AxiosResponse } from "axios";
 import { InfoIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+    compileRoleMappingExpression,
+    createMappingBuilderRule,
+    MappingBuilderRule,
+    RoleMappingMode
+} from "@app/lib/idpRoleMapping";
 
 export default function Page() {
     const { env } = useEnvContext();
@@ -49,9 +55,15 @@ export default function Page() {
     const router = useRouter();
     const [createLoading, setCreateLoading] = useState(false);
     const [roles, setRoles] = useState<{ roleId: number; name: string }[]>([]);
-    const [roleMappingMode, setRoleMappingMode] = useState<
-        "role" | "expression"
-    >("role");
+    const [roleMappingMode, setRoleMappingMode] =
+        useState<RoleMappingMode>("fixedRoles");
+    const [fixedRoleNames, setFixedRoleNames] = useState<string[]>([]);
+    const [mappingBuilderClaimPath, setMappingBuilderClaimPath] =
+        useState("groups");
+    const [mappingBuilderRules, setMappingBuilderRules] = useState<
+        MappingBuilderRule[]
+    >([createMappingBuilderRule()]);
+    const [rawRoleExpression, setRawRoleExpression] = useState("");
     const t = useTranslations();
     const { isPaidUser } = usePaidStatus();
 
@@ -83,49 +95,6 @@ export default function Page() {
     });
 
     type CreateIdpFormValues = z.infer<typeof createIdpFormSchema>;
-
-    interface ProviderTypeOption {
-        id: "oidc" | "google" | "azure";
-        title: string;
-        description: string;
-        icon?: React.ReactNode;
-    }
-
-    const providerTypes: ReadonlyArray<ProviderTypeOption> = [
-        {
-            id: "oidc",
-            title: "OAuth2/OIDC",
-            description: t("idpOidcDescription")
-        },
-        {
-            id: "google",
-            title: t("idpGoogleTitle"),
-            description: t("idpGoogleDescription"),
-            icon: (
-                <Image
-                    src="/idp/google.png"
-                    alt={t("idpGoogleAlt")}
-                    width={24}
-                    height={24}
-                    className="rounded"
-                />
-            )
-        },
-        {
-            id: "azure",
-            title: t("idpAzureTitle"),
-            description: t("idpAzureDescription"),
-            icon: (
-                <Image
-                    src="/idp/azure.png"
-                    alt={t("idpAzureAlt")}
-                    width={24}
-                    height={24}
-                    className="rounded"
-                />
-            )
-        }
-    ];
 
     const form = useForm({
         resolver: zodResolver(createIdpFormSchema),
@@ -174,47 +143,6 @@ export default function Page() {
         fetchRoles();
     }, []);
 
-    // Handle provider type changes and set defaults
-    const handleProviderChange = (value: "oidc" | "google" | "azure") => {
-        form.setValue("type", value);
-
-        if (value === "google") {
-            // Set Google defaults
-            form.setValue(
-                "authUrl",
-                "https://accounts.google.com/o/oauth2/v2/auth"
-            );
-            form.setValue("tokenUrl", "https://oauth2.googleapis.com/token");
-            form.setValue("identifierPath", "email");
-            form.setValue("emailPath", "email");
-            form.setValue("namePath", "name");
-            form.setValue("scopes", "openid profile email");
-        } else if (value === "azure") {
-            // Set Azure Entra ID defaults (URLs will be constructed dynamically)
-            form.setValue(
-                "authUrl",
-                "https://login.microsoftonline.com/{{TENANT_ID}}/oauth2/v2.0/authorize"
-            );
-            form.setValue(
-                "tokenUrl",
-                "https://login.microsoftonline.com/{{TENANT_ID}}/oauth2/v2.0/token"
-            );
-            form.setValue("identifierPath", "email");
-            form.setValue("emailPath", "email");
-            form.setValue("namePath", "name");
-            form.setValue("scopes", "openid profile email");
-            form.setValue("tenantId", "");
-        } else {
-            // Reset to OIDC defaults
-            form.setValue("authUrl", "");
-            form.setValue("tokenUrl", "");
-            form.setValue("identifierPath", "sub");
-            form.setValue("namePath", "name");
-            form.setValue("emailPath", "email");
-            form.setValue("scopes", "openid profile email");
-        }
-    };
-
     async function onSubmit(data: CreateIdpFormValues) {
         setCreateLoading(true);
 
@@ -228,7 +156,26 @@ export default function Page() {
                 tokenUrl = tokenUrl?.replace("{{TENANT_ID}}", data.tenantId);
             }
 
-            const roleName = roles.find((r) => r.roleId === data.roleId)?.name;
+            const roleMappingExpression = compileRoleMappingExpression({
+                mode: roleMappingMode,
+                fixedRoleNames,
+                mappingBuilder: {
+                    claimPath: mappingBuilderClaimPath,
+                    rules: mappingBuilderRules
+                },
+                rawExpression: rawRoleExpression
+            });
+
+            if (data.autoProvision && !roleMappingExpression) {
+                toast({
+                    title: t("error"),
+                    description:
+                        "A role mapping is required when auto-provisioning is enabled.",
+                    variant: "destructive"
+                });
+                setCreateLoading(false);
+                return;
+            }
 
             const payload = {
                 name: data.name,
@@ -240,10 +187,7 @@ export default function Page() {
                 emailPath: data.emailPath,
                 namePath: data.namePath,
                 autoProvision: data.autoProvision,
-                roleMapping:
-                    roleMappingMode === "role"
-                        ? `'${roleName}'`
-                        : data.roleMapping || "",
+                roleMapping: roleMappingExpression,
                 scopes: data.scopes,
                 variant: data.type
             };
@@ -275,6 +219,8 @@ export default function Page() {
         }
     }
 
+    const disabled = !isPaidUser(tierMatrix.orgOidc);
+
     return (
         <>
             <div className="flex justify-between">
@@ -292,6 +238,9 @@ export default function Page() {
                 </Button>
             </div>
 
+            <PaidFeaturesAlert tiers={tierMatrix.orgOidc} />
+
+            <fieldset disabled={disabled} className={disabled ? "opacity-50 pointer-events-none" : ""}>
             <SettingsContainer>
                 <SettingsSection>
                     <SettingsSectionHeader>
@@ -303,23 +252,12 @@ export default function Page() {
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <div>
-                            <div className="mb-2">
-                                <span className="text-sm font-medium">
-                                    {t("idpType")}
-                                </span>
-                            </div>
-                            <StrategySelect
-                                options={providerTypes}
-                                defaultValue={form.getValues("type")}
-                                onChange={(value) => {
-                                    handleProviderChange(
-                                        value as "oidc" | "google" | "azure"
-                                    );
-                                }}
-                                cols={3}
-                            />
-                        </div>
+                        <OidcIdpProviderTypeSelect
+                            value={form.watch("type")}
+                            onTypeChange={(next) => {
+                                applyOidcIdpProviderType(form.setValue, next);
+                            }}
+                        />
 
                         <SettingsSectionForm>
                             <Form {...form}>
@@ -359,47 +297,48 @@ export default function Page() {
                             {t("idpAutoProvisionUsers")}
                         </SettingsSectionTitle>
                         <SettingsSectionDescription>
-                            {t("idpAutoProvisionUsersDescription")}
+                            <IdpAutoProvisionUsersDescription />
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <SettingsSectionForm>
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.autoProvisioning}
-                            />
-                            <Form {...form}>
-                                <form
-                                    className="space-y-4"
-                                    id="create-idp-form"
-                                    onSubmit={form.handleSubmit(onSubmit)}
-                                >
-                                    <AutoProvisionConfigWidget
-                                        control={form.control}
-                                        autoProvision={
-                                            form.watch(
-                                                "autoProvision"
-                                            ) as boolean
-                                        } // is this right?
-                                        onAutoProvisionChange={(checked) => {
-                                            form.setValue(
-                                                "autoProvision",
-                                                checked
-                                            );
-                                        }}
-                                        roleMappingMode={roleMappingMode}
-                                        onRoleMappingModeChange={(data) => {
-                                            setRoleMappingMode(data);
-                                            // Clear roleId and roleMapping when mode changes
-                                            form.setValue("roleId", null);
-                                            form.setValue("roleMapping", null);
-                                        }}
-                                        roles={roles}
-                                        roleIdFieldName="roleId"
-                                        roleMappingFieldName="roleMapping"
-                                    />
-                                </form>
-                            </Form>
-                        </SettingsSectionForm>
+                        <PaidFeaturesAlert
+                            tiers={tierMatrix.autoProvisioning}
+                        />
+                        <Form {...form}>
+                            <form
+                                className="space-y-4"
+                                id="create-idp-form"
+                                onSubmit={form.handleSubmit(onSubmit)}
+                            >
+                                <AutoProvisionConfigWidget
+                                    autoProvision={
+                                        form.watch("autoProvision") as boolean
+                                    } // is this right?
+                                    onAutoProvisionChange={(checked) => {
+                                        form.setValue("autoProvision", checked);
+                                    }}
+                                    roleMappingMode={roleMappingMode}
+                                    onRoleMappingModeChange={(data) => {
+                                        setRoleMappingMode(data);
+                                    }}
+                                    roles={roles}
+                                    fixedRoleNames={fixedRoleNames}
+                                    onFixedRoleNamesChange={setFixedRoleNames}
+                                    mappingBuilderClaimPath={
+                                        mappingBuilderClaimPath
+                                    }
+                                    onMappingBuilderClaimPathChange={
+                                        setMappingBuilderClaimPath
+                                    }
+                                    mappingBuilderRules={mappingBuilderRules}
+                                    onMappingBuilderRulesChange={
+                                        setMappingBuilderRules
+                                    }
+                                    rawExpression={rawRoleExpression}
+                                    onRawExpressionChange={setRawRoleExpression}
+                                />
+                            </form>
+                        </Form>
                     </SettingsSectionBody>
                 </SettingsSection>
 
@@ -674,16 +613,6 @@ export default function Page() {
                                         />
                                     </form>
                                 </Form>
-
-                                <Alert variant="neutral">
-                                    <InfoIcon className="h-4 w-4" />
-                                    <AlertTitle className="font-semibold">
-                                        {t("idpOidcConfigureAlert")}
-                                    </AlertTitle>
-                                    <AlertDescription>
-                                        {t("idpOidcConfigureAlertDescription")}
-                                    </AlertDescription>
-                                </Alert>
                             </SettingsSectionBody>
                         </SettingsSection>
 
@@ -812,9 +741,10 @@ export default function Page() {
                 </Button>
                 <Button
                     type="submit"
-                    disabled={createLoading || !isPaidUser(tierMatrix.orgOidc)}
+                    disabled={createLoading || disabled}
                     loading={createLoading}
                     onClick={() => {
+                        if (disabled) return;
                         // log any issues with the form
                         console.log(form.formState.errors);
                         form.handleSubmit(onSubmit)();
@@ -823,6 +753,7 @@ export default function Page() {
                     {t("idpSubmit")}
                 </Button>
             </div>
+            </fieldset>
         </>
     );
 }

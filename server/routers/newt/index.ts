@@ -8,3 +8,5 @@ export * from "./handleNewtPingRequestMessage";
 export * from "./handleApplyBlueprintMessage";
 export * from "./handleNewtPingMessage";
 export * from "./handleNewtDisconnectingMessage";
+export * from "./handleConnectionLogMessage";
+export * from "./registerNewt";

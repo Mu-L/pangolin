@@ -10,6 +10,7 @@ import {
     roles,
     Transaction,
     userClients,
+    userOrgRoles,
     userOrgs
 } from "@server/db";
 import { getUniqueClientName } from "@server/db/names";
@@ -39,20 +40,36 @@ export async function calculateUserClientsForOrgs(
             return;
         }
 
-        // Get all user orgs
-        const allUserOrgs = await transaction
+        // Get all user orgs with all roles (for org list and role-based logic)
+        const userOrgRoleRows = await transaction
             .select()
             .from(userOrgs)
-            .innerJoin(roles, eq(roles.roleId, userOrgs.roleId))
+            .innerJoin(
+                userOrgRoles,
+                and(
+                    eq(userOrgs.userId, userOrgRoles.userId),
+                    eq(userOrgs.orgId, userOrgRoles.orgId)
+                )
+            )
+            .innerJoin(roles, eq(userOrgRoles.roleId, roles.roleId))
             .where(eq(userOrgs.userId, userId));
 
-        const userOrgIds = allUserOrgs.map(({ userOrgs: uo }) => uo.orgId);
+        const userOrgIds = [...new Set(userOrgRoleRows.map((r) => r.userOrgs.orgId))];
+        const orgIdToRoleRows = new Map<
+            string,
+            (typeof userOrgRoleRows)[0][]
+        >();
+        for (const r of userOrgRoleRows) {
+            const list = orgIdToRoleRows.get(r.userOrgs.orgId) ?? [];
+            list.push(r);
+            orgIdToRoleRows.set(r.userOrgs.orgId, list);
+        }
 
         // For each OLM, ensure there's a client in each org the user is in
         for (const olm of userOlms) {
-            for (const userRoleOrg of allUserOrgs) {
-                const { userOrgs: userOrg, roles: role } = userRoleOrg;
-                const orgId = userOrg.orgId;
+            for (const orgId of orgIdToRoleRows.keys()) {
+                const roleRowsForOrg = orgIdToRoleRows.get(orgId)!;
+                const userOrg = roleRowsForOrg[0].userOrgs;
 
                 const [org] = await transaction
                     .select()
@@ -196,7 +213,7 @@ export async function calculateUserClientsForOrgs(
                 const requireApproval =
                     build !== "oss" &&
                     isOrgLicensed &&
-                    role.requireDeviceApproval;
+                    roleRowsForOrg.some((r) => r.roles.requireDeviceApproval);
 
                 const newClientData: InferInsertModel<typeof clients> = {
                     userId,

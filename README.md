@@ -43,7 +43,7 @@
 
 <p align="center">
     <strong>
-        Start testing Pangolin at <a href="https://app.pangolin.net/auth/signup">app.pangolin.net</a>
+        Get started with Pangolin at <a href="https://app.pangolin.net/auth/signup">app.pangolin.net</a>
     </strong>
 </p>
 
@@ -60,9 +60,9 @@ Pangolin is an open-source, identity-based remote access platform built on WireG
 
 | <img width=500 /> | Description |
 |-----------------|--------------|
+| **Pangolin Cloud** | Fully managed service with instant setup and pay-as-you-go pricing - no infrastructure required. Or, self-host your own [remote node](https://docs.pangolin.net/manage/remote-node/understanding-nodes) and connect to our control plane. |
 | **Self-Host: Community Edition** | Free, open source, and licensed under AGPL-3. |
 | **Self-Host: Enterprise Edition** | Licensed under Fossorial Commercial License. Free for personal and hobbyist use, and for businesses earning under \$100K USD annually. |
-| **Pangolin Cloud** | Fully managed service with instant setup and pay-as-you-go pricing — no infrastructure required. Or, self-host your own [remote node](https://docs.pangolin.net/manage/remote-node/nodes) and connect to our control plane. |
 
 ## Key Features
 
@@ -85,16 +85,15 @@ Download the Pangolin client for your platform:
 
 ## Get Started
 
+### Sign up now
+
+Create an account at [app.pangolin.net](https://app.pangolin.net) to get started with Pangolin Cloud. A generous free tier is available.
+
 ### Check out the docs
 
 We encourage everyone to read the full documentation first, which is
 available at [docs.pangolin.net](https://docs.pangolin.net). This README provides only a very brief subset of
 the docs to illustrate some basic ideas.
-
-### Sign up and try now
-
-For Pangolin's managed service, you will first need to create an account at
-[app.pangolin.net](https://app.pangolin.net). We have a generous free tier to get started.
 
 ## Licensing
 

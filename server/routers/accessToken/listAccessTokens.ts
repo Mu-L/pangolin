@@ -208,7 +208,7 @@ export async function listAccessTokens(
                 .where(
                     or(
                         eq(userResources.userId, req.user!.userId),
-                        eq(roleResources.roleId, req.userOrgRoleId!)
+                        inArray(roleResources.roleId, req.userOrgRoleIds!)
                     )
                 );
         } else {

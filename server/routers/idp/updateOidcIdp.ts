@@ -31,7 +31,8 @@ const bodySchema = z.strictObject({
     autoProvision: z.boolean().optional(),
     defaultRoleMapping: z.string().optional(),
     defaultOrgMapping: z.string().optional(),
-    tags: z.string().optional()
+    tags: z.string().optional(),
+    variant: z.enum(["oidc", "google", "azure"]).optional()
 });
 
 export type UpdateIdpResponse = {
@@ -96,7 +97,8 @@ export async function updateOidcIdp(
             autoProvision,
             defaultRoleMapping,
             defaultOrgMapping,
-            tags
+            tags,
+            variant
         } = parsedBody.data;
 
         if (process.env.IDENTITY_PROVIDER_MODE === "org") {
@@ -159,7 +161,8 @@ export async function updateOidcIdp(
                 scopes,
                 identifierPath,
                 emailPath,
-                namePath
+                namePath,
+                variant
             };
 
             keysToUpdate = Object.keys(configData).filter(

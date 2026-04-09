@@ -540,7 +540,7 @@ export default function MachineClientsTable({
                 columns={columns}
                 rows={machineClients}
                 tableId="machine-clients"
-                searchPlaceholder={t("resourcesSearch")}
+                searchPlaceholder={t("machinesSearch")}
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(`/${orgId}/settings/clients/machine/create`)

@@ -79,7 +79,7 @@ export async function createRemoteExitNode(
 
         const { remoteExitNodeId, secret } = parsedBody.data;
 
-        if (req.user && !req.userOrgRoleId) {
+        if (req.user && (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );

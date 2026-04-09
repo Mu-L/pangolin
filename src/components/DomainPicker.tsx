@@ -79,6 +79,7 @@ interface DomainPickerProps {
     defaultFullDomain?: string | null;
     defaultSubdomain?: string | null;
     defaultDomainId?: string | null;
+    warnOnProvidedDomain?: boolean;
 }
 
 export default function DomainPicker({
@@ -88,7 +89,8 @@ export default function DomainPicker({
     hideFreeDomain = false,
     defaultSubdomain,
     defaultFullDomain,
-    defaultDomainId
+    defaultDomainId,
+    warnOnProvidedDomain = false
 }: DomainPickerProps) {
     const { env } = useEnvContext();
     const api = createApiClient({ env });
@@ -689,6 +691,14 @@ export default function DomainPicker({
 
             {showProvidedDomainSearch && (
                 <div className="space-y-4">
+                    {warnOnProvidedDomain && (
+                        <Alert variant="warning">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                {t("domainPickerRemoteExitNodeWarning")}
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     {isChecking && (
                         <div className="flex items-center justify-center p-8">
                             <div className="flex items-center space-x-2 text-sm text-muted-foreground">

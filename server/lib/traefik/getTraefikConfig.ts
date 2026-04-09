@@ -479,10 +479,7 @@ export async function getTraefikConfig(
 
                         // TODO: HOW TO HANDLE ^^^^^^ BETTER
                         const anySitesOnline = targets.some(
-                            (target) =>
-                            target.site.online ||
-                            target.site.type === "local" ||
-                            target.site.type === "wireguard"
+                            (target) => target.site.online
                         );
 
                         return (
@@ -495,7 +492,7 @@ export async function getTraefikConfig(
                                     if (target.health == "unhealthy") {
                                         return false;
                                     }
-                                    
+
                                     // If any sites are online, exclude offline sites
                                     if (anySitesOnline && !target.site.online) {
                                         return false;
@@ -610,10 +607,7 @@ export async function getTraefikConfig(
                     servers: (() => {
                         // Check if any sites are online
                         const anySitesOnline = targets.some(
-                            (target) =>
-                            target.site.online ||
-                            target.site.type === "local" ||
-                            target.site.type === "wireguard"
+                            (target) => target.site.online
                         );
 
                         return targets
@@ -621,7 +615,7 @@ export async function getTraefikConfig(
                                 if (!target.enabled) {
                                     return false;
                                 }
-                                
+
                                 // If any sites are online, exclude offline sites
                                 if (anySitesOnline && !target.site.online) {
                                     return false;

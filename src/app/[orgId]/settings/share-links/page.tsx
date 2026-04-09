@@ -9,7 +9,7 @@ import OrgProvider from "@app/providers/OrgProvider";
 import { ListAccessTokensResponse } from "@server/routers/accessToken";
 import ShareLinksTable, {
     ShareLinkRow
-} from "../../../../components/ShareLinksTable";
+} from "@app/components/ShareLinksTable";
 import { getTranslations } from "next-intl/server";
 
 type ShareLinksPageProps = {

@@ -1,5 +1,4 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import {
     clientSiteResources,
     clientSiteResourcesAssociationsCache,
@@ -9,33 +8,32 @@ import {
     roles,
     roleSiteResources,
     siteNetworks,
+    SiteResource,
+    siteResources,
     sites,
     networks,
     Transaction,
     userSiteResources
 } from "@server/db";
-import { siteResources, SiteResource } from "@server/db";
 import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
 import { eq, and, ne, inArray } from "drizzle-orm";
-import { fromError } from "zod-validation-error";
-import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import { updatePeerData, updateTargets } from "@server/routers/client/targets";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     generateAliasConfig,
     generateRemoteSubnets,
-    generateSubnetProxyTargets,
+    generateSubnetProxyTargetV2,
     isIpInCidr,
     portRangeStringSchema
 } from "@server/lib/ip";
-import {
-    getClientSiteResourceAccess,
-    rebuildClientAssociationsFromSiteResource
-} from "@server/lib/rebuildClientAssociations";
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import logger from "@server/logger";
+import HttpCode from "@server/types/HttpCode";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const updateSiteResourceParamsSchema = z.strictObject({
     siteResourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -46,6 +44,15 @@ const updateSiteResourceSchema = z
         name: z.string().min(1).max(255).optional(),
         siteIds: z.array(z.int()),
         // niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
+        niceId: z
+            .string()
+            .min(1)
+            .max(255)
+            .regex(
+                /^[a-zA-Z0-9-]+$/,
+                "niceId can only contain letters, numbers, and dashes"
+            )
+            .optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
         mode: z.enum(["host", "cidr"]).optional(),
         // protocol: z.enum(["tcp", "udp"]).nullish(),
@@ -169,6 +176,7 @@ export async function updateSiteResource(
         const {
             name,
             siteIds, // because it can change
+            niceId,
             mode,
             destination,
             alias,
@@ -344,14 +352,15 @@ export async function updateSiteResource(
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
-                        name: name,
-                        mode: mode,
-                        destination: destination,
-                        enabled: enabled,
+                        name,
+                        niceId,
+                        mode,
+                        destination,
+                        enabled,
                         alias: alias && alias.trim() ? alias : null,
-                        tcpPortRangeString: tcpPortRangeString,
-                        udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp,
+                        tcpPortRangeString,
+                        udpPortRangeString,
+                        disableIcmp,
                         ...sshPamSet
                     })
                     .where(
@@ -467,7 +476,10 @@ export async function updateSiteResource(
                 await trx
                     .delete(siteNetworks)
                     .where(
-                        eq(siteNetworks.networkId, updatedSiteResource.networkId!)
+                        eq(
+                            siteNetworks.networkId,
+                            updatedSiteResource.networkId!
+                        )
                     );
 
                 for (const siteId of siteIds) {
@@ -546,9 +558,7 @@ export async function updateSiteResource(
                     );
                 }
 
-                logger.info(
-                    `Updated site resource ${siteResourceId}`
-                );
+                logger.info(`Updated site resource ${siteResourceId}`);
 
                 await handleMessagingForUpdatedSiteResource(
                     existingSiteResource,
@@ -635,11 +645,11 @@ export async function handleMessagingForUpdatedSiteResource(
 
             // Only update targets on newt if destination changed
             if (destinationChanged || portRangesChanged) {
-                const oldTargets = generateSubnetProxyTargets(
+                const oldTarget = generateSubnetProxyTargetV2(
                     existingSiteResource,
                     mergedAllClients
                 );
-                const newTargets = generateSubnetProxyTargets(
+                const newTarget = generateSubnetProxyTargetV2(
                     updatedSiteResource,
                     mergedAllClients
                 );
@@ -647,8 +657,8 @@ export async function handleMessagingForUpdatedSiteResource(
                 await updateTargets(
                     newt.newtId,
                     {
-                        oldTargets: oldTargets,
-                        newTargets: newTargets
+                        oldTargets: oldTarget ? [oldTarget] : [],
+                        newTargets: newTarget ? [newTarget] : []
                     },
                     newt.version
                 );
@@ -670,10 +680,7 @@ export async function handleMessagingForUpdatedSiteResource(
                     )
                     .innerJoin(
                         siteNetworks,
-                        eq(
-                            siteNetworks.networkId,
-                            siteResources.networkId
-                        )
+                        eq(siteNetworks.networkId, siteResources.networkId)
                     )
                     .where(
                         and(
@@ -692,7 +699,6 @@ export async function handleMessagingForUpdatedSiteResource(
                             )
                         )
                     );
-
 
                 const oldDestinationStillInUseByASite =
                     oldDestinationStillInUseSites.length > 0;

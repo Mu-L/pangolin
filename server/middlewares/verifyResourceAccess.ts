@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { db, Resource } from "@server/db";
 import { resources, userOrgs, userResources, roleResources } from "@server/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
+import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 export async function verifyResourceAccess(
     req: Request,
@@ -107,20 +108,28 @@ export async function verifyResourceAccess(
             }
         }
 
-        const userOrgRoleId = req.userOrg.roleId;
-        req.userOrgRoleId = userOrgRoleId;
+        req.userOrgRoleIds = await getUserOrgRoleIds(
+            req.userOrg.userId,
+            resource.orgId
+        );
         req.userOrgId = resource.orgId;
 
-        const roleResourceAccess = await db
-            .select()
-            .from(roleResources)
-            .where(
-                and(
-                    eq(roleResources.resourceId, resource.resourceId),
-                    eq(roleResources.roleId, userOrgRoleId)
-                )
-            )
-            .limit(1);
+        const roleResourceAccess =
+            (req.userOrgRoleIds?.length ?? 0) > 0
+                ? await db
+                      .select()
+                      .from(roleResources)
+                      .where(
+                          and(
+                              eq(roleResources.resourceId, resource.resourceId),
+                              inArray(
+                                  roleResources.roleId,
+                                  req.userOrgRoleIds!
+                              )
+                          )
+                      )
+                      .limit(1)
+                : [];
 
         if (roleResourceAccess.length > 0) {
             return next();

@@ -24,6 +24,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
 import IdpTypeBadge from "./IdpTypeBadge";
+import UserRoleBadges from "./UserRoleBadges";
 
 export type UserRow = {
     id: string;
@@ -36,7 +37,7 @@ export type UserRow = {
     type: string;
     idpVariant: string | null;
     status: string;
-    role: string;
+    roleLabels: string[];
     isOwner: boolean;
 };
 
@@ -124,7 +125,8 @@ export default function UsersTable({ users: u }: UsersTableProps) {
             }
         },
         {
-            accessorKey: "role",
+            id: "role",
+            accessorFn: (row) => row.roleLabels.join(", "),
             friendlyName: t("role"),
             header: ({ column }) => {
                 return (
@@ -140,13 +142,7 @@ export default function UsersTable({ users: u }: UsersTableProps) {
                 );
             },
             cell: ({ row }) => {
-                const userRow = row.original;
-
-                return (
-                    <div className="flex flex-row items-center gap-2">
-                        <span>{userRow.role}</span>
-                    </div>
-                );
+                return <UserRoleBadges roleLabels={row.original.roleLabels} />;
             }
         },
         {

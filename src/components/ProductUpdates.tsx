@@ -192,13 +192,13 @@ function ProductUpdatesListPopup({
                     <div
                         className={cn(
                             "relative z-1 cursor-pointer block group",
-                            "rounded-md border border-primary/30 bg-linear-to-br dark:from-primary/20 from-primary/20 via-background to-background p-2 py-3 w-full flex flex-col gap-2 text-sm",
+                            "rounded-md border bg-secondary p-2 py-3 w-full flex flex-col gap-2 text-sm",
                             "transition duration-300 ease-in-out",
                             "data-closed:opacity-0 data-closed:translate-y-full"
                         )}
                     >
                         <div className="flex items-center gap-2">
-                            <BellIcon className="flex-none size-4 text-primary" />
+                            <BellIcon className="flex-none size-4" />
                             <div className="flex justify-between items-center flex-1">
                                 <p className="font-medium text-start">
                                     {t("productUpdateWhatsNew")}
@@ -346,13 +346,13 @@ function NewVersionAvailable({
                     rel="noopener noreferrer"
                     className={cn(
                         "relative z-2 group cursor-pointer block",
-                        "rounded-md border border-primary/30 bg-linear-to-br dark:from-primary/20 from-primary/20 via-background to-background p-2 py-3 w-full flex flex-col gap-2 text-sm",
+                        "rounded-md border bg-secondary p-2 py-3 w-full flex flex-col gap-2 text-sm",
                         "transition duration-300 ease-in-out",
                         "data-closed:opacity-0 data-closed:translate-y-full"
                     )}
                 >
                     <div className="flex items-center gap-2">
-                        <RocketIcon className="flex-none size-4 text-primary" />
+                        <RocketIcon className="flex-none size-4" />
                         <p className="font-medium flex-1">
                             {t("pangolinUpdateAvailable")}
                         </p>

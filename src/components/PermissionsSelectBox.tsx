@@ -26,6 +26,7 @@ function getActionsCategories(root: boolean) {
             [t("actionGetOrg")]: "getOrg",
             [t("actionUpdateOrg")]: "updateOrg",
             [t("actionGetOrgUser")]: "getOrgUser",
+            [t("actionResetSiteBandwidth")]: "resetSiteBandwidth",
             [t("actionInviteUser")]: "inviteUser",
             [t("actionRemoveInvitation")]: "removeInvitation",
             [t("actionListInvitations")]: "listInvitations",
@@ -94,7 +95,8 @@ function getActionsCategories(root: boolean) {
             [t("actionListRole")]: "listRoles",
             [t("actionUpdateRole")]: "updateRole",
             [t("actionListAllowedRoleResources")]: "listRoleResources",
-            [t("actionAddUserRole")]: "addUserRole"
+            [t("actionAddUserRole")]: "addUserRole",
+            [t("actionRemoveUserRole")]: "removeUserRole"
         },
         "Access Token": {
             [t("actionGenerateAccessToken")]: "generateAccessToken",

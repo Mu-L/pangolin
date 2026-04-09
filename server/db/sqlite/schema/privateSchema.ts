@@ -2,11 +2,22 @@ import { InferSelectModel } from "drizzle-orm";
 import {
     index,
     integer,
+    primaryKey,
     real,
     sqliteTable,
-    text
+    text,
+    uniqueIndex
 } from "drizzle-orm/sqlite-core";
-import { clients, domains, exitNodes, orgs, sessions, users } from "./schema";
+import {
+    clients,
+    domains,
+    exitNodes,
+    orgs,
+    sessions,
+    siteResources,
+    sites,
+    users
+} from "./schema";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -278,6 +289,7 @@ export const accessAuditLog = sqliteTable(
         actor: text("actor"),
         actorId: text("actorId"),
         resourceId: integer("resourceId"),
+        siteResourceId: integer("siteResourceId"),
         ip: text("ip"),
         location: text("location"),
         type: text("type").notNull(),
@@ -291,6 +303,45 @@ export const accessAuditLog = sqliteTable(
             table.orgId,
             table.timestamp
         )
+    ]
+);
+
+export const connectionAuditLog = sqliteTable(
+    "connectionAuditLog",
+    {
+        id: integer("id").primaryKey({ autoIncrement: true }),
+        sessionId: text("sessionId").notNull(),
+        siteResourceId: integer("siteResourceId").references(
+            () => siteResources.siteResourceId,
+            { onDelete: "cascade" }
+        ),
+        orgId: text("orgId").references(() => orgs.orgId, {
+            onDelete: "cascade"
+        }),
+        siteId: integer("siteId").references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+        clientId: integer("clientId").references(() => clients.clientId, {
+            onDelete: "cascade"
+        }),
+        userId: text("userId").references(() => users.userId, {
+            onDelete: "cascade"
+        }),
+        sourceAddr: text("sourceAddr").notNull(),
+        destAddr: text("destAddr").notNull(),
+        protocol: text("protocol").notNull(),
+        startedAt: integer("startedAt").notNull(),
+        endedAt: integer("endedAt"),
+        bytesTx: integer("bytesTx"),
+        bytesRx: integer("bytesRx")
+    },
+    (table) => [
+        index("idx_accessAuditLog_startedAt").on(table.startedAt),
+        index("idx_accessAuditLog_org_startedAt").on(
+            table.orgId,
+            table.startedAt
+        ),
+        index("idx_accessAuditLog_siteResourceId").on(table.siteResourceId)
     ]
 );
 
@@ -318,7 +369,6 @@ export const approvals = sqliteTable("approvals", {
         .notNull()
 });
 
-
 export const bannedEmails = sqliteTable("bannedEmails", {
     email: text("email").primaryKey()
 });
@@ -326,6 +376,84 @@ export const bannedEmails = sqliteTable("bannedEmails", {
 export const bannedIps = sqliteTable("bannedIps", {
     ip: text("ip").primaryKey()
 });
+
+export const siteProvisioningKeys = sqliteTable("siteProvisioningKeys", {
+    siteProvisioningKeyId: text("siteProvisioningKeyId").primaryKey(),
+    name: text("name").notNull(),
+    siteProvisioningKeyHash: text("siteProvisioningKeyHash").notNull(),
+    lastChars: text("lastChars").notNull(),
+    createdAt: text("dateCreated").notNull(),
+    lastUsed: text("lastUsed"),
+    maxBatchSize: integer("maxBatchSize"), // null = no limit
+    numUsed: integer("numUsed").notNull().default(0),
+    validUntil: text("validUntil"),
+    approveNewSites: integer("approveNewSites", { mode: "boolean" })
+        .notNull()
+        .default(true)
+});
+
+export const siteProvisioningKeyOrg = sqliteTable(
+    "siteProvisioningKeyOrg",
+    {
+        siteProvisioningKeyId: text("siteProvisioningKeyId")
+            .notNull()
+            .references(() => siteProvisioningKeys.siteProvisioningKeyId, {
+                onDelete: "cascade"
+            }),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" })
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.siteProvisioningKeyId, table.orgId]
+        })
+    ]
+);
+
+export const eventStreamingDestinations = sqliteTable(
+    "eventStreamingDestinations",
+    {
+        destinationId: integer("destinationId").primaryKey({
+            autoIncrement: true
+        }),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        sendConnectionLogs: integer("sendConnectionLogs", { mode: "boolean" }).notNull().default(false),
+        sendRequestLogs: integer("sendRequestLogs", { mode: "boolean" }).notNull().default(false),
+        sendActionLogs: integer("sendActionLogs", { mode: "boolean" }).notNull().default(false),
+        sendAccessLogs: integer("sendAccessLogs", { mode: "boolean" }).notNull().default(false),
+        type: text("type").notNull(), // e.g. "http", "kafka", etc.
+        config: text("config").notNull(), // JSON string with the configuration for the destination
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
+        createdAt: integer("createdAt").notNull(),
+        updatedAt: integer("updatedAt").notNull()
+    }
+);
+
+export const eventStreamingCursors = sqliteTable(
+    "eventStreamingCursors",
+    {
+        cursorId: integer("cursorId").primaryKey({ autoIncrement: true }),
+        destinationId: integer("destinationId")
+            .notNull()
+            .references(() => eventStreamingDestinations.destinationId, {
+                onDelete: "cascade"
+            }),
+        logType: text("logType").notNull(), // "request" | "action" | "access" | "connection"
+        lastSentId: integer("lastSentId").notNull().default(0),
+        lastSentAt: integer("lastSentAt") // epoch milliseconds, null if never sent
+    },
+    (table) => [
+        uniqueIndex("idx_eventStreamingCursors_dest_type").on(
+            table.destinationId,
+            table.logType
+        )
+    ]
+);
 
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
@@ -348,3 +476,13 @@ export type LoginPage = InferSelectModel<typeof loginPage>;
 export type LoginPageBranding = InferSelectModel<typeof loginPageBranding>;
 export type ActionAuditLog = InferSelectModel<typeof actionAuditLog>;
 export type AccessAuditLog = InferSelectModel<typeof accessAuditLog>;
+export type ConnectionAuditLog = InferSelectModel<typeof connectionAuditLog>;
+export type BannedEmail = InferSelectModel<typeof bannedEmails>;
+export type BannedIp = InferSelectModel<typeof bannedIps>;
+export type SiteProvisioningKey = InferSelectModel<typeof siteProvisioningKeys>;
+export type EventStreamingDestination = InferSelectModel<
+    typeof eventStreamingDestinations
+>;
+export type EventStreamingCursor = InferSelectModel<
+    typeof eventStreamingCursors
+>;

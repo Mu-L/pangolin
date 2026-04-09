@@ -571,6 +571,133 @@ export function generateSubnetProxyTargets(
     return targets;
 }
 
+export type SubnetProxyTargetV2 = {
+    sourcePrefixes: string[]; // must be cidrs
+    destPrefix: string; // must be a cidr
+    disableIcmp?: boolean;
+    rewriteTo?: string; // must be a cidr
+    portRange?: {
+        min: number;
+        max: number;
+        protocol: "tcp" | "udp";
+    }[];
+    resourceId?: number;
+};
+
+export function generateSubnetProxyTargetV2(
+    siteResource: SiteResource,
+    clients: {
+        clientId: number;
+        pubKey: string | null;
+        subnet: string | null;
+    }[]
+): SubnetProxyTargetV2 | undefined {
+    if (clients.length === 0) {
+        logger.debug(
+            `No clients have access to site resource ${siteResource.siteResourceId}, skipping target generation.`
+        );
+        return;
+    }
+
+    let target: SubnetProxyTargetV2 | null = null;
+
+    const portRange = [
+        ...parsePortRangeString(siteResource.tcpPortRangeString, "tcp"),
+        ...parsePortRangeString(siteResource.udpPortRangeString, "udp")
+    ];
+    const disableIcmp = siteResource.disableIcmp ?? false;
+
+    if (siteResource.mode == "host") {
+        let destination = siteResource.destination;
+        // check if this is a valid ip
+        const ipSchema = z.union([z.ipv4(), z.ipv6()]);
+        if (ipSchema.safeParse(destination).success) {
+            destination = `${destination}/32`;
+
+            target = {
+                sourcePrefixes: [],
+                destPrefix: destination,
+                portRange,
+                disableIcmp,
+                resourceId: siteResource.siteResourceId,
+            };
+        }
+
+        if (siteResource.alias && siteResource.aliasAddress) {
+            // also push a match for the alias address
+            target = {
+                sourcePrefixes: [],
+                destPrefix: `${siteResource.aliasAddress}/32`,
+                rewriteTo: destination,
+                portRange,
+                disableIcmp,
+                resourceId: siteResource.siteResourceId,
+            };
+        }
+    } else if (siteResource.mode == "cidr") {
+        target = {
+            sourcePrefixes: [],
+            destPrefix: siteResource.destination,
+            portRange,
+            disableIcmp,
+            resourceId: siteResource.siteResourceId,
+        };
+    }
+
+    if (!target) {
+        return;
+    }
+
+    for (const clientSite of clients) {
+        if (!clientSite.subnet) {
+            logger.debug(
+                `Client ${clientSite.clientId} has no subnet, skipping for site resource ${siteResource.siteResourceId}.`
+            );
+            continue;
+        }
+
+        const clientPrefix = `${clientSite.subnet.split("/")[0]}/32`;
+
+        // add client prefix to source prefixes
+        target.sourcePrefixes.push(clientPrefix);
+    }
+
+    // print a nice representation of the targets
+    // logger.debug(
+    //     `Generated subnet proxy targets for: ${JSON.stringify(targets, null, 2)}`
+    // );
+
+    return target;
+}
+
+
+/**
+ * Converts a SubnetProxyTargetV2 to an array of SubnetProxyTarget (v1)
+ * by expanding each source prefix into its own target entry.
+ * @param targetV2 - The v2 target to convert
+ * @returns Array of v1 SubnetProxyTarget objects
+ */
+ export function convertSubnetProxyTargetsV2ToV1(
+     targetsV2: SubnetProxyTargetV2[]
+ ): SubnetProxyTarget[] {
+     return targetsV2.flatMap((targetV2) =>
+         targetV2.sourcePrefixes.map((sourcePrefix) => ({
+             sourcePrefix,
+             destPrefix: targetV2.destPrefix,
+             ...(targetV2.disableIcmp !== undefined && {
+                 disableIcmp: targetV2.disableIcmp
+             }),
+             ...(targetV2.rewriteTo !== undefined && {
+                 rewriteTo: targetV2.rewriteTo
+             }),
+             ...(targetV2.portRange !== undefined && {
+                 portRange: targetV2.portRange
+             })
+         }))
+     );
+ }
+
+
 // Custom schema for validating port range strings
 // Format: "80,443,8000-9000" or "*" for all ports, or empty string
 export const portRangeStringSchema = z

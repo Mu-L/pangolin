@@ -3,13 +3,12 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { ListUsersResponse } from "@server/routers/user";
 import { AxiosResponse } from "axios";
-import UsersTable, { UserRow } from "../../../../../components/UsersTable";
+import UsersTable, { UserRow } from "@app/components/UsersTable";
 import { GetOrgResponse } from "@server/routers/org";
 import { cache } from "react";
 import OrgProvider from "@app/providers/OrgProvider";
 import UserProvider from "@app/providers/UserProvider";
 import { verifySession } from "@app/lib/auth/verifySession";
-import AccessPageHeaderAndNav from "../../../../../components/AccessPageHeaderAndNav";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
 
@@ -86,9 +85,14 @@ export default async function UsersPage(props: UsersPageProps) {
             idpId: user.idpId,
             idpName: user.idpName || t("idpNameInternal"),
             status: t("userConfirmed"),
-            role: user.isOwner
-                ? t("accessRoleOwner")
-                : user.roleName || t("accessRoleMember"),
+            roleLabels: user.isOwner
+                ? [t("accessRoleOwner")]
+                : (() => {
+                      const names = (user.roles ?? [])
+                          .map((r) => r.roleName)
+                          .filter((n): n is string => Boolean(n?.length));
+                      return names.length ? names : [t("accessRoleMember")];
+                  })(),
             isOwner: user.isOwner || false
         };
     });

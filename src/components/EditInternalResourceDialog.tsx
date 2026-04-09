@@ -18,7 +18,7 @@ import { resourceQueries } from "@app/lib/queries";
 import { ListSitesResponse } from "@server/routers/site";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
     cleanForFQDN,
     InternalResourceForm,
@@ -49,10 +49,9 @@ export default function EditInternalResourceDialog({
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, startTransition] = useTransition();
 
     async function handleSubmit(values: InternalResourceFormValues) {
-        setIsSubmitting(true);
         try {
             let data = { ...values };
             if (data.mode === "host" && isHostname(data.destination)) {
@@ -70,6 +69,7 @@ export default function EditInternalResourceDialog({
                 name: data.name,
                 siteId: data.siteId,
                 mode: data.mode,
+                niceId: data.niceId,
                 destination: data.destination,
                 alias:
                     data.alias &&
@@ -127,8 +127,6 @@ export default function EditInternalResourceDialog({
                 ),
                 variant: "destructive"
             });
-        } finally {
-            setIsSubmitting(false);
         }
     }
 
@@ -162,7 +160,9 @@ export default function EditInternalResourceDialog({
                         orgId={orgId}
                         siteResourceId={resource.id}
                         formId="edit-internal-resource-form"
-                        onSubmit={handleSubmit}
+                        onSubmit={(values) =>
+                            startTransition(() => handleSubmit(values))
+                        }
                     />
                 </CredenzaBody>
                 <CredenzaFooter>

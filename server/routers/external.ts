@@ -102,6 +102,8 @@ authenticated.put(
     logActionAudit(ActionsEnum.createSite),
     site.createSite
 );
+
+
 authenticated.get(
     "/org/:orgId/sites",
     verifyOrgAccess,
@@ -644,6 +646,7 @@ authenticated.delete(
     logActionAudit(ActionsEnum.deleteRole),
     role.deleteRole
 );
+
 authenticated.post(
     "/role/:roleId/add/:userId",
     verifyRoleAccess,
@@ -651,7 +654,7 @@ authenticated.post(
     verifyLimits,
     verifyUserHasAction(ActionsEnum.addUserRole),
     logActionAudit(ActionsEnum.addUserRole),
-    user.addUserRole
+    user.addUserRoleLegacy
 );
 
 authenticated.post(
@@ -793,6 +796,11 @@ unauthenticated.get(
 // );
 
 unauthenticated.get("/user", verifySessionMiddleware, user.getUser);
+unauthenticated.post(
+    "/user/locale",
+    verifySessionMiddleware,
+    user.updateUserLocale
+);
 unauthenticated.get("/my-device", verifySessionMiddleware, user.myDevice);
 
 authenticated.get("/users", verifyUserIsServerAdmin, user.adminListUsers);
@@ -1201,6 +1209,22 @@ authRouter.post(
         store: createStore()
     }),
     newt.getNewtToken
+);
+
+authRouter.post(
+    "/newt/register",
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 30,
+        keyGenerator: (req) =>
+            `newtRegister:${req.body.provisioningKey?.split(".")[0] || ipKeyGenerator(req.ip || "")}`,
+        handler: (req, res, next) => {
+            const message = `You can only register a newt ${30} times every ${15} minutes. Please try again later.`;
+            return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
+        },
+        store: createStore()
+    }),
+    newt.registerNewt
 );
 authRouter.post(
     "/olm/get-token",
