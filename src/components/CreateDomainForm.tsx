@@ -154,7 +154,7 @@ export default function CreateDomainForm({
 
     const punycodePreview = useMemo(() => {
         if (!baseDomain) return "";
-        const punycode = toPunycode(baseDomain);
+        const punycode = toPunycode(baseDomain.toLowerCase());
         return punycode !== baseDomain.toLowerCase() ? punycode : "";
     }, [baseDomain]);
 
