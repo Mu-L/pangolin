@@ -582,6 +582,16 @@ export type SubnetProxyTargetV2 = {
         protocol: "tcp" | "udp";
     }[];
     resourceId?: number;
+    protocol?: "http" | "https"; // if set, this target only applies to the specified protocol
+    httpTargets?: HTTPTarget[];
+    tlsCert?: string;
+    tlsKey?: string;
+};
+
+export type HTTPTarget = {
+    destAddr: string; // must be an IP or hostname
+    destPort: number;
+    scheme: "http" | "https";
 };
 
 export function generateSubnetProxyTargetV2(
@@ -619,7 +629,7 @@ export function generateSubnetProxyTargetV2(
                 destPrefix: destination,
                 portRange,
                 disableIcmp,
-                resourceId: siteResource.siteResourceId,
+                resourceId: siteResource.siteResourceId
             };
         }
 
@@ -631,7 +641,7 @@ export function generateSubnetProxyTargetV2(
                 rewriteTo: destination,
                 portRange,
                 disableIcmp,
-                resourceId: siteResource.siteResourceId,
+                resourceId: siteResource.siteResourceId
             };
         }
     } else if (siteResource.mode == "cidr") {
@@ -640,7 +650,34 @@ export function generateSubnetProxyTargetV2(
             destPrefix: siteResource.destination,
             portRange,
             disableIcmp,
+            resourceId: siteResource.siteResourceId
+        };
+    } else if (siteResource.mode == "http" || siteResource.mode == "https") {
+        let destination = siteResource.destination;
+        // check if this is a valid ip
+        const ipSchema = z.union([z.ipv4(), z.ipv6()]);
+        if (ipSchema.safeParse(destination).success) {
+            destination = `${destination}/32`;
+        }
+
+        if (!siteResource.alias || !siteResource.aliasAddress) {
+            logger.debug(
+                `Site resource ${siteResource.siteResourceId} is in HTTP/HTTPS mode but is missing alias or alias address, skipping alias target generation.`
+            );
+            return;
+        }
+        // also push a match for the alias address
+        target = {
+            sourcePrefixes: [],
+            destPrefix: `${siteResource.aliasAddress}/32`,
+            rewriteTo: destination,
+            portRange,
+            disableIcmp,
             resourceId: siteResource.siteResourceId,
+            protocol: siteResource.mode, // will be either http or https,
+            httpTargets: [],
+            tlsCert: "",
+            tlsKey: ""
         };
     }
 
@@ -670,33 +707,31 @@ export function generateSubnetProxyTargetV2(
     return target;
 }
 
-
 /**
  * Converts a SubnetProxyTargetV2 to an array of SubnetProxyTarget (v1)
  * by expanding each source prefix into its own target entry.
  * @param targetV2 - The v2 target to convert
  * @returns Array of v1 SubnetProxyTarget objects
  */
- export function convertSubnetProxyTargetsV2ToV1(
-     targetsV2: SubnetProxyTargetV2[]
- ): SubnetProxyTarget[] {
-     return targetsV2.flatMap((targetV2) =>
-         targetV2.sourcePrefixes.map((sourcePrefix) => ({
-             sourcePrefix,
-             destPrefix: targetV2.destPrefix,
-             ...(targetV2.disableIcmp !== undefined && {
-                 disableIcmp: targetV2.disableIcmp
-             }),
-             ...(targetV2.rewriteTo !== undefined && {
-                 rewriteTo: targetV2.rewriteTo
-             }),
-             ...(targetV2.portRange !== undefined && {
-                 portRange: targetV2.portRange
-             })
-         }))
-     );
- }
-
+export function convertSubnetProxyTargetsV2ToV1(
+    targetsV2: SubnetProxyTargetV2[]
+): SubnetProxyTarget[] {
+    return targetsV2.flatMap((targetV2) =>
+        targetV2.sourcePrefixes.map((sourcePrefix) => ({
+            sourcePrefix,
+            destPrefix: targetV2.destPrefix,
+            ...(targetV2.disableIcmp !== undefined && {
+                disableIcmp: targetV2.disableIcmp
+            }),
+            ...(targetV2.rewriteTo !== undefined && {
+                rewriteTo: targetV2.rewriteTo
+            }),
+            ...(targetV2.portRange !== undefined && {
+                portRange: targetV2.portRange
+            })
+        }))
+    );
+}
 
 // Custom schema for validating port range strings
 // Format: "80,443,8000-9000" or "*" for all ports, or empty string
