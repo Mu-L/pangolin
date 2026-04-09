@@ -76,14 +76,21 @@ const updateSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host" && data.destination) {
-                const isValidIP = z
-                    // .union([z.ipv4(), z.ipv6()])
-                    .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
-                    .safeParse(data.destination).success;
+            if (
+                (data.mode === "host" ||
+                    data.mode == "http" ||
+                    data.mode == "https") &&
+                data.destination
+            ) {
+                if (data.mode == "host") {
+                    const isValidIP = z
+                        // .union([z.ipv4(), z.ipv6()])
+                        .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                        .safeParse(data.destination).success;
 
-                if (isValidIP) {
-                    return true;
+                    if (isValidIP) {
+                        return true;
+                    }
                 }
 
                 // Check if it's a valid domain (hostname pattern, TLD not required)

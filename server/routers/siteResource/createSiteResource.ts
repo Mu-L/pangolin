@@ -62,15 +62,21 @@ const createSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host") {
-                // Check if it's a valid IP address using zod (v4 or v6)
-                const isValidIP = z
-                    // .union([z.ipv4(), z.ipv6()])
-                    .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
-                    .safeParse(data.destination).success;
+            if (
+                data.mode === "host" ||
+                data.mode == "http" ||
+                data.mode == "https"
+            ) {
+                if (data.mode == "host") {
+                    // Check if it's a valid IP address using zod (v4 or v6)
+                    const isValidIP = z
+                        // .union([z.ipv4(), z.ipv6()])
+                        .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                        .safeParse(data.destination).success;
 
-                if (isValidIP) {
-                    return true;
+                    if (isValidIP) {
+                        return true;
+                    }
                 }
 
                 // Check if it's a valid domain (hostname pattern, TLD not required)
