@@ -495,7 +495,7 @@ export function InternalResourceForm({
                   alias: null,
                   httpHttpsPort: null,
                   scheme: "http",
-                  ssl: false,
+                  ssl: true,
                   httpConfigSubdomain: null,
                   httpConfigDomainId: null,
                   httpConfigFullDomain: null,
@@ -548,7 +548,7 @@ export function InternalResourceForm({
                 alias: null,
                 httpHttpsPort: null,
                 scheme: "http",
-                ssl: false,
+                ssl: true,
                 httpConfigSubdomain: null,
                 httpConfigDomainId: null,
                 httpConfigFullDomain: null,
@@ -732,7 +732,9 @@ export function InternalResourceForm({
                                         name="siteId"
                                         render={({ field }) => (
                                             <FormItem className="flex flex-col">
-                                                <FormLabel>{t("site")}</FormLabel>
+                                                <FormLabel>
+                                                    {t("site")}
+                                                </FormLabel>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <FormControl>
@@ -888,7 +890,10 @@ export function InternalResourceForm({
                                                     {t(destinationLabelKey)}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} className="w-full" />
+                                                    <Input
+                                                        {...field}
+                                                        className="w-full"
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -947,16 +952,16 @@ export function InternalResourceForm({
                                                                 const raw =
                                                                     e.target
                                                                         .value;
-                                                                if (raw === "") {
+                                                                if (
+                                                                    raw === ""
+                                                                ) {
                                                                     field.onChange(
                                                                         null
                                                                     );
                                                                     return;
                                                                 }
                                                                 const n =
-                                                                    Number(
-                                                                        raw
-                                                                    );
+                                                                    Number(raw);
                                                                 field.onChange(
                                                                     Number.isFinite(
                                                                         n
@@ -986,29 +991,6 @@ export function InternalResourceForm({
                                         {t(httpConfigurationDescriptionKey)}
                                     </div>
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name="ssl"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <SwitchInput
-                                                    id="internal-resource-ssl"
-                                                    label={t(
-                                                        enableSslLabelKey
-                                                    )}
-                                                    description={t(
-                                                        enableSslDescriptionKey
-                                                    )}
-                                                    checked={!!field.value}
-                                                    onCheckedChange={
-                                                        field.onChange
-                                                    }
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
                                 <DomainPicker
                                     key={
                                         variant === "edit" && siteResourceId
@@ -1058,6 +1040,27 @@ export function InternalResourceForm({
                                         );
                                         form.setValue("alias", res.fullDomain);
                                     }}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="ssl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <SwitchInput
+                                                    id="internal-resource-ssl"
+                                                    label={t(enableSslLabelKey)}
+                                                    description={t(
+                                                        enableSslDescriptionKey
+                                                    )}
+                                                    checked={!!field.value}
+                                                    onCheckedChange={
+                                                        field.onChange
+                                                    }
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
                                 />
                             </div>
                         ) : (
