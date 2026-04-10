@@ -51,7 +51,8 @@ const updateSiteResourceSchema = z
             )
             .optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
-        mode: z.enum(["host", "cidr", "http", "https"]).optional(),
+        mode: z.enum(["host", "cidr", "http"]).optional(),
+        ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
         // proxyPort: z.int().positive().nullish(),
         destinationPort: z.int().positive().nullish(),
@@ -78,8 +79,7 @@ const updateSiteResourceSchema = z
         (data) => {
             if (
                 (data.mode === "host" ||
-                    data.mode == "http" ||
-                    data.mode == "https") &&
+                    data.mode == "http") &&
                 data.destination
             ) {
                 if (data.mode == "host") {
@@ -186,6 +186,7 @@ export async function updateSiteResource(
             destination,
             destinationPort,
             alias,
+            ssl,
             enabled,
             userIds,
             roleIds,
@@ -356,6 +357,7 @@ export async function updateSiteResource(
                         niceId,
                         mode,
                         scheme,
+                        ssl,
                         destination,
                         destinationPort,
                         enabled,
@@ -461,6 +463,7 @@ export async function updateSiteResource(
                         siteId: siteId,
                         mode: mode,
                         scheme,
+                        ssl,
                         destination: destination,
                         destinationPort: destinationPort,
                         enabled: enabled,

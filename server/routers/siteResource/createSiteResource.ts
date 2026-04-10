@@ -36,7 +36,8 @@ const createSiteResourceParamsSchema = z.strictObject({
 const createSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "http", "https"]),
+        mode: z.enum(["host", "cidr", "http"]),
+        ssl: z.boolean().optional(), // only used for http mode
         siteId: z.int(),
         scheme: z.enum(["http", "https"]).optional(),
         // proxyPort: z.int().positive().optional(),
@@ -64,8 +65,7 @@ const createSiteResourceSchema = z
         (data) => {
             if (
                 data.mode === "host" ||
-                data.mode == "http" ||
-                data.mode == "https"
+                data.mode == "http"
             ) {
                 if (data.mode == "host") {
                     // Check if it's a valid IP address using zod (v4 or v6)
@@ -172,6 +172,7 @@ export async function createSiteResource(
             destinationPort,
             destination,
             enabled,
+            ssl,
             alias,
             userIds,
             roleIds,
@@ -262,7 +263,7 @@ export async function createSiteResource(
 
         const niceId = await getUniqueSiteResourceName(orgId);
         let aliasAddress: string | null = null;
-        if (mode === "host" || mode === "http" || mode === "https") {
+        if (mode === "host" || mode === "http") {
             aliasAddress = await getNextAvailableAliasAddress(orgId);
         }
 
@@ -275,6 +276,7 @@ export async function createSiteResource(
                 orgId,
                 name,
                 mode,
+                ssl,
                 destination,
                 scheme,
                 destinationPort,

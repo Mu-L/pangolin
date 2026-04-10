@@ -57,7 +57,9 @@ export const orgs = pgTable("orgs", {
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
-    settingsLogRetentionDaysConnection: integer("settingsLogRetentionDaysConnection") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
+    settingsLogRetentionDaysConnection: integer(
+        "settingsLogRetentionDaysConnection"
+    ) // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
@@ -101,7 +103,9 @@ export const sites = pgTable("sites", {
     lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
     listenPort: integer("listenPort"),
     dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true),
-    status: varchar("status").$type<"pending" | "approved">().default("approved")
+    status: varchar("status")
+        .$type<"pending" | "approved">()
+        .default("approved")
 });
 
 export const resources = pgTable("resources", {
@@ -230,7 +234,8 @@ export const siteResources = pgTable("siteResources", {
         .references(() => orgs.orgId, { onDelete: "cascade" }),
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
-    mode: varchar("mode").$type<"host" | "cidr" | "http" | "https">().notNull(), // "host" | "cidr" | "http" | "https"
+    ssl: boolean("ssl").notNull().default(false),
+    mode: varchar("mode").$type<"host" | "cidr" | "http">().notNull(), // "host" | "cidr" | "http"
     scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
