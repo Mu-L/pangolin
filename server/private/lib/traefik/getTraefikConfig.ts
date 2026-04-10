@@ -267,7 +267,7 @@ export async function getTraefikConfig(
         });
     });
 
-    // Query siteResources in http/https mode that have aliases - needed for cert generation
+    // Query siteResources in HTTP mode with SSL enabled and aliases — cert generation / HTTPS edge
     const siteResourcesWithAliases = await db
         .select({
             siteResourceId: siteResources.siteResourceId,
@@ -280,7 +280,8 @@ export async function getTraefikConfig(
             and(
                 eq(siteResources.enabled, true),
                 isNotNull(siteResources.alias),
-                inArray(siteResources.mode, ["http", "https"]),
+                eq(siteResources.mode, "http"),
+                eq(siteResources.ssl, true),
                 or(
                     eq(sites.exitNodeId, exitNodeId),
                     and(
@@ -900,7 +901,7 @@ export async function getTraefikConfig(
         }
     }
 
-    // Add Traefik routes for siteResource aliases in http/https mode so that
+    // Add Traefik routes for siteResource aliases (HTTP mode + SSL) so that
     // Traefik generates TLS certificates for those domains even when no
     // matching resource exists yet.
     if (siteResourcesWithAliases.length > 0) {

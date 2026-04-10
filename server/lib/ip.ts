@@ -653,7 +653,7 @@ export async function generateSubnetProxyTargetV2(
             disableIcmp,
             resourceId: siteResource.siteResourceId
         };
-    } else if (siteResource.mode == "http" || siteResource.mode == "https") {
+    } else if (siteResource.mode == "http") {
         let destination = siteResource.destination;
         // check if this is a valid ip
         const ipSchema = z.union([z.ipv4(), z.ipv6()]);
@@ -668,10 +668,11 @@ export async function generateSubnetProxyTargetV2(
             !siteResource.scheme
         ) {
             logger.debug(
-                `Site resource ${siteResource.siteResourceId} is in HTTP/HTTPS mode but is missing alias or alias address or destinationPort, skipping alias target generation.`
+                `Site resource ${siteResource.siteResourceId} is in HTTP mode but is missing alias or alias address or destinationPort or scheme, skipping alias target generation.`
             );
             return;
         }
+        const publicProtocol = siteResource.ssl ? "https" : "http";
         // also push a match for the alias address
         let tlsCert: string | undefined;
         let tlsKey: string | undefined;

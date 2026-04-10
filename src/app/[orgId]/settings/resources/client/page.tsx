@@ -56,13 +56,25 @@ export default async function ClientResourcesPage(
 
     const internalResourceRows: InternalResourceRow[] = siteResources.map(
         (siteResource) => {
+            const rawMode = siteResource.mode as string | undefined;
+            const normalizedMode =
+                rawMode === "https"
+                    ? ("http" as const)
+                    : rawMode === "host" || rawMode === "cidr" || rawMode === "http"
+                      ? rawMode
+                      : ("host" as const);
             return {
                 id: siteResource.siteResourceId,
                 name: siteResource.name,
                 orgId: params.orgId,
                 siteName: siteResource.siteName,
                 siteAddress: siteResource.siteAddress || null,
-                mode: siteResource.mode || ("port" as any),
+                mode: normalizedMode,
+                scheme:
+                    siteResource.scheme ??
+                    (rawMode === "https" ? ("https" as const) : null),
+                ssl:
+                    siteResource.ssl === true || rawMode === "https",
                 // protocol: siteResource.protocol,
                 // proxyPort: siteResource.proxyPort,
                 siteId: siteResource.siteId,

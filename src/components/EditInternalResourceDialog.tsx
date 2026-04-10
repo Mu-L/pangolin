@@ -55,9 +55,7 @@ export default function EditInternalResourceDialog({
         try {
             let data = { ...values };
             if (
-                (data.mode === "host" ||
-                    data.mode === "http" ||
-                    data.mode === "https") &&
+                (data.mode === "host" || data.mode === "http") &&
                 isHostname(data.destination)
             ) {
                 const currentAlias = data.alias?.trim() || "";
@@ -76,6 +74,11 @@ export default function EditInternalResourceDialog({
                 mode: data.mode,
                 niceId: data.niceId,
                 destination: data.destination,
+                ...(data.mode === "http" && {
+                    scheme: data.scheme,
+                    ssl: data.ssl ?? false,
+                    destinationPort: data.httpHttpsPort ?? null
+                }),
                 alias:
                     data.alias &&
                     typeof data.alias === "string" &&
