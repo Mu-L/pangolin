@@ -634,11 +634,11 @@ export async function handleMessagingForUpdatedSiteResource(
 
         // Only update targets on newt if destination changed
         if (destinationChanged || portRangesChanged) {
-            const oldTarget = generateSubnetProxyTargetV2(
+            const oldTarget = await generateSubnetProxyTargetV2(
                 existingSiteResource,
                 mergedAllClients
             );
-            const newTarget = generateSubnetProxyTargetV2(
+            const newTarget = await generateSubnetProxyTargetV2(
                 updatedSiteResource,
                 mergedAllClients
             );

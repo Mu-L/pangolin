@@ -5,6 +5,7 @@ import config from "@server/lib/config";
 import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
+import { getValidCertificatesForDomains } from "#private/lib/certificates";
 
 interface IPRange {
     start: bigint;
@@ -594,14 +595,14 @@ export type HTTPTarget = {
     scheme: "http" | "https";
 };
 
-export function generateSubnetProxyTargetV2(
+export async function generateSubnetProxyTargetV2(
     siteResource: SiteResource,
     clients: {
         clientId: number;
         pubKey: string | null;
         subnet: string | null;
     }[]
-): SubnetProxyTargetV2 | undefined {
+): Promise<SubnetProxyTargetV2 | undefined> {
     if (clients.length === 0) {
         logger.debug(
             `No clients have access to site resource ${siteResource.siteResourceId}, skipping target generation.`
@@ -672,6 +673,30 @@ export function generateSubnetProxyTargetV2(
             return;
         }
         // also push a match for the alias address
+        let tlsCert: string | undefined;
+        let tlsKey: string | undefined;
+
+        if (siteResource.ssl && siteResource.alias) {
+            try {
+                const certs = await getValidCertificatesForDomains(
+                    new Set([siteResource.alias]),
+                    true
+                );
+                if (certs.length > 0 && certs[0].certFile && certs[0].keyFile) {
+                    tlsCert = certs[0].certFile;
+                    tlsKey = certs[0].keyFile;
+                } else {
+                    logger.warn(
+                        `No valid certificate found for SSL site resource ${siteResource.siteResourceId} with domain ${siteResource.alias}`
+                    );
+                }
+            } catch (err) {
+                logger.error(
+                    `Failed to retrieve certificate for site resource ${siteResource.siteResourceId} domain ${siteResource.alias}: ${err}`
+                );
+            }
+        }
+
         target = {
             sourcePrefixes: [],
             destPrefix: `${siteResource.aliasAddress}/32`,
@@ -679,7 +704,7 @@ export function generateSubnetProxyTargetV2(
             portRange,
             disableIcmp,
             resourceId: siteResource.siteResourceId,
-            protocol: siteResource.mode, // will be either http or https,
+            protocol: siteResource.ssl ? "https" : "http",
             httpTargets: [
                 {
                     destAddr: siteResource.destination,
@@ -687,8 +712,7 @@ export function generateSubnetProxyTargetV2(
                     scheme: siteResource.scheme
                 }
             ],
-            // tlsCert: "",
-            // tlsKey: ""
+            ...(tlsCert && tlsKey ? { tlsCert, tlsKey } : {})
         };
     }
 

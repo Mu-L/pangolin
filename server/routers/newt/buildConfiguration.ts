@@ -168,7 +168,7 @@ export async function buildClientConfigurationForNewtClient(
                 )
             );
 
-        const resourceTarget = generateSubnetProxyTargetV2(
+        const resourceTarget = await generateSubnetProxyTargetV2(
             resource,
             resourceClients
         );

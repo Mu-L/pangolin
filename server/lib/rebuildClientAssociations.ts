@@ -661,7 +661,7 @@ async function handleSubnetProxyTargetUpdates(
         );
 
         if (addedClients.length > 0) {
-            const targetToAdd = generateSubnetProxyTargetV2(
+            const targetToAdd = await generateSubnetProxyTargetV2(
                 siteResource,
                 addedClients
             );
@@ -698,7 +698,7 @@ async function handleSubnetProxyTargetUpdates(
         );
 
         if (removedClients.length > 0) {
-            const targetToRemove = generateSubnetProxyTargetV2(
+            const targetToRemove = await generateSubnetProxyTargetV2(
                 siteResource,
                 removedClients
             );
@@ -1164,7 +1164,7 @@ async function handleMessagesForClientResources(
             }
 
             for (const resource of resources) {
-                const target = generateSubnetProxyTargetV2(resource, [
+                const target = await generateSubnetProxyTargetV2(resource, [
                     {
                         clientId: client.clientId,
                         pubKey: client.pubKey,
@@ -1241,7 +1241,7 @@ async function handleMessagesForClientResources(
             }
 
             for (const resource of resources) {
-                const target = generateSubnetProxyTargetV2(resource, [
+                const target = await generateSubnetProxyTargetV2(resource, [
                     {
                         clientId: client.clientId,
                         pubKey: client.pubKey,
