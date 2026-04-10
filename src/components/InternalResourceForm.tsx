@@ -1,6 +1,10 @@
 "use client";
 
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
+import {
+    OptionSelect,
+    type OptionSelectOption
+} from "@app/components/OptionSelect";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { Tag, TagInput } from "@app/components/tags/tag-input";
@@ -687,82 +691,6 @@ export function InternalResourceForm({
                             )}
                         />
                     )}
-                    <FormField
-                        control={form.control}
-                        name="siteId"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>{t("site")}</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "w-full justify-between",
-                                                    !field.value &&
-                                                        "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value
-                                                    ? availableSites.find(
-                                                          (s) =>
-                                                              s.siteId ===
-                                                              field.value
-                                                      )?.name
-                                                    : t("selectSite")}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <SitesSelector
-                                            orgId={orgId}
-                                            selectedSite={selectedSite}
-                                            filterTypes={["newt"]}
-                                            onSelectSite={(site) => {
-                                                setSelectedSite(site);
-                                                field.onChange(site.siteId);
-                                            }}
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="mode"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{t(modeLabelKey)}</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="host">
-                                            {t(modeHostKey)}
-                                        </SelectItem>
-                                        <SelectItem value="cidr">
-                                            {t(modeCidrKey)}
-                                        </SelectItem>
-                                        <SelectItem value="http">
-                                            {t(modeHttpKey)}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
                 </div>
 
                 <HorizontalTabs
@@ -778,7 +706,7 @@ export function InternalResourceForm({
                             title: t("editInternalResourceDialogAccessPolicy"),
                             href: "#"
                         },
-                        ...(disableEnterpriseFeatures || mode === "cidr"
+                        ...(disableEnterpriseFeatures || mode !== "host"
                             ? []
                             : [{ title: t("sshAccess"), href: "#" }])
                     ]}
@@ -795,6 +723,106 @@ export function InternalResourceForm({
                                     {t(
                                         "editInternalResourceDialogDestinationDescription"
                                     )}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 items-start mb-4">
+                                <div className="min-w-0 col-span-1">
+                                    <FormField
+                                        control={form.control}
+                                        name="siteId"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                                <FormLabel>{t("site")}</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button
+                                                                variant="outline"
+                                                                role="combobox"
+                                                                className={cn(
+                                                                    "w-full justify-between",
+                                                                    !field.value &&
+                                                                        "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {field.value
+                                                                    ? availableSites.find(
+                                                                          (s) =>
+                                                                              s.siteId ===
+                                                                              field.value
+                                                                      )?.name
+                                                                    : t(
+                                                                          "selectSite"
+                                                                      )}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-full p-0">
+                                                        <SitesSelector
+                                                            orgId={orgId}
+                                                            selectedSite={
+                                                                selectedSite
+                                                            }
+                                                            filterTypes={[
+                                                                "newt"
+                                                            ]}
+                                                            onSelectSite={(
+                                                                site
+                                                            ) => {
+                                                                setSelectedSite(
+                                                                    site
+                                                                );
+                                                                field.onChange(
+                                                                    site.siteId
+                                                                );
+                                                            }}
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="min-w-0 col-span-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="mode"
+                                        render={({ field }) => {
+                                            const modeOptions: OptionSelectOption<InternalResourceMode>[] =
+                                                [
+                                                    {
+                                                        value: "host",
+                                                        label: t(modeHostKey)
+                                                    },
+                                                    {
+                                                        value: "cidr",
+                                                        label: t(modeCidrKey)
+                                                    },
+                                                    {
+                                                        value: "http",
+                                                        label: t(modeHttpKey)
+                                                    }
+                                                ];
+                                            return (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(modeLabelKey)}
+                                                    </FormLabel>
+                                                    <OptionSelect<InternalResourceMode>
+                                                        options={modeOptions}
+                                                        value={field.value}
+                                                        onChange={
+                                                            field.onChange
+                                                        }
+                                                        cols={3}
+                                                    />
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }}
+                                    />
                                 </div>
                             </div>
                             <div
@@ -1516,8 +1544,8 @@ export function InternalResourceForm({
                         )}
                     </div>
 
-                    {/* SSH Access tab */}
-                    {!disableEnterpriseFeatures && mode !== "cidr" && (
+                    {/* SSH Access tab (host mode only) */}
+                    {!disableEnterpriseFeatures && mode === "host" && (
                         <div className="space-y-4 mt-4 p-1">
                             <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
                             <div className="mb-8">

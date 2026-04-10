@@ -2673,7 +2673,7 @@
     "editInternalResourceDialogAddUsers": "Add Users",
     "editInternalResourceDialogAddClients": "Add Clients",
     "editInternalResourceDialogDestinationLabel": "Destination",
-    "editInternalResourceDialogDestinationDescription": "Specify the destination address for the internal resource. This can be a hostname, IP address, or CIDR range depending on the selected mode. Optionally set an internal DNS alias for easier identification.",
+    "editInternalResourceDialogDestinationDescription": "Choose where this resource runs and how clients reach it, then complete the settings that apply to your setup.",
     "editInternalResourceDialogPortRestrictionsDescription": "Restrict access to specific TCP/UDP ports or allow/block all ports.",
     "createInternalResourceDialogHttpConfiguration": "HTTP configuration",
     "createInternalResourceDialogHttpConfigurationDescription": "Choose the domain clients will use to reach this resource over HTTP or HTTPS.",
