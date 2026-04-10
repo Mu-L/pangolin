@@ -41,12 +41,12 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
         }),
     query: z.string().optional(),
     mode: z
-        .enum(["host", "cidr", "http", "https"])
+        .enum(["host", "cidr", "http"])
         .optional()
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["host", "cidr", "http", "https"],
+            enum: ["host", "cidr", "http"],
             description: "Filter site resources by mode"
         }),
     sort_by: z
@@ -88,6 +88,7 @@ function querySiteResourcesBase() {
             niceId: siteResources.niceId,
             name: siteResources.name,
             mode: siteResources.mode,
+            ssl: siteResources.ssl,
             scheme: siteResources.scheme,
             proxyPort: siteResources.proxyPort,
             destinationPort: siteResources.destinationPort,
@@ -193,7 +194,9 @@ export async function listAllSiteResourcesByOrg(
         const baseQuery = querySiteResourcesBase().where(and(...conditions));
 
         const countQuery = db.$count(
-            querySiteResourcesBase().where(and(...conditions)).as("filtered_site_resources")
+            querySiteResourcesBase()
+                .where(and(...conditions))
+                .as("filtered_site_resources")
         );
 
         const [siteResourcesList, totalCount] = await Promise.all([

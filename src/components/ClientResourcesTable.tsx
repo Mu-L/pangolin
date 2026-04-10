@@ -46,7 +46,9 @@ export type InternalResourceRow = {
     siteName: string;
     siteAddress: string | null;
     // mode: "host" | "cidr" | "port";
-    mode: "host" | "cidr" | "http" | "https";
+    mode: "host" | "cidr" | "http";
+    scheme: "http" | "https" | null;
+    ssl: boolean;
     // protocol: string | null;
     // proxyPort: number | null;
     siteId: number;
@@ -64,30 +66,27 @@ export type InternalResourceRow = {
 };
 
 function resolveHttpHttpsDisplayPort(
-    mode: "http" | "https",
+    mode: "http",
     httpHttpsPort: number | null
 ): number {
     if (httpHttpsPort != null) {
         return httpHttpsPort;
     }
-    return mode === "https" ? 443 : 80;
+    return 80;
 }
 
 function formatDestinationDisplay(row: InternalResourceRow): string {
-    const { mode, destination, httpHttpsPort } = row;
-    if (mode !== "http" && mode !== "https") {
+    const { mode, destination, httpHttpsPort, scheme } = row;
+    if (mode !== "http") {
         return destination;
     }
     const port = resolveHttpHttpsDisplayPort(mode, httpHttpsPort);
+    const downstreamScheme = scheme ?? "http";
     const hostPart =
         destination.includes(":") && !destination.startsWith("[")
             ? `[${destination}]`
             : destination;
-    return `${hostPart}:${port}`;
-}
-
-function formatHttpHttpsAliasUrl(mode: "http" | "https", alias: string): string {
-    return `${mode}://${alias}`;
+    return `${downstreamScheme}://${hostPart}:${port}`;
 }
 
 function isSafeUrlForLink(href: string): boolean {
@@ -255,10 +254,6 @@ export default function ClientResourcesTable({
                         {
                             value: "http",
                             label: t("editInternalResourceDialogModeHttp")
-                        },
-                        {
-                            value: "https",
-                            label: t("editInternalResourceDialogModeHttps")
                         }
                     ]}
                     selectedValue={searchParams.get("mode") ?? undefined}
@@ -272,14 +267,13 @@ export default function ClientResourcesTable({
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 const modeLabels: Record<
-                    "host" | "cidr" | "port" | "http" | "https",
+                    "host" | "cidr" | "port" | "http",
                     string
                 > = {
                     host: t("editInternalResourceDialogModeHost"),
                     cidr: t("editInternalResourceDialogModeCidr"),
                     port: t("editInternalResourceDialogModePort"),
-                    http: t("editInternalResourceDialogModeHttp"),
-                    https: t("editInternalResourceDialogModeHttps")
+                    http: t("editInternalResourceDialogModeHttp")
                 };
                 return <span>{modeLabels[resourceRow.mode]}</span>;
             }
@@ -319,15 +313,8 @@ export default function ClientResourcesTable({
                         />
                     );
                 }
-                if (
-                    (resourceRow.mode === "http" ||
-                        resourceRow.mode === "https") &&
-                    resourceRow.alias
-                ) {
-                    const url = formatHttpHttpsAliasUrl(
-                        resourceRow.mode,
-                        resourceRow.alias
-                    );
+                if (resourceRow.mode === "http" && resourceRow.alias) {
+                    const url = `${resourceRow.ssl ? "https" : "http"}://${resourceRow.alias}`;
                     return (
                         <CopyToClipboard
                             text={url}

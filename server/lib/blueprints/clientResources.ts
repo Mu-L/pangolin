@@ -16,6 +16,20 @@ import { Config } from "./types";
 import logger from "@server/logger";
 import { getNextAvailableAliasAddress } from "../ip";
 
+function siteResourceModeForDb(mode: "host" | "cidr" | "http" | "https"): {
+    mode: "host" | "cidr" | "http";
+    ssl: boolean;
+    scheme: "http" | "https" | null;
+} {
+    if (mode === "https") {
+        return { mode: "http", ssl: true, scheme: "https" };
+    }
+    if (mode === "http") {
+        return { mode: "http", ssl: false, scheme: "http" };
+    }
+    return { mode, ssl: false, scheme: null };
+}
+
 export type ClientResourcesResults = {
     newSiteResource: SiteResource;
     oldSiteResource?: SiteResource;
@@ -76,13 +90,16 @@ export async function updateClientResources(
         }
 
         if (existingResource) {
+            const mappedMode = siteResourceModeForDb(resourceData.mode);
             // Update existing resource
             const [updatedResource] = await trx
                 .update(siteResources)
                 .set({
                     name: resourceData.name || resourceNiceId,
                     siteId: site.siteId,
-                    mode: resourceData.mode,
+                    mode: mappedMode.mode,
+                    ssl: mappedMode.ssl,
+                    scheme: mappedMode.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
                     enabled: true, // hardcoded for now
@@ -208,9 +225,9 @@ export async function updateClientResources(
                 oldSiteResource: existingResource
             });
         } else {
+            const mappedMode = siteResourceModeForDb(resourceData.mode);
             let aliasAddress: string | null = null;
-            if (resourceData.mode == "host") {
-                // we can only have an alias on a host
+            if (mappedMode.mode === "host" || mappedMode.mode === "http") {
                 aliasAddress = await getNextAvailableAliasAddress(orgId);
             }
 
@@ -222,7 +239,9 @@ export async function updateClientResources(
                     siteId: site.siteId,
                     niceId: resourceNiceId,
                     name: resourceData.name || resourceNiceId,
-                    mode: resourceData.mode,
+                    mode: mappedMode.mode,
+                    ssl: mappedMode.ssl,
+                    scheme: mappedMode.scheme,
                     destination: resourceData.destination,
                     destinationPort: resourceData["destination-port"],
                     enabled: true, // hardcoded for now

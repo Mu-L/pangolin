@@ -51,9 +51,7 @@ export default function CreateInternalResourceDialog({
         try {
             let data = { ...values };
             if (
-                (data.mode === "host" ||
-                    data.mode === "http" ||
-                    data.mode === "https") &&
+                (data.mode === "host" || data.mode === "http") &&
                 isHostname(data.destination)
             ) {
                 const currentAlias = data.alias?.trim() || "";
@@ -74,21 +72,42 @@ export default function CreateInternalResourceDialog({
                     mode: data.mode,
                     destination: data.destination,
                     enabled: true,
-                    alias: data.alias && typeof data.alias === "string" && data.alias.trim() ? data.alias : undefined,
+                    ...(data.mode === "http" && {
+                        scheme: data.scheme,
+                        ssl: data.ssl ?? false,
+                        destinationPort: data.httpHttpsPort ?? undefined
+                    }),
+                    alias:
+                        data.alias &&
+                        typeof data.alias === "string" &&
+                        data.alias.trim()
+                            ? data.alias
+                            : undefined,
                     tcpPortRangeString: data.tcpPortRangeString,
                     udpPortRangeString: data.udpPortRangeString,
                     disableIcmp: data.disableIcmp ?? false,
-                    ...(data.authDaemonMode != null && { authDaemonMode: data.authDaemonMode }),
-                    ...(data.authDaemonMode === "remote" && data.authDaemonPort != null && { authDaemonPort: data.authDaemonPort }),
-                    roleIds: data.roles ? data.roles.map((r) => parseInt(r.id)) : [],
+                    ...(data.authDaemonMode != null && {
+                        authDaemonMode: data.authDaemonMode
+                    }),
+                    ...(data.authDaemonMode === "remote" &&
+                        data.authDaemonPort != null && {
+                            authDaemonPort: data.authDaemonPort
+                        }),
+                    roleIds: data.roles
+                        ? data.roles.map((r) => parseInt(r.id))
+                        : [],
                     userIds: data.users ? data.users.map((u) => u.id) : [],
-                    clientIds: data.clients ? data.clients.map((c) => parseInt(c.id)) : []
+                    clientIds: data.clients
+                        ? data.clients.map((c) => parseInt(c.id))
+                        : []
                 }
             );
 
             toast({
                 title: t("createInternalResourceDialogSuccess"),
-                description: t("createInternalResourceDialogInternalResourceCreatedSuccessfully"),
+                description: t(
+                    "createInternalResourceDialogInternalResourceCreatedSuccessfully"
+                ),
                 variant: "default"
             });
             setOpen(false);
@@ -98,7 +117,9 @@ export default function CreateInternalResourceDialog({
                 title: t("createInternalResourceDialogError"),
                 description: formatAxiosError(
                     error,
-                    t("createInternalResourceDialogFailedToCreateInternalResource")
+                    t(
+                        "createInternalResourceDialogFailedToCreateInternalResource"
+                    )
                 ),
                 variant: "destructive"
             });
@@ -111,9 +132,13 @@ export default function CreateInternalResourceDialog({
         <Credenza open={open} onOpenChange={setOpen}>
             <CredenzaContent className="max-w-3xl">
                 <CredenzaHeader>
-                    <CredenzaTitle>{t("createInternalResourceDialogCreateClientResource")}</CredenzaTitle>
+                    <CredenzaTitle>
+                        {t("createInternalResourceDialogCreateClientResource")}
+                    </CredenzaTitle>
                     <CredenzaDescription>
-                        {t("createInternalResourceDialogCreateClientResourceDescription")}
+                        {t(
+                            "createInternalResourceDialogCreateClientResourceDescription"
+                        )}
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
@@ -128,7 +153,11 @@ export default function CreateInternalResourceDialog({
                 </CredenzaBody>
                 <CredenzaFooter>
                     <CredenzaClose asChild>
-                        <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                            disabled={isSubmitting}
+                        >
                             {t("createInternalResourceDialogCancel")}
                         </Button>
                     </CredenzaClose>

@@ -111,6 +111,21 @@ const createSiteResourceSchema = z
         {
             message: "Destination must be a valid CIDR notation for cidr mode"
         }
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "http") return true;
+            return (
+                data.scheme !== undefined &&
+                data.destinationPort !== undefined &&
+                data.destinationPort >= 1 &&
+                data.destinationPort <= 65535
+            );
+        },
+        {
+            message:
+                "HTTP mode requires scheme (http or https) and a valid destination port"
+        }
     );
 
 export type CreateSiteResourceBody = z.infer<typeof createSiteResourceSchema>;

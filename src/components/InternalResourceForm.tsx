@@ -46,6 +46,7 @@ import { SitesSelector, type Selectedsite } from "./site-selector";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import { MachinesSelector } from "./machines-selector";
 import DomainPicker from "@app/components/DomainPicker";
+import { SwitchInput } from "@app/components/SwitchInput";
 
 // --- Helpers (shared) ---
 
@@ -121,7 +122,7 @@ export const cleanForFQDN = (name: string): string =>
 
 type Site = ListSitesResponse["sites"][0];
 
-export type InternalResourceMode = "host" | "cidr" | "http" | "https";
+export type InternalResourceMode = "host" | "cidr" | "http";
 
 export type InternalResourceData = {
     id: number;
@@ -139,6 +140,8 @@ export type InternalResourceData = {
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
     httpHttpsPort?: number | null;
+    scheme?: "http" | "https" | null;
+    ssl?: boolean;
     httpConfigSubdomain?: string | null;
     httpConfigDomainId?: string | null;
     httpConfigFullDomain?: string | null;
@@ -159,6 +162,8 @@ export type InternalResourceFormValues = {
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
     httpHttpsPort?: number | null;
+    scheme?: "http" | "https";
+    ssl?: boolean;
     httpConfigSubdomain?: string | null;
     httpConfigDomainId?: string | null;
     httpConfigFullDomain?: string | null;
@@ -226,10 +231,18 @@ export function InternalResourceForm({
         variant === "create"
             ? "createInternalResourceDialogModeHttp"
             : "editInternalResourceDialogModeHttp";
-    const modeHttpsKey =
+    const schemeLabelKey =
         variant === "create"
-            ? "createInternalResourceDialogModeHttps"
-            : "editInternalResourceDialogModeHttps";
+            ? "createInternalResourceDialogScheme"
+            : "editInternalResourceDialogScheme";
+    const enableSslLabelKey =
+        variant === "create"
+            ? "createInternalResourceDialogEnableSsl"
+            : "editInternalResourceDialogEnableSsl";
+    const enableSslDescriptionKey =
+        variant === "create"
+            ? "createInternalResourceDialogEnableSslDescription"
+            : "editInternalResourceDialogEnableSslDescription";
     const destinationLabelKey =
         variant === "create"
             ? "createInternalResourceDialogDestination"
@@ -255,48 +268,78 @@ export function InternalResourceForm({
             ? "createInternalResourceDialogHttpConfigurationDescription"
             : "editInternalResourceDialogHttpConfigurationDescription";
 
-    const formSchema = z.object({
-        name: z.string().min(1, t(nameRequiredKey)).max(255, t(nameMaxKey)),
-        siteId: z
-            .number()
-            .int()
-            .positive(siteRequiredKey ? t(siteRequiredKey) : undefined),
-        mode: z.enum(["host", "cidr", "http", "https"]),
-        destination: z
-            .string()
-            .min(
-                1,
-                destinationRequiredKey
-                    ? { message: t(destinationRequiredKey) }
-                    : undefined
-            ),
-        alias: z.string().nullish(),
-        httpHttpsPort: z.number().int().min(1).max(65535).optional().nullable(),
-        httpConfigSubdomain: z.string().nullish(),
-        httpConfigDomainId: z.string().nullish(),
-        httpConfigFullDomain: z.string().nullish(),
-        niceId: z
-            .string()
-            .min(1)
-            .max(255)
-            .regex(/^[a-zA-Z0-9-]+$/)
-            .optional(),
-        tcpPortRangeString: createPortRangeStringSchema(t),
-        udpPortRangeString: createPortRangeStringSchema(t),
-        disableIcmp: z.boolean().optional(),
-        authDaemonMode: z.enum(["site", "remote"]).optional().nullable(),
-        authDaemonPort: z.number().int().positive().optional().nullable(),
-        roles: z.array(tagSchema).optional(),
-        users: z.array(tagSchema).optional(),
-        clients: z
-            .array(
-                z.object({
-                    clientId: z.number(),
-                    name: z.string()
-                })
-            )
-            .optional()
-    });
+    const formSchema = z
+        .object({
+            name: z.string().min(1, t(nameRequiredKey)).max(255, t(nameMaxKey)),
+            siteId: z
+                .number()
+                .int()
+                .positive(siteRequiredKey ? t(siteRequiredKey) : undefined),
+            mode: z.enum(["host", "cidr", "http"]),
+            destination: z
+                .string()
+                .min(
+                    1,
+                    destinationRequiredKey
+                        ? { message: t(destinationRequiredKey) }
+                        : undefined
+                ),
+            alias: z.string().nullish(),
+            httpHttpsPort: z
+                .number()
+                .int()
+                .min(1)
+                .max(65535)
+                .optional()
+                .nullable(),
+            scheme: z.enum(["http", "https"]).optional(),
+            ssl: z.boolean().optional(),
+            httpConfigSubdomain: z.string().nullish(),
+            httpConfigDomainId: z.string().nullish(),
+            httpConfigFullDomain: z.string().nullish(),
+            niceId: z
+                .string()
+                .min(1)
+                .max(255)
+                .regex(/^[a-zA-Z0-9-]+$/)
+                .optional(),
+            tcpPortRangeString: createPortRangeStringSchema(t),
+            udpPortRangeString: createPortRangeStringSchema(t),
+            disableIcmp: z.boolean().optional(),
+            authDaemonMode: z.enum(["site", "remote"]).optional().nullable(),
+            authDaemonPort: z.number().int().positive().optional().nullable(),
+            roles: z.array(tagSchema).optional(),
+            users: z.array(tagSchema).optional(),
+            clients: z
+                .array(
+                    z.object({
+                        clientId: z.number(),
+                        name: z.string()
+                    })
+                )
+                .optional()
+        })
+        .superRefine((data, ctx) => {
+            if (data.mode !== "http") return;
+            if (!data.scheme) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("internalResourceDownstreamSchemeRequired"),
+                    path: ["scheme"]
+                });
+            }
+            if (
+                data.httpHttpsPort == null ||
+                !Number.isFinite(data.httpHttpsPort) ||
+                data.httpHttpsPort < 1
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("internalResourceHttpPortRequired"),
+                    path: ["httpHttpsPort"]
+                });
+            }
+        });
 
     type FormData = z.infer<typeof formSchema>;
 
@@ -430,6 +473,8 @@ export function InternalResourceForm({
                   authDaemonMode: resource.authDaemonMode ?? "site",
                   authDaemonPort: resource.authDaemonPort ?? null,
                   httpHttpsPort: resource.httpHttpsPort ?? null,
+                  scheme: resource.scheme ?? "http",
+                  ssl: resource.ssl ?? false,
                   httpConfigSubdomain: resource.httpConfigSubdomain ?? null,
                   httpConfigDomainId: resource.httpConfigDomainId ?? null,
                   httpConfigFullDomain: resource.httpConfigFullDomain ?? null,
@@ -445,6 +490,8 @@ export function InternalResourceForm({
                   destination: "",
                   alias: null,
                   httpHttpsPort: null,
+                  scheme: "http",
+                  ssl: false,
                   httpConfigSubdomain: null,
                   httpConfigDomainId: null,
                   httpConfigFullDomain: null,
@@ -471,7 +518,7 @@ export function InternalResourceForm({
     const httpConfigSubdomain = form.watch("httpConfigSubdomain");
     const httpConfigDomainId = form.watch("httpConfigDomainId");
     const httpConfigFullDomain = form.watch("httpConfigFullDomain");
-    const isHttpOrHttps = mode === "http" || mode === "https";
+    const isHttpMode = mode === "http";
     const authDaemonMode = form.watch("authDaemonMode") ?? "site";
     const hasInitialized = useRef(false);
     const previousResourceId = useRef<number | null>(null);
@@ -496,6 +543,8 @@ export function InternalResourceForm({
                 destination: "",
                 alias: null,
                 httpHttpsPort: null,
+                scheme: "http",
+                ssl: false,
                 httpConfigSubdomain: null,
                 httpConfigDomainId: null,
                 httpConfigFullDomain: null,
@@ -527,6 +576,8 @@ export function InternalResourceForm({
                     destination: resource.destination ?? "",
                     alias: resource.alias ?? null,
                     httpHttpsPort: resource.httpHttpsPort ?? null,
+                    scheme: resource.scheme ?? "http",
+                    ssl: resource.ssl ?? false,
                     httpConfigSubdomain: resource.httpConfigSubdomain ?? null,
                     httpConfigDomainId: resource.httpConfigDomainId ?? null,
                     httpConfigFullDomain: resource.httpConfigFullDomain ?? null,
@@ -681,6 +732,37 @@ export function InternalResourceForm({
                             </FormItem>
                         )}
                     />
+                    <FormField
+                        control={form.control}
+                        name="mode"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>{t(modeLabelKey)}</FormLabel>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="host">
+                                            {t(modeHostKey)}
+                                        </SelectItem>
+                                        <SelectItem value="cidr">
+                                            {t(modeCidrKey)}
+                                        </SelectItem>
+                                        <SelectItem value="http">
+                                            {t(modeHttpKey)}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
 
                 <HorizontalTabs
@@ -718,63 +800,56 @@ export function InternalResourceForm({
                             <div
                                 className={cn(
                                     "grid gap-4 items-start",
-                                    mode === "cidr"
-                                        ? "grid-cols-4"
-                                        : "grid-cols-12"
+                                    mode === "cidr" && "grid-cols-1",
+                                    mode === "http" && "grid-cols-3",
+                                    mode === "host" && "grid-cols-2"
                                 )}
                             >
+                                {mode === "http" && (
+                                    <div className="min-w-0">
+                                        <FormField
+                                            control={form.control}
+                                            name="scheme"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(schemeLabelKey)}
+                                                    </FormLabel>
+                                                    <Select
+                                                        onValueChange={
+                                                            field.onChange
+                                                        }
+                                                        value={
+                                                            field.value ??
+                                                            "http"
+                                                        }
+                                                    >
+                                                        <FormControl>
+                                                            <SelectTrigger className="w-full">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="http">
+                                                                http
+                                                            </SelectItem>
+                                                            <SelectItem value="https">
+                                                                https
+                                                            </SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                )}
                                 <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-1"
-                                            : "col-span-3"
-                                    }
-                                >
-                                    <FormField
-                                        control={form.control}
-                                        name="mode"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t(modeLabelKey)}
-                                                </FormLabel>
-                                                <Select
-                                                    onValueChange={
-                                                        field.onChange
-                                                    }
-                                                    value={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="host">
-                                                            {t(modeHostKey)}
-                                                        </SelectItem>
-                                                        <SelectItem value="cidr">
-                                                            {t(modeCidrKey)}
-                                                        </SelectItem>
-                                                        <SelectItem value="http">
-                                                            {t(modeHttpKey)}
-                                                        </SelectItem>
-                                                        <SelectItem value="https">
-                                                            {t(modeHttpsKey)}
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div
-                                    className={
-                                        mode === "cidr"
-                                            ? "col-span-3"
-                                            : "col-span-5"
-                                    }
+                                    className={cn(
+                                        mode === "cidr" && "col-span-1",
+                                        (mode === "http" || mode === "host") &&
+                                            "min-w-0"
+                                    )}
                                 >
                                     <FormField
                                         control={form.control}
@@ -785,7 +860,7 @@ export function InternalResourceForm({
                                                     {t(destinationLabelKey)}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} />
+                                                    <Input {...field} className="w-full" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -793,7 +868,7 @@ export function InternalResourceForm({
                                     />
                                 </div>
                                 {mode === "host" && (
-                                    <div className="col-span-4">
+                                    <div className="min-w-0">
                                         <FormField
                                             control={form.control}
                                             name="alias"
@@ -805,6 +880,7 @@ export function InternalResourceForm({
                                                     <FormControl>
                                                         <Input
                                                             {...field}
+                                                            className="w-full"
                                                             value={
                                                                 field.value ??
                                                                 ""
@@ -817,8 +893,8 @@ export function InternalResourceForm({
                                         />
                                     </div>
                                 )}
-                                {(mode === "http" || mode === "https") && (
-                                    <div className="col-span-4">
+                                {mode === "http" && (
+                                    <div className="min-w-0">
                                         <FormField
                                             control={form.control}
                                             name="httpHttpsPort"
@@ -831,6 +907,7 @@ export function InternalResourceForm({
                                                     </FormLabel>
                                                     <FormControl>
                                                         <Input
+                                                            className="w-full"
                                                             type="number"
                                                             min={1}
                                                             max={65535}
@@ -842,16 +919,16 @@ export function InternalResourceForm({
                                                                 const raw =
                                                                     e.target
                                                                         .value;
-                                                                if (
-                                                                    raw === ""
-                                                                ) {
+                                                                if (raw === "") {
                                                                     field.onChange(
                                                                         null
                                                                     );
                                                                     return;
                                                                 }
                                                                 const n =
-                                                                    Number(raw);
+                                                                    Number(
+                                                                        raw
+                                                                    );
                                                                 field.onChange(
                                                                     Number.isFinite(
                                                                         n
@@ -871,7 +948,7 @@ export function InternalResourceForm({
                             </div>
                         </div>
 
-                        {isHttpOrHttps ? (
+                        {isHttpMode ? (
                             <div className="space-y-4">
                                 <div className="my-8">
                                     <label className="font-medium block">
@@ -881,6 +958,29 @@ export function InternalResourceForm({
                                         {t(httpConfigurationDescriptionKey)}
                                     </div>
                                 </div>
+                                <FormField
+                                    control={form.control}
+                                    name="ssl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <SwitchInput
+                                                    id="internal-resource-ssl"
+                                                    label={t(
+                                                        enableSslLabelKey
+                                                    )}
+                                                    description={t(
+                                                        enableSslDescriptionKey
+                                                    )}
+                                                    checked={!!field.value}
+                                                    onCheckedChange={
+                                                        field.onChange
+                                                    }
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
                                 <DomainPicker
                                     key={
                                         variant === "edit" && siteResourceId
@@ -913,6 +1013,7 @@ export function InternalResourceForm({
                                                 "httpConfigFullDomain",
                                                 null
                                             );
+                                            form.setValue("alias", null);
                                             return;
                                         }
                                         form.setValue(
@@ -927,6 +1028,7 @@ export function InternalResourceForm({
                                             "httpConfigFullDomain",
                                             res.fullDomain
                                         );
+                                        form.setValue("alias", res.fullDomain);
                                     }}
                                 />
                             </div>
