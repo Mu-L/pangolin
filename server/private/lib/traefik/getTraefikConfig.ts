@@ -33,7 +33,7 @@ import {
 } from "drizzle-orm";
 import logger from "@server/logger";
 import config from "@server/lib/config";
-import { orgs, resources, sites, Target, targets } from "@server/db";
+import { orgs, resources, sites, siteResources, Target, targets } from "@server/db";
 import {
     sanitize,
     encodePath,
@@ -267,6 +267,33 @@ export async function getTraefikConfig(
         });
     });
 
+    // Query siteResources in http/https mode that have aliases - needed for cert generation
+    const siteResourcesWithAliases = await db
+        .select({
+            siteResourceId: siteResources.siteResourceId,
+            alias: siteResources.alias,
+            mode: siteResources.mode
+        })
+        .from(siteResources)
+        .innerJoin(sites, eq(sites.siteId, siteResources.siteId))
+        .where(
+            and(
+                eq(siteResources.enabled, true),
+                isNotNull(siteResources.alias),
+                inArray(siteResources.mode, ["http", "https"]),
+                or(
+                    eq(sites.exitNodeId, exitNodeId),
+                    and(
+                        isNull(sites.exitNodeId),
+                        sql`(${siteTypes.includes("local") ? 1 : 0} = 1)`,
+                        eq(sites.type, "local"),
+                        sql`(${build != "saas" ? 1 : 0} = 1)`
+                    )
+                ),
+                inArray(sites.type, siteTypes)
+            )
+        );
+
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
         // create a list of all domains to get certs for
@@ -274,6 +301,12 @@ export async function getTraefikConfig(
         for (const resource of resourcesMap.values()) {
             if (resource.enabled && resource.ssl && resource.fullDomain) {
                 domains.add(resource.fullDomain);
+            }
+        }
+        // Include siteResource aliases so pangolin-dns also fetches certs for them
+        for (const sr of siteResourcesWithAliases) {
+            if (sr.alias) {
+                domains.add(sr.alias);
             }
         }
         // get the valid certs for these domains
@@ -863,6 +896,128 @@ export async function getTraefikConfig(
                           }
                         : {})
                 }
+            };
+        }
+    }
+
+    // Add Traefik routes for siteResource aliases in http/https mode so that
+    // Traefik generates TLS certificates for those domains even when no
+    // matching resource exists yet.
+    if (siteResourcesWithAliases.length > 0) {
+        // Build a set of domains already covered by normal resources
+        const existingFullDomains = new Set<string>();
+        for (const resource of resourcesMap.values()) {
+            if (resource.fullDomain) {
+                existingFullDomains.add(resource.fullDomain);
+            }
+        }
+
+        for (const sr of siteResourcesWithAliases) {
+            if (!sr.alias) continue;
+
+            // Skip if this alias is already handled by a resource router
+            if (existingFullDomains.has(sr.alias)) continue;
+
+            const alias = sr.alias;
+            const srKey = `site-resource-cert-${sr.siteResourceId}`;
+            const siteResourceServiceName = `${srKey}-service`;
+            const siteResourceRouterName = `${srKey}-router`;
+            const siteResourceRewriteMiddlewareName = `${srKey}-rewrite`;
+
+            const maintenancePort = config.getRawConfig().server.next_port;
+            const maintenanceHost =
+                config.getRawConfig().server.internal_hostname;
+
+            if (!config_output.http.routers) {
+                config_output.http.routers = {};
+            }
+            if (!config_output.http.services) {
+                config_output.http.services = {};
+            }
+            if (!config_output.http.middlewares) {
+                config_output.http.middlewares = {};
+            }
+
+            // Service pointing at the internal maintenance/Next.js page
+            config_output.http.services[siteResourceServiceName] = {
+                loadBalancer: {
+                    servers: [
+                        {
+                            url: `http://${maintenanceHost}:${maintenancePort}`
+                        }
+                    ],
+                    passHostHeader: true
+                }
+            };
+
+            // Middleware that rewrites any path to /maintenance-screen
+            config_output.http.middlewares[
+                siteResourceRewriteMiddlewareName
+            ] = {
+                replacePathRegex: {
+                    regex: "^/(.*)",
+                    replacement: "/private-maintenance-screen"
+                }
+            };
+
+            // HTTP -> HTTPS redirect so the ACME challenge can be served
+            config_output.http.routers[
+                `${siteResourceRouterName}-redirect`
+            ] = {
+                entryPoints: [
+                    config.getRawConfig().traefik.http_entrypoint
+                ],
+                middlewares: [redirectHttpsMiddlewareName],
+                service: siteResourceServiceName,
+                rule: `Host(\`${alias}\`)`,
+                priority: 100
+            };
+
+            // Determine TLS / cert-resolver configuration
+            let tls: any = {};
+            if (
+                !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
+            ) {
+                const domainParts = alias.split(".");
+                const wildCard =
+                    domainParts.length <= 2
+                        ? `*.${domainParts.join(".")}`
+                        : `*.${domainParts.slice(1).join(".")}`;
+
+                const globalDefaultResolver =
+                    config.getRawConfig().traefik.cert_resolver;
+                const globalDefaultPreferWildcard =
+                    config.getRawConfig().traefik.prefer_wildcard_cert;
+
+                tls = {
+                    certResolver: globalDefaultResolver,
+                    ...(globalDefaultPreferWildcard
+                        ? { domains: [{ main: wildCard }] }
+                        : {})
+                };
+            } else {
+                // pangolin-dns: only add route if we already have a valid cert
+                const matchingCert = validCerts.find(
+                    (cert) => cert.queriedDomain === alias
+                );
+                if (!matchingCert) {
+                    logger.debug(
+                        `No matching certificate found for siteResource alias: ${alias}`
+                    );
+                    continue;
+                }
+            }
+
+            // HTTPS router — presence of this entry triggers cert generation
+            config_output.http.routers[siteResourceRouterName] = {
+                entryPoints: [
+                    config.getRawConfig().traefik.https_entrypoint
+                ],
+                service: siteResourceServiceName,
+                middlewares: [siteResourceRewriteMiddlewareName],
+                rule: `Host(\`${alias}\`)`,
+                priority: 100,
+                tls
             };
         }
     }

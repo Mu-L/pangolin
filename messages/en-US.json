@@ -2708,6 +2708,8 @@
     "maintenancePageMessagePlaceholder": "We'll be back soon! Our site is currently undergoing scheduled maintenance.",
     "maintenancePageMessageDescription": "Detailed message explaining the maintenance",
     "maintenancePageTimeTitle": "Estimated Completion Time (Optional)",
+    "privateMaintenanceScreenTitle": "Private Placeholder Screen",
+    "privateMaintenanceScreenMessage": "This domain is being used on a private resource. Please connect using the Pangolin client to access this resource.",
     "maintenanceTime": "e.g., 2 hours, Nov 1 at 5:00 PM",
     "maintenanceEstimatedTimeDescription": "When you expect maintenance to be completed",
     "editDomain": "Edit Domain",
