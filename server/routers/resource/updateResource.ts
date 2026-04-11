@@ -121,7 +121,9 @@ const updateHttpResourceBodySchema = z
             if (data.headers) {
                 // HTTP header values must be visible ASCII or horizontal whitespace, no control chars (RFC 7230)
                 const validHeaderValue = /^[\t\x20-\x7E]*$/;
-                return data.headers.every((h) => validHeaderValue.test(h.value));
+                return data.headers.every((h) =>
+                    validHeaderValue.test(h.value)
+                );
             }
             return true;
         },
@@ -323,20 +325,27 @@ async function updateHttpResource(
             build == "saas" &&
             !isSubscribed(resource.orgId, tierMatrix.domainNamespaces)
         ) {
-            // check if this domain id is a namespace domain and if so, reject
-            const domain = await db
-                .select()
-                .from(domainNamespaces)
-                .where(eq(domainNamespaces.domainId, domainId))
-                .limit(1);
+            // grandfather in existing users
+            const lastAllowedDate = new Date("2026-04-12");
+            const userCreatedDate = new Date(
+                req.user?.dateCreated || new Date()
+            );
+            if (userCreatedDate > lastAllowedDate) {
+                // check if this domain id is a namespace domain and if so, reject
+                const domain = await db
+                    .select()
+                    .from(domainNamespaces)
+                    .where(eq(domainNamespaces.domainId, domainId))
+                    .limit(1);
 
-            if (domain.length > 0) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Your current subscription does not support custom domain namespaces. Please upgrade to access this feature."
-                    )
-                );
+                if (domain.length > 0) {
+                    return next(
+                        createHttpError(
+                            HttpCode.BAD_REQUEST,
+                            "Your current subscription does not support custom domain namespaces. Please upgrade to access this feature."
+                        )
+                    );
+                }
             }
         }
 

@@ -114,7 +114,10 @@ export async function createResource(
 
         const { orgId } = parsedParams.data;
 
-        if (req.user && (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)) {
+        if (
+            req.user &&
+            (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)
+        ) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );
@@ -195,24 +198,26 @@ async function createHttpResource(
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
 
-    if (
-        build == "saas" &&
-        !isSubscribed(orgId!, tierMatrix.domainNamespaces)
-    ) {
-        // check if this domain id is a namespace domain and if so, reject
-        const domain = await db
-            .select()
-            .from(domainNamespaces)
-            .where(eq(domainNamespaces.domainId, domainId))
-            .limit(1);
+    if (build == "saas" && !isSubscribed(orgId!, tierMatrix.domainNamespaces)) {
+        // grandfather in existing users
+        const lastAllowedDate = new Date("2026-04-12");
+        const userCreatedDate = new Date(req.user?.dateCreated || new Date());
+        if (userCreatedDate > lastAllowedDate) {
+            // check if this domain id is a namespace domain and if so, reject
+            const domain = await db
+                .select()
+                .from(domainNamespaces)
+                .where(eq(domainNamespaces.domainId, domainId))
+                .limit(1);
 
-        if (domain.length > 0) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Your current subscription does not support custom domain namespaces. Please upgrade to access this feature."
-                )
-            );
+            if (domain.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "Your current subscription does not support custom domain namespaces. Please upgrade to access this feature."
+                    )
+                );
+            }
         }
     }
 
