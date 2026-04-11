@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, loginPage } from "@server/db";
+import { db, domainNamespaces, loginPage } from "@server/db";
 import {
     domains,
     orgDomains,
@@ -24,6 +24,8 @@ import { build } from "@server/build";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { getUniqueResourceName } from "@server/db/names";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
+import { isSubscribed } from "#dynamic/lib/isSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const createResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -192,6 +194,27 @@ async function createHttpResource(
     const { name, domainId, postAuthPath } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
+
+    if (
+        build == "saas" &&
+        !isSubscribed(orgId!, tierMatrix.domainNamespaces)
+    ) {
+        // check if this domain id is a namespace domain and if so, reject
+        const domain = await db
+            .select()
+            .from(domainNamespaces)
+            .where(eq(domainNamespaces.domainId, domainId))
+            .limit(1);
+
+        if (domain.length > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Your current subscription does not support custom domain namespaces. Please upgrade to access this feature."
+                )
+            );
+        }
+    }
 
     // Validate domain and construct full domain
     const domainResult = await validateAndConstructDomain(
