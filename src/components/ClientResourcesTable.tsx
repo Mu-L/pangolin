@@ -143,7 +143,7 @@ function ClientResourceSiteLinks({
                         <span className="max-w-[10rem] truncate">
                             {site.siteName}
                         </span>
-                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                        <ArrowUpRight className="h-3 w-3 shrink-0" />
                     </Button>
                 </Link>
             ))}
@@ -198,7 +198,7 @@ function OverflowSitesPopover({
                                     <span className="truncate">
                                         {site.siteName}
                                     </span>
-                                    <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0" />
+                                    <ArrowUpRight className="ml-auto h-3 w-3 shrink-0" />
                                 </Button>
                             </Link>
                         </li>
