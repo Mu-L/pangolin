@@ -18,6 +18,7 @@ Reasons:
 105 - Valid Password
 106 - Valid email
 107 - Valid SSO
+108 - Connected Client
 
 201 - Resource Not Found
 202 - Resource Blocked

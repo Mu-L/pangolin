@@ -80,18 +80,15 @@ const updateSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (
-                data.mode === "host" &&
-                data.destination
-            ) {
-                    const isValidIP = z
-                        // .union([z.ipv4(), z.ipv6()])
-                        .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
-                        .safeParse(data.destination).success;
+            if (data.mode === "host" && data.destination) {
+                const isValidIP = z
+                    // .union([z.ipv4(), z.ipv6()])
+                    .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                    .safeParse(data.destination).success;
 
-                    if (isValidIP) {
-                        return true;
-                    }
+                if (isValidIP) {
+                    return true;
+                }
 
                 // Check if it's a valid domain (hostname pattern, TLD not required)
                 const domainRegex =
@@ -306,7 +303,7 @@ export async function updateSiteResource(
 
         let fullDomain: string | null = null;
         let finalSubdomain: string | null = null;
-        if (domainId && subdomain) {
+        if (domainId) {
             // Validate domain and construct full domain
             const domainResult = await validateAndConstructDomain(
                 domainId,
@@ -324,12 +321,16 @@ export async function updateSiteResource(
             finalSubdomain = domainResult.subdomain;
 
             // make sure the full domain is unique
-            const existingResource = await db
+            const [existingDomain] = await db
                 .select()
                 .from(siteResources)
                 .where(eq(siteResources.fullDomain, fullDomain));
 
-            if (existingResource.length > 0) {
+            if (
+                existingDomain &&
+                existingDomain.siteResourceId !==
+                    existingSiteResource.siteResourceId
+            ) {
                 return next(
                     createHttpError(
                         HttpCode.CONFLICT,
@@ -666,9 +667,14 @@ export async function handleMessagingForUpdatedSiteResource(
     const destinationChanged =
         existingSiteResource &&
         existingSiteResource.destination !== updatedSiteResource.destination;
+    const destinationPortChanged =
+        existingSiteResource &&
+        existingSiteResource.destinationPort !==
+            updatedSiteResource.destinationPort;
     const aliasChanged =
         existingSiteResource &&
-        existingSiteResource.alias !== updatedSiteResource.alias;
+        (existingSiteResource.alias !== updatedSiteResource.alias ||
+            existingSiteResource.fullDomain !== updatedSiteResource.fullDomain); // because the full domain gets sent down to the stuff as an alias
     const portRangesChanged =
         existingSiteResource &&
         (existingSiteResource.tcpPortRangeString !==
@@ -680,7 +686,7 @@ export async function handleMessagingForUpdatedSiteResource(
 
     // if the existingSiteResource is undefined (new resource) we don't need to do anything here, the rebuild above handled it all
 
-    if (destinationChanged || aliasChanged || portRangesChanged) {
+    if (destinationChanged || aliasChanged || portRangesChanged || destinationPortChanged) {
         const [newt] = await trx
             .select()
             .from(newts)
@@ -694,7 +700,7 @@ export async function handleMessagingForUpdatedSiteResource(
         }
 
         // Only update targets on newt if destination changed
-        if (destinationChanged || portRangesChanged) {
+        if (destinationChanged || portRangesChanged || destinationPortChanged) {
             const oldTarget = await generateSubnetProxyTargetV2(
                 existingSiteResource,
                 mergedAllClients

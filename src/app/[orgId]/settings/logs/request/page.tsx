@@ -360,6 +360,7 @@ export default function GeneralPage() {
     // 105 - Valid Password
     // 106 - Valid email
     // 107 - Valid SSO
+    // 108 - Connected Client
 
     // 201 - Resource Not Found
     // 202 - Resource Blocked
@@ -377,6 +378,7 @@ export default function GeneralPage() {
         105: t("validPassword"),
         106: t("validEmail"),
         107: t("validSSO"),
+        108: t("connectedClient"),
         201: t("resourceNotFound"),
         202: t("resourceBlocked"),
         203: t("droppedByRule"),
@@ -634,6 +636,7 @@ export default function GeneralPage() {
                                 { value: "105", label: t("validPassword") },
                                 { value: "106", label: t("validEmail") },
                                 { value: "107", label: t("validSSO") },
+                                { value: "108", label: t("connectedClient") },
                                 { value: "201", label: t("resourceNotFound") },
                                 { value: "202", label: t("resourceBlocked") },
                                 { value: "203", label: t("droppedByRule") },
