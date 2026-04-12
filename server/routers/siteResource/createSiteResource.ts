@@ -262,7 +262,7 @@ export async function createSiteResource(
 
         let fullDomain: string | null = null;
         let finalSubdomain: string | null = null;
-        if (domainId && subdomain) {
+        if (domainId) {
             // Validate domain and construct full domain
             const domainResult = await validateAndConstructDomain(
                 domainId,

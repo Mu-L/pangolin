@@ -144,7 +144,7 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
         await logRequestAudit(
             {
                 action: true,
-                reason: 100,
+                reason: 108,
                 resourceId: entry.resourceId,
                 orgId
             },

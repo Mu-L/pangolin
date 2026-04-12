@@ -662,10 +662,10 @@ export async function generateSubnetProxyTargetV2(
         }
 
         if (
-            !siteResource.alias ||
             !siteResource.aliasAddress ||
             !siteResource.destinationPort ||
-            !siteResource.scheme
+            !siteResource.scheme ||
+            !siteResource.fullDomain
         ) {
             logger.debug(
                 `Site resource ${siteResource.siteResourceId} is in HTTP mode but is missing alias or alias address or destinationPort or scheme, skipping alias target generation.`
@@ -676,10 +676,10 @@ export async function generateSubnetProxyTargetV2(
         let tlsCert: string | undefined;
         let tlsKey: string | undefined;
 
-        if (siteResource.ssl && siteResource.alias) {
+        if (siteResource.ssl && siteResource.fullDomain) {
             try {
                 const certs = await getValidCertificatesForDomains(
-                    new Set([siteResource.alias]),
+                    new Set([siteResource.fullDomain]),
                     true
                 );
                 if (certs.length > 0 && certs[0].certFile && certs[0].keyFile) {
@@ -687,12 +687,12 @@ export async function generateSubnetProxyTargetV2(
                     tlsKey = certs[0].keyFile;
                 } else {
                     logger.warn(
-                        `No valid certificate found for SSL site resource ${siteResource.siteResourceId} with domain ${siteResource.alias}`
+                        `No valid certificate found for SSL site resource ${siteResource.siteResourceId} with domain ${siteResource.fullDomain}`
                     );
                 }
             } catch (err) {
                 logger.error(
-                    `Failed to retrieve certificate for site resource ${siteResource.siteResourceId} domain ${siteResource.alias}: ${err}`
+                    `Failed to retrieve certificate for site resource ${siteResource.siteResourceId} domain ${siteResource.fullDomain}: ${err}`
                 );
             }
         }
