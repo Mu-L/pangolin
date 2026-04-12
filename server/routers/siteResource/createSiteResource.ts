@@ -28,6 +28,7 @@ import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { validateAndConstructDomain } from "@server/lib/domainUtils";
 
 const createSiteResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -58,15 +59,14 @@ const createSiteResourceSchema = z
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().optional(),
-        authDaemonMode: z.enum(["site", "remote"]).optional()
+        authDaemonMode: z.enum(["site", "remote"]).optional(),
+        domainId: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
+        subdomain: z.string().optional() // only used for http mode, we need this to verify the alias is unique within the org
     })
     .strict()
     .refine(
         (data) => {
-            if (
-                data.mode === "host" ||
-                data.mode == "http"
-            ) {
+            if (data.mode === "host" || data.mode == "http") {
                 if (data.mode == "host") {
                     // Check if it's a valid IP address using zod (v4 or v6)
                     const isValidIP = z
@@ -196,7 +196,9 @@ export async function createSiteResource(
             udpPortRangeString,
             disableIcmp,
             authDaemonPort,
-            authDaemonMode
+            authDaemonMode,
+            domainId,
+            subdomain
         } = parsedBody.data;
 
         // Verify the site exists and belongs to the org
@@ -248,15 +250,47 @@ export async function createSiteResource(
             );
         }
 
+        if (domainId && alias) {
+            // throw an error because we can only have one or the other
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Alias and domain cannot both be set. Please choose one or the other."
+                )
+            );
+        }
+
+        let fullDomain: string | null = null;
+        let finalSubdomain: string | null = null;
+        let finalAlias = alias ? alias.trim() : null;
+        if (domainId && subdomain) {
+            // Validate domain and construct full domain
+            const domainResult = await validateAndConstructDomain(
+                domainId,
+                orgId,
+                subdomain
+            );
+
+            if (!domainResult.success) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, domainResult.error)
+                );
+            }
+
+            fullDomain = domainResult.fullDomain;
+            finalSubdomain = domainResult.subdomain;
+            finalAlias = fullDomain; // we will use the full domain as the alias for uniqueness checks and routing
+        }
+
         // make sure the alias is unique within the org if provided
-        if (alias) {
+        if (finalAlias) {
             const [conflict] = await db
                 .select()
                 .from(siteResources)
                 .where(
                     and(
                         eq(siteResources.orgId, orgId),
-                        eq(siteResources.alias, alias.trim())
+                        eq(siteResources.alias, finalAlias.trim())
                     )
                 )
                 .limit(1);
@@ -296,11 +330,13 @@ export async function createSiteResource(
                 scheme,
                 destinationPort,
                 enabled,
-                alias,
+                alias: finalAlias,
                 aliasAddress,
                 tcpPortRangeString,
                 udpPortRangeString,
-                disableIcmp
+                disableIcmp,
+                domainId,
+                subdomain: finalSubdomain
             };
             if (isLicensedSshPam) {
                 if (authDaemonPort !== undefined)

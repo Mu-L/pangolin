@@ -249,7 +249,12 @@ export const siteResources = pgTable("siteResources", {
     authDaemonPort: integer("authDaemonPort").default(22123),
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
         .$type<"site" | "remote">()
-        .default("site")
+        .default("site"),
+    domainId: varchar("domainId").references(() => domains.domainId, {
+        onDelete: "set null"
+    }),
+    subdomain: varchar("subdomain"),
+    fullDomain: varchar("fullDomain")
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {

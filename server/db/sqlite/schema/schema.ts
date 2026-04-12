@@ -277,7 +277,12 @@ export const siteResources = sqliteTable("siteResources", {
     authDaemonPort: integer("authDaemonPort").default(22123),
     authDaemonMode: text("authDaemonMode")
         .$type<"site" | "remote">()
-        .default("site")
+        .default("site"),
+    domainId: text("domainId").references(() => domains.domainId, {
+        onDelete: "set null"
+    }),
+    subdomain: text("subdomain"),
+    fullDomain: text("fullDomain"),
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {

@@ -14,6 +14,7 @@ import {
     userSiteResources
 } from "@server/db";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import {
     generateAliasConfig,
     generateRemoteSubnets,
@@ -72,7 +73,9 @@ const updateSiteResourceSchema = z
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().nullish(),
-        authDaemonMode: z.enum(["site", "remote"]).optional()
+        authDaemonMode: z.enum(["site", "remote"]).optional(),
+        domainId: z.string().optional(),
+        subdomain: z.string().optional()
     })
     .strict()
     .refine(
@@ -212,7 +215,9 @@ export async function updateSiteResource(
             udpPortRangeString,
             disableIcmp,
             authDaemonPort,
-            authDaemonMode
+            authDaemonMode,
+            domainId,
+            subdomain
         } = parsedBody.data;
 
         const [site] = await db
@@ -302,15 +307,37 @@ export async function updateSiteResource(
             }
         }
 
+        let fullDomain: string | null = null;
+        let finalSubdomain: string | null = null;
+        let finalAlias = alias ? alias.trim() : null;
+        if (domainId && subdomain) {
+            // Validate domain and construct full domain
+            const domainResult = await validateAndConstructDomain(
+                domainId,
+                org.orgId,
+                subdomain
+            );
+
+            if (!domainResult.success) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, domainResult.error)
+                );
+            }
+
+            fullDomain = domainResult.fullDomain;
+            finalSubdomain = domainResult.subdomain;
+            finalAlias = fullDomain; // we will use the full domain as the alias for uniqueness checks and routing
+        }
+
         // make sure the alias is unique within the org if provided
-        if (alias) {
+        if (finalAlias) {
             const [conflict] = await db
                 .select()
                 .from(siteResources)
                 .where(
                     and(
                         eq(siteResources.orgId, existingSiteResource.orgId),
-                        eq(siteResources.alias, alias.trim()),
+                        eq(siteResources.alias, finalAlias.trim()),
                         ne(siteResources.siteResourceId, siteResourceId) // exclude self
                     )
                 )
@@ -378,10 +405,12 @@ export async function updateSiteResource(
                         destination,
                         destinationPort,
                         enabled,
-                        alias: alias && alias.trim() ? alias : null,
+                        alias: finalAlias,
                         tcpPortRangeString,
                         udpPortRangeString,
                         disableIcmp,
+                        domainId,
+                        subdomain: finalSubdomain,
                         ...sshPamSet
                     })
                     .where(
@@ -484,10 +513,12 @@ export async function updateSiteResource(
                         destination: destination,
                         destinationPort: destinationPort,
                         enabled: enabled,
-                        alias: alias && alias.trim() ? alias : null,
+                        alias: finalAlias,
                         tcpPortRangeString: tcpPortRangeString,
                         udpPortRangeString: udpPortRangeString,
                         disableIcmp: disableIcmp,
+                        domainId,
+                        subdomain: finalSubdomain,
                         ...sshPamSet
                     })
                     .where(
