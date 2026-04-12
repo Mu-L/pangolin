@@ -34,7 +34,6 @@ type EditInternalResourceDialogProps = {
     setOpen: (val: boolean) => void;
     resource: InternalResourceData;
     orgId: string;
-    sites: Site[];
     onSuccess?: () => void;
 };
 
@@ -43,7 +42,6 @@ export default function EditInternalResourceDialog({
     setOpen,
     resource,
     orgId,
-    sites,
     onSuccess
 }: EditInternalResourceDialogProps) {
     const t = useTranslations();
@@ -174,7 +172,6 @@ export default function EditInternalResourceDialog({
                         variant="edit"
                         open={open}
                         resource={resource}
-                        sites={sites}
                         orgId={orgId}
                         siteResourceId={resource.id}
                         formId="edit-internal-resource-form"

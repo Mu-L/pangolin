@@ -159,18 +159,7 @@ const tagSchema = z.object({ id: z.string(), text: z.string() });
 
 function buildSelectedSitesForResource(
     resource: InternalResourceData,
-    catalog: Site[]
 ): Selectedsite[] {
-    const fromCatalog = catalog.find((s) => s.siteId === resource.siteId);
-    if (fromCatalog) {
-        return [
-            {
-                name: fromCatalog.name,
-                siteId: fromCatalog.siteId,
-                type: fromCatalog.type
-            }
-        ];
-    }
     return [
         {
             name: resource.siteName,
@@ -207,7 +196,6 @@ type InternalResourceFormProps = {
     variant: "create" | "edit";
     resource?: InternalResourceData;
     open?: boolean;
-    sites: Site[];
     orgId: string;
     siteResourceId?: number;
     formId: string;
@@ -218,7 +206,6 @@ export function InternalResourceForm({
     variant,
     resource,
     open,
-    sites,
     orgId,
     siteResourceId,
     formId,
@@ -375,8 +362,6 @@ export function InternalResourceForm({
 
     type FormData = z.infer<typeof formSchema>;
 
-    const availableSites = sites.filter((s) => s.type === "newt");
-
     const rolesQuery = useQuery(orgQueries.roles({ orgId }));
     const usersQuery = useQuery(orgQueries.users({ orgId }));
     const clientsQuery = useQuery(orgQueries.machineClients({ orgId }));
@@ -517,7 +502,7 @@ export function InternalResourceForm({
               }
             : {
                   name: "",
-                  siteIds: availableSites[0] ? [availableSites[0].siteId] : [],
+                  siteIds: [],
                   mode: "host",
                   destination: "",
                   alias: null,
@@ -539,16 +524,8 @@ export function InternalResourceForm({
 
     const [selectedSites, setSelectedSites] = useState<Selectedsite[]>(() =>
         variant === "edit" && resource
-            ? buildSelectedSitesForResource(resource, sites)
-            : availableSites[0]
-              ? [
-                    {
-                        name: availableSites[0].name,
-                        siteId: availableSites[0].siteId,
-                        type: availableSites[0].type
-                    }
-                ]
-              : []
+            ? buildSelectedSitesForResource(resource)
+            : []
     );
 
     const form = useForm<FormData>({
@@ -580,7 +557,7 @@ export function InternalResourceForm({
         if (variant === "create" && open) {
             form.reset({
                 name: "",
-                siteIds: availableSites[0] ? [availableSites[0].siteId] : [],
+                siteIds: [],
                 mode: "host",
                 destination: "",
                 alias: null,
@@ -599,23 +576,13 @@ export function InternalResourceForm({
                 users: [],
                 clients: []
             });
-            setSelectedSites(
-                availableSites[0]
-                    ? [
-                          {
-                              name: availableSites[0].name,
-                              siteId: availableSites[0].siteId,
-                              type: availableSites[0].type
-                          }
-                      ]
-                    : []
-            );
+            setSelectedSites([]);
             setTcpPortMode("all");
             setUdpPortMode("all");
             setTcpCustomPorts("");
             setUdpCustomPorts("");
         }
-    }, [variant, open, form, sites]);
+    }, [variant, open, form]);
 
     // Reset when edit dialog opens / resource changes
     useEffect(() => {
@@ -644,7 +611,7 @@ export function InternalResourceForm({
                     clients: []
                 });
                 setSelectedSites(
-                    buildSelectedSitesForResource(resource, sites)
+                    buildSelectedSitesForResource(resource)
                 );
                 setTcpPortMode(
                     getPortModeFromString(resource.tcpPortRangeString)
@@ -667,7 +634,7 @@ export function InternalResourceForm({
                 previousResourceId.current = resource.id;
             }
         }
-    }, [variant, resource, form, sites]);
+    }, [variant, resource, form]);
 
     // When edit dialog closes, clear previousResourceId so next open (for any resource) resets from fresh data
     useEffect(() => {

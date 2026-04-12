@@ -73,7 +73,8 @@ export default async function ClientResourcesPage(
                     {
                         siteId: siteResource.siteId,
                         siteName: siteResource.siteName,
-                        siteNiceId: siteResource.siteNiceId
+                        siteNiceId: siteResource.siteNiceId,
+                        online: siteResource.siteOnline
                     }
                 ],
                 siteName: siteResource.siteName,

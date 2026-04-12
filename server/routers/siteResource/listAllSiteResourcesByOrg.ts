@@ -76,6 +76,7 @@ export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
         siteName: string;
         siteNiceId: string;
         siteAddress: string | null;
+        siteOnline: boolean;
     })[];
 }>;
 
@@ -106,7 +107,8 @@ function querySiteResourcesBase() {
             fullDomain: siteResources.fullDomain,
             siteName: sites.name,
             siteNiceId: sites.niceId,
-            siteAddress: sites.address
+            siteAddress: sites.address,
+            siteOnline: sites.online
         })
         .from(siteResources)
         .innerJoin(sites, eq(siteResources.siteId, sites.siteId));
