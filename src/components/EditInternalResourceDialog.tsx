@@ -70,7 +70,7 @@ export default function EditInternalResourceDialog({
 
             await api.post(`/site-resource/${resource.id}`, {
                 name: data.name,
-                siteId: data.siteId,
+                siteId: data.siteIds[0],
                 mode: data.mode,
                 niceId: data.niceId,
                 destination: data.destination,
@@ -78,8 +78,12 @@ export default function EditInternalResourceDialog({
                     scheme: data.scheme,
                     ssl: data.ssl ?? false,
                     destinationPort: data.httpHttpsPort ?? null,
-                    domainId: data.httpConfigDomainId ? data.httpConfigDomainId : undefined,
-                    subdomain: data.httpConfigSubdomain ? data.httpConfigSubdomain : undefined
+                    domainId: data.httpConfigDomainId
+                        ? data.httpConfigDomainId
+                        : undefined,
+                    subdomain: data.httpConfigSubdomain
+                        ? data.httpConfigSubdomain
+                        : undefined
                 }),
                 ...(data.mode === "host" && {
                     alias:

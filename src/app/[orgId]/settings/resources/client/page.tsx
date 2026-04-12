@@ -60,21 +60,29 @@ export default async function ClientResourcesPage(
             const normalizedMode =
                 rawMode === "https"
                     ? ("http" as const)
-                    : rawMode === "host" || rawMode === "cidr" || rawMode === "http"
+                    : rawMode === "host" ||
+                        rawMode === "cidr" ||
+                        rawMode === "http"
                       ? rawMode
                       : ("host" as const);
             return {
                 id: siteResource.siteResourceId,
                 name: siteResource.name,
                 orgId: params.orgId,
+                sites: [
+                    {
+                        siteId: siteResource.siteId,
+                        siteName: siteResource.siteName,
+                        siteNiceId: siteResource.siteNiceId
+                    }
+                ],
                 siteName: siteResource.siteName,
                 siteAddress: siteResource.siteAddress || null,
                 mode: normalizedMode,
                 scheme:
                     siteResource.scheme ??
                     (rawMode === "https" ? ("https" as const) : null),
-                ssl:
-                    siteResource.ssl === true || rawMode === "https",
+                ssl: siteResource.ssl === true || rawMode === "https",
                 // protocol: siteResource.protocol,
                 // proxyPort: siteResource.proxyPort,
                 siteId: siteResource.siteId,

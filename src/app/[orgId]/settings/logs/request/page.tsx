@@ -513,11 +513,7 @@ export default function GeneralPage() {
                         href={`/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-6"
-                        >
+                        <Button variant="outline" size="sm">
                             {row.original.resourceName}
                             <ArrowUpRight className="ml-2 h-3 w-3" />
                         </Button>

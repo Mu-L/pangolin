@@ -38,11 +38,23 @@ import { ControlledDataTable } from "./ui/controlled-data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
+
+export type InternalResourceSiteRow = {
+    siteId: number;
+    siteName: string;
+    siteNiceId: string;
+};
 
 export type InternalResourceRow = {
     id: number;
     name: string;
     orgId: string;
+    sites: InternalResourceSiteRow[];
     siteName: string;
     siteAddress: string | null;
     // mode: "host" | "cidr" | "port";
@@ -99,6 +111,102 @@ function isSafeUrlForLink(href: string): boolean {
     } catch {
         return false;
     }
+}
+
+const MAX_SITE_LINKS = 3;
+
+function ClientResourceSiteLinks({
+    orgId,
+    sites
+}: {
+    orgId: string;
+    sites: InternalResourceSiteRow[];
+}) {
+    if (sites.length === 0) {
+        return <span>-</span>;
+    }
+    const visible = sites.slice(0, MAX_SITE_LINKS);
+    const overflow = sites.slice(MAX_SITE_LINKS);
+
+    return (
+        <div className="flex flex-wrap items-center gap-1">
+            {visible.map((site) => (
+                <Link
+                    key={site.siteId}
+                    href={`/${orgId}/settings/sites/${site.siteNiceId}`}
+                >
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1"
+                    >
+                        <span className="max-w-[10rem] truncate">
+                            {site.siteName}
+                        </span>
+                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                    </Button>
+                </Link>
+            ))}
+            {overflow.length > 0 ? (
+                <OverflowSitesPopover orgId={orgId} sites={overflow} />
+            ) : null}
+        </div>
+    );
+}
+
+function OverflowSitesPopover({
+    orgId,
+    sites
+}: {
+    orgId: string;
+    sites: InternalResourceSiteRow[];
+}) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 px-2 font-normal"
+                    onMouseEnter={() => setOpen(true)}
+                    onMouseLeave={() => setOpen(false)}
+                >
+                    +{sites.length}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent
+                align="start"
+                side="top"
+                className="w-auto max-w-xs p-2"
+                onMouseEnter={() => setOpen(true)}
+                onMouseLeave={() => setOpen(false)}
+            >
+                <ul className="flex flex-col gap-1.5 text-sm">
+                    {sites.map((site) => (
+                        <li key={site.siteId}>
+                            <Link
+                                href={`/${orgId}/settings/sites/${site.siteNiceId}`}
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full justify-start gap-1"
+                                >
+                                    <span className="truncate">
+                                        {site.siteName}
+                                    </span>
+                                    <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0" />
+                                </Button>
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 type ClientResourcesTableProps = {
@@ -223,20 +331,18 @@ export default function ClientResourcesTable({
             }
         },
         {
-            accessorKey: "siteName",
-            friendlyName: t("site"),
-            header: () => <span className="p-3">{t("site")}</span>,
+            id: "sites",
+            accessorFn: (row) =>
+                row.sites.map((s) => s.siteName).join(", ") || row.siteName,
+            friendlyName: t("sites"),
+            header: () => <span className="p-3">{t("sites")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
-                    <Link
-                        href={`/${resourceRow.orgId}/settings/sites/${resourceRow.siteNiceId}`}
-                    >
-                        <Button variant="outline">
-                            {resourceRow.siteName}
-                            <ArrowUpRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </Link>
+                    <ClientResourceSiteLinks
+                        orgId={resourceRow.orgId}
+                        sites={resourceRow.sites}
+                    />
                 );
             }
         },

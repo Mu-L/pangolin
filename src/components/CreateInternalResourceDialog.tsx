@@ -68,7 +68,7 @@ export default function CreateInternalResourceDialog({
                 `/org/${orgId}/site-resource`,
                 {
                     name: data.name,
-                    siteId: data.siteId,
+                    siteId: data.siteIds[0],
                     mode: data.mode,
                     destination: data.destination,
                     enabled: true,

@@ -405,7 +405,11 @@ export function LogDataTable<TData, TValue>({
                                             onClick={() =>
                                                 !disabled && onExport()
                                             }
-                                            disabled={isExporting || disabled || isExportDisabled}
+                                            disabled={
+                                                isExporting ||
+                                                disabled ||
+                                                isExportDisabled
+                                            }
                                         >
                                             {isExporting ? (
                                                 <Loader className="mr-2 size-4 animate-spin" />

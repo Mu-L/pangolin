@@ -451,11 +451,7 @@ export default function ConnectionLogsPage() {
                         <Link
                             href={`/${row.original.orgId}/settings/resources/client/?query=${row.original.resourceNiceId}`}
                         >
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-6"
-                            >
+                            <Button variant="outline" size="sm">
                                 {row.original.resourceName}
                                 <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
@@ -497,11 +493,7 @@ export default function ConnectionLogsPage() {
                         <Link
                             href={`/${row.original.orgId}/settings/clients/${clientType}/${row.original.clientNiceId}`}
                         >
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-6"
-                            >
+                            <Button variant="outline" size="sm">
                                 <Laptop className="mr-1 h-3 w-3" />
                                 {row.original.clientName}
                                 <ArrowUpRight className="ml-2 h-3 w-3" />
@@ -675,9 +667,7 @@ export default function ConnectionLogsPage() {
                         <div>
                             <strong>Ended At:</strong>{" "}
                             {row.endedAt
-                                ? new Date(
-                                      row.endedAt * 1000
-                                  ).toLocaleString()
+                                ? new Date(row.endedAt * 1000).toLocaleString()
                                 : "Active"}
                         </div>
                         <div>
