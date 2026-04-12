@@ -1,4 +1,3 @@
-import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import {
     clientSiteResources,
     clientSiteResourcesAssociationsCache,
@@ -13,7 +12,8 @@ import {
     Transaction,
     userSiteResources
 } from "@server/db";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
 import {
     generateAliasConfig,
@@ -235,6 +235,21 @@ export async function updateSiteResource(
             return next(
                 createHttpError(HttpCode.NOT_FOUND, "Site resource not found")
             );
+        }
+
+        if (mode == "http") {
+            const hasHttpFeature = await isLicensedOrSubscribed(
+                existingSiteResource.orgId,
+                tierMatrix[TierFeature.HTTPPrivateResources]
+            );
+            if (!hasHttpFeature) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "HTTP private resources are not included in your current plan. Please upgrade."
+                    )
+                );
+            }
         }
 
         const isLicensedSshPam = await isLicensedOrSubscribed(

@@ -185,6 +185,7 @@ type InternalResourceFormProps = {
     siteResourceId?: number;
     formId: string;
     onSubmit: (values: InternalResourceFormValues) => void | Promise<void>;
+    onSubmitDisabledChange?: (disabled: boolean) => void;
 };
 
 export function InternalResourceForm({
@@ -195,13 +196,15 @@ export function InternalResourceForm({
     orgId,
     siteResourceId,
     formId,
-    onSubmit
+    onSubmit,
+    onSubmitDisabledChange
 }: InternalResourceFormProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
     const disableEnterpriseFeatures = env.flags.disableEnterpriseFeatures;
     const sshSectionDisabled = !isPaidUser(tierMatrix.sshPam);
+    const httpSectionDisabled = !isPaidUser(tierMatrix.httpPrivateResources);
 
     const nameRequiredKey =
         variant === "create"
@@ -647,6 +650,10 @@ export function InternalResourceForm({
         form
     ]);
 
+    useEffect(() => {
+        onSubmitDisabledChange?.(isHttpMode && httpSectionDisabled);
+    }, [isHttpMode, httpSectionDisabled, onSubmitDisabledChange]);
+
     return (
         <Form {...form}>
             <form
@@ -853,6 +860,7 @@ export function InternalResourceForm({
                                                             field.value ??
                                                             "http"
                                                         }
+                                                        disabled={httpSectionDisabled}
                                                     >
                                                         <FormControl>
                                                             <SelectTrigger className="w-full">
@@ -893,6 +901,7 @@ export function InternalResourceForm({
                                                     <Input
                                                         {...field}
                                                         className="w-full"
+                                                        disabled={isHttpMode && httpSectionDisabled}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -948,6 +957,7 @@ export function InternalResourceForm({
                                                                 field.value ??
                                                                 ""
                                                             }
+                                                            disabled={httpSectionDisabled}
                                                             onChange={(e) => {
                                                                 const raw =
                                                                     e.target
@@ -981,6 +991,10 @@ export function InternalResourceForm({
                             </div>
                         </div>
 
+                        {isHttpMode && (
+                            <PaidFeaturesAlert tiers={tierMatrix.httpPrivateResources} />
+                        )}
+
                         {isHttpMode ? (
                             <div className="space-y-4">
                                 <div className="my-8">
@@ -991,6 +1005,7 @@ export function InternalResourceForm({
                                         {t(httpConfigurationDescriptionKey)}
                                     </div>
                                 </div>
+                                <div className={httpSectionDisabled ? "pointer-events-none opacity-50" : undefined}>
                                 <DomainPicker
                                     key={
                                         variant === "edit" && siteResourceId
@@ -1039,6 +1054,7 @@ export function InternalResourceForm({
                                         );
                                     }}
                                 />
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="ssl"
@@ -1055,6 +1071,7 @@ export function InternalResourceForm({
                                                     onCheckedChange={
                                                         field.onChange
                                                     }
+                                                    disabled={httpSectionDisabled}
                                                 />
                                             </FormControl>
                                         </FormItem>

@@ -50,6 +50,7 @@ export default function EditInternalResourceDialog({
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
     const [isSubmitting, startTransition] = useTransition();
+    const [isHttpModeDisabled, setIsHttpModeDisabled] = useState(false);
 
     async function handleSubmit(values: InternalResourceFormValues) {
         try {
@@ -177,6 +178,7 @@ export default function EditInternalResourceDialog({
                         onSubmit={(values) =>
                             startTransition(() => handleSubmit(values))
                         }
+                        onSubmitDisabledChange={setIsHttpModeDisabled}
                     />
                 </CredenzaBody>
                 <CredenzaFooter>
@@ -192,7 +194,7 @@ export default function EditInternalResourceDialog({
                     <Button
                         type="submit"
                         form="edit-internal-resource-form"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isHttpModeDisabled}
                         loading={isSubmitting}
                     >
                         {t("editInternalResourceDialogSaveResource")}

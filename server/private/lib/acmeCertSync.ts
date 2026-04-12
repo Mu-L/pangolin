@@ -15,9 +15,10 @@ import fs from "fs";
 import crypto from "crypto";
 import { certificates, domains, db } from "@server/db";
 import { and, eq } from "drizzle-orm";
-import { encryptData, decryptData } from "@server/lib/encryption";
+import { encrypt, decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
-import config from "#private/lib/config";
+import privateConfig from "#private/lib/config";
+import config from "@server/lib/config";
 
 interface AcmeCert {
     domain: { main: string; sans?: string[] };
@@ -30,14 +31,6 @@ interface AcmeJson {
     [resolver: string]: {
         Certificates: AcmeCert[];
     };
-}
-
-function getEncryptionKey(): Buffer {
-    const keyHex = config.getRawPrivateConfig().server.encryption_key;
-    if (!keyHex) {
-        throw new Error("acmeCertSync: encryption key is not configured");
-    }
-    return Buffer.from(keyHex, "hex");
 }
 
 async function findDomainId(certDomain: string): Promise<string | null> {
@@ -99,9 +92,7 @@ async function syncAcmeCerts(
     try {
         raw = fs.readFileSync(acmeJsonPath, "utf8");
     } catch (err) {
-        logger.debug(
-            `acmeCertSync: could not read ${acmeJsonPath}: ${err}`
-        );
+        logger.debug(`acmeCertSync: could not read ${acmeJsonPath}: ${err}`);
         return;
     }
 
@@ -121,15 +112,13 @@ async function syncAcmeCerts(
         return;
     }
 
-    const encryptionKey = getEncryptionKey();
+
 
     for (const cert of resolverData.Certificates) {
         const domain = cert.domain?.main;
 
         if (!domain) {
-            logger.debug(
-                `acmeCertSync: skipping cert with missing domain`
-            );
+            logger.debug(`acmeCertSync: skipping cert with missing domain`);
             continue;
         }
 
@@ -161,9 +150,9 @@ async function syncAcmeCerts(
 
         if (existing.length > 0 && existing[0].certFile) {
             try {
-                const storedCertPem = decryptData(
+                const storedCertPem = decrypt(
                     existing[0].certFile,
-                    encryptionKey
+                    config.getRawConfig().server.secret!
                 );
                 if (storedCertPem === certPem) {
                     logger.debug(
@@ -185,9 +174,7 @@ async function syncAcmeCerts(
         if (firstCertPem) {
             try {
                 const x509 = new crypto.X509Certificate(firstCertPem);
-                expiresAt = Math.floor(
-                    new Date(x509.validTo).getTime() / 1000
-                );
+                expiresAt = Math.floor(new Date(x509.validTo).getTime() / 1000);
             } catch (err) {
                 logger.debug(
                     `acmeCertSync: could not parse cert expiry for ${domain}: ${err}`
@@ -196,8 +183,8 @@ async function syncAcmeCerts(
         }
 
         const wildcard = domain.startsWith("*.");
-        const encryptedCert = encryptData(certPem, encryptionKey);
-        const encryptedKey = encryptData(keyPem, encryptionKey);
+        const encryptedCert = encrypt(certPem, config.getRawConfig().server.secret!);
+        const encryptedKey = encrypt(keyPem, config.getRawConfig().server.secret!);
         const now = Math.floor(Date.now() / 1000);
 
         const domainId = await findDomainId(domain);
@@ -249,16 +236,16 @@ async function syncAcmeCerts(
 }
 
 export function initAcmeCertSync(): void {
-    const privateConfig = config.getRawPrivateConfig();
+    const privateConfigData = privateConfig.getRawPrivateConfig();
 
-    if (!privateConfig.flags?.enable_acme_cert_sync) {
+    if (!privateConfigData.flags?.enable_acme_cert_sync) {
         return;
     }
 
     const acmeJsonPath =
-        privateConfig.acme?.acme_json_path ?? "config/letsencrypt/acme.json";
-    const resolver = privateConfig.acme?.resolver ?? "letsencrypt";
-    const intervalMs = privateConfig.acme?.sync_interval_ms ?? 5000;
+        privateConfigData.acme?.acme_json_path ?? "config/letsencrypt/acme.json";
+    const resolver = privateConfigData.acme?.resolver ?? "letsencrypt";
+    const intervalMs = privateConfigData.acme?.sync_interval_ms ?? 5000;
 
     logger.info(
         `acmeCertSync: starting ACME cert sync from "${acmeJsonPath}" using resolver "${resolver}" every ${intervalMs}ms`

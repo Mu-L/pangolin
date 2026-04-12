@@ -11,23 +11,15 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import config from "./config";
+import privateConfig from "./config";
+import config from "@server/lib/config";
 import { certificates, db } from "@server/db";
 import { and, eq, isNotNull, or, inArray, sql } from "drizzle-orm";
-import { decryptData } from "@server/lib/encryption";
+import { decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import cache from "#private/lib/cache";
 
-let encryptionKeyHex = "";
-let encryptionKey: Buffer;
-function loadEncryptData() {
-    if (encryptionKey) {
-        return; // already loaded
-    }
 
-    encryptionKeyHex = config.getRawPrivateConfig().server.encryption_key;
-    encryptionKey = Buffer.from(encryptionKeyHex, "hex");
-}
 
 // Define the return type for clarity and type safety
 export type CertificateResult = {
@@ -45,7 +37,7 @@ export async function getValidCertificatesForDomains(
     domains: Set<string>,
     useCache: boolean = true
 ): Promise<Array<CertificateResult>> {
-    loadEncryptData(); // Ensure encryption key is loaded
+
 
     const finalResults: CertificateResult[] = [];
     const domainsToQuery = new Set<string>();
@@ -68,7 +60,7 @@ export async function getValidCertificatesForDomains(
 
     // 2. If all domains were resolved from the cache, return early
     if (domainsToQuery.size === 0) {
-        const decryptedResults = decryptFinalResults(finalResults);
+        const decryptedResults = decryptFinalResults(finalResults, config.getRawConfig().server.secret!);
         return decryptedResults;
     }
 
@@ -173,22 +165,23 @@ export async function getValidCertificatesForDomains(
         }
     }
 
-    const decryptedResults = decryptFinalResults(finalResults);
+    const decryptedResults = decryptFinalResults(finalResults, config.getRawConfig().server.secret!);
     return decryptedResults;
 }
 
 function decryptFinalResults(
-    finalResults: CertificateResult[]
+    finalResults: CertificateResult[],
+    secret: string
 ): CertificateResult[] {
     const validCertsDecrypted = finalResults.map((cert) => {
         // Decrypt and save certificate file
-        const decryptedCert = decryptData(
+        const decryptedCert = decrypt(
             cert.certFile!, // is not null from query
-            encryptionKey
+            secret
         );
 
         // Decrypt and save key file
-        const decryptedKey = decryptData(cert.keyFile!, encryptionKey);
+        const decryptedKey = decrypt(cert.keyFile!, secret);
 
         // Return only the certificate data without org information
         return {

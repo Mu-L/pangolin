@@ -17,7 +17,7 @@ import {
     portRangeStringSchema
 } from "@server/lib/ip";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
 import response from "@server/lib/response";
 import logger from "@server/logger";
@@ -200,6 +200,21 @@ export async function createSiteResource(
             domainId,
             subdomain
         } = parsedBody.data;
+
+        if (mode == "http") {
+            const hasHttpFeature = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix[TierFeature.HTTPPrivateResources]
+            );
+            if (!hasHttpFeature) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "HTTP private resources are not included in your current plan. Please upgrade."
+                    )
+                );
+            }
+        }
 
         // Verify the site exists and belongs to the org
         const [site] = await db

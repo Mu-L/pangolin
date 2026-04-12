@@ -5,7 +5,7 @@ import config from "@server/lib/config";
 import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
-import { getValidCertificatesForDomains } from "#private/lib/certificates";
+import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
 
 interface IPRange {
     start: bigint;

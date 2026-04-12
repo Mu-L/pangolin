@@ -24,14 +24,8 @@ import {
     User,
     certificates,
     exitNodeOrgs,
-    RemoteExitNode,
-    olms,
-    newts,
-    clients,
-    sites,
     domains,
     orgDomains,
-    targets,
     loginPage,
     loginPageOrg,
     LoginPage,
@@ -70,12 +64,9 @@ import {
     updateAndGenerateEndpointDestinations,
     updateSiteBandwidth
 } from "@server/routers/gerbil";
-import * as gerbil from "@server/routers/gerbil";
 import logger from "@server/logger";
-import { decryptData } from "@server/lib/encryption";
+import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import privateConfig from "#private/lib/config";
-import * as fs from "fs";
 import { exchangeSession } from "@server/routers/badger";
 import { validateResourceSessionToken } from "@server/auth/sessions/resource";
 import { checkExitNodeOrg, resolveExitNodes } from "#private/lib/exitNodes";
@@ -298,25 +289,11 @@ hybridRouter.get(
     }
 );
 
-let encryptionKeyHex = "";
-let encryptionKey: Buffer;
-function loadEncryptData() {
-    if (encryptionKey) {
-        return; // already loaded
-    }
-
-    encryptionKeyHex =
-        privateConfig.getRawPrivateConfig().server.encryption_key;
-    encryptionKey = Buffer.from(encryptionKeyHex, "hex");
-}
-
 // Get valid certificates for given domains (supports wildcard certs)
 hybridRouter.get(
     "/certificates/domains",
     async (req: Request, res: Response, next: NextFunction) => {
         try {
-            loadEncryptData(); // Ensure encryption key is loaded
-
             const parsed = getCertificatesByDomainsQuerySchema.safeParse(
                 req.query
             );
@@ -447,13 +424,13 @@ hybridRouter.get(
 
             const result = filtered.map((cert) => {
                 // Decrypt and save certificate file
-                const decryptedCert = decryptData(
+                const decryptedCert = decrypt(
                     cert.certFile!, // is not null from query
-                    encryptionKey
+                    config.getRawConfig().server.secret!
                 );
 
                 // Decrypt and save key file
-                const decryptedKey = decryptData(cert.keyFile!, encryptionKey);
+                const decryptedKey = decrypt(cert.keyFile!, config.getRawConfig().server.secret!);
 
                 // Return only the certificate data without org information
                 return {
@@ -833,9 +810,12 @@ hybridRouter.get(
                     )
                 );
 
-            logger.debug(`User ${userId} has roles in org ${orgId}:`, userOrgRoleRows);
+            logger.debug(
+                `User ${userId} has roles in org ${orgId}:`,
+                userOrgRoleRows
+            );
 
-            return response<{ roleId: number, roleName: string }[]>(res, {
+            return response<{ roleId: number; roleName: string }[]>(res, {
                 data: userOrgRoleRows,
                 success: true,
                 error: false,
