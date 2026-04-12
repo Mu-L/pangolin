@@ -512,7 +512,11 @@ export default function GeneralPage() {
             cell: ({ row }) => {
                 return (
                     <Link
-                        href={`/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`}
+                        href={
+                            row.original.reason == 108 // for now the client will only have reason 108 so we know where to go
+                                ? `/${row.original.orgId}/settings/resources/client?query=${row.original.resourceNiceId}`
+                                : `/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`
+                        }
                         onClick={(e) => e.stopPropagation()}
                     >
                         <Button

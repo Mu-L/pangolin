@@ -1004,6 +1004,7 @@ export const requestAuditLog = pgTable(
         actor: text("actor"),
         actorId: text("actorId"),
         resourceId: integer("resourceId"),
+        siteResourceId: integer("siteResourceId"),
         ip: text("ip"),
         location: text("location"),
         userAgent: text("userAgent"),

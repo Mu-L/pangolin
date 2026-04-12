@@ -92,9 +92,14 @@ export const handleConnectionLogMessage: MessageHandler = async (context) => {
         return;
     }
 
-    // Look up the org for this site
+    // Look up the org for this site and check retention settings
     const [site] = await db
-        .select({ orgId: sites.orgId, orgSubnet: orgs.subnet })
+        .select({
+            orgId: sites.orgId,
+            orgSubnet: orgs.subnet,
+            settingsLogRetentionDaysConnection:
+                orgs.settingsLogRetentionDaysConnection
+        })
         .from(sites)
         .innerJoin(orgs, eq(sites.orgId, orgs.orgId))
         .where(eq(sites.siteId, newt.siteId));
@@ -107,6 +112,13 @@ export const handleConnectionLogMessage: MessageHandler = async (context) => {
     }
 
     const orgId = site.orgId;
+
+    if (site.settingsLogRetentionDaysConnection === 0) {
+        logger.debug(
+            `Connection log retention is disabled for org ${orgId}, skipping`
+        );
+        return;
+    }
 
     // Extract the CIDR suffix (e.g. "/16") from the org subnet so we can
     // reconstruct the exact subnet string stored on each client record.

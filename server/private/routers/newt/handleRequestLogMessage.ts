@@ -13,12 +13,13 @@
 
 import { db } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
-import { sites, Newt, orgs } from "@server/db";
-import { eq } from "drizzle-orm";
+import { sites, Newt, orgs, clients, clientSitesAssociationsCache } from "@server/db";
+import { and, eq, inArray } from "drizzle-orm";
 import logger from "@server/logger";
 import { inflate } from "zlib";
 import { promisify } from "util";
 import { logRequestAudit } from "@server/routers/badger/logRequestAudit";
+import { getCountryCodeForIp } from "@server/lib/geoip";
 
 export async function flushRequestLogToDb(): Promise<void> {
     return;
@@ -81,6 +82,7 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
     const [site] = await db
         .select({
             orgId: sites.orgId,
+            orgSubnet: orgs.subnet,
             settingsLogRetentionDaysRequest:
                 orgs.settingsLogRetentionDaysRequest
         })
@@ -118,6 +120,61 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
 
     logger.debug(`Request log entries: ${JSON.stringify(entries)}`);
 
+    // Build a map from sourceIp → external endpoint string by joining clients
+    // with clientSitesAssociationsCache. The endpoint is the real-world IP:port
+    // of the client device and is used for GeoIP lookup.
+    const ipToEndpoint = new Map<string, string>();
+
+    const cidrSuffix = site.orgSubnet?.includes("/")
+        ? site.orgSubnet.substring(site.orgSubnet.indexOf("/"))
+        : null;
+
+    if (cidrSuffix) {
+        const uniqueSourceAddrs = new Set<string>();
+        for (const entry of entries) {
+            if (entry.sourceAddr) {
+                uniqueSourceAddrs.add(entry.sourceAddr);
+            }
+        }
+
+        if (uniqueSourceAddrs.size > 0) {
+            const subnetQueries = Array.from(uniqueSourceAddrs).map((addr) => {
+                const ip = addr.includes(":") ? addr.split(":")[0] : addr;
+                return `${ip}${cidrSuffix}`;
+            });
+
+            const matchedClients = await db
+                .select({
+                    subnet: clients.subnet,
+                    endpoint: clientSitesAssociationsCache.endpoint
+                })
+                .from(clients)
+                .innerJoin(
+                    clientSitesAssociationsCache,
+                    and(
+                        eq(
+                            clientSitesAssociationsCache.clientId,
+                            clients.clientId
+                        ),
+                        eq(clientSitesAssociationsCache.siteId, newt.siteId)
+                    )
+                )
+                .where(
+                    and(
+                        eq(clients.orgId, orgId),
+                        inArray(clients.subnet, subnetQueries)
+                    )
+                );
+
+            for (const c of matchedClients) {
+                if (c.endpoint) {
+                    const ip = c.subnet.split("/")[0];
+                    ipToEndpoint.set(ip, c.endpoint);
+                }
+            }
+        }
+    }
+
     for (const entry of entries) {
         if (
             !entry.requestId ||
@@ -141,12 +198,27 @@ export const handleRequestLogMessage: MessageHandler = async (context) => {
             entry.path +
             (entry.rawQuery ? "?" + entry.rawQuery : "");
 
+        // Resolve the client's external endpoint for GeoIP lookup.
+        // sourceAddr is the WireGuard IP (possibly ip:port), so strip the port.
+        const sourceIp = entry.sourceAddr.includes(":")
+            ? entry.sourceAddr.split(":")[0]
+            : entry.sourceAddr;
+        const endpoint = ipToEndpoint.get(sourceIp);
+        let location: string | undefined;
+        if (endpoint) {
+            const endpointIp = endpoint.includes(":")
+                ? endpoint.split(":")[0]
+                : endpoint;
+            location = await getCountryCodeForIp(endpointIp);
+        }
+
         await logRequestAudit(
             {
                 action: true,
                 reason: 108,
-                resourceId: entry.resourceId,
-                orgId
+                siteResourceId: entry.resourceId,
+                orgId,
+                location
             },
             {
                 path: entry.path,

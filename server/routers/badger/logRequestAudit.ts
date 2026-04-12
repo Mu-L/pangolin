@@ -39,6 +39,7 @@ const auditLogBuffer: Array<{
     metadata: any;
     action: boolean;
     resourceId?: number;
+    siteResourceId?: number;
     reason: number;
     location?: string;
     originalRequestURL: string;
@@ -187,6 +188,7 @@ export async function logRequestAudit(
         action: boolean;
         reason: number;
         resourceId?: number;
+        siteResourceId?: number;
         orgId?: string;
         location?: string;
         user?: { username: string; userId: string };
@@ -263,6 +265,7 @@ export async function logRequestAudit(
             metadata: sanitizeString(metadata),
             action: data.action,
             resourceId: data.resourceId,
+            siteResourceId: data.siteResourceId,
             reason: data.reason,
             location: sanitizeString(data.location),
             originalRequestURL: sanitizeString(body.originalRequestURL) ?? "",
