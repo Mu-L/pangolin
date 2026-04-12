@@ -63,6 +63,9 @@ export type InternalResourceRow = {
     disableIcmp: boolean;
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
+    subdomain?: string | null;
+    domainId?: string | null;
+    fullDomain?: string | null;
 };
 
 function resolveHttpHttpsDisplayPort(
@@ -313,8 +316,8 @@ export default function ClientResourcesTable({
                         />
                     );
                 }
-                if (resourceRow.mode === "http" && resourceRow.alias) {
-                    const url = `${resourceRow.ssl ? "https" : "http"}://${resourceRow.alias}`;
+                if (resourceRow.mode === "http") {
+                    const url = `${resourceRow.ssl ? "https" : "http"}://${resourceRow.fullDomain}`;
                     return (
                         <CopyToClipboard
                             text={url}

@@ -1,6 +1,8 @@
 import {
     clients,
     clientSiteResources,
+    domains,
+    orgDomains,
     roles,
     roleSiteResources,
     SiteResource,
@@ -11,10 +13,83 @@ import {
     userSiteResources
 } from "@server/db";
 import { sites } from "@server/db";
-import { eq, and, ne, inArray, or } from "drizzle-orm";
+import { eq, and, ne, inArray, or, isNotNull } from "drizzle-orm";
 import { Config } from "./types";
 import logger from "@server/logger";
 import { getNextAvailableAliasAddress } from "../ip";
+import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+
+async function getDomainForSiteResource(
+    siteResourceId: number | undefined,
+    fullDomain: string,
+    orgId: string,
+    trx: Transaction
+): Promise<{ subdomain: string | null; domainId: string }> {
+    const [fullDomainExists] = await trx
+        .select({ siteResourceId: siteResources.siteResourceId })
+        .from(siteResources)
+        .where(
+            and(
+                eq(siteResources.fullDomain, fullDomain),
+                eq(siteResources.orgId, orgId),
+                siteResourceId
+                    ? ne(siteResources.siteResourceId, siteResourceId)
+                    : isNotNull(siteResources.siteResourceId)
+            )
+        )
+        .limit(1);
+
+    if (fullDomainExists) {
+        throw new Error(
+            `Site resource already exists with domain: ${fullDomain} in org ${orgId}`
+        );
+    }
+
+    const possibleDomains = await trx
+        .select()
+        .from(domains)
+        .innerJoin(orgDomains, eq(domains.domainId, orgDomains.domainId))
+        .where(and(eq(orgDomains.orgId, orgId), eq(domains.verified, true)))
+        .execute();
+
+    if (possibleDomains.length === 0) {
+        throw new Error(
+            `Domain not found for full-domain: ${fullDomain} in org ${orgId}`
+        );
+    }
+
+    const validDomains = possibleDomains.filter((domain) => {
+        if (domain.domains.type == "ns" || domain.domains.type == "wildcard") {
+            return (
+                fullDomain === domain.domains.baseDomain ||
+                fullDomain.endsWith(`.${domain.domains.baseDomain}`)
+            );
+        } else if (domain.domains.type == "cname") {
+            return fullDomain === domain.domains.baseDomain;
+        }
+    });
+
+    if (validDomains.length === 0) {
+        throw new Error(
+            `Domain not found for full-domain: ${fullDomain} in org ${orgId}`
+        );
+    }
+
+    const domainSelection = validDomains[0].domains;
+    const baseDomain = domainSelection.baseDomain;
+
+    let subdomain: string | null = null;
+    if (fullDomain !== baseDomain) {
+        subdomain = fullDomain.replace(`.${baseDomain}`, "");
+    }
+
+    await createCertificate(domainSelection.domainId, fullDomain, trx);
+
+    return {
+        subdomain,
+        domainId: domainSelection.domainId
+    };
+}
 
 function siteResourceModeForDb(mode: "host" | "cidr" | "http" | "https"): {
     mode: "host" | "cidr" | "http";
@@ -91,6 +166,19 @@ export async function updateClientResources(
 
         if (existingResource) {
             const mappedMode = siteResourceModeForDb(resourceData.mode);
+
+            let domainInfo:
+                | { subdomain: string | null; domainId: string }
+                | undefined;
+            if (resourceData["full-domain"] && mappedMode.mode === "http") {
+                domainInfo = await getDomainForSiteResource(
+                    existingResource.siteResourceId,
+                    resourceData["full-domain"],
+                    orgId,
+                    trx
+                );
+            }
+
             // Update existing resource
             const [updatedResource] = await trx
                 .update(siteResources)
@@ -107,7 +195,10 @@ export async function updateClientResources(
                     alias: resourceData.alias || null,
                     disableIcmp: resourceData["disable-icmp"],
                     tcpPortRangeString: resourceData["tcp-ports"],
-                    udpPortRangeString: resourceData["udp-ports"]
+                    udpPortRangeString: resourceData["udp-ports"],
+                    fullDomain: resourceData["full-domain"] || null,
+                    subdomain: domainInfo ? domainInfo.subdomain : null,
+                    domainId: domainInfo ? domainInfo.domainId : null
                 })
                 .where(
                     eq(
@@ -118,7 +209,6 @@ export async function updateClientResources(
                 .returning();
 
             const siteResourceId = existingResource.siteResourceId;
-            const orgId = existingResource.orgId;
 
             await trx
                 .delete(clientSiteResources)
@@ -231,6 +321,18 @@ export async function updateClientResources(
                 aliasAddress = await getNextAvailableAliasAddress(orgId);
             }
 
+            let domainInfo:
+                | { subdomain: string | null; domainId: string }
+                | undefined;
+            if (resourceData["full-domain"] && mappedMode.mode === "http") {
+                domainInfo = await getDomainForSiteResource(
+                    undefined,
+                    resourceData["full-domain"],
+                    orgId,
+                    trx
+                );
+            }
+
             // Create new resource
             const [newResource] = await trx
                 .insert(siteResources)
@@ -250,7 +352,10 @@ export async function updateClientResources(
                     aliasAddress: aliasAddress,
                     disableIcmp: resourceData["disable-icmp"],
                     tcpPortRangeString: resourceData["tcp-ports"],
-                    udpPortRangeString: resourceData["udp-ports"]
+                    udpPortRangeString: resourceData["udp-ports"],
+                    fullDomain: resourceData["full-domain"] || null,
+                    subdomain: domainInfo ? domainInfo.subdomain : null,
+                    domainId: domainInfo ? domainInfo.domainId : null
                 })
                 .returning();
 

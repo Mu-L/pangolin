@@ -478,9 +478,9 @@ export type Alias = { alias: string | null; aliasAddress: string | null };
 
 export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
     return allSiteResources
-        .filter((sr) => sr.alias && sr.aliasAddress && sr.mode == "host")
+        .filter((sr) => sr.aliasAddress && ((sr.alias && sr.mode == "host") || (sr.fullDomain && sr.mode == "http")))
         .map((sr) => ({
-            alias: sr.alias,
+            alias: sr.alias || sr.fullDomain,
             aliasAddress: sr.aliasAddress
         }));
 }
@@ -672,7 +672,6 @@ export async function generateSubnetProxyTargetV2(
             );
             return;
         }
-        const publicProtocol = siteResource.ssl ? "https" : "http";
         // also push a match for the alias address
         let tlsCert: string | undefined;
         let tlsKey: string | undefined;

@@ -66,7 +66,7 @@ const createSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host" || data.mode == "http") {
+            if (data.mode === "host") {
                 if (data.mode == "host") {
                     // Check if it's a valid IP address using zod (v4 or v6)
                     const isValidIP = z
@@ -262,7 +262,6 @@ export async function createSiteResource(
 
         let fullDomain: string | null = null;
         let finalSubdomain: string | null = null;
-        let finalAlias = alias ? alias.trim() : null;
         if (domainId && subdomain) {
             // Validate domain and construct full domain
             const domainResult = await validateAndConstructDomain(
@@ -279,18 +278,32 @@ export async function createSiteResource(
 
             fullDomain = domainResult.fullDomain;
             finalSubdomain = domainResult.subdomain;
-            finalAlias = fullDomain; // we will use the full domain as the alias for uniqueness checks and routing
+
+            // make sure the full domain is unique
+            const existingResource = await db
+                .select()
+                .from(siteResources)
+                .where(eq(siteResources.fullDomain, fullDomain));
+
+            if (existingResource.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        "Resource with that domain already exists"
+                    )
+                );
+            }
         }
 
         // make sure the alias is unique within the org if provided
-        if (finalAlias) {
+        if (alias) {
             const [conflict] = await db
                 .select()
                 .from(siteResources)
                 .where(
                     and(
                         eq(siteResources.orgId, orgId),
-                        eq(siteResources.alias, finalAlias.trim())
+                        eq(siteResources.alias, alias.trim())
                     )
                 )
                 .limit(1);
@@ -330,13 +343,14 @@ export async function createSiteResource(
                 scheme,
                 destinationPort,
                 enabled,
-                alias: finalAlias,
+                alias: alias ? alias.trim() : null,
                 aliasAddress,
                 tcpPortRangeString,
                 udpPortRangeString,
                 disableIcmp,
                 domainId,
-                subdomain: finalSubdomain
+                subdomain: finalSubdomain,
+                fullDomain
             };
             if (isLicensedSshPam) {
                 if (authDaemonPort !== undefined)

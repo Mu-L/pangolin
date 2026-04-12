@@ -88,7 +88,10 @@ export default async function ClientResourcesPage(
                 udpPortRangeString: siteResource.udpPortRangeString || null,
                 disableIcmp: siteResource.disableIcmp || false,
                 authDaemonMode: siteResource.authDaemonMode ?? null,
-                authDaemonPort: siteResource.authDaemonPort ?? null
+                authDaemonPort: siteResource.authDaemonPort ?? null,
+                subdomain: siteResource.subdomain ?? null,
+                domainId: siteResource.domainId ?? null,
+                fullDomain: siteResource.fullDomain ?? null
             };
         }
     );

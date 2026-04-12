@@ -77,22 +77,28 @@ export default function EditInternalResourceDialog({
                 ...(data.mode === "http" && {
                     scheme: data.scheme,
                     ssl: data.ssl ?? false,
-                    destinationPort: data.httpHttpsPort ?? null
+                    destinationPort: data.httpHttpsPort ?? null,
+                    domainId: data.httpConfigDomainId ? data.httpConfigDomainId : undefined,
+                    subdomain: data.httpConfigSubdomain ? data.httpConfigSubdomain : undefined
                 }),
-                alias:
-                    data.alias &&
-                    typeof data.alias === "string" &&
-                    data.alias.trim()
-                        ? data.alias
-                        : null,
-                tcpPortRangeString: data.tcpPortRangeString,
-                udpPortRangeString: data.udpPortRangeString,
-                disableIcmp: data.disableIcmp ?? false,
-                ...(data.authDaemonMode != null && {
-                    authDaemonMode: data.authDaemonMode
+                ...(data.mode === "host" && {
+                    alias:
+                        data.alias &&
+                        typeof data.alias === "string" &&
+                        data.alias.trim()
+                            ? data.alias
+                            : null,
+                    ...(data.authDaemonMode != null && {
+                        authDaemonMode: data.authDaemonMode
+                    }),
+                    ...(data.authDaemonMode === "remote" && {
+                        authDaemonPort: data.authDaemonPort || null
+                    })
                 }),
-                ...(data.authDaemonMode === "remote" && {
-                    authDaemonPort: data.authDaemonPort || null
+                ...((data.mode === "host" || data.mode === "cidr") && {
+                    tcpPortRangeString: data.tcpPortRangeString,
+                    udpPortRangeString: data.udpPortRangeString,
+                    disableIcmp: data.disableIcmp ?? false
                 }),
                 roleIds: (data.roles || []).map((r) => parseInt(r.id)),
                 userIds: (data.users || []).map((u) => u.id),

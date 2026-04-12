@@ -81,11 +81,9 @@ const updateSiteResourceSchema = z
     .refine(
         (data) => {
             if (
-                (data.mode === "host" ||
-                    data.mode == "http") &&
+                data.mode === "host" &&
                 data.destination
             ) {
-                if (data.mode == "host") {
                     const isValidIP = z
                         // .union([z.ipv4(), z.ipv6()])
                         .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
@@ -94,7 +92,6 @@ const updateSiteResourceSchema = z
                     if (isValidIP) {
                         return true;
                     }
-                }
 
                 // Check if it's a valid domain (hostname pattern, TLD not required)
                 const domainRegex =
@@ -309,7 +306,6 @@ export async function updateSiteResource(
 
         let fullDomain: string | null = null;
         let finalSubdomain: string | null = null;
-        let finalAlias = alias ? alias.trim() : null;
         if (domainId && subdomain) {
             // Validate domain and construct full domain
             const domainResult = await validateAndConstructDomain(
@@ -326,18 +322,32 @@ export async function updateSiteResource(
 
             fullDomain = domainResult.fullDomain;
             finalSubdomain = domainResult.subdomain;
-            finalAlias = fullDomain; // we will use the full domain as the alias for uniqueness checks and routing
+
+            // make sure the full domain is unique
+            const existingResource = await db
+                .select()
+                .from(siteResources)
+                .where(eq(siteResources.fullDomain, fullDomain));
+
+            if (existingResource.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        "Resource with that domain already exists"
+                    )
+                );
+            }
         }
 
         // make sure the alias is unique within the org if provided
-        if (finalAlias) {
+        if (alias) {
             const [conflict] = await db
                 .select()
                 .from(siteResources)
                 .where(
                     and(
                         eq(siteResources.orgId, existingSiteResource.orgId),
-                        eq(siteResources.alias, finalAlias.trim()),
+                        eq(siteResources.alias, alias.trim()),
                         ne(siteResources.siteResourceId, siteResourceId) // exclude self
                     )
                 )
@@ -405,12 +415,13 @@ export async function updateSiteResource(
                         destination,
                         destinationPort,
                         enabled,
-                        alias: finalAlias,
+                        alias: alias ? alias.trim() : null,
                         tcpPortRangeString,
                         udpPortRangeString,
                         disableIcmp,
                         domainId,
                         subdomain: finalSubdomain,
+                        fullDomain,
                         ...sshPamSet
                     })
                     .where(
@@ -507,18 +518,20 @@ export async function updateSiteResource(
                     .set({
                         name: name,
                         siteId: siteId,
+                        niceId: niceId,
                         mode: mode,
                         scheme,
                         ssl,
                         destination: destination,
                         destinationPort: destinationPort,
                         enabled: enabled,
-                        alias: finalAlias,
+                        alias: alias ? alias.trim() : null,
                         tcpPortRangeString: tcpPortRangeString,
                         udpPortRangeString: udpPortRangeString,
                         disableIcmp: disableIcmp,
                         domainId,
                         subdomain: finalSubdomain,
+                        fullDomain,
                         ...sshPamSet
                     })
                     .where(

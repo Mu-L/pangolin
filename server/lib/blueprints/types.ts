@@ -325,7 +325,7 @@ export function isTargetsOnlyResource(resource: any): boolean {
 export const ClientResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "http", "https"]),
+        mode: z.enum(["host", "cidr", "http"]),
         site: z.string(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
@@ -335,6 +335,8 @@ export const ClientResourceSchema = z
         "tcp-ports": portRangeStringSchema.optional().default("*"),
         "udp-ports": portRangeStringSchema.optional().default("*"),
         "disable-icmp": z.boolean().optional().default(false),
+        "full-domain": z.string().optional(),
+        ssl: z.boolean().optional(),
         alias: z
             .string()
             .regex(
@@ -474,6 +476,39 @@ export const ConfigSchema = z
                 code: z.ZodIssueCode.custom,
                 path: ["proxy-resources"],
                 message: `Duplicate 'full-domain' values found: ${fullDomainDuplicates}`
+            });
+        }
+
+        // Enforce the full-domain uniqueness across client-resources in the same stack
+        const clientFullDomainMap = new Map<string, string[]>();
+
+        Object.entries(config["client-resources"]).forEach(
+            ([resourceKey, resource]) => {
+                const fullDomain = resource["full-domain"];
+                if (fullDomain) {
+                    if (!clientFullDomainMap.has(fullDomain)) {
+                        clientFullDomainMap.set(fullDomain, []);
+                    }
+                    clientFullDomainMap.get(fullDomain)!.push(resourceKey);
+                }
+            }
+        );
+
+        const clientFullDomainDuplicates = Array.from(
+            clientFullDomainMap.entries()
+        )
+            .filter(([_, resourceKeys]) => resourceKeys.length > 1)
+            .map(
+                ([fullDomain, resourceKeys]) =>
+                    `'${fullDomain}' used by resources: ${resourceKeys.join(", ")}`
+            )
+            .join("; ");
+
+        if (clientFullDomainDuplicates.length !== 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["client-resources"],
+                message: `Duplicate 'full-domain' values found: ${clientFullDomainDuplicates}`
             });
         }
 

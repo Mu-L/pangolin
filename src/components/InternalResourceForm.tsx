@@ -146,9 +146,9 @@ export type InternalResourceData = {
     httpHttpsPort?: number | null;
     scheme?: "http" | "https" | null;
     ssl?: boolean;
-    httpConfigSubdomain?: string | null;
-    httpConfigDomainId?: string | null;
-    httpConfigFullDomain?: string | null;
+    subdomain?: string | null;
+    domainId?: string | null;
+    fullDomain?: string | null;
 };
 
 const tagSchema = z.object({ id: z.string(), text: z.string() });
@@ -479,9 +479,9 @@ export function InternalResourceForm({
                   httpHttpsPort: resource.httpHttpsPort ?? null,
                   scheme: resource.scheme ?? "http",
                   ssl: resource.ssl ?? false,
-                  httpConfigSubdomain: resource.httpConfigSubdomain ?? null,
-                  httpConfigDomainId: resource.httpConfigDomainId ?? null,
-                  httpConfigFullDomain: resource.httpConfigFullDomain ?? null,
+                  httpConfigSubdomain: resource.subdomain ?? null,
+                  httpConfigDomainId: resource.domainId ?? null,
+                  httpConfigFullDomain: resource.fullDomain ?? null,
                   niceId: resource.niceId,
                   roles: [],
                   users: [],
@@ -582,9 +582,9 @@ export function InternalResourceForm({
                     httpHttpsPort: resource.httpHttpsPort ?? null,
                     scheme: resource.scheme ?? "http",
                     ssl: resource.ssl ?? false,
-                    httpConfigSubdomain: resource.httpConfigSubdomain ?? null,
-                    httpConfigDomainId: resource.httpConfigDomainId ?? null,
-                    httpConfigFullDomain: resource.httpConfigFullDomain ?? null,
+                    httpConfigSubdomain: resource.subdomain ?? null,
+                    httpConfigDomainId: resource.domainId ?? null,
+                    httpConfigFullDomain: resource.fullDomain ?? null,
                     tcpPortRangeString: resource.tcpPortRangeString ?? "*",
                     udpPortRangeString: resource.udpPortRangeString ?? "*",
                     disableIcmp: resource.disableIcmp ?? false,
@@ -1023,7 +1023,6 @@ export function InternalResourceForm({
                                                 "httpConfigFullDomain",
                                                 null
                                             );
-                                            form.setValue("alias", null);
                                             return;
                                         }
                                         form.setValue(
@@ -1038,7 +1037,6 @@ export function InternalResourceForm({
                                             "httpConfigFullDomain",
                                             res.fullDomain
                                         );
-                                        form.setValue("alias", res.fullDomain);
                                     }}
                                 />
                                 <FormField

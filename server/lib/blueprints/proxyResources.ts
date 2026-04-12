@@ -1100,7 +1100,7 @@ function checkIfTargetChanged(
     return false;
 }
 
-async function getDomain(
+export async function getDomain(
     resourceId: number | undefined,
     fullDomain: string,
     orgId: string,

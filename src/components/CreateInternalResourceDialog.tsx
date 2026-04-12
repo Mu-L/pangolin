@@ -75,24 +75,34 @@ export default function CreateInternalResourceDialog({
                     ...(data.mode === "http" && {
                         scheme: data.scheme,
                         ssl: data.ssl ?? false,
-                        destinationPort: data.httpHttpsPort ?? undefined
-                    }),
-                    alias:
-                        data.alias &&
-                        typeof data.alias === "string" &&
-                        data.alias.trim()
-                            ? data.alias
+                        destinationPort: data.httpHttpsPort ?? undefined,
+                        domainId: data.httpConfigDomainId
+                            ? data.httpConfigDomainId
                             : undefined,
-                    tcpPortRangeString: data.tcpPortRangeString,
-                    udpPortRangeString: data.udpPortRangeString,
-                    disableIcmp: data.disableIcmp ?? false,
-                    ...(data.authDaemonMode != null && {
-                        authDaemonMode: data.authDaemonMode
+                        subdomain: data.httpConfigSubdomain
+                            ? data.httpConfigSubdomain
+                            : undefined
                     }),
-                    ...(data.authDaemonMode === "remote" &&
-                        data.authDaemonPort != null && {
-                            authDaemonPort: data.authDaemonPort
+                    ...(data.mode === "host" && {
+                        alias:
+                            data.alias &&
+                            typeof data.alias === "string" &&
+                            data.alias.trim()
+                                ? data.alias
+                                : undefined,
+                        ...(data.authDaemonMode != null && {
+                            authDaemonMode: data.authDaemonMode
                         }),
+                        ...(data.authDaemonMode === "remote" &&
+                            data.authDaemonPort != null && {
+                                authDaemonPort: data.authDaemonPort
+                            })
+                    }),
+                    ...((data.mode === "host" || data.mode == "cidr") && {
+                        tcpPortRangeString: data.tcpPortRangeString,
+                        udpPortRangeString: data.udpPortRangeString,
+                        disableIcmp: data.disableIcmp ?? false
+                    }),
                     roleIds: data.roles
                         ? data.roles.map((r) => parseInt(r.id))
                         : [],
