@@ -13,12 +13,24 @@
 
 import fs from "fs";
 import crypto from "crypto";
-import { certificates, domains, db } from "@server/db";
+import {
+    certificates,
+    clients,
+    clientSiteResourcesAssociationsCache,
+    db,
+    domains,
+    newts,
+    SiteResource,
+    siteResources
+} from "@server/db";
 import { and, eq } from "drizzle-orm";
 import { encrypt, decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import privateConfig from "#private/lib/config";
 import config from "@server/lib/config";
+import { generateSubnetProxyTargetV2, SubnetProxyTargetV2 } from "@server/lib/ip";
+import { updateTargets } from "@server/routers/client/targets";
+import cache from "#private/lib/cache";
 
 interface AcmeCert {
     domain: { main: string; sans?: string[] };
@@ -31,6 +43,138 @@ interface AcmeJson {
     [resolver: string]: {
         Certificates: AcmeCert[];
     };
+}
+
+async function pushCertUpdateToAffectedNewts(
+    domain: string,
+    domainId: string | null,
+    oldCertPem: string | null,
+    oldKeyPem: string | null
+): Promise<void> {
+    // Find all SSL-enabled HTTP site resources that use this cert's domain
+    let affectedResources: SiteResource[] = [];
+
+    if (domainId) {
+        affectedResources = await db
+            .select()
+            .from(siteResources)
+            .where(
+                and(
+                    eq(siteResources.domainId, domainId),
+                    eq(siteResources.ssl, true)
+                )
+            );
+    } else {
+        // Fallback: match by exact fullDomain when no domainId is available
+        affectedResources = await db
+            .select()
+            .from(siteResources)
+            .where(
+                and(
+                    eq(siteResources.fullDomain, domain),
+                    eq(siteResources.ssl, true)
+                )
+            );
+    }
+
+    if (affectedResources.length === 0) {
+        logger.debug(
+            `acmeCertSync: no affected site resources for cert domain "${domain}"`
+        );
+        return;
+    }
+
+    logger.info(
+        `acmeCertSync: pushing cert update to ${affectedResources.length} affected site resource(s) for domain "${domain}"`
+    );
+
+    for (const resource of affectedResources) {
+        try {
+            // Get the newt for this site
+            const [newt] = await db
+                .select()
+                .from(newts)
+                .where(eq(newts.siteId, resource.siteId))
+                .limit(1);
+
+            if (!newt) {
+                logger.debug(
+                    `acmeCertSync: no newt found for site ${resource.siteId}, skipping resource ${resource.siteResourceId}`
+                );
+                continue;
+            }
+
+            // Get all clients with access to this resource
+            const resourceClients = await db
+                .select({
+                    clientId: clients.clientId,
+                    pubKey: clients.pubKey,
+                    subnet: clients.subnet
+                })
+                .from(clients)
+                .innerJoin(
+                    clientSiteResourcesAssociationsCache,
+                    eq(
+                        clients.clientId,
+                        clientSiteResourcesAssociationsCache.clientId
+                    )
+                )
+                .where(
+                    eq(
+                        clientSiteResourcesAssociationsCache.siteResourceId,
+                        resource.siteResourceId
+                    )
+                );
+
+            if (resourceClients.length === 0) {
+                logger.debug(
+                    `acmeCertSync: no clients for resource ${resource.siteResourceId}, skipping`
+                );
+                continue;
+            }
+
+            // Invalidate the cert cache so generateSubnetProxyTargetV2 fetches fresh data
+            if (resource.fullDomain) {
+                await cache.del(`cert:${resource.fullDomain}`);
+            }
+
+            // Generate the new target (will read the freshly updated cert from DB)
+            const newTarget = await generateSubnetProxyTargetV2(
+                resource,
+                resourceClients
+            );
+
+            if (!newTarget) {
+                logger.debug(
+                    `acmeCertSync: could not generate target for resource ${resource.siteResourceId}, skipping`
+                );
+                continue;
+            }
+
+            // Construct the old target — same routing shape but with the previous cert/key.
+            // The newt only uses destPrefix/sourcePrefixes for removal, but we keep the
+            // semantics correct so the update message accurately reflects what changed.
+            const oldTarget: SubnetProxyTargetV2 = {
+                ...newTarget,
+                tlsCert: oldCertPem ?? undefined,
+                tlsKey: oldKeyPem ?? undefined
+            };
+
+            await updateTargets(
+                newt.newtId,
+                { oldTargets: [oldTarget], newTargets: [newTarget] },
+                newt.version
+            );
+
+            logger.info(
+                `acmeCertSync: pushed cert update to newt for site ${resource.siteId}, resource ${resource.siteResourceId}`
+            );
+        } catch (err) {
+            logger.error(
+                `acmeCertSync: error pushing cert update for resource ${resource?.siteResourceId}: ${err}`
+            );
+        }
+    }
 }
 
 async function findDomainId(certDomain: string): Promise<string | null> {
@@ -148,6 +292,9 @@ async function syncAcmeCerts(
             .where(eq(certificates.domain, domain))
             .limit(1);
 
+        let oldCertPem: string | null = null;
+        let oldKeyPem: string | null = null;
+
         if (existing.length > 0 && existing[0].certFile) {
             try {
                 const storedCertPem = decrypt(
@@ -159,6 +306,21 @@ async function syncAcmeCerts(
                         `acmeCertSync: cert for ${domain} is unchanged, skipping`
                     );
                     continue;
+                }
+                // Cert has changed; capture old values so we can send a correct
+                // update message to the newt after the DB write.
+                oldCertPem = storedCertPem;
+                if (existing[0].keyFile) {
+                    try {
+                        oldKeyPem = decrypt(
+                            existing[0].keyFile,
+                            config.getRawConfig().server.secret!
+                        );
+                    } catch (keyErr) {
+                        logger.debug(
+                            `acmeCertSync: could not decrypt stored key for ${domain}: ${keyErr}`
+                        );
+                    }
                 }
             } catch (err) {
                 // Decryption failure means we should proceed with the update
@@ -215,6 +377,8 @@ async function syncAcmeCerts(
             logger.info(
                 `acmeCertSync: updated certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
             );
+
+            await pushCertUpdateToAffectedNewts(domain, domainId, oldCertPem, oldKeyPem);
         } else {
             await db.insert(certificates).values({
                 domain,
@@ -231,6 +395,9 @@ async function syncAcmeCerts(
             logger.info(
                 `acmeCertSync: inserted new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
             );
+
+            // For a brand-new cert, push to any SSL resources that were waiting for it
+            await pushCertUpdateToAffectedNewts(domain, domainId, null, null);
         }
     }
 }
