@@ -31,6 +31,7 @@ import config from "@server/lib/config";
 import { generateSubnetProxyTargetV2, SubnetProxyTargetV2 } from "@server/lib/ip";
 import { updateTargets } from "@server/routers/client/targets";
 import cache from "#private/lib/cache";
+import { build } from "@server/build";
 
 interface AcmeCert {
     domain: { main: string; sans?: string[] };
@@ -403,9 +404,20 @@ async function syncAcmeCerts(
 }
 
 export function initAcmeCertSync(): void {
+    if (build == "saas") {
+        logger.debug(`acmeCertSync: skipping ACME cert sync in SaaS build`);
+        return;
+    }
+
     const privateConfigData = privateConfig.getRawPrivateConfig();
 
     if (!privateConfigData.flags?.enable_acme_cert_sync) {
+        logger.debug(`acmeCertSync: ACME cert sync is disabled by config flag, skipping`);
+        return;
+    }
+
+    if (!privateConfigData.flags.use_pangolin_dns) {
+        logger.debug(`acmeCertSync: ACME cert sync requires use_pangolin_dns flag to be enabled, skipping`);
         return;
     }
 
