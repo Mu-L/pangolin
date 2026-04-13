@@ -45,27 +45,43 @@ Pangolin is an open-source, identity-based remote access platform built on WireG
 
 ## Installation
 
-- Check out the [quick install guide](https://docs.pangolin.net/self-host/quick-install) for how to install and set up Pangolin.
-- Install from the [DigitalOcean marketplace](https://marketplace.digitalocean.com/apps/pangolin-ce-1?refcode=edf0480eeb81) for a one-click pre-configured installer.
+- Get started for free with [Pangolin Cloud](https://app.pangolin.net/).
+- Or, check out the [quick install guide](https://docs.pangolin.net/self-host/quick-install) for how to self-host Pangolin.
+  - Install from the [DigitalOcean marketplace](https://marketplace.digitalocean.com/apps/pangolin-ce-1?refcode=edf0480eeb81) for a one-click pre-configured installer.
 
-<img src="public/screenshots/hero.png" />
+<img src="public/screenshots/hero.png" alt="Pangolin" width="100%" />
 
 ## Deployment Options
 
-| <img width=500 /> | Description |
-|-----------------|--------------|
-| **Pangolin Cloud** | Fully managed service - no infrastructure required. |
-| **Self-Host: Community Edition** | Free, open source, and licensed under AGPL-3. |
-| **Self-Host: Enterprise Edition** | Licensed under Fossorial Commercial License. Free for personal and hobbyist use, and for businesses making less than \$100K USD gross annual revenue. |
+- **Pangolin Cloud** — Fully managed service - no infrastructure required.
+- **Self-Host: Community Edition** — Free, open source, and licensed under AGPL-3.
+- **Self-Host: Enterprise Edition** — Licensed under Fossorial Commercial License. Free for personal and hobbyist use, and for businesses making less than \$100K USD gross annual revenue.
 
 ## Key Features
 
-| <img width=500 />                                                                                                                                                                                                                                                                                                                                                                | <img width=500 />                                                  |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| **Connect remote networks with sites**<br /><br />Pangolin's site connectors create secure tunnels from remote networks without requiring public IP addresses or open ports. Sites make any network anywhere available for authorized access.                                                                                                                                                                                   | <img src="public/screenshots/sites.png" width=500 /><tr></tr>               |
-| **Browser-based reverse proxy access**<br /><br />Expose web applications through identity and context-aware tunneled reverse proxies. Users access applications through any web browser with authentication and granular access control. Pangolin handles routing, load balancing, health checking, and automatic SSL certificates without exposing your network directly to the internet.                                                                                                   | <img src="public/clip.gif" width=500 /><tr></tr>          |
-| **Client-based private resource access**<br /><br />Access private resources like SSH servers, databases, RDP, and entire network ranges through Pangolin clients. Intelligent NAT traversal enables connections even through restrictive firewalls, while DNS aliases provide friendly names and fast connections to resources across all your sites.                                                                                                                                                                                                | <img src="public/screenshots/private-resources.png" width=500 /><tr></tr>               |
-| **Zero-trust granular access**<br /><br />Grant users access to specific resources, not entire networks. Unlike traditional VPNs that expose full network access, Pangolin's zero-trust model ensures users can only reach the applications and services you explicitly define, reducing security risk and attack surface.                                                                                                                                                                                    | <img src="public/screenshots/user-devices.png" width=500 /><tr></tr> |
+### Connect remote networks with sites and NAT traversal
+
+Pangolin's site connectors provide gateways into networks so you can access any networked resources. Sites use outbound tunnels and intelligent NAT traversal to make networks behind restrictive firewalls available for authorized access without public IPs or open ports. Easily deploy a site as a binary or container on any platform.
+
+<img src="public/screenshots/sites.png" alt="Sites" width="100%" />
+
+### Browser-based reverse proxy access
+
+Expose web applications through identity and context-aware tunneled reverse proxies. Users access applications through any web browser with authentication and granular access control without installing a client. Pangolin handles routing, load balancing, health checking, and automatic SSL certificates without exposing your network directly to the internet.
+
+<img src="public/clip.gif" alt="Reverse proxy access" width="100%" />
+
+### Client-based private resource access
+
+Access private resources like SSH servers, databases, RDP, and entire network ranges through Pangolin clients. Intelligent NAT traversal enables connections even through restrictive firewalls, while DNS aliases provide friendly names and fast connections to resources across all your sites. Add redundancy by routing traffic through multiple connectors in your network.
+
+<img src="public/screenshots/private-resources.png" alt="Private resources" width="100%" />
+
+### Give users and roles access to resources
+
+Use Pangolin's built in users or bring your own identity provider and set up role based access control (RBAC). Grant users access to specific resources, not entire networks. Unlike traditional VPNs that expose full network access, Pangolin's zero-trust model ensures users can only reach the applications, services, and routes you explicitly define.
+
+<img src="public/screenshots/users.png" alt="Users from identity provider with roles" width="100%" />
 
 ## Download Clients
 
