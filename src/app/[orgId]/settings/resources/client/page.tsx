@@ -56,42 +56,29 @@ export default async function ClientResourcesPage(
 
     const internalResourceRows: InternalResourceRow[] = siteResources.map(
         (siteResource) => {
-            const rawMode = siteResource.mode as string | undefined;
-            const normalizedMode =
-                rawMode === "https"
-                    ? ("http" as const)
-                    : rawMode === "host" ||
-                        rawMode === "cidr" ||
-                        rawMode === "http"
-                      ? rawMode
-                      : ("host" as const);
             return {
                 id: siteResource.siteResourceId,
                 name: siteResource.name,
                 orgId: params.orgId,
-                sites: [
-                    {
-                        siteId: siteResource.siteId,
-                        siteName: siteResource.siteName,
-                        siteNiceId: siteResource.siteNiceId,
-                        online: siteResource.siteOnline
-                    }
-                ],
-                siteName: siteResource.siteName,
-                siteAddress: siteResource.siteAddress || null,
-                mode: normalizedMode,
-                scheme:
-                    siteResource.scheme ??
-                    (rawMode === "https" ? ("https" as const) : null),
-                ssl: siteResource.ssl === true || rawMode === "https",
+                sites: siteResource.siteIds.map((siteId, idx) => ({
+                    siteId,
+                    siteName: siteResource.siteNames[idx],
+                    siteNiceId: siteResource.siteNiceIds[idx],
+                    online: siteResource.siteOnlines[idx]
+                })),
+                mode: siteResource.mode,
+                scheme: siteResource.scheme,
+                ssl: siteResource.ssl,
+                siteNames: siteResource.siteNames,
+                siteAddresses: siteResource.siteAddresses || null,
                 // protocol: siteResource.protocol,
                 // proxyPort: siteResource.proxyPort,
-                siteId: siteResource.siteId,
+                siteIds: siteResource.siteIds,
                 destination: siteResource.destination,
                 httpHttpsPort: siteResource.destinationPort ?? null,
                 alias: siteResource.alias || null,
                 aliasAddress: siteResource.aliasAddress || null,
-                siteNiceId: siteResource.siteNiceId,
+                siteNiceIds: siteResource.siteNiceIds,
                 niceId: siteResource.niceId,
                 tcpPortRangeString: siteResource.tcpPortRangeString || null,
                 udpPortRangeString: siteResource.udpPortRangeString || null,

@@ -20,6 +20,7 @@ import {
     db,
     domains,
     newts,
+    siteNetworks,
     SiteResource,
     siteResources
 } from "@server/db";
@@ -91,16 +92,17 @@ async function pushCertUpdateToAffectedNewts(
 
     for (const resource of affectedResources) {
         try {
-            // Get the newt for this site
-            const [newt] = await db
-                .select()
-                .from(newts)
-                .where(eq(newts.siteId, resource.siteId))
-                .limit(1);
+            // Get all sites for this resource via siteNetworks
+            const resourceSiteRows = resource.networkId
+                ? await db
+                      .select({ siteId: siteNetworks.siteId })
+                      .from(siteNetworks)
+                      .where(eq(siteNetworks.networkId, resource.networkId))
+                : [];
 
-            if (!newt) {
+            if (resourceSiteRows.length === 0) {
                 logger.debug(
-                    `acmeCertSync: no newt found for site ${resource.siteId}, skipping resource ${resource.siteResourceId}`
+                    `acmeCertSync: no sites for resource ${resource.siteResourceId}, skipping`
                 );
                 continue;
             }
@@ -139,7 +141,7 @@ async function pushCertUpdateToAffectedNewts(
                 await cache.del(`cert:${resource.fullDomain}`);
             }
 
-            // Generate the new target (will read the freshly updated cert from DB)
+            // Generate target once — same cert applies to all sites for this resource
             const newTarget = await generateSubnetProxyTargetV2(
                 resource,
                 resourceClients
@@ -161,15 +163,31 @@ async function pushCertUpdateToAffectedNewts(
                 tlsKey: oldKeyPem ?? undefined
             };
 
-            await updateTargets(
-                newt.newtId,
-                { oldTargets: [oldTarget], newTargets: [newTarget] },
-                newt.version
-            );
+            // Push update to each site's newt
+            for (const { siteId } of resourceSiteRows) {
+                const [newt] = await db
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, siteId))
+                    .limit(1);
 
-            logger.info(
-                `acmeCertSync: pushed cert update to newt for site ${resource.siteId}, resource ${resource.siteResourceId}`
-            );
+                if (!newt) {
+                    logger.debug(
+                        `acmeCertSync: no newt found for site ${siteId}, skipping resource ${resource.siteResourceId}`
+                    );
+                    continue;
+                }
+
+                await updateTargets(
+                    newt.newtId,
+                    { oldTargets: [oldTarget], newTargets: [newTarget] },
+                    newt.version
+                );
+
+                logger.info(
+                    `acmeCertSync: pushed cert update to newt for site ${siteId}, resource ${resource.siteResourceId}`
+                );
+            }
         } catch (err) {
             logger.error(
                 `acmeCertSync: error pushing cert update for resource ${resource?.siteResourceId}: ${err}`

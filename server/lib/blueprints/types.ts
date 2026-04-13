@@ -164,6 +164,7 @@ export const ResourceSchema = z
         name: z.string().optional(),
         protocol: z.enum(["http", "tcp", "udp"]).optional(),
         ssl: z.boolean().optional(),
+        scheme: z.enum(["http", "https"]).optional(),
         "full-domain": z.string().optional(),
         "proxy-port": z.int().min(1).max(65535).optional(),
         enabled: z.boolean().optional(),
@@ -326,7 +327,8 @@ export const ClientResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
         mode: z.enum(["host", "cidr", "http"]),
-        site: z.string(),
+        site: z.string(), // DEPRECATED IN FAVOR OF sites
+        sites: z.array(z.string()).optional().default([]),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
         "destination-port": z.int().positive().optional(),
@@ -337,6 +339,7 @@ export const ClientResourceSchema = z
         "disable-icmp": z.boolean().optional().default(false),
         "full-domain": z.string().optional(),
         ssl: z.boolean().optional(),
+        scheme: z.enum(["http", "https"]).optional().nullable(),
         alias: z
             .string()
             .regex(

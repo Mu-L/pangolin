@@ -226,12 +226,18 @@ export const exitNodes = pgTable("exitNodes", {
 export const siteResources = pgTable("siteResources", {
     // this is for the clients
     siteResourceId: serial("siteResourceId").primaryKey(),
-    siteId: integer("siteId")
-        .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
     orgId: varchar("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
+    defaultNetworkId: integer("defaultNetworkId").references(
+        () => networks.networkId,
+        {
+            onDelete: "restrict"
+        }
+    ),
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
     ssl: boolean("ssl").notNull().default(false),
@@ -255,6 +261,32 @@ export const siteResources = pgTable("siteResources", {
     }),
     subdomain: varchar("subdomain"),
     fullDomain: varchar("fullDomain")
+});
+
+export const networks = pgTable("networks", {
+    networkId: serial("networkId").primaryKey(),
+    niceId: text("niceId"),
+    name: text("name"),
+    scope: varchar("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteNetworks = pgTable("siteNetworks", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+    networkId: integer("networkId")
+        .notNull()
+        .references(() => networks.networkId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
@@ -1117,3 +1149,4 @@ export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
+export type Network = InferSelectModel<typeof networks>;

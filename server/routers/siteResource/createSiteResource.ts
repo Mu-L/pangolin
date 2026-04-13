@@ -5,6 +5,8 @@ import {
     orgs,
     roles,
     roleSiteResources,
+    siteNetworks,
+    networks,
     SiteResource,
     siteResources,
     sites,
@@ -23,7 +25,7 @@ import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -39,8 +41,8 @@ const createSiteResourceSchema = z
         name: z.string().min(1).max(255),
         mode: z.enum(["host", "cidr", "http"]),
         ssl: z.boolean().optional(), // only used for http mode
-        siteId: z.int(),
         scheme: z.enum(["http", "https"]).optional(),
+        siteIds: z.array(z.int()),
         // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1),
@@ -180,7 +182,7 @@ export async function createSiteResource(
         const { orgId } = parsedParams.data;
         const {
             name,
-            siteId,
+            siteIds,
             mode,
             scheme,
             // proxyPort,
@@ -217,14 +219,16 @@ export async function createSiteResource(
         }
 
         // Verify the site exists and belongs to the org
-        const [site] = await db
+        const sitesToAssign = await db
             .select()
             .from(sites)
-            .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
+            .where(and(inArray(sites.siteId, siteIds), eq(sites.orgId, orgId)))
             .limit(1);
 
-        if (!site) {
-            return next(createHttpError(HttpCode.NOT_FOUND, "Site not found"));
+        if (sitesToAssign.length !== siteIds.length) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Some site not found")
+            );
         }
 
         const [org] = await db
@@ -346,14 +350,31 @@ export async function createSiteResource(
 
         let newSiteResource: SiteResource | undefined;
         await db.transaction(async (trx) => {
+            const [network] = await trx
+                .insert(networks)
+                .values({
+                    scope: "resource",
+                    orgId: orgId
+                })
+                .returning();
+
+            if (!network) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        `Failed to create network`
+                    )
+                );
+            }
+
             // Create the site resource
             const insertValues: typeof siteResources.$inferInsert = {
-                siteId,
                 niceId,
                 orgId,
                 name,
                 mode,
                 ssl,
+                networkId: network.networkId,
                 destination,
                 scheme,
                 destinationPort,
@@ -381,6 +402,13 @@ export async function createSiteResource(
             const siteResourceId = newSiteResource.siteResourceId;
 
             //////////////////// update the associations ////////////////////
+
+            for (const siteId of siteIds) {
+                await trx.insert(siteNetworks).values({
+                    siteId: siteId,
+                    networkId: network.networkId
+                });
+            }
 
             const [adminRole] = await trx
                 .select()
@@ -424,16 +452,21 @@ export async function createSiteResource(
                 );
             }
 
-            const [newt] = await trx
-                .select()
-                .from(newts)
-                .where(eq(newts.siteId, site.siteId))
-                .limit(1);
+            for (const siteToAssign of sitesToAssign) {
+                const [newt] = await trx
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, siteToAssign.siteId))
+                    .limit(1);
 
-            if (!newt) {
-                return next(
-                    createHttpError(HttpCode.NOT_FOUND, "Newt not found")
-                );
+                if (!newt) {
+                    return next(
+                        createHttpError(
+                            HttpCode.NOT_FOUND,
+                            `Newt not found for site ${siteToAssign.siteId}`
+                        )
+                    );
+                }
             }
 
             await rebuildClientAssociationsFromSiteResource(
@@ -452,7 +485,7 @@ export async function createSiteResource(
         }
 
         logger.info(
-            `Created site resource ${newSiteResource.siteResourceId} for site ${siteId}`
+            `Created site resource ${newSiteResource.siteResourceId} for org ${orgId}`
         );
 
         return response(res, {

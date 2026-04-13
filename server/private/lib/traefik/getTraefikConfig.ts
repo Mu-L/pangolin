@@ -33,7 +33,7 @@ import {
 } from "drizzle-orm";
 import logger from "@server/logger";
 import config from "@server/lib/config";
-import { orgs, resources, sites, siteResources, Target, targets } from "@server/db";
+import { orgs, resources, sites, siteNetworks, siteResources, Target, targets } from "@server/db";
 import {
     sanitize,
     encodePath,
@@ -275,7 +275,8 @@ export async function getTraefikConfig(
             mode: siteResources.mode
         })
         .from(siteResources)
-        .innerJoin(sites, eq(sites.siteId, siteResources.siteId))
+        .innerJoin(siteNetworks, eq(siteResources.networkId, siteNetworks.networkId))
+        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
         .where(
             and(
                 eq(siteResources.enabled, true),

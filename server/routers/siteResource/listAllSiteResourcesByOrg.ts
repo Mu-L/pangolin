@@ -1,4 +1,4 @@
-import { db, SiteResource, siteResources, sites } from "@server/db";
+import { db, SiteResource, siteNetworks, siteResources, sites } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -73,10 +73,11 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
 
 export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
     siteResources: (SiteResource & {
-        siteName: string;
-        siteNiceId: string;
-        siteAddress: string | null;
-        siteOnline: boolean;
+        siteOnlines: boolean[];
+        siteIds: number[];
+        siteNames: string[];
+        siteNiceIds: string[];
+        siteAddresses: (string | null)[];
     })[];
 }>;
 
@@ -84,7 +85,6 @@ function querySiteResourcesBase() {
     return db
         .select({
             siteResourceId: siteResources.siteResourceId,
-            siteId: siteResources.siteId,
             orgId: siteResources.orgId,
             niceId: siteResources.niceId,
             name: siteResources.name,
@@ -105,14 +105,20 @@ function querySiteResourcesBase() {
             subdomain: siteResources.subdomain,
             domainId: siteResources.domainId,
             fullDomain: siteResources.fullDomain,
-            siteName: sites.name,
-            siteNiceId: sites.niceId,
-            siteAddress: sites.address,
-            siteOnline: sites.online
+            networkId: siteResources.networkId,
+            defaultNetworkId: siteResources.defaultNetworkId,
+            siteNames: sql<string[]>`array_agg(${sites.name})`,
+            siteNiceIds: sql<string[]>`array_agg(${sites.niceId})`,
+            siteIds: sql<number[]>`array_agg(${sites.siteId})`,
+            siteAddresses: sql<(string | null)[]>`array_agg(${sites.address})`,
+            siteOnlines: sql<boolean[]>`array_agg(${sites.online})`
         })
         .from(siteResources)
-        .innerJoin(sites, eq(siteResources.siteId, sites.siteId));
+        .innerJoin(siteNetworks, eq(siteResources.networkId, siteNetworks.networkId))
+        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+        .groupBy(siteResources.siteResourceId);
 }
+
 
 registry.registerPath({
     method: "get",

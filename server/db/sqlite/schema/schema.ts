@@ -94,6 +94,9 @@ export const sites = sqliteTable("sites", {
     exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
         onDelete: "set null"
     }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
     name: text("name").notNull(),
     pubKey: text("pubKey"),
     subnet: text("subnet"),
@@ -252,12 +255,16 @@ export const siteResources = sqliteTable("siteResources", {
     siteResourceId: integer("siteResourceId").primaryKey({
         autoIncrement: true
     }),
-    siteId: integer("siteId")
-        .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
     orgId: text("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
+    defaultNetworkId: integer("defaultNetworkId").references(
+        () => networks.networkId,
+        { onDelete: "restrict" }
+    ),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
     ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
@@ -283,6 +290,30 @@ export const siteResources = sqliteTable("siteResources", {
     }),
     subdomain: text("subdomain"),
     fullDomain: text("fullDomain"),
+});
+
+export const networks = sqliteTable("networks", {
+    networkId: integer("networkId").primaryKey({ autoIncrement: true }),
+    niceId: text("niceId"),
+    name: text("name"),
+    scope: text("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" })
+});
+
+export const siteNetworks = sqliteTable("siteNetworks", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+    networkId: integer("networkId")
+        .notNull()
+        .references(() => networks.networkId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -1204,6 +1235,7 @@ export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type ApiKeyAction = InferSelectModel<typeof apiKeyActions>;
 export type ApiKeyOrg = InferSelectModel<typeof apiKeyOrg>;
 export type SiteResource = InferSelectModel<typeof siteResources>;
+export type Network = InferSelectModel<typeof networks>;
 export type OrgDomains = InferSelectModel<typeof orgDomains>;
 export type SetupToken = InferSelectModel<typeof setupTokens>;
 export type HostMeta = InferSelectModel<typeof hostMeta>;
