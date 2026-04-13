@@ -2,6 +2,7 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Command,
     CommandEmpty,
@@ -40,9 +41,12 @@ import {
     Check,
     CheckCircle2,
     ChevronsUpDown,
+    KeyRound,
     Zap
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { usePaidStatus } from "@/hooks/usePaidStatus";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { toUnicode } from "punycode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -95,6 +99,7 @@ export default function DomainPicker({
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const t = useTranslations();
+    const { hasSaasSubscription } = usePaidStatus();
 
     const { data = [], isLoading: loadingDomains } = useQuery(
         orgQueries.domains({ orgId })
@@ -509,9 +514,11 @@ export default function DomainPicker({
                                         <span className="truncate">
                                             {selectedBaseDomain.domain}
                                         </span>
-                                        {selectedBaseDomain.verified && (
-                                            <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
-                                        )}
+                                        {selectedBaseDomain.verified &&
+                                            selectedBaseDomain.domainType !==
+                                                "wildcard" && (
+                                                <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                                            )}
                                     </div>
                                 ) : (
                                     t("domainPickerSelectBaseDomain")
@@ -574,14 +581,23 @@ export default function DomainPicker({
                                                                     }
                                                                 </span>
                                                                 <span className="text-xs text-muted-foreground">
-                                                                    {orgDomain.type.toUpperCase()}{" "}
-                                                                    •{" "}
-                                                                    {orgDomain.verified
+                                                                    {orgDomain.type ===
+                                                                    "wildcard"
                                                                         ? t(
-                                                                              "domainPickerVerified"
+                                                                              "domainPickerManual"
                                                                           )
-                                                                        : t(
-                                                                              "domainPickerUnverified"
+                                                                        : (
+                                                                              <>
+                                                                                  {orgDomain.type.toUpperCase()}{" "}
+                                                                                  •{" "}
+                                                                                  {orgDomain.verified
+                                                                                      ? t(
+                                                                                            "domainPickerVerified"
+                                                                                        )
+                                                                                      : t(
+                                                                                            "domainPickerUnverified"
+                                                                                        )}
+                                                                              </>
                                                                           )}
                                                                 </span>
                                                             </div>
@@ -679,6 +695,23 @@ export default function DomainPicker({
                     </Popover>
                 </div>
             </div>
+
+            {build === "saas" &&
+                !hasSaasSubscription(
+                    tierMatrix[TierFeature.DomainNamespaces]
+                ) &&
+                !hideFreeDomain && (
+                    <Card className="mt-3 border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden">
+                        <CardContent className="py-3 px-4">
+                            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                                <KeyRound className="size-4 shrink-0 text-black-500" />
+                                <span>
+                                    {t("domainPickerFreeDomainsPaidFeature")}
+                                </span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
             {/*showProvidedDomainSearch && build === "saas" && (
                 <Alert>
