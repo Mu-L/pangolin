@@ -235,7 +235,9 @@ export default async function migration() {
             for (const row of existingUserInviteRoles) {
                 await db.execute(sql`
                     INSERT INTO "userInviteRoles" ("inviteId", "roleId")
-                    VALUES (${row.inviteId}, ${row.roleId})
+                    SELECT ${row.inviteId}, ${row.roleId}
+                    WHERE EXISTS (SELECT 1 FROM "userInvites" WHERE "inviteId" = ${row.inviteId})
+                      AND EXISTS (SELECT 1 FROM "roles" WHERE "roleId" = ${row.roleId})
                     ON CONFLICT DO NOTHING
                 `);
             }
@@ -258,7 +260,10 @@ export default async function migration() {
             for (const row of existingUserOrgRoles) {
                 await db.execute(sql`
                     INSERT INTO "userOrgRoles" ("userId", "orgId", "roleId")
-                    VALUES (${row.userId}, ${row.orgId}, ${row.roleId})
+                    SELECT ${row.userId}, ${row.orgId}, ${row.roleId}
+                    WHERE EXISTS (SELECT 1 FROM "user" WHERE "id" = ${row.userId})
+                      AND EXISTS (SELECT 1 FROM "orgs" WHERE "orgId" = ${row.orgId})
+                      AND EXISTS (SELECT 1 FROM "roles" WHERE "roleId" = ${row.roleId})
                     ON CONFLICT DO NOTHING
                 `);
             }

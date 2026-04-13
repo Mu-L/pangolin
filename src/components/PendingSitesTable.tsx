@@ -333,7 +333,8 @@ export default function PendingSitesTable({
                         "jupiter",
                         "saturn",
                         "uranus",
-                        "neptune"
+                        "neptune",
+                        "pluto"
                     ].includes(originalRow.exitNodeName.toLowerCase());
 
                 if (isCloudNode) {

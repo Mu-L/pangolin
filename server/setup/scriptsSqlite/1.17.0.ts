@@ -145,7 +145,7 @@ export default async function migration() {
             ).run();
 
             db.prepare(
-                `INSERT INTO '__new_userOrgs'("userId", "orgId", "isOwner", "autoProvisioned", "pamUsername") SELECT "userId", "orgId", "isOwner", "autoProvisioned", "pamUsername" FROM 'userOrgs';`
+                `INSERT INTO '__new_userOrgs'("userId", "orgId", "isOwner", "autoProvisioned", "pamUsername") SELECT "userId", "orgId", "isOwner", "autoProvisioned", "pamUsername" FROM 'userOrgs' WHERE EXISTS (SELECT 1 FROM 'user' WHERE id = userOrgs.userId) AND EXISTS (SELECT 1 FROM 'orgs' WHERE orgId = userOrgs.orgId);`
             ).run();
             db.prepare(`DROP TABLE 'userOrgs';`).run();
             db.prepare(
@@ -246,12 +246,15 @@ export default async function migration() {
         // Re-insert the preserved invite role assignments into the new userInviteRoles table
         if (existingUserInviteRoles.length > 0) {
             const insertUserInviteRole = db.prepare(
-                `INSERT OR IGNORE INTO 'userInviteRoles' ("inviteId", "roleId") VALUES (?, ?)`
+                `INSERT OR IGNORE INTO 'userInviteRoles' ("inviteId", "roleId")
+                 SELECT ?, ?
+                 WHERE EXISTS (SELECT 1 FROM 'userInvites' WHERE inviteId = ?)
+                   AND EXISTS (SELECT 1 FROM 'roles' WHERE roleId = ?)`
             );
 
             const insertAll = db.transaction(() => {
                 for (const row of existingUserInviteRoles) {
-                    insertUserInviteRole.run(row.inviteId, row.roleId);
+                    insertUserInviteRole.run(row.inviteId, row.roleId, row.inviteId, row.roleId);
                 }
             });
 
@@ -265,12 +268,16 @@ export default async function migration() {
         // Re-insert the preserved role assignments into the new userOrgRoles table
         if (existingUserOrgRoles.length > 0) {
             const insertUserOrgRole = db.prepare(
-                `INSERT OR IGNORE INTO 'userOrgRoles' ("userId", "orgId", "roleId") VALUES (?, ?, ?)`
+                `INSERT OR IGNORE INTO 'userOrgRoles' ("userId", "orgId", "roleId")
+                 SELECT ?, ?, ?
+                 WHERE EXISTS (SELECT 1 FROM 'user' WHERE id = ?)
+                   AND EXISTS (SELECT 1 FROM 'orgs' WHERE orgId = ?)
+                   AND EXISTS (SELECT 1 FROM 'roles' WHERE roleId = ?)`
             );
 
             const insertAll = db.transaction(() => {
                 for (const row of existingUserOrgRoles) {
-                    insertUserOrgRole.run(row.userId, row.orgId, row.roleId);
+                    insertUserOrgRole.run(row.userId, row.orgId, row.roleId, row.userId, row.orgId, row.roleId);
                 }
             });
 

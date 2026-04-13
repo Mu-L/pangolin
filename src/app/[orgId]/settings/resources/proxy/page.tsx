@@ -95,7 +95,8 @@ export default async function ProxyResourcesPage(
                 ip: target.ip,
                 port: target.port,
                 enabled: target.enabled,
-                healthStatus: target.healthStatus
+                healthStatus: target.healthStatus,
+                siteName: target.siteName
             }))
         };
     });
