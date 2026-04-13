@@ -653,11 +653,7 @@ export default function ClientResourcesTable({
                 <EditInternalResourceDialog
                     open={isEditDialogOpen}
                     setOpen={setIsEditDialogOpen}
-                    resource={{
-                        ...editingResource,
-                        siteName: editingResource.siteNames[0] ?? "",
-                        siteId: editingResource.siteIds[0]
-                    }}
+                    resource={editingResource}
                     orgId={orgId}
                     onSuccess={() => {
                         // Delay refresh to allow modal to close smoothly

@@ -136,9 +136,9 @@ export type InternalResourceData = {
     id: number;
     name: string;
     orgId: string;
-    siteName: string;
+    siteNames: string[];
     mode: InternalResourceMode;
-    siteId: number;
+    siteIds: number[];
     niceId: string;
     destination: string;
     alias?: string | null;
@@ -160,13 +160,11 @@ const tagSchema = z.object({ id: z.string(), text: z.string() });
 function buildSelectedSitesForResource(
     resource: InternalResourceData,
 ): Selectedsite[] {
-    return [
-        {
-            name: resource.siteName,
-            siteId: resource.siteId,
-            type: "newt"
-        }
-    ];
+    return resource.siteIds.map((siteId, idx) => ({
+        name: resource.siteNames[idx] ?? "",
+        siteId,
+        type: "newt" as const
+    }));
 }
 
 export type InternalResourceFormValues = {
@@ -483,7 +481,7 @@ export function InternalResourceForm({
         variant === "edit" && resource
             ? {
                   name: resource.name,
-                  siteIds: [resource.siteId],
+                  siteIds: resource.siteIds,
                   mode: resource.mode ?? "host",
                   destination: resource.destination ?? "",
                   alias: resource.alias ?? null,
@@ -594,7 +592,7 @@ export function InternalResourceForm({
             if (resourceChanged) {
                 form.reset({
                     name: resource.name,
-                    siteIds: [resource.siteId],
+                    siteIds: resource.siteIds,
                     mode: resource.mode ?? "host",
                     destination: resource.destination ?? "",
                     alias: resource.alias ?? null,

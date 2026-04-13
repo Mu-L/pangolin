@@ -15,7 +15,6 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { resourceQueries } from "@app/lib/queries";
-import { ListSitesResponse } from "@server/routers/site";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -26,8 +25,6 @@ import {
     type InternalResourceFormValues,
     isHostname
 } from "./InternalResourceForm";
-
-type Site = ListSitesResponse["sites"][0];
 
 type EditInternalResourceDialogProps = {
     open: boolean;
@@ -69,7 +66,7 @@ export default function EditInternalResourceDialog({
 
             await api.post(`/site-resource/${resource.id}`, {
                 name: data.name,
-                siteId: data.siteIds[0],
+                siteIds: data.siteIds,
                 mode: data.mode,
                 niceId: data.niceId,
                 destination: data.destination,

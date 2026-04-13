@@ -222,8 +222,7 @@ export async function createSiteResource(
         const sitesToAssign = await db
             .select()
             .from(sites)
-            .where(and(inArray(sites.siteId, siteIds), eq(sites.orgId, orgId)))
-            .limit(1);
+            .where(and(inArray(sites.siteId, siteIds), eq(sites.orgId, orgId)));
 
         if (sitesToAssign.length !== siteIds.length) {
             return next(

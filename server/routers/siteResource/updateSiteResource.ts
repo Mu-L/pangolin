@@ -280,8 +280,7 @@ export async function updateSiteResource(
                     inArray(sites.siteId, siteIds),
                     eq(sites.orgId, existingSiteResource.orgId)
                 )
-            )
-            .limit(1);
+            );
 
         if (sitesToAssign.length !== siteIds.length) {
             return next(
@@ -727,7 +726,12 @@ export async function handleMessagingForUpdatedSiteResource(
 
     // if the existingSiteResource is undefined (new resource) we don't need to do anything here, the rebuild above handled it all
 
-    if (destinationChanged || aliasChanged || portRangesChanged || destinationPortChanged) {
+    if (
+        destinationChanged ||
+        aliasChanged ||
+        portRangesChanged ||
+        destinationPortChanged
+    ) {
         for (const site of sites) {
             const [newt] = await trx
                 .select()
@@ -742,7 +746,11 @@ export async function handleMessagingForUpdatedSiteResource(
             }
 
             // Only update targets on newt if destination changed
-            if (destinationChanged || portRangesChanged || destinationPortChanged) {
+            if (
+                destinationChanged ||
+                portRangesChanged ||
+                destinationPortChanged
+            ) {
                 const oldTarget = await generateSubnetProxyTargetV2(
                     existingSiteResource,
                     mergedAllClients

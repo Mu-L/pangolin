@@ -1,4 +1,4 @@
-import { db, SiteResource, siteNetworks, siteResources, sites } from "@server/db";
+import { db, DB_TYPE, SiteResource, siteNetworks, siteResources, sites } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -81,6 +81,40 @@ export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
     })[];
 }>;
 
+/**
+ * Returns an aggregation expression compatible with both SQLite and PostgreSQL.
+ * - SQLite:    json_group_array(col)  → returns a JSON array string, parsed after fetch
+ * - PostgreSQL: array_agg(col)        → returns a native array
+ */
+function aggCol<T>(column: any) {
+    if (DB_TYPE === "sqlite") {
+        return sql<T>`json_group_array(${column})`;
+    }
+    return sql<T>`array_agg(${column})`;
+}
+
+/**
+ * For SQLite the aggregated columns come back as JSON strings; parse them into
+ * proper arrays. For PostgreSQL the driver already returns native arrays, so
+ * the row is returned unchanged.
+ */
+function transformSiteResourceRow(row: any) {
+    if (DB_TYPE !== "sqlite") {
+        return row;
+    }
+    return {
+        ...row,
+        siteNames: JSON.parse(row.siteNames) as string[],
+        siteNiceIds: JSON.parse(row.siteNiceIds) as string[],
+        siteIds: JSON.parse(row.siteIds) as number[],
+        siteAddresses: JSON.parse(row.siteAddresses) as (string | null)[],
+        // SQLite stores booleans as 0/1 integers
+        siteOnlines: (JSON.parse(row.siteOnlines) as (0 | 1)[]).map(
+            (v) => v === 1
+        ) as boolean[]
+    };
+}
+
 function querySiteResourcesBase() {
     return db
         .select({
@@ -107,18 +141,20 @@ function querySiteResourcesBase() {
             fullDomain: siteResources.fullDomain,
             networkId: siteResources.networkId,
             defaultNetworkId: siteResources.defaultNetworkId,
-            siteNames: sql<string[]>`array_agg(${sites.name})`,
-            siteNiceIds: sql<string[]>`array_agg(${sites.niceId})`,
-            siteIds: sql<number[]>`array_agg(${sites.siteId})`,
-            siteAddresses: sql<(string | null)[]>`array_agg(${sites.address})`,
-            siteOnlines: sql<boolean[]>`array_agg(${sites.online})`
+            siteNames: aggCol<string[]>(sites.name),
+            siteNiceIds: aggCol<string[]>(sites.niceId),
+            siteIds: aggCol<number[]>(sites.siteId),
+            siteAddresses: aggCol<(string | null)[]>(sites.address),
+            siteOnlines: aggCol<boolean[]>(sites.online)
         })
         .from(siteResources)
-        .innerJoin(siteNetworks, eq(siteResources.networkId, siteNetworks.networkId))
+        .innerJoin(
+            siteNetworks,
+            eq(siteResources.networkId, siteNetworks.networkId)
+        )
         .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
         .groupBy(siteResources.siteResourceId);
 }
-
 
 registry.registerPath({
     method: "get",
@@ -210,7 +246,7 @@ export async function listAllSiteResourcesByOrg(
                 .as("filtered_site_resources")
         );
 
-        const [siteResourcesList, totalCount] = await Promise.all([
+        const [siteResourcesRaw, totalCount] = await Promise.all([
             baseQuery
                 .limit(pageSize)
                 .offset(pageSize * (page - 1))
@@ -223,6 +259,8 @@ export async function listAllSiteResourcesByOrg(
                 ),
             countQuery
         ]);
+
+        const siteResourcesList = siteResourcesRaw.map(transformSiteResourceRow);
 
         return response<ListAllSiteResourcesByOrgResponse>(res, {
             data: {
