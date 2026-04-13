@@ -434,8 +434,8 @@ export function initAcmeCertSync(): void {
         return;
     }
 
-    if (!privateConfigData.flags.use_pangolin_dns) {
-        logger.debug(`acmeCertSync: ACME cert sync requires use_pangolin_dns flag to be enabled, skipping`);
+    if (privateConfigData.flags.use_pangolin_dns) {
+        logger.debug(`acmeCertSync: ACME cert sync requires use_pangolin_dns flag to be disabled, skipping`);
         return;
     }
 
