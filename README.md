@@ -36,18 +36,12 @@
 </div>
 
 <p align="center">
-    <a href="https://docs.pangolin.net/careers/join-us">
-        <img src="https://img.shields.io/badge/🚀_We're_Hiring!-Join_Our_Team-brightgreen?style=for-the-badge" alt="We're Hiring!" />
-    </a>
-</p>
-
-<p align="center">
     <strong>
         Get started with Pangolin at <a href="https://app.pangolin.net/auth/signup">app.pangolin.net</a>
     </strong>
 </p>
 
-Pangolin is an open-source, identity-based remote access platform built on WireGuard that enables secure, seamless connectivity to private and public resources. Pangolin combines reverse proxy and VPN capabilities into one platform, providing browser-based access to web applications and client-based access to any private resources, all with zero-trust security and granular access control.
+Pangolin is an open-source, identity-based remote access platform built on WireGuard that enables secure, seamless connectivity to private and public resources. Pangolin combines reverse proxy and VPN capabilities into one platform, providing browser-based access to web applications and client-based access to any private resources with NAT traversal, all with granular access controls.
 
 ## Installation
 
@@ -60,16 +54,16 @@ Pangolin is an open-source, identity-based remote access platform built on WireG
 
 | <img width=500 /> | Description |
 |-----------------|--------------|
-| **Pangolin Cloud** | Fully managed service with instant setup and pay-as-you-go pricing - no infrastructure required. Or, self-host your own [remote node](https://docs.pangolin.net/manage/remote-node/understanding-nodes) and connect to our control plane. |
+| **Pangolin Cloud** | Fully managed service - no infrastructure required. |
 | **Self-Host: Community Edition** | Free, open source, and licensed under AGPL-3. |
-| **Self-Host: Enterprise Edition** | Licensed under Fossorial Commercial License. Free for personal and hobbyist use, and for businesses earning under \$100K USD annually. |
+| **Self-Host: Enterprise Edition** | Licensed under Fossorial Commercial License. Free for personal and hobbyist use, and for businesses making less than \$100K USD gross annual revenue. |
 
 ## Key Features
 
 | <img width=500 />                                                                                                                                                                                                                                                                                                                                                                | <img width=500 />                                                  |
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| **Connect remote networks with sites**<br /><br />Pangolin's lightweight site connectors create secure tunnels from remote networks without requiring public IP addresses or open ports. Sites make any network anywhere available for authorized access.                                                                                                                                                                                   | <img src="public/screenshots/sites.png" width=500 /><tr></tr>               |
-| **Browser-based reverse proxy access**<br /><br />Expose web applications through identity and context-aware tunneled reverse proxies. Pangolin handles routing, load balancing, health checking, and automatic SSL certificates without exposing your network directly to the internet. Users access applications through any web browser with authentication and granular access control.                                                                                                  | <img src="public/clip.gif" width=500 /><tr></tr>          |
+| **Connect remote networks with sites**<br /><br />Pangolin's site connectors create secure tunnels from remote networks without requiring public IP addresses or open ports. Sites make any network anywhere available for authorized access.                                                                                                                                                                                   | <img src="public/screenshots/sites.png" width=500 /><tr></tr>               |
+| **Browser-based reverse proxy access**<br /><br />Expose web applications through identity and context-aware tunneled reverse proxies. Users access applications through any web browser with authentication and granular access control. Pangolin handles routing, load balancing, health checking, and automatic SSL certificates without exposing your network directly to the internet.                                                                                                   | <img src="public/clip.gif" width=500 /><tr></tr>          |
 | **Client-based private resource access**<br /><br />Access private resources like SSH servers, databases, RDP, and entire network ranges through Pangolin clients. Intelligent NAT traversal enables connections even through restrictive firewalls, while DNS aliases provide friendly names and fast connections to resources across all your sites.                                                                                                                                                                                                | <img src="public/screenshots/private-resources.png" width=500 /><tr></tr>               |
 | **Zero-trust granular access**<br /><br />Grant users access to specific resources, not entire networks. Unlike traditional VPNs that expose full network access, Pangolin's zero-trust model ensures users can only reach the applications and services you explicitly define, reducing security risk and attack surface.                                                                                                                                                                                    | <img src="public/screenshots/user-devices.png" width=500 /><tr></tr> |
 
@@ -87,7 +81,7 @@ Download the Pangolin client for your platform:
 
 ### Sign up now
 
-Create an account at [app.pangolin.net](https://app.pangolin.net) to get started with Pangolin Cloud. A generous free tier is available.
+Create a free account at [app.pangolin.net](https://app.pangolin.net) to get started with Pangolin Cloud.
 
 ### Check out the docs
 
@@ -102,7 +96,3 @@ Pangolin is dual licensed under the AGPL-3 and the [Fossorial Commercial License
 ## Contributions
 
 Please see [CONTRIBUTING](./CONTRIBUTING.md) in the repository for guidelines and best practices.
-
----
-
-WireGuard® is a registered trademark of Jason A. Donenfeld.
