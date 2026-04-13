@@ -491,6 +491,10 @@ export default function BillingPage() {
 
     const currentPlanId = getCurrentPlanId();
 
+    const visiblePlanOptions = planOptions.filter(
+        (plan) => plan.id !== "home" || currentPlanId === "home"
+    );
+
     // Check if subscription is in a problematic state that requires attention
     const hasProblematicSubscription = (): boolean => {
         if (!tierSubscription?.subscription) return false;
@@ -803,8 +807,8 @@ export default function BillingPage() {
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     {/* Plan Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        {planOptions.filter((plan) => plan.id !== "home" || currentPlanId === "home").map((plan) => {
+                    <div className={cn("grid grid-cols-1 gap-4", visiblePlanOptions.length === 5 ? "md:grid-cols-5" : "md:grid-cols-4")}>
+                        {visiblePlanOptions.map((plan) => {
                             const isCurrentPlan = plan.id === currentPlanId;
                             const planAction = getPlanAction(plan);
 
