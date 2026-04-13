@@ -362,9 +362,9 @@ export default function SitesTable({
                         <Link
                             href={`/${originalRow.orgId}/settings/remote-exit-nodes/${originalRow.remoteExitNodeId}`}
                         >
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 {originalRow.exitNodeName}
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
                         </Link>
                     );

@@ -46,7 +46,11 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { SitesSelector, type Selectedsite } from "./site-selector";
+import {
+    MultiSitesSelector,
+    formatMultiSitesSelectorLabel
+} from "./multi-site-selector";
+import type { Selectedsite } from "./site-selector";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import { MachinesSelector } from "./machines-selector";
 import DomainPicker from "@app/components/DomainPicker";
@@ -153,9 +157,21 @@ export type InternalResourceData = {
 
 const tagSchema = z.object({ id: z.string(), text: z.string() });
 
+function buildSelectedSitesForResource(
+    resource: InternalResourceData,
+): Selectedsite[] {
+    return [
+        {
+            name: resource.siteName,
+            siteId: resource.siteId,
+            type: "newt"
+        }
+    ];
+}
+
 export type InternalResourceFormValues = {
     name: string;
-    siteId: number;
+    siteIds: number[];
     mode: InternalResourceMode;
     destination: string;
     alias?: string | null;
@@ -180,7 +196,6 @@ type InternalResourceFormProps = {
     variant: "create" | "edit";
     resource?: InternalResourceData;
     open?: boolean;
-    sites: Site[];
     orgId: string;
     siteResourceId?: number;
     formId: string;
@@ -192,7 +207,6 @@ export function InternalResourceForm({
     variant,
     resource,
     open,
-    sites,
     orgId,
     siteResourceId,
     formId,
@@ -275,13 +289,14 @@ export function InternalResourceForm({
             ? "createInternalResourceDialogHttpConfigurationDescription"
             : "editInternalResourceDialogHttpConfigurationDescription";
 
+    const siteIdsSchema = siteRequiredKey
+        ? z.array(z.number().int().positive()).min(1, t(siteRequiredKey))
+        : z.array(z.number().int().positive()).min(1);
+
     const formSchema = z
         .object({
             name: z.string().min(1, t(nameRequiredKey)).max(255, t(nameMaxKey)),
-            siteId: z
-                .number()
-                .int()
-                .positive(siteRequiredKey ? t(siteRequiredKey) : undefined),
+            siteIds: siteIdsSchema,
             mode: z.enum(["host", "cidr", "http"]),
             destination: z
                 .string()
@@ -349,8 +364,6 @@ export function InternalResourceForm({
         });
 
     type FormData = z.infer<typeof formSchema>;
-
-    const availableSites = sites.filter((s) => s.type === "newt");
 
     const rolesQuery = useQuery(orgQueries.roles({ orgId }));
     const usersQuery = useQuery(orgQueries.users({ orgId }));
@@ -470,7 +483,7 @@ export function InternalResourceForm({
         variant === "edit" && resource
             ? {
                   name: resource.name,
-                  siteId: resource.siteId,
+                  siteIds: [resource.siteId],
                   mode: resource.mode ?? "host",
                   destination: resource.destination ?? "",
                   alias: resource.alias ?? null,
@@ -492,7 +505,7 @@ export function InternalResourceForm({
               }
             : {
                   name: "",
-                  siteId: availableSites[0]?.siteId ?? 0,
+                  siteIds: [],
                   mode: "host",
                   destination: "",
                   alias: null,
@@ -512,8 +525,10 @@ export function InternalResourceForm({
                   clients: []
               };
 
-    const [selectedSite, setSelectedSite] = useState<Selectedsite>(
-        availableSites[0]
+    const [selectedSites, setSelectedSites] = useState<Selectedsite[]>(() =>
+        variant === "edit" && resource
+            ? buildSelectedSitesForResource(resource)
+            : []
     );
 
     const form = useForm<FormData>({
@@ -545,7 +560,7 @@ export function InternalResourceForm({
         if (variant === "create" && open) {
             form.reset({
                 name: "",
-                siteId: availableSites[0]?.siteId ?? 0,
+                siteIds: [],
                 mode: "host",
                 destination: "",
                 alias: null,
@@ -564,12 +579,13 @@ export function InternalResourceForm({
                 users: [],
                 clients: []
             });
+            setSelectedSites([]);
             setTcpPortMode("all");
             setUdpPortMode("all");
             setTcpCustomPorts("");
             setUdpCustomPorts("");
         }
-    }, [variant, open]);
+    }, [variant, open, form]);
 
     // Reset when edit dialog opens / resource changes
     useEffect(() => {
@@ -578,7 +594,7 @@ export function InternalResourceForm({
             if (resourceChanged) {
                 form.reset({
                     name: resource.name,
-                    siteId: resource.siteId,
+                    siteIds: [resource.siteId],
                     mode: resource.mode ?? "host",
                     destination: resource.destination ?? "",
                     alias: resource.alias ?? null,
@@ -597,6 +613,9 @@ export function InternalResourceForm({
                     users: [],
                     clients: []
                 });
+                setSelectedSites(
+                    buildSelectedSitesForResource(resource)
+                );
                 setTcpPortMode(
                     getPortModeFromString(resource.tcpPortRangeString)
                 );
@@ -658,8 +677,10 @@ export function InternalResourceForm({
         <Form {...form}>
             <form
                 onSubmit={form.handleSubmit((values) => {
+                    const siteIds = values.siteIds;
                     onSubmit({
                         ...values,
+                        siteIds,
                         clients: (values.clients ?? []).map((c) => ({
                             id: c.clientId.toString(),
                             text: c.name
@@ -736,11 +757,11 @@ export function InternalResourceForm({
                                 <div className="min-w-0 col-span-1">
                                     <FormField
                                         control={form.control}
-                                        name="siteId"
+                                        name="siteIds"
                                         render={({ field }) => (
                                             <FormItem className="flex flex-col">
                                                 <FormLabel>
-                                                    {t("site")}
+                                                    {t("sites")}
                                                 </FormLabel>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
@@ -750,40 +771,41 @@ export function InternalResourceForm({
                                                                 role="combobox"
                                                                 className={cn(
                                                                     "w-full justify-between",
-                                                                    !field.value &&
+                                                                    selectedSites.length ===
+                                                                        0 &&
                                                                         "text-muted-foreground"
                                                                 )}
                                                             >
-                                                                {field.value
-                                                                    ? availableSites.find(
-                                                                          (s) =>
-                                                                              s.siteId ===
-                                                                              field.value
-                                                                      )?.name
-                                                                    : t(
-                                                                          "selectSite"
-                                                                      )}
+                                                                <span className="truncate text-left">
+                                                                    {formatMultiSitesSelectorLabel(
+                                                                        selectedSites,
+                                                                        t
+                                                                    )}
+                                                                </span>
                                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-full p-0">
-                                                        <SitesSelector
+                                                        <MultiSitesSelector
                                                             orgId={orgId}
-                                                            selectedSite={
-                                                                selectedSite
+                                                            selectedSites={
+                                                                selectedSites
                                                             }
                                                             filterTypes={[
                                                                 "newt"
                                                             ]}
-                                                            onSelectSite={(
-                                                                site
+                                                            onSelectionChange={(
+                                                                sites
                                                             ) => {
-                                                                setSelectedSite(
-                                                                    site
+                                                                setSelectedSites(
+                                                                    sites
                                                                 );
                                                                 field.onChange(
-                                                                    site.siteId
+                                                                    sites.map(
+                                                                        (s) =>
+                                                                            s.siteId
+                                                                    )
                                                                 );
                                                             }}
                                                         />

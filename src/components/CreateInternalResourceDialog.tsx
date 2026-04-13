@@ -31,7 +31,6 @@ type CreateInternalResourceDialogProps = {
     open: boolean;
     setOpen: (val: boolean) => void;
     orgId: string;
-    sites: Site[];
     onSuccess?: () => void;
 };
 
@@ -39,7 +38,6 @@ export default function CreateInternalResourceDialog({
     open,
     setOpen,
     orgId,
-    sites,
     onSuccess
 }: CreateInternalResourceDialogProps) {
     const t = useTranslations();
@@ -69,7 +67,7 @@ export default function CreateInternalResourceDialog({
                 `/org/${orgId}/site-resource`,
                 {
                     name: data.name,
-                    siteId: data.siteId,
+                    siteId: data.siteIds[0],
                     mode: data.mode,
                     destination: data.destination,
                     enabled: true,
@@ -156,7 +154,6 @@ export default function CreateInternalResourceDialog({
                     <InternalResourceForm
                         variant="create"
                         open={open}
-                        sites={sites}
                         orgId={orgId}
                         formId="create-internal-resource-form"
                         onSubmit={handleSubmit}
