@@ -326,7 +326,7 @@ async function updateHttpResource(
             !isSubscribed(resource.orgId, tierMatrix.domainNamespaces)
         ) {
             // grandfather in existing users
-            const lastAllowedDate = new Date("2026-04-12");
+            const lastAllowedDate = new Date("2026-04-13");
             const userCreatedDate = new Date(
                 req.user?.dateCreated || new Date()
             );
