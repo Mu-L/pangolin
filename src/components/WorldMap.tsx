@@ -237,7 +237,7 @@ function drawInteractiveCountries(
     return svg;
 }
 
-type WorldJsonCountryData = { properties: { name: string; a3: string } };
+type WorldJsonCountryData = d3.ExtendedFeature<d3.GeoGeometryObjects | null, { name: string; a3: string }>;
 
 function parseWorldTopoJsonToGeoJsonFeatures(): Array<WorldJsonCountryData> {
     const collection = topojson.feature(
