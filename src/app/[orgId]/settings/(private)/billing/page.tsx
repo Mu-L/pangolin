@@ -804,7 +804,7 @@ export default function BillingPage() {
                 <SettingsSectionBody>
                     {/* Plan Cards Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        {planOptions.map((plan) => {
+                        {planOptions.filter((plan) => plan.id !== "home" || currentPlanId === "home").map((plan) => {
                             const isCurrentPlan = plan.id === currentPlanId;
                             const planAction = getPlanAction(plan);
 
