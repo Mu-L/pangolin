@@ -21,7 +21,6 @@ import {
 import { and, eq, inArray, ne } from "drizzle-orm";
 
 import {
-    addPeer as newtAddPeer,
     deletePeer as newtDeletePeer
 } from "@server/routers/newt/peers";
 import {
@@ -35,7 +34,6 @@ import {
     generateRemoteSubnets,
     generateSubnetProxyTargetV2,
     parseEndpoint,
-    formatEndpoint
 } from "@server/lib/ip";
 import {
     addPeerData,
@@ -60,6 +58,10 @@ export async function getClientSiteResourceAccess(
               .where(eq(siteNetworks.networkId, siteResource.networkId))
               .then((rows) => rows.map((row) => row.sites))
         : [];
+
+    logger.debug(
+        `rebuildClientAssociations: [getClientSiteResourceAccess] siteResourceId=${siteResource.siteResourceId} networkId=${siteResource.networkId} siteCount=${sitesList.length} siteIds=[${sitesList.map((s) => s.siteId).join(", ")}]`
+    );
 
     if (sitesList.length === 0) {
         logger.warn(
@@ -144,6 +146,10 @@ export async function getClientSiteResourceAccess(
     const mergedAllClients = Array.from(allClientsMap.values());
     const mergedAllClientIds = mergedAllClients.map((c) => c.clientId);
 
+    logger.debug(
+        `rebuildClientAssociations: [getClientSiteResourceAccess] siteResourceId=${siteResource.siteResourceId} mergedClientCount=${mergedAllClientIds.length} clientIds=[${mergedAllClientIds.join(", ")}] (userBased=${newAllClients.length} direct=${directClients.length})`
+    );
+
     return {
         sitesList,
         mergedAllClients,
@@ -161,8 +167,16 @@ export async function rebuildClientAssociationsFromSiteResource(
         subnet: string | null;
     }[];
 }> {
+    logger.debug(
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] START siteResourceId=${siteResource.siteResourceId} networkId=${siteResource.networkId} orgId=${siteResource.orgId}`
+    );
+
     const { sitesList, mergedAllClients, mergedAllClientIds } =
         await getClientSiteResourceAccess(siteResource, trx);
+
+    logger.debug(
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] access resolved siteResourceId=${siteResource.siteResourceId} siteCount=${sitesList.length} siteIds=[${sitesList.map((s) => s.siteId).join(", ")}] mergedClientCount=${mergedAllClients.length} clientIds=[${mergedAllClientIds.join(", ")}]`
+    );
 
     /////////// process the client-siteResource associations ///////////
 
@@ -223,6 +237,10 @@ export async function rebuildClientAssociationsFromSiteResource(
         (row) => row.clientId
     );
 
+    logger.debug(
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} existingResourceClientIds=[${existingClientSiteResourceIds.join(", ")}]`
+    );
+
     // Get full client details for existing resource clients (needed for sending delete messages)
     const existingResourceClients =
         existingClientSiteResourceIds.length > 0
@@ -242,6 +260,10 @@ export async function rebuildClientAssociationsFromSiteResource(
         (clientId) => !existingClientSiteResourceIds.includes(clientId)
     );
 
+    logger.debug(
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} resourceClients toAdd=[${clientSiteResourcesToAdd.join(", ")}]`
+    );
+
     const clientSiteResourcesToInsert = clientSiteResourcesToAdd.map(
         (clientId) => ({
             clientId,
@@ -250,17 +272,34 @@ export async function rebuildClientAssociationsFromSiteResource(
     );
 
     if (clientSiteResourcesToInsert.length > 0) {
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} inserting ${clientSiteResourcesToInsert.length} clientSiteResource association(s)`
+        );
         await trx
             .insert(clientSiteResourcesAssociationsCache)
             .values(clientSiteResourcesToInsert)
             .returning();
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} inserted clientSiteResource associations`
+        );
+    } else {
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} no clientSiteResource associations to insert`
+        );
     }
 
     const clientSiteResourcesToRemove = existingClientSiteResourceIds.filter(
         (clientId) => !mergedAllClientIds.includes(clientId)
     );
 
+    logger.debug(
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} resourceClients toRemove=[${clientSiteResourcesToRemove.join(", ")}]`
+    );
+
     if (clientSiteResourcesToRemove.length > 0) {
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} deleting ${clientSiteResourcesToRemove.length} clientSiteResource association(s)`
+        );
         await trx
             .delete(clientSiteResourcesAssociationsCache)
             .where(
@@ -279,8 +318,16 @@ export async function rebuildClientAssociationsFromSiteResource(
 
     /////////// process the client-site associations ///////////
 
+    logger.debug(
+        `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteResourceId=${siteResource.siteResourceId} beginning client-site association loop over ${sitesList.length} site(s)`
+    );
+
     for (const site of sitesList) {
         const siteId = site.siteId;
+
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] processing siteId=${siteId} for siteResourceId=${siteResource.siteResourceId}`
+        );
 
         const existingClientSites = await trx
             .select({
@@ -291,6 +338,10 @@ export async function rebuildClientAssociationsFromSiteResource(
 
         const existingClientSiteIds = existingClientSites.map(
             (row) => row.clientId
+        );
+
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} existingClientSiteIds=[${existingClientSiteIds.join(", ")}]`
         );
 
         // Get full client details for existing clients (needed for sending delete messages)
@@ -308,6 +359,10 @@ export async function rebuildClientAssociationsFromSiteResource(
 
         const otherResourceClientIds = clientsFromOtherResourcesBySite.get(siteId) ?? new Set<number>();
 
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} otherResourceClientIds=[${[...otherResourceClientIds].join(", ")}] mergedAllClientIds=[${mergedAllClientIds.join(", ")}]`
+        );
+
         const clientSitesToAdd = mergedAllClientIds.filter(
             (clientId) =>
                 !existingClientSiteIds.includes(clientId) &&
@@ -319,11 +374,25 @@ export async function rebuildClientAssociationsFromSiteResource(
             siteId
         }));
 
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} clientSites toAdd=[${clientSitesToAdd.join(", ")}]`
+        );
+
         if (clientSitesToInsert.length > 0) {
+            logger.debug(
+                `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} inserting ${clientSitesToInsert.length} clientSite association(s)`
+            );
             await trx
                 .insert(clientSitesAssociationsCache)
                 .values(clientSitesToInsert)
                 .returning();
+            logger.debug(
+                `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} inserted clientSite associations`
+            );
+        } else {
+            logger.debug(
+                `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} no clientSite associations to insert`
+            );
         }
 
         // Now remove any client-site associations that should no longer exist
@@ -333,7 +402,14 @@ export async function rebuildClientAssociationsFromSiteResource(
                 !otherResourceClientIds.has(clientId) // dont remove if there is still another connection for another site resource
         );
 
+        logger.debug(
+            `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} clientSites toRemove=[${clientSitesToRemove.join(", ")}]`
+        );
+
         if (clientSitesToRemove.length > 0) {
+            logger.debug(
+                `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} deleting ${clientSitesToRemove.length} clientSite association(s)`
+            );
             await trx
                 .delete(clientSitesAssociationsCache)
                 .where(
