@@ -618,11 +618,11 @@ export async function handleMessagingForUpdatedSiteResource(
 
         // Only update targets on newt if destination changed
         if (destinationChanged || portRangesChanged) {
-            const oldTarget = generateSubnetProxyTargetV2(
+            const oldTargets = generateSubnetProxyTargetV2(
                 existingSiteResource,
                 mergedAllClients
             );
-            const newTarget = generateSubnetProxyTargetV2(
+            const newTargets = generateSubnetProxyTargetV2(
                 updatedSiteResource,
                 mergedAllClients
             );
@@ -630,8 +630,8 @@ export async function handleMessagingForUpdatedSiteResource(
             await updateTargets(
                 newt.newtId,
                 {
-                    oldTargets: oldTarget ? [oldTarget] : [],
-                    newTargets: newTarget ? [newTarget] : []
+                    oldTargets: oldTargets ? oldTargets : [],
+                    newTargets: newTargets ? newTargets : []
                 },
                 newt.version
             );
