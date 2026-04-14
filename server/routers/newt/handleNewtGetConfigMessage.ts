@@ -113,7 +113,7 @@ export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
-    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets);
+    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets); // for backward compatibility with old newt versions that don't support the new target format
 
     return {
         message: {
