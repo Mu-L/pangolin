@@ -6,6 +6,7 @@ import {
     resourcePincode,
     resources,
     roleResources,
+    sites,
     targetHealthCheck,
     targets,
     userResources
@@ -138,6 +139,7 @@ export type ResourceWithTargets = {
         port: number;
         enabled: boolean;
         healthStatus: "healthy" | "unhealthy" | "unknown" | null;
+        siteName: string | null;
     }>;
 };
 
@@ -446,14 +448,16 @@ export async function listResources(
                           port: targets.port,
                           enabled: targets.enabled,
                           healthStatus: targetHealthCheck.hcHealth,
-                          hcEnabled: targetHealthCheck.hcEnabled
+                          hcEnabled: targetHealthCheck.hcEnabled,
+                          siteName: sites.name
                       })
                       .from(targets)
                       .where(inArray(targets.resourceId, resourceIdList))
                       .leftJoin(
                           targetHealthCheck,
                           eq(targetHealthCheck.targetId, targets.targetId)
-                      );
+                      )
+                      .leftJoin(sites, eq(targets.siteId, sites.siteId));
 
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();

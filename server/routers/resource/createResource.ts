@@ -200,7 +200,7 @@ async function createHttpResource(
 
     if (build == "saas" && !isSubscribed(orgId!, tierMatrix.domainNamespaces)) {
         // grandfather in existing users
-        const lastAllowedDate = new Date("2026-04-12");
+        const lastAllowedDate = new Date("2026-04-13");
         const userCreatedDate = new Date(req.user?.dateCreated || new Date());
         if (userCreatedDate > lastAllowedDate) {
             // check if this domain id is a namespace domain and if so, reject

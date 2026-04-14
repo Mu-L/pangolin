@@ -29,7 +29,10 @@ import { encrypt, decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import privateConfig from "#private/lib/config";
 import config from "@server/lib/config";
-import { generateSubnetProxyTargetV2, SubnetProxyTargetV2 } from "@server/lib/ip";
+import {
+    generateSubnetProxyTargetV2,
+    SubnetProxyTargetV2
+} from "@server/lib/ip";
 import { updateTargets } from "@server/routers/client/targets";
 import cache from "#private/lib/cache";
 import { build } from "@server/build";
@@ -142,26 +145,26 @@ async function pushCertUpdateToAffectedNewts(
             }
 
             // Generate target once — same cert applies to all sites for this resource
-            const newTarget = await generateSubnetProxyTargetV2(
+            const newTargets = await generateSubnetProxyTargetV2(
                 resource,
                 resourceClients
             );
 
-            if (!newTarget) {
+            if (!newTargets) {
                 logger.debug(
                     `acmeCertSync: could not generate target for resource ${resource.siteResourceId}, skipping`
                 );
                 continue;
             }
 
-            // Construct the old target — same routing shape but with the previous cert/key.
+            // Construct the old targets — same routing shape but with the previous cert/key.
             // The newt only uses destPrefix/sourcePrefixes for removal, but we keep the
             // semantics correct so the update message accurately reflects what changed.
-            const oldTarget: SubnetProxyTargetV2 = {
-                ...newTarget,
+            const oldTargets: SubnetProxyTargetV2[] = newTargets.map((t) => ({
+                ...t,
                 tlsCert: oldCertPem ?? undefined,
                 tlsKey: oldKeyPem ?? undefined
-            };
+            }));
 
             // Push update to each site's newt
             for (const { siteId } of resourceSiteRows) {
@@ -180,7 +183,7 @@ async function pushCertUpdateToAffectedNewts(
 
                 await updateTargets(
                     newt.newtId,
-                    { oldTargets: [oldTarget], newTargets: [newTarget] },
+                    { oldTargets: oldTargets, newTargets: newTargets },
                     newt.version
                 );
 
@@ -275,8 +278,6 @@ async function syncAcmeCerts(
         return;
     }
 
-
-
     for (const cert of resolverData.Certificates) {
         const domain = cert.domain?.main;
 
@@ -364,8 +365,14 @@ async function syncAcmeCerts(
         }
 
         const wildcard = domain.startsWith("*.");
-        const encryptedCert = encrypt(certPem, config.getRawConfig().server.secret!);
-        const encryptedKey = encrypt(keyPem, config.getRawConfig().server.secret!);
+        const encryptedCert = encrypt(
+            certPem,
+            config.getRawConfig().server.secret!
+        );
+        const encryptedKey = encrypt(
+            keyPem,
+            config.getRawConfig().server.secret!
+        );
         const now = Math.floor(Date.now() / 1000);
 
         const domainId = await findDomainId(domain);
@@ -397,7 +404,12 @@ async function syncAcmeCerts(
                 `acmeCertSync: updated certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
             );
 
-            await pushCertUpdateToAffectedNewts(domain, domainId, oldCertPem, oldKeyPem);
+            await pushCertUpdateToAffectedNewts(
+                domain,
+                domainId,
+                oldCertPem,
+                oldKeyPem
+            );
         } else {
             await db.insert(certificates).values({
                 domain,
@@ -430,17 +442,22 @@ export function initAcmeCertSync(): void {
     const privateConfigData = privateConfig.getRawPrivateConfig();
 
     if (!privateConfigData.flags?.enable_acme_cert_sync) {
-        logger.debug(`acmeCertSync: ACME cert sync is disabled by config flag, skipping`);
+        logger.debug(
+            `acmeCertSync: ACME cert sync is disabled by config flag, skipping`
+        );
         return;
     }
 
     if (privateConfigData.flags.use_pangolin_dns) {
-        logger.debug(`acmeCertSync: ACME cert sync requires use_pangolin_dns flag to be disabled, skipping`);
+        logger.debug(
+            `acmeCertSync: ACME cert sync requires use_pangolin_dns flag to be disabled, skipping`
+        );
         return;
     }
 
     const acmeJsonPath =
-        privateConfigData.acme?.acme_json_path ?? "config/letsencrypt/acme.json";
+        privateConfigData.acme?.acme_json_path ??
+        "config/letsencrypt/acme.json";
     const resolver = privateConfigData.acme?.resolver ?? "letsencrypt";
     const intervalMs = privateConfigData.acme?.sync_interval_ms ?? 5000;
 

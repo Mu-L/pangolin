@@ -388,7 +388,7 @@ export default function UserDevicesTable({
             },
             {
                 accessorKey: "online",
-                friendlyName: t("online"),
+                friendlyName: t("connected"),
                 header: () => {
                     return (
                         <ColumnFilterButton
@@ -410,7 +410,7 @@ export default function UserDevicesTable({
                             }
                             searchPlaceholder={t("searchPlaceholder")}
                             emptyMessage={t("emptySearchOptions")}
-                            label={t("online")}
+                            label={t("connected")}
                             className="p-3"
                         />
                     );

@@ -602,7 +602,7 @@ export async function generateSubnetProxyTargetV2(
         pubKey: string | null;
         subnet: string | null;
     }[]
-): Promise<SubnetProxyTargetV2 | undefined> {
+): Promise<SubnetProxyTargetV2[] | undefined> {
     if (clients.length === 0) {
         logger.debug(
             `No clients have access to site resource ${siteResource.siteResourceId}, skipping target generation.`
@@ -610,7 +610,7 @@ export async function generateSubnetProxyTargetV2(
         return;
     }
 
-    let target: SubnetProxyTargetV2 | null = null;
+    let targets: SubnetProxyTargetV2[] = [];
 
     const portRange = [
         ...parsePortRangeString(siteResource.tcpPortRangeString, "tcp"),
@@ -625,34 +625,34 @@ export async function generateSubnetProxyTargetV2(
         if (ipSchema.safeParse(destination).success) {
             destination = `${destination}/32`;
 
-            target = {
+            targets.push({
                 sourcePrefixes: [],
                 destPrefix: destination,
                 portRange,
                 disableIcmp,
                 resourceId: siteResource.siteResourceId
-            };
+            });
         }
 
         if (siteResource.alias && siteResource.aliasAddress) {
             // also push a match for the alias address
-            target = {
+            targets.push({
                 sourcePrefixes: [],
                 destPrefix: `${siteResource.aliasAddress}/32`,
                 rewriteTo: destination,
                 portRange,
                 disableIcmp,
                 resourceId: siteResource.siteResourceId
-            };
+            });
         }
     } else if (siteResource.mode == "cidr") {
-        target = {
+        targets.push({
             sourcePrefixes: [],
             destPrefix: siteResource.destination,
             portRange,
             disableIcmp,
             resourceId: siteResource.siteResourceId
-        };
+        });
     } else if (siteResource.mode == "http") {
         let destination = siteResource.destination;
         // check if this is a valid ip
@@ -697,7 +697,7 @@ export async function generateSubnetProxyTargetV2(
             }
         }
 
-        target = {
+        targets.push({
             sourcePrefixes: [],
             destPrefix: `${siteResource.aliasAddress}/32`,
             rewriteTo: destination,
@@ -713,25 +713,27 @@ export async function generateSubnetProxyTargetV2(
                 }
             ],
             ...(tlsCert && tlsKey ? { tlsCert, tlsKey } : {})
-        };
+        });
     }
 
-    if (!target) {
+    if (targets.length == 0) {
         return;
     }
 
-    for (const clientSite of clients) {
-        if (!clientSite.subnet) {
-            logger.debug(
-                `Client ${clientSite.clientId} has no subnet, skipping for site resource ${siteResource.siteResourceId}.`
-            );
-            continue;
+    for (const target of targets) {
+        for (const clientSite of clients) {
+            if (!clientSite.subnet) {
+                logger.debug(
+                    `Client ${clientSite.clientId} has no subnet, skipping for site resource ${siteResource.siteResourceId}.`
+                );
+                continue;
+            }
+
+            const clientPrefix = `${clientSite.subnet.split("/")[0]}/32`;
+
+            // add client prefix to source prefixes
+            target.sourcePrefixes.push(clientPrefix);
         }
-
-        const clientPrefix = `${clientSite.subnet.split("/")[0]}/32`;
-
-        // add client prefix to source prefixes
-        target.sourcePrefixes.push(clientPrefix);
     }
 
     // print a nice representation of the targets
@@ -739,7 +741,7 @@ export async function generateSubnetProxyTargetV2(
     //     `Generated subnet proxy targets for: ${JSON.stringify(targets, null, 2)}`
     // );
 
-    return target;
+    return targets;
 }
 
 /**

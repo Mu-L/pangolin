@@ -768,11 +768,11 @@ export async function handleMessagingForUpdatedSiteResource(
                 portRangesChanged ||
                 destinationPortChanged
             ) {
-                const oldTarget = await generateSubnetProxyTargetV2(
+                const oldTargets = await generateSubnetProxyTargetV2(
                     existingSiteResource,
                     mergedAllClients
                 );
-                const newTarget = await generateSubnetProxyTargetV2(
+                const newTargets = await generateSubnetProxyTargetV2(
                     updatedSiteResource,
                     mergedAllClients
                 );
@@ -780,8 +780,8 @@ export async function handleMessagingForUpdatedSiteResource(
                 await updateTargets(
                     newt.newtId,
                     {
-                        oldTargets: oldTarget ? [oldTarget] : [],
-                        newTargets: newTarget ? [newTarget] : []
+                        oldTargets: oldTargets ? oldTargets : [],
+                        newTargets: newTargets ? newTargets : []
                     },
                     newt.version
                 );

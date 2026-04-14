@@ -142,6 +142,7 @@ export async function getUserResources(
         let siteResourcesData: Array<{
             siteResourceId: number;
             name: string;
+            niceId: string;
             destination: string;
             mode: string;
             scheme: string | null;
@@ -154,6 +155,7 @@ export async function getUserResources(
                 .select({
                     siteResourceId: siteResources.siteResourceId,
                     name: siteResources.name,
+                    niceId: siteResources.niceId,
                     destination: siteResources.destination,
                     mode: siteResources.mode,
                     scheme: siteResources.scheme,
@@ -249,7 +251,7 @@ export async function getUserResources(
         });
 
         return response(res, {
-            data: { 
+            data: {
                 resources: resourcesWithAuth,
                 siteResources: siteResourcesFormatted
             },
