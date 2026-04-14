@@ -466,6 +466,23 @@ export async function updateSiteResource(
 
                 //////////////////// update the associations ////////////////////
 
+                // delete the site - site resources associations
+                await trx
+                    .delete(siteNetworks)
+                    .where(
+                        eq(
+                            siteNetworks.networkId,
+                            updatedSiteResource.networkId!
+                        )
+                    );
+
+                for (const siteId of siteIds) {
+                    await trx.insert(siteNetworks).values({
+                        siteId: siteId,
+                        networkId: updatedSiteResource.networkId!
+                    });
+                }
+
                 const [adminRole] = await trx
                     .select()
                     .from(roles)
