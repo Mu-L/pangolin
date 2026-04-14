@@ -10,7 +10,7 @@ import { convertTargetsIfNessicary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
 
-export const handleGetConfigMessage: MessageHandler = async (context) => {
+export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
     const newt = client as Newt;
 

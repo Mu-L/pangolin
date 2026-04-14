@@ -2,7 +2,7 @@ import { build } from "@server/build";
 import {
     handleNewtRegisterMessage,
     handleReceiveBandwidthMessage,
-    handleGetConfigMessage,
+    handleNewtGetConfigMessage,
     handleDockerStatusMessage,
     handleDockerContainersMessage,
     handleNewtPingRequestMessage,
@@ -37,7 +37,7 @@ export const messageHandlers: Record<string, MessageHandler> = {
     "newt/disconnecting": handleNewtDisconnectingMessage,
     "newt/ping": handleNewtPingMessage,
     "newt/wg/register": handleNewtRegisterMessage,
-    "newt/wg/get-config": handleGetConfigMessage,
+    "newt/wg/get-config": handleNewtGetConfigMessage,
     "newt/receive-bandwidth": handleReceiveBandwidthMessage,
     "newt/socket/status": handleDockerStatusMessage,
     "newt/socket/containers": handleDockerContainersMessage,
