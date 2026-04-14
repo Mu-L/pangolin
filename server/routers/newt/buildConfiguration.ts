@@ -168,13 +168,13 @@ export async function buildClientConfigurationForNewtClient(
                 )
             );
 
-        const resourceTarget = generateSubnetProxyTargetV2(
+        const resourceTargets = generateSubnetProxyTargetV2(
             resource,
             resourceClients
         );
 
-        if (resourceTarget) {
-            targetsToSend.push(resourceTarget);
+        if (resourceTargets) {
+            targetsToSend.push(...resourceTargets);
         }
     }
 
