@@ -38,7 +38,6 @@ import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { ListSitesResponse } from "@server/routers/site";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDown, ExternalLink } from "lucide-react";
@@ -127,8 +126,6 @@ export const cleanForFQDN = (name: string): string =>
         .replace(/^\.|\.$/g, "");
 
 // --- Types ---
-
-type Site = ListSitesResponse["sites"][0];
 
 export type InternalResourceMode = "host" | "cidr" | "http";
 

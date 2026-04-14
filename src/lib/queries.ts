@@ -155,7 +155,8 @@ export const orgQueries = {
             queryKey: ["ORG", orgId, "SITES", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    pageSize: perPage.toString()
+                    pageSize: perPage.toString(),
+                    status: "approved"
                 });
 
                 if (query?.trim()) {

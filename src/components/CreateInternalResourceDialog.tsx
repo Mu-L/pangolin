@@ -14,7 +14,6 @@ import { Button } from "@app/components/ui/button";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { ListSitesResponse } from "@server/routers/site";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -24,8 +23,6 @@ import {
     isHostname,
     type InternalResourceFormValues
 } from "./InternalResourceForm";
-
-type Site = ListSitesResponse["sites"][0];
 
 type CreateInternalResourceDialogProps = {
     open: boolean;
