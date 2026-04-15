@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Скала",
-                "description": "Предприятие, 50 потребители, 50 сайта и приоритетна поддръжка."
+                "description": "Функции за корпоративни клиенти, 50 потребители, 100 сайта и приоритетна поддръжка."
             }
         },
         "personalUseOnly": "Само за лична употреба (безплатен лиценз - без проверка)",
@@ -2824,9 +2824,9 @@
     "streamingHttpWebhookTitle": "HTTP Уеб хук",
     "streamingHttpWebhookDescription": "Изпратете събития до всяка HTTP крайна точка с гъвкаво удостоверяване и шаблониране.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Предавайте събития на хранилище, съвместимо с S3. Очаквайте скоро.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Пресочвайте събития директно към вашият акаунт в Datadog. Очаквайте скоро.",
     "streamingTypePickerDescription": "Изберете вид на дестинацията, за да започнете.",
     "streamingFailedToLoad": "Неуспешно зареждане на дестинации",
     "streamingUnexpectedError": "Възникна неочаквана грешка.",
@@ -2849,7 +2849,7 @@
     "httpDestNamePlaceholder": "Моята HTTP дестинация",
     "httpDestUrlLabel": "Дестинация URL",
     "httpDestUrlErrorHttpRequired": "URL адресът трябва да използва http или https",
-    "httpDestUrlErrorHttpsRequired": "HTTPS is required",
+    "httpDestUrlErrorHttpsRequired": "SSL е необходимо за облачни инсталации",
     "httpDestUrlErrorInvalid": "Въведете валиден URL (напр. https://example.com/webhook)",
     "httpDestAuthTitle": "Удостоверяване",
     "httpDestAuthDescription": "Изберете как заявленията ви се удостоверяват.",
