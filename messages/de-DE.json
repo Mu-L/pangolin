@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Maßstab",
-                "description": "Enterprise Features, 50 Benutzer, 50 Sites und Prioritätsunterstützung."
+                "description": "Unternehmensmerkmale, 50 Benutzer, 100 Standorte und prioritärer Support."
             }
         },
         "personalUseOnly": "Nur persönliche Nutzung (kostenlose Lizenz - kein Checkout)",
@@ -2824,9 +2824,9 @@
     "streamingHttpWebhookTitle": "HTTP Webhook",
     "streamingHttpWebhookDescription": "Sende Ereignisse an jeden HTTP-Endpunkt mit flexibler Authentifizierung und Vorlage.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Streame Ereignisse in eine S3-kompatible Objekt-Speicher-Eimer. Kommt bald.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Events direkt an Ihr Datadog Konto weiterleiten. Kommen Sie bald.",
     "streamingTypePickerDescription": "Wählen Sie einen Zieltyp aus, um loszulegen.",
     "streamingFailedToLoad": "Fehler beim Laden der Ziele",
     "streamingUnexpectedError": "Ein unerwarteter Fehler ist aufgetreten.",
@@ -2849,7 +2849,7 @@
     "httpDestNamePlaceholder": "Mein HTTP-Ziel",
     "httpDestUrlLabel": "Ziel-URL",
     "httpDestUrlErrorHttpRequired": "URL muss http oder https verwenden",
-    "httpDestUrlErrorHttpsRequired": "HTTPS is required",
+    "httpDestUrlErrorHttpsRequired": "HTTPS wird für Cloud-Deployment benötigt",
     "httpDestUrlErrorInvalid": "Geben Sie eine gültige URL ein (z.B. https://example.com/webhook)",
     "httpDestAuthTitle": "Authentifizierung",
     "httpDestAuthDescription": "Legen Sie fest, wie Anfragen an Ihren Endpunkt authentifiziert werden.",
