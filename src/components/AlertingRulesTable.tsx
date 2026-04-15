@@ -11,123 +11,131 @@ import {
 } from "@app/components/ui/dropdown-menu";
 import { Switch } from "@app/components/ui/switch";
 import { toast } from "@app/hooks/useToast";
-import {
-    type AlertRule,
-    deleteRule,
-    isoNow,
-    loadRules,
-    upsertRule
-} from "@app/lib/alertRulesLocalStorage";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { orgQueries } from "@app/lib/queries";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@app/components/ui/badge";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type AlertingRulesTableProps = {
     orgId: string;
 };
 
-function ruleHref(orgId: string, ruleId: string) {
+type AlertRuleRow = {
+    alertRuleId: number;
+    orgId: string;
+    name: string;
+    eventType: string;
+    enabled: boolean;
+    cooldownSeconds: number;
+    lastTriggeredAt: number | null;
+    createdAt: number;
+    updatedAt: number;
+    siteIds: number[];
+    healthCheckIds: number[];
+};
+
+function ruleHref(orgId: string, ruleId: number) {
     return `/${orgId}/settings/alerting/${ruleId}`;
 }
 
 function sourceSummary(
-    rule: AlertRule,
+    rule: AlertRuleRow,
     t: (k: string, o?: Record<string, number | string>) => string
 ) {
-    if (rule.source.type === "site") {
-        return t("alertingSummarySites", {
-            count: rule.source.siteIds.length
-        });
+    if (
+        rule.eventType === "site_online" ||
+        rule.eventType === "site_offline"
+    ) {
+        return t("alertingSummarySites", { count: rule.siteIds.length });
     }
     return t("alertingSummaryHealthChecks", {
-        count: rule.source.targetIds.length
+        count: rule.healthCheckIds.length
     });
 }
 
-function triggerLabel(rule: AlertRule, t: (k: string) => string) {
-    switch (rule.trigger) {
+function triggerLabel(
+    rule: AlertRuleRow,
+    t: (k: string) => string
+) {
+    switch (rule.eventType) {
         case "site_online":
             return t("alertingTriggerSiteOnline");
         case "site_offline":
             return t("alertingTriggerSiteOffline");
         case "health_check_healthy":
             return t("alertingTriggerHcHealthy");
-        case "health_check_unhealthy":
+        case "health_check_not_healthy":
             return t("alertingTriggerHcUnhealthy");
         default:
-            return rule.trigger;
+            return rule.eventType;
     }
-}
-
-function actionBadges(rule: AlertRule, t: (k: string) => string) {
-    return rule.actions.map((a, i) => {
-        if (a.type === "notify") {
-            return (
-                <Badge key={`notify-${i}`} variant="secondary">
-                    {t("alertingActionNotify")}
-                </Badge>
-            );
-        }
-        if (a.type === "sms") {
-            return (
-                <Badge key={`sms-${i}`} variant="secondary">
-                    {t("alertingActionSms")}
-                </Badge>
-            );
-        }
-        return (
-            <Badge key={`webhook-${i}`} variant="secondary">
-                {t("alertingActionWebhook")}
-            </Badge>
-        );
-    });
 }
 
 export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
     const router = useRouter();
     const t = useTranslations();
-    const [rows, setRows] = useState<AlertRule[]>([]);
+    const api = createApiClient(useEnvContext());
+    const queryClient = useQueryClient();
+
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const [selected, setSelected] = useState<AlertRule | null>(null);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [selected, setSelected] = useState<AlertRuleRow | null>(null);
+    const [togglingId, setTogglingId] = useState<number | null>(null);
 
-    const refreshFromStorage = useCallback(() => {
-        setRows(loadRules(orgId));
-    }, [orgId]);
+    const {
+        data: rows = [],
+        isLoading,
+        refetch,
+        isRefetching
+    } = useQuery(orgQueries.alertRules({ orgId }));
 
-    useEffect(() => {
-        refreshFromStorage();
-    }, [refreshFromStorage]);
+    const invalidate = () =>
+        queryClient.invalidateQueries(orgQueries.alertRules({ orgId }));
 
-    const refreshData = async () => {
-        setIsRefreshing(true);
+    const setEnabled = async (rule: AlertRuleRow, enabled: boolean) => {
+        setTogglingId(rule.alertRuleId);
         try {
-            await new Promise((r) => setTimeout(r, 200));
-            refreshFromStorage();
+            await api.post(`/org/${orgId}/alert-rule/${rule.alertRuleId}`, {
+                enabled
+            });
+            await invalidate();
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e),
+                variant: "destructive"
+            });
         } finally {
-            setIsRefreshing(false);
+            setTogglingId(null);
         }
-    };
-
-    const setEnabled = (rule: AlertRule, enabled: boolean) => {
-        upsertRule(orgId, { ...rule, enabled, updatedAt: isoNow() });
-        refreshFromStorage();
     };
 
     const confirmDelete = async () => {
         if (!selected) return;
-        deleteRule(orgId, selected.id);
-        refreshFromStorage();
-        setDeleteOpen(false);
-        setSelected(null);
-        toast({ title: t("alertingRuleDeleted") });
+        try {
+            await api.delete(
+                `/org/${orgId}/alert-rule/${selected.alertRuleId}`
+            );
+            await invalidate();
+            toast({ title: t("alertingRuleDeleted") });
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e),
+                variant: "destructive"
+            });
+        } finally {
+            setDeleteOpen(false);
+            setSelected(null);
+        }
     };
 
-    const columns: ExtendedColumnDef<AlertRule>[] = [
+    const columns: ExtendedColumnDef<AlertRuleRow>[] = [
         {
             accessorKey: "name",
             enableHiding: false,
@@ -164,18 +172,6 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
             cell: ({ row }) => <span>{triggerLabel(row.original, t)}</span>
         },
         {
-            id: "actionsCol",
-            friendlyName: t("alertingColumnActions"),
-            header: () => (
-                <span className="p-3">{t("alertingColumnActions")}</span>
-            ),
-            cell: ({ row }) => (
-                <div className="flex flex-wrap gap-1 max-w-[14rem]">
-                    {actionBadges(row.original, t)}
-                </div>
-            )
-        },
-        {
             accessorKey: "enabled",
             friendlyName: t("alertingColumnEnabled"),
             header: () => (
@@ -186,6 +182,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                 return (
                     <Switch
                         checked={r.enabled}
+                        disabled={togglingId === r.alertRuleId}
                         onCheckedChange={(v) => setEnabled(r, v)}
                     />
                 );
@@ -230,7 +227,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Button variant="outline" asChild>
-                            <Link href={ruleHref(orgId, r.id)}>
+                            <Link href={ruleHref(orgId, r.alertRuleId)}>
                                 {t("edit")}
                             </Link>
                         </Button>
@@ -270,8 +267,8 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                 onAdd={() => {
                     router.push(`/${orgId}/settings/alerting/create`);
                 }}
-                onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                onRefresh={() => refetch()}
+                isRefreshing={isRefetching || isLoading}
                 addButtonText={t("alertingAddRule")}
                 enableColumnVisibility
                 stickyLeftColumn="name"

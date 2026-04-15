@@ -4,9 +4,11 @@ import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
 import type {
     GetResourceWhitelistResponse,
+    ListHealthChecksResponse,
     ListResourceNamesResponse,
     ListResourcesResponse
 } from "@server/routers/resource";
+import type { ListAlertRulesResponse } from "@server/private/routers/alertRule";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -229,6 +231,38 @@ export const orgQueries = {
                 >(`/org/${orgId}/resources?${sp.toString()}`, { signal });
 
                 return res.data.data.resources;
+            }
+        }),
+
+    healthChecks: ({
+        orgId,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "HEALTH_CHECKS", { perPage }] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    limit: perPage.toString(),
+                    offset: "0"
+                });
+                const res = await meta!.api.get<
+                    AxiosResponse<ListHealthChecksResponse>
+                >(`/org/${orgId}/health-checks?${sp.toString()}`, { signal });
+                return res.data.data.healthChecks;
+            }
+        }),
+
+    alertRules: ({ orgId }: { orgId: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "ALERT_RULES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAlertRulesResponse>
+                >(`/org/${orgId}/alert-rules`, { signal });
+                return res.data.data.alertRules;
             }
         })
 };

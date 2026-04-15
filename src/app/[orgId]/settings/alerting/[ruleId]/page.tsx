@@ -1,33 +1,60 @@
 "use client";
 
 import AlertRuleGraphEditor from "@app/components/alert-rule-editor/AlertRuleGraphEditor";
-import { ruleToFormValues } from "@app/lib/alertRuleForm";
-import type { AlertRule } from "@app/lib/alertRulesLocalStorage";
-import { getRule } from "@app/lib/alertRulesLocalStorage";
+import { apiResponseToFormValues } from "@app/lib/alertRuleForm";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { toast } from "@app/hooks/useToast";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import type { AxiosResponse } from "axios";
+import type { GetAlertRuleResponse } from "@server/private/routers/alertRule";
+import type { AlertRuleFormValues } from "@app/lib/alertRuleForm";
 
 export default function EditAlertRulePage() {
     const t = useTranslations();
     const params = useParams();
     const router = useRouter();
     const orgId = params.orgId as string;
-    const ruleId = params.ruleId as string;
-    const [rule, setRule] = useState<AlertRule | null | undefined>(undefined);
+    const ruleIdParam = params.ruleId as string;
+    const alertRuleId = parseInt(ruleIdParam, 10);
+
+    const api = createApiClient(useEnvContext());
+
+    const [formValues, setFormValues] = useState<AlertRuleFormValues | null | undefined>(undefined);
 
     useEffect(() => {
-        const r = getRule(orgId, ruleId);
-        setRule(r ?? null);
-    }, [orgId, ruleId]);
+        if (isNaN(alertRuleId)) {
+            router.replace(`/${orgId}/settings/alerting`);
+            return;
+        }
+
+        api.get<AxiosResponse<GetAlertRuleResponse>>(
+            `/org/${orgId}/alert-rule/${alertRuleId}`
+        )
+            .then((res) => {
+                const rule = res.data.data;
+                setFormValues(apiResponseToFormValues(rule));
+            })
+            .catch((e) => {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e),
+                    variant: "destructive"
+                });
+                setFormValues(null);
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orgId, alertRuleId]);
 
     useEffect(() => {
-        if (rule === null) {
+        if (formValues === null) {
             router.replace(`/${orgId}/settings/alerting`);
         }
-    }, [rule, orgId, router]);
+    }, [formValues, orgId, router]);
 
-    if (rule === undefined) {
+    if (formValues === undefined) {
         return (
             <div className="min-h-[12rem] flex items-center justify-center text-muted-foreground text-sm">
                 {t("loading")}
@@ -35,17 +62,16 @@ export default function EditAlertRulePage() {
         );
     }
 
-    if (rule === null) {
+    if (formValues === null) {
         return null;
     }
 
     return (
         <AlertRuleGraphEditor
-            key={rule.id}
+            key={alertRuleId}
             orgId={orgId}
-            ruleId={rule.id}
-            createdAt={rule.createdAt}
-            initialValues={ruleToFormValues(rule)}
+            alertRuleId={alertRuleId}
+            initialValues={formValues}
             isNew={false}
         />
     );

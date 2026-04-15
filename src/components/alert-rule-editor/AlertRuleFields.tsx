@@ -172,9 +172,7 @@ function SiteMultiSelect({
     );
 }
 
-const ALERT_RESOURCES_PAGE_SIZE = 10;
-
-function ResourceTenMultiSelect({
+function HealthCheckMultiSelect({
     orgId,
     value,
     onChange
@@ -185,58 +183,46 @@ function ResourceTenMultiSelect({
 }) {
     const t = useTranslations();
     const [open, setOpen] = useState(false);
-    const { data: resources = [] } = useQuery(
-        orgQueries.resources({
-            orgId,
-            perPage: ALERT_RESOURCES_PAGE_SIZE
-        })
+    const [q, setQ] = useState("");
+    const [debounced] = useDebounce(q, 150);
+
+    const { data: healthChecks = [] } = useQuery(
+        orgQueries.healthChecks({ orgId })
     );
-    const rows = useMemo(() => {
-        const out: {
-            resourceId: number;
-            name: string;
-            targetIds: number[];
-        }[] = [];
-        for (const r of resources) {
-            const targetIds = r.targets.map((x) => x.targetId);
-            if (targetIds.length > 0) {
-                out.push({
-                    resourceId: r.resourceId,
-                    name: r.name,
-                    targetIds
-                });
-            }
+
+    const shown = useMemo(() => {
+        const query = debounced.trim().toLowerCase();
+        const base = query
+            ? healthChecks.filter((hc) =>
+                  hc.resourceName.toLowerCase().includes(query)
+              )
+            : healthChecks;
+        // Always keep already-selected items visible even if they fall outside the search
+        if (query && value.length > 0) {
+            const selectedNotInBase = healthChecks.filter(
+                (hc) =>
+                    value.includes(hc.targetHealthCheckId) &&
+                    !base.some(
+                        (b) => b.targetHealthCheckId === hc.targetHealthCheckId
+                    )
+            );
+            return [...selectedNotInBase, ...base];
         }
-        return out;
-    }, [resources]);
+        return base;
+    }, [healthChecks, debounced, value]);
 
-    const selectedResourceCount = useMemo(
-        () =>
-            rows.filter(
-                (row) =>
-                    row.targetIds.length > 0 &&
-                    row.targetIds.every((id) => value.includes(id))
-            ).length,
-        [rows, value]
-    );
-
-    const toggle = (targetIds: number[]) => {
-        const allOn =
-            targetIds.length > 0 &&
-            targetIds.every((id) => value.includes(id));
-        if (allOn) {
-            onChange(value.filter((id) => !targetIds.includes(id)));
+    const toggle = (id: number) => {
+        if (value.includes(id)) {
+            onChange(value.filter((x) => x !== id));
         } else {
-            onChange([...new Set([...value, ...targetIds])]);
+            onChange([...value, id]);
         }
     };
 
     const summary =
-        selectedResourceCount === 0
-            ? t("alertingSelectResources")
-            : t("alertingResourcesSelected", {
-                  count: selectedResourceCount
-              });
+        value.length === 0
+            ? t("alertingSelectHealthChecks")
+            : t("alertingHealthChecksSelected", { count: value.length });
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -255,38 +241,42 @@ function ResourceTenMultiSelect({
                 className="w-[var(--radix-popover-trigger-width)] p-0"
                 align="start"
             >
-                <div className="max-h-72 overflow-y-auto p-2 space-y-0.5">
-                    {rows.length === 0 ? (
-                        <p className="text-sm text-muted-foreground px-2 py-1.5">
-                            {t("alertingResourcesEmpty")}
-                        </p>
-                    ) : (
-                        rows.map((row) => {
-                            const checked =
-                                row.targetIds.length > 0 &&
-                                row.targetIds.every((id) =>
-                                    value.includes(id)
-                                );
-                            return (
-                                <button
-                                    key={row.resourceId}
-                                    type="button"
-                                    onClick={() => toggle(row.targetIds)}
-                                    className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                <Command shouldFilter={false}>
+                    <CommandInput
+                        placeholder={t("alertingSearchHealthChecks")}
+                        value={q}
+                        onValueChange={setQ}
+                    />
+                    <CommandList>
+                        <CommandEmpty>
+                            {t("alertingHealthChecksEmpty")}
+                        </CommandEmpty>
+                        <CommandGroup>
+                            {shown.map((hc) => (
+                                <CommandItem
+                                    key={hc.targetHealthCheckId}
+                                    value={`${hc.targetHealthCheckId}:${hc.resourceName}`}
+                                    onSelect={() =>
+                                        toggle(hc.targetHealthCheckId)
+                                    }
+                                    className="cursor-pointer"
                                 >
                                     <Checkbox
-                                        checked={checked}
-                                        className="pointer-events-none shrink-0"
+                                        checked={value.includes(
+                                            hc.targetHealthCheckId
+                                        )}
+                                        className="mr-2 pointer-events-none shrink-0"
                                         aria-hidden
+                                        tabIndex={-1}
                                     />
                                     <span className="truncate">
-                                        {row.name}
+                                        {hc.resourceName}
                                     </span>
-                                </button>
-                            );
-                        })
-                    )}
-                </div>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
             </PopoverContent>
         </Popover>
     );
@@ -909,11 +899,13 @@ export function AlertRuleSourceFields({
             ) : (
                 <FormField
                     control={control}
-                    name="targetIds"
+                    name="healthCheckIds"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>{t("alertingPickResources")}</FormLabel>
-                            <ResourceTenMultiSelect
+                            <FormLabel>
+                                {t("alertingPickHealthChecks")}
+                            </FormLabel>
+                            <HealthCheckMultiSelect
                                 orgId={orgId}
                                 value={field.value}
                                 onChange={field.onChange}

@@ -145,6 +145,7 @@ export enum ActionsEnum {
     updateEventStreamingDestination = "updateEventStreamingDestination",
     deleteEventStreamingDestination = "deleteEventStreamingDestination",
     listEventStreamingDestinations = "listEventStreamingDestinations",
+    listHealthChecks = "listHealthChecks",
     createAlertRule = "createAlertRule",
     updateAlertRule = "updateAlertRule",
     deleteAlertRule = "deleteAlertRule",

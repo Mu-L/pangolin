@@ -29,11 +29,14 @@ import { toast } from "@app/hooks/useToast";
 import {
     buildFormSchema,
     defaultFormValues,
-    formValuesToRule,
+    formValuesToApiPayload,
     type AlertRuleFormAction,
     type AlertRuleFormValues
 } from "@app/lib/alertRuleForm";
-import { upsertRule } from "@app/lib/alertRulesLocalStorage";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import type { CreateAlertRuleResponse } from "@server/private/routers/alertRule";
+import type { AxiosResponse } from "axios";
 import { cn } from "@app/lib/cn";
 import {
     Background,
@@ -77,10 +80,10 @@ function summarizeSource(v: AlertRuleFormValues, t: AlertRuleT) {
         }
         return t("alertingSummarySites", { count: v.siteIds.length });
     }
-    if (v.targetIds.length === 0) {
+    if (v.healthCheckIds.length === 0) {
         return t("alertingNodeNotConfigured");
     }
-    return t("alertingSummaryHealthChecks", { count: v.targetIds.length });
+    return t("alertingSummaryHealthChecks", { count: v.healthCheckIds.length });
 }
 
 function summarizeTrigger(v: AlertRuleFormValues, t: AlertRuleT) {
@@ -175,7 +178,7 @@ function stepConfigured(
     if (step === "source") {
         return v.sourceType === "site"
             ? v.siteIds.length > 0
-            : v.targetIds.length > 0;
+            : v.healthCheckIds.length > 0;
     }
     return Boolean(v.trigger);
 }
@@ -300,8 +303,7 @@ function buildNodeData(
 
 type AlertRuleGraphEditorProps = {
     orgId: string;
-    ruleId: string;
-    createdAt: string;
+    alertRuleId?: number;
     initialValues: AlertRuleFormValues;
     isNew: boolean;
 };
@@ -310,13 +312,14 @@ const FORM_ID = "alert-rule-graph-form";
 
 export default function AlertRuleGraphEditor({
     orgId,
-    ruleId,
-    createdAt,
+    alertRuleId,
     initialValues,
     isNew
 }: AlertRuleGraphEditorProps) {
     const t = useTranslations();
     const router = useRouter();
+    const api = createApiClient(useEnvContext());
+    const [isSaving, setIsSaving] = useState(false);
     const schema = useMemo(() => buildFormSchema(t), [t]);
     const form = useForm<AlertRuleFormValues>({
         resolver: zodResolver(schema),
@@ -335,8 +338,8 @@ export default function AlertRuleGraphEditor({
         useWatch({ control: form.control, name: "sourceType" }) ?? "site";
     const wSiteIds =
         useWatch({ control: form.control, name: "siteIds" }) ?? [];
-    const wTargetIds =
-        useWatch({ control: form.control, name: "targetIds" }) ?? [];
+    const wHealthCheckIds =
+        useWatch({ control: form.control, name: "healthCheckIds" }) ?? [];
     const wTrigger =
         useWatch({ control: form.control, name: "trigger" }) ??
         "site_offline";
@@ -349,7 +352,7 @@ export default function AlertRuleGraphEditor({
             enabled: wEnabled,
             sourceType: wSourceType,
             siteIds: wSiteIds,
-            targetIds: wTargetIds,
+            healthCheckIds: wHealthCheckIds,
             trigger: wTrigger,
             actions: wActions
         }),
@@ -358,7 +361,7 @@ export default function AlertRuleGraphEditor({
             wEnabled,
             wSourceType,
             wSiteIds,
-            wTargetIds,
+            wHealthCheckIds,
             wTrigger,
             wActions
         ]
@@ -472,7 +475,7 @@ export default function AlertRuleGraphEditor({
         if (!m) {
             return;
         }
-        const i = Number(m[1], 10);
+        const i = parseInt(m[1], 10);
         if (i >= wActions.length) {
             setSelectedStep(
                 wActions.length > 0
@@ -486,12 +489,33 @@ export default function AlertRuleGraphEditor({
         setSelectedStep(node.id);
     }, []);
 
-    const onSubmit = form.handleSubmit((values) => {
-        const next = formValuesToRule(values, ruleId, createdAt);
-        upsertRule(orgId, next);
-        toast({ title: t("alertingRuleSaved") });
-        if (isNew) {
-            router.replace(`/${orgId}/settings/alerting/${ruleId}`);
+    const onSubmit = form.handleSubmit(async (values) => {
+        setIsSaving(true);
+        try {
+            const payload = formValuesToApiPayload(values);
+            if (isNew) {
+                const res = await api.put<
+                    AxiosResponse<CreateAlertRuleResponse>
+                >(`/org/${orgId}/alert-rule`, payload);
+                toast({ title: t("alertingRuleSaved") });
+                router.replace(
+                    `/${orgId}/settings/alerting/${res.data.data.alertRuleId}`
+                );
+            } else {
+                await api.post(
+                    `/org/${orgId}/alert-rule/${alertRuleId}`,
+                    payload
+                );
+                toast({ title: t("alertingRuleSaved") });
+            }
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e),
+                variant: "destructive"
+            });
+        } finally {
+            setIsSaving(false);
         }
     });
 
@@ -565,8 +589,8 @@ export default function AlertRuleGraphEditor({
                                             </FormItem>
                                         )}
                                     />
-                                    <Button type="submit">
-                                        {t("save")}
+                                    <Button type="submit" disabled={isSaving}>
+                                        {isSaving ? t("saving") : t("save")}
                                     </Button>
                                 </div>
                             </div>

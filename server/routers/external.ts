@@ -428,6 +428,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/health-checks",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listHealthChecks),
+    resource.listHealthChecks
+);
+
+authenticated.get(
     "/org/:orgId/resource-names",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listResources),
