@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Scale",
-                "description": "Enterprise features, 50 users, 50 sites, and priority support."
+                "description": "Enterprise features, 50 users, 100 sites, and priority support."
             }
         },
         "personalUseOnly": "Personal use only (free license - no checkout)",
