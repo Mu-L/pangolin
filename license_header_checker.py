@@ -6,7 +6,7 @@ import sys
 HEADER_TEXT = """/*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025 Fossorial, Inc.
+ * Copyright (c) 2025-2026 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -17,87 +17,109 @@ HEADER_TEXT = """/*
  */
 """
 
+HEADER_NORMALIZED = HEADER_TEXT.strip()
+
+
+def extract_leading_block_comment(content):
+    """
+    If the file content begins with a /* ... */ block comment, return the
+    full text of that comment (including the delimiters) and the index at
+    which the rest of the file starts (after any trailing newlines).
+    Returns (None, 0) when no such comment is found.
+    """
+    stripped = content.lstrip()
+    if not stripped.startswith('/*'):
+        return None, 0
+
+    # Account for any leading whitespace before the comment
+    comment_start = content.index('/*')
+    end_marker = content.find('*/', comment_start + 2)
+    if end_marker == -1:
+        return None, 0
+
+    comment_end = end_marker + 2  # position just after '*/'
+    comment_text = content[comment_start:comment_end].strip()
+
+    # Advance past any whitespace / newlines that follow the closing */
+    rest_start = comment_end
+    while rest_start < len(content) and content[rest_start] in '\n\r':
+        rest_start += 1
+
+    return comment_text, rest_start
+
+
 def should_add_header(file_path):
     """
     Checks if a file should receive the commercial license header.
-    Returns True if 'private' is in the path or file content.
+    Returns True if 'server/private' is in the path.
     """
-    # Check if 'private' is in the file path (case-insensitive)
     if 'server/private' in file_path.lower():
         return True
 
-    # Check if 'private' is in the file content (case-insensitive)
-    # try:
-    #     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-    #         content = f.read()
-    #         if 'private' in content.lower():
-    #             return True
-    # except Exception as e:
-    #     print(f"Could not read file {file_path}: {e}")
-
     return False
+
 
 def process_directory(root_dir):
     """
-    Recursively scans a directory and adds headers to qualifying .ts or .tsx files,
-    skipping any 'node_modules' directories.
+    Recursively scans a directory and adds/replaces/removes headers in
+    qualifying .ts or .tsx files, skipping any 'node_modules' directories.
     """
     print(f"Scanning directory: {root_dir}")
     files_processed = 0
-    headers_added = 0
+    files_modified = 0
 
     for root, dirs, files in os.walk(root_dir):
-        # --- MODIFICATION ---
-        # Exclude 'node_modules' directories from the scan to improve performance.
+        # Exclude 'node_modules' directories from the scan.
         if 'node_modules' in dirs:
             dirs.remove('node_modules')
 
         for file in files:
-            if file.endswith('.ts') or file.endswith('.tsx'):
-                file_path = os.path.join(root, file)
-                files_processed += 1
+            if not (file.endswith('.ts') or file.endswith('.tsx')):
+                continue
 
-                try:
-                    with open(file_path, 'r+', encoding='utf-8') as f:
-                        original_content = f.read()
-                        has_header = original_content.startswith(HEADER_TEXT.strip())
-                        
-                        if should_add_header(file_path):
-                            # Add header only if it's not already there
-                            if not has_header:
-                                f.seek(0, 0) # Go to the beginning of the file
-                                f.write(HEADER_TEXT.strip() + '\n\n' + original_content)
-                                print(f"Added header to: {file_path}")
-                                headers_added += 1
-                            else:
-                                print(f"Header already exists in: {file_path}")
-                        else:
-                            # Remove header if it exists but shouldn't be there
-                            if has_header:
-                                # Find the end of the header and remove it (including following newlines)
-                                header_with_newlines = HEADER_TEXT.strip() + '\n\n'
-                                if original_content.startswith(header_with_newlines):
-                                    content_without_header = original_content[len(header_with_newlines):]
-                                else:
-                                    # Handle case where there might be different newline patterns
-                                    header_end = len(HEADER_TEXT.strip())
-                                    # Skip any newlines after the header
-                                    while header_end < len(original_content) and original_content[header_end] in '\n\r':
-                                        header_end += 1
-                                    content_without_header = original_content[header_end:]
-                                
-                                f.seek(0)
-                                f.write(content_without_header)
-                                f.truncate()
-                                print(f"Removed header from: {file_path}")
-                                headers_added += 1  # Reusing counter for modifications
+            file_path = os.path.join(root, file)
+            files_processed += 1
 
-                except Exception as e:
-                    print(f"Error processing file {file_path}: {e}")
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    original_content = f.read()
+
+                existing_comment, body_start = extract_leading_block_comment(
+                    original_content
+                )
+                has_any_header = existing_comment is not None
+                has_correct_header = existing_comment == HEADER_NORMALIZED
+
+                body = original_content[body_start:] if has_any_header else original_content
+
+                if should_add_header(file_path):
+                    if has_correct_header:
+                        print(f"Header up-to-date:  {file_path}")
+                    else:
+                        # Either no header exists or the header is outdated — write
+                        # the correct one.
+                        action = "Replaced header in" if has_any_header else "Added header to"
+                        new_content = HEADER_NORMALIZED + '\n\n' + body
+                        with open(file_path, 'w', encoding='utf-8') as f:
+                            f.write(new_content)
+                        print(f"{action}: {file_path}")
+                        files_modified += 1
+                else:
+                    if has_any_header:
+                        # Remove the header — it shouldn't be here.
+                        with open(file_path, 'w', encoding='utf-8') as f:
+                            f.write(body)
+                        print(f"Removed header from: {file_path}")
+                        files_modified += 1
+                    else:
+                        print(f"No header needed:   {file_path}")
+
+            except Exception as e:
+                print(f"Error processing file {file_path}: {e}")
 
     print("\n--- Scan Complete ---")
-    print(f"Total .ts or .tsx files found: {files_processed}")
-    print(f"Files modified (headers added/removed): {headers_added}")
+    print(f"Total .ts or .tsx files found:          {files_processed}")
+    print(f"Files modified (added/replaced/removed): {files_modified}")
 
 
 if __name__ == "__main__":
@@ -106,7 +128,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         target_directory = sys.argv[1]
     else:
-        target_directory = '.' # Default to current directory
+        target_directory = '.'  # Default to current directory
 
     if not os.path.isdir(target_directory):
         print(f"Error: Directory '{target_directory}' not found.")
