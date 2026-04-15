@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Scala",
-                "description": "Funzionalità aziendali, 50 utenti, 50 siti e supporto prioritario."
+                "description": "Funzionalità aziendali, 50 utenti, 100 siti e supporto prioritario."
             }
         },
         "personalUseOnly": "Uso personale esclusivo (licenza gratuita - nessun pagamento)",
@@ -2824,9 +2824,9 @@
     "streamingHttpWebhookTitle": "Webhook HTTP",
     "streamingHttpWebhookDescription": "Invia eventi a qualsiasi endpoint HTTP con autenticazione e template flessibili.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Trasmetti eventi su un contenitore di archiviazione per oggetti compatibile con S3. Presto in arrivo.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Inoltra gli eventi direttamente al tuo account Datadog. In arrivo.",
     "streamingTypePickerDescription": "Scegli un tipo di destinazione per iniziare.",
     "streamingFailedToLoad": "Impossibile caricare le destinazioni",
     "streamingUnexpectedError": "Si è verificato un errore imprevisto.",
@@ -2849,7 +2849,7 @@
     "httpDestNamePlaceholder": "La mia destinazione HTTP",
     "httpDestUrlLabel": "Url Di Destinazione",
     "httpDestUrlErrorHttpRequired": "L'URL deve usare http o https",
-    "httpDestUrlErrorHttpsRequired": "HTTPS is required",
+    "httpDestUrlErrorHttpsRequired": "HTTPS è richiesto sulle distribuzioni cloud",
     "httpDestUrlErrorInvalid": "Inserisci un URL valido (es. https://example.com/webhook)",
     "httpDestAuthTitle": "Autenticazione",
     "httpDestAuthDescription": "Scegli come vengono autenticate le richieste al tuo endpoint.",
