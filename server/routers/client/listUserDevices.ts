@@ -30,64 +30,9 @@ import {
 } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import NodeCache from "node-cache";
 import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const olmVersionCache = new NodeCache({ stdTTL: 3600 });
-
-async function getLatestOlmVersion(): Promise<string | null> {
-    try {
-        const cachedVersion = olmVersionCache.get<string>("latestOlmVersion");
-        if (cachedVersion) {
-            return cachedVersion;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-
-        const response = await fetch(
-            "https://api.github.com/repos/fosrl/olm/tags",
-            {
-                signal: controller.signal
-            }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            logger.warn(
-                `Failed to fetch latest Olm version from GitHub: ${response.status} ${response.statusText}`
-            );
-            return null;
-        }
-
-        let tags = await response.json();
-        if (!Array.isArray(tags) || tags.length === 0) {
-            logger.warn("No tags found for Olm repository");
-            return null;
-        }
-        tags = tags.filter((version) => !version.name.includes("rc"));
-        const latestVersion = tags[0].name;
-
-        olmVersionCache.set("latestOlmVersion", latestVersion, 3600);
-
-        return latestVersion;
-    } catch (error: any) {
-        if (error.name === "AbortError") {
-            logger.warn("Request to fetch latest Olm version timed out (1.5s)");
-        } else if (error.cause?.code === "UND_ERR_CONNECT_TIMEOUT") {
-            logger.warn("Connection timeout while fetching latest Olm version");
-        } else {
-            logger.warn(
-                "Error fetching latest Olm version:",
-                error.message || error
-            );
-        }
-        return null;
-    }
-}
 
 const listUserDevicesParamsSchema = z.strictObject({
     orgId: z.string()
@@ -453,29 +398,30 @@ export async function listUserDevices(
             }
         );
 
-        // Try to get the latest version, but don't block if it fails
-        try {
-            const latestOlmVersion = await getLatestOlmVersion();
+        // REMOVING THIS BECAUSE WE HAVE DIFFERENT TYPES OF CLIENTS NOW
+        // // Try to get the latest version, but don't block if it fails
+        // try {
+        //     const latestOlmVersion = await getLatestOlmVersion();
 
-            if (latestOlmVersion) {
-                olmsWithUpdates.forEach((client) => {
-                    try {
-                        client.olmUpdateAvailable = semver.lt(
-                            client.olmVersion ? client.olmVersion : "",
-                            latestOlmVersion
-                        );
-                    } catch (error) {
-                        client.olmUpdateAvailable = false;
-                    }
-                });
-            }
-        } catch (error) {
-            // Log the error but don't let it block the response
-            logger.warn(
-                "Failed to check for OLM updates, continuing without update info:",
-                error
-            );
-        }
+        //     if (latestOlmVersion) {
+        //         olmsWithUpdates.forEach((client) => {
+        //             try {
+        //                 client.olmUpdateAvailable = semver.lt(
+        //                     client.olmVersion ? client.olmVersion : "",
+        //                     latestOlmVersion
+        //                 );
+        //             } catch (error) {
+        //                 client.olmUpdateAvailable = false;
+        //             }
+        //         });
+        //     }
+        // } catch (error) {
+        //     // Log the error but don't let it block the response
+        //     logger.warn(
+        //         "Failed to check for OLM updates, continuing without update info:",
+        //         error
+        //     );
+        // }
 
         return response<ListUserDevicesResponse>(res, {
             data: {
