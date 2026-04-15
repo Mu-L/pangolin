@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Échelle",
-                "description": "Fonctionnalités d'entreprise, 50 utilisateurs, 50 sites et une prise en charge prioritaire."
+                "description": "Fonctionnalités d'entreprise, 50 utilisateurs, 100 sites et support prioritaire."
             }
         },
         "personalUseOnly": "Usage personnel uniquement (licence gratuite - pas de validation)",
@@ -2824,9 +2824,9 @@
     "streamingHttpWebhookTitle": "Webhook HTTP",
     "streamingHttpWebhookDescription": "Envoyez des événements à n'importe quel point de terminaison HTTP avec une authentification flexible et un template.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Flux d'événements vers un compartiment de stockage d'objet compatible S3. Bientôt.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Transférer des événements directement sur votre compte Datadog. Prochainement.",
     "streamingTypePickerDescription": "Choisissez un type de destination pour commencer.",
     "streamingFailedToLoad": "Impossible de charger les destinations",
     "streamingUnexpectedError": "Une erreur inattendue s'est produite.",
@@ -2849,7 +2849,7 @@
     "httpDestNamePlaceholder": "Ma destination HTTP",
     "httpDestUrlLabel": "URL de destination",
     "httpDestUrlErrorHttpRequired": "L'URL doit utiliser http ou https",
-    "httpDestUrlErrorHttpsRequired": "HTTPS is required",
+    "httpDestUrlErrorHttpsRequired": "HTTPS est requis pour les déploiements du cloud",
     "httpDestUrlErrorInvalid": "Entrez une URL valide (par exemple https://example.com/webhook)",
     "httpDestAuthTitle": "Authentification",
     "httpDestAuthDescription": "Choisissez comment les requêtes à votre terminaison sont authentifiées.",
