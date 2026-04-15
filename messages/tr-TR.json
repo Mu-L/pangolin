@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Ölçek",
-                "description": "Kurumsal özellikler, 50 kullanıcı, 50 site ve öncelikli destek."
+                "description": "Kurumsal özellikler, 50 kullanıcı, 100 site ve öncelikli destek."
             }
         },
         "personalUseOnly": "Kişisel kullanım için (ücretsiz lisans - ödeme yok)",
@@ -2824,9 +2824,9 @@
     "streamingHttpWebhookTitle": "HTTP Webhook",
     "streamingHttpWebhookDescription": "Esnek kimlik doğrulama ve şablon oluşturmayla her HTTP uç noktasına olaylar gönderin.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Olayları S3 uyumlu bir nesne depolama kovasına iletin. Yakında gelicek.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Olayları doğrudan Datadog hesabınıza iletin. Yakında gelicek.",
     "streamingTypePickerDescription": "Başlamak için bir hedef türü seçin.",
     "streamingFailedToLoad": "Hedefler yüklenemedi",
     "streamingUnexpectedError": "Beklenmeyen bir hata oluştu.",
@@ -2849,7 +2849,7 @@
     "httpDestNamePlaceholder": "Benim HTTP hedefim",
     "httpDestUrlLabel": "Hedef URL",
     "httpDestUrlErrorHttpRequired": "URL http veya https kullanmalıdır",
-    "httpDestUrlErrorHttpsRequired": "HTTPS is required",
+    "httpDestUrlErrorHttpsRequired": "Bulut dağıtımlarında HTTPS gereklidir",
     "httpDestUrlErrorInvalid": "Geçerli bir URL girin (örn. https://example.com/webhook)",
     "httpDestAuthTitle": "Kimlik Doğrulama",
     "httpDestAuthDescription": "Uç noktanıza yapılan isteklerin nasıl kimlik doğrulandığını seçin.",
