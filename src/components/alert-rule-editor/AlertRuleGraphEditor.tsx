@@ -104,14 +104,12 @@ function summarizeTrigger(v: AlertRuleFormValues, t: AlertRuleT) {
 function oneActionConfigured(a: AlertRuleFormAction): boolean {
     if (a.type === "notify") {
         return (
-            a.userIds.length > 0 ||
-            a.roleIds.length > 0 ||
+            a.userTags.length > 0 ||
+            a.roleTags.length > 0 ||
             a.emailTags.length > 0
         );
     }
-    if (a.type === "sms") {
-        return a.phoneTags.length > 0;
-    }
+
     try {
         new URL(a.url.trim());
         return true;
@@ -124,8 +122,6 @@ function actionTypeLabel(a: AlertRuleFormAction, t: AlertRuleT): string {
     switch (a.type) {
         case "notify":
             return t("alertingActionNotify");
-        case "sms":
-            return t("alertingActionSms");
         case "webhook":
             return t("alertingActionWebhook");
     }
@@ -134,18 +130,18 @@ function actionTypeLabel(a: AlertRuleFormAction, t: AlertRuleT): string {
 function summarizeOneAction(a: AlertRuleFormAction, t: AlertRuleT): string {
     if (a.type === "notify") {
         if (
-            a.userIds.length === 0 &&
-            a.roleIds.length === 0 &&
+            a.userTags.length === 0 &&
+            a.roleTags.length === 0 &&
             a.emailTags.length === 0
         ) {
             return t("alertingNodeNotConfigured");
         }
         const parts: string[] = [];
-        if (a.userIds.length > 0) {
-            parts.push(t("alertingUsersSelected", { count: a.userIds.length }));
+        if (a.userTags.length > 0) {
+            parts.push(t("alertingUsersSelected", { count: a.userTags.length }));
         }
-        if (a.roleIds.length > 0) {
-            parts.push(t("alertingRolesSelected", { count: a.roleIds.length }));
+        if (a.roleTags.length > 0) {
+            parts.push(t("alertingRolesSelected", { count: a.roleTags.length }));
         }
         if (a.emailTags.length > 0) {
             parts.push(
@@ -153,12 +149,6 @@ function summarizeOneAction(a: AlertRuleFormAction, t: AlertRuleT): string {
             );
         }
         return parts.join(" · ");
-    }
-    if (a.type === "sms") {
-        if (a.phoneTags.length === 0) {
-            return t("alertingNodeNotConfigured");
-        }
-        return `${t("alertingSmsNumbers")}: ${a.phoneTags.length}`;
     }
     const url = a.url.trim();
     if (!url) {
@@ -676,22 +666,15 @@ export default function AlertRuleGraphEditor({
                                                     )}
                                                 </span>
                                                 <DropdownAddAction
-                                                    onPick={(type) => {
+                                                    onAdd={(type) => {
                                                         const newIndex =
                                                             fields.length;
                                                         if (type === "notify") {
                                                             append({
                                                                 type: "notify",
-                                                                userIds: [],
-                                                                roleIds: [],
+                                                                userTags: [],
+                                                                roleTags: [],
                                                                 emailTags: []
-                                                            });
-                                                        } else if (
-                                                            type === "sms"
-                                                        ) {
-                                                            append({
-                                                                type: "sms",
-                                                                phoneTags: []
                                                             });
                                                         } else {
                                                             append({

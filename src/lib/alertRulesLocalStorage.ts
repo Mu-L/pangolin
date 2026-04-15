@@ -15,10 +15,6 @@ export const alertActionSchema = z.discriminatedUnion("type", [
         emails: z.array(z.string())
     }),
     z.object({
-        type: z.literal("sms"),
-        phoneNumbers: z.array(z.string())
-    }),
-    z.object({
         type: z.literal("webhook"),
         url: z.string().url(),
         method: z.string().min(1),

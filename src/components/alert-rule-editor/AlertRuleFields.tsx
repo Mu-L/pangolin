@@ -30,7 +30,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
-import { TagInput } from "@app/components/tags/tag-input";
+import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
     type AlertRuleFormAction,
@@ -46,9 +46,9 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
 
 export function DropdownAddAction({
-    onPick
+    onAdd
 }: {
-    onPick: (type: "notify" | "sms" | "webhook") => void;
+    onAdd: (type: AlertRuleFormAction["type"]) => void;
 }) {
     const t = useTranslations();
     const [open, setOpen] = useState(false);
@@ -58,44 +58,32 @@ export function DropdownAddAction({
                 <Button type="button" variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-1" />
                     {t("alertingAddAction")}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-52 p-2" align="end">
-                <div className="flex flex-col gap-1">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        className="justify-start"
-                        onClick={() => {
-                            onPick("notify");
-                            setOpen(false);
-                        }}
-                    >
-                        {t("alertingActionNotify")}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        className="justify-start"
-                        onClick={() => {
-                            onPick("sms");
-                            setOpen(false);
-                        }}
-                    >
-                        {t("alertingActionSms")}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        className="justify-start"
-                        onClick={() => {
-                            onPick("webhook");
-                            setOpen(false);
-                        }}
-                    >
-                        {t("alertingActionWebhook")}
-                    </Button>
-                </div>
+            <PopoverContent className="p-0 w-48" align="start">
+                <Command>
+                    <CommandList>
+                        <CommandGroup>
+                            <CommandItem
+                                onSelect={() => {
+                                    onAdd("notify");
+                                    setOpen(false);
+                                }}
+                            >
+                                {t("alertingActionNotify")}
+                            </CommandItem>
+                            <CommandItem
+                                onSelect={() => {
+                                    onAdd("webhook");
+                                    setOpen(false);
+                                }}
+                            >
+                                {t("alertingActionWebhook")}
+                            </CommandItem>
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
             </PopoverContent>
         </Popover>
     );
@@ -325,14 +313,9 @@ export function ActionBlock({
                                 if (nt === "notify") {
                                     form.setValue(`actions.${index}`, {
                                         type: "notify",
-                                        userIds: [],
-                                        roleIds: [],
+                                        userTags: [],
+                                        roleTags: [],
                                         emailTags: []
-                                    });
-                                } else if (nt === "sms") {
-                                    form.setValue(`actions.${index}`, {
-                                        type: "sms",
-                                        phoneTags: []
                                     });
                                 } else {
                                     form.setValue(`actions.${index}`, {
@@ -354,9 +337,6 @@ export function ActionBlock({
                                 <SelectItem value="notify">
                                     {t("alertingActionNotify")}
                                 </SelectItem>
-                                <SelectItem value="sms">
-                                    {t("alertingActionSms")}
-                                </SelectItem>
                                 <SelectItem value="webhook">
                                     {t("alertingActionWebhook")}
                                 </SelectItem>
@@ -372,9 +352,6 @@ export function ActionBlock({
                     control={control}
                     form={form}
                 />
-            )}
-            {type === "sms" && (
-                <SmsActionFields index={index} control={control} form={form} />
             )}
             {type === "webhook" && (
                 <WebhookActionFields
@@ -399,41 +376,124 @@ function NotifyActionFields({
     form: UseFormReturn<AlertRuleFormValues>;
 }) {
     const t = useTranslations();
+
     const [emailActiveIdx, setEmailActiveIdx] = useState<number | null>(null);
-    const userIds = form.watch(`actions.${index}.userIds`) ?? [];
-    const roleIds = form.watch(`actions.${index}.roleIds`) ?? [];
-    const emailTags = form.watch(`actions.${index}.emailTags`) ?? [];
+    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
+        number | null
+    >(null);
+    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
+        number | null
+    >(null);
+
+    const { data: orgUsers = [] } = useQuery(orgQueries.users({ orgId }));
+    const { data: orgRoles = [] } = useQuery(orgQueries.roles({ orgId }));
+
+    const allUsers = useMemo(
+        () =>
+            orgUsers.map((u) => ({
+                id: String(u.id),
+                text: getUserDisplayName({
+                    email: u.email,
+                    name: u.name,
+                    username: u.username
+                })
+            })),
+        [orgUsers]
+    );
+
+    const allRoles = useMemo(
+        () =>
+            orgRoles
+                .map((r) => ({ id: String(r.roleId), text: r.name }))
+                .filter((r) => r.text !== "Admin"),
+        [orgRoles]
+    );
+
+    const userTags = (form.watch(`actions.${index}.userTags`) ?? []) as Tag[];
+    const roleTags = (form.watch(`actions.${index}.roleTags`) ?? []) as Tag[];
+    const emailTags = (form.watch(`actions.${index}.emailTags`) ?? []) as Tag[];
 
     return (
         <div className="space-y-3 pt-1">
-            <FormItem>
-                <FormLabel>{t("alertingNotifyUsers")}</FormLabel>
-                <UserMultiSelect
-                    orgId={orgId}
-                    value={userIds}
-                    onChange={(ids) =>
-                        form.setValue(`actions.${index}.userIds`, ids)
-                    }
-                />
-            </FormItem>
-            <FormItem>
-                <FormLabel>{t("alertingNotifyRoles")}</FormLabel>
-                <RoleMultiSelect
-                    orgId={orgId}
-                    value={roleIds}
-                    onChange={(ids) =>
-                        form.setValue(`actions.${index}.roleIds`, ids)
-                    }
-                />
-            </FormItem>
+            <FormField
+                control={control}
+                name={`actions.${index}.userTags`}
+                render={({ field }) => (
+                    <FormItem className="flex flex-col items-start">
+                        <FormLabel>{t("alertingNotifyUsers")}</FormLabel>
+                        <FormControl>
+                            <TagInput
+                                {...field}
+                                activeTagIndex={activeUsersTagIndex}
+                                setActiveTagIndex={setActiveUsersTagIndex}
+                                placeholder={t("alertingSelectUsers")}
+                                size="sm"
+                                tags={userTags}
+                                setTags={(newTags) => {
+                                    const next =
+                                        typeof newTags === "function"
+                                            ? newTags(userTags)
+                                            : newTags;
+                                    form.setValue(
+                                        `actions.${index}.userTags`,
+                                        next as Tag[]
+                                    );
+                                }}
+                                enableAutocomplete={true}
+                                autocompleteOptions={allUsers}
+                                allowDuplicates={false}
+                                restrictTagsToAutocompleteOptions={true}
+                                sortTags={true}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name={`actions.${index}.roleTags`}
+                render={({ field }) => (
+                    <FormItem className="flex flex-col items-start">
+                        <FormLabel>{t("alertingNotifyRoles")}</FormLabel>
+                        <FormControl>
+                            <TagInput
+                                {...field}
+                                activeTagIndex={activeRolesTagIndex}
+                                setActiveTagIndex={setActiveRolesTagIndex}
+                                placeholder={t("alertingSelectRoles")}
+                                size="sm"
+                                tags={roleTags}
+                                setTags={(newTags) => {
+                                    const next =
+                                        typeof newTags === "function"
+                                            ? newTags(roleTags)
+                                            : newTags;
+                                    form.setValue(
+                                        `actions.${index}.roleTags`,
+                                        next as Tag[]
+                                    );
+                                }}
+                                enableAutocomplete={true}
+                                autocompleteOptions={allRoles}
+                                allowDuplicates={false}
+                                restrictTagsToAutocompleteOptions={true}
+                                sortTags={true}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
             <FormField
                 control={control}
                 name={`actions.${index}.emailTags`}
-                render={() => (
-                    <FormItem>
+                render={({ field }) => (
+                    <FormItem className="flex flex-col items-start">
                         <FormLabel>{t("alertingNotifyEmails")}</FormLabel>
                         <FormControl>
                             <TagInput
+                                {...field}
                                 tags={emailTags}
                                 setTags={(updater) => {
                                     const next =
@@ -442,12 +502,18 @@ function NotifyActionFields({
                                             : updater;
                                     form.setValue(
                                         `actions.${index}.emailTags`,
-                                        next
+                                        next as Tag[]
                                     );
                                 }}
                                 activeTagIndex={emailActiveIdx}
                                 setActiveTagIndex={setEmailActiveIdx}
                                 placeholder={t("alertingEmailPlaceholder")}
+                                size="sm"
+                                allowDuplicates={false}
+                                sortTags={true}
+                                validateTag={(tag) =>
+                                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tag)
+                                }
                                 delimiterList={[",", "Enter"]}
                             />
                         </FormControl>
@@ -456,51 +522,6 @@ function NotifyActionFields({
                 )}
             />
         </div>
-    );
-}
-
-function SmsActionFields({
-    index,
-    control,
-    form
-}: {
-    index: number;
-    control: Control<AlertRuleFormValues>;
-    form: UseFormReturn<AlertRuleFormValues>;
-}) {
-    const t = useTranslations();
-    const [phoneActiveIdx, setPhoneActiveIdx] = useState<number | null>(null);
-    const phoneTags = form.watch(`actions.${index}.phoneTags`) ?? [];
-    return (
-        <FormField
-            control={control}
-            name={`actions.${index}.phoneTags`}
-            render={() => (
-                <FormItem>
-                    <FormLabel>{t("alertingSmsNumbers")}</FormLabel>
-                    <FormControl>
-                        <TagInput
-                            tags={phoneTags}
-                            setTags={(updater) => {
-                                const next =
-                                    typeof updater === "function"
-                                        ? updater(phoneTags)
-                                        : updater;
-                                form.setValue(
-                                    `actions.${index}.phoneTags`,
-                                    next
-                                );
-                            }}
-                            activeTagIndex={phoneActiveIdx}
-                            setActiveTagIndex={setPhoneActiveIdx}
-                            placeholder={t("alertingSmsPlaceholder")}
-                            delimiterList={[",", "Enter"]}
-                        />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
     );
 }
 
@@ -663,160 +684,6 @@ function WebhookHeadersField({
     );
 }
 
-function UserMultiSelect({
-    orgId,
-    value,
-    onChange
-}: {
-    orgId: string;
-    value: string[];
-    onChange: (v: string[]) => void;
-}) {
-    const t = useTranslations();
-    const [open, setOpen] = useState(false);
-    const [q, setQ] = useState("");
-    const [debounced] = useDebounce(q, 150);
-    const { data: users = [] } = useQuery(orgQueries.users({ orgId }));
-    const shown = useMemo(() => {
-        const qq = debounced.trim().toLowerCase();
-        if (!qq) return users.slice(0, 200);
-        return users
-            .filter((u) => {
-                const label = getUserDisplayName({
-                    email: u.email,
-                    name: u.name,
-                    username: u.username
-                }).toLowerCase();
-                return (
-                    label.includes(qq) ||
-                    (u.email ?? "").toLowerCase().includes(qq)
-                );
-            })
-            .slice(0, 200);
-    }, [users, debounced]);
-    const toggle = (id: string) => {
-        if (value.includes(id)) {
-            onChange(value.filter((x) => x !== id));
-        } else {
-            onChange([...value, id]);
-        }
-    };
-    const summary =
-        value.length === 0
-            ? t("alertingSelectUsers")
-            : t("alertingUsersSelected", { count: value.length });
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between font-normal"
-                >
-                    <span className="truncate">{summary}</span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                <Command shouldFilter={false}>
-                    <CommandInput
-                        placeholder={t("searchPlaceholder")}
-                        value={q}
-                        onValueChange={setQ}
-                    />
-                    <CommandList>
-                        <CommandEmpty>{t("noResults")}</CommandEmpty>
-                        <CommandGroup>
-                            {shown.map((u) => {
-                                const uid = String(u.id);
-                                return (
-                                    <CommandItem
-                                        key={uid}
-                                        value={uid}
-                                        onSelect={() => toggle(uid)}
-                                        className="cursor-pointer"
-                                    >
-                                        <Checkbox
-                                            checked={value.includes(uid)}
-                                            className="mr-2 pointer-events-none"
-                                        />
-                                        {getUserDisplayName({
-                                            email: u.email,
-                                            name: u.name,
-                                            username: u.username
-                                        })}
-                                    </CommandItem>
-                                );
-                            })}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
-}
-
-function RoleMultiSelect({
-    orgId,
-    value,
-    onChange
-}: {
-    orgId: string;
-    value: number[];
-    onChange: (v: number[]) => void;
-}) {
-    const t = useTranslations();
-    const [open, setOpen] = useState(false);
-    const { data: roles = [] } = useQuery(orgQueries.roles({ orgId }));
-    const toggle = (id: number) => {
-        if (value.includes(id)) {
-            onChange(value.filter((x) => x !== id));
-        } else {
-            onChange([...value, id]);
-        }
-    };
-    const summary =
-        value.length === 0
-            ? t("alertingSelectRoles")
-            : t("alertingRolesSelected", { count: value.length });
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between font-normal"
-                >
-                    <span className="truncate">{summary}</span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                <Command shouldFilter={false}>
-                    <CommandList>
-                        <CommandGroup>
-                            {roles.map((r) => (
-                                <CommandItem
-                                    key={r.roleId}
-                                    value={`role-${r.roleId}`}
-                                    onSelect={() => toggle(r.roleId)}
-                                    className="cursor-pointer"
-                                >
-                                    <Checkbox
-                                        checked={value.includes(r.roleId)}
-                                        className="mr-2 pointer-events-none"
-                                    />
-                                    {r.name}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
-}
-
 export function AlertRuleSourceFields({
     orgId,
     control
@@ -838,7 +705,8 @@ export function AlertRuleSourceFields({
                         <Select
                             value={field.value}
                             onValueChange={(v) => {
-                                const next = v as AlertRuleFormValues["sourceType"];
+                                const next =
+                                    v as AlertRuleFormValues["sourceType"];
                                 field.onChange(next);
                                 const curTrigger = getValues("trigger");
                                 if (next === "site") {

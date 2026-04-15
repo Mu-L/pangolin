@@ -25,11 +25,10 @@ export type AlertTrigger =
 export type AlertRuleFormAction =
     | {
           type: "notify";
-          userIds: string[];
-          roleIds: number[];
+          userTags: Tag[];
+          roleTags: Tag[];
           emailTags: Tag[];
       }
-    | { type: "sms"; phoneTags: Tag[] }
     | {
           type: "webhook";
           url: string;
@@ -142,13 +141,9 @@ export function buildFormSchema(t: (k: string) => string) {
                     z.discriminatedUnion("type", [
                         z.object({
                             type: z.literal("notify"),
-                            userIds: z.array(z.string()),
-                            roleIds: z.array(z.number()),
+                            userTags: z.array(tagSchema),
+                            roleTags: z.array(tagSchema),
                             emailTags: z.array(tagSchema)
-                        }),
-                        z.object({
-                            type: z.literal("sms"),
-                            phoneTags: z.array(tagSchema)
                         }),
                         z.object({
                             type: z.literal("webhook"),
@@ -218,23 +213,16 @@ export function buildFormSchema(t: (k: string) => string) {
             val.actions.forEach((a, i) => {
                 if (a.type === "notify") {
                     if (
-                        a.userIds.length === 0 &&
-                        a.roleIds.length === 0 &&
+                        a.userTags.length === 0 &&
+                        a.roleTags.length === 0 &&
                         a.emailTags.length === 0
                     ) {
                         ctx.addIssue({
                             code: z.ZodIssueCode.custom,
                             message: t("alertingErrorNotifyRecipients"),
-                            path: ["actions", i, "userIds"]
+                            path: ["actions", i, "userTags"]
                         });
                     }
-                }
-                if (a.type === "sms" && a.phoneTags.length === 0) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: t("alertingErrorSmsPhones"),
-                        path: ["actions", i, "phoneTags"]
-                    });
                 }
                 if (a.type === "webhook") {
                     try {
@@ -266,8 +254,8 @@ export function defaultFormValues(): AlertRuleFormValues {
         actions: [
             {
                 type: "notify",
-                userIds: [],
-                roleIds: [],
+                userTags: [],
+                roleTags: [],
                 emailTags: []
             }
         ]
@@ -287,21 +275,20 @@ export function apiResponseToFormValues(
         : "health_check";
 
     // Collect notify recipients into a single notify action (if any)
-    const userIds = rule.recipients
+    const userTags = rule.recipients
         .filter((r) => r.userId != null)
-        .map((r) => r.userId!);
-    const roleIds = rule.recipients
+        .map((r) => ({ id: r.userId!, text: r.userId! }));
+    const roleTags = rule.recipients
         .filter((r) => r.roleId != null)
-        .map((r) => parseInt(r.roleId!, 10))
-        .filter((n) => !isNaN(n));
+        .map((r) => ({ id: r.roleId!, text: r.roleId! }));
     const emailTags = rule.recipients
         .filter((r) => r.email != null)
         .map((r) => ({ id: r.email!, text: r.email! }));
 
     const actions: AlertRuleFormAction[] = [];
 
-    if (userIds.length > 0 || roleIds.length > 0 || emailTags.length > 0) {
-        actions.push({ type: "notify", userIds, roleIds, emailTags });
+    if (userTags.length > 0 || roleTags.length > 0 || emailTags.length > 0) {
+        actions.push({ type: "notify", userTags, roleTags, emailTags });
     }
 
     // Each webhook action becomes its own form webhook action
@@ -319,8 +306,8 @@ export function apiResponseToFormValues(
     if (actions.length === 0) {
         actions.push({
             type: "notify",
-            userIds: [],
-            roleIds: [],
+            userTags: [],
+            roleTags: [],
             emailTags: []
         });
     }
@@ -354,8 +341,8 @@ export function formValuesToApiPayload(
 
     for (const action of values.actions) {
         if (action.type === "notify") {
-            allUserIds.push(...action.userIds);
-            allRoleIds.push(...action.roleIds.map(String));
+            allUserIds.push(...action.userTags.map((t) => t.id));
+            allRoleIds.push(...action.roleTags.map((t) => t.id));
             allEmails.push(
                 ...action.emailTags
                     .map((t) => t.text.trim())
@@ -379,7 +366,6 @@ export function formValuesToApiPayload(
                     : {})
             });
         }
-        // sms is not supported by the backend; silently skip
     }
 
     // Deduplicate
