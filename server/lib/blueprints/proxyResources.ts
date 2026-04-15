@@ -158,7 +158,9 @@ export async function updateProxyResources(
                         healthcheckData?.["follow-redirects"],
                     hcMethod: healthcheckData?.method,
                     hcStatus: healthcheckData?.status,
-                    hcHealth: "unknown"
+                    hcHealth: "unknown",
+                    hcHealthyThreshold: healthcheckData?.["healthy-threshold"],
+                    hcUnhealthyThreshold: healthcheckData?.["unhealthy-threshold"]
                 })
                 .returning();
 
@@ -522,7 +524,9 @@ export async function updateProxyResources(
                                 healthcheckData?.followRedirects ||
                                 healthcheckData?.["follow-redirects"],
                             hcMethod: healthcheckData?.method,
-                            hcStatus: healthcheckData?.status
+                            hcStatus: healthcheckData?.status,
+                            hcHealthyThreshold: healthcheckData?.["healthy-threshold"],
+                            hcUnhealthyThreshold: healthcheckData?.["unhealthy-threshold"]
                         })
                         .where(
                             eq(
@@ -1081,6 +1085,8 @@ function checkIfHealthcheckChanged(
         JSON.stringify(incoming.hcHeaders)
     )
         return true;
+    if (existing.hcHealthyThreshold !== incoming.hcHealthyThreshold) return true;
+    if (existing.hcUnhealthyThreshold !== incoming.hcUnhealthyThreshold) return true;
 
     return false;
 }

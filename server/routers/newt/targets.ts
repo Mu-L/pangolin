@@ -43,17 +43,18 @@ export async function addTargets(
         }
 
         // Ensure all necessary fields are present
-        if (
-            !hc.hcPath ||
-            !hc.hcHostname ||
-            !hc.hcPort ||
-            !hc.hcInterval ||
-            !hc.hcMethod
-        ) {
+        const isTCP = hc.hcMode?.toLowerCase() === "tcp";
+        if (!hc.hcHostname || !hc.hcPort || !hc.hcInterval) {
             logger.debug(
                 `Skipping target ${target.targetId} due to missing health check fields`
             );
-            return null; // Skip targets with missing health check fields
+            return null;
+        }
+        if (!isTCP && (!hc.hcPath || !hc.hcMethod)) {
+            logger.debug(
+                `Skipping target ${target.targetId} due to missing HTTP health check fields`
+            );
+            return null;
         }
 
         const hcHeadersParse = hc.hcHeaders ? JSON.parse(hc.hcHeaders) : null;
@@ -90,7 +91,9 @@ export async function addTargets(
             hcHeaders: hcHeadersSend,
             hcMethod: hc.hcMethod,
             hcStatus: hcStatus,
-            hcTlsServerName: hc.hcTlsServerName
+            hcTlsServerName: hc.hcTlsServerName,
+            hcHealthyThreshold: hc.hcHealthyThreshold,
+            hcUnhealthyThreshold: hc.hcUnhealthyThreshold
         };
     });
 

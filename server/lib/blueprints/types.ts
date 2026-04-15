@@ -12,7 +12,7 @@ export const TargetHealthCheckSchema = z.object({
     hostname: z.string(),
     port: z.int().min(1).max(65535),
     enabled: z.boolean().optional().default(true),
-    path: z.string().optional().default("/"),
+    path: z.string().optional(),
     scheme: z.string().optional(),
     mode: z.string().default("http"),
     interval: z.int().default(30),
@@ -26,8 +26,10 @@ export const TargetHealthCheckSchema = z.object({
         .default(null),
     "follow-redirects": z.boolean().default(true),
     followRedirects: z.boolean().optional(), // deprecated alias
-    method: z.string().default("GET"),
-    status: z.int().optional()
+    method: z.string().optional(),
+    status: z.int().optional(),
+    "healthy-threshold": z.int().min(1).optional().default(1),
+    "unhealthy-threshold": z.int().min(1).optional().default(1)
 });
 
 // Schema for individual target within a resource

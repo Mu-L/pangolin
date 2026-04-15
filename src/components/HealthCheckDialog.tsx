@@ -52,6 +52,8 @@ type HealthCheckConfig = {
     hcMode: string;
     hcUnhealthyInterval: number;
     hcTlsServerName: string;
+    hcHealthyThreshold: number;
+    hcUnhealthyThreshold: number;
 };
 
 type HealthCheckDialogProps = {
@@ -75,44 +77,73 @@ export default function HealthCheckDialog({
 }: HealthCheckDialogProps) {
     const t = useTranslations();
 
-    const healthCheckSchema = z.object({
-        hcEnabled: z.boolean(),
-        hcPath: z.string().min(1, { message: t("healthCheckPathRequired") }),
-        hcMethod: z
-            .string()
-            .min(1, { message: t("healthCheckMethodRequired") }),
-        hcInterval: z
-            .int()
-            .positive()
-            .min(5, { message: t("healthCheckIntervalMin") }),
-        hcTimeout: z
-            .int()
-            .positive()
-            .min(1, { message: t("healthCheckTimeoutMin") }),
-        hcStatus: z.int().positive().min(100).optional().nullable(),
-        hcHeaders: z
-            .array(z.object({ name: z.string(), value: z.string() }))
-            .nullable()
-            .optional(),
-        hcScheme: z.string().optional(),
-        hcHostname: z.string(),
-        hcPort: z
-            .string()
-            .min(1, { message: t("healthCheckPortInvalid") })
-            .refine(
-                (val) => {
-                    const port = parseInt(val);
-                    return port > 0 && port <= 65535;
-                },
-                {
-                    message: t("healthCheckPortInvalid")
+    const healthCheckSchema = z
+        .object({
+            hcEnabled: z.boolean(),
+            hcPath: z.string().optional(),
+            hcMethod: z.string().optional(),
+            hcInterval: z
+                .int()
+                .positive()
+                .min(5, { message: t("healthCheckIntervalMin") }),
+            hcTimeout: z
+                .int()
+                .positive()
+                .min(1, { message: t("healthCheckTimeoutMin") }),
+            hcStatus: z.int().positive().min(100).optional().nullable(),
+            hcHeaders: z
+                .array(z.object({ name: z.string(), value: z.string() }))
+                .nullable()
+                .optional(),
+            hcScheme: z.string().optional(),
+            hcHostname: z.string(),
+            hcPort: z
+                .string()
+                .min(1, { message: t("healthCheckPortInvalid") })
+                .refine(
+                    (val) => {
+                        const port = parseInt(val);
+                        return port > 0 && port <= 65535;
+                    },
+                    {
+                        message: t("healthCheckPortInvalid")
+                    }
+                ),
+            hcFollowRedirects: z.boolean(),
+            hcMode: z.string(),
+            hcUnhealthyInterval: z.int().positive().min(5),
+            hcTlsServerName: z.string(),
+            hcHealthyThreshold: z
+                .int()
+                .positive()
+                .min(1, {
+                    message: t("healthCheckHealthyThresholdMin")
+                }),
+            hcUnhealthyThreshold: z
+                .int()
+                .positive()
+                .min(1, {
+                    message: t("healthCheckUnhealthyThresholdMin")
+                })
+        })
+        .superRefine((data, ctx) => {
+            if (data.hcMode !== "tcp") {
+                if (!data.hcPath || data.hcPath.length < 1) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: t("healthCheckPathRequired"),
+                        path: ["hcPath"]
+                    });
                 }
-            ),
-        hcFollowRedirects: z.boolean(),
-        hcMode: z.string(),
-        hcUnhealthyInterval: z.int().positive().min(5),
-        hcTlsServerName: z.string()
-    });
+                if (!data.hcMethod || data.hcMethod.length < 1) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: t("healthCheckMethodRequired"),
+                        path: ["hcMethod"]
+                    });
+                }
+            }
+        });
 
     const form = useForm<z.infer<typeof healthCheckSchema>>({
         resolver: zodResolver(healthCheckSchema),
@@ -122,12 +153,10 @@ export default function HealthCheckDialog({
     useEffect(() => {
         if (!open) return;
 
-        // Determine default scheme from target method
         const getDefaultScheme = () => {
             if (initialConfig?.hcScheme) {
                 return initialConfig.hcScheme;
             }
-            // Default to target method if it's http or https, otherwise default to http
             if (targetMethod === "https") {
                 return "https";
             }
@@ -148,24 +177,30 @@ export default function HealthCheckDialog({
                 ? initialConfig.hcPort.toString()
                 : "",
             hcFollowRedirects: initialConfig?.hcFollowRedirects,
-            hcMode: initialConfig?.hcMode,
+            hcMode: initialConfig?.hcMode ?? "http",
             hcUnhealthyInterval: initialConfig?.hcUnhealthyInterval,
-            hcTlsServerName: initialConfig?.hcTlsServerName ?? ""
+            hcTlsServerName: initialConfig?.hcTlsServerName ?? "",
+            hcHealthyThreshold: initialConfig?.hcHealthyThreshold ?? 1,
+            hcUnhealthyThreshold: initialConfig?.hcUnhealthyThreshold ?? 1
         });
     }, [open]);
 
     const watchedEnabled = form.watch("hcEnabled");
+    const watchedMode = form.watch("hcMode");
 
     const handleFieldChange = async (fieldName: string, value: any) => {
         try {
             const currentValues = form.getValues();
             const updatedValues = { ...currentValues, [fieldName]: value };
 
-            // Convert hcPort from string to number before passing to parent
             const configToSend: HealthCheckConfig = {
                 ...updatedValues,
+                hcPath: updatedValues.hcPath ?? "",
+                hcMethod: updatedValues.hcMethod ?? "",
                 hcPort: parseInt(updatedValues.hcPort),
-                hcStatus: updatedValues.hcStatus || null
+                hcStatus: updatedValues.hcStatus || null,
+                hcHealthyThreshold: updatedValues.hcHealthyThreshold,
+                hcUnhealthyThreshold: updatedValues.hcUnhealthyThreshold
             };
 
             await onChanges(configToSend);
@@ -226,14 +261,262 @@ export default function HealthCheckDialog({
 
                             {watchedEnabled && (
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    {/* Mode */}
+                                    <FormField
+                                        control={form.control}
+                                        name="hcMode"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("healthCheckMode")}
+                                                </FormLabel>
+                                                <Select
+                                                    onValueChange={(value) => {
+                                                        field.onChange(value);
+                                                        handleFieldChange(
+                                                            "hcMode",
+                                                            value
+                                                        );
+                                                    }}
+                                                    value={field.value}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="http">
+                                                            HTTP
+                                                        </SelectItem>
+                                                        <SelectItem value="tcp">
+                                                            TCP
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>
+                                                    {t(
+                                                        "healthCheckModeDescription"
+                                                    )}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {/* Connection fields */}
+                                    {watchedMode === "tcp" ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="hcHostname"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("healthHostname")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    field.onChange(
+                                                                        e
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcHostname",
+                                                                        e.target
+                                                                            .value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="hcPort"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("healthPort")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const value =
+                                                                        e.target
+                                                                            .value;
+                                                                    field.onChange(
+                                                                        value
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcPort",
+                                                                        value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="hcScheme"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("healthScheme")}
+                                                        </FormLabel>
+                                                        <Select
+                                                            onValueChange={(
+                                                                value
+                                                            ) => {
+                                                                field.onChange(
+                                                                    value
+                                                                );
+                                                                handleFieldChange(
+                                                                    "hcScheme",
+                                                                    value
+                                                                );
+                                                            }}
+                                                            defaultValue={
+                                                                field.value
+                                                            }
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue
+                                                                        placeholder={t(
+                                                                            "healthSelectScheme"
+                                                                        )}
+                                                                    />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="http">
+                                                                    HTTP
+                                                                </SelectItem>
+                                                                <SelectItem value="https">
+                                                                    HTTPS
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="hcHostname"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("healthHostname")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    field.onChange(
+                                                                        e
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcHostname",
+                                                                        e.target
+                                                                            .value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="hcPort"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("healthPort")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const value =
+                                                                        e.target
+                                                                            .value;
+                                                                    field.onChange(
+                                                                        value
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcPort",
+                                                                        value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="hcPath"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("healthCheckPath")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    field.onChange(
+                                                                        e
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcPath",
+                                                                        e.target
+                                                                            .value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* HTTP Method */}
+                                    {watchedMode !== "tcp" && (
                                         <FormField
                                             control={form.control}
-                                            name="hcScheme"
+                                            name="hcMethod"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
-                                                        {t("healthScheme")}
+                                                        {t("httpMethod")}
                                                     </FormLabel>
                                                     <Select
                                                         onValueChange={(
@@ -243,7 +526,7 @@ export default function HealthCheckDialog({
                                                                 value
                                                             );
                                                             handleFieldChange(
-                                                                "hcScheme",
+                                                                "hcMethod",
                                                                 value
                                                             );
                                                         }}
@@ -255,17 +538,26 @@ export default function HealthCheckDialog({
                                                             <SelectTrigger>
                                                                 <SelectValue
                                                                     placeholder={t(
-                                                                        "healthSelectScheme"
+                                                                        "selectHttpMethod"
                                                                     )}
                                                                 />
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="http">
-                                                                HTTP
+                                                            <SelectItem value="GET">
+                                                                GET
                                                             </SelectItem>
-                                                            <SelectItem value="https">
-                                                                HTTPS
+                                                            <SelectItem value="POST">
+                                                                POST
+                                                            </SelectItem>
+                                                            <SelectItem value="HEAD">
+                                                                HEAD
+                                                            </SelectItem>
+                                                            <SelectItem value="PUT">
+                                                                PUT
+                                                            </SelectItem>
+                                                            <SelectItem value="DELETE">
+                                                                DELETE
                                                             </SelectItem>
                                                         </SelectContent>
                                                     </Select>
@@ -273,143 +565,9 @@ export default function HealthCheckDialog({
                                                 </FormItem>
                                             )}
                                         />
-                                        <FormField
-                                            control={form.control}
-                                            name="hcHostname"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("healthHostname")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            onChange={(e) => {
-                                                                field.onChange(
-                                                                    e
-                                                                );
-                                                                handleFieldChange(
-                                                                    "hcHostname",
-                                                                    e.target
-                                                                        .value
-                                                                );
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="hcPort"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("healthPort")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            onChange={(e) => {
-                                                                const value =
-                                                                    e.target
-                                                                        .value;
-                                                                field.onChange(
-                                                                    value
-                                                                );
-                                                                handleFieldChange(
-                                                                    "hcPort",
-                                                                    value
-                                                                );
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="hcPath"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("healthCheckPath")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            onChange={(e) => {
-                                                                field.onChange(
-                                                                    e
-                                                                );
-                                                                handleFieldChange(
-                                                                    "hcPath",
-                                                                    e.target
-                                                                        .value
-                                                                );
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                    )}
 
-                                    {/* HTTP Method */}
-                                    <FormField
-                                        control={form.control}
-                                        name="hcMethod"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("httpMethod")}
-                                                </FormLabel>
-                                                <Select
-                                                    onValueChange={(value) => {
-                                                        field.onChange(value);
-                                                        handleFieldChange(
-                                                            "hcMethod",
-                                                            value
-                                                        );
-                                                    }}
-                                                    defaultValue={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue
-                                                                placeholder={t(
-                                                                    "selectHttpMethod"
-                                                                )}
-                                                            />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="GET">
-                                                            GET
-                                                        </SelectItem>
-                                                        <SelectItem value="POST">
-                                                            POST
-                                                        </SelectItem>
-                                                        <SelectItem value="HEAD">
-                                                            HEAD
-                                                        </SelectItem>
-                                                        <SelectItem value="PUT">
-                                                            PUT
-                                                        </SelectItem>
-                                                        <SelectItem value="DELETE">
-                                                            DELETE
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* Check Interval, Timeout, and Retry Attempts */}
+                                    {/* Check Interval, Unhealthy Interval, and Timeout */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <FormField
                                             control={form.control}
@@ -515,112 +673,211 @@ export default function HealthCheckDialog({
                                         />
                                     </div>
 
-                                    {/* Expected Response Codes */}
-                                    <FormField
-                                        control={form.control}
-                                        name="hcStatus"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("expectedResponseCodes")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        {...field}
-                                                        value={
-                                                            field.value || ""
-                                                        }
-                                                        onChange={(e) => {
-                                                            const value =
-                                                                parseInt(
-                                                                    e.target
-                                                                        .value
+                                    {/* Healthy and Unhealthy Thresholds */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="hcHealthyThreshold"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("healthyThreshold")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            {...field}
+                                                            onChange={(e) => {
+                                                                const value =
+                                                                    parseInt(
+                                                                        e.target
+                                                                            .value
+                                                                    );
+                                                                field.onChange(
+                                                                    value
                                                                 );
-                                                            field.onChange(
-                                                                value
-                                                            );
-                                                            handleFieldChange(
-                                                                "hcStatus",
-                                                                value
-                                                            );
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "expectedResponseCodesDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                                                handleFieldChange(
+                                                                    "hcHealthyThreshold",
+                                                                    value
+                                                                );
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "healthyThresholdDescription"
+                                                        )}
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
-                                    {/*TLS Server Name (SNI)*/}
-                                    <FormField
-                                        control={form.control}
-                                        name="hcTlsServerName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("tlsServerName")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        onChange={(e) => {
-                                                            field.onChange(e);
-                                                            handleFieldChange(
-                                                                "hcTlsServerName",
-                                                                e.target.value
-                                                            );
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "tlsServerNameDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                        <FormField
+                                            control={form.control}
+                                            name="hcUnhealthyThreshold"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("unhealthyThreshold")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            {...field}
+                                                            onChange={(e) => {
+                                                                const value =
+                                                                    parseInt(
+                                                                        e.target
+                                                                            .value
+                                                                    );
+                                                                field.onChange(
+                                                                    value
+                                                                );
+                                                                handleFieldChange(
+                                                                    "hcUnhealthyThreshold",
+                                                                    value
+                                                                );
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "unhealthyThresholdDescription"
+                                                        )}
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
 
-                                    {/* Custom Headers */}
-                                    <FormField
-                                        control={form.control}
-                                        name="hcHeaders"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("customHeaders")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <HeadersInput
-                                                        value={field.value}
-                                                        onChange={(value) => {
-                                                            field.onChange(
-                                                                value
-                                                            );
-                                                            handleFieldChange(
-                                                                "hcHeaders",
-                                                                value
-                                                            );
-                                                        }}
-                                                        rows={4}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "customHeadersDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                    {/* HTTP-only fields */}
+                                    {watchedMode !== "tcp" && (
+                                        <>
+                                            {/* Expected Response Codes */}
+                                            <FormField
+                                                control={form.control}
+                                                name="hcStatus"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(
+                                                                "expectedResponseCodes"
+                                                            )}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                {...field}
+                                                                value={
+                                                                    field.value ||
+                                                                    ""
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const value =
+                                                                        parseInt(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        );
+                                                                    field.onChange(
+                                                                        value
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcStatus",
+                                                                        value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            {t(
+                                                                "expectedResponseCodesDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            {/* TLS Server Name (SNI) */}
+                                            <FormField
+                                                control={form.control}
+                                                name="hcTlsServerName"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("tlsServerName")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    field.onChange(
+                                                                        e
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcTlsServerName",
+                                                                        e.target
+                                                                            .value
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            {t(
+                                                                "tlsServerNameDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            {/* Custom Headers */}
+                                            <FormField
+                                                control={form.control}
+                                                name="hcHeaders"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("customHeaders")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <HeadersInput
+                                                                value={
+                                                                    field.value
+                                                                }
+                                                                onChange={(
+                                                                    value
+                                                                ) => {
+                                                                    field.onChange(
+                                                                        value
+                                                                    );
+                                                                    handleFieldChange(
+                                                                        "hcHeaders",
+                                                                        value
+                                                                    );
+                                                                }}
+                                                                rows={4}
+                                                            />
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            {t(
+                                                                "customHeadersDescription"
+                                                            )}
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </form>

@@ -213,7 +213,9 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcHeaders: targetHealthCheck.hcHeaders,
             hcMethod: targetHealthCheck.hcMethod,
             hcTlsServerName: targetHealthCheck.hcTlsServerName,
-            hcStatus: targetHealthCheck.hcStatus
+            hcStatus: targetHealthCheck.hcStatus,
+            hcHealthyThreshold: targetHealthCheck.hcHealthyThreshold,
+            hcUnhealthyThreshold: targetHealthCheck.hcUnhealthyThreshold
         })
         .from(targets)
         .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
@@ -247,17 +249,12 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
 
     const healthCheckTargets = allTargets.map((target) => {
         // make sure the stuff is defined
-        if (
-            !target.hcPath ||
-            !target.hcHostname ||
-            !target.hcPort ||
-            !target.hcInterval ||
-            !target.hcMethod
-        ) {
-            // logger.debug(
-            //     `Skipping adding target health check ${target.targetId} due to missing health check fields`
-            // );
-            return null; // Skip targets with missing health check fields
+        const isTCP = target.hcMode?.toLowerCase() === "tcp";
+        if (!target.hcHostname || !target.hcPort || !target.hcInterval) {
+            return null;
+        }
+        if (!isTCP && (!target.hcPath || !target.hcMethod)) {
+            return null;
         }
 
         // parse headers
@@ -287,7 +284,9 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcHeaders: hcHeadersSend,
             hcMethod: target.hcMethod,
             hcTlsServerName: target.hcTlsServerName,
-            hcStatus: target.hcStatus
+            hcStatus: target.hcStatus,
+            hcHealthyThreshold: target.hcHealthyThreshold,
+            hcUnhealthyThreshold: target.hcUnhealthyThreshold
         };
     });
 

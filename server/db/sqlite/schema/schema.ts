@@ -232,7 +232,9 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     hcHealth: text("hcHealth")
         .$type<"unknown" | "healthy" | "unhealthy">()
         .default("unknown"), // "unknown", "healthy", "unhealthy"
-    hcTlsServerName: text("hcTlsServerName")
+    hcTlsServerName: text("hcTlsServerName"),
+    hcHealthyThreshold: integer("hcHealthyThreshold").default(1),
+    hcUnhealthyThreshold: integer("hcUnhealthyThreshold").default(1)
 });
 
 export const exitNodes = sqliteTable("exitNodes", {

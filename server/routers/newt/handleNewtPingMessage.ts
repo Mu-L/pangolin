@@ -9,6 +9,7 @@ import { eq, lt, isNull, and, or, ne, not } from "drizzle-orm";
 import logger from "@server/logger";
 import { sendNewtSyncMessage } from "./sync";
 import { recordPing } from "./pingAccumulator";
+import { fireSiteOfflineAlert } from "#dynamic/lib/alerts";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -40,6 +41,8 @@ export const startNewtOfflineChecker = (): void => {
             const staleSites = await db
                 .select({
                     siteId: sites.siteId,
+                    orgId: sites.orgId,
+                    name: sites.name,
                     newtId: newts.newtId,
                     lastPing: sites.lastPing
                 })
@@ -104,6 +107,8 @@ export const startNewtOfflineChecker = (): void => {
                             )
                         );
                 }
+
+                await fireSiteOfflineAlert(staleSite.orgId, staleSite.siteId, staleSite.name);
             }
 
             // this part only effects self hosted. Its not efficient but we dont expect people to have very many wireguard sites

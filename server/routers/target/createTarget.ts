@@ -42,6 +42,8 @@ const createTargetSchema = z.strictObject({
     hcMethod: z.string().min(1).optional().nullable(),
     hcStatus: z.int().optional().nullable(),
     hcTlsServerName: z.string().optional().nullable(),
+    hcHealthyThreshold: z.int().positive().min(1).optional().nullable(),
+    hcUnhealthyThreshold: z.int().positive().min(1).optional().nullable(),
     path: z.string().optional().nullable(),
     pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable(),
     rewritePath: z.string().optional().nullable(),
@@ -241,7 +243,9 @@ export async function createTarget(
                 hcMethod: targetData.hcMethod ?? null,
                 hcStatus: targetData.hcStatus ?? null,
                 hcHealth: "unknown",
-                hcTlsServerName: targetData.hcTlsServerName ?? null
+                hcTlsServerName: targetData.hcTlsServerName ?? null,
+                hcHealthyThreshold: targetData.hcHealthyThreshold ?? null,
+                hcUnhealthyThreshold: targetData.hcUnhealthyThreshold ?? null
             })
             .returning();
 
