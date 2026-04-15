@@ -16,6 +16,8 @@ import { z } from "zod";
 import { db } from "@server/db";
 import {
     alertRules,
+    alertSites,
+    alertHealthChecks,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -27,6 +29,12 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
+
+const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
+const HC_EVENT_TYPES = [
+    "health_check_healthy",
+    "health_check_not_healthy"
+] as const;
 
 const paramsSchema = z
     .object({
@@ -41,28 +49,56 @@ const webhookActionSchema = z.strictObject({
     enabled: z.boolean().optional().default(true)
 });
 
-const bodySchema = z.strictObject({
-    // Alert rule fields - all optional for partial updates
-    name: z.string().nonempty().optional(),
-    eventType: z
-        .enum([
-            "site_online",
-            "site_offline",
-            "health_check_healthy",
-            "health_check_not_healthy"
-        ])
-        .optional(),
-    siteId: z.number().int().nullable().optional(),
-    healthCheckId: z.number().int().nullable().optional(),
-    enabled: z.boolean().optional(),
-    cooldownSeconds: z.number().int().nonnegative().optional(),
-    // Recipient arrays - if any are provided the full recipient set is replaced
-    userIds: z.array(z.string().nonempty()).optional(),
-    roleIds: z.array(z.string().nonempty()).optional(),
-    emails: z.array(z.string().email()).optional(),
-    // Webhook actions - if provided the full webhook set is replaced
-    webhookActions: z.array(webhookActionSchema).optional()
-});
+const bodySchema = z
+    .strictObject({
+        // Alert rule fields - all optional for partial updates
+        name: z.string().nonempty().optional(),
+        eventType: z
+            .enum([
+                "site_online",
+                "site_offline",
+                "health_check_healthy",
+                "health_check_not_healthy"
+            ])
+            .optional(),
+        enabled: z.boolean().optional(),
+        cooldownSeconds: z.number().int().nonnegative().optional(),
+        // Source join tables - if provided the full set is replaced
+        siteIds: z.array(z.number().int().positive()).optional(),
+        healthCheckIds: z.array(z.number().int().positive()).optional(),
+        // Recipient arrays - if any are provided the full recipient set is replaced
+        userIds: z.array(z.string().nonempty()).optional(),
+        roleIds: z.array(z.string().nonempty()).optional(),
+        emails: z.array(z.string().email()).optional(),
+        // Webhook actions - if provided the full webhook set is replaced
+        webhookActions: z.array(webhookActionSchema).optional()
+    })
+    .superRefine((val, ctx) => {
+        if (!val.eventType) return;
+
+        const isSiteEvent = (SITE_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
+        const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
+
+        if (isSiteEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "healthCheckIds must not be set for site event types",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isHcEvent && val.siteIds !== undefined && val.siteIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "siteIds must not be set for health check event types",
+                path: ["siteIds"]
+            });
+        }
+    });
 
 export type UpdateAlertRuleResponse = {
     alertRuleId: number;
@@ -133,10 +169,10 @@ export async function updateAlertRule(
         const {
             name,
             eventType,
-            siteId,
-            healthCheckId,
             enabled,
             cooldownSeconds,
+            siteIds,
+            healthCheckIds,
             userIds,
             roleIds,
             emails,
@@ -150,10 +186,9 @@ export async function updateAlertRule(
 
         if (name !== undefined) updateData.name = name;
         if (eventType !== undefined) updateData.eventType = eventType;
-        if (siteId !== undefined) updateData.siteId = siteId;
-        if (healthCheckId !== undefined) updateData.healthCheckId = healthCheckId;
         if (enabled !== undefined) updateData.enabled = enabled;
-        if (cooldownSeconds !== undefined) updateData.cooldownSeconds = cooldownSeconds;
+        if (cooldownSeconds !== undefined)
+            updateData.cooldownSeconds = cooldownSeconds;
 
         await db
             .update(alertRules)
@@ -165,6 +200,38 @@ export async function updateAlertRule(
                 )
             );
 
+        // --- Full-replace site associations if siteIds was provided ---
+        if (siteIds !== undefined) {
+            await db
+                .delete(alertSites)
+                .where(eq(alertSites.alertRuleId, alertRuleId));
+
+            if (siteIds.length > 0) {
+                await db.insert(alertSites).values(
+                    siteIds.map((siteId) => ({
+                        alertRuleId,
+                        siteId
+                    }))
+                );
+            }
+        }
+
+        // --- Full-replace health check associations if healthCheckIds was provided ---
+        if (healthCheckIds !== undefined) {
+            await db
+                .delete(alertHealthChecks)
+                .where(eq(alertHealthChecks.alertRuleId, alertRuleId));
+
+            if (healthCheckIds.length > 0) {
+                await db.insert(alertHealthChecks).values(
+                    healthCheckIds.map((healthCheckId) => ({
+                        alertRuleId,
+                        healthCheckId
+                    }))
+                );
+            }
+        }
+
         // --- Full-replace recipients if any recipient array was provided ---
         const recipientsProvided =
             userIds !== undefined ||
@@ -172,7 +239,6 @@ export async function updateAlertRule(
             emails !== undefined;
 
         if (recipientsProvided) {
-            // Build the flat list of recipient rows to insert
             const newRecipients = [
                 ...(userIds ?? []).map((userId) => ({
                     userId,
@@ -191,14 +257,12 @@ export async function updateAlertRule(
                 }))
             ];
 
-            // Find or create the single emailAction row for this rule
             const [existingEmailAction] = await db
                 .select()
                 .from(alertEmailActions)
                 .where(eq(alertEmailActions.alertRuleId, alertRuleId));
 
             if (existingEmailAction) {
-                // Delete all current recipients then re-insert
                 await db
                     .delete(alertEmailRecipients)
                     .where(
@@ -217,7 +281,6 @@ export async function updateAlertRule(
                     );
                 }
             } else if (newRecipients.length > 0) {
-                // No emailAction exists yet - create one then insert recipients
                 const [emailActionRow] = await db
                     .insert(alertEmailActions)
                     .values({ alertRuleId, enabled: true })

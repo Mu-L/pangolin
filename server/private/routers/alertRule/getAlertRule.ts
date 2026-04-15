@@ -16,6 +16,8 @@ import { z } from "zod";
 import { db } from "@server/db";
 import {
     alertRules,
+    alertSites,
+    alertHealthChecks,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -44,13 +46,13 @@ export type GetAlertRuleResponse = {
         | "site_offline"
         | "health_check_healthy"
         | "health_check_not_healthy";
-    siteId: number | null;
-    healthCheckId: number | null;
     enabled: boolean;
     cooldownSeconds: number;
     lastTriggeredAt: number | null;
     createdAt: number;
     updatedAt: number;
+    siteIds: number[];
+    healthCheckIds: number[];
     recipients: {
         recipientId: number;
         userId: string | null;
@@ -110,6 +112,18 @@ export async function getAlertRule(
             );
         }
 
+        // Fetch site associations
+        const siteRows = await db
+            .select()
+            .from(alertSites)
+            .where(eq(alertSites.alertRuleId, alertRuleId));
+
+        // Fetch health check associations
+        const healthCheckRows = await db
+            .select()
+            .from(alertHealthChecks)
+            .where(eq(alertHealthChecks.alertRuleId, alertRuleId));
+
         // Resolve the single email action row for this rule, then collect all
         // recipients into a flat list. The emailAction pivot row is an internal
         // implementation detail and is not surfaced to callers.
@@ -138,6 +152,7 @@ export async function getAlertRule(
             }));
         }
 
+        // Fetch webhook actions
         const webhooks = await db
             .select()
             .from(alertWebhookActions)
@@ -149,13 +164,13 @@ export async function getAlertRule(
                 orgId: rule.orgId,
                 name: rule.name,
                 eventType: rule.eventType,
-                siteId: rule.siteId ?? null,
-                healthCheckId: rule.healthCheckId ?? null,
                 enabled: rule.enabled,
                 cooldownSeconds: rule.cooldownSeconds,
                 lastTriggeredAt: rule.lastTriggeredAt ?? null,
                 createdAt: rule.createdAt,
                 updatedAt: rule.updatedAt,
+                siteIds: siteRows.map((r) => r.siteId),
+                healthCheckIds: healthCheckRows.map((r) => r.healthCheckId),
                 recipients,
                 webhookActions: webhooks.map((w) => ({
                     webhookActionId: w.webhookActionId,

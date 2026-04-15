@@ -471,16 +471,31 @@ export const alertRules = sqliteTable("alertRules", {
             | "health_check_not_healthy"
         >()
         .notNull(),
-    siteId: integer("siteId").references(() => sites.siteId, { onDelete: "cascade" }),
-    healthCheckId: integer("healthCheckId").references(
-        () => targetHealthCheck.targetHealthCheckId,
-        { onDelete: "cascade" }
-    ),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
     lastTriggeredAt: integer("lastTriggeredAt"),
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt").notNull()
+});
+
+export const alertSites = sqliteTable("alertSites", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, { onDelete: "cascade" })
+});
+
+export const alertHealthChecks = sqliteTable("alertHealthChecks", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    healthCheckId: integer("healthCheckId")
+        .notNull()
+        .references(() => targetHealthCheck.targetHealthCheckId, {
+            onDelete: "cascade"
+        })
 });
 
 export const alertEmailActions = sqliteTable("alertEmailActions", {

@@ -16,6 +16,8 @@ import { z } from "zod";
 import { db } from "@server/db";
 import {
     alertRules,
+    alertSites,
+    alertHealthChecks,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -27,6 +29,12 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
+const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
+const HC_EVENT_TYPES = [
+    "health_check_healthy",
+    "health_check_not_healthy"
+] as const;
+
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
 });
@@ -37,23 +45,73 @@ const webhookActionSchema = z.strictObject({
     enabled: z.boolean().optional().default(true)
 });
 
-const bodySchema = z.strictObject({
-    name: z.string().nonempty(),
-    eventType: z.enum([
-        "site_online",
-        "site_offline",
-        "health_check_healthy",
-        "health_check_not_healthy"
-    ]),
-    siteId: z.number().int().optional(),
-    healthCheckId: z.number().int().optional(),
-    enabled: z.boolean().optional().default(true),
-    cooldownSeconds: z.number().int().nonnegative().optional().default(300),
-    userIds: z.array(z.string().nonempty()).optional().default([]),
-    roleIds: z.array(z.string().nonempty()).optional().default([]),
-    emails: z.array(z.string().email()).optional().default([]),
-    webhookActions: z.array(webhookActionSchema).optional().default([])
-});
+const bodySchema = z
+    .strictObject({
+        name: z.string().nonempty(),
+        eventType: z.enum([
+            "site_online",
+            "site_offline",
+            "health_check_healthy",
+            "health_check_not_healthy"
+        ]),
+        enabled: z.boolean().optional().default(true),
+        cooldownSeconds: z.number().int().nonnegative().optional().default(300),
+        // Source join tables - which is required depends on eventType
+        siteIds: z.array(z.number().int().positive()).optional().default([]),
+        healthCheckIds: z
+            .array(z.number().int().positive())
+            .optional()
+            .default([]),
+        // Email recipients (flat)
+        userIds: z.array(z.string().nonempty()).optional().default([]),
+        roleIds: z.array(z.string().nonempty()).optional().default([]),
+        emails: z.array(z.string().email()).optional().default([]),
+        // Webhook actions
+        webhookActions: z.array(webhookActionSchema).optional().default([])
+    })
+    .superRefine((val, ctx) => {
+        const isSiteEvent = (SITE_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
+        const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
+
+        if (isSiteEvent && val.siteIds.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                    "At least one siteId is required for site event types",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isHcEvent && val.healthCheckIds.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                    "At least one healthCheckId is required for health check event types",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isSiteEvent && val.healthCheckIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "healthCheckIds must not be set for site event types",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isHcEvent && val.siteIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                    "siteIds must not be set for health check event types",
+                path: ["siteIds"]
+            });
+        }
+    });
 
 export type CreateAlertRuleResponse = {
     alertRuleId: number;
@@ -108,10 +166,10 @@ export async function createAlertRule(
         const {
             name,
             eventType,
-            siteId,
-            healthCheckId,
             enabled,
             cooldownSeconds,
+            siteIds,
+            healthCheckIds,
             userIds,
             roleIds,
             emails,
@@ -126,14 +184,32 @@ export async function createAlertRule(
                 orgId,
                 name,
                 eventType,
-                siteId: siteId ?? null,
-                healthCheckId: healthCheckId ?? null,
                 enabled,
                 cooldownSeconds,
                 createdAt: now,
                 updatedAt: now
             })
             .returning();
+
+        // Insert site associations
+        if (siteIds.length > 0) {
+            await db.insert(alertSites).values(
+                siteIds.map((siteId) => ({
+                    alertRuleId: rule.alertRuleId,
+                    siteId
+                }))
+            );
+        }
+
+        // Insert health check associations
+        if (healthCheckIds.length > 0) {
+            await db.insert(alertHealthChecks).values(
+                healthCheckIds.map((healthCheckId) => ({
+                    alertRuleId: rule.alertRuleId,
+                    healthCheckId
+                }))
+            );
+        }
 
         // Create the email action pivot row and recipients if any recipients
         // were supplied (userIds, roleIds, or raw emails).
@@ -150,19 +226,19 @@ export async function createAlertRule(
                 ...userIds.map((userId) => ({
                     emailActionId: emailActionRow.emailActionId,
                     userId,
-                    roleId: null,
-                    email: null
+                    roleId: null as string | null,
+                    email: null as string | null
                 })),
                 ...roleIds.map((roleId) => ({
                     emailActionId: emailActionRow.emailActionId,
-                    userId: null,
+                    userId: null as string | null,
                     roleId,
-                    email: null
+                    email: null as string | null
                 })),
                 ...emails.map((email) => ({
                     emailActionId: emailActionRow.emailActionId,
-                    userId: null,
-                    roleId: null,
+                    userId: null as string | null,
+                    roleId: null as string | null,
                     email
                 }))
             ];

@@ -480,16 +480,31 @@ export const alertRules = pgTable("alertRules", {
         >()
         .notNull(),
     // Nullable depending on eventType
-    siteId: integer("siteId").references(() => sites.siteId, { onDelete: "cascade" }),
-    healthCheckId: integer("healthCheckId").references(
-        () => targetHealthCheck.targetHealthCheckId,
-        { onDelete: "cascade" }
-    ),
     enabled: boolean("enabled").notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
-    lastTriggeredAt: bigint("lastTriggeredAt", { mode: "number" }),  // nullable
+    lastTriggeredAt: bigint("lastTriggeredAt", { mode: "number" }), // nullable
     createdAt: bigint("createdAt", { mode: "number" }).notNull(),
     updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+});
+
+export const alertSites = pgTable("alertSites", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, { onDelete: "cascade" })
+});
+
+export const alertHealthChecks = pgTable("alertHealthChecks", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    healthCheckId: integer("healthCheckId")
+        .notNull()
+        .references(() => targetHealthCheck.targetHealthCheckId, {
+            onDelete: "cascade"
+        })
 });
 
 // Separating channels by type avoids the mixed-shape problem entirely
@@ -499,18 +514,24 @@ export const alertEmailActions = pgTable("alertEmailActions", {
         .notNull()
         .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
     enabled: boolean("enabled").notNull().default(true),
-    lastSentAt: bigint("lastSentAt", { mode: "number" }),  // nullable
+    lastSentAt: bigint("lastSentAt", { mode: "number" }) // nullable
 });
 
 export const alertEmailRecipients = pgTable("alertEmailRecipients", {
     recipientId: serial("recipientId").primaryKey(),
     emailActionId: integer("emailActionId")
         .notNull()
-        .references(() => alertEmailActions.emailActionId, { onDelete: "cascade" }),
+        .references(() => alertEmailActions.emailActionId, {
+            onDelete: "cascade"
+        }),
     // At least one of these should be set - enforced at app level
-    userId: varchar("userId").references(() => users.userId, { onDelete: "cascade" }),
-    roleId: varchar("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
-    email: varchar("email", { length: 255 })  // external emails not tied to a user
+    userId: varchar("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
+    roleId: varchar("roleId").references(() => roles.roleId, {
+        onDelete: "cascade"
+    }),
+    email: varchar("email", { length: 255 }) // external emails not tied to a user
 });
 
 export const alertWebhookActions = pgTable("alertWebhookActions", {
@@ -519,9 +540,9 @@ export const alertWebhookActions = pgTable("alertWebhookActions", {
         .notNull()
         .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
     webhookUrl: text("webhookUrl").notNull(),
-    config: text("config"),  // encrypted JSON with auth config (authType, credentials)
+    config: text("config"), // encrypted JSON with auth config (authType, credentials)
     enabled: boolean("enabled").notNull().default(true),
-    lastSentAt: bigint("lastSentAt", { mode: "number" })  // nullable
+    lastSentAt: bigint("lastSentAt", { mode: "number" }) // nullable
 });
 
 export type Approval = InferSelectModel<typeof approvals>;
