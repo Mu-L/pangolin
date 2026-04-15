@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025-2026 Fossorial, Inc.
+ * Copyright (c) 2025 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -51,17 +51,12 @@ export type GetAlertRuleResponse = {
     lastTriggeredAt: number | null;
     createdAt: number;
     updatedAt: number;
-    emailAction: {
-        emailActionId: number;
-        enabled: boolean;
-        lastSentAt: number | null;
-        recipients: {
-            recipientId: number;
-            userId: string | null;
-            roleId: string | null;
-            email: string | null;
-        }[];
-    } | null;
+    recipients: {
+        recipientId: number;
+        userId: string | null;
+        roleId: string | null;
+        email: string | null;
+    }[];
     webhookActions: {
         webhookActionId: number;
         webhookUrl: string;
@@ -115,15 +110,17 @@ export async function getAlertRule(
             );
         }
 
-        // Fetch email action and recipients
+        // Resolve the single email action row for this rule, then collect all
+        // recipients into a flat list. The emailAction pivot row is an internal
+        // implementation detail and is not surfaced to callers.
         const [emailAction] = await db
             .select()
             .from(alertEmailActions)
             .where(eq(alertEmailActions.alertRuleId, alertRuleId));
 
-        let emailActionResult: GetAlertRuleResponse["emailAction"] = null;
+        let recipients: GetAlertRuleResponse["recipients"] = [];
         if (emailAction) {
-            const recipients = await db
+            const rows = await db
                 .select()
                 .from(alertEmailRecipients)
                 .where(
@@ -133,20 +130,14 @@ export async function getAlertRule(
                     )
                 );
 
-            emailActionResult = {
-                emailActionId: emailAction.emailActionId,
-                enabled: emailAction.enabled,
-                lastSentAt: emailAction.lastSentAt ?? null,
-                recipients: recipients.map((r) => ({
-                    recipientId: r.recipientId,
-                    userId: r.userId ?? null,
-                    roleId: r.roleId ?? null,
-                    email: r.email ?? null
-                }))
-            };
+            recipients = rows.map((r) => ({
+                recipientId: r.recipientId,
+                userId: r.userId ?? null,
+                roleId: r.roleId ?? null,
+                email: r.email ?? null
+            }));
         }
 
-        // Fetch webhook actions
         const webhooks = await db
             .select()
             .from(alertWebhookActions)
@@ -165,7 +156,7 @@ export async function getAlertRule(
                 lastTriggeredAt: rule.lastTriggeredAt ?? null,
                 createdAt: rule.createdAt,
                 updatedAt: rule.updatedAt,
-                emailAction: emailActionResult,
+                recipients,
                 webhookActions: webhooks.map((w) => ({
                     webhookActionId: w.webhookActionId,
                     webhookUrl: w.webhookUrl,

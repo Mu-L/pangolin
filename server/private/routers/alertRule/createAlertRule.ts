@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025-2026 Fossorial, Inc.
+ * Copyright (c) 2025 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -31,21 +31,6 @@ const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
 });
 
-const recipientSchema = z
-    .strictObject({
-        userId: z.string().optional(),
-        roleId: z.string().optional(),
-        email: z.string().email().optional()
-    })
-    .refine((r) => r.userId || r.roleId || r.email, {
-        message: "Each recipient must have at least one of userId, roleId, or email"
-    });
-
-const emailActionSchema = z.strictObject({
-    enabled: z.boolean().optional().default(true),
-    recipients: z.array(recipientSchema).min(1)
-});
-
 const webhookActionSchema = z.strictObject({
     webhookUrl: z.string().url(),
     config: z.string().optional(),
@@ -64,8 +49,10 @@ const bodySchema = z.strictObject({
     healthCheckId: z.number().int().optional(),
     enabled: z.boolean().optional().default(true),
     cooldownSeconds: z.number().int().nonnegative().optional().default(300),
-    emailAction: emailActionSchema.optional(),
-    webhookActions: z.array(webhookActionSchema).optional()
+    userIds: z.array(z.string().nonempty()).optional().default([]),
+    roleIds: z.array(z.string().nonempty()).optional().default([]),
+    emails: z.array(z.string().email()).optional().default([]),
+    webhookActions: z.array(webhookActionSchema).optional().default([])
 });
 
 export type CreateAlertRuleResponse = {
@@ -125,7 +112,9 @@ export async function createAlertRule(
             healthCheckId,
             enabled,
             cooldownSeconds,
-            emailAction,
+            userIds,
+            roleIds,
+            emails,
             webhookActions
         } = parsedBody.data;
 
@@ -146,28 +135,42 @@ export async function createAlertRule(
             })
             .returning();
 
-        if (emailAction) {
+        // Create the email action pivot row and recipients if any recipients
+        // were supplied (userIds, roleIds, or raw emails).
+        const hasRecipients =
+            userIds.length > 0 || roleIds.length > 0 || emails.length > 0;
+
+        if (hasRecipients) {
             const [emailActionRow] = await db
                 .insert(alertEmailActions)
-                .values({
-                    alertRuleId: rule.alertRuleId,
-                    enabled: emailAction.enabled
-                })
+                .values({ alertRuleId: rule.alertRuleId })
                 .returning();
 
-            if (emailAction.recipients.length > 0) {
-                await db.insert(alertEmailRecipients).values(
-                    emailAction.recipients.map((r) => ({
-                        emailActionId: emailActionRow.emailActionId,
-                        userId: r.userId ?? null,
-                        roleId: r.roleId ?? null,
-                        email: r.email ?? null
-                    }))
-                );
-            }
+            const recipientRows = [
+                ...userIds.map((userId) => ({
+                    emailActionId: emailActionRow.emailActionId,
+                    userId,
+                    roleId: null,
+                    email: null
+                })),
+                ...roleIds.map((roleId) => ({
+                    emailActionId: emailActionRow.emailActionId,
+                    userId: null,
+                    roleId,
+                    email: null
+                })),
+                ...emails.map((email) => ({
+                    emailActionId: emailActionRow.emailActionId,
+                    userId: null,
+                    roleId: null,
+                    email
+                }))
+            ];
+
+            await db.insert(alertEmailRecipients).values(recipientRows);
         }
 
-        if (webhookActions && webhookActions.length > 0) {
+        if (webhookActions.length > 0) {
             await db.insert(alertWebhookActions).values(
                 webhookActions.map((wa) => ({
                     alertRuleId: rule.alertRuleId,

@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025-2026 Fossorial, Inc.
+ * Copyright (c) 2025 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -14,7 +14,12 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { alertRules } from "@server/db";
+import {
+    alertRules,
+    alertEmailActions,
+    alertEmailRecipients,
+    alertWebhookActions
+} from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -30,7 +35,14 @@ const paramsSchema = z
     })
     .strict();
 
+const webhookActionSchema = z.strictObject({
+    webhookUrl: z.string().url(),
+    config: z.string().optional(),
+    enabled: z.boolean().optional().default(true)
+});
+
 const bodySchema = z.strictObject({
+    // Alert rule fields - all optional for partial updates
     name: z.string().nonempty().optional(),
     eventType: z
         .enum([
@@ -43,7 +55,13 @@ const bodySchema = z.strictObject({
     siteId: z.number().int().nullable().optional(),
     healthCheckId: z.number().int().nullable().optional(),
     enabled: z.boolean().optional(),
-    cooldownSeconds: z.number().int().nonnegative().optional()
+    cooldownSeconds: z.number().int().nonnegative().optional(),
+    // Recipient arrays - if any are provided the full recipient set is replaced
+    userIds: z.array(z.string().nonempty()).optional(),
+    roleIds: z.array(z.string().nonempty()).optional(),
+    emails: z.array(z.string().email()).optional(),
+    // Webhook actions - if provided the full webhook set is replaced
+    webhookActions: z.array(webhookActionSchema).optional()
 });
 
 export type UpdateAlertRuleResponse = {
@@ -118,9 +136,14 @@ export async function updateAlertRule(
             siteId,
             healthCheckId,
             enabled,
-            cooldownSeconds
+            cooldownSeconds,
+            userIds,
+            roleIds,
+            emails,
+            webhookActions
         } = parsedBody.data;
 
+        // --- Update rule fields ---
         const updateData: Record<string, unknown> = {
             updatedAt: Date.now()
         };
@@ -141,6 +164,91 @@ export async function updateAlertRule(
                     eq(alertRules.orgId, orgId)
                 )
             );
+
+        // --- Full-replace recipients if any recipient array was provided ---
+        const recipientsProvided =
+            userIds !== undefined ||
+            roleIds !== undefined ||
+            emails !== undefined;
+
+        if (recipientsProvided) {
+            // Build the flat list of recipient rows to insert
+            const newRecipients = [
+                ...(userIds ?? []).map((userId) => ({
+                    userId,
+                    roleId: null as string | null,
+                    email: null as string | null
+                })),
+                ...(roleIds ?? []).map((roleId) => ({
+                    userId: null as string | null,
+                    roleId,
+                    email: null as string | null
+                })),
+                ...(emails ?? []).map((email) => ({
+                    userId: null as string | null,
+                    roleId: null as string | null,
+                    email
+                }))
+            ];
+
+            // Find or create the single emailAction row for this rule
+            const [existingEmailAction] = await db
+                .select()
+                .from(alertEmailActions)
+                .where(eq(alertEmailActions.alertRuleId, alertRuleId));
+
+            if (existingEmailAction) {
+                // Delete all current recipients then re-insert
+                await db
+                    .delete(alertEmailRecipients)
+                    .where(
+                        eq(
+                            alertEmailRecipients.emailActionId,
+                            existingEmailAction.emailActionId
+                        )
+                    );
+
+                if (newRecipients.length > 0) {
+                    await db.insert(alertEmailRecipients).values(
+                        newRecipients.map((r) => ({
+                            emailActionId: existingEmailAction.emailActionId,
+                            ...r
+                        }))
+                    );
+                }
+            } else if (newRecipients.length > 0) {
+                // No emailAction exists yet - create one then insert recipients
+                const [emailActionRow] = await db
+                    .insert(alertEmailActions)
+                    .values({ alertRuleId, enabled: true })
+                    .returning();
+
+                await db.insert(alertEmailRecipients).values(
+                    newRecipients.map((r) => ({
+                        emailActionId: emailActionRow.emailActionId,
+                        ...r
+                    }))
+                );
+            }
+        }
+
+        // --- Full-replace webhook actions if the array was provided ---
+        if (webhookActions !== undefined) {
+            await db
+                .delete(alertWebhookActions)
+                .where(eq(alertWebhookActions.alertRuleId, alertRuleId));
+
+            if (webhookActions.length > 0) {
+                await db.insert(alertWebhookActions).values(
+                    webhookActions.map((wa) => ({
+                        alertRuleId,
+                        webhookUrl: wa.webhookUrl,
+                        config: wa.config ?? null,
+                        enabled: wa.enabled
+                    }))
+                );
+            }
+        }
 
         return response<UpdateAlertRuleResponse>(res, {
             data: {
