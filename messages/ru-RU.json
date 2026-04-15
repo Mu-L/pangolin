@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Масштаб",
-                "description": "Функции предприятия, 50 пользователей, 50 сайтов, а также приоритетная поддержка."
+                "description": "Функции корпоративного уровня, 50 пользователей, 100 сайтов и приоритетная поддержка."
             }
         },
         "personalUseOnly": "Только для личного использования (бесплатная лицензия - без оформления на кассе)",
@@ -2824,9 +2824,9 @@
     "streamingHttpWebhookTitle": "HTTP вебхук",
     "streamingHttpWebhookDescription": "Отправлять события на любую конечную точку HTTP с гибкой аутентификацией и шаблоном.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Потоковая передача событий к пакету хранения объектов, совместимому с S3.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Перенаправлять события непосредственно на ваш аккаунт в Datadog. Скоро будет доступно.",
     "streamingTypePickerDescription": "Выберите тип назначения, чтобы начать.",
     "streamingFailedToLoad": "Не удалось загрузить места назначения",
     "streamingUnexpectedError": "Произошла непредвиденная ошибка.",
@@ -2849,7 +2849,7 @@
     "httpDestNamePlaceholder": "Мой HTTP адрес назначения",
     "httpDestUrlLabel": "URL назначения",
     "httpDestUrlErrorHttpRequired": "URL должен использовать http или https",
-    "httpDestUrlErrorHttpsRequired": "HTTPS is required",
+    "httpDestUrlErrorHttpsRequired": "Требуется HTTPS при развертывании облака",
     "httpDestUrlErrorInvalid": "Введите действительный URL (например, https://example.com/webhook)",
     "httpDestAuthTitle": "Аутентификация",
     "httpDestAuthDescription": "Выберите, как запросы к вашей конечной точке аутентифицированы.",
