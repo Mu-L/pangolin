@@ -13,9 +13,11 @@ import {
     domains,
     exitNodes,
     orgs,
+    roles,
     sessions,
     siteResources,
     sites,
+    targetHealthCheck,
     users
 } from "./schema";
 
@@ -454,6 +456,62 @@ export const eventStreamingCursors = sqliteTable(
         )
     ]
 );
+
+export const alertRules = sqliteTable("alertRules", {
+    alertRuleId: integer("alertRuleId").primaryKey({ autoIncrement: true }),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    eventType: text("eventType")
+        .$type<
+            | "site_online"
+            | "site_offline"
+            | "health_check_healthy"
+            | "health_check_not_healthy"
+        >()
+        .notNull(),
+    siteId: integer("siteId").references(() => sites.siteId, { onDelete: "cascade" }),
+    healthCheckId: integer("healthCheckId").references(
+        () => targetHealthCheck.targetHealthCheckId,
+        { onDelete: "cascade" }
+    ),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    lastTriggeredAt: integer("lastTriggeredAt"),
+    createdAt: integer("createdAt").notNull(),
+    updatedAt: integer("updatedAt").notNull()
+});
+
+export const alertEmailActions = sqliteTable("alertEmailActions", {
+    emailActionId: integer("emailActionId").primaryKey({ autoIncrement: true }),
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    lastSentAt: integer("lastSentAt")
+});
+
+export const alertEmailRecipients = sqliteTable("alertEmailRecipients", {
+    recipientId: integer("recipientId").primaryKey({ autoIncrement: true }),
+    emailActionId: integer("emailActionId")
+        .notNull()
+        .references(() => alertEmailActions.emailActionId, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.userId, { onDelete: "cascade" }),
+    roleId: text("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
+    email: text("email")
+});
+
+export const alertWebhookActions = sqliteTable("alertWebhookActions", {
+    webhookActionId: integer("webhookActionId").primaryKey({ autoIncrement: true }),
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    webhookUrl: text("webhookUrl").notNull(),
+    secret: text("secret"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    lastSentAt: integer("lastSentAt")
+});
 
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
