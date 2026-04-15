@@ -11,3 +11,4 @@ export * from "./handleNewtDisconnectingMessage";
 export * from "./handleConnectionLogMessage";
 export * from "./handleRequestLogMessage";
 export * from "./registerNewt";
+export * from "./offlineChecker";
