@@ -488,7 +488,7 @@ export async function signSshKey(
             action: true,
             type: "ssh",
             orgId: orgId,
-            resourceId: resource.siteResourceId,
+            siteResourceId: resource.siteResourceId,
             user: req.user
                 ? { username: req.user.username ?? "", userId: req.user.userId }
                 : undefined,

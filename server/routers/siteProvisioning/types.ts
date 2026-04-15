@@ -8,6 +8,7 @@ export type SiteProvisioningKeyListItem = {
     maxBatchSize: number | null;
     numUsed: number;
     validUntil: string | null;
+    approveNewSites: boolean;
 };
 
 export type ListSiteProvisioningKeysResponse = {
@@ -26,6 +27,7 @@ export type CreateSiteProvisioningKeyResponse = {
     maxBatchSize: number | null;
     numUsed: number;
     validUntil: string | null;
+    approveNewSites: boolean;
 };
 
 export type UpdateSiteProvisioningKeyResponse = {
@@ -38,4 +40,5 @@ export type UpdateSiteProvisioningKeyResponse = {
     maxBatchSize: number | null;
     numUsed: number;
     validUntil: string | null;
+    approveNewSites: boolean;
 };

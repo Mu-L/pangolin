@@ -465,7 +465,11 @@ export default function GeneralPage() {
             cell: ({ row }) => {
                 return (
                     <Link
-                        href={`/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`}
+                        href={
+                            row.original.type === "ssh"
+                                ? `/${row.original.orgId}/settings/resources/client?query=${row.original.resourceNiceId}`
+                                : `/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`
+                        }
                     >
                         <Button
                             variant="outline"

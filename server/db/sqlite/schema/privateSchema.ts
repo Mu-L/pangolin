@@ -5,9 +5,19 @@ import {
     primaryKey,
     real,
     sqliteTable,
-    text
+    text,
+    uniqueIndex
 } from "drizzle-orm/sqlite-core";
-import { clients, domains, exitNodes, orgs, sessions, siteResources, sites, users } from "./schema";
+import {
+    clients,
+    domains,
+    exitNodes,
+    orgs,
+    sessions,
+    siteResources,
+    sites,
+    users
+} from "./schema";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -279,6 +289,7 @@ export const accessAuditLog = sqliteTable(
         actor: text("actor"),
         actorId: text("actorId"),
         resourceId: integer("resourceId"),
+        siteResourceId: integer("siteResourceId"),
         ip: text("ip"),
         location: text("location"),
         type: text("type").notNull(),
@@ -375,7 +386,10 @@ export const siteProvisioningKeys = sqliteTable("siteProvisioningKeys", {
     lastUsed: text("lastUsed"),
     maxBatchSize: integer("maxBatchSize"), // null = no limit
     numUsed: integer("numUsed").notNull().default(0),
-    validUntil: text("validUntil")
+    validUntil: text("validUntil"),
+    approveNewSites: integer("approveNewSites", { mode: "boolean" })
+        .notNull()
+        .default(true)
 });
 
 export const siteProvisioningKeyOrg = sqliteTable(
@@ -394,6 +408,50 @@ export const siteProvisioningKeyOrg = sqliteTable(
         primaryKey({
             columns: [table.siteProvisioningKeyId, table.orgId]
         })
+    ]
+);
+
+export const eventStreamingDestinations = sqliteTable(
+    "eventStreamingDestinations",
+    {
+        destinationId: integer("destinationId").primaryKey({
+            autoIncrement: true
+        }),
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        sendConnectionLogs: integer("sendConnectionLogs", { mode: "boolean" }).notNull().default(false),
+        sendRequestLogs: integer("sendRequestLogs", { mode: "boolean" }).notNull().default(false),
+        sendActionLogs: integer("sendActionLogs", { mode: "boolean" }).notNull().default(false),
+        sendAccessLogs: integer("sendAccessLogs", { mode: "boolean" }).notNull().default(false),
+        type: text("type").notNull(), // e.g. "http", "kafka", etc.
+        config: text("config").notNull(), // JSON string with the configuration for the destination
+        enabled: integer("enabled", { mode: "boolean" })
+            .notNull()
+            .default(true),
+        createdAt: integer("createdAt").notNull(),
+        updatedAt: integer("updatedAt").notNull()
+    }
+);
+
+export const eventStreamingCursors = sqliteTable(
+    "eventStreamingCursors",
+    {
+        cursorId: integer("cursorId").primaryKey({ autoIncrement: true }),
+        destinationId: integer("destinationId")
+            .notNull()
+            .references(() => eventStreamingDestinations.destinationId, {
+                onDelete: "cascade"
+            }),
+        logType: text("logType").notNull(), // "request" | "action" | "access" | "connection"
+        lastSentId: integer("lastSentId").notNull().default(0),
+        lastSentAt: integer("lastSentAt") // epoch milliseconds, null if never sent
+    },
+    (table) => [
+        uniqueIndex("idx_eventStreamingCursors_dest_type").on(
+            table.destinationId,
+            table.logType
+        )
     ]
 );
 
@@ -419,3 +477,12 @@ export type LoginPageBranding = InferSelectModel<typeof loginPageBranding>;
 export type ActionAuditLog = InferSelectModel<typeof actionAuditLog>;
 export type AccessAuditLog = InferSelectModel<typeof accessAuditLog>;
 export type ConnectionAuditLog = InferSelectModel<typeof connectionAuditLog>;
+export type BannedEmail = InferSelectModel<typeof bannedEmails>;
+export type BannedIp = InferSelectModel<typeof bannedIps>;
+export type SiteProvisioningKey = InferSelectModel<typeof siteProvisioningKeys>;
+export type EventStreamingDestination = InferSelectModel<
+    typeof eventStreamingDestinations
+>;
+export type EventStreamingCursor = InferSelectModel<
+    typeof eventStreamingCursors
+>;

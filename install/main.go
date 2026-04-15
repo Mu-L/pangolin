@@ -8,12 +8,12 @@ import (
 	"io"
 	"io/fs"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -89,6 +89,13 @@ func main() {
 
 	var config Config
 	var alreadyInstalled = false
+
+	// Determine installation directory
+	installDir := findOrSelectInstallDirectory()
+	if err := os.Chdir(installDir); err != nil {
+		fmt.Printf("Error changing to installation directory: %v\n", err)
+		os.Exit(1)
+	}
 
 	// check if there is already a config file
 	if _, err := os.Stat("config/config.yml"); err != nil {
@@ -287,6 +294,117 @@ func main() {
 	fmt.Printf("\nTo complete the initial setup, please visit:\nhttps://%s/auth/initial-setup\n", config.DashboardDomain)
 }
 
+func hasExistingInstall(dir string) bool {
+	configPath := filepath.Join(dir, "config", "config.yml")
+	_, err := os.Stat(configPath)
+	return err == nil
+}
+
+func findOrSelectInstallDirectory() string {
+	const defaultInstallDir = "/opt/pangolin"
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error getting current directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 1. Check current directory for existing install
+	if hasExistingInstall(cwd) {
+		fmt.Printf("Found existing Pangolin installation in current directory: %s\n", cwd)
+		return cwd
+	}
+
+	// 2. Check default location (/opt/pangolin) for existing install
+	if cwd != defaultInstallDir && hasExistingInstall(defaultInstallDir) {
+		fmt.Printf("\nFound existing Pangolin installation at: %s\n", defaultInstallDir)
+		if readBool(fmt.Sprintf("Would you like to use the existing installation at %s?", defaultInstallDir), true) {
+			return defaultInstallDir
+		}
+	}
+
+	// 3. No existing install found, prompt for installation directory
+	fmt.Println("\n=== Installation Directory ===")
+	fmt.Println("No existing Pangolin installation detected.")
+
+	installDir := readString("Enter the installation directory", defaultInstallDir)
+
+	// Expand ~ to home directory if present
+	if strings.HasPrefix(installDir, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("Error getting home directory: %v\n", err)
+			os.Exit(1)
+		}
+		installDir = filepath.Join(home, installDir[1:])
+	}
+
+	// Convert to absolute path
+	absPath, err := filepath.Abs(installDir)
+	if err != nil {
+		fmt.Printf("Error resolving path: %v\n", err)
+		os.Exit(1)
+	}
+	installDir = absPath
+
+	// Check if directory exists
+	if _, err := os.Stat(installDir); os.IsNotExist(err) {
+		// Directory doesn't exist, create it
+		if readBool(fmt.Sprintf("Directory %s does not exist. Create it?", installDir), true) {
+			if err := os.MkdirAll(installDir, 0755); err != nil {
+				fmt.Printf("Error creating directory: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Created directory: %s\n", installDir)
+
+			// Offer to change ownership if running via sudo
+			changeDirectoryOwnership(installDir)
+		} else {
+			fmt.Println("Installation cancelled.")
+			os.Exit(0)
+		}
+	}
+
+	fmt.Printf("Installation directory: %s\n", installDir)
+	return installDir
+}
+
+func changeDirectoryOwnership(dir string) {
+	// Check if we're running via sudo by looking for SUDO_USER
+	sudoUser := os.Getenv("SUDO_USER")
+	if sudoUser == "" || os.Geteuid() != 0 {
+		return
+	}
+
+	sudoUID := os.Getenv("SUDO_UID")
+	sudoGID := os.Getenv("SUDO_GID")
+
+	if sudoUID == "" || sudoGID == "" {
+		return
+	}
+
+	fmt.Printf("\nRunning as root via sudo (original user: %s)\n", sudoUser)
+	if readBool(fmt.Sprintf("Would you like to change ownership of %s to user '%s'? This makes it easier to manage config files without sudo.", dir, sudoUser), true) {
+		uid, err := strconv.Atoi(sudoUID)
+		if err != nil {
+			fmt.Printf("Warning: Could not parse SUDO_UID: %v\n", err)
+			return
+		}
+		gid, err := strconv.Atoi(sudoGID)
+		if err != nil {
+			fmt.Printf("Warning: Could not parse SUDO_GID: %v\n", err)
+			return
+		}
+
+		if err := os.Chown(dir, uid, gid); err != nil {
+			fmt.Printf("Warning: Could not change ownership: %v\n", err)
+		} else {
+			fmt.Printf("Changed ownership of %s to %s\n", dir, sudoUser)
+		}
+	}
+}
+
 func podmanOrDocker() SupportedContainer {
 	inputContainer := readString("Would you like to run Pangolin as Docker or Podman containers?", "docker")
 
@@ -430,9 +548,9 @@ func createConfigFiles(config Config) error {
 	}
 
 	// Walk through all embedded files
-	err := fs.WalkDir(configFiles, "config", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	err := fs.WalkDir(configFiles, "config", func(path string, d fs.DirEntry, walkErr error) (err error) {
+		if walkErr != nil {
+			return walkErr
 		}
 
 		// Skip the root fs directory itself
@@ -483,7 +601,11 @@ func createConfigFiles(config Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to create %s: %v", path, err)
 		}
-		defer outFile.Close()
+		defer func() {
+			if cerr := outFile.Close(); cerr != nil && err == nil {
+				err = cerr
+			}
+		}()
 
 		// Execute template
 		if err := tmpl.Execute(outFile, config); err != nil {
@@ -499,18 +621,26 @@ func createConfigFiles(config Config) error {
 	return nil
 }
 
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (err error) {
 	source, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer func() {
+		if cerr := source.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	destination, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destination.Close()
+	defer func() {
+		if cerr := destination.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	_, err = io.Copy(destination, source)
 	return err
@@ -620,32 +750,6 @@ func generateRandomSecretKey() string {
 		panic(fmt.Sprintf("Failed to generate random secret key: %v", err))
 	}
 	return base64.StdEncoding.EncodeToString(secret)
-}
-
-func getPublicIP() string {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Get("https://ifconfig.io/ip")
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ""
-	}
-
-	ip := strings.TrimSpace(string(body))
-
-	// Validate that it's a valid IP address
-	if net.ParseIP(ip) != nil {
-		return ip
-	}
-
-	return ""
 }
 
 // Run external commands with stdio/stderr attached.

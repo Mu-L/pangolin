@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
+import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 export async function verifySiteProvisioningKeyAccess(
     req: Request,
@@ -116,8 +117,11 @@ export async function verifySiteProvisioningKeyAccess(
             }
         }
 
-        const userOrgRoleId = req.userOrg.roleId;
-        req.userOrgRoleId = userOrgRoleId;
+        req.userOrgRoleIds = await getUserOrgRoleIds(
+            req.userOrg.userId,
+            row.siteProvisioningKeyOrg.orgId
+        );
+        req.userOrgId = row.siteProvisioningKeyOrg.orgId;
 
         return next();
     } catch (error) {

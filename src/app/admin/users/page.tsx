@@ -3,7 +3,7 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import { AxiosResponse } from "axios";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { AdminListUsersResponse } from "@server/routers/user/adminListUsers";
-import UsersTable, { GlobalUserRow } from "../../../components/AdminUsersTable";
+import UsersTable, { GlobalUserRow } from "@app/components/AdminUsersTable";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";

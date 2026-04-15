@@ -69,6 +69,7 @@ type ControlledDataTableProps<TData, TValue> = {
     onAdd?: () => void;
     onRefresh?: () => void;
     isRefreshing?: boolean;
+    refreshButtonDisabled?: boolean;
     isNavigatingToAddPage?: boolean;
     searchPlaceholder?: string;
     filters?: DataTableFilter[];
@@ -91,6 +92,7 @@ export function ControlledDataTable<TData, TValue>({
     onAdd,
     onRefresh,
     isRefreshing,
+    refreshButtonDisabled = false,
     searchPlaceholder = "Search...",
     filters,
     filterDisplayMode = "label",
@@ -335,7 +337,7 @@ export function ControlledDataTable<TData, TValue>({
                                 <Button
                                     variant="outline"
                                     onClick={onRefresh}
-                                    disabled={isRefreshing}
+                                    disabled={isRefreshing || refreshButtonDisabled}
                                 >
                                     <RefreshCw
                                         className={`mr-0 sm:mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}

@@ -491,7 +491,7 @@ export default function ConnectionLogsPage() {
                 );
             },
             cell: ({ row }) => {
-                const clientType = row.original.clientType === "olm" ? "machine" : "user";
+                const clientType = row.original.userId ? "user" : "machine";
                 if (row.original.clientName && row.original.clientNiceId) {
                     return (
                         <Link

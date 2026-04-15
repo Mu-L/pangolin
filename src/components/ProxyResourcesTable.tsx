@@ -54,6 +54,7 @@ export type TargetHealth = {
     port: number;
     enabled: boolean;
     healthStatus: "healthy" | "unhealthy" | "unknown" | null;
+    siteName: string | null;
 };
 
 export type ResourceRow = {
@@ -274,7 +275,9 @@ export default function ProxyResourcesTable({
                                             }
                                             className="h-3 w-3"
                                         />
-                                        {`${target.ip}:${target.port}`}
+                                        {target.siteName
+                                            ? `${target.siteName} (${target.ip}:${target.port})`
+                                            : `${target.ip}:${target.port}`}
                                     </div>
                                     <span
                                         className={`capitalize ${
@@ -301,7 +304,9 @@ export default function ProxyResourcesTable({
                                             status="unknown"
                                             className="h-3 w-3"
                                         />
-                                        {`${target.ip}:${target.port}`}
+                                        {target.siteName
+                                            ? `${target.siteName} (${target.ip}:${target.port})`
+                                            : `${target.ip}:${target.port}`}
                                     </div>
                                     <span className="text-muted-foreground">
                                         {!target.enabled

@@ -79,7 +79,8 @@ export default function CreateSiteProvisioningKeyCredenza({
                 .max(1_000_000, {
                     message: t("provisioningKeysMaxBatchSizeInvalid")
                 }),
-            validUntil: z.string().optional()
+            validUntil: z.string().optional(),
+            approveNewSites: z.boolean()
         })
         .superRefine((data, ctx) => {
             const v = data.validUntil;
@@ -103,7 +104,8 @@ export default function CreateSiteProvisioningKeyCredenza({
             name: "",
             unlimitedBatchSize: false,
             maxBatchSize: 100,
-            validUntil: ""
+            validUntil: "",
+            approveNewSites: true
         }
     });
 
@@ -114,7 +116,8 @@ export default function CreateSiteProvisioningKeyCredenza({
                 name: "",
                 unlimitedBatchSize: false,
                 maxBatchSize: 100,
-                validUntil: ""
+                validUntil: "",
+                approveNewSites: true
             });
         }
     }, [open, form]);
@@ -123,18 +126,21 @@ export default function CreateSiteProvisioningKeyCredenza({
         setLoading(true);
         try {
             const res = await api
-                .put<
-                    AxiosResponse<CreateSiteProvisioningKeyResponse>
-                >(`/org/${orgId}/site-provisioning-key`, {
-                    name: data.name,
-                    maxBatchSize: data.unlimitedBatchSize
-                        ? null
-                        : data.maxBatchSize,
-                    validUntil:
-                        data.validUntil == null || data.validUntil.trim() === ""
-                            ? undefined
-                            : data.validUntil
-                })
+                .put<AxiosResponse<CreateSiteProvisioningKeyResponse>>(
+                    `/org/${orgId}/site-provisioning-key`,
+                    {
+                        name: data.name,
+                        maxBatchSize: data.unlimitedBatchSize
+                            ? null
+                            : data.maxBatchSize,
+                        validUntil:
+                            data.validUntil == null ||
+                            data.validUntil.trim() === ""
+                                ? undefined
+                                : data.validUntil,
+                        approveNewSites: data.approveNewSites
+                    }
+                )
                 .catch((e) => {
                     toast({
                         variant: "destructive",
@@ -152,9 +158,7 @@ export default function CreateSiteProvisioningKeyCredenza({
         }
     }
 
-    const credential =
-        created &&
-        created.siteProvisioningKey;
+    const credential = created && created.siteProvisioningKey;
 
     const unlimitedBatchSize = form.watch("unlimitedBatchSize");
 
@@ -213,15 +217,12 @@ export default function CreateSiteProvisioningKeyCredenza({
                                                     min={1}
                                                     max={1_000_000}
                                                     autoComplete="off"
-                                                    disabled={
-                                                        unlimitedBatchSize
-                                                    }
+                                                    disabled={unlimitedBatchSize}
                                                     name={field.name}
                                                     ref={field.ref}
                                                     onBlur={field.onBlur}
                                                     onChange={(e) => {
-                                                        const v =
-                                                            e.target.value;
+                                                        const v = e.target.value;
                                                         field.onChange(
                                                             v === ""
                                                                 ? 100
@@ -269,9 +270,7 @@ export default function CreateSiteProvisioningKeyCredenza({
                                         const dateTimeValue: DateTimeValue =
                                             (() => {
                                                 if (!field.value) return {};
-                                                const d = new Date(
-                                                    field.value
-                                                );
+                                                const d = new Date(field.value);
                                                 if (isNaN(d.getTime()))
                                                     return {};
                                                 const hours = d
@@ -313,11 +312,7 @@ export default function CreateSiteProvisioningKeyCredenza({
                                                                 value.date
                                                             );
                                                             if (value.time) {
-                                                                const [
-                                                                    h,
-                                                                    m,
-                                                                    s
-                                                                ] =
+                                                                const [h, m, s] =
                                                                     value.time.split(
                                                                         ":"
                                                                     );
@@ -351,6 +346,40 @@ export default function CreateSiteProvisioningKeyCredenza({
                                             </FormItem>
                                         );
                                     }}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="approveNewSites"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                                            <FormControl>
+                                                <Checkbox
+                                                    id="provisioning-approve-new-sites"
+                                                    checked={field.value}
+                                                    onCheckedChange={(c) =>
+                                                        field.onChange(
+                                                            c === true
+                                                        )
+                                                    }
+                                                />
+                                            </FormControl>
+                                            <div className="flex flex-col gap-1">
+                                                <FormLabel
+                                                    htmlFor="provisioning-approve-new-sites"
+                                                    className="cursor-pointer font-normal !mt-0"
+                                                >
+                                                    {t(
+                                                        "provisioningKeysApproveNewSites"
+                                                    )}
+                                                </FormLabel>
+                                                <FormDescription>
+                                                    {t(
+                                                        "provisioningKeysApproveNewSitesDescription"
+                                                    )}
+                                                </FormDescription>
+                                            </div>
+                                        </FormItem>
+                                    )}
                                 />
                             </form>
                         </Form>

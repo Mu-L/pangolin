@@ -36,6 +36,10 @@ const updateOrgBodySchema = z
         settingsLogRetentionDaysAction: z
             .number()
             .min(build === "saas" ? 0 : -1)
+            .optional(),
+        settingsLogRetentionDaysConnection: z
+            .number()
+            .min(build === "saas" ? 0 : -1)
             .optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
@@ -164,6 +168,17 @@ export async function updateOrg(
                         )
                     );
                 }
+                if (
+                    parsedBody.data.settingsLogRetentionDaysConnection !== undefined &&
+                    parsedBody.data.settingsLogRetentionDaysConnection > maxRetentionDays
+                ) {
+                    return next(
+                        createHttpError(
+                            HttpCode.FORBIDDEN,
+                            `You are not allowed to set log retention days greater than ${maxRetentionDays} with your current subscription`
+                        )
+                    );
+                }
             }
         }
 
@@ -179,7 +194,9 @@ export async function updateOrg(
                 settingsLogRetentionDaysAccess:
                     parsedBody.data.settingsLogRetentionDaysAccess,
                 settingsLogRetentionDaysAction:
-                    parsedBody.data.settingsLogRetentionDaysAction
+                    parsedBody.data.settingsLogRetentionDaysAction,
+                settingsLogRetentionDaysConnection:
+                    parsedBody.data.settingsLogRetentionDaysConnection
             })
             .where(eq(orgs.orgId, orgId))
             .returning();
@@ -197,6 +214,7 @@ export async function updateOrg(
         await cache.del(`org_${orgId}_retentionDays`);
         await cache.del(`org_${orgId}_actionDays`);
         await cache.del(`org_${orgId}_accessDays`);
+        await cache.del(`org_${orgId}_connectionDays`);
 
         return response(res, {
             data: updatedOrg[0],

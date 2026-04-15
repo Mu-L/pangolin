@@ -217,7 +217,7 @@ export async function handleSubscriptionCreated(
                     subscriptionPriceId === priceSet[LicenseId.BIG_LICENSE]
                 ) {
                     numUsers = 50;
-                    numSites = 50;
+                    numSites = 100;
                 } else {
                     logger.error(
                         `Unknown price ID ${subscriptionPriceId} for subscription ${subscription.id}`

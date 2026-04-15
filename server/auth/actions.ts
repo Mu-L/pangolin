@@ -140,7 +140,11 @@ export enum ActionsEnum {
     exportLogs = "exportLogs",
     listApprovals = "listApprovals",
     updateApprovals = "updateApprovals",
-    signSshKey = "signSshKey"
+    signSshKey = "signSshKey",
+    createEventStreamingDestination = "createEventStreamingDestination",
+    updateEventStreamingDestination = "updateEventStreamingDestination",
+    deleteEventStreamingDestination = "deleteEventStreamingDestination",
+    listEventStreamingDestinations = "listEventStreamingDestinations"
 }
 
 export async function checkUserActionPermission(

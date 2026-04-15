@@ -14,6 +14,7 @@ import {
     isValidUrlGlobPattern
 } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
+import { isValidRegionId } from "@server/db/regions";
 
 // Define Zod schema for request parameters validation
 const updateResourceRuleParamsSchema = z.strictObject({
@@ -25,7 +26,7 @@ const updateResourceRuleParamsSchema = z.strictObject({
 const updateResourceRuleSchema = z
     .strictObject({
         action: z.enum(["ACCEPT", "DROP", "PASS"]).optional(),
-        match: z.enum(["CIDR", "IP", "PATH", "COUNTRY", "ASN"]).optional(),
+        match: z.enum(["CIDR", "IP", "PATH", "COUNTRY", "ASN", "REGION"]).optional(),
         value: z.string().min(1).optional(),
         priority: z.int(),
         enabled: z.boolean().optional()
@@ -163,6 +164,15 @@ export async function updateResourceRule(
                         createHttpError(
                             HttpCode.BAD_REQUEST,
                             "Invalid URL glob pattern provided"
+                        )
+                    );
+                }
+            } else if (match === "REGION") {
+                if (!isValidRegionId(value)) {
+                    return next(
+                        createHttpError(
+                            HttpCode.BAD_REQUEST,
+                            "Invalid region ID provided"
                         )
                     );
                 }

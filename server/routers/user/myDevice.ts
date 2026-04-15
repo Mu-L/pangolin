@@ -63,7 +63,9 @@ export async function myDevice(
                 emailVerified: users.emailVerified,
                 serverAdmin: users.serverAdmin,
                 idpName: idp.name,
-                idpId: users.idpId
+                idpId: users.idpId,
+                locale: users.locale,
+                dateCreated: users.dateCreated
             })
             .from(users)
             .leftJoin(idp, eq(users.idpId, idp.idpId))

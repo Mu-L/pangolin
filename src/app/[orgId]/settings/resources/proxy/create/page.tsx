@@ -776,7 +776,11 @@ export default function Page() {
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -800,7 +804,11 @@ export default function Page() {
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -991,6 +999,7 @@ export default function Page() {
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        getRowId: (row) => String(row.targetId),
         state: {
             pagination: {
                 pageIndex: 0,

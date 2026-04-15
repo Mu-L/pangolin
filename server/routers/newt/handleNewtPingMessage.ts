@@ -1,8 +1,11 @@
-import { db, newts, sites } from "@server/db";
-import { hasActiveConnections, getClientConfigVersion } from "#dynamic/routers/ws";
+import { db, newts, sites, targetHealthCheck, targets } from "@server/db";
+import {
+    hasActiveConnections,
+    getClientConfigVersion
+} from "#dynamic/routers/ws";
 import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
-import { eq, lt, isNull, and, or } from "drizzle-orm";
+import { eq, lt, isNull, and, or, ne, not } from "drizzle-orm";
 import logger from "@server/logger";
 import { sendNewtSyncMessage } from "./sync";
 import { recordPing } from "./pingAccumulator";
@@ -11,6 +14,7 @@ import { recordPing } from "./pingAccumulator";
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
 const OFFLINE_CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
 const OFFLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+const OFFLINE_THRESHOLD_BANDWIDTH_MS = 8 * 60 * 1000; // 8 minutes
 
 /**
  * Starts the background interval that checks for newt sites that haven't
@@ -56,7 +60,9 @@ export const startNewtOfflineChecker = (): void => {
                 // Backward-compatibility check: if the newt still has an
                 // active WebSocket connection (older clients that don't send
                 // pings), keep the site online.
-                const isConnected = await hasActiveConnections(staleSite.newtId);
+                const isConnected = await hasActiveConnections(
+                    staleSite.newtId
+                );
                 if (isConnected) {
                     logger.debug(
                         `Newt ${staleSite.newtId} has not pinged recently but is still connected via WebSocket — keeping site ${staleSite.siteId} online`
@@ -72,6 +78,83 @@ export const startNewtOfflineChecker = (): void => {
                     .update(sites)
                     .set({ online: false })
                     .where(eq(sites.siteId, staleSite.siteId));
+
+                const healthChecksOnSite = await db
+                    .select()
+                    .from(targetHealthCheck)
+                    .innerJoin(
+                        targets,
+                        eq(targets.targetId, targetHealthCheck.targetId)
+                    )
+                    .innerJoin(sites, eq(sites.siteId, targets.siteId))
+                    .where(eq(sites.siteId, staleSite.siteId));
+
+                for (const healthCheck of healthChecksOnSite) {
+                    logger.info(
+                        `Marking health check ${healthCheck.targetHealthCheck.targetHealthCheckId} offline due to site ${staleSite.siteId} being marked offline`
+                    );
+                    await db
+                        .update(targetHealthCheck)
+                        .set({ hcHealth: "unknown" })
+                        .where(
+                            eq(
+                                targetHealthCheck.targetHealthCheckId,
+                                healthCheck.targetHealthCheck
+                                    .targetHealthCheckId
+                            )
+                        );
+                }
+            }
+
+            // this part only effects self hosted. Its not efficient but we dont expect people to have very many wireguard sites
+            // select all of the wireguard sites to evaluate if they need to be offline due to the last bandwidth update
+            const allWireguardSites = await db
+                .select({
+                    siteId: sites.siteId,
+                    online: sites.online,
+                    lastBandwidthUpdate: sites.lastBandwidthUpdate
+                })
+                .from(sites)
+                .where(
+                    and(
+                        eq(sites.type, "wireguard"),
+                        not(isNull(sites.lastBandwidthUpdate))
+                    )
+                );
+
+            const wireguardOfflineThreshold = Math.floor(
+                (Date.now() - OFFLINE_THRESHOLD_BANDWIDTH_MS) / 1000
+            );
+
+            // loop over each one. If its offline and there is a new update then mark it online. If its online and there is no update then mark it offline
+            for (const site of allWireguardSites) {
+                const lastBandwidthUpdate =
+                    new Date(site.lastBandwidthUpdate!).getTime() / 1000;
+                if (
+                    lastBandwidthUpdate < wireguardOfflineThreshold &&
+                    site.online
+                ) {
+                    logger.info(
+                        `Marking wireguard site ${site.siteId} offline: no bandwidth update in over ${OFFLINE_THRESHOLD_BANDWIDTH_MS / 60000} minutes`
+                    );
+
+                    await db
+                        .update(sites)
+                        .set({ online: false })
+                        .where(eq(sites.siteId, site.siteId));
+                } else if (
+                    lastBandwidthUpdate >= wireguardOfflineThreshold &&
+                    !site.online
+                ) {
+                    logger.info(
+                        `Marking wireguard site ${site.siteId} online: recent bandwidth update`
+                    );
+
+                    await db
+                        .update(sites)
+                        .set({ online: true })
+                        .where(eq(sites.siteId, site.siteId));
+                }
             }
         } catch (error) {
             logger.error("Error in newt offline checker interval", { error });

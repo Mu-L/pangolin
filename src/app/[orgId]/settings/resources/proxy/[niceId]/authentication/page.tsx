@@ -133,8 +133,7 @@ export default function ResourceAuthenticationPage() {
         ...orgQueries.identityProviders({
             orgId: org.org.orgId,
             useOrgOnlyIdp: env.app.identityProviderMode === "org"
-        }),
-        enabled: isPaidUser(tierMatrix.orgOidc)
+        })
     });
 
     const pageLoading =

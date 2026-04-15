@@ -36,6 +36,7 @@ export type SiteProvisioningKeyRow = {
     maxBatchSize: number | null;
     numUsed: number;
     validUntil: string | null;
+    approveNewSites: boolean;
 };
 
 type SiteProvisioningKeysTableProps = {
@@ -310,6 +311,7 @@ export default function SiteProvisioningKeysTable({
                 addButtonDisabled={!canUseSiteProvisioning}
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing}
+                refreshButtonDisabled={!canUseSiteProvisioning}
                 addButtonText={t("provisioningKeysAdd")}
                 enableColumnVisibility={true}
                 stickyLeftColumn="name"

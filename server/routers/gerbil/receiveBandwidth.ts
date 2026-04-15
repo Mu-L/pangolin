@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { sql } from "drizzle-orm";
-import { db } from "@server/db";
+import { db, DB_TYPE } from "@server/db";
 import logger from "@server/logger";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
@@ -96,6 +96,10 @@ async function dbQueryRows<T extends Record<string, unknown>>(
     return (await anyDb.all(query)) as T[];
 }
 
+function isSQLite(): boolean {
+    return DB_TYPE == "sqlite";
+}
+
 /**
  * Flush all accumulated site bandwidth data to the database.
  *
@@ -141,19 +145,36 @@ export async function flushSiteBandwidthToDb(): Promise<void> {
         const chunk = sortedEntries.slice(i, i + BATCH_CHUNK_SIZE);
         const chunkEnd = i + chunk.length - 1;
 
-        // Build a parameterised VALUES list: (pubKey, bytesIn, bytesOut), ...
-        // Both PostgreSQL and SQLite (≥ 3.33.0, which better-sqlite3 bundles)
-        // support UPDATE … FROM (VALUES …), letting us update the whole chunk
-        // in a single query instead of N individual round-trips.
-        const valuesList = chunk.map(([publicKey, { bytesIn, bytesOut }]) =>
-            sql`(${publicKey}, ${bytesIn}, ${bytesOut})`
-        );
-        const valuesClause = sql.join(valuesList, sql`, `);
-
         let rows: { orgId: string; pubKey: string }[] = [];
 
         try {
             rows = await withDeadlockRetry(async () => {
+                if (isSQLite()) {
+                    // SQLite: one UPDATE per row — no need for batch efficiency here.
+                    const results: { orgId: string; pubKey: string }[] = [];
+                    for (const [publicKey, { bytesIn, bytesOut }] of chunk) {
+                        const result = await dbQueryRows<{
+                            orgId: string;
+                            pubKey: string;
+                        }>(sql`
+                            UPDATE sites
+                            SET
+                                "bytesOut"            = COALESCE("bytesOut", 0) + ${bytesIn},
+                                "bytesIn"             = COALESCE("bytesIn", 0)  + ${bytesOut},
+                                "lastBandwidthUpdate" = ${currentTime}
+                            WHERE "pubKey" = ${publicKey}
+                            RETURNING "orgId", "pubKey"
+                        `);
+                        results.push(...result);
+                    }
+                    return results;
+                }
+
+                // PostgreSQL: batch UPDATE … FROM (VALUES …) — single round-trip per chunk.
+                const valuesList = chunk.map(([publicKey, { bytesIn, bytesOut }]) =>
+                    sql`(${publicKey}::text, ${bytesIn}::real, ${bytesOut}::real)`
+                );
+                const valuesClause = sql.join(valuesList, sql`, `);
                 return dbQueryRows<{ orgId: string; pubKey: string }>(sql`
                     UPDATE sites
                     SET

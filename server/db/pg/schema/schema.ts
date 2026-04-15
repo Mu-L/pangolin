@@ -100,7 +100,8 @@ export const sites = pgTable("sites", {
     publicKey: varchar("publicKey"),
     lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
     listenPort: integer("listenPort"),
-    dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true)
+    dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true),
+    status: varchar("status").$type<"pending" | "approved">().default("approved")
 });
 
 export const resources = pgTable("resources", {
@@ -292,7 +293,8 @@ export const users = pgTable("user", {
     termsVersion: varchar("termsVersion"),
     marketingEmailConsent: boolean("marketingEmailConsent").default(false),
     serverAdmin: boolean("serverAdmin").notNull().default(false),
-    lastPasswordChange: bigint("lastPasswordChange", { mode: "number" })
+    lastPasswordChange: bigint("lastPasswordChange", { mode: "number" }),
+    locale: varchar("locale")
 });
 
 export const newts = pgTable("newt", {
@@ -1078,6 +1080,7 @@ export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;
 export type VersionMigration = InferSelectModel<typeof versionMigrations>;
 export type ResourceRule = InferSelectModel<typeof resourceRules>;
 export type Domain = InferSelectModel<typeof domains>;
+export type DnsRecord = InferSelectModel<typeof dnsRecords>;
 export type SupporterKey = InferSelectModel<typeof supporterKey>;
 export type Idp = InferSelectModel<typeof idp>;
 export type ApiKey = InferSelectModel<typeof apiKeys>;

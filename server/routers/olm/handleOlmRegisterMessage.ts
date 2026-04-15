@@ -20,6 +20,7 @@ import { handleFingerprintInsertion } from "./fingerprintingUtils";
 import { Alias } from "@server/lib/ip";
 import { build } from "@server/build";
 import { canCompress } from "@server/lib/clientVersionChecks";
+import config from "@server/lib/config";
 
 export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     logger.info("Handling register olm message!");
@@ -274,7 +275,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     // TODO: I still think there is a better way to do this rather than locking it out here but ???
     if (now - (client.lastHolePunch || 0) > 5 && sitesCount > 0) {
         logger.warn(
-            "Client last hole punch is too old and we have sites to send; skipping this register"
+            `Client last hole punch is too old and we have sites to send; skipping this register. The client is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`
         );
         return;
     }

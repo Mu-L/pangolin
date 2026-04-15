@@ -12,6 +12,8 @@ import clsx from "clsx";
 import { useTransition } from "react";
 import { Locale } from "@/i18n/config";
 import { setUserLocale } from "@/services/locale";
+import { createApiClient } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type Props = {
     defaultValue: string;
@@ -25,11 +27,16 @@ export default function LocaleSwitcherSelect({
     label
 }: Props) {
     const [isPending, startTransition] = useTransition();
+    const api = createApiClient(useEnvContext());
 
     function onChange(value: string) {
         const locale = value as Locale;
         startTransition(() => {
             setUserLocale(locale);
+        });
+        // Persist locale to the database (fire-and-forget)
+        api.post("/user/locale", { locale }).catch(() => {
+            // Silently ignore errors — cookie is already set as fallback
         });
     }
 

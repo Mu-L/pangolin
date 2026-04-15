@@ -28,6 +28,7 @@ import * as approval from "#private/routers/approvals";
 import * as ssh from "#private/routers/ssh";
 import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
+import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 
 import {
     verifyOrgAccess,
@@ -614,4 +615,40 @@ authenticated.patch(
     verifyUserHasAction(ActionsEnum.updateSiteProvisioningKey),
     logActionAudit(ActionsEnum.updateSiteProvisioningKey),
     siteProvisioning.updateSiteProvisioningKey
+);
+
+authenticated.put(
+    "/org/:orgId/event-streaming-destination",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createEventStreamingDestination),
+    logActionAudit(ActionsEnum.createEventStreamingDestination),
+    eventStreamingDestination.createEventStreamingDestination
+);
+
+authenticated.post(
+    "/org/:orgId/event-streaming-destination/:destinationId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.updateEventStreamingDestination),
+    logActionAudit(ActionsEnum.updateEventStreamingDestination),
+    eventStreamingDestination.updateEventStreamingDestination
+);
+
+authenticated.delete(
+    "/org/:orgId/event-streaming-destination/:destinationId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteEventStreamingDestination),
+    logActionAudit(ActionsEnum.deleteEventStreamingDestination),
+    eventStreamingDestination.deleteEventStreamingDestination
+);
+
+authenticated.get(
+    "/org/:orgId/event-streaming-destinations",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listEventStreamingDestinations),
+    eventStreamingDestination.listEventStreamingDestinations
 );

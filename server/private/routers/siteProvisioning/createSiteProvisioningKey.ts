@@ -38,7 +38,8 @@ const bodySchema = z
             z.null(),
             z.coerce.number().int().positive().max(1_000_000)
         ]),
-        validUntil: z.string().max(255).optional()
+        validUntil: z.string().max(255).optional(),
+        approveNewSites: z.boolean().optional().default(true)
     })
     .superRefine((data, ctx) => {
         const v = data.validUntil;
@@ -82,7 +83,7 @@ export async function createSiteProvisioningKey(
     }
 
     const { orgId } = parsedParams.data;
-    const { name, maxBatchSize } = parsedBody.data;
+    const { name, maxBatchSize, approveNewSites } = parsedBody.data;
     const vuRaw = parsedBody.data.validUntil;
     const validUntil =
         vuRaw == null || vuRaw.trim() === ""
@@ -106,7 +107,8 @@ export async function createSiteProvisioningKey(
             lastUsed: null,
             maxBatchSize,
             numUsed: 0,
-            validUntil
+            validUntil,
+            approveNewSites
         });
 
         await trx.insert(siteProvisioningKeyOrg).values({
@@ -127,7 +129,8 @@ export async function createSiteProvisioningKey(
                 lastUsed: null,
                 maxBatchSize,
                 numUsed: 0,
-                validUntil
+                validUntil,
+                approveNewSites
             },
             success: true,
             error: false,

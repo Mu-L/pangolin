@@ -57,7 +57,8 @@ function querySiteProvisioningKeys(orgId: string) {
             lastUsed: siteProvisioningKeys.lastUsed,
             maxBatchSize: siteProvisioningKeys.maxBatchSize,
             numUsed: siteProvisioningKeys.numUsed,
-            validUntil: siteProvisioningKeys.validUntil
+            validUntil: siteProvisioningKeys.validUntil,
+            approveNewSites: siteProvisioningKeys.approveNewSites
         })
         .from(siteProvisioningKeyOrg)
         .innerJoin(

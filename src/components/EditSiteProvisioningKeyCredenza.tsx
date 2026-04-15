@@ -45,6 +45,7 @@ export type EditableSiteProvisioningKey = {
     name: string;
     maxBatchSize: number | null;
     validUntil: string | null;
+    approveNewSites: boolean;
 };
 
 type EditSiteProvisioningKeyCredenzaProps = {
@@ -76,7 +77,8 @@ export default function EditSiteProvisioningKeyCredenza({
                 .max(1_000_000, {
                     message: t("provisioningKeysMaxBatchSizeInvalid")
                 }),
-            validUntil: z.string().optional()
+            validUntil: z.string().optional(),
+            approveNewSites: z.boolean()
         })
         .superRefine((data, ctx) => {
             const v = data.validUntil;
@@ -100,7 +102,8 @@ export default function EditSiteProvisioningKeyCredenza({
             name: "",
             unlimitedBatchSize: false,
             maxBatchSize: 100,
-            validUntil: ""
+            validUntil: "",
+            approveNewSites: true
         }
     });
 
@@ -112,7 +115,8 @@ export default function EditSiteProvisioningKeyCredenza({
             name: provisioningKey.name,
             unlimitedBatchSize: provisioningKey.maxBatchSize == null,
             maxBatchSize: provisioningKey.maxBatchSize ?? 100,
-            validUntil: provisioningKey.validUntil ?? ""
+            validUntil: provisioningKey.validUntil ?? "",
+            approveNewSites: provisioningKey.approveNewSites
         });
     }, [open, provisioningKey, form]);
 
@@ -135,7 +139,8 @@ export default function EditSiteProvisioningKeyCredenza({
                             data.validUntil == null ||
                             data.validUntil.trim() === ""
                                 ? ""
-                                : data.validUntil
+                                : data.validUntil,
+                        approveNewSites: data.approveNewSites
                     }
                 )
                 .catch((e) => {
@@ -252,6 +257,38 @@ export default function EditSiteProvisioningKeyCredenza({
                                                 "provisioningKeysUnlimitedBatchSize"
                                             )}
                                         </FormLabel>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="approveNewSites"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                                        <FormControl>
+                                            <Checkbox
+                                                id="provisioning-edit-approve-new-sites"
+                                                checked={field.value}
+                                                onCheckedChange={(c) =>
+                                                    field.onChange(c === true)
+                                                }
+                                            />
+                                        </FormControl>
+                                        <div className="flex flex-col gap-1">
+                                            <FormLabel
+                                                htmlFor="provisioning-edit-approve-new-sites"
+                                                className="cursor-pointer font-normal !mt-0"
+                                            >
+                                                {t(
+                                                    "provisioningKeysApproveNewSites"
+                                                )}
+                                            </FormLabel>
+                                            <FormDescription>
+                                                {t(
+                                                    "provisioningKeysApproveNewSitesDescription"
+                                                )}
+                                            </FormDescription>
+                                        </div>
                                     </FormItem>
                                 )}
                             />

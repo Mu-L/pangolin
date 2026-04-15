@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { portRangeStringSchema } from "@server/lib/ip";
 import { MaintenanceSchema } from "#dynamic/lib/blueprints/MaintenanceSchema";
+import { isValidRegionId } from "@server/db/regions";
 
 export const SiteSchema = z.object({
     name: z.string().min(1).max(100),
@@ -77,7 +78,7 @@ export const AuthSchema = z.object({
 export const RuleSchema = z
     .object({
         action: z.enum(["allow", "deny", "pass"]),
-        match: z.enum(["cidr", "path", "ip", "country", "asn"]),
+        match: z.enum(["cidr", "path", "ip", "country", "asn", "region"]),
         value: z.string(),
         priority: z.int().optional()
     })
@@ -136,6 +137,19 @@ export const RuleSchema = z
             path: ["value"],
             message:
                 "Value must be 'AS<number>' format or 'ALL' when match is 'asn'"
+        }
+    )
+    .refine(
+        (rule) => {
+            if (rule.match === "region") {
+                return isValidRegionId(rule.value);
+            }
+            return true;
+        },
+        {
+            path: ["value"],
+            message:
+                "Value must be a valid UN M.49 region or subregion ID when match is 'region'"
         }
     );
 

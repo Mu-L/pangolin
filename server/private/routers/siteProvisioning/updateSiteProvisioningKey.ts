@@ -39,16 +39,18 @@ const bodySchema = z
                 z.coerce.number().int().positive().max(1_000_000)
             ])
             .optional(),
-        validUntil: z.string().max(255).optional()
+        validUntil: z.string().max(255).optional(),
+        approveNewSites: z.boolean().optional()
     })
     .superRefine((data, ctx) => {
         if (
             data.maxBatchSize === undefined &&
-            data.validUntil === undefined
+            data.validUntil === undefined &&
+            data.approveNewSites === undefined
         ) {
             ctx.addIssue({
                 code: "custom",
-                message: "Provide maxBatchSize and/or validUntil",
+                message: "Provide maxBatchSize and/or validUntil and/or approveNewSites",
                 path: ["maxBatchSize"]
             });
         }
@@ -129,6 +131,7 @@ export async function updateSiteProvisioningKey(
         const setValues: {
             maxBatchSize?: number | null;
             validUntil?: string | null;
+            approveNewSites?: boolean;
         } = {};
         if (body.maxBatchSize !== undefined) {
             setValues.maxBatchSize = body.maxBatchSize;
@@ -138,6 +141,9 @@ export async function updateSiteProvisioningKey(
                 body.validUntil.trim() === ""
                     ? null
                     : new Date(Date.parse(body.validUntil)).toISOString();
+        }
+        if (body.approveNewSites !== undefined) {
+            setValues.approveNewSites = body.approveNewSites;
         }
 
         await db
@@ -160,7 +166,8 @@ export async function updateSiteProvisioningKey(
                 lastUsed: siteProvisioningKeys.lastUsed,
                 maxBatchSize: siteProvisioningKeys.maxBatchSize,
                 numUsed: siteProvisioningKeys.numUsed,
-                validUntil: siteProvisioningKeys.validUntil
+                validUntil: siteProvisioningKeys.validUntil,
+                approveNewSites: siteProvisioningKeys.approveNewSites
             })
             .from(siteProvisioningKeys)
             .where(

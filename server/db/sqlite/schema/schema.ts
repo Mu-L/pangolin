@@ -110,7 +110,8 @@ export const sites = sqliteTable("sites", {
     listenPort: integer("listenPort"),
     dockerSocketEnabled: integer("dockerSocketEnabled", { mode: "boolean" })
         .notNull()
-        .default(true)
+        .default(true),
+    status: text("status").$type<"pending" | "approved">().default("approved")
 });
 
 export const resources = sqliteTable("resources", {
@@ -332,7 +333,8 @@ export const users = sqliteTable("user", {
     serverAdmin: integer("serverAdmin", { mode: "boolean" })
         .notNull()
         .default(false),
-    lastPasswordChange: integer("lastPasswordChange")
+    lastPasswordChange: integer("lastPasswordChange"),
+    locale: text("locale")
 });
 
 export const securityKeys = sqliteTable("webauthnCredentials", {

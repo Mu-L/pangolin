@@ -441,6 +441,12 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/user-resource-aliases",
+    verifyOrgAccess,
+    resource.listUserResourceAliases
+);
+
+authenticated.get(
     "/org/:orgId/domains",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listOrgDomains),
@@ -796,6 +802,11 @@ unauthenticated.get(
 // );
 
 unauthenticated.get("/user", verifySessionMiddleware, user.getUser);
+unauthenticated.post(
+    "/user/locale",
+    verifySessionMiddleware,
+    user.updateUserLocale
+);
 unauthenticated.get("/my-device", verifySessionMiddleware, user.myDevice);
 
 authenticated.get("/users", verifyUserIsServerAdmin, user.adminListUsers);

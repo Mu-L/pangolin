@@ -120,6 +120,18 @@ async function capRetentionDays(
         );
     }
 
+    // Cap action log retention if it exceeds the limit
+    if (
+        org.settingsLogRetentionDaysConnection !== null &&
+        org.settingsLogRetentionDaysConnection > maxRetentionDays
+    ) {
+        updates.settingsLogRetentionDaysConnection = maxRetentionDays;
+        needsUpdate = true;
+        logger.info(
+            `Capping connection log retention from ${org.settingsLogRetentionDaysConnection} to ${maxRetentionDays} days for org ${orgId}`
+        );
+    }
+
     // Apply updates if needed
     if (needsUpdate) {
         await db.update(orgs).set(updates).where(eq(orgs.orgId, orgId));
@@ -260,6 +272,10 @@ async function disableFeature(
 
             case TierFeature.ActionLogs:
                 await disableActionLogs(orgId);
+                break;
+
+            case TierFeature.ConnectionLogs:
+                await disableConnectionLogs(orgId);
                 break;
 
             case TierFeature.RotateCredentials:
@@ -456,6 +472,15 @@ async function disableActionLogs(orgId: string): Promise<void> {
         .where(eq(orgs.orgId, orgId));
 
     logger.info(`Disabled action logs for org ${orgId}`);
+}
+
+async function disableConnectionLogs(orgId: string): Promise<void> {
+    await db
+        .update(orgs)
+        .set({ settingsLogRetentionDaysConnection: 0 })
+        .where(eq(orgs.orgId, orgId));
+
+    logger.info(`Disabled connection logs for org ${orgId}`);
 }
 
 async function disableRotateCredentials(orgId: string): Promise<void> {}

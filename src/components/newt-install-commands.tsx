@@ -10,14 +10,14 @@ import {
 import { CheckboxWithLabel } from "./ui/checkbox";
 import { OptionSelect, type OptionSelectOption } from "./OptionSelect";
 import { useState } from "react";
-import { FaCubes, FaDocker, FaWindows } from "react-icons/fa";
-import { Terminal } from "lucide-react";
+import { FaApple, FaCubes, FaDocker, FaLinux, FaWindows } from "react-icons/fa";
 import { SiKubernetes, SiNixos } from "react-icons/si";
 
 export type CommandItem = string | { title: string; command: string };
 
 const PLATFORMS = [
-    "unix",
+    "linux",
+    "macos",
     "docker",
     "kubernetes",
     "podman",
@@ -43,7 +43,7 @@ export function NewtSiteInstallCommands({
     const t = useTranslations();
 
     const [acceptClients, setAcceptClients] = useState(true);
-    const [platform, setPlatform] = useState<Platform>("unix");
+    const [platform, setPlatform] = useState<Platform>("linux");
     const [architecture, setArchitecture] = useState(
         () => getArchitectures(platform)[0]
     );
@@ -54,8 +54,68 @@ export function NewtSiteInstallCommands({
         : "";
 
     const commandList: Record<Platform, Record<string, CommandItem[]>> = {
-        unix: {
-            All: [
+        linux: {
+            Run: [
+                {
+                    title: t("install"),
+                    command: `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
+                },
+                {
+                    title: t("run"),
+                    command: `newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                }
+            ],
+            "Systemd Service": [
+                {
+                    title: t("install"),
+                    command: `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
+                },
+                {
+                    title: t("envFile"),
+                    command: `# Create the directory and environment file
+sudo install -d -m 0755 /etc/newt
+sudo tee /etc/newt/newt.env > /dev/null << 'EOF'
+NEWT_ID=${id}
+NEWT_SECRET=${secret}
+PANGOLIN_ENDPOINT=${endpoint}${!acceptClients ? `
+DISABLE_CLIENTS=true` : ""}
+EOF
+sudo chmod 600 /etc/newt/newt.env`
+                },
+                {
+                    title: t("serviceFile"),
+                    command: `sudo tee /etc/systemd/system/newt.service > /dev/null << 'EOF'
+[Unit]
+Description=Newt
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/newt/newt.env
+ExecStart=/usr/local/bin/newt
+Restart=always
+RestartSec=2
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF`
+                },
+                {
+                    title: t("enableAndStart"),
+                    command: `sudo systemctl daemon-reload
+sudo systemctl enable --now newt`
+                }
+            ]
+        },
+        macos: {
+            Run: [
                 {
                     title: t("install"),
                     command: `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
@@ -131,7 +191,7 @@ WantedBy=default.target`
             ]
         },
         nixos: {
-            All: [
+            Flake: [
                 `nix run 'nixpkgs#fosrl-newt' -- --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
             ]
         }
@@ -172,9 +232,9 @@ WantedBy=default.target`
 
                 <OptionSelect<string>
                     label={
-                        ["docker", "podman"].includes(platform)
-                            ? t("method")
-                            : t("architecture")
+                        platform === "windows"
+                            ? t("architecture")
+                            : t("method")
                     }
                     options={getArchitectures(platform).map((arch) => ({
                         value: arch,
@@ -261,8 +321,10 @@ function getPlatformIcon(platformName: Platform) {
     switch (platformName) {
         case "windows":
             return <FaWindows className="h-4 w-4 mr-2" />;
-        case "unix":
-            return <Terminal className="h-4 w-4 mr-2" />;
+        case "linux":
+            return <FaLinux className="h-4 w-4 mr-2" />;
+        case "macos":
+            return <FaApple className="h-4 w-4 mr-2" />;
         case "docker":
             return <FaDocker className="h-4 w-4 mr-2" />;
         case "kubernetes":
@@ -272,7 +334,7 @@ function getPlatformIcon(platformName: Platform) {
         case "nixos":
             return <SiNixos className="h-4 w-4 mr-2" />;
         default:
-            return <Terminal className="h-4 w-4 mr-2" />;
+            return <FaLinux className="h-4 w-4 mr-2" />;
     }
 }
 
@@ -280,8 +342,10 @@ function getPlatformName(platformName: Platform) {
     switch (platformName) {
         case "windows":
             return "Windows";
-        case "unix":
-            return "Unix & macOS";
+        case "linux":
+            return "Linux";
+        case "macos":
+            return "macOS";
         case "docker":
             return "Docker";
         case "kubernetes":
@@ -291,14 +355,16 @@ function getPlatformName(platformName: Platform) {
         case "nixos":
             return "NixOS";
         default:
-            return "Unix / macOS";
+            return "Linux";
     }
 }
 
 function getArchitectures(platform: Platform) {
     switch (platform) {
-        case "unix":
-            return ["All"];
+        case "linux":
+            return ["Run", "Systemd Service"];
+        case "macos":
+            return ["Run"];
         case "windows":
             return ["x64"];
         case "docker":
@@ -308,8 +374,8 @@ function getArchitectures(platform: Platform) {
         case "podman":
             return ["Podman Quadlet", "Podman Run"];
         case "nixos":
-            return ["All"];
+            return ["Flake"];
         default:
-            return ["x64"];
+            return ["Run"];
     }
 }

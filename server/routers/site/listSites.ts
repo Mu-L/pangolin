@@ -21,6 +21,11 @@ import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+// Stale-while-revalidate: keeps the last successfully fetched version so that
+// a transient network failure / timeout does not flip every site back to
+// newtUpdateAvailable: false.
+let staleNewtVersion: string | null = null;
+
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
         const cachedVersion = await cache.get<string>("latestNewtVersion");
@@ -29,7 +34,7 @@ async function getLatestNewtVersion(): Promise<string | null> {
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500); // Reduced timeout to 1.5 seconds
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
 
         const response = await fetch(
             "https://api.github.com/repos/fosrl/newt/tags",
@@ -44,18 +49,46 @@ async function getLatestNewtVersion(): Promise<string | null> {
             logger.warn(
                 `Failed to fetch latest Newt version from GitHub: ${response.status} ${response.statusText}`
             );
-            return null;
+            return staleNewtVersion;
         }
 
         let tags = await response.json();
         if (!Array.isArray(tags) || tags.length === 0) {
             logger.warn("No tags found for Newt repository");
-            return null;
+            return staleNewtVersion;
         }
-        tags = tags.filter((version) => !version.name.includes("rc"));
+
+        // Remove release-candidates, then sort descending by semver so that
+        // duplicate tags (e.g. "1.10.3" and "v1.10.3") and any ordering quirks
+        // from the GitHub API do not cause an older tag to be selected.
+        tags = tags.filter((tag: any) => !tag.name.includes("rc"));
+        tags.sort((a: any, b: any) => {
+            const va = semver.coerce(a.name);
+            const vb = semver.coerce(b.name);
+            if (!va && !vb) return 0;
+            if (!va) return 1;
+            if (!vb) return -1;
+            return semver.rcompare(va, vb);
+        });
+
+        // Deduplicate: keep only the first (highest) entry per normalised version
+        const seen = new Set<string>();
+        tags = tags.filter((tag: any) => {
+            const normalised = semver.coerce(tag.name)?.version;
+            if (!normalised || seen.has(normalised)) return false;
+            seen.add(normalised);
+            return true;
+        });
+
+        if (tags.length === 0) {
+            logger.warn("No valid semver tags found for Newt repository");
+            return staleNewtVersion;
+        }
+
         const latestVersion = tags[0].name;
 
-        await cache.set("latestNewtVersion", latestVersion, 3600);
+        staleNewtVersion = latestVersion;
+        await cache.set("cache:latestNewtVersion", latestVersion, 3600);
 
         return latestVersion;
     } catch (error: any) {
@@ -73,7 +106,7 @@ async function getLatestNewtVersion(): Promise<string | null> {
                 error.message || error
             );
         }
-        return null;
+        return staleNewtVersion;
     }
 }
 
@@ -135,6 +168,15 @@ const listSitesSchema = z.object({
         .openapi({
             type: "boolean",
             description: "Filter by online status"
+        }),
+    status: z
+        .enum(["pending", "approved"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["pending", "approved"],
+            description: "Filter by site status"
         })
 });
 
@@ -156,7 +198,8 @@ function querySitesBase() {
             exitNodeId: sites.exitNodeId,
             exitNodeName: exitNodes.name,
             exitNodeEndpoint: exitNodes.endpoint,
-            remoteExitNodeId: remoteExitNodes.remoteExitNodeId
+            remoteExitNodeId: remoteExitNodes.remoteExitNodeId,
+            status: sites.status
         })
         .from(sites)
         .leftJoin(orgs, eq(sites.orgId, orgs.orgId))
@@ -245,7 +288,7 @@ export async function listSites(
                 .where(eq(sites.orgId, orgId));
         }
 
-        const { pageSize, page, query, sort_by, order, online } =
+        const { pageSize, page, query, sort_by, order, online, status } =
             parsedQuery.data;
 
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
@@ -272,6 +315,9 @@ export async function listSites(
         }
         if (typeof online !== "undefined") {
             conditions.push(eq(sites.online, online));
+        }
+        if (typeof status !== "undefined") {
+            conditions.push(eq(sites.status, status));
         }
 
         const baseQuery = querySitesBase().where(and(...conditions));
