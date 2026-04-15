@@ -218,7 +218,7 @@ function drawInteractiveCountries(
             });
             hoverPath
                 .datum(country)
-                .attr("d", path(country) as string)
+                .attr("d", path(country as any) as string)
                 .style("display", null);
         })
 

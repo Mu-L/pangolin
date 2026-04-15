@@ -1,4 +1,4 @@
-import { db, SiteResource, siteResources, sites } from "@server/db";
+import { db, DB_TYPE, SiteResource, siteNetworks, siteResources, sites } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -41,12 +41,12 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
         }),
     query: z.string().optional(),
     mode: z
-        .enum(["host", "cidr"])
+        .enum(["host", "cidr", "http"])
         .optional()
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["host", "cidr"],
+            enum: ["host", "cidr", "http"],
             description: "Filter site resources by mode"
         }),
     sort_by: z
@@ -73,22 +73,58 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
 
 export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
     siteResources: (SiteResource & {
-        siteName: string;
-        siteNiceId: string;
-        siteAddress: string | null;
+        siteOnlines: boolean[];
+        siteIds: number[];
+        siteNames: string[];
+        siteNiceIds: string[];
+        siteAddresses: (string | null)[];
     })[];
 }>;
+
+/**
+ * Returns an aggregation expression compatible with both SQLite and PostgreSQL.
+ * - SQLite:    json_group_array(col)  → returns a JSON array string, parsed after fetch
+ * - PostgreSQL: array_agg(col)        → returns a native array
+ */
+function aggCol<T>(column: any) {
+    if (DB_TYPE === "sqlite") {
+        return sql<T>`json_group_array(${column})`;
+    }
+    return sql<T>`array_agg(${column})`;
+}
+
+/**
+ * For SQLite the aggregated columns come back as JSON strings; parse them into
+ * proper arrays. For PostgreSQL the driver already returns native arrays, so
+ * the row is returned unchanged.
+ */
+function transformSiteResourceRow(row: any) {
+    if (DB_TYPE !== "sqlite") {
+        return row;
+    }
+    return {
+        ...row,
+        siteNames: JSON.parse(row.siteNames) as string[],
+        siteNiceIds: JSON.parse(row.siteNiceIds) as string[],
+        siteIds: JSON.parse(row.siteIds) as number[],
+        siteAddresses: JSON.parse(row.siteAddresses) as (string | null)[],
+        // SQLite stores booleans as 0/1 integers
+        siteOnlines: (JSON.parse(row.siteOnlines) as (0 | 1)[]).map(
+            (v) => v === 1
+        ) as boolean[]
+    };
+}
 
 function querySiteResourcesBase() {
     return db
         .select({
             siteResourceId: siteResources.siteResourceId,
-            siteId: siteResources.siteId,
             orgId: siteResources.orgId,
             niceId: siteResources.niceId,
             name: siteResources.name,
             mode: siteResources.mode,
-            protocol: siteResources.protocol,
+            ssl: siteResources.ssl,
+            scheme: siteResources.scheme,
             proxyPort: siteResources.proxyPort,
             destinationPort: siteResources.destinationPort,
             destination: siteResources.destination,
@@ -100,12 +136,24 @@ function querySiteResourcesBase() {
             disableIcmp: siteResources.disableIcmp,
             authDaemonMode: siteResources.authDaemonMode,
             authDaemonPort: siteResources.authDaemonPort,
-            siteName: sites.name,
-            siteNiceId: sites.niceId,
-            siteAddress: sites.address
+            subdomain: siteResources.subdomain,
+            domainId: siteResources.domainId,
+            fullDomain: siteResources.fullDomain,
+            networkId: siteResources.networkId,
+            defaultNetworkId: siteResources.defaultNetworkId,
+            siteNames: aggCol<string[]>(sites.name),
+            siteNiceIds: aggCol<string[]>(sites.niceId),
+            siteIds: aggCol<number[]>(sites.siteId),
+            siteAddresses: aggCol<(string | null)[]>(sites.address),
+            siteOnlines: aggCol<boolean[]>(sites.online)
         })
         .from(siteResources)
-        .innerJoin(sites, eq(siteResources.siteId, sites.siteId));
+        .innerJoin(
+            siteNetworks,
+            eq(siteResources.networkId, siteNetworks.networkId)
+        )
+        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+        .groupBy(siteResources.siteResourceId);
 }
 
 registry.registerPath({
@@ -193,10 +241,12 @@ export async function listAllSiteResourcesByOrg(
         const baseQuery = querySiteResourcesBase().where(and(...conditions));
 
         const countQuery = db.$count(
-            querySiteResourcesBase().where(and(...conditions)).as("filtered_site_resources")
+            querySiteResourcesBase()
+                .where(and(...conditions))
+                .as("filtered_site_resources")
         );
 
-        const [siteResourcesList, totalCount] = await Promise.all([
+        const [siteResourcesRaw, totalCount] = await Promise.all([
             baseQuery
                 .limit(pageSize)
                 .offset(pageSize * (page - 1))
@@ -209,6 +259,8 @@ export async function listAllSiteResourcesByOrg(
                 ),
             countQuery
         ]);
+
+        const siteResourcesList = siteResourcesRaw.map(transformSiteResourceRow);
 
         return response<ListAllSiteResourcesByOrgResponse>(res, {
             data: {

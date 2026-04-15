@@ -57,7 +57,9 @@ export const orgs = pgTable("orgs", {
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
-    settingsLogRetentionDaysConnection: integer("settingsLogRetentionDaysConnection") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
+    settingsLogRetentionDaysConnection: integer(
+        "settingsLogRetentionDaysConnection"
+    ) // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
@@ -101,7 +103,9 @@ export const sites = pgTable("sites", {
     lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
     listenPort: integer("listenPort"),
     dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true),
-    status: varchar("status").$type<"pending" | "approved">().default("approved")
+    status: varchar("status")
+        .$type<"pending" | "approved">()
+        .default("approved")
 });
 
 export const resources = pgTable("resources", {
@@ -222,16 +226,23 @@ export const exitNodes = pgTable("exitNodes", {
 export const siteResources = pgTable("siteResources", {
     // this is for the clients
     siteResourceId: serial("siteResourceId").primaryKey(),
-    siteId: integer("siteId")
-        .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
     orgId: varchar("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
+    defaultNetworkId: integer("defaultNetworkId").references(
+        () => networks.networkId,
+        {
+            onDelete: "restrict"
+        }
+    ),
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
-    mode: varchar("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
-    protocol: varchar("protocol"), // only for port mode
+    ssl: boolean("ssl").notNull().default(false),
+    mode: varchar("mode").$type<"host" | "cidr" | "http">().notNull(), // "host" | "cidr" | "http"
+    scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
     destination: varchar("destination").notNull(), // ip, cidr, hostname; validate against the mode
@@ -244,7 +255,38 @@ export const siteResources = pgTable("siteResources", {
     authDaemonPort: integer("authDaemonPort").default(22123),
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
         .$type<"site" | "remote">()
-        .default("site")
+        .default("site"),
+    domainId: varchar("domainId").references(() => domains.domainId, {
+        onDelete: "set null"
+    }),
+    subdomain: varchar("subdomain"),
+    fullDomain: varchar("fullDomain")
+});
+
+export const networks = pgTable("networks", {
+    networkId: serial("networkId").primaryKey(),
+    niceId: text("niceId"),
+    name: text("name"),
+    scope: varchar("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteNetworks = pgTable("siteNetworks", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+    networkId: integer("networkId")
+        .notNull()
+        .references(() => networks.networkId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = pgTable("clientSiteResources", {
@@ -994,6 +1036,7 @@ export const requestAuditLog = pgTable(
         actor: text("actor"),
         actorId: text("actorId"),
         resourceId: integer("resourceId"),
+        siteResourceId: integer("siteResourceId"),
         ip: text("ip"),
         location: text("location"),
         userAgent: text("userAgent"),
@@ -1107,3 +1150,4 @@ export type RequestAuditLog = InferSelectModel<typeof requestAuditLog>;
 export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
+export type Network = InferSelectModel<typeof networks>;

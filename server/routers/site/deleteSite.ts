@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, Site, siteResources } from "@server/db";
+import { db, Site, siteNetworks, siteResources } from "@server/db";
 import { newts, newtSessions, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -71,18 +71,23 @@ export async function deleteSite(
                     await deletePeer(site.exitNodeId!, site.pubKey);
                 }
             } else if (site.type == "newt") {
-                // delete all of the site resources on this site
-                const siteResourcesOnSite = trx
-                    .delete(siteResources)
-                    .where(eq(siteResources.siteId, siteId))
-                    .returning();
+                const networks = await trx
+                    .select({ networkId: siteNetworks.networkId })
+                    .from(siteNetworks)
+                    .where(eq(siteNetworks.siteId, siteId));
 
                 // loop through them
-                for (const removedSiteResource of await siteResourcesOnSite) {
-                    await rebuildClientAssociationsFromSiteResource(
-                        removedSiteResource,
-                        trx
-                    );
+                for (const network of await networks) {
+                    const [siteResource] = await trx
+                        .select()
+                        .from(siteResources)
+                        .where(eq(siteResources.networkId, network.networkId));
+                    if (siteResource) {
+                        await rebuildClientAssociationsFromSiteResource(
+                            siteResource,
+                            trx
+                        );
+                    }
                 }
 
                 // get the newt on the site by querying the newt table for siteId

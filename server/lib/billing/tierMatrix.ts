@@ -20,6 +20,7 @@ export enum TierFeature {
     FullRbac = "fullRbac",
     SiteProvisioningKeys = "siteProvisioningKeys", // handle downgrade by revoking keys if needed
     SIEM = "siem", // handle downgrade by disabling SIEM integrations
+    HTTPPrivateResources = "httpPrivateResources", // handle downgrade by disabling HTTP private resources
     DomainNamespaces = "domainNamespaces" // handle downgrade by removing custom domain namespaces
 }
 
@@ -58,5 +59,6 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.FullRbac]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.SiteProvisioningKeys]: ["tier3", "enterprise"],
     [TierFeature.SIEM]: ["enterprise"],
+    [TierFeature.HTTPPrivateResources]: ["tier3", "enterprise"],
     [TierFeature.DomainNamespaces]: ["tier1", "tier2", "tier3", "enterprise"]
 };

@@ -10,7 +10,7 @@ import { convertTargetsIfNessicary } from "../client/targets";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
 
-export const handleGetConfigMessage: MessageHandler = async (context) => {
+export const handleNewtGetConfigMessage: MessageHandler = async (context) => {
     const { message, client, sendToClient } = context;
     const newt = client as Newt;
 
@@ -56,7 +56,7 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
 
     if (existingSite.lastHolePunch && now - existingSite.lastHolePunch > 5) {
         logger.warn(
-            `Site last hole punch is too old; skipping this register. The site is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`
+            `Site last hole punch is too old; skipping this register. The site is failing to hole punch and identify its network address with the server. Can the site reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`
         );
         return;
     }
@@ -113,7 +113,7 @@ export const handleGetConfigMessage: MessageHandler = async (context) => {
         exitNode
     );
 
-    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets);
+    const targetsToSend = await convertTargetsIfNessicary(newt.newtId, targets); // for backward compatibility with old newt versions that don't support the new target format
 
     return {
         message: {

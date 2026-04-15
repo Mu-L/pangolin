@@ -15,7 +15,6 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { resourceQueries } from "@app/lib/queries";
-import { ListSitesResponse } from "@server/routers/site";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -27,14 +26,11 @@ import {
     isHostname
 } from "./InternalResourceForm";
 
-type Site = ListSitesResponse["sites"][0];
-
 type EditInternalResourceDialogProps = {
     open: boolean;
     setOpen: (val: boolean) => void;
     resource: InternalResourceData;
     orgId: string;
-    sites: Site[];
     onSuccess?: () => void;
 };
 
@@ -43,18 +39,21 @@ export default function EditInternalResourceDialog({
     setOpen,
     resource,
     orgId,
-    sites,
     onSuccess
 }: EditInternalResourceDialogProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
     const [isSubmitting, startTransition] = useTransition();
+    const [isHttpModeDisabled, setIsHttpModeDisabled] = useState(false);
 
     async function handleSubmit(values: InternalResourceFormValues) {
         try {
             let data = { ...values };
-            if (data.mode === "host" && isHostname(data.destination)) {
+            if (
+                (data.mode === "host" || data.mode === "http") &&
+                isHostname(data.destination)
+            ) {
                 const currentAlias = data.alias?.trim() || "";
                 if (!currentAlias) {
                     let aliasValue = data.destination;
@@ -67,24 +66,39 @@ export default function EditInternalResourceDialog({
 
             await api.post(`/site-resource/${resource.id}`, {
                 name: data.name,
-                siteId: data.siteId,
+                siteIds: data.siteIds,
                 mode: data.mode,
                 niceId: data.niceId,
                 destination: data.destination,
-                alias:
-                    data.alias &&
-                    typeof data.alias === "string" &&
-                    data.alias.trim()
-                        ? data.alias
-                        : null,
-                tcpPortRangeString: data.tcpPortRangeString,
-                udpPortRangeString: data.udpPortRangeString,
-                disableIcmp: data.disableIcmp ?? false,
-                ...(data.authDaemonMode != null && {
-                    authDaemonMode: data.authDaemonMode
+                ...(data.mode === "http" && {
+                    scheme: data.scheme,
+                    ssl: data.ssl ?? false,
+                    destinationPort: data.httpHttpsPort ?? null,
+                    domainId: data.httpConfigDomainId
+                        ? data.httpConfigDomainId
+                        : undefined,
+                    subdomain: data.httpConfigSubdomain
+                        ? data.httpConfigSubdomain
+                        : undefined
                 }),
-                ...(data.authDaemonMode === "remote" && {
-                    authDaemonPort: data.authDaemonPort || null
+                ...(data.mode === "host" && {
+                    alias:
+                        data.alias &&
+                        typeof data.alias === "string" &&
+                        data.alias.trim()
+                            ? data.alias
+                            : null,
+                    ...(data.authDaemonMode != null && {
+                        authDaemonMode: data.authDaemonMode
+                    }),
+                    ...(data.authDaemonMode === "remote" && {
+                        authDaemonPort: data.authDaemonPort || null
+                    })
+                }),
+                ...((data.mode === "host" || data.mode === "cidr") && {
+                    tcpPortRangeString: data.tcpPortRangeString,
+                    udpPortRangeString: data.udpPortRangeString,
+                    disableIcmp: data.disableIcmp ?? false
                 }),
                 roleIds: (data.roles || []).map((r) => parseInt(r.id)),
                 userIds: (data.users || []).map((u) => u.id),
@@ -156,13 +170,13 @@ export default function EditInternalResourceDialog({
                         variant="edit"
                         open={open}
                         resource={resource}
-                        sites={sites}
                         orgId={orgId}
                         siteResourceId={resource.id}
                         formId="edit-internal-resource-form"
                         onSubmit={(values) =>
                             startTransition(() => handleSubmit(values))
                         }
+                        onSubmitDisabledChange={setIsHttpModeDisabled}
                     />
                 </CredenzaBody>
                 <CredenzaFooter>
@@ -178,7 +192,7 @@ export default function EditInternalResourceDialog({
                     <Button
                         type="submit"
                         form="edit-internal-resource-form"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isHttpModeDisabled}
                         loading={isSubmitting}
                     >
                         {t("editInternalResourceDialogSaveResource")}

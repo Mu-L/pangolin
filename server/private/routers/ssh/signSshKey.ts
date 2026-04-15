@@ -21,7 +21,7 @@ import {
     roles,
     roundTripMessageTracker,
     siteResources,
-    sites,
+    siteNetworks,
     userOrgs
 } from "@server/db";
 import { logAccessAudit } from "#private/lib/logAccessAudit";
@@ -63,10 +63,12 @@ const bodySchema = z
 
 export type SignSshKeyResponse = {
     certificate: string;
+    messageIds: number[];
     messageId: number;
     sshUsername: string;
     sshHost: string;
     resourceId: number;
+    siteIds: number[];
     siteId: number;
     keyId: string;
     validPrincipals: string[];
@@ -260,10 +262,7 @@ export async function signSshKey(
                 .update(userOrgs)
                 .set({ pamUsername: usernameToUse })
                 .where(
-                    and(
-                        eq(userOrgs.orgId, orgId),
-                        eq(userOrgs.userId, userId)
-                    )
+                    and(eq(userOrgs.orgId, orgId), eq(userOrgs.userId, userId))
                 );
         } else {
             usernameToUse = userOrg.pamUsername;
@@ -395,21 +394,12 @@ export async function signSshKey(
             homedir = roleRows[0].sshCreateHomeDir ?? null;
         }
 
-        // get the site
-        const [newt] = await db
-            .select()
-            .from(newts)
-            .where(eq(newts.siteId, resource.siteId))
-            .limit(1);
+        const sites = await db
+            .select({ siteId: siteNetworks.siteId })
+            .from(siteNetworks)
+            .where(eq(siteNetworks.networkId, resource.networkId!));
 
-        if (!newt) {
-            return next(
-                createHttpError(
-                    HttpCode.INTERNAL_SERVER_ERROR,
-                    "Site associated with resource not found"
-                )
-            );
-        }
+        const siteIds = sites.map((site) => site.siteId);
 
         // Sign the public key
         const now = BigInt(Math.floor(Date.now() / 1000));
@@ -423,43 +413,64 @@ export async function signSshKey(
             validBefore: now + validFor
         });
 
-        const [message] = await db
-            .insert(roundTripMessageTracker)
-            .values({
-                wsClientId: newt.newtId,
-                messageType: `newt/pam/connection`,
-                sentAt: Math.floor(Date.now() / 1000)
-            })
-            .returning();
+        const messageIds: number[] = [];
+        for (const siteId of siteIds) {
+            // get the site
+            const [newt] = await db
+                .select()
+                .from(newts)
+                .where(eq(newts.siteId, siteId))
+                .limit(1);
 
-        if (!message) {
-            return next(
-                createHttpError(
-                    HttpCode.INTERNAL_SERVER_ERROR,
-                    "Failed to create message tracker entry"
-                )
-            );
-        }
-
-        await sendToClient(newt.newtId, {
-            type: `newt/pam/connection`,
-            data: {
-                messageId: message.messageId,
-                orgId: orgId,
-                agentPort: resource.authDaemonPort ?? 22123,
-                externalAuthDaemon: resource.authDaemonMode === "remote",
-                agentHost: resource.destination,
-                caCert: caKeys.publicKeyOpenSSH,
-                username: usernameToUse,
-                niceId: resource.niceId,
-                metadata: {
-                    sudoMode: sudoMode,
-                    sudoCommands: parsedSudoCommands,
-                    homedir: homedir,
-                    groups: parsedGroups
-                }
+            if (!newt) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        "Site associated with resource not found"
+                    )
+                );
             }
-        });
+
+            const [message] = await db
+                .insert(roundTripMessageTracker)
+                .values({
+                    wsClientId: newt.newtId,
+                    messageType: `newt/pam/connection`,
+                    sentAt: Math.floor(Date.now() / 1000)
+                })
+                .returning();
+
+            if (!message) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        "Failed to create message tracker entry"
+                    )
+                );
+            }
+
+            messageIds.push(message.messageId);
+
+            await sendToClient(newt.newtId, {
+                type: `newt/pam/connection`,
+                data: {
+                    messageId: message.messageId,
+                    orgId: orgId,
+                    agentPort: resource.authDaemonPort ?? 22123,
+                    externalAuthDaemon: resource.authDaemonMode === "remote",
+                    agentHost: resource.destination,
+                    caCert: caKeys.publicKeyOpenSSH,
+                    username: usernameToUse,
+                    niceId: resource.niceId,
+                    metadata: {
+                        sudoMode: sudoMode,
+                        sudoCommands: parsedSudoCommands,
+                        homedir: homedir,
+                        groups: parsedGroups
+                    }
+                }
+            });
+        }
 
         const expiresIn = Number(validFor); // seconds
 
@@ -480,7 +491,7 @@ export async function signSshKey(
             metadata: JSON.stringify({
                 resourceId: resource.siteResourceId,
                 resource: resource.name,
-                siteId: resource.siteId,
+                siteIds: siteIds
             })
         });
 
@@ -494,7 +505,7 @@ export async function signSshKey(
                 : undefined,
             metadata: {
                 resourceName: resource.name,
-                siteId: resource.siteId,
+                siteId: siteIds[0],
                 sshUsername: usernameToUse,
                 sshHost: sshHost
             },
@@ -505,11 +516,13 @@ export async function signSshKey(
         return response<SignSshKeyResponse>(res, {
             data: {
                 certificate: cert.certificate,
-                messageId: message.messageId,
+                messageIds: messageIds,
+                messageId: messageIds[0], // just pick the first one for backward compatibility
                 sshUsername: usernameToUse,
                 sshHost: sshHost,
                 resourceId: resource.siteResourceId,
-                siteId: resource.siteId,
+                siteIds: siteIds,
+                siteId: siteIds[0], // just pick the first one for backward compatibility
                 keyId: cert.keyId,
                 validPrincipals: cert.validPrincipals,
                 validAfter: cert.validAfter.toISOString(),

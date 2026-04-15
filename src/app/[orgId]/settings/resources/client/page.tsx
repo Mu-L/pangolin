@@ -60,23 +60,34 @@ export default async function ClientResourcesPage(
                 id: siteResource.siteResourceId,
                 name: siteResource.name,
                 orgId: params.orgId,
-                siteName: siteResource.siteName,
-                siteAddress: siteResource.siteAddress || null,
-                mode: siteResource.mode || ("port" as any),
+                sites: siteResource.siteIds.map((siteId, idx) => ({
+                    siteId,
+                    siteName: siteResource.siteNames[idx],
+                    siteNiceId: siteResource.siteNiceIds[idx],
+                    online: siteResource.siteOnlines[idx]
+                })),
+                mode: siteResource.mode,
+                scheme: siteResource.scheme,
+                ssl: siteResource.ssl,
+                siteNames: siteResource.siteNames,
+                siteAddresses: siteResource.siteAddresses || null,
                 // protocol: siteResource.protocol,
                 // proxyPort: siteResource.proxyPort,
-                siteId: siteResource.siteId,
+                siteIds: siteResource.siteIds,
                 destination: siteResource.destination,
-                // destinationPort: siteResource.destinationPort,
+                httpHttpsPort: siteResource.destinationPort ?? null,
                 alias: siteResource.alias || null,
                 aliasAddress: siteResource.aliasAddress || null,
-                siteNiceId: siteResource.siteNiceId,
+                siteNiceIds: siteResource.siteNiceIds,
                 niceId: siteResource.niceId,
                 tcpPortRangeString: siteResource.tcpPortRangeString || null,
                 udpPortRangeString: siteResource.udpPortRangeString || null,
                 disableIcmp: siteResource.disableIcmp || false,
                 authDaemonMode: siteResource.authDaemonMode ?? null,
-                authDaemonPort: siteResource.authDaemonPort ?? null
+                authDaemonPort: siteResource.authDaemonPort ?? null,
+                subdomain: siteResource.subdomain ?? null,
+                domainId: siteResource.domainId ?? null,
+                fullDomain: siteResource.fullDomain ?? null
             };
         }
     );

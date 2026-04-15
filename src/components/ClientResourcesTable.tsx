@@ -21,6 +21,7 @@ import {
     ArrowUp10Icon,
     ArrowUpDown,
     ArrowUpRight,
+    ChevronDown,
     ChevronsUpDownIcon,
     MoreHorizontal
 } from "lucide-react";
@@ -38,21 +39,32 @@ import { ControlledDataTable } from "./ui/controlled-data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import { cn } from "@app/lib/cn";
+
+export type InternalResourceSiteRow = {
+    siteId: number;
+    siteName: string;
+    siteNiceId: string;
+    online: boolean;
+};
 
 export type InternalResourceRow = {
     id: number;
     name: string;
     orgId: string;
-    siteName: string;
-    siteAddress: string | null;
+    sites: InternalResourceSiteRow[];
+    siteNames: string[];
+    siteAddresses: (string | null)[];
+    siteIds: number[];
+    siteNiceIds: string[];
     // mode: "host" | "cidr" | "port";
-    mode: "host" | "cidr";
+    mode: "host" | "cidr" | "http";
+    scheme: "http" | "https" | null;
+    ssl: boolean;
     // protocol: string | null;
     // proxyPort: number | null;
-    siteId: number;
-    siteNiceId: string;
     destination: string;
-    // destinationPort: number | null;
+    httpHttpsPort: number | null;
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
@@ -61,7 +73,146 @@ export type InternalResourceRow = {
     disableIcmp: boolean;
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
+    subdomain?: string | null;
+    domainId?: string | null;
+    fullDomain?: string | null;
 };
+
+function resolveHttpHttpsDisplayPort(
+    mode: "http",
+    httpHttpsPort: number | null
+): number {
+    if (httpHttpsPort != null) {
+        return httpHttpsPort;
+    }
+    return 80;
+}
+
+function formatDestinationDisplay(row: InternalResourceRow): string {
+    const { mode, destination, httpHttpsPort, scheme } = row;
+    if (mode !== "http") {
+        return destination;
+    }
+    const port = resolveHttpHttpsDisplayPort(mode, httpHttpsPort);
+    const downstreamScheme = scheme ?? "http";
+    const hostPart =
+        destination.includes(":") && !destination.startsWith("[")
+            ? `[${destination}]`
+            : destination;
+    return `${downstreamScheme}://${hostPart}:${port}`;
+}
+
+function isSafeUrlForLink(href: string): boolean {
+    try {
+        void new URL(href);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+type AggregateSitesStatus = "allOnline" | "partial" | "allOffline";
+
+function aggregateSitesStatus(
+    resourceSites: InternalResourceSiteRow[]
+): AggregateSitesStatus {
+    if (resourceSites.length === 0) {
+        return "allOffline";
+    }
+    const onlineCount = resourceSites.filter((rs) => rs.online).length;
+    if (onlineCount === resourceSites.length) return "allOnline";
+    if (onlineCount > 0) return "partial";
+    return "allOffline";
+}
+
+function aggregateStatusDotClass(status: AggregateSitesStatus): string {
+    switch (status) {
+        case "allOnline":
+            return "bg-green-500";
+        case "partial":
+            return "bg-yellow-500";
+        case "allOffline":
+        default:
+            return "bg-gray-500";
+    }
+}
+
+function ClientResourceSitesStatusCell({
+    orgId,
+    resourceSites
+}: {
+    orgId: string;
+    resourceSites: InternalResourceSiteRow[];
+}) {
+    const t = useTranslations();
+
+    if (resourceSites.length === 0) {
+        return <span>-</span>;
+    }
+
+    const aggregate = aggregateSitesStatus(resourceSites);
+    const countLabel = t("multiSitesSelectorSitesCount", {
+        count: resourceSites.length
+    });
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex h-8 items-center gap-2 px-0 font-normal"
+                >
+                    <div
+                        className={cn(
+                            "h-2 w-2 shrink-0 rounded-full",
+                            aggregateStatusDotClass(aggregate)
+                        )}
+                    />
+                    <span className="text-sm tabular-nums">{countLabel}</span>
+                    <ChevronDown className="h-3 w-3 shrink-0" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-56">
+                {resourceSites.map((site) => {
+                    const isOnline = site.online;
+                    return (
+                        <DropdownMenuItem key={site.siteId} asChild>
+                            <Link
+                                href={`/${orgId}/settings/sites/${site.siteNiceId}`}
+                                className="flex cursor-pointer items-center justify-between gap-4"
+                            >
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <div
+                                        className={cn(
+                                            "h-2 w-2 shrink-0 rounded-full",
+                                            isOnline
+                                                ? "bg-green-500"
+                                                : "bg-gray-500"
+                                        )}
+                                    />
+                                    <span className="truncate">
+                                        {site.siteName}
+                                    </span>
+                                </div>
+                                <span
+                                    className={cn(
+                                        "shrink-0 capitalize",
+                                        isOnline
+                                            ? "text-green-600"
+                                            : "text-muted-foreground"
+                                    )}
+                                >
+                                    {isOnline ? t("online") : t("offline")}
+                                </span>
+                            </Link>
+                        </DropdownMenuItem>
+                    );
+                })}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
 
 type ClientResourcesTableProps = {
     internalResources: InternalResourceRow[];
@@ -96,8 +247,6 @@ export default function ClientResourcesTable({
     const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-    const { data: sites = [] } = useQuery(orgQueries.sites({ orgId }));
 
     const [isRefreshing, startTransition] = useTransition();
 
@@ -135,6 +284,60 @@ export default function ClientResourcesTable({
             });
         }
     };
+
+    function SiteCell({ resourceRow }: { resourceRow: InternalResourceRow }) {
+        const { siteNames, siteNiceIds, orgId } = resourceRow;
+
+        if (!siteNames || siteNames.length === 0) {
+            return <span>-</span>;
+        }
+
+        if (siteNames.length === 1) {
+            return (
+                <Link
+                    href={`/${orgId}/settings/sites/${siteNiceIds[0]}`}
+                >
+                    <Button variant="outline">
+                        {siteNames[0]}
+                        <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
+            );
+        }
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                    >
+                        <span>
+                            {siteNames.length} {t("sites")}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                    {siteNames.map((siteName, idx) => (
+                        <DropdownMenuItem
+                            key={siteNiceIds[idx]}
+                            asChild
+                        >
+                            <Link
+                                href={`/${orgId}/settings/sites/${siteNiceIds[idx]}`}
+                                className="flex items-center gap-2 cursor-pointer"
+                            >
+                                {siteName}
+                                <ArrowUpRight className="h-3 w-3" />
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
 
     const internalColumns: ExtendedColumnDef<InternalResourceRow>[] = [
         {
@@ -185,20 +388,17 @@ export default function ClientResourcesTable({
             }
         },
         {
-            accessorKey: "siteName",
-            friendlyName: t("site"),
-            header: () => <span className="p-3">{t("site")}</span>,
+            id: "sites",
+            accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
+            friendlyName: t("sites"),
+            header: () => <span className="p-3">{t("sites")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
-                    <Link
-                        href={`/${resourceRow.orgId}/settings/sites/${resourceRow.siteNiceId}`}
-                    >
-                        <Button variant="outline">
-                            {resourceRow.siteName}
-                            <ArrowUpRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </Link>
+                    <ClientResourceSitesStatusCell
+                        orgId={resourceRow.orgId}
+                        resourceSites={resourceRow.sites}
+                    />
                 );
             }
         },
@@ -215,6 +415,10 @@ export default function ClientResourcesTable({
                         {
                             value: "cidr",
                             label: t("editInternalResourceDialogModeCidr")
+                        },
+                        {
+                            value: "http",
+                            label: t("editInternalResourceDialogModeHttp")
                         }
                     ]}
                     selectedValue={searchParams.get("mode") ?? undefined}
@@ -227,10 +431,14 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                const modeLabels: Record<"host" | "cidr" | "port", string> = {
+                const modeLabels: Record<
+                    "host" | "cidr" | "port" | "http",
+                    string
+                > = {
                     host: t("editInternalResourceDialogModeHost"),
                     cidr: t("editInternalResourceDialogModeCidr"),
-                    port: t("editInternalResourceDialogModePort")
+                    port: t("editInternalResourceDialogModePort"),
+                    http: t("editInternalResourceDialogModeHttp")
                 };
                 return <span>{modeLabels[resourceRow.mode]}</span>;
             }
@@ -243,11 +451,12 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
+                const display = formatDestinationDisplay(resourceRow);
                 return (
                     <CopyToClipboard
-                        text={resourceRow.destination}
+                        text={display}
                         isLink={false}
-                        displayText={resourceRow.destination}
+                        displayText={display}
                     />
                 );
             }
@@ -260,15 +469,26 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return resourceRow.mode === "host" && resourceRow.alias ? (
-                    <CopyToClipboard
-                        text={resourceRow.alias}
-                        isLink={false}
-                        displayText={resourceRow.alias}
-                    />
-                ) : (
-                    <span>-</span>
-                );
+                if (resourceRow.mode === "host" && resourceRow.alias) {
+                    return (
+                        <CopyToClipboard
+                            text={resourceRow.alias}
+                            isLink={false}
+                            displayText={resourceRow.alias}
+                        />
+                    );
+                }
+                if (resourceRow.mode === "http") {
+                    const url = `${resourceRow.ssl ? "https" : "http"}://${resourceRow.fullDomain}`;
+                    return (
+                        <CopyToClipboard
+                            text={url}
+                            isLink={isSafeUrlForLink(url)}
+                            displayText={url}
+                        />
+                    );
+                }
+                return <span>-</span>;
             }
         },
         {
@@ -399,7 +619,7 @@ export default function ClientResourcesTable({
                     onConfirm={async () =>
                         deleteInternalResource(
                             selectedInternalResource!.id,
-                            selectedInternalResource!.siteId
+                            selectedInternalResource!.siteIds[0]
                         )
                     }
                     string={selectedInternalResource.name}
@@ -435,7 +655,6 @@ export default function ClientResourcesTable({
                     setOpen={setIsEditDialogOpen}
                     resource={editingResource}
                     orgId={orgId}
-                    sites={sites}
                     onSuccess={() => {
                         // Delay refresh to allow modal to close smoothly
                         setTimeout(() => {
@@ -450,7 +669,6 @@ export default function ClientResourcesTable({
                 open={isCreateDialogOpen}
                 setOpen={setIsCreateDialogOpen}
                 orgId={orgId}
-                sites={sites}
                 onSuccess={() => {
                     // Delay refresh to allow modal to close smoothly
                     setTimeout(() => {

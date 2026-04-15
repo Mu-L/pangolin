@@ -5,6 +5,7 @@ import config from "@server/lib/config";
 import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
+import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
 
 interface IPRange {
     start: bigint;
@@ -477,9 +478,9 @@ export type Alias = { alias: string | null; aliasAddress: string | null };
 
 export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
     return allSiteResources
-        .filter((sr) => sr.alias && sr.aliasAddress && sr.mode == "host")
+        .filter((sr) => sr.aliasAddress && ((sr.alias && sr.mode == "host") || (sr.fullDomain && sr.mode == "http")))
         .map((sr) => ({
-            alias: sr.alias,
+            alias: sr.alias || sr.fullDomain,
             aliasAddress: sr.aliasAddress
         }));
 }
@@ -582,16 +583,26 @@ export type SubnetProxyTargetV2 = {
         protocol: "tcp" | "udp";
     }[];
     resourceId?: number;
+    protocol?: "http" | "https"; // if set, this target only applies to the specified protocol
+    httpTargets?: HTTPTarget[];
+    tlsCert?: string;
+    tlsKey?: string;
 };
 
-export function generateSubnetProxyTargetV2(
+export type HTTPTarget = {
+    destAddr: string; // must be an IP or hostname
+    destPort: number;
+    scheme: "http" | "https";
+};
+
+export async function generateSubnetProxyTargetV2(
     siteResource: SiteResource,
     clients: {
         clientId: number;
         pubKey: string | null;
         subnet: string | null;
     }[]
-): SubnetProxyTargetV2[] | undefined {
+): Promise<SubnetProxyTargetV2[] | undefined> {
     if (clients.length === 0) {
         logger.debug(
             `No clients have access to site resource ${siteResource.siteResourceId}, skipping target generation.`
@@ -641,6 +652,67 @@ export function generateSubnetProxyTargetV2(
             portRange,
             disableIcmp,
             resourceId: siteResource.siteResourceId
+        });
+    } else if (siteResource.mode == "http") {
+        let destination = siteResource.destination;
+        // check if this is a valid ip
+        const ipSchema = z.union([z.ipv4(), z.ipv6()]);
+        if (ipSchema.safeParse(destination).success) {
+            destination = `${destination}/32`;
+        }
+
+        if (
+            !siteResource.aliasAddress ||
+            !siteResource.destinationPort ||
+            !siteResource.scheme ||
+            !siteResource.fullDomain
+        ) {
+            logger.debug(
+                `Site resource ${siteResource.siteResourceId} is in HTTP mode but is missing alias or alias address or destinationPort or scheme, skipping alias target generation.`
+            );
+            return;
+        }
+        // also push a match for the alias address
+        let tlsCert: string | undefined;
+        let tlsKey: string | undefined;
+
+        if (siteResource.ssl && siteResource.fullDomain) {
+            try {
+                const certs = await getValidCertificatesForDomains(
+                    new Set([siteResource.fullDomain]),
+                    true
+                );
+                if (certs.length > 0 && certs[0].certFile && certs[0].keyFile) {
+                    tlsCert = certs[0].certFile;
+                    tlsKey = certs[0].keyFile;
+                } else {
+                    logger.warn(
+                        `No valid certificate found for SSL site resource ${siteResource.siteResourceId} with domain ${siteResource.fullDomain}`
+                    );
+                }
+            } catch (err) {
+                logger.error(
+                    `Failed to retrieve certificate for site resource ${siteResource.siteResourceId} domain ${siteResource.fullDomain}: ${err}`
+                );
+            }
+        }
+
+        targets.push({
+            sourcePrefixes: [],
+            destPrefix: `${siteResource.aliasAddress}/32`,
+            rewriteTo: destination,
+            portRange,
+            disableIcmp,
+            resourceId: siteResource.siteResourceId,
+            protocol: siteResource.ssl ? "https" : "http",
+            httpTargets: [
+                {
+                    destAddr: siteResource.destination,
+                    destPort: siteResource.destinationPort,
+                    scheme: siteResource.scheme
+                }
+            ],
+            ...(tlsCert && tlsKey ? { tlsCert, tlsKey } : {})
         });
     }
 

@@ -373,12 +373,12 @@ export default function UserDevicesTable({
                         <Link
                             href={`/${r.orgId}/settings/access/users/${r.userId}`}
                         >
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 {getUserDisplayName({
                                     email: r.userEmail,
                                     username: r.username
                                 }) || r.userId}
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
                         </Link>
                     ) : (

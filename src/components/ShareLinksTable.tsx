@@ -144,9 +144,9 @@ export default function ShareLinksTable({
                     <Link
                         href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}
                     >
-                        <Button variant="outline">
+                        <Button variant="outline" size="sm">
                             {r.resourceName}
-                            <ArrowUpRight className="ml-2 h-4 w-4" />
+                            <ArrowUpRight className="ml-2 h-3 w-3" />
                         </Button>
                     </Link>
                 );
