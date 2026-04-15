@@ -2351,7 +2351,7 @@
             },
             "scale": {
                 "title": "Ölçek",
-                "description": "Kurumsal özellikler, 50 kullanıcı, 50 site ve öncelikli destek."
+                "description": "Kurumsal özellikler, 50 kullanıcı, 100 site ve öncelikli destek."
             }
         },
         "personalUseOnly": "Kişisel kullanım için (ücretsiz lisans - ödeme yok)",
