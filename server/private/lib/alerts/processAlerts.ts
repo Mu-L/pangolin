@@ -15,6 +15,8 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@server/db";
 import {
     alertRules,
+    alertSites,
+    alertHealthChecks,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions,
@@ -33,7 +35,9 @@ import { sendAlertEmail } from "./sendAlertEmail";
  *
  * Given an `AlertContext`, this function:
  * 1. Finds all enabled `alertRules` whose `eventType` matches and whose
- *    `siteId` / `healthCheckId` matches (or is null, meaning "all").
+ *    `siteId` / `healthCheckId` is listed in the `alertSites` /
+ *    `alertHealthChecks` junction tables (or has no junction entries,
+ *    meaning "match all").
  * 2. Applies per-rule cooldown gating.
  * 3. Dispatches emails and webhook POSTs for every attached action.
  * 4. Updates `lastTriggeredAt` and `lastSentAt` timestamps.
@@ -44,34 +48,58 @@ export async function processAlerts(context: AlertContext): Promise<void> {
     // ------------------------------------------------------------------
     // 1. Find matching alert rules
     // ------------------------------------------------------------------
-    const siteCondition =
-        context.siteId != null
-            ? or(
-                  eq(alertRules.siteId, context.siteId),
-                  isNull(alertRules.siteId)
-              )
-            : isNull(alertRules.siteId);
+    // Rules with no junction-table entries match ALL sites / health checks.
+    // Rules with junction entries match only those specific IDs.
+    // We implement this with a LEFT JOIN: a NULL join result means the rule
+    // has no scope restrictions (match all); a non-NULL result that satisfies
+    // the id equality filter means an explicit match.
+    const baseConditions = and(
+        eq(alertRules.orgId, context.orgId),
+        eq(alertRules.eventType, context.eventType),
+        eq(alertRules.enabled, true)
+    );
 
-    const healthCheckCondition =
-        context.healthCheckId != null
-            ? or(
-                  eq(alertRules.healthCheckId, context.healthCheckId),
-                  isNull(alertRules.healthCheckId)
-              )
-            : isNull(alertRules.healthCheckId);
+    let rules: (typeof alertRules.$inferSelect)[];
 
-    const rules = await db
-        .select()
-        .from(alertRules)
-        .where(
-            and(
-                eq(alertRules.orgId, context.orgId),
-                eq(alertRules.eventType, context.eventType),
-                eq(alertRules.enabled, true),
-                // Apply the right scope filter based on event type
-                context.siteId != null ? siteCondition : healthCheckCondition
+    if (context.siteId != null) {
+        const rows = await db
+            .select()
+            .from(alertRules)
+            .leftJoin(
+                alertSites,
+                eq(alertSites.alertRuleId, alertRules.alertRuleId)
             )
-        );
+            .where(
+                and(
+                    baseConditions,
+                    or(
+                        eq(alertSites.siteId, context.siteId),
+                        isNull(alertSites.alertRuleId)
+                    )
+                )
+            );
+        rules = rows.map((r) => r.alertRules);
+    } else if (context.healthCheckId != null) {
+        const rows = await db
+            .select()
+            .from(alertRules)
+            .leftJoin(
+                alertHealthChecks,
+                eq(alertHealthChecks.alertRuleId, alertRules.alertRuleId)
+            )
+            .where(
+                and(
+                    baseConditions,
+                    or(
+                        eq(alertHealthChecks.healthCheckId, context.healthCheckId),
+                        isNull(alertHealthChecks.alertRuleId)
+                    )
+                )
+            );
+        rules = rows.map((r) => r.alertRules);
+    } else {
+        rules = [];
+    }
 
     if (rules.length === 0) {
         logger.debug(
