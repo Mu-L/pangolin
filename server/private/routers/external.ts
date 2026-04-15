@@ -29,6 +29,7 @@ import * as ssh from "#private/routers/ssh";
 import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
+import * as alertRule from "#private/routers/alertRule";
 
 import {
     verifyOrgAccess,
@@ -651,4 +652,46 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listEventStreamingDestinations),
     eventStreamingDestination.listEventStreamingDestinations
+);
+
+authenticated.put(
+    "/org/:orgId/alert-rule",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createAlertRule),
+    logActionAudit(ActionsEnum.createAlertRule),
+    alertRule.createAlertRule
+);
+
+authenticated.post(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateAlertRule),
+    logActionAudit(ActionsEnum.updateAlertRule),
+    alertRule.updateAlertRule
+);
+
+authenticated.delete(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteAlertRule),
+    logActionAudit(ActionsEnum.deleteAlertRule),
+    alertRule.deleteAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rules",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listAlertRules),
+    alertRule.listAlertRules
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getAlertRule),
+    alertRule.getAlertRule
 );
