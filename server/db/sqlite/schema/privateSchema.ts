@@ -508,7 +508,7 @@ export const alertWebhookActions = sqliteTable("alertWebhookActions", {
         .notNull()
         .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
     webhookUrl: text("webhookUrl").notNull(),
-    secret: text("secret"),
+    config: text("config"),  // encrypted JSON with auth config (authType, credentials)
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     lastSentAt: integer("lastSentAt")
 });

@@ -519,7 +519,7 @@ export const alertWebhookActions = pgTable("alertWebhookActions", {
         .notNull()
         .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
     webhookUrl: text("webhookUrl").notNull(),
-    secret: varchar("secret", { length: 255 }),  // for HMAC signature validation
+    config: text("config"),  // encrypted JSON with auth config (authType, credentials)
     enabled: boolean("enabled").notNull().default(true),
     lastSentAt: bigint("lastSentAt", { mode: "number" })  // nullable
 });
