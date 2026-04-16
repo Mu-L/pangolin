@@ -30,6 +30,7 @@ import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
+import * as healthChecks from "#private/routers/healthChecks";
 
 import {
     verifyOrgAccess,
@@ -694,4 +695,39 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getAlertRule),
     alertRule.getAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/health-checks",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listHealthChecks),
+    healthChecks.listHealthChecks
+);
+
+authenticated.put(
+    "/org/:orgId/health-check",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createHealthCheck),
+    logActionAudit(ActionsEnum.createHealthCheck),
+    healthChecks.createHealthCheck
+);
+
+authenticated.post(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateHealthCheck),
+    logActionAudit(ActionsEnum.updateHealthCheck),
+    healthChecks.updateHealthCheck
+);
+
+authenticated.delete(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteHealthCheck),
+    logActionAudit(ActionsEnum.deleteHealthCheck),
+    healthChecks.deleteHealthCheck
 );

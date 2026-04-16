@@ -228,6 +228,7 @@ export async function createTarget(
         healthCheck = await db
             .insert(targetHealthCheck)
             .values({
+                name: `${targetData.ip}:${targetData.port}`,
                 targetId: newTarget[0].targetId,
                 hcEnabled: targetData.hcEnabled ?? false,
                 hcPath: targetData.hcPath ?? null,

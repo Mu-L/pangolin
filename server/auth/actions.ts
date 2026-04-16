@@ -145,12 +145,15 @@ export enum ActionsEnum {
     updateEventStreamingDestination = "updateEventStreamingDestination",
     deleteEventStreamingDestination = "deleteEventStreamingDestination",
     listEventStreamingDestinations = "listEventStreamingDestinations",
-    listHealthChecks = "listHealthChecks",
     createAlertRule = "createAlertRule",
     updateAlertRule = "updateAlertRule",
     deleteAlertRule = "deleteAlertRule",
     listAlertRules = "listAlertRules",
-    getAlertRule = "getAlertRule"
+    getAlertRule = "getAlertRule",
+    createHealthCheck = "createHealthCheck",
+    updateHealthCheck = "updateHealthCheck",
+    deleteHealthCheck = "deleteHealthCheck",
+    listHealthChecks = "listHealthChecks"
 }
 
 export async function checkUserActionPermission(

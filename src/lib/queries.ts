@@ -4,7 +4,6 @@ import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
 import type {
     GetResourceWhitelistResponse,
-    ListHealthChecksResponse,
     ListResourceNamesResponse,
     ListResourcesResponse
 } from "@server/routers/resource";
@@ -28,7 +27,7 @@ import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
-import { wait } from "./wait";
+import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
 
 export type ProductUpdate = {
     link: string | null;
@@ -263,6 +262,44 @@ export const orgQueries = {
                     AxiosResponse<ListAlertRulesResponse>
                 >(`/org/${orgId}/alert-rules`, { signal });
                 return res.data.data.alertRules;
+            }
+        }),
+
+    standaloneHealthChecks: ({ orgId }: { orgId: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<{
+                        healthChecks: {
+                            targetHealthCheckId: number;
+                            name: string;
+                            hcEnabled: boolean;
+                            hcHealth: "unknown" | "healthy" | "unhealthy";
+                            hcMode: string | null;
+                            hcHostname: string | null;
+                            hcPort: number | null;
+                            hcPath: string | null;
+                            hcScheme: string | null;
+                            hcMethod: string | null;
+                            hcInterval: number | null;
+                            hcUnhealthyInterval: number | null;
+                            hcTimeout: number | null;
+                            hcHeaders: string | null;
+                            hcFollowRedirects: boolean | null;
+                            hcStatus: number | null;
+                            hcTlsServerName: string | null;
+                            hcHealthyThreshold: number | null;
+                            hcUnhealthyThreshold: number | null;
+                        }[];
+                        pagination: {
+                            total: number;
+                            limit: number;
+                            offset: number;
+                        };
+                    }>
+                >(`/org/${orgId}/health-checks`, { signal });
+                return res.data.data.healthChecks;
             }
         })
 };

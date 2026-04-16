@@ -140,6 +140,7 @@ export async function updateProxyResources(
             const [newHealthcheck] = await trx
                 .insert(targetHealthCheck)
                 .values({
+                    name: `${targetData.hostname}:${targetData.port}`,
                     targetId: newTarget.targetId,
                     hcEnabled: healthcheckData?.enabled || false,
                     hcPath: healthcheckData?.path,

@@ -182,7 +182,7 @@ function HealthCheckMultiSelect({
         const query = debounced.trim().toLowerCase();
         const base = query
             ? healthChecks.filter((hc) =>
-                  hc.resourceName.toLowerCase().includes(query)
+                  hc.name.toLowerCase().includes(query)
               )
             : healthChecks;
         // Always keep already-selected items visible even if they fall outside the search
@@ -243,7 +243,7 @@ function HealthCheckMultiSelect({
                             {shown.map((hc) => (
                                 <CommandItem
                                     key={hc.targetHealthCheckId}
-                                    value={`${hc.targetHealthCheckId}:${hc.resourceName}`}
+                                    value={`${hc.targetHealthCheckId}:${hc.name}`}
                                     onSelect={() =>
                                         toggle(hc.targetHealthCheckId)
                                     }
@@ -258,7 +258,7 @@ function HealthCheckMultiSelect({
                                         tabIndex={-1}
                                     />
                                     <span className="truncate">
-                                        {hc.resourceName}
+                                        {hc.name}
                                     </span>
                                 </CommandItem>
                             ))}
