@@ -214,7 +214,7 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     orgId: text("orgId").references(() => orgs.orgId, {
         onDelete: "cascade"
     }),
-    name: text("name").notNull(),
+    name: text("name"),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()
         .default(false),
