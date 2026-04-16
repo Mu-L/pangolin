@@ -26,19 +26,21 @@ type HealthCheckFormFieldsProps = {
     onFieldChange?: (fieldName: string, value: any) => void;
     showNameField?: boolean;
     hideEnabledField?: boolean;
+    watchedEnabled?: boolean;
+    watchedMode?: string;
 };
 
 export function HealthCheckFormFields({
     form,
     onFieldChange,
     showNameField,
-    hideEnabledField
+    hideEnabledField,
+    watchedEnabled,
+    watchedMode
 }: HealthCheckFormFieldsProps) {
     const t = useTranslations();
 
-    const watchedEnabled = form.watch("hcEnabled");
     const showFields = hideEnabledField || watchedEnabled;
-    const watchedMode = form.watch("hcMode");
 
     const handleChange = (fieldName: string, value: any, fieldOnChange: (v: any) => void) => {
         fieldOnChange(value);

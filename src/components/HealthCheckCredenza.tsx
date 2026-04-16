@@ -186,6 +186,9 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
         defaultValues: mode === "submit" ? DEFAULT_VALUES : {}
     });
 
+    const watchedEnabled = form.watch("hcEnabled");
+    const watchedMode = form.watch("hcMode");
+
     useEffect(() => {
         if (!open) return;
 
@@ -378,6 +381,8 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                 form={form}
                                 showNameField={mode === "submit"}
                                 hideEnabledField={mode === "submit"}
+                                watchedEnabled={watchedEnabled}
+                                watchedMode={watchedMode}
                                 onFieldChange={
                                     mode === "autoSave"
                                         ? handleFieldChange

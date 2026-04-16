@@ -22,7 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-
+import { Span } from "next/dist/trace";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
@@ -56,12 +56,6 @@ const healthVariant: Record<
     unhealthy: "red",
     unknown: "secondary"
 };
-
-function HealthBadge({ health }: { health: HealthCheckRow["hcHealth"] }) {
-    return (
-        <Badge variant={healthVariant[health]}>{healthLabel[health]}</Badge>
-    );
-}
 
 export default function HealthChecksTable({
     orgId
@@ -146,7 +140,7 @@ export default function HealthChecksTable({
                 </Button>
             ),
             cell: ({ row }) => (
-                <span className="font-medium">{row.original.name}</span>
+                <span>{row.original.name}</span>
             )
         },
         {
@@ -156,7 +150,7 @@ export default function HealthChecksTable({
                 <span className="p-3">{t("standaloneHcColumnMode")}</span>
             ),
             cell: ({ row }) => (
-                <span className="uppercase text-xs font-mono">
+                <span>
                     {row.original.hcMode?.toUpperCase() ?? "—"}
                 </span>
             )
@@ -167,11 +161,7 @@ export default function HealthChecksTable({
             header: () => (
                 <span className="p-3">{t("standaloneHcColumnTarget")}</span>
             ),
-            cell: ({ row }) => (
-                <span className="font-mono text-xs text-muted-foreground truncate max-w-64 block">
-                    {formatTarget(row.original)}
-                </span>
-            )
+            cell: ({ row }) => <span>{formatTarget(row.original)}</span>
         },
         {
             id: "health",
@@ -179,9 +169,31 @@ export default function HealthChecksTable({
             header: () => (
                 <span className="p-3">{t("standaloneHcColumnHealth")}</span>
             ),
-            cell: ({ row }) => (
-                <HealthBadge health={row.original.hcHealth} />
-            )
+            cell: ({ row }) => {
+                const health = row.original.hcHealth;
+                if (health === "healthy") {
+                    return (
+                        <span className="text-green-500 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>{healthLabel.healthy}</span>
+                        </span>
+                    );
+                } else if (health === "unhealthy") {
+                    return (
+                        <span className="text-red-500 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>{healthLabel.unhealthy}</span>
+                        </span>
+                    );
+                } else {
+                    return (
+                        <span className="text-neutral-500 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            <span>{healthLabel.unknown}</span>
+                        </span>
+                    );
+                }
+            }
         },
         {
             accessorKey: "hcEnabled",
