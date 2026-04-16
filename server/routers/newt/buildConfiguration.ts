@@ -201,6 +201,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             internalPort: targets.internalPort,
             enabled: targets.enabled,
             protocol: resources.protocol,
+            hcId: targetHealthCheck.targetHealthCheckId,
             hcEnabled: targetHealthCheck.hcEnabled,
             hcPath: targetHealthCheck.hcPath,
             hcScheme: targetHealthCheck.hcScheme,
@@ -272,6 +273,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
 
         return {
             id: target.targetId,
+            hcId: target.hcId,
             hcEnabled: target.hcEnabled,
             hcPath: target.hcPath,
             hcScheme: target.hcScheme,

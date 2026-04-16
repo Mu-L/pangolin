@@ -1,7 +1,8 @@
 import { db } from "@server/db";
 import { sites, clients, olms } from "@server/db";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import logger from "@server/logger";
+import { fireSiteOnlineAlert } from "#dynamic/lib/alerts";
 
 /**
  * Ping Accumulator
@@ -110,15 +111,44 @@ async function flushSitePingsToDb(): Promise<void> {
         const siteIds = batch.map(([id]) => id);
 
         try {
-            await withRetry(async () => {
-                await db
+            const newlyOnlineSites = await withRetry(async () => {
+                // Only update sites that were offline — these are the
+                // offline→online transitions. .returning() gives us exactly
+                // the site IDs that changed state.
+                const transitioned = await db
                     .update(sites)
                     .set({
                         online: true,
                         lastPing: maxTimestamp
                     })
-                    .where(inArray(sites.siteId, siteIds));
+                    .where(
+                        and(
+                            inArray(sites.siteId, siteIds),
+                            eq(sites.online, false)
+                        )
+                    )
+                    .returning({ siteId: sites.siteId, orgId: sites.orgId, name: sites.name });
+
+                // Update lastPing for sites that were already online.
+                // After the update above, the newly-online sites now have
+                // online = true, so this catches all remaining sites in the
+                // batch and keeps lastPing current for them too.
+                await db
+                    .update(sites)
+                    .set({ lastPing: maxTimestamp })
+                    .where(
+                        and(
+                            inArray(sites.siteId, siteIds),
+                            eq(sites.online, true)
+                        )
+                    );
+
+                return transitioned;
             }, "flushSitePingsToDb");
+
+            for (const site of newlyOnlineSites) {
+                await fireSiteOnlineAlert(site.orgId, site.siteId, site.name);
+            }
         } catch (error) {
             logger.error(
                 `Failed to flush site ping batch (${batch.length} sites), re-queuing for next cycle`,

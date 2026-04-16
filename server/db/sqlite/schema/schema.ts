@@ -210,8 +210,11 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
         autoIncrement: true
     }),
     targetId: integer("targetId")
-        .notNull()
         .references(() => targets.targetId, { onDelete: "cascade" }),
+    orgId: text("orgId").references(() => orgs.orgId, {
+        onDelete: "cascade"
+    }),
+    name: text("name").notNull(),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()
         .default(false),

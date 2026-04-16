@@ -186,9 +186,13 @@ export const targets = pgTable("targets", {
 
 export const targetHealthCheck = pgTable("targetHealthCheck", {
     targetHealthCheckId: serial("targetHealthCheckId").primaryKey(),
-    targetId: integer("targetId")
-        .notNull()
-        .references(() => targets.targetId, { onDelete: "cascade" }),
+    targetId: integer("targetId").references(() => targets.targetId, {
+        onDelete: "cascade"
+    }),
+    orgId: varchar("orgId").references(() => orgs.orgId, {
+        onDelete: "cascade"
+    }),
+    name: varchar("name"),
     hcEnabled: boolean("hcEnabled").notNull().default(false),
     hcPath: varchar("hcPath"),
     hcScheme: varchar("hcScheme"),

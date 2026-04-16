@@ -3,7 +3,10 @@ import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import logger from "@server/logger";
-import { unknown } from "zod";
+import {
+    fireHealthCheckHealthyAlert,
+    fireHealthCheckNotHealthyAlert
+} from "#dynamic/lib/alerts";
 
 interface TargetHealthStatus {
     status: string;
@@ -11,7 +14,7 @@ interface TargetHealthStatus {
     checkCount: number;
     lastError?: string;
     config: {
-        id: string;
+        id: string; // this could be the hc id or the target id, depending on the version of newt
         hcEnabled: boolean;
         hcPath?: string;
         hcScheme?: string;
@@ -23,6 +26,9 @@ interface TargetHealthStatus {
         hcTimeout?: number;
         hcHeaders?: any;
         hcMethod?: string;
+        hcTlsServerName?: string;
+        hcHealthyThreshold?: number;
+        hcUnhealthyThreshold?: number;
     };
 }
 
@@ -78,6 +84,10 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 .select({
                     targetId: targets.targetId,
                     siteId: targets.siteId,
+                    orgId: targetHealthCheck.orgId,
+                    targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
+                    resourceOrgId: resources.orgId,
+                    name: targetHealthCheck.name,
                     hcStatus: targetHealthCheck.hcHealth
                 })
                 .from(targets)
@@ -86,7 +96,10 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     eq(targets.resourceId, resources.resourceId)
                 )
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
-                .innerJoin(targetHealthCheck, eq(targets.targetId, targetHealthCheck.targetId))
+                .innerJoin(
+                    targetHealthCheck,
+                    eq(targets.targetId, targetHealthCheck.targetId)
+                )
                 .where(
                     and(
                         eq(targets.targetId, targetIdNum),
@@ -122,6 +135,21 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 })
                 .where(eq(targetHealthCheck.targetId, targetIdNum))
                 .execute();
+
+            // because we are checking above if there was a change we can fire the alert here because it changed
+            if (healthStatus.status === "unhealthy") {
+                await fireHealthCheckHealthyAlert(
+                    targetCheck.orgId || targetCheck.resourceOrgId, // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+                    targetCheck.targetHealthCheckId,
+                    targetCheck.name
+                );
+            } else if (healthStatus.status === "healthy") {
+                await fireHealthCheckNotHealthyAlert(
+                    targetCheck.orgId || targetCheck.resourceOrgId, // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+                    targetCheck.targetHealthCheckId,
+                    targetCheck.name
+                );
+            }
 
             logger.debug(
                 `Updated health status for target ${targetId} to ${healthStatus.status}`

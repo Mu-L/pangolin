@@ -4,7 +4,7 @@ import {
 } from "#dynamic/routers/ws";
 import { eq, lt, isNull, and, or, ne, not } from "drizzle-orm";
 import logger from "@server/logger";
-import { fireSiteOfflineAlert } from "#dynamic/lib/alerts";
+import { fireSiteOfflineAlert, fireSiteOnlineAlert } from "#dynamic/lib/alerts";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;
@@ -101,6 +101,8 @@ export const startNewtOfflineChecker = (): void => {
                                     .targetHealthCheckId
                             )
                         );
+
+                    // TODO: should we be firing an alert here when the health check goes to unknown?
                 }
 
                 await fireSiteOfflineAlert(staleSite.orgId, staleSite.siteId, staleSite.name);
@@ -111,6 +113,8 @@ export const startNewtOfflineChecker = (): void => {
             const allWireguardSites = await db
                 .select({
                     siteId: sites.siteId,
+                    orgId: sites.orgId,
+                    name: sites.name,
                     online: sites.online,
                     lastBandwidthUpdate: sites.lastBandwidthUpdate
                 })
@@ -142,6 +146,8 @@ export const startNewtOfflineChecker = (): void => {
                         .update(sites)
                         .set({ online: false })
                         .where(eq(sites.siteId, site.siteId));
+
+                    await fireSiteOfflineAlert(site.orgId, site.siteId, site.name);
                 } else if (
                     lastBandwidthUpdate >= wireguardOfflineThreshold &&
                     !site.online
@@ -154,6 +160,8 @@ export const startNewtOfflineChecker = (): void => {
                         .update(sites)
                         .set({ online: true })
                         .where(eq(sites.siteId, site.siteId));
+
+                    await fireSiteOnlineAlert(site.orgId, site.siteId, site.name);
                 }
             }
         } catch (error) {

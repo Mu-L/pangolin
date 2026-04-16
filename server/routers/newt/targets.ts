@@ -1,7 +1,6 @@
-import { Target, TargetHealthCheck, db, targetHealthCheck } from "@server/db";
+import { Target, TargetHealthCheck } from "@server/db";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
-import { eq, inArray } from "drizzle-orm";
 import { canCompress } from "@server/lib/clientVersionChecks";
 
 export async function addTargets(
@@ -18,17 +17,23 @@ export async function addTargets(
         }:${target.port}`;
     });
 
-    await sendToClient(newtId, {
-        type: `newt/${protocol}/add`,
-        data: {
-            targets: payloadTargets
-        }
-    }, { incrementConfigVersion: true, compress: canCompress(version, "newt") });
+    await sendToClient(
+        newtId,
+        {
+            type: `newt/${protocol}/add`,
+            data: {
+                targets: payloadTargets
+            }
+        },
+        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
+    );
 
     // Create a map for quick lookup
     const healthCheckMap = new Map<number, TargetHealthCheck>();
     healthCheckData.forEach((hc) => {
-        healthCheckMap.set(hc.targetId, hc);
+        if (hc.targetId !== null) {
+            healthCheckMap.set(hc.targetId, hc);
+        }
     });
 
     const healthCheckTargets = targets.map((target) => {
@@ -79,6 +84,7 @@ export async function addTargets(
 
         return {
             id: target.targetId,
+            hcId: hc.targetHealthCheckId,
             hcEnabled: hc.hcEnabled,
             hcPath: hc.hcPath,
             hcScheme: hc.hcScheme,
@@ -102,12 +108,16 @@ export async function addTargets(
         (target) => target !== null
     );
 
-    await sendToClient(newtId, {
-        type: `newt/healthcheck/add`,
-        data: {
-            targets: validHealthCheckTargets
-        }
-    }, { incrementConfigVersion: true, compress: canCompress(version, "newt") });
+    await sendToClient(
+        newtId,
+        {
+            type: `newt/healthcheck/add`,
+            data: {
+                targets: validHealthCheckTargets
+            }
+        },
+        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
+    );
 }
 
 export async function removeTargets(
@@ -123,21 +133,29 @@ export async function removeTargets(
         }:${target.port}`;
     });
 
-    await sendToClient(newtId, {
-        type: `newt/${protocol}/remove`,
-        data: {
-            targets: payloadTargets
-        }
-    }, { incrementConfigVersion: true });
+    await sendToClient(
+        newtId,
+        {
+            type: `newt/${protocol}/remove`,
+            data: {
+                targets: payloadTargets
+            }
+        },
+        { incrementConfigVersion: true }
+    );
 
     const healthCheckTargets = targets.map((target) => {
         return target.targetId;
     });
 
-    await sendToClient(newtId, {
-        type: `newt/healthcheck/remove`,
-        data: {
-            ids: healthCheckTargets
-        }
-    }, { incrementConfigVersion: true, compress: canCompress(version, "newt") });
+    await sendToClient(
+        newtId,
+        {
+            type: `newt/healthcheck/remove`,
+            data: {
+                ids: healthCheckTargets
+            }
+        },
+        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
+    );
 }

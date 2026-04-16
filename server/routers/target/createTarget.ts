@@ -275,8 +275,8 @@ export async function createTarget(
 
         return response<CreateTargetResponse>(res, {
             data: {
-                ...newTarget[0],
-                ...healthCheck[0]
+                ...healthCheck[0],
+                ...newTarget[0]
             },
             success: true,
             error: false,
