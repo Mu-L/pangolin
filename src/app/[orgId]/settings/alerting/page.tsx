@@ -1,6 +1,6 @@
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import AlertingRulesTable from "@app/components/AlertingRulesTable";
-import StandaloneHealthChecksTable from "@app/components/StandaloneHealthChecksTable";
+import HealthChecksTable from "@app/components/HealthChecksTable";
 import { HorizontalTabs, TabItem } from "@app/components/HorizontalTabs";
 import { getTranslations } from "next-intl/server";
 
@@ -27,7 +27,7 @@ export default async function AlertingPage(props: AlertingPageProps) {
             />
             <HorizontalTabs items={tabs} clientSide>
                 <AlertingRulesTable orgId={params.orgId} />
-                <StandaloneHealthChecksTable orgId={params.orgId} />
+                <HealthChecksTable orgId={params.orgId} />
             </HorizontalTabs>
         </>
     );

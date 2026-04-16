@@ -32,7 +32,7 @@ import { processAlerts } from "../processAlerts";
 export async function fireHealthCheckHealthyAlert(
     orgId: string,
     healthCheckId: number,
-    healthCheckName?: string,
+    healthCheckName?: string | null,
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
@@ -68,7 +68,7 @@ export async function fireHealthCheckHealthyAlert(
 export async function fireHealthCheckNotHealthyAlert(
     orgId: string,
     healthCheckId: number,
-    healthCheckName?: string,
+    healthCheckName?: string | null,
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {

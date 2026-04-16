@@ -95,6 +95,7 @@ export async function addTargets(
             hcUnhealthyInterval: hc.hcUnhealthyInterval, // in seconds
             hcTimeout: hc.hcTimeout, // in seconds
             hcHeaders: hcHeadersSend,
+            hcFollowRedirects: hc.hcFollowRedirects,
             hcMethod: hc.hcMethod,
             hcStatus: hcStatus,
             hcTlsServerName: hc.hcTlsServerName,

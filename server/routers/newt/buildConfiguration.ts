@@ -212,6 +212,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcUnhealthyInterval: targetHealthCheck.hcUnhealthyInterval,
             hcTimeout: targetHealthCheck.hcTimeout,
             hcHeaders: targetHealthCheck.hcHeaders,
+            hcFollowRedirects: targetHealthCheck.hcFollowRedirects,
             hcMethod: targetHealthCheck.hcMethod,
             hcTlsServerName: targetHealthCheck.hcTlsServerName,
             hcStatus: targetHealthCheck.hcStatus,
@@ -284,6 +285,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcUnhealthyInterval: target.hcUnhealthyInterval, // in seconds
             hcTimeout: target.hcTimeout, // in seconds
             hcHeaders: hcHeadersSend,
+            hcFollowRedirects: target.hcFollowRedirects,
             hcMethod: target.hcMethod,
             hcTlsServerName: target.hcTlsServerName,
             hcStatus: target.hcStatus,

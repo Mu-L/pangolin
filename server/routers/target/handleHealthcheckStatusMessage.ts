@@ -25,6 +25,7 @@ interface TargetHealthStatus {
         hcUnhealthyInterval?: number;
         hcTimeout?: number;
         hcHeaders?: any;
+        hcFollowRedirects?: boolean;
         hcMethod?: string;
         hcTlsServerName?: string;
         hcHealthyThreshold?: number;

@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import HealthCheckDialog from "./HealthCheckDialog";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
@@ -62,7 +63,7 @@ function HealthBadge({ health }: { health: HealthCheckRow["hcHealth"] }) {
     );
 }
 
-export default function StandaloneHealthChecksTable({
+export default function HealthChecksTable({
     orgId
 }: StandaloneHealthChecksTableProps) {
     const t = useTranslations();
