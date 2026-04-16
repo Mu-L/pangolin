@@ -14,3 +14,4 @@
 export * from "./listGeneratedLicenses";
 export * from "./generateNewLicense";
 export * from "./generateNewEnterpriseLicense";
+export * from "./clearInstanceName";

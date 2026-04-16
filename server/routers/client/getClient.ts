@@ -243,7 +243,7 @@ registry.registerPath({
     path: "/org/{orgId}/client/{niceId}",
     description:
         "Get a client by orgId and niceId. NiceId is a readable ID for the site and unique on a per org basis.",
-    tags: [OpenAPITags.Site],
+    tags: [OpenAPITags.Client],
     request: {
         params: z.object({
             orgId: z.string(),

@@ -477,7 +477,7 @@ export default function BillingPage() {
     };
 
     const handleContactUs = () => {
-        window.open("https://pangolin.net/talk-to-us", "_blank");
+        window.open("https://pangolin.net/contact", "_blank");
     };
 
     // Get current plan ID from tier
@@ -558,6 +558,14 @@ export default function BillingPage() {
     // Get button label and action for each plan
     const getPlanAction = (plan: PlanOption) => {
         if (plan.id === "enterprise") {
+            if (plan.id === currentPlanId) {
+                return {
+                    label: "Manage Current Plan",
+                    action: handleModifySubscription,
+                    variant: "default" as const,
+                    disabled: false
+                };
+            }
             return {
                 label: "Contact Us",
                 action: handleContactUs,

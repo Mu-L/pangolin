@@ -217,6 +217,13 @@ if (build === "saas") {
     );
 
     authenticated.post(
+        "/org/:orgId/license/:licenseKey/clear-instance-name",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        generateLicense.clearInstanceName
+    );
+
+    authenticated.post(
         "/send-support-request",
         rateLimit({
             windowMs: 15 * 60 * 1000,

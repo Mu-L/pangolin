@@ -19,6 +19,7 @@ export class TraefikConfigManager {
     private timeoutId: NodeJS.Timeout | null = null;
     private lastCertificateFetch: Date | null = null;
     private lastKnownDomains = new Set<string>();
+    private pendingDeletion = new Map<string, number>(); // domain -> cycles remaining before delete
     private lastLocalCertificateState = new Map<
         string,
         {
@@ -1004,33 +1005,62 @@ export class TraefikConfigManager {
 
                 const dirName = dirent.name;
                 // Only delete if NO current domain is exactly the same or ends with `.${dirName}`
-                const shouldDelete = !Array.from(currentActiveDomains).some(
+                const isUnused = !Array.from(currentActiveDomains).some(
                     (domain) =>
                         domain === dirName || domain.endsWith(`.${dirName}`)
                 );
 
-                if (shouldDelete) {
-                    const domainDir = path.join(certsPath, dirName);
-                    logger.info(
-                        `Cleaning up unused certificate directory: ${dirName}`
-                    );
-                    fs.rmSync(domainDir, { recursive: true, force: true });
-
-                    // Remove from local state tracking
-                    this.lastLocalCertificateState.delete(dirName);
-
-                    // Remove from dynamic config
-                    const certFilePath = path.join(domainDir, "cert.pem");
-                    const keyFilePath = path.join(domainDir, "key.pem");
-                    const before = dynamicConfig.tls.certificates.length;
-                    dynamicConfig.tls.certificates =
-                        dynamicConfig.tls.certificates.filter(
-                            (entry: any) =>
-                                entry.certFile !== certFilePath &&
-                                entry.keyFile !== keyFilePath
+                if (!isUnused) {
+                    // Domain is still active — remove from pending deletion if it was queued
+                    if (this.pendingDeletion.has(dirName)) {
+                        logger.info(
+                            `Certificate ${dirName} is active again, cancelling pending deletion`
                         );
-                    if (dynamicConfig.tls.certificates.length !== before) {
-                        configChanged = true;
+                        this.pendingDeletion.delete(dirName);
+                    }
+                    continue;
+                }
+
+                // Domain is unused — add to pending deletion or decrement its counter
+                if (!this.pendingDeletion.has(dirName)) {
+                    const graceCycles = 3;
+                    logger.info(
+                        `Certificate ${dirName} is no longer in use. Will delete after ${graceCycles} more cycles.`
+                    );
+                    this.pendingDeletion.set(dirName, graceCycles);
+                } else {
+                    const remaining = this.pendingDeletion.get(dirName)! - 1;
+                    if (remaining > 0) {
+                        logger.info(
+                            `Certificate ${dirName} pending deletion: ${remaining} cycle(s) remaining`
+                        );
+                        this.pendingDeletion.set(dirName, remaining);
+                    } else {
+                        // Grace period expired — actually delete now
+                        this.pendingDeletion.delete(dirName);
+
+                        const domainDir = path.join(certsPath, dirName);
+                        logger.info(
+                            `Cleaning up unused certificate directory: ${dirName}`
+                        );
+                        fs.rmSync(domainDir, { recursive: true, force: true });
+
+                        // Remove from local state tracking
+                        this.lastLocalCertificateState.delete(dirName);
+
+                        // Remove from dynamic config
+                        const certFilePath = path.join(domainDir, "cert.pem");
+                        const keyFilePath = path.join(domainDir, "key.pem");
+                        const before = dynamicConfig.tls.certificates.length;
+                        dynamicConfig.tls.certificates =
+                            dynamicConfig.tls.certificates.filter(
+                                (entry: any) =>
+                                    entry.certFile !== certFilePath &&
+                                    entry.keyFile !== keyFilePath
+                            );
+                        if (dynamicConfig.tls.certificates.length !== before) {
+                            configChanged = true;
+                        }
                     }
                 }
             }
