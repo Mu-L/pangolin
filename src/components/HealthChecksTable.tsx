@@ -1,9 +1,9 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
-import StandaloneHealthCheckCredenza, {
+import HealthCheckCredenza, {
     HealthCheckRow
-} from "@app/components/StandaloneHealthCheckCredenza";
+} from "@app/components/HealthCheckCredenza";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
@@ -22,7 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import HealthCheckDialog from "./HealthCheckDialog";
+
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
@@ -266,7 +266,8 @@ export default function HealthChecksTable({
                 />
             )}
 
-            <StandaloneHealthCheckCredenza
+            <HealthCheckCredenza
+                mode="submit"
                 open={credenzaOpen}
                 setOpen={(val) => {
                     setCredenzaOpen(val);

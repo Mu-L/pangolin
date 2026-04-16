@@ -25,16 +25,19 @@ type HealthCheckFormFieldsProps = {
     form: UseFormReturn<any>;
     onFieldChange?: (fieldName: string, value: any) => void;
     showNameField?: boolean;
+    hideEnabledField?: boolean;
 };
 
 export function HealthCheckFormFields({
     form,
     onFieldChange,
-    showNameField
+    showNameField,
+    hideEnabledField
 }: HealthCheckFormFieldsProps) {
     const t = useTranslations();
 
     const watchedEnabled = form.watch("hcEnabled");
+    const showFields = hideEnabledField || watchedEnabled;
     const watchedMode = form.watch("hcMode");
 
     const handleChange = (fieldName: string, value: any, fieldOnChange: (v: any) => void) => {
@@ -67,30 +70,32 @@ export function HealthCheckFormFields({
             )}
 
             {/* Enable Health Checks */}
-            <FormField
-                control={form.control}
-                name="hcEnabled"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                            <FormLabel>{t("enableHealthChecks")}</FormLabel>
-                            <FormDescription>
-                                {t("enableHealthChecksDescription")}
-                            </FormDescription>
-                        </div>
-                        <FormControl>
-                            <Switch
-                                checked={field.value}
-                                onCheckedChange={(value) =>
-                                    handleChange("hcEnabled", value, field.onChange)
-                                }
-                            />
-                        </FormControl>
-                    </FormItem>
-                )}
-            />
+            {!hideEnabledField && (
+                <FormField
+                    control={form.control}
+                    name="hcEnabled"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel>{t("enableHealthChecks")}</FormLabel>
+                                <FormDescription>
+                                    {t("enableHealthChecksDescription")}
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={(value) =>
+                                        handleChange("hcEnabled", value, field.onChange)
+                                    }
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+            )}
 
-            {watchedEnabled && (
+            {showFields && (
                 <div className="space-y-4">
                     {/* Mode */}
                     <FormField

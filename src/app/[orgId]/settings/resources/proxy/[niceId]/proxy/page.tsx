@@ -1,6 +1,6 @@
 "use client";
 
-import HealthCheckDialog from "@/components/HealthCheckDialog";
+import HealthCheckCredenza from "@/components/HealthCheckCredenza";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -965,10 +965,10 @@ function ProxyResourceTargetsForm({
             </SettingsSection>
 
             {selectedTargetForHealthCheck && (
-                <HealthCheckDialog
+                <HealthCheckCredenza
+                    mode="autoSave"
                     open={healthCheckDialogOpen}
                     setOpen={setHealthCheckDialogOpen}
-                    targetId={selectedTargetForHealthCheck.targetId}
                     targetAddress={`${selectedTargetForHealthCheck.ip}:${selectedTargetForHealthCheck.port}`}
                     targetMethod={
                         selectedTargetForHealthCheck.method || undefined
@@ -993,7 +993,7 @@ function ProxyResourceTargetsForm({
                             selectedTargetForHealthCheck.hcPort ||
                             selectedTargetForHealthCheck.port,
                         hcFollowRedirects:
-                            selectedTargetForHealthCheck.hcFollowRedirects ||
+                            selectedTargetForHealthCheck.hcFollowRedirects ??
                             true,
                         hcStatus:
                             selectedTargetForHealthCheck.hcStatus || undefined,

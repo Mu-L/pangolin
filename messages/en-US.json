@@ -3027,5 +3027,7 @@
     "httpDestUpdatedSuccess": "Destination updated successfully",
     "httpDestCreatedSuccess": "Destination created successfully",
     "httpDestUpdateFailed": "Failed to update destination",
-    "httpDestCreateFailed": "Failed to create destination"
+    "httpDestCreateFailed": "Failed to create destination",
+    "followRedirects": "Follow Redirects",
+    "followRedirectsDescription": "Automatically follow HTTP redirects for requests."
 }

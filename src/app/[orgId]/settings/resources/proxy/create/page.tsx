@@ -2,7 +2,7 @@
 
 import CopyTextBox from "@app/components/CopyTextBox";
 import DomainPicker from "@app/components/DomainPicker";
-import HealthCheckDialog from "@app/components/HealthCheckDialog";
+import HealthCheckCredenza from "@app/components/HealthCheckCredenza";
 import {
     PathMatchDisplay,
     PathMatchModal,
@@ -1460,12 +1460,10 @@ export default function Page() {
                                 </Button>
                             </div>
                             {selectedTargetForHealthCheck && (
-                                <HealthCheckDialog
+                                <HealthCheckCredenza
+                                    mode="autoSave"
                                     open={healthCheckDialogOpen}
                                     setOpen={setHealthCheckDialogOpen}
-                                    targetId={
-                                        selectedTargetForHealthCheck.targetId
-                                    }
                                     targetAddress={`${selectedTargetForHealthCheck.ip}:${selectedTargetForHealthCheck.port}`}
                                     targetMethod={
                                         selectedTargetForHealthCheck.method ||
@@ -1500,7 +1498,7 @@ export default function Page() {
                                             selectedTargetForHealthCheck.hcPort ||
                                             selectedTargetForHealthCheck.port,
                                         hcFollowRedirects:
-                                            selectedTargetForHealthCheck.hcFollowRedirects ||
+                                            selectedTargetForHealthCheck.hcFollowRedirects ??
                                             true,
                                         hcStatus:
                                             selectedTargetForHealthCheck.hcStatus ||
