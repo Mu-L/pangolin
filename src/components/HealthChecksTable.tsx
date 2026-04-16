@@ -74,7 +74,10 @@ export default function HealthChecksTable({
         isLoading,
         refetch,
         isRefetching
-    } = useQuery(orgQueries.standaloneHealthChecks({ orgId }));
+    } = useQuery({
+        ...orgQueries.standaloneHealthChecks({ orgId }),
+        refetchInterval: 10_000
+    });
 
     const invalidate = () =>
         queryClient.invalidateQueries(

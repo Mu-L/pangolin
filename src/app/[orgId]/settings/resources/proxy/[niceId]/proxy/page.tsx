@@ -168,6 +168,30 @@ function ProxyResourceTargetsForm({
 
     const [targets, setTargets] = useState<LocalTarget[]>(initialTargets);
     const [targetsToRemove, setTargetsToRemove] = useState<number[]>([]);
+
+    const { data: polledTargets } = useQuery({
+        ...resourceQueries.resourceTargets({
+            resourceId: resource.resourceId
+        }),
+        refetchInterval: 10_000
+    });
+
+    useEffect(() => {
+        if (!polledTargets) return;
+        setTargets((prev) =>
+            prev.map((t) => {
+                const fresh = polledTargets.find(
+                    (p) => p.targetId === t.targetId
+                );
+                if (!fresh) return t;
+                return {
+                    ...t,
+                    hcHealth: fresh.hcHealth,
+                    hcEnabled: t.updated ? t.hcEnabled : fresh.hcEnabled
+                };
+            })
+        );
+    }, [polledTargets]);
     const [dockerStates, setDockerStates] = useState<Map<number, DockerState>>(
         new Map()
     );
