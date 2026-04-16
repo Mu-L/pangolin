@@ -103,29 +103,27 @@ export default function ProductUpdates({
             )}
         >
             <div className="flex flex-col gap-1">
-                <small
-                    className={cn(
-                        "text-xs text-muted-foreground flex items-center gap-1 mt-2 empty:mt-0",
-                        showMoreUpdatesText
-                            ? "animate-in fade-in duration-300"
-                            : "opacity-0"
-                    )}
-                >
-                    {filteredUpdates.length > 1 && (
-                        <>
-                            <BellIcon className="flex-none size-3" />
-                            <span>
-                                {showNewVersionPopup
-                                    ? t("productUpdateMoreInfo", {
-                                          noOfUpdates: filteredUpdates.length
-                                      })
-                                    : t("productUpdateInfo", {
-                                          noOfUpdates: filteredUpdates.length
-                                      })}
-                            </span>
-                        </>
-                    )}
-                </small>
+                {filteredUpdates.length > 1 && (
+                    <small
+                        className={cn(
+                            "text-xs text-muted-foreground flex items-center gap-1 mt-2",
+                            showMoreUpdatesText
+                                ? "animate-in fade-in duration-300"
+                                : "opacity-0"
+                        )}
+                    >
+                        <BellIcon className="flex-none size-3" />
+                        <span>
+                            {showNewVersionPopup
+                                ? t("productUpdateMoreInfo", {
+                                      noOfUpdates: filteredUpdates.length
+                                  })
+                                : t("productUpdateInfo", {
+                                      noOfUpdates: filteredUpdates.length
+                                  })}
+                        </span>
+                    </small>
+                )}
                 <ProductUpdatesListPopup
                     updates={filteredUpdates}
                     show={filteredUpdates.length > 0}
@@ -378,7 +376,7 @@ function NewVersionAvailable({
                             <span>
                                 {t("pangolinUpdateAvailableReleaseNotes")}
                             </span>
-                            <ArrowRight className="flex-none size-3 transition-transform duration-300 ease-in-out group-hover:translate-x-1" />
+                            <ArrowRight className="flex-none size-3" />
                         </div>
                     </div>
                 </a>

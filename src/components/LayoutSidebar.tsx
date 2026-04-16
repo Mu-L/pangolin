@@ -24,10 +24,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FaGithub } from "react-icons/fa";
 import SidebarLicenseButton from "./SidebarLicenseButton";
 import { SidebarSupportButton } from "./SidebarSupportButton";
-import { is } from "drizzle-orm";
 
 const ProductUpdates = dynamic(() => import("./ProductUpdates"), {
     ssr: false
@@ -291,7 +289,6 @@ export function LayoutSidebar({
                                             : build === "enterprise"
                                               ? t("enterpriseEdition")
                                               : "Pangolin Cloud"}
-                                        <FaGithub size={12} />
                                     </Link>
                                 </div>
                                 {build === "enterprise" &&
