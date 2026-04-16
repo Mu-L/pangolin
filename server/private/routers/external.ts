@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025 Fossorial, Inc.
+ * Copyright (c) 2025-2026 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -212,6 +212,13 @@ if (build === "saas") {
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),
         generateLicense.generateNewEnterpriseLicense
+    );
+
+    authenticated.post(
+        "/org/:orgId/license/:licenseKey/clear-instance-name",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        generateLicense.clearInstanceName
     );
 
     authenticated.post(
