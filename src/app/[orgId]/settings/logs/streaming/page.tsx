@@ -22,8 +22,7 @@ import {
 } from "@app/components/Credenza";
 import { Button } from "@app/components/ui/button";
 import { Switch } from "@app/components/ui/switch";
-import { Globe, MoreHorizontal, Plus, ExternalLink, KeyRound } from "lucide-react";
-import Link from "next/link";
+import { Globe, MoreHorizontal, Plus } from "lucide-react";
 import { AxiosResponse } from "axios";
 import { build } from "@server/build";
 import Image from "next/image";
@@ -39,6 +38,8 @@ import {
     HttpDestinationCredenza,
     parseHttpConfig
 } from "@app/components/HttpDestinationCredenza";
+import { S3DestinationCredenza } from "@app/components/S3DestinationCredenza";
+import { DatadogDestinationCredenza } from "@app/components/DatadogDestinationCredenza";
 import { useTranslations } from "next-intl";
 
 // ── Re-export Destination so the rest of the file can use it ──────────────────
@@ -182,65 +183,6 @@ interface DestinationTypePickerProps {
     isPaywalled?: boolean;
 }
 
-const BOOK_A_DEMO_URL = "https://click.fossorial.io/ep922";
-const CONTACT_URL = "https://pangolin.net/contact";
-
-function ContactSalesDialog({
-    open,
-    onOpenChange
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-}) {
-    const t = useTranslations();
-    return (
-        <Credenza open={open} onOpenChange={onOpenChange}>
-            <CredenzaContent className="sm:max-w-md">
-                <CredenzaHeader>
-                    <CredenzaTitle>{t("streamingAddDestination")}</CredenzaTitle>
-                </CredenzaHeader>
-                <CredenzaBody>
-                    <div className="mb-2 rounded-md border border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden">
-                        <div className="py-3 px-4">
-                            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                                <KeyRound className="size-4 shrink-0 text-black-500" />
-                                <span>
-                                    Contact sales to enable this feature.{" "}
-                                    <Link
-                                        href={BOOK_A_DEMO_URL}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 font-medium text-black-600 underline"
-                                    >
-                                        Book a demo
-                                        <ExternalLink className="size-3.5 shrink-0" />
-                                    </Link>
-                                    {" or "}
-                                    <Link
-                                        href={CONTACT_URL}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 font-medium text-black-600 underline"
-                                    >
-                                        contact us
-                                        <ExternalLink className="size-3.5 shrink-0" />
-                                    </Link>
-                                    .
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </CredenzaBody>
-                <CredenzaFooter>
-                    <CredenzaClose asChild>
-                        <Button variant="outline">{t("cancel")}</Button>
-                    </CredenzaClose>
-                </CredenzaFooter>
-            </CredenzaContent>
-        </Credenza>
-    );
-}
-
 function DestinationTypePicker({
     open,
     onOpenChange,
@@ -249,17 +191,6 @@ function DestinationTypePicker({
 }: DestinationTypePickerProps) {
     const t = useTranslations();
     const [selected, setSelected] = useState<DestinationType>("http");
-    const [contactSalesOpen, setContactSalesOpen] = useState(false);
-
-    const ENTERPRISE_ONLY_TYPES: DestinationType[] = ["s3", "datadog"];
-
-    function handleOptionSelect(type: DestinationType) {
-        if (ENTERPRISE_ONLY_TYPES.includes(type)) {
-            setContactSalesOpen(true);
-        } else {
-            onSelect(type);
-        }
-    }
 
     const destinationTypeOptions: ReadonlyArray<
         StrategyOption<DestinationType>
@@ -305,11 +236,6 @@ function DestinationTypePicker({
     }, [open]);
 
     return (
-        <>
-        <ContactSalesDialog
-            open={contactSalesOpen}
-            onOpenChange={setContactSalesOpen}
-        />
         <Credenza open={open} onOpenChange={onOpenChange}>
             <CredenzaContent className="sm:max-w-lg">
                 <CredenzaHeader>
@@ -329,12 +255,7 @@ function DestinationTypePicker({
                         <StrategySelect
                             options={destinationTypeOptions}
                             value={selected}
-                            onChange={(type) => {
-                                setSelected(type);
-                                if (ENTERPRISE_ONLY_TYPES.includes(type)) {
-                                    setContactSalesOpen(true);
-                                }
-                            }}
+                            onChange={(type) => setSelected(type)}
                             cols={1}
                         />
                     </div>
@@ -344,7 +265,7 @@ function DestinationTypePicker({
                         <Button variant="outline">{t("cancel")}</Button>
                     </CredenzaClose>
                     <Button
-                        onClick={() => handleOptionSelect(selected)}
+                        onClick={() => onSelect(selected)}
                         disabled={isPaywalled}
                     >
                         {t("continue")}
@@ -352,7 +273,6 @@ function DestinationTypePicker({
                 </CredenzaFooter>
             </CredenzaContent>
         </Credenza>
-        </>
     );
 }
 
@@ -371,6 +291,7 @@ export default function StreamingDestinationsPage() {
     const [typePickerOpen, setTypePickerOpen] = useState(false);
     const [editingDestination, setEditingDestination] =
         useState<Destination | null>(null);
+    const [pickedType, setPickedType] = useState<DestinationType>("http");
     const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
     // Delete state
@@ -472,7 +393,8 @@ export default function StreamingDestinationsPage() {
         setTypePickerOpen(true);
     };
 
-    const handleTypePicked = (_type: DestinationType) => {
+    const handleTypePicked = (type: DestinationType) => {
+        setPickedType(type);
         setTypePickerOpen(false);
         setEditingDestination(null);
         setModalOpen(true);
@@ -480,6 +402,7 @@ export default function StreamingDestinationsPage() {
 
     const openEdit = (destination: Destination) => {
         setEditingDestination(destination);
+        setPickedType((destination.type as DestinationType) ?? "http");
         setModalOpen(true);
     };
 
@@ -526,13 +449,33 @@ export default function StreamingDestinationsPage() {
                 isPaywalled={!isEnterprise}
             />
 
-            <HttpDestinationCredenza
-                open={modalOpen}
-                onOpenChange={setModalOpen}
-                editing={editingDestination}
-                orgId={orgId}
-                onSaved={loadDestinations}
-            />
+            {pickedType === "http" && (
+                <HttpDestinationCredenza
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    editing={editingDestination}
+                    orgId={orgId}
+                    onSaved={loadDestinations}
+                />
+            )}
+            {pickedType === "s3" && (
+                <S3DestinationCredenza
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    editing={editingDestination}
+                    orgId={orgId}
+                    onSaved={loadDestinations}
+                />
+            )}
+            {pickedType === "datadog" && (
+                <DatadogDestinationCredenza
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    editing={editingDestination}
+                    orgId={orgId}
+                    onSaved={loadDestinations}
+                />
+            )}
 
             {deleteTarget && (
                 <ConfirmDeleteDialog
