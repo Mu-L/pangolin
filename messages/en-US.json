@@ -3043,5 +3043,9 @@
     "healthCheckStrategyHttp": "Validates connectivity and checks the HTTP response status.",
     "healthCheckStrategyTcp": "Verifies TCP connectivity only, without inspecting the response.",
     "healthCheckStrategySnmp": "Makes an SNMP get request to check the health of network devices and infrastructure.",
-    "healthCheckStrategyIcmp": "Uses ICMP echo requests (pings) to check if a resource is reachable and responsive."
+    "healthCheckStrategyIcmp": "Uses ICMP echo requests (pings) to check if a resource is reachable and responsive.",
+    "healthCheckTabStrategy": "Strategy",
+    "healthCheckTabConnection": "Connection",
+    "healthCheckTabAdvanced": "Advanced",
+    "healthCheckStrategyNotAvailable": "This strategy is not available. Please contact sales to enable this feature."
 }
