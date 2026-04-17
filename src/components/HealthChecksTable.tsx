@@ -25,6 +25,9 @@ import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
@@ -65,6 +68,8 @@ export default function HealthChecksTable({
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
+    const { isPaidUser } = usePaidStatus();
+    const isPaid = isPaidUser(tierMatrix.standaloneHealthChecks);
 
     const [credenzaOpen, setCredenzaOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -242,7 +247,10 @@ export default function HealthChecksTable({
                 return (
                     <Switch
                         checked={r.hcEnabled}
-                        disabled={togglingId === r.targetHealthCheckId}
+                        disabled={
+                            !isPaid ||
+                            togglingId === r.targetHealthCheckId
+                        }
                         onCheckedChange={(v) => handleToggleEnabled(r, v)}
                     />
                 );
@@ -267,6 +275,7 @@ export default function HealthChecksTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
+                                    disabled={!isPaid}
                                     onClick={() => {
                                         setSelected(r);
                                         setDeleteOpen(true);
@@ -280,6 +289,7 @@ export default function HealthChecksTable({
                         </DropdownMenu>
                         <Button
                             variant="outline"
+                            disabled={!isPaid}
                             onClick={() => {
                                 setSelected(r);
                                 setCredenzaOpen(true);
@@ -326,6 +336,8 @@ export default function HealthChecksTable({
                 onSaved={invalidate}
             />
 
+            <PaidFeaturesAlert tiers={tierMatrix.standaloneHealthChecks} />
+
             <DataTable
                 columns={columns}
                 data={rows}
@@ -337,6 +349,7 @@ export default function HealthChecksTable({
                     setSelected(null);
                     setCredenzaOpen(true);
                 }}
+                addButtonDisabled={!isPaid}
                 onRefresh={() => refetch()}
                 isRefreshing={isRefetching || isLoading}
                 addButtonText={t("standaloneHcAddButton")}

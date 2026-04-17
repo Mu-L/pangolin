@@ -2953,9 +2953,9 @@
     "streamingHttpWebhookTitle": "HTTP Webhook",
     "streamingHttpWebhookDescription": "Send events to any HTTP endpoint with flexible authentication and templating.",
     "streamingS3Title": "Amazon S3",
-    "streamingS3Description": "Stream events to an S3-compatible object storage bucket. Contact support to enable this destination.",
+    "streamingS3Description": "Stream events to an S3-compatible object storage bucket.",
     "streamingDatadogTitle": "Datadog",
-    "streamingDatadogDescription": "Forward events directly to your Datadog account. Contact support to enable this destination.",
+    "streamingDatadogDescription": "Forward events directly to your Datadog account.",
     "streamingTypePickerDescription": "Choose a destination type to get started.",
     "streamingFailedToLoad": "Failed to load destinations",
     "streamingUnexpectedError": "An unexpected error occurred.",
@@ -3031,5 +3031,9 @@
     "httpDestCreateFailed": "Failed to create destination",
     "followRedirects": "Follow Redirects",
     "followRedirectsDescription": "Automatically follow HTTP redirects for requests.",
-    "alertingErrorWebhookUrl": "Please enter a valid URL for the webhook."
+    "alertingErrorWebhookUrl": "Please enter a valid URL for the webhook.",
+    "healthCheckStrategyHttp": "Validates connectivity and checks the HTTP response status.",
+    "healthCheckStrategyTcp": "Verifies TCP connectivity only, without inspecting the response.",
+    "healthCheckStrategySnmp": "Makes an SNMP get request to check the health of network devices and infrastructure.",
+    "healthCheckStrategyIcmp": "Uses ICMP echo requests (pings) to check if a resource is reachable and responsive."
 }

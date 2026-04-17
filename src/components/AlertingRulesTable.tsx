@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { Button } from "@app/components/ui/button";
 import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
@@ -12,8 +13,10 @@ import {
 import { Switch } from "@app/components/ui/switch";
 import { toast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
@@ -82,6 +85,8 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
+    const { isPaidUser } = usePaidStatus();
+    const isPaid = isPaidUser(tierMatrix.alertingRules);
 
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<AlertRuleRow | null>(null);
@@ -182,7 +187,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                 return (
                     <Switch
                         checked={r.enabled}
-                        disabled={togglingId === r.alertRuleId}
+                        disabled={!isPaid || togglingId === r.alertRuleId}
                         onCheckedChange={(v) => setEnabled(r, v)}
                     />
                 );
@@ -215,6 +220,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
+                                    disabled={!isPaid}
                                     onClick={() => {
                                         setSelected(r);
                                         setDeleteOpen(true);
@@ -257,6 +263,8 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                     title={t("alertingDeleteRule")}
                 />
             )}
+            <PaidFeaturesAlert tiers={tierMatrix.alertingRules} />
+
             <DataTable
                 columns={columns}
                 data={rows}

@@ -22,7 +22,8 @@ import {
 } from "@app/components/Credenza";
 import { Button } from "@app/components/ui/button";
 import { Switch } from "@app/components/ui/switch";
-import { Globe, MoreHorizontal, Plus } from "lucide-react";
+import { Globe, MoreHorizontal, Plus, ExternalLink, KeyRound } from "lucide-react";
+import Link from "next/link";
 import { AxiosResponse } from "axios";
 import { build } from "@server/build";
 import Image from "next/image";
@@ -181,6 +182,65 @@ interface DestinationTypePickerProps {
     isPaywalled?: boolean;
 }
 
+const BOOK_A_DEMO_URL = "https://click.fossorial.io/ep922";
+const CONTACT_URL = "https://pangolin.net/contact";
+
+function ContactSalesDialog({
+    open,
+    onOpenChange
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    const t = useTranslations();
+    return (
+        <Credenza open={open} onOpenChange={onOpenChange}>
+            <CredenzaContent className="sm:max-w-md">
+                <CredenzaHeader>
+                    <CredenzaTitle>{t("streamingAddDestination")}</CredenzaTitle>
+                </CredenzaHeader>
+                <CredenzaBody>
+                    <div className="mb-2 rounded-md border border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden">
+                        <div className="py-3 px-4">
+                            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                                <KeyRound className="size-4 shrink-0 text-black-500" />
+                                <span>
+                                    Contact sales to enable this feature.{" "}
+                                    <Link
+                                        href={BOOK_A_DEMO_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 font-medium text-black-600 underline"
+                                    >
+                                        Book a demo
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </Link>
+                                    {" or "}
+                                    <Link
+                                        href={CONTACT_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 font-medium text-black-600 underline"
+                                    >
+                                        contact us
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </Link>
+                                    .
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </CredenzaBody>
+                <CredenzaFooter>
+                    <CredenzaClose asChild>
+                        <Button variant="outline">{t("cancel")}</Button>
+                    </CredenzaClose>
+                </CredenzaFooter>
+            </CredenzaContent>
+        </Credenza>
+    );
+}
+
 function DestinationTypePicker({
     open,
     onOpenChange,
@@ -189,6 +249,17 @@ function DestinationTypePicker({
 }: DestinationTypePickerProps) {
     const t = useTranslations();
     const [selected, setSelected] = useState<DestinationType>("http");
+    const [contactSalesOpen, setContactSalesOpen] = useState(false);
+
+    const ENTERPRISE_ONLY_TYPES: DestinationType[] = ["s3", "datadog"];
+
+    function handleOptionSelect(type: DestinationType) {
+        if (ENTERPRISE_ONLY_TYPES.includes(type)) {
+            setContactSalesOpen(true);
+        } else {
+            onSelect(type);
+        }
+    }
 
     const destinationTypeOptions: ReadonlyArray<
         StrategyOption<DestinationType>
@@ -203,7 +274,6 @@ function DestinationTypePicker({
             id: "s3",
             title: t("streamingS3Title"),
             description: t("streamingS3Description"),
-            disabled: true,
             icon: (
                 <Image
                     src="/third-party/s3.png"
@@ -218,7 +288,6 @@ function DestinationTypePicker({
             id: "datadog",
             title: t("streamingDatadogTitle"),
             description: t("streamingDatadogDescription"),
-            disabled: true,
             icon: (
                 <Image
                     src="/third-party/dd.png"
@@ -236,6 +305,11 @@ function DestinationTypePicker({
     }, [open]);
 
     return (
+        <>
+        <ContactSalesDialog
+            open={contactSalesOpen}
+            onOpenChange={setContactSalesOpen}
+        />
         <Credenza open={open} onOpenChange={onOpenChange}>
             <CredenzaContent className="sm:max-w-lg">
                 <CredenzaHeader>
@@ -255,7 +329,12 @@ function DestinationTypePicker({
                         <StrategySelect
                             options={destinationTypeOptions}
                             value={selected}
-                            onChange={setSelected}
+                            onChange={(type) => {
+                                setSelected(type);
+                                if (ENTERPRISE_ONLY_TYPES.includes(type)) {
+                                    setContactSalesOpen(true);
+                                }
+                            }}
                             cols={1}
                         />
                     </div>
@@ -265,7 +344,7 @@ function DestinationTypePicker({
                         <Button variant="outline">{t("cancel")}</Button>
                     </CredenzaClose>
                     <Button
-                        onClick={() => onSelect(selected)}
+                        onClick={() => handleOptionSelect(selected)}
                         disabled={isPaywalled}
                     >
                         {t("continue")}
@@ -273,6 +352,7 @@ function DestinationTypePicker({
                 </CredenzaFooter>
             </CredenzaContent>
         </Credenza>
+        </>
     );
 }
 

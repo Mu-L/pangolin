@@ -4,7 +4,9 @@ import AlertRuleGraphEditor from "@app/components/alert-rule-editor/AlertRuleGra
 import { apiResponseToFormValues } from "@app/lib/alertRuleForm";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -21,6 +23,8 @@ export default function EditAlertRulePage() {
     const alertRuleId = parseInt(ruleIdParam, 10);
 
     const api = createApiClient(useEnvContext());
+    const { isPaidUser } = usePaidStatus();
+    const isPaid = isPaidUser(tierMatrix.alertingRules);
 
     const [formValues, setFormValues] = useState<AlertRuleFormValues | null | undefined>(undefined);
 
@@ -73,6 +77,7 @@ export default function EditAlertRulePage() {
             alertRuleId={alertRuleId}
             initialValues={formValues}
             isNew={false}
+            disabled={!isPaid}
         />
     );
 }

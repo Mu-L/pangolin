@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,77 @@ import {
     FormLabel,
     FormMessage
 } from "@/components/ui/form";
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaClose,
+    CredenzaContent,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
+import { Button } from "@/components/ui/button";
+import { ExternalLink, KeyRound } from "lucide-react";
+import Link from "next/link";
+
+const BOOK_A_DEMO_URL = "https://click.fossorial.io/ep922";
+const CONTACT_URL = "https://pangolin.net/contact";
+const UNIMPLEMENTED_MODES = ["snmp", "icmp"];
+
+function ContactSalesDialog({
+    open,
+    onOpenChange
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    return (
+        <Credenza open={open} onOpenChange={onOpenChange}>
+            <CredenzaContent className="sm:max-w-md">
+                <CredenzaHeader>
+                    <CredenzaTitle>Coming Soon</CredenzaTitle>
+                </CredenzaHeader>
+                <CredenzaBody>
+                    <div className="mb-2 rounded-md border border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden">
+                        <div className="py-3 px-4">
+                            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                                <KeyRound className="size-4 shrink-0 text-black-500" />
+                                <span>
+                                    Contact sales to enable this feature.{" "}
+                                    <Link
+                                        href={BOOK_A_DEMO_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 font-medium text-black-600 underline"
+                                    >
+                                        Book a demo
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </Link>
+                                    {" or "}
+                                    <Link
+                                        href={CONTACT_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 font-medium text-black-600 underline"
+                                    >
+                                        contact us
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </Link>
+                                    .
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </CredenzaBody>
+                <CredenzaFooter>
+                    <CredenzaClose asChild>
+                        <Button variant="outline">Close</Button>
+                    </CredenzaClose>
+                </CredenzaFooter>
+            </CredenzaContent>
+        </Credenza>
+    );
+}
 
 type HealthCheckFormFieldsProps = {
     form: UseFormReturn<any>;
@@ -40,10 +112,19 @@ export function HealthCheckFormFields({
     watchedMode
 }: HealthCheckFormFieldsProps) {
     const t = useTranslations();
+    const [contactSalesOpen, setContactSalesOpen] = useState(false);
 
     const showFields = hideEnabledField || watchedEnabled;
 
-    const handleChange = (fieldName: string, value: any, fieldOnChange: (v: any) => void) => {
+    const handleChange = (
+        fieldName: string,
+        value: any,
+        fieldOnChange: (v: any) => void
+    ) => {
+        if (fieldName === "hcMode" && UNIMPLEMENTED_MODES.includes(value)) {
+            setContactSalesOpen(true);
+            return;
+        }
         fieldOnChange(value);
         if (onFieldChange) {
             onFieldChange(fieldName, value);
@@ -52,6 +133,10 @@ export function HealthCheckFormFields({
 
     return (
         <>
+        <ContactSalesDialog
+            open={contactSalesOpen}
+            onOpenChange={setContactSalesOpen}
+        />
             {/* Name */}
             {showNameField && (
                 <FormField
@@ -63,7 +148,9 @@ export function HealthCheckFormFields({
                             <FormControl>
                                 <Input
                                     {...field}
-                                    placeholder={t("standaloneHcNamePlaceholder")}
+                                    placeholder={t(
+                                        "standaloneHcNamePlaceholder"
+                                    )}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -86,7 +173,11 @@ export function HealthCheckFormFields({
                                 <Switch
                                     checked={field.value}
                                     onCheckedChange={(value) =>
-                                        handleChange("hcEnabled", value, field.onChange)
+                                        handleChange(
+                                            "hcEnabled",
+                                            value,
+                                            field.onChange
+                                        )
                                     }
                                 />
                             </FormControl>
@@ -103,25 +194,41 @@ export function HealthCheckFormFields({
                         name="hcMode"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>{t("healthCheckStrategy")}</FormLabel>
+                                <FormLabel>
+                                    {t("healthCheckStrategy")}
+                                </FormLabel>
                                 <FormControl>
                                     <StrategySelect
                                         cols={2}
                                         options={[
-                                                {
-                                                    id: "http",
-                                                    title: "HTTP",
-                                                    description: "Validates connectivity and checks the HTTP response status."
-                                                },
-                                                {
-                                                    id: "tcp",
-                                                    title: "TCP",
-                                                    description: "Verifies TCP connectivity only, without inspecting the response."
-                                                }
+                                            {
+                                                id: "http",
+                                                title: "HTTP",
+                                                description: t("healthCheckStrategyHttp")
+                                            },
+                                            {
+                                                id: "tcp",
+                                                title: "TCP",
+                                                description: t("healthCheckStrategyTcp")
+                                            },
+                                            {
+                                                id: "snmp",
+                                                title: "SNMP",
+                                                description: t("healthCheckStrategySnmp")
+                                            },
+                                            {
+                                                id: "icmp",
+                                                title: "Ping (ICMP)",
+                                                description: t("healthCheckStrategyIcmp")
+                                            }
                                         ]}
                                         value={field.value}
                                         onChange={(value) =>
-                                            handleChange("hcMode", value, field.onChange)
+                                            handleChange(
+                                                "hcMode",
+                                                value,
+                                                field.onChange
+                                            )
                                         }
                                     />
                                 </FormControl>
@@ -138,7 +245,9 @@ export function HealthCheckFormFields({
                                 name="hcHostname"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t("healthHostname")}</FormLabel>
+                                        <FormLabel>
+                                            {t("healthHostname")}
+                                        </FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
@@ -168,8 +277,13 @@ export function HealthCheckFormFields({
                                                 min={1}
                                                 max={65535}
                                                 onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    handleChange("hcPort", value, field.onChange);
+                                                    const value =
+                                                        e.target.value;
+                                                    handleChange(
+                                                        "hcPort",
+                                                        value,
+                                                        field.onChange
+                                                    );
                                                 }}
                                             />
                                         </FormControl>
@@ -185,23 +299,35 @@ export function HealthCheckFormFields({
                                 name="hcScheme"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t("healthScheme")}</FormLabel>
+                                        <FormLabel>
+                                            {t("healthScheme")}
+                                        </FormLabel>
                                         <Select
                                             onValueChange={(value) =>
-                                                handleChange("hcScheme", value, field.onChange)
+                                                handleChange(
+                                                    "hcScheme",
+                                                    value,
+                                                    field.onChange
+                                                )
                                             }
                                             value={field.value}
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue
-                                                        placeholder={t("healthSelectScheme")}
+                                                        placeholder={t(
+                                                            "healthSelectScheme"
+                                                        )}
                                                     />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="http">HTTP</SelectItem>
-                                                <SelectItem value="https">HTTPS</SelectItem>
+                                                <SelectItem value="http">
+                                                    HTTP
+                                                </SelectItem>
+                                                <SelectItem value="https">
+                                                    HTTPS
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -213,7 +339,9 @@ export function HealthCheckFormFields({
                                 name="hcHostname"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t("healthHostname")}</FormLabel>
+                                        <FormLabel>
+                                            {t("healthHostname")}
+                                        </FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
@@ -243,8 +371,13 @@ export function HealthCheckFormFields({
                                                 min={1}
                                                 max={65535}
                                                 onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    handleChange("hcPort", value, field.onChange);
+                                                    const value =
+                                                        e.target.value;
+                                                    handleChange(
+                                                        "hcPort",
+                                                        value,
+                                                        field.onChange
+                                                    );
                                                 }}
                                             />
                                         </FormControl>
@@ -266,23 +399,39 @@ export function HealthCheckFormFields({
                                         <FormLabel>{t("httpMethod")}</FormLabel>
                                         <Select
                                             onValueChange={(value) =>
-                                                handleChange("hcMethod", value, field.onChange)
+                                                handleChange(
+                                                    "hcMethod",
+                                                    value,
+                                                    field.onChange
+                                                )
                                             }
                                             value={field.value}
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue
-                                                        placeholder={t("selectHttpMethod")}
+                                                        placeholder={t(
+                                                            "selectHttpMethod"
+                                                        )}
                                                     />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="GET">GET</SelectItem>
-                                                <SelectItem value="POST">POST</SelectItem>
-                                                <SelectItem value="HEAD">HEAD</SelectItem>
-                                                <SelectItem value="PUT">PUT</SelectItem>
-                                                <SelectItem value="DELETE">DELETE</SelectItem>
+                                                <SelectItem value="GET">
+                                                    GET
+                                                </SelectItem>
+                                                <SelectItem value="POST">
+                                                    POST
+                                                </SelectItem>
+                                                <SelectItem value="HEAD">
+                                                    HEAD
+                                                </SelectItem>
+                                                <SelectItem value="PUT">
+                                                    PUT
+                                                </SelectItem>
+                                                <SelectItem value="DELETE">
+                                                    DELETE
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -294,7 +443,9 @@ export function HealthCheckFormFields({
                                 name="hcPath"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t("healthCheckPath")}</FormLabel>
+                                        <FormLabel>
+                                            {t("healthCheckPath")}
+                                        </FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
@@ -316,14 +467,22 @@ export function HealthCheckFormFields({
                                 name="hcTimeout"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t("timeoutSeconds")}</FormLabel>
+                                        <FormLabel>
+                                            {t("timeoutSeconds")}
+                                        </FormLabel>
                                         <FormControl>
                                             <Input
                                                 type="number"
                                                 {...field}
                                                 onChange={(e) => {
-                                                    const value = parseInt(e.target.value);
-                                                    handleChange("hcTimeout", value, field.onChange);
+                                                    const value = parseInt(
+                                                        e.target.value
+                                                    );
+                                                    handleChange(
+                                                        "hcTimeout",
+                                                        value,
+                                                        field.onChange
+                                                    );
                                                 }}
                                             />
                                         </FormControl>
@@ -347,8 +506,14 @@ export function HealthCheckFormFields({
                                             type="number"
                                             {...field}
                                             onChange={(e) => {
-                                                const value = parseInt(e.target.value);
-                                                handleChange("hcTimeout", value, field.onChange);
+                                                const value = parseInt(
+                                                    e.target.value
+                                                );
+                                                handleChange(
+                                                    "hcTimeout",
+                                                    value,
+                                                    field.onChange
+                                                );
                                             }}
                                         />
                                     </FormControl>
@@ -365,14 +530,22 @@ export function HealthCheckFormFields({
                             name="hcInterval"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>{t("healthyIntervalSeconds")}</FormLabel>
+                                    <FormLabel>
+                                        {t("healthyIntervalSeconds")}
+                                    </FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             {...field}
                                             onChange={(e) => {
-                                                const value = parseInt(e.target.value);
-                                                handleChange("hcInterval", value, field.onChange);
+                                                const value = parseInt(
+                                                    e.target.value
+                                                );
+                                                handleChange(
+                                                    "hcInterval",
+                                                    value,
+                                                    field.onChange
+                                                );
                                             }}
                                         />
                                     </FormControl>
@@ -385,13 +558,17 @@ export function HealthCheckFormFields({
                             name="hcHealthyThreshold"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>{t("healthyThreshold")}</FormLabel>
+                                    <FormLabel>
+                                        {t("healthyThreshold")}
+                                    </FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             {...field}
                                             onChange={(e) => {
-                                                const value = parseInt(e.target.value);
+                                                const value = parseInt(
+                                                    e.target.value
+                                                );
                                                 handleChange(
                                                     "hcHealthyThreshold",
                                                     value,
@@ -413,13 +590,17 @@ export function HealthCheckFormFields({
                             name="hcUnhealthyInterval"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>{t("unhealthyIntervalSeconds")}</FormLabel>
+                                    <FormLabel>
+                                        {t("unhealthyIntervalSeconds")}
+                                    </FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             {...field}
                                             onChange={(e) => {
-                                                const value = parseInt(e.target.value);
+                                                const value = parseInt(
+                                                    e.target.value
+                                                );
                                                 handleChange(
                                                     "hcUnhealthyInterval",
                                                     value,
@@ -437,13 +618,17 @@ export function HealthCheckFormFields({
                             name="hcUnhealthyThreshold"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>{t("unhealthyThreshold")}</FormLabel>
+                                    <FormLabel>
+                                        {t("unhealthyThreshold")}
+                                    </FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
                                             {...field}
                                             onChange={(e) => {
-                                                const value = parseInt(e.target.value);
+                                                const value = parseInt(
+                                                    e.target.value
+                                                );
                                                 handleChange(
                                                     "hcUnhealthyThreshold",
                                                     value,
@@ -468,15 +653,24 @@ export function HealthCheckFormFields({
                                     name="hcStatus"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>{t("expectedResponseCodes")}</FormLabel>
+                                            <FormLabel>
+                                                {t("expectedResponseCodes")}
+                                            </FormLabel>
                                             <FormControl>
                                                 <Input
                                                     type="number"
                                                     value={field.value ?? ""}
                                                     onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        const value = val ? parseInt(val) : null;
-                                                        handleChange("hcStatus", value, field.onChange);
+                                                        const val =
+                                                            e.target.value;
+                                                        const value = val
+                                                            ? parseInt(val)
+                                                            : null;
+                                                        handleChange(
+                                                            "hcStatus",
+                                                            value,
+                                                            field.onChange
+                                                        );
                                                     }}
                                                 />
                                             </FormControl>
@@ -489,7 +683,9 @@ export function HealthCheckFormFields({
                                     name="hcTlsServerName"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>{t("tlsServerName")}</FormLabel>
+                                            <FormLabel>
+                                                {t("tlsServerName")}
+                                            </FormLabel>
                                             <FormControl>
                                                 <Input
                                                     {...field}
@@ -497,7 +693,10 @@ export function HealthCheckFormFields({
                                                         handleChange(
                                                             "hcTlsServerName",
                                                             e.target.value,
-                                                            (v) => field.onChange(e)
+                                                            (v) =>
+                                                                field.onChange(
+                                                                    e
+                                                                )
                                                         )
                                                     }
                                                 />
@@ -539,7 +738,9 @@ export function HealthCheckFormFields({
                                 name="hcHeaders"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t("customHeaders")}</FormLabel>
+                                        <FormLabel>
+                                            {t("customHeaders")}
+                                        </FormLabel>
                                         <FormControl>
                                             <HeadersInput
                                                 value={field.value}

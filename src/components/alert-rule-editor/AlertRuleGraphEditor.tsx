@@ -59,6 +59,8 @@ import { useRouter } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { useTranslations } from "next-intl";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type AlertRuleT = ReturnType<typeof useTranslations>;
 
@@ -296,6 +298,7 @@ type AlertRuleGraphEditorProps = {
     alertRuleId?: number;
     initialValues: AlertRuleFormValues;
     isNew: boolean;
+    disabled?: boolean;
 };
 
 const FORM_ID = "alert-rule-graph-form";
@@ -304,7 +307,8 @@ export default function AlertRuleGraphEditor({
     orgId,
     alertRuleId,
     initialValues,
-    isNew
+    isNew,
+    disabled = false
 }: AlertRuleGraphEditorProps) {
     const t = useTranslations();
     const router = useRouter();
@@ -522,8 +526,13 @@ export default function AlertRuleGraphEditor({
         <Form {...form}>
             <form id={FORM_ID} onSubmit={onSubmit}>
                 <SettingsContainer>
+                    <PaidFeaturesAlert tiers={tierMatrix.alertingRules} />
                     <Card>
                         <CardContent className="p-4 sm:p-5 space-y-4">
+                            <fieldset
+                                disabled={disabled}
+                                className={disabled ? "opacity-50 pointer-events-none" : ""}
+                            >
                             <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <Button variant="outline" size="sm" asChild>
@@ -584,6 +593,7 @@ export default function AlertRuleGraphEditor({
                                     </Button>
                                 </div>
                             </div>
+                            </fieldset>
                         </CardContent>
                     </Card>
 
@@ -644,21 +654,25 @@ export default function AlertRuleGraphEditor({
                                     {t("alertingSidebarHint")}
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="p-4 sm:p-5 sm:px-6 pt-0">
-                                <div className="space-y-6">
-                                    {selectedStep === "source" && (
-                                        <AlertRuleSourceFields
-                                            orgId={orgId}
-                                            control={form.control}
-                                        />
-                                    )}
-                                    {selectedStep === "trigger" && (
-                                        <AlertRuleTriggerFields
-                                            control={form.control}
-                                        />
-                                    )}
-                                    {isActionsSidebar && (
-                                        <div className="space-y-4">
+                        <CardContent className="p-4 sm:p-5 sm:px-6 pt-0">
+                        <fieldset
+                            disabled={disabled}
+                            className={disabled ? "opacity-50 pointer-events-none" : ""}
+                        >
+                        <div className="space-y-6">
+                            {selectedStep === "source" && (
+                                <AlertRuleSourceFields
+                                    orgId={orgId}
+                                    control={form.control}
+                                />
+                            )}
+                            {selectedStep === "trigger" && (
+                                <AlertRuleTriggerFields
+                                    control={form.control}
+                                />
+                            )}
+                            {isActionsSidebar && (
+                                <div className="space-y-4">
                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <span className="text-sm font-medium">
                                                     {t(
@@ -719,6 +733,7 @@ export default function AlertRuleGraphEditor({
                                         </div>
                                     )}
                                 </div>
+                                </fieldset>
                             </CardContent>
                         </Card>
                     </div>
