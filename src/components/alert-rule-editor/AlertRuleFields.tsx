@@ -281,6 +281,7 @@ export function ActionBlock({
     control,
     form,
     onRemove,
+    onUpdate,
     canRemove
 }: {
     orgId: string;
@@ -288,10 +289,11 @@ export function ActionBlock({
     control: Control<AlertRuleFormValues>;
     form: UseFormReturn<AlertRuleFormValues>;
     onRemove: () => void;
+    onUpdate: (val: AlertRuleFormAction) => void;
     canRemove: boolean;
 }) {
     const t = useTranslations();
-    const type = form.watch(`actions.${index}.type`);
+    const type = useWatch({ control, name: `actions.${index}.type` });
     return (
         <div className="rounded-lg border p-4 space-y-3 relative">
             {canRemove && (
@@ -316,14 +318,14 @@ export function ActionBlock({
                             onValueChange={(v) => {
                                 const nt = v as AlertRuleFormAction["type"];
                                 if (nt === "notify") {
-                                    form.setValue(`actions.${index}`, {
+                                    onUpdate({
                                         type: "notify",
                                         userTags: [],
                                         roleTags: [],
                                         emailTags: []
                                     });
                                 } else {
-                                    form.setValue(`actions.${index}`, {
+                                    onUpdate({
                                         type: "webhook",
                                         url: "",
                                         method: "POST",
@@ -418,9 +420,9 @@ function NotifyActionFields({
         [orgRoles]
     );
 
-    const userTags = (form.watch(`actions.${index}.userTags`) ?? []) as Tag[];
-    const roleTags = (form.watch(`actions.${index}.roleTags`) ?? []) as Tag[];
-    const emailTags = (form.watch(`actions.${index}.emailTags`) ?? []) as Tag[];
+    const userTags = (useWatch({ control, name: `actions.${index}.userTags` }) ?? []) as Tag[];
+    const roleTags = (useWatch({ control, name: `actions.${index}.roleTags` }) ?? []) as Tag[];
+    const emailTags = (useWatch({ control, name: `actions.${index}.emailTags` }) ?? []) as Tag[];
 
     return (
         <div className="space-y-3 pt-1">
@@ -445,7 +447,8 @@ function NotifyActionFields({
                                             : newTags;
                                     form.setValue(
                                         `actions.${index}.userTags`,
-                                        next as Tag[]
+                                        next as Tag[],
+                                        { shouldDirty: true }
                                     );
                                 }}
                                 enableAutocomplete={true}
@@ -480,7 +483,8 @@ function NotifyActionFields({
                                             : newTags;
                                     form.setValue(
                                         `actions.${index}.roleTags`,
-                                        next as Tag[]
+                                        next as Tag[],
+                                        { shouldDirty: true }
                                     );
                                 }}
                                 enableAutocomplete={true}
@@ -511,7 +515,8 @@ function NotifyActionFields({
                                             : updater;
                                     form.setValue(
                                         `actions.${index}.emailTags`,
-                                        next as Tag[]
+                                        next as Tag[],
+                                        { shouldDirty: true }
                                     );
                                 }}
                                 activeTagIndex={emailActiveIdx}
@@ -786,7 +791,7 @@ function WebhookHeadersField({
 }) {
     const t = useTranslations();
     const headers =
-        form.watch(`actions.${index}.headers` as const) ?? [];
+        (useWatch({ control, name: `actions.${index}.headers` as const }) ?? []);
     return (
         <div className="space-y-2">
             <FormLabel>{t("alertingWebhookHeaders")}</FormLabel>
@@ -826,7 +831,8 @@ function WebhookHeadersField({
                                 ) ?? [];
                             form.setValue(
                                 `actions.${index}.headers`,
-                                cur.filter((__, i) => i !== hi)
+                                cur.filter((__, i) => i !== hi),
+                                { shouldDirty: true }
                             );
                         }}
                     >
@@ -844,7 +850,7 @@ function WebhookHeadersField({
                     form.setValue(`actions.${index}.headers`, [
                         ...cur,
                         { key: "", value: "" }
-                    ]);
+                    ], { shouldDirty: true });
                 }}
             >
                 <Plus className="h-4 w-4 mr-1" />

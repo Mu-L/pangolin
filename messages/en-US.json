@@ -3030,5 +3030,6 @@
     "httpDestUpdateFailed": "Failed to update destination",
     "httpDestCreateFailed": "Failed to create destination",
     "followRedirects": "Follow Redirects",
-    "followRedirectsDescription": "Automatically follow HTTP redirects for requests."
+    "followRedirectsDescription": "Automatically follow HTTP redirects for requests.",
+    "alertingErrorWebhookUrl": "Please enter a valid URL for the webhook."
 }

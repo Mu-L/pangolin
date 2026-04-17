@@ -316,7 +316,7 @@ export default function AlertRuleGraphEditor({
         defaultValues: initialValues ?? defaultFormValues()
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, update } = useFieldArray({
         control: form.control,
         name: "actions"
     });
@@ -687,7 +687,11 @@ export default function AlertRuleGraphEditor({
                                                                         value: ""
                                                                     }
                                                                 ],
-                                                                secret: ""
+                                                                authType: "none",
+                                                                bearerToken: "",
+                                                                basicCredentials: "",
+                                                                customHeaderName: "",
+                                                                customHeaderValue: ""
                                                             });
                                                         }
                                                         setSelectedStep(
@@ -705,6 +709,9 @@ export default function AlertRuleGraphEditor({
                                                     form={form}
                                                     onRemove={() =>
                                                         remove(index)
+                                                    }
+                                                    onUpdate={(val) =>
+                                                        update(index, val)
                                                     }
                                                     canRemove
                                                 />
