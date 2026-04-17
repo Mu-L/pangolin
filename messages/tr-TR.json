@@ -1993,7 +1993,7 @@
         "description": "Daha güvenilir ve düşük bakım gerektiren, ekstra özelliklere sahip kendi kendine barındırabileceğiniz Pangolin sunucusu",
         "introTitle": "Yönetilen Kendi Kendine Barındırılan Pangolin",
         "introDescription": "Bu, basitlik ve ekstra güvenilirlik arayan, ancak verilerini gizli tutmak ve kendi sunucularında barındırmak isteyen kişiler için tasarlanmış bir dağıtım seçeneğidir.",
-        "introDetail": "Bu seçenekle, kendi Pangolin düğümünüzü çalıştırmaya devam edersiniz — tünelleriniz, SSL bitişiniz ve trafiğiniz tamamen sunucunuzda kalır. Fark, yönetim ve izlemeyi bulut panomuz üzerinden gerçekleştiririz, bu da bir dizi avantaj sağlar:",
+        "introDetail": "Bu seçenekle, kendi Pangolin düğümünüzü çalıştırmaya devam edersiniz - tünelleriniz, SSL bitişiniz ve trafiğiniz tamamen sunucunuzda kalır. Fark, yönetim ve izlemeyi bulut panomuz üzerinden gerçekleştiririz, bu da bir dizi avantaj sağlar:",
         "benefitSimplerOperations": {
             "title": "Daha basit işlemler",
             "description": "Kendi e-posta sunucunuzu çalıştırmanıza veya karmaşık uyarılar kurmanıza gerek yok. Sağlık kontrolleri ve kesinti uyarılarını kutudan çıktığı gibi alırsınız."
@@ -2296,7 +2296,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "Kullanım Açıklaması",
-                "description": "Kullanım amacınızı doğru bir şekilde yansıtan lisans seviyesini seçin. Kişisel Lisans, yazılımın bireysel, ticari olmayan veya yıllık geliri 100,000 ABD Dolarının altında olan küçük ölçekli ticari faaliyetlerde ücretsiz kullanılmasına izin verir. Bu sınırların ötesinde kullanım — bir işletme, organizasyon veya diğer gelir getirici ortamlarda kullanım dahil olmak üzere — geçerli bir Kurumsal Lisans ve ilgili lisans ücretinin ödenmesini gerektirir. Tüm kullanıcılar, ister Kişisel ister Kurumsal, Fossorial Ticari Lisans Şartlarına uymalıdır."
+                "description": "Kullanım amacınızı doğru bir şekilde yansıtan lisans seviyesini seçin. Kişisel Lisans, yazılımın bireysel, ticari olmayan veya yıllık geliri 100,000 ABD Dolarının altında olan küçük ölçekli ticari faaliyetlerde ücretsiz kullanılmasına izin verir. Bu sınırların ötesinde kullanım - bir işletme, organizasyon veya diğer gelir getirici ortamlarda kullanım dahil olmak üzere - geçerli bir Kurumsal Lisans ve ilgili lisans ücretinin ödenmesini gerektirir. Tüm kullanıcılar, ister Kişisel ister Kurumsal, Fossorial Ticari Lisans Şartlarına uymalıdır."
             },
             "trialPeriodInformation": {
                 "title": "Deneme Süresi Bilgileri",

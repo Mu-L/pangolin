@@ -112,7 +112,7 @@ async function flushSitePingsToDb(): Promise<void> {
 
         try {
             const newlyOnlineSites = await withRetry(async () => {
-                // Only update sites that were offline — these are the
+                // Only update sites that were offline - these are the
                 // offline→online transitions. .returning() gives us exactly
                 // the site IDs that changed state.
                 const transitioned = await db
@@ -249,7 +249,7 @@ async function flushClientPingsToDb(): Promise<void> {
 }
 
 /**
- * Flush everything — called by the interval timer and during shutdown.
+ * Flush everything - called by the interval timer and during shutdown.
  */
 export async function flushPingsToDb(): Promise<void> {
     await flushSitePingsToDb();
@@ -314,7 +314,7 @@ function isTransientError(error: any): boolean {
         return true;
     }
 
-    // PostgreSQL deadlock detected — always safe to retry (one winner guaranteed)
+    // PostgreSQL deadlock detected - always safe to retry (one winner guaranteed)
     if (code === "40P01" || message.includes("deadlock")) {
         return true;
     }

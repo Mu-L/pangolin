@@ -144,7 +144,7 @@ async function pushCertUpdateToAffectedNewts(
                 await cache.del(`cert:${resource.fullDomain}`);
             }
 
-            // Generate target once — same cert applies to all sites for this resource
+            // Generate target once - same cert applies to all sites for this resource
             const newTargets = await generateSubnetProxyTargetV2(
                 resource,
                 resourceClients
@@ -157,7 +157,7 @@ async function pushCertUpdateToAffectedNewts(
                 continue;
             }
 
-            // Construct the old targets — same routing shape but with the previous cert/key.
+            // Construct the old targets - same routing shape but with the previous cert/key.
             // The newt only uses destPrefix/sourcePrefixes for removal, but we keep the
             // semantics correct so the update message accurately reflects what changed.
             const oldTargets: SubnetProxyTargetV2[] = newTargets.map((t) => ({

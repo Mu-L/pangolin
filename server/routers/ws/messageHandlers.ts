@@ -47,7 +47,7 @@ export const messageHandlers: Record<string, MessageHandler> = {
     "ws/round-trip/complete": handleRoundTripMessage
 };
 
-// Start the ping accumulator for all builds — it batches per-site online/lastPing
+// Start the ping accumulator for all builds - it batches per-site online/lastPing
 // updates into periodic bulk writes, preventing connection pool exhaustion.
 startPingAccumulator();
 

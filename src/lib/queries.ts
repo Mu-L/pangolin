@@ -291,6 +291,9 @@ export const orgQueries = {
                             hcTlsServerName: string | null;
                             hcHealthyThreshold: number | null;
                             hcUnhealthyThreshold: number | null;
+                            resourceId: number | null;
+                            resourceName: string | null;
+                            resourceNiceId: string | null;
                         }[];
                         pagination: {
                             total: number;

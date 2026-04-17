@@ -2118,7 +2118,7 @@
     "selectDomainForOrgAuthPage": "조직 인증 페이지에 대한 도메인을 선택하세요.",
     "domainPickerProvidedDomain": "제공된 도메인",
     "domainPickerFreeProvidedDomain": "무료 제공된 도메인",
-    "domainPickerFreeDomainsPaidFeature": "제공된 도메인은 유료 기능입니다. 요금제에 도메인이 포함되도록 구독하세요. — 별도로 도메인을 준비할 필요 없습니다.",
+    "domainPickerFreeDomainsPaidFeature": "제공된 도메인은 유료 기능입니다. 요금제에 도메인이 포함되도록 구독하세요. - 별도로 도메인을 준비할 필요 없습니다.",
     "domainPickerVerified": "검증됨",
     "domainPickerUnverified": "검증되지 않음",
     "domainPickerManual": "수동",
@@ -2296,7 +2296,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "사용 공개",
-                "description": "당신의 의도된 사용에 정확히 맞는 라이선스 등급을 선택하세요. 개인 라이선스는 연간 총 수익 100,000 USD 이하의 개인, 비상업적 또는 소규모 상업 활동을 위한 소프트웨어의 무료 사용을 허용합니다. 이러한 제한을 넘는 모든 사용 — 비즈니스, 조직 또는 기타 수익 창출 환경 내에서의 사용 — 은 유효한 엔터프라이즈 라이선스 및 해당 라이선스 수수료의 지불이 필요합니다. 개인 또는 기업 사용자는 모두 Fossorial 상용 라이선스 조건을 준수해야 합니다."
+                "description": "당신의 의도된 사용에 정확히 맞는 라이선스 등급을 선택하세요. 개인 라이선스는 연간 총 수익 100,000 USD 이하의 개인, 비상업적 또는 소규모 상업 활동을 위한 소프트웨어의 무료 사용을 허용합니다. 이러한 제한을 넘는 모든 사용 - 비즈니스, 조직 또는 기타 수익 창출 환경 내에서의 사용 - 은 유효한 엔터프라이즈 라이선스 및 해당 라이선스 수수료의 지불이 필요합니다. 개인 또는 기업 사용자는 모두 Fossorial 상용 라이선스 조건을 준수해야 합니다."
             },
             "trialPeriodInformation": {
                 "title": "시험 기간 정보",
@@ -2881,7 +2881,7 @@
     "httpDestFormatJsonArrayTitle": "JSON 배열",
     "httpDestFormatJsonArrayDescription": "각 배치마다 요청 하나씩, 본문은 JSON 배열입니다. 대부분의 일반 웹훅 및 Datadog과 호환됩니다.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "각 배치마다 요청 하나씩, 본문은 줄 구분 JSON — 한 라인에 하나의 객체가 있으며 외부 배열이 없습니다. Splunk HEC, Elastic / OpenSearch, Grafana Loki에 필요합니다.",
+    "httpDestFormatNdjsonDescription": "각 배치마다 요청 하나씩, 본문은 줄 구분 JSON - 한 라인에 하나의 객체가 있으며 외부 배열이 없습니다. Splunk HEC, Elastic / OpenSearch, Grafana Loki에 필요합니다.",
     "httpDestFormatSingleTitle": "각 요청 당 하나의 이벤트",
     "httpDestFormatSingleDescription": "각 개별 이벤트에 대해 별도의 HTTP POST를 전송합니다. 배치를 처리할 수 없는 엔드포인트에만 사용하세요.",
     "httpDestLogTypesTitle": "로그 유형",

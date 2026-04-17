@@ -209,11 +209,14 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     targetHealthCheckId: integer("targetHealthCheckId").primaryKey({
         autoIncrement: true
     }),
-    targetId: integer("targetId")
-        .references(() => targets.targetId, { onDelete: "cascade" }),
-    orgId: text("orgId").references(() => orgs.orgId, {
+    targetId: integer("targetId").references(() => targets.targetId, {
         onDelete: "cascade"
     }),
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
     name: text("name"),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()
@@ -294,7 +297,7 @@ export const siteResources = sqliteTable("siteResources", {
         onDelete: "set null"
     }),
     subdomain: text("subdomain"),
-    fullDomain: text("fullDomain"),
+    fullDomain: text("fullDomain")
 });
 
 export const networks = sqliteTable("networks", {

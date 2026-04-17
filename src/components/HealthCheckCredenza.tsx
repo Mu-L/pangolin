@@ -61,6 +61,9 @@ export type HealthCheckRow = {
     hcTlsServerName: string | null;
     hcHealthyThreshold: number | null;
     hcUnhealthyThreshold: number | null;
+    resourceId: number | null;
+    resourceName: string | null;
+    resourceNiceId: string | null;
 };
 
 export type HealthCheckCredenzaProps =

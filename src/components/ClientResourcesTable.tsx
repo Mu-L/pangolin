@@ -133,7 +133,7 @@ function aggregateStatusDotClass(status: AggregateSitesStatus): string {
             return "bg-yellow-500";
         case "allOffline":
         default:
-            return "bg-gray-500";
+            return "bg-neutral-500";
     }
 }
 
@@ -188,7 +188,7 @@ function ClientResourceSitesStatusCell({
                                             "h-2 w-2 shrink-0 rounded-full",
                                             isOnline
                                                 ? "bg-green-500"
-                                                : "bg-gray-500"
+                                                : "bg-neutral-500"
                                         )}
                                     />
                                     <span className="truncate">

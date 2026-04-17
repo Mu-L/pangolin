@@ -96,7 +96,7 @@ def process_directory(root_dir):
                     if has_correct_header:
                         print(f"Header up-to-date:  {file_path}")
                     else:
-                        # Either no header exists or the header is outdated — write
+                        # Either no header exists or the header is outdated - write
                         # the correct one.
                         action = "Replaced header in" if has_any_header else "Added header to"
                         new_content = HEADER_NORMALIZED + '\n\n' + body
@@ -106,7 +106,7 @@ def process_directory(root_dir):
                         files_modified += 1
                 else:
                     if has_any_header:
-                        # Remove the header — it shouldn't be here.
+                        # Remove the header - it shouldn't be here.
                         with open(file_path, 'w', encoding='utf-8') as f:
                             f.write(body)
                         print(f"Removed header from: {file_path}")

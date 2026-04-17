@@ -249,7 +249,7 @@ export async function registerNewt(
                 dateCreated: moment().toISOString()
             });
 
-            // Consume the provisioning key — cascade removes siteProvisioningKeyOrg
+            // Consume the provisioning key - cascade removes siteProvisioningKeyOrg
             await trx
                 .update(siteProvisioningKeys)
                 .set({

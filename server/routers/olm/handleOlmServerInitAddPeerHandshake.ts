@@ -211,7 +211,7 @@ export const handleOlmServerInitAddPeerHandshake: MessageHandler = async (
             continue;
         }
 
-        // Trigger the peer add handshake — if the peer was already added this will be a no-op
+        // Trigger the peer add handshake - if the peer was already added this will be a no-op
         await initPeerAddHandshake(
             client.clientId,
             {

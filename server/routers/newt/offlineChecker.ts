@@ -16,7 +16,7 @@ const OFFLINE_THRESHOLD_BANDWIDTH_MS = 8 * 60 * 1000; // 8 minutes
  * Starts the background interval that checks for newt sites that haven't
  * pinged recently and marks them as offline. For backward compatibility,
  * a site is only marked offline when there is no active WebSocket connection
- * either — so older newt versions that don't send pings but remain connected
+ * either - so older newt versions that don't send pings but remain connected
  * continue to be treated as online.
  */
 export const startNewtOfflineChecker = (): void => {
@@ -63,7 +63,7 @@ export const startNewtOfflineChecker = (): void => {
                 );
                 if (isConnected) {
                     logger.debug(
-                        `Newt ${staleSite.newtId} has not pinged recently but is still connected via WebSocket — keeping site ${staleSite.siteId} online`
+                        `Newt ${staleSite.newtId} has not pinged recently but is still connected via WebSocket - keeping site ${staleSite.siteId} online`
                     );
                     continue;
                 }

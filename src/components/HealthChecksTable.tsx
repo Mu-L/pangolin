@@ -19,17 +19,17 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Span } from "next/dist/trace";
+import Link from "next/link";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
 };
 
 function formatTarget(row: HealthCheckRow): string {
-    if (!row.hcHostname) return "—";
+    if (!row.hcHostname) return "-";
     if (row.hcMode === "tcp") {
         if (!row.hcPort) return row.hcHostname;
         return `${row.hcHostname}:${row.hcPort}`;
@@ -154,7 +154,7 @@ export default function HealthChecksTable({
             ),
             cell: ({ row }) => (
                 <span>
-                    {row.original.hcMode?.toUpperCase() ?? "—"}
+                    {row.original.hcMode?.toUpperCase() ?? "-"}
                 </span>
             )
         },
@@ -165,6 +165,27 @@ export default function HealthChecksTable({
                 <span className="p-3">{t("standaloneHcColumnTarget")}</span>
             ),
             cell: ({ row }) => <span>{formatTarget(row.original)}</span>
+        },
+        {
+            id: "resource",
+            friendlyName: "Resource",
+            header: () => (
+                <span className="p-3">Resource</span>
+            ),
+            cell: ({ row }) => {
+                const r = row.original;
+                if (!r.resourceId || !r.resourceName || !r.resourceNiceId) {
+                    return <span className="text-neutral-400">-</span>;
+                }
+                return (
+                    <Link href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}>
+                        <Button variant="outline" size="sm">
+                            {r.resourceName}
+                            <ArrowUpRight className="ml-2 h-3 w-3" />
+                        </Button>
+                    </Link>
+                );
+            }
         },
         {
             id: "health",
@@ -191,7 +212,7 @@ export default function HealthChecksTable({
                 } else {
                     return (
                         <span className="text-neutral-500 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                             <span>{healthLabel.unknown}</span>
                         </span>
                     );

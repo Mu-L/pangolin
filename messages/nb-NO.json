@@ -2881,7 +2881,7 @@
     "httpDestFormatJsonArrayTitle": "JSON liste",
     "httpDestFormatJsonArrayDescription": "Én forespørsel per batch, innholdet er en JSON-liste. Kompatibel med de mest generiske webhooks og Datadog.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "Én forespørsel per sats, innholdet er nytt avgrenset JSON — et objekt per linje, ingen ytterarray. Kreves av Splunk HEC, Elastisk/OpenSearch, og Grafana Loki.",
+    "httpDestFormatNdjsonDescription": "Én forespørsel per sats, innholdet er nytt avgrenset JSON - et objekt per linje, ingen ytterarray. Kreves av Splunk HEC, Elastisk/OpenSearch, og Grafana Loki.",
     "httpDestFormatSingleTitle": "En hendelse per forespørsel",
     "httpDestFormatSingleDescription": "Sender en separat HTTP POST for hver enkelt hendelse. Bruk bare for endepunkter som ikke kan håndtere batcher.",
     "httpDestLogTypesTitle": "Logg typer",

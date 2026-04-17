@@ -267,7 +267,7 @@ export async function getTraefikConfig(
         });
     });
 
-    // Query siteResources in HTTP mode with SSL enabled and aliases — cert generation / HTTPS edge
+    // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge
     const siteResourcesWithFullDomain = await db
         .select({
             siteResourceId: siteResources.siteResourceId,
@@ -1010,7 +1010,7 @@ export async function getTraefikConfig(
                 }
             }
 
-            // HTTPS router — presence of this entry triggers cert generation
+            // HTTPS router - presence of this entry triggers cert generation
             config_output.http.routers[siteResourceRouterName] = {
                 entryPoints: [
                     config.getRawConfig().traefik.https_entrypoint
@@ -1022,7 +1022,7 @@ export async function getTraefikConfig(
                 tls
             };
 
-            // Assets bypass router — lets Next.js static files load without rewrite
+            // Assets bypass router - lets Next.js static files load without rewrite
             config_output.http.routers[`${siteResourceRouterName}-assets`] = {
                 entryPoints: [
                     config.getRawConfig().traefik.https_entrypoint

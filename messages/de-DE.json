@@ -2296,7 +2296,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "Verwendungsanzeige",
-                "description": "Wählen Sie die Lizenz-Ebene, die Ihre beabsichtigte Nutzung genau widerspiegelt. Die Persönliche Lizenz erlaubt die freie Nutzung der Software für individuelle, nicht-kommerzielle oder kleine kommerzielle Aktivitäten mit jährlichen Brutto-Einnahmen von 100.000 USD. Über diese Grenzen hinausgehende Verwendungszwecke – einschließlich der Verwendung innerhalb eines Unternehmens, einer Organisation, oder eine andere umsatzgenerierende Umgebung — erfordert eine gültige Enterprise-Lizenz und die Zahlung der Lizenzgebühr. Alle Benutzer, ob Personal oder Enterprise, müssen die Fossorial Commercial License Bedingungen einhalten."
+                "description": "Wählen Sie die Lizenz-Ebene, die Ihre beabsichtigte Nutzung genau widerspiegelt. Die Persönliche Lizenz erlaubt die freie Nutzung der Software für individuelle, nicht-kommerzielle oder kleine kommerzielle Aktivitäten mit jährlichen Brutto-Einnahmen von 100.000 USD. Über diese Grenzen hinausgehende Verwendungszwecke – einschließlich der Verwendung innerhalb eines Unternehmens, einer Organisation, oder eine andere umsatzgenerierende Umgebung - erfordert eine gültige Enterprise-Lizenz und die Zahlung der Lizenzgebühr. Alle Benutzer, ob Personal oder Enterprise, müssen die Fossorial Commercial License Bedingungen einhalten."
             },
             "trialPeriodInformation": {
                 "title": "Testperiode Information",
@@ -2881,7 +2881,7 @@
     "httpDestFormatJsonArrayTitle": "JSON Array",
     "httpDestFormatJsonArrayDescription": "Eine Anfrage pro Stapel ist ein JSON-Array. Kompatibel mit den meisten generischen Webhooks und Datadog.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "Eine Anfrage pro Batch, der Körper ist newline-getrenntes JSON — ein Objekt pro Zeile, kein äußeres Array. Benötigt von Splunk HEC, Elastic / OpenSearch, und Grafana Loki.",
+    "httpDestFormatNdjsonDescription": "Eine Anfrage pro Batch, der Körper ist newline-getrenntes JSON - ein Objekt pro Zeile, kein äußeres Array. Benötigt von Splunk HEC, Elastic / OpenSearch, und Grafana Loki.",
     "httpDestFormatSingleTitle": "Ein Ereignis pro Anfrage",
     "httpDestFormatSingleDescription": "Sendet eine separate HTTP-POST für jedes einzelne Ereignis. Nur für Endpunkte, die Batches nicht handhaben können.",
     "httpDestLogTypesTitle": "Log-Typen",

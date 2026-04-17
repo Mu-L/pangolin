@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, targetHealthCheck } from "@server/db";
+import { db, targetHealthCheck, targets, resources } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -84,12 +84,36 @@ export async function listHealthChecks(
 
         const whereClause = and(
             eq(targetHealthCheck.orgId, orgId),
-            isNull(targetHealthCheck.targetId)
         );
 
         const list = await db
-            .select()
+            .select({
+                targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
+                name: targetHealthCheck.name,
+                hcEnabled: targetHealthCheck.hcEnabled,
+                hcHealth: targetHealthCheck.hcHealth,
+                hcMode: targetHealthCheck.hcMode,
+                hcHostname: targetHealthCheck.hcHostname,
+                hcPort: targetHealthCheck.hcPort,
+                hcPath: targetHealthCheck.hcPath,
+                hcScheme: targetHealthCheck.hcScheme,
+                hcMethod: targetHealthCheck.hcMethod,
+                hcInterval: targetHealthCheck.hcInterval,
+                hcUnhealthyInterval: targetHealthCheck.hcUnhealthyInterval,
+                hcTimeout: targetHealthCheck.hcTimeout,
+                hcHeaders: targetHealthCheck.hcHeaders,
+                hcFollowRedirects: targetHealthCheck.hcFollowRedirects,
+                hcStatus: targetHealthCheck.hcStatus,
+                hcTlsServerName: targetHealthCheck.hcTlsServerName,
+                hcHealthyThreshold: targetHealthCheck.hcHealthyThreshold,
+                hcUnhealthyThreshold: targetHealthCheck.hcUnhealthyThreshold,
+                resourceId: resources.resourceId,
+                resourceName: resources.name,
+                resourceNiceId: resources.niceId
+            })
             .from(targetHealthCheck)
+            .leftJoin(targets, eq(targetHealthCheck.targetId, targets.targetId))
+            .leftJoin(resources, eq(targets.resourceId, resources.resourceId))
             .where(whereClause)
             .orderBy(sql`${targetHealthCheck.targetHealthCheckId} DESC`)
             .limit(limit)
@@ -124,7 +148,10 @@ export async function listHealthChecks(
                     hcStatus: row.hcStatus ?? null,
                     hcTlsServerName: row.hcTlsServerName ?? null,
                     hcHealthyThreshold: row.hcHealthyThreshold ?? null,
-                    hcUnhealthyThreshold: row.hcUnhealthyThreshold ?? null
+                    hcUnhealthyThreshold: row.hcUnhealthyThreshold ?? null,
+                    resourceId: row.resourceId ?? null,
+                    resourceName: row.resourceName ?? null,
+                    resourceNiceId: row.resourceNiceId ?? null
                 })),
                 pagination: {
                     total: count,

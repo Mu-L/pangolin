@@ -434,7 +434,7 @@ export default function StreamingDestinationsPage() {
                             disabled={!isEnterprise}
                         />
                     ))}
-                    {/* Add card is always clickable — paywall is enforced inside the picker */}
+                    {/* Add card is always clickable - paywall is enforced inside the picker */}
                     <AddDestinationCard onClick={openCreate} />
                 </div>
             )}

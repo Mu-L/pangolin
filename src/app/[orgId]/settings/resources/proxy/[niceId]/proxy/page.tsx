@@ -341,19 +341,6 @@ function ProxyResourceTargetsForm({
             header: () => <span className="p-3">{t("healthCheck")}</span>,
             cell: ({ row }) => {
                 const status = row.original.hcHealth || "unknown";
-                const isEnabled = row.original.hcEnabled;
-
-                const getStatusColor = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return "green";
-                        case "unhealthy":
-                            return "red";
-                        case "unknown":
-                        default:
-                            return "secondary";
-                    }
-                };
 
                 const getStatusText = (status: string) => {
                     switch (status) {
@@ -367,19 +354,7 @@ function ProxyResourceTargetsForm({
                     }
                 };
 
-                const getStatusIcon = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return <CircleCheck className="w-3 h-3" />;
-                        case "unhealthy":
-                            return <CircleX className="w-3 h-3" />;
-                        case "unknown":
-                        default:
-                            return null;
-                    }
-                };
-
-                return (
+                   return (
                     <div className="flex items-center justify-center w-full">
                         {row.original.siteType === "newt" ? (
                             <Button
@@ -390,12 +365,15 @@ function ProxyResourceTargetsForm({
                                 }
                             >
                                 <div
-                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : ""}`}
+                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : "text-neutral-500"}`}
                                 >
-                                    <Settings className="h-4 w-4 text-foreground" />
+                                    <div
+                                        className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
+                                    ></div>
                                     {getStatusText(status)}
                                 </div>
                             </Button>
+
                         ) : (
                             <span>-</span>
                         )}

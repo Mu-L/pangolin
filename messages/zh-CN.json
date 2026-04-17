@@ -1993,7 +1993,7 @@
         "description": "更可靠和低维护自我托管的 Pangolin 服务器，带有额外的铃声和告密器",
         "introTitle": "托管自托管的潘戈林公司",
         "introDescription": "这是一种部署选择，为那些希望简洁和额外可靠的人设计，同时仍然保持他们的数据的私密性和自我托管性。",
-        "introDetail": "通过此选项，您仍然运行您自己的 Pangolin 节点 — — 您的隧道、SSL 终止，并且流量在您的服务器上保持所有状态。 不同之处在于，管理和监测是通过我们的云层仪表板进行的，该仪表板开启了一些好处：",
+        "introDetail": "通过此选项，您仍然运行您自己的 Pangolin 节点 - - 您的隧道、SSL 终止，并且流量在您的服务器上保持所有状态。 不同之处在于，管理和监测是通过我们的云层仪表板进行的，该仪表板开启了一些好处：",
         "benefitSimplerOperations": {
             "title": "简单的操作",
             "description": "无需运行您自己的邮件服务器或设置复杂的警报。您将从方框中获得健康检查和下限提醒。"
@@ -2118,7 +2118,7 @@
     "selectDomainForOrgAuthPage": "选择组织认证页面的域",
     "domainPickerProvidedDomain": "提供的域",
     "domainPickerFreeProvidedDomain": "免费提供的域",
-    "domainPickerFreeDomainsPaidFeature": "提供的域名是付费功能。订阅即可将域名包含在您的计划中—无需自带域名。",
+    "domainPickerFreeDomainsPaidFeature": "提供的域名是付费功能。订阅即可将域名包含在您的计划中-无需自带域名。",
     "domainPickerVerified": "已验证",
     "domainPickerUnverified": "未验证",
     "domainPickerManual": "手动",
@@ -2296,7 +2296,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "使用情况披露",
-                "description": "选择能准确反映您预定用途的许可等级。 个人许可证允许对个人、非商业性或小型商业活动免费使用软件，年收入毛额不到100 000美元。 超出这些限度的任何用途，包括在企业、组织内的用途。 或其他创收环境——需要有效的企业许可证和支付适用的许可证费用。 所有用户，不论是个人还是企业，都必须遵守寄养商业许可证条款。"
+                "description": "选择能准确反映您预定用途的许可等级。 个人许可证允许对个人、非商业性或小型商业活动免费使用软件，年收入毛额不到100 000美元。 超出这些限度的任何用途，包括在企业、组织内的用途。 或其他创收环境--需要有效的企业许可证和支付适用的许可证费用。 所有用户，不论是个人还是企业，都必须遵守寄养商业许可证条款。"
             },
             "trialPeriodInformation": {
                 "title": "试用期信息",
@@ -2881,7 +2881,7 @@
     "httpDestFormatJsonArrayTitle": "JSON 数组",
     "httpDestFormatJsonArrayDescription": "每批一个请求，实体是一个 JSON 数组。与大多数通用的 Web 钩子和数据兼容。",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "每批有一个请求，物体是换行符限制的 JSON ——每行一个对象，不是外部数组。 Sluk HEC、Elastic / OpenSearch和Grafana Loki所需。",
+    "httpDestFormatNdjsonDescription": "每批有一个请求，物体是换行符限制的 JSON --每行一个对象，不是外部数组。 Sluk HEC、Elastic / OpenSearch和Grafana Loki所需。",
     "httpDestFormatSingleTitle": "每个请求一个事件",
     "httpDestFormatSingleDescription": "为每个事件单独发送一个 HTTP POST。仅用于无法处理批量的端点。",
     "httpDestLogTypesTitle": "日志类型",

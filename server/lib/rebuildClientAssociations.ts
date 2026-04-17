@@ -825,7 +825,7 @@ async function handleSubnetProxyTargetUpdates(
                     // Check if this client still has access to another resource
                     // on this specific site with the same destination. We scope
                     // by siteId (via siteNetworks) rather than networkId because
-                    // removePeerData operates per-site — a resource on a different
+                    // removePeerData operates per-site - a resource on a different
                     // site sharing the same network should not block removal here.
                     const destinationStillInUse = await trx
                         .select()
@@ -980,7 +980,7 @@ export async function rebuildClientAssociationsFromClient(
                   )
             : [];
 
-    // Group by siteId for site-level associations — look up via siteNetworks since
+    // Group by siteId for site-level associations - look up via siteNetworks since
     // siteResources no longer carries a direct siteId column.
     const networkIds = Array.from(
         new Set(
@@ -1459,7 +1459,7 @@ async function handleMessagesForClientResources(
                     // Check if this client still has access to another resource
                     // on this specific site with the same destination. We scope
                     // by siteId (via siteNetworks) rather than networkId because
-                    // removePeerData operates per-site — a resource on a different
+                    // removePeerData operates per-site - a resource on a different
                     // site sharing the same network should not block removal here.
                     const destinationStillInUse = await trx
                         .select()

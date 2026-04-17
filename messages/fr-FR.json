@@ -1993,7 +1993,7 @@
         "description": "Serveur Pangolin auto-hébergé avec des cloches et des sifflets supplémentaires",
         "introTitle": "Pangolin auto-hébergé géré",
         "introDescription": "est une option de déploiement conçue pour les personnes qui veulent de la simplicité et de la fiabilité tout en gardant leurs données privées et auto-hébergées.",
-        "introDetail": "Avec cette option, vous exécutez toujours votre propre nœud Pangolin — vos tunnels, la terminaison SSL et le trafic restent sur votre serveur. La différence est que la gestion et la surveillance sont gérées via notre tableau de bord du cloud, qui déverrouille un certain nombre d'avantages :",
+        "introDetail": "Avec cette option, vous exécutez toujours votre propre nœud Pangolin - vos tunnels, la terminaison SSL et le trafic restent sur votre serveur. La différence est que la gestion et la surveillance sont gérées via notre tableau de bord du cloud, qui déverrouille un certain nombre d'avantages :",
         "benefitSimplerOperations": {
             "title": "Opérations plus simples",
             "description": "Pas besoin de faire tourner votre propre serveur de messagerie ou de configurer des alertes complexes. Vous obtiendrez des contrôles de santé et des alertes de temps d'arrêt par la suite."
@@ -2118,7 +2118,7 @@
     "selectDomainForOrgAuthPage": "Sélectionnez un domaine pour la page d'authentification de l'organisation",
     "domainPickerProvidedDomain": "Domaine fourni",
     "domainPickerFreeProvidedDomain": "Domaine fourni gratuitement",
-    "domainPickerFreeDomainsPaidFeature": "Les domaines fournis sont une fonctionnalité payante. Abonnez-vous pour obtenir un domaine inclus avec votre plan — plus besoin de fournir le vôtre.",
+    "domainPickerFreeDomainsPaidFeature": "Les domaines fournis sont une fonctionnalité payante. Abonnez-vous pour obtenir un domaine inclus avec votre plan - plus besoin de fournir le vôtre.",
     "domainPickerVerified": "Vérifié",
     "domainPickerUnverified": "Non vérifié",
     "domainPickerManual": "Manuel",
@@ -2296,7 +2296,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "Divulgation d'utilisation",
-                "description": "Sélectionnez le niveau de licence qui correspond exactement à votre utilisation prévue. La Licence Personnelle autorise l'utilisation libre du Logiciel pour des activités commerciales individuelles, non commerciales ou à petite échelle avec un revenu annuel brut inférieur à 100 000 USD. Toute utilisation au-delà de ces limites — y compris l'utilisation au sein d'une entreprise, d'une organisation, ou tout autre environnement générateur de revenus — nécessite une licence d’entreprise valide et le paiement des droits de licence applicables. Tous les utilisateurs, qu'ils soient personnels ou d'entreprise, doivent se conformer aux conditions de licence commerciale Fossorial."
+                "description": "Sélectionnez le niveau de licence qui correspond exactement à votre utilisation prévue. La Licence Personnelle autorise l'utilisation libre du Logiciel pour des activités commerciales individuelles, non commerciales ou à petite échelle avec un revenu annuel brut inférieur à 100 000 USD. Toute utilisation au-delà de ces limites - y compris l'utilisation au sein d'une entreprise, d'une organisation, ou tout autre environnement générateur de revenus - nécessite une licence d’entreprise valide et le paiement des droits de licence applicables. Tous les utilisateurs, qu'ils soient personnels ou d'entreprise, doivent se conformer aux conditions de licence commerciale Fossorial."
             },
             "trialPeriodInformation": {
                 "title": "Informations sur la période d'essai",
@@ -2881,7 +2881,7 @@
     "httpDestFormatJsonArrayTitle": "Tableau JSON",
     "httpDestFormatJsonArrayDescription": "Une requête par lot, le corps est un tableau JSON. Compatible avec la plupart des webhooks génériques et des datadog.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "Une requête par lot, body est un JSON délimité par une nouvelle ligne — un objet par ligne, pas de tableau extérieur. Requis par Splunk HEC, Elastic / OpenSearch, et Grafana Loki.",
+    "httpDestFormatNdjsonDescription": "Une requête par lot, body est un JSON délimité par une nouvelle ligne - un objet par ligne, pas de tableau extérieur. Requis par Splunk HEC, Elastic / OpenSearch, et Grafana Loki.",
     "httpDestFormatSingleTitle": "Un événement par demande",
     "httpDestFormatSingleDescription": "Envoie un POST HTTP séparé pour chaque événement individuel. Utilisé uniquement pour les terminaux qui ne peuvent pas gérer des lots.",
     "httpDestLogTypesTitle": "Types de logs",

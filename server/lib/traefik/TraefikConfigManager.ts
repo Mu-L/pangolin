@@ -1011,7 +1011,7 @@ export class TraefikConfigManager {
                 );
 
                 if (!isUnused) {
-                    // Domain is still active — remove from pending deletion if it was queued
+                    // Domain is still active - remove from pending deletion if it was queued
                     if (this.pendingDeletion.has(dirName)) {
                         logger.info(
                             `Certificate ${dirName} is active again, cancelling pending deletion`
@@ -1021,7 +1021,7 @@ export class TraefikConfigManager {
                     continue;
                 }
 
-                // Domain is unused — add to pending deletion or decrement its counter
+                // Domain is unused - add to pending deletion or decrement its counter
                 if (!this.pendingDeletion.has(dirName)) {
                     const graceCycles = 3;
                     logger.info(
@@ -1036,7 +1036,7 @@ export class TraefikConfigManager {
                         );
                         this.pendingDeletion.set(dirName, remaining);
                     } else {
-                        // Grace period expired — actually delete now
+                        // Grace period expired - actually delete now
                         this.pendingDeletion.delete(dirName);
 
                         const domainDir = path.join(certsPath, dirName);

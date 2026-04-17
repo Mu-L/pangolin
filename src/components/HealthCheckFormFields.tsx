@@ -10,6 +10,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { StrategySelect } from "@app/components/StrategySelect";
 import { Switch } from "@/components/ui/switch";
 import { HeadersInput } from "@app/components/HeadersInput";
 import {
@@ -103,22 +104,27 @@ export function HealthCheckFormFields({
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>{t("healthCheckStrategy")}</FormLabel>
-                                <Select
-                                    onValueChange={(value) =>
-                                        handleChange("hcMode", value, field.onChange)
-                                    }
-                                    value={field.value}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="http">HTTP</SelectItem>
-                                        <SelectItem value="tcp">TCP</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <FormControl>
+                                    <StrategySelect
+                                        cols={2}
+                                        options={[
+                                                {
+                                                    id: "http",
+                                                    title: "HTTP",
+                                                    description: "Validates connectivity and checks the HTTP response status."
+                                                },
+                                                {
+                                                    id: "tcp",
+                                                    title: "TCP",
+                                                    description: "Verifies TCP connectivity only, without inspecting the response."
+                                                }
+                                        ]}
+                                        value={field.value}
+                                        onChange={(value) =>
+                                            handleChange("hcMode", value, field.onChange)
+                                        }
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
