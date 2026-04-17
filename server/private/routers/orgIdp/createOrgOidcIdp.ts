@@ -44,6 +44,7 @@ const bodySchema = z.strictObject({
     autoProvision: z.boolean().optional(),
     variant: z.enum(["oidc", "google", "azure"]).optional().default("oidc"),
     roleMapping: z.string().optional(),
+    orgMapping: z.string().nullish(),
     tags: z.string().optional()
 });
 
@@ -105,6 +106,7 @@ export async function createOrgOidcIdp(
             name,
             variant,
             roleMapping,
+            orgMapping: orgMappingBody,
             tags
         } = parsedBody.data;
 
@@ -152,11 +154,16 @@ export async function createOrgOidcIdp(
                 variant
             });
 
+            const orgMapping =
+                orgMappingBody !== undefined
+                    ? orgMappingBody
+                    : `'${orgId}'`;
+
             await trx.insert(idpOrg).values({
                 idpId: idpRes.idpId,
                 orgId: orgId,
                 roleMapping: roleMapping || null,
-                orgMapping: `'${orgId}'`
+                orgMapping
             });
         });
 

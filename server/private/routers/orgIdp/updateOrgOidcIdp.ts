@@ -47,6 +47,7 @@ const bodySchema = z.strictObject({
     scopes: z.string().optional(),
     autoProvision: z.boolean().optional(),
     roleMapping: z.string().optional(),
+    orgMapping: z.string().nullish(),
     tags: z.string().optional()
 });
 
@@ -110,6 +111,7 @@ export async function updateOrgOidcIdp(
             namePath,
             name,
             roleMapping,
+            orgMapping,
             tags
         } = parsedBody.data;
 
@@ -205,13 +207,20 @@ export async function updateOrgOidcIdp(
                     .where(eq(idpOidcConfig.idpId, idpId));
             }
 
+            const idpOrgPolicyPatch: {
+                roleMapping?: string;
+                orgMapping?: string | null;
+            } = {};
             if (roleMapping !== undefined) {
-                // Update IdP-org policy
+                idpOrgPolicyPatch.roleMapping = roleMapping;
+            }
+            if (orgMapping !== undefined) {
+                idpOrgPolicyPatch.orgMapping = orgMapping;
+            }
+            if (Object.keys(idpOrgPolicyPatch).length > 0) {
                 await trx
                     .update(idpOrg)
-                    .set({
-                        roleMapping
-                    })
+                    .set(idpOrgPolicyPatch)
                     .where(
                         and(eq(idpOrg.idpId, idpId), eq(idpOrg.orgId, orgId))
                     );
