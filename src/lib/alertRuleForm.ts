@@ -34,7 +34,11 @@ export type AlertRuleFormAction =
           url: string;
           method: string;
           headers: { key: string; value: string }[];
-          secret: string;
+          authType: "none" | "bearer" | "basic" | "custom";
+          bearerToken: string;
+          basicCredentials: string;
+          customHeaderName: string;
+          customHeaderValue: string;
       };
 
 export type AlertRuleFormValues = {
@@ -95,6 +99,15 @@ export type AlertRuleApiResponse = {
         webhookUrl: string;
         enabled: boolean;
         lastSentAt: number | null;
+        config: {
+            authType: string;
+            bearerToken?: string;
+            basicCredentials?: string;
+            customHeaderName?: string;
+            customHeaderValue?: string;
+            headers?: { key: string; value: string }[];
+            method?: string;
+        } | null;
     }[];
 };
 
@@ -155,7 +168,11 @@ export function buildFormSchema(t: (k: string) => string) {
                                     value: z.string()
                                 })
                             ),
-                            secret: z.string()
+                            authType: z.enum(["none", "bearer", "basic", "custom"]),
+                            bearerToken: z.string(),
+                            basicCredentials: z.string(),
+                            customHeaderName: z.string(),
+                            customHeaderValue: z.string()
                         })
                     ])
                 )
@@ -293,12 +310,19 @@ export function apiResponseToFormValues(
 
     // Each webhook action becomes its own form webhook action
     for (const w of rule.webhookActions) {
+        const cfg = w.config;
         actions.push({
             type: "webhook",
             url: w.webhookUrl,
-            method: "POST",
-            headers: [{ key: "", value: "" }],
-            secret: ""
+            method: cfg?.method ?? "POST",
+            headers: cfg?.headers?.length
+                ? cfg.headers
+                : [{ key: "", value: "" }],
+            authType: (cfg?.authType as "none" | "bearer" | "basic" | "custom") ?? "none",
+            bearerToken: cfg?.bearerToken ?? "",
+            basicCredentials: cfg?.basicCredentials ?? "",
+            customHeaderName: cfg?.customHeaderName ?? "",
+            customHeaderValue: cfg?.customHeaderValue ?? ""
         });
     }
 
@@ -352,18 +376,15 @@ export function formValuesToApiPayload(
             webhookActions.push({
                 webhookUrl: action.url.trim(),
                 enabled: true,
-                // Encode any headers / secret as config JSON if present
-                ...(action.secret.trim() ||
-                action.headers.some((h) => h.key.trim())
-                    ? {
-                          config: JSON.stringify({
-                              secret: action.secret.trim() || undefined,
-                              headers: action.headers.filter(
-                                  (h) => h.key.trim()
-                              )
-                          })
-                      }
-                    : {})
+                config: JSON.stringify({
+                    authType: action.authType,
+                    bearerToken: action.bearerToken || undefined,
+                    basicCredentials: action.basicCredentials || undefined,
+                    customHeaderName: action.customHeaderName || undefined,
+                    customHeaderValue: action.customHeaderValue || undefined,
+                    headers: action.headers.filter((h) => h.key.trim()),
+                    method: action.method
+                })
             });
         }
     }

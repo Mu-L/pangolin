@@ -29,6 +29,9 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
+import { decrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
+import { WebhookAlertConfig } from "@server/lib/alerts/types";
 
 const paramsSchema = z
     .object({
@@ -64,6 +67,7 @@ export type GetAlertRuleResponse = {
         webhookUrl: string;
         enabled: boolean;
         lastSentAt: number | null;
+        config: WebhookAlertConfig | null;
     }[];
 };
 
@@ -172,12 +176,25 @@ export async function getAlertRule(
                 siteIds: siteRows.map((r) => r.siteId),
                 healthCheckIds: healthCheckRows.map((r) => r.healthCheckId),
                 recipients,
-                webhookActions: webhooks.map((w) => ({
-                    webhookActionId: w.webhookActionId,
-                    webhookUrl: w.webhookUrl,
-                    enabled: w.enabled,
-                    lastSentAt: w.lastSentAt ?? null
-                }))
+                webhookActions: webhooks.map((w) => {
+                            let parsedConfig: WebhookAlertConfig | null = null;
+                            if (w.config) {
+                                try {
+                                    const serverSecret = config.getRawConfig().server.secret!;
+                                    const decrypted = decrypt(w.config, serverSecret);
+                                    parsedConfig = JSON.parse(decrypted) as WebhookAlertConfig;
+                                } catch {
+                                    // best-effort – return null if decryption fails
+                                }
+                            }
+                            return {
+                                webhookActionId: w.webhookActionId,
+                                webhookUrl: w.webhookUrl,
+                                enabled: w.enabled,
+                                lastSentAt: w.lastSentAt ?? null,
+                                config: parsedConfig
+                            };
+                        })
             },
             success: true,
             error: false,

@@ -28,7 +28,7 @@ import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
 import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
-import { StatusHistoryResponse } from "@server/middlewares/statusHistory";
+import { StatusHistoryResponse } from "@server/lib/statusHistory";
 
 export type ProductUpdate = {
     link: string | null;

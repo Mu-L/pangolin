@@ -41,6 +41,10 @@ export interface WebhookAlertConfig {
     customHeaderName?: string;
     /** Custom header value – used when authType === "custom" */
     customHeaderValue?: string;
+    /** Extra headers to send with every webhook request */
+    headers?: Array<{ key: string; value: string }>;
+    /** HTTP method (default POST) */
+    method?: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -28,6 +28,8 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { encrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 
 const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
 const HC_EVENT_TYPES = [
@@ -247,11 +249,12 @@ export async function createAlertRule(
         }
 
         if (webhookActions.length > 0) {
+            const serverSecret = config.getRawConfig().server.secret!;
             await db.insert(alertWebhookActions).values(
                 webhookActions.map((wa) => ({
                     alertRuleId: rule.alertRuleId,
                     webhookUrl: wa.webhookUrl,
-                    config: wa.config ?? null,
+                    config: wa.config != null ? encrypt(wa.config, serverSecret) : null,
                     enabled: wa.enabled
                 }))
             );

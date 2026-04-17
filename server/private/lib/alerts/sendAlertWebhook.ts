@@ -55,7 +55,7 @@ export async function sendAlertWebhook(
     let response: Response;
     try {
         response = await fetch(url, {
-            method: "POST",
+            method: webhookConfig.method ?? "POST",
             headers,
             body,
             signal: controller.signal
@@ -126,6 +126,14 @@ function buildHeaders(webhookConfig: WebhookAlertConfig): Record<string, string>
         case "none":
         default:
             break;
+    }
+
+    if (webhookConfig.headers) {
+        for (const { key, value } of webhookConfig.headers) {
+            if (key.trim()) {
+                headers[key.trim()] = value;
+            }
+        }
     }
 
     return headers;

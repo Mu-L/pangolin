@@ -30,6 +30,11 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
+import {
+    RadioGroup,
+    RadioGroupItem
+} from "@app/components/ui/radio-group";
+import { Label } from "@app/components/ui/label";
 import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
@@ -322,8 +327,12 @@ export function ActionBlock({
                                         type: "webhook",
                                         url: "",
                                         method: "POST",
-                                        headers: [{ key: "", value: "" }],
-                                        secret: ""
+                                        headers: [],
+                                        authType: "none",
+                                        bearerToken: "",
+                                        basicCredentials: "",
+                                        customHeaderName: "",
+                                        customHeaderValue: ""
                                     });
                                 }
                             }}
@@ -580,26 +589,187 @@ function WebhookActionFields({
                     </FormItem>
                 )}
             />
-            <FormField
-                control={control}
-                name={`actions.${index}.secret`}
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>{t("alertingWebhookSecret")}</FormLabel>
-                        <FormControl>
-                            <Input
-                                {...field}
-                                type="password"
-                                autoComplete="new-password"
-                                placeholder={t(
-                                    "alertingWebhookSecretPlaceholder"
-                                )}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
+            {/* Authentication */}
+            <div className="space-y-3">
+                <div>
+                    <label className="font-medium text-sm block">
+                        {t("httpDestAuthTitle")}
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("httpDestAuthDescription")}
+                    </p>
+                </div>
+                <FormField
+                    control={control}
+                    name={`actions.${index}.authType`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormControl>
+                                <RadioGroup
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                    className="gap-2"
+                                >
+                                    {/* None */}
+                                    <div className="flex items-start gap-3 rounded-md border p-3 transition-colors">
+                                        <RadioGroupItem
+                                            value="none"
+                                            id={`auth-none-${index}`}
+                                            className="mt-0.5"
+                                        />
+                                        <div>
+                                            <Label
+                                                htmlFor={`auth-none-${index}`}
+                                                className="cursor-pointer font-medium"
+                                            >
+                                                {t("httpDestAuthNoneTitle")}
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {t("httpDestAuthNoneDescription")}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Bearer */}
+                                    <div className="flex items-start gap-3 rounded-md border p-3">
+                                        <RadioGroupItem
+                                            value="bearer"
+                                            id={`auth-bearer-${index}`}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="flex-1 space-y-3">
+                                            <div>
+                                                <Label
+                                                    htmlFor={`auth-bearer-${index}`}
+                                                    className="cursor-pointer font-medium"
+                                                >
+                                                    {t("httpDestAuthBearerTitle")}
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {t("httpDestAuthBearerDescription")}
+                                                </p>
+                                            </div>
+                                            {field.value === "bearer" && (
+                                                <FormField
+                                                    control={control}
+                                                    name={`actions.${index}.bearerToken`}
+                                                    render={({ field: f }) => (
+                                                        <FormItem>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...f}
+                                                                    placeholder={t("httpDestAuthBearerPlaceholder")}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Basic */}
+                                    <div className="flex items-start gap-3 rounded-md border p-3">
+                                        <RadioGroupItem
+                                            value="basic"
+                                            id={`auth-basic-${index}`}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="flex-1 space-y-3">
+                                            <div>
+                                                <Label
+                                                    htmlFor={`auth-basic-${index}`}
+                                                    className="cursor-pointer font-medium"
+                                                >
+                                                    {t("httpDestAuthBasicTitle")}
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {t("httpDestAuthBasicDescription")}
+                                                </p>
+                                            </div>
+                                            {field.value === "basic" && (
+                                                <FormField
+                                                    control={control}
+                                                    name={`actions.${index}.basicCredentials`}
+                                                    render={({ field: f }) => (
+                                                        <FormItem>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...f}
+                                                                    placeholder={t("httpDestAuthBasicPlaceholder")}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Custom */}
+                                    <div className="flex items-start gap-3 rounded-md border p-3">
+                                        <RadioGroupItem
+                                            value="custom"
+                                            id={`auth-custom-${index}`}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="flex-1 space-y-3">
+                                            <div>
+                                                <Label
+                                                    htmlFor={`auth-custom-${index}`}
+                                                    className="cursor-pointer font-medium"
+                                                >
+                                                    {t("httpDestAuthCustomTitle")}
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {t("httpDestAuthCustomDescription")}
+                                                </p>
+                                            </div>
+                                            {field.value === "custom" && (
+                                                <div className="flex gap-2">
+                                                    <FormField
+                                                        control={control}
+                                                        name={`actions.${index}.customHeaderName`}
+                                                        render={({ field: f }) => (
+                                                            <FormItem className="flex-1">
+                                                                <FormControl>
+                                                                    <Input
+                                                                        {...f}
+                                                                        placeholder={t("httpDestAuthCustomHeaderNamePlaceholder")}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={control}
+                                                        name={`actions.${index}.customHeaderValue`}
+                                                        render={({ field: f }) => (
+                                                            <FormItem className="flex-1">
+                                                                <FormControl>
+                                                                    <Input
+                                                                        {...f}
+                                                                        placeholder={t("httpDestAuthCustomHeaderValuePlaceholder")}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
             <WebhookHeadersField index={index} control={control} form={form} />
         </div>
     );
