@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, orgs, userOrgs, users } from "@server/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, not } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -17,11 +17,10 @@ import { verifyTotpCode } from "@server/auth/totp";
 import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsForOrgs";
 import { build } from "@server/build";
 import { getOrgTierData } from "#dynamic/lib/billing";
-import {
-    deleteOrgById,
-    sendTerminationMessages
-} from "@server/lib/deleteOrg";
+import { deleteOrgById, sendTerminationMessages } from "@server/lib/deleteOrg";
 import { UserType } from "@server/types/UserTypes";
+import { usageService } from "@server/lib/billing/usageService";
+import { FeatureId } from "@server/lib/billing";
 
 const deleteMyAccountBody = z.strictObject({
     password: z.string().optional(),
@@ -98,9 +97,9 @@ export async function deleteMyAccount(
                 and(eq(userOrgs.userId, userId), eq(userOrgs.isOwner, true))
             );
 
-        const orgIds = ownedOrgsRows.map((r) => r.orgId);
+        const ownedOrgIds = ownedOrgsRows.map((r) => r.orgId);
 
-        if (build === "saas" && orgIds.length > 0) {
+        if (build === "saas" && ownedOrgIds.length > 0) {
             const primaryOrgId = ownedOrgsRows.find(
                 (r) => r.isBillingOrg && r.isOwner
             )?.orgId;
@@ -119,14 +118,14 @@ export async function deleteMyAccount(
 
         if (!password) {
             const orgsWithNames =
-                orgIds.length > 0
+                ownedOrgIds.length > 0
                     ? await db
                           .select({
                               orgId: orgs.orgId,
                               name: orgs.name
                           })
                           .from(orgs)
-                          .where(inArray(orgs.orgId, orgIds))
+                          .where(inArray(orgs.orgId, ownedOrgIds))
                     : [];
             return response<DeleteMyAccountPreviewResponse>(res, {
                 data: {
@@ -206,9 +205,23 @@ export async function deleteMyAccount(
             olmsToTerminate: allOlmsToTerminate
         });
 
+        const otherOrgsTheUserWasIn = await db
+            .select()
+            .from(userOrgs)
+            .where(
+                and(
+                    eq(userOrgs.userId, userId),
+                    not(inArray(userOrgs.orgId, ownedOrgIds))
+                )
+            );
+
         await db.transaction(async (trx) => {
             await trx.delete(users).where(eq(users.userId, userId));
             await calculateUserClientsForOrgs(userId, trx);
+            // loop through the other orgs and decrement the count
+            for (const userOrg of otherOrgsTheUserWasIn) {
+                await usageService.add(userOrg.orgId, FeatureId.USERS, -1, trx);
+            }
         });
 
         try {
@@ -233,10 +246,7 @@ export async function deleteMyAccount(
     } catch (error) {
         logger.error(error);
         return next(
-            createHttpError(
-                HttpCode.INTERNAL_SERVER_ERROR,
-                "An error occurred"
-            )
+            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
         );
     }
 }
