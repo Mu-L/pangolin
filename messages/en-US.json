@@ -2899,5 +2899,22 @@
     "httpDestUpdatedSuccess": "Destination updated successfully",
     "httpDestCreatedSuccess": "Destination created successfully",
     "httpDestUpdateFailed": "Failed to update destination",
-    "httpDestCreateFailed": "Failed to create destination"
+    "httpDestCreateFailed": "Failed to create destination",
+    "idpAddActionCreateNew": "Create new identity provider",
+    "idpAddActionImportFromOrg": "Import from another organization",
+    "idpImportDialogTitle": "Import Identity Provider",
+    "idpImportDialogDescription": "Choose an identity provider from an organization where you are an admin. It will be linked to this organization.",
+    "idpImportSearchPlaceholder": "Search by organization or provider name...",
+    "idpImportEmpty": "No identity providers found.",
+    "idpImportedDescription": "Identity provider imported successfully.",
+    "idpDeleteGlobalQuestion": "Are you sure you want to permanently delete this identity provider?",
+    "idpDeleteGlobalDescription": "This will permanently delete the identity provider from all organizations it is associated with.",
+    "idpUnassociateTitle": "Unassociate Identity Provider",
+    "idpUnassociateQuestion": "Are you sure you want to unassociate this identity provider from this organization?",
+    "idpUnassociateDescription": "All users associated with this identity provider will be removed from this organization, but the identity provider will still continue to exist for other associated organizations.",
+    "idpUnassociateConfirm": "Confirm Unassociate Identity Provider",
+    "idpUnassociateWarning": "This cannot be undone for this organization.",
+    "idpUnassociatedDescription": "Identity provider unassociated from this organization successfully",
+    "idpUnassociateMenu": "Unassociate",
+    "idpDeleteAllOrgsMenu": "Delete"
 }

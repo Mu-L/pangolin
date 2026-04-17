@@ -18,12 +18,14 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { DataTablePagination } from "@app/components/DataTablePagination";
+import type { DataTableAddAction } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
 import { Card, CardContent, CardHeader } from "@app/components/ui/card";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger
@@ -31,7 +33,14 @@ import {
 import { Input } from "@app/components/ui/input";
 import { useStoredColumnVisibility } from "@app/hooks/useStoredColumnVisibility";
 
-import { Columns, Filter, Plus, RefreshCw, Search } from "lucide-react";
+import {
+    ChevronDown,
+    Columns,
+    Filter,
+    Plus,
+    RefreshCw,
+    Search
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
@@ -67,6 +76,8 @@ type ControlledDataTableProps<TData, TValue> = {
     tableId: string;
     addButtonText?: string;
     onAdd?: () => void;
+    addActions?: DataTableAddAction[];
+    addButtonDisabled?: boolean;
     onRefresh?: () => void;
     isRefreshing?: boolean;
     refreshButtonDisabled?: boolean;
@@ -90,6 +101,8 @@ export function ControlledDataTable<TData, TValue>({
     rows,
     addButtonText,
     onAdd,
+    addActions,
+    addButtonDisabled = false,
     onRefresh,
     isRefreshing,
     refreshButtonDisabled = false,
@@ -348,16 +361,49 @@ export function ControlledDataTable<TData, TValue>({
                                 </Button>
                             </div>
                         )}
-                        {onAdd && addButtonText && (
+                        {addActions && addActions.length > 0 && addButtonText ? (
                             <div>
-                                <Button
-                                    onClick={onAdd}
-                                    loading={isNavigatingToAddPage}
-                                >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    {addButtonText}
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            disabled={
+                                                addButtonDisabled ||
+                                                isNavigatingToAddPage
+                                            }
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            {addButtonText}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {addActions.map((action, i) => (
+                                            <DropdownMenuItem
+                                                key={i}
+                                                onSelect={() =>
+                                                    action.onSelect()
+                                                }
+                                            >
+                                                {action.label}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
+                        ) : (
+                            onAdd &&
+                            addButtonText && (
+                                <div>
+                                    <Button
+                                        onClick={onAdd}
+                                        loading={isNavigatingToAddPage}
+                                        disabled={addButtonDisabled}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {addButtonText}
+                                    </Button>
+                                </div>
+                            )
                         )}
                     </div>
                 </CardHeader>

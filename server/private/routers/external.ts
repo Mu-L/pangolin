@@ -40,7 +40,9 @@ import {
     verifyRoleAccess,
     verifyUserAccess,
     verifyUserCanSetUserOrgRoles,
-    verifySiteProvisioningKeyAccess
+    verifySiteProvisioningKeyAccess,
+    verifyIsLoggedInUser,
+    verifyAdmin
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -95,6 +97,17 @@ authenticated.put(
 );
 
 authenticated.post(
+    "/org/:orgId/idp/:idpId/import",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.orgOidc),
+    verifyOrgAccess,
+    verifyLimits,
+    verifyAdmin,
+    logActionAudit(ActionsEnum.createIdp),
+    orgIdp.importOrgIdp
+);
+
+authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
@@ -116,6 +129,16 @@ authenticated.delete(
     orgIdp.deleteOrgIdp
 );
 
+authenticated.delete(
+    "/org/:orgId/idp/:idpId/association",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyIdpAccess,
+    verifyUserHasAction(ActionsEnum.deleteIdp),
+    logActionAudit(ActionsEnum.deleteIdp),
+    orgIdp.unassociateOrgIdp
+);
+
 authenticated.get(
     "/org/:orgId/idp/:idpId",
     verifyValidLicense,
@@ -125,15 +148,13 @@ authenticated.get(
     orgIdp.getOrgIdp
 );
 
-authenticated.get(
-    "/org/:orgId/idp",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.listIdps),
-    orgIdp.listOrgIdps
-);
-
 authenticated.get("/org/:orgId/idp", orgIdp.listOrgIdps); // anyone can see this; it's just a list of idp names and ids
+
+authenticated.get(
+    "/user/:userId/admin-org-idps",
+    verifyIsLoggedInUser,
+    orgIdp.listUserAdminOrgIdps
+);
 
 authenticated.get(
     "/org/:orgId/certificate/:domainId/:domain",
