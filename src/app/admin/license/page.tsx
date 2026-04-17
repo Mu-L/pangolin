@@ -353,20 +353,6 @@ export default function LicensePage() {
                     description={t("licenseBannerDescription")}
                 >
                     <Link
-                        href={ENTERPRISE_PRICING_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="gap-2"
-                        >
-                            {t("licenseBannerGetLicense")}
-                            <ArrowRight className="w-4 h-4" />
-                        </Button>
-                    </Link>
-                    <Link
                         href={ENTERPRISE_DOCS_URL}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -378,6 +364,20 @@ export default function LicensePage() {
                         >
                             {t("licenseBannerViewDocs")}
                             <ExternalLink className="w-4 h-4" />
+                        </Button>
+                    </Link>
+                    <Link
+                        href={ENTERPRISE_PRICING_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                        >
+                            {t("licenseBannerGetLicense")}
+                            <ArrowRight className="w-4 h-4" />
                         </Button>
                     </Link>
                 </DismissableBanner>
