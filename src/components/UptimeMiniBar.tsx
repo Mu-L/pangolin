@@ -37,14 +37,16 @@ const barColorClass: Record<string, string> = {
 };
 
 type UptimeMiniBarProps = {
+    orgId?: string;
     siteId?: number;
-    targetId?: number;
+    healthCheckId?: number;
     days?: number;
 };
 
 export default function UptimeMiniBar({
+    orgId,
     siteId,
-    targetId,
+    healthCheckId,
     days = 30
 }: UptimeMiniBarProps) {
     const api = createApiClient(useEnvContext());
@@ -56,8 +58,8 @@ export default function UptimeMiniBar({
     });
 
     const hcQuery = useQuery({
-        ...orgQueries.healthCheckStatusHistory({ targetId: targetId ?? 0, days }),
-        enabled: targetId != null && siteId == null,
+        ...orgQueries.healthCheckStatusHistory({ orgId: orgId ?? "", healthCheckId: healthCheckId ?? 0, days }),
+        enabled: healthCheckId != null && siteId == null,
         meta: { api }
     });
 

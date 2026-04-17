@@ -1,5 +1,4 @@
 import { build } from "@server/build";
-import type { StatusHistoryResponse } from "@server/routers/site/getStatusHistory";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
@@ -29,6 +28,7 @@ import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
 import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
+import { StatusHistoryResponse } from "@server/middlewares/statusHistory";
 
 export type ProductUpdate = {
     link: string | null;
@@ -306,7 +306,13 @@ export const orgQueries = {
                 return res.data.data.healthChecks;
             }
         }),
-    siteStatusHistory: ({ siteId, days = 90 }: { siteId: number; days?: number }) =>
+    siteStatusHistory: ({
+        siteId,
+        days = 90
+    }: {
+        siteId: number;
+        days?: number;
+    }) =>
         queryOptions({
             queryKey: ["SITE_STATUS_HISTORY", siteId, days] as const,
             queryFn: async ({ signal, meta }) => {
@@ -314,21 +320,35 @@ export const orgQueries = {
                     AxiosResponse<StatusHistoryResponse>
                 >(`/site/${siteId}/status-history?days=${days}`, { signal });
                 return res.data.data;
-            },
-            refetchInterval: 60_000,
+            }
         }),
 
-    healthCheckStatusHistory: ({ targetId, days = 90 }: { targetId: number; days?: number }) =>
+    healthCheckStatusHistory: ({
+        orgId,
+        healthCheckId,
+        days = 90
+    }: {
+        orgId: string;
+        healthCheckId: number;
+        days?: number;
+    }) =>
         queryOptions({
-            queryKey: ["HC_STATUS_HISTORY", targetId, days] as const,
+            queryKey: [
+                "HC_STATUS_HISTORY",
+                orgId,
+                healthCheckId,
+                days
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<StatusHistoryResponse>
-                >(`/target/${targetId}/health-check/status-history?days=${days}`, { signal });
+                >(
+                    `/org/${orgId}/health-check/${healthCheckId}/status-history?days=${days}`,
+                    { signal }
+                );
                 return res.data.data;
-            },
-            refetchInterval: 60_000,
-        }),
+            }
+        })
 };
 
 export const logAnalyticsFiltersSchema = z.object({

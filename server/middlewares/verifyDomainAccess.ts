@@ -15,7 +15,7 @@ export async function verifyDomainAccess(
     try {
         const userId = req.user!.userId;
         const domainId =
-            req.params.domainId || req.body.apiKeyId || req.query.apiKeyId;
+            req.params.domainId;
         const orgId = req.params.orgId;
 
         if (!userId) {

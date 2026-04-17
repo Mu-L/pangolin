@@ -13,17 +13,17 @@ import {
     StatusHistoryResponse
 } from "@server/lib/statusHistory";
 
-const siteParamsSchema = z.object({
-    siteId: z.string().transform((v) => parseInt(v, 10))
+const healthCheckParamsSchema = z.object({
+    healthCheckId: z.string().transform((v) => parseInt(v, 10))
 });
 
-export async function getSiteStatusHistory(
+export async function getHealthCheckStatusHistory(
     req: Request,
     res: Response,
     next: NextFunction
 ): Promise<any> {
     try {
-        const parsedParams = siteParamsSchema.safeParse(req.params);
+        const parsedParams = healthCheckParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
             return next(
                 createHttpError(
@@ -42,8 +42,8 @@ export async function getSiteStatusHistory(
             );
         }
 
-        const entityType = "site";
-        const entityId = parsedParams.data.siteId;
+        const entityType = "healthCheck";
+        const entityId = parsedParams.data.healthCheckId
         const { days } = parsedQuery.data;
 
         const nowSec = Math.floor(Date.now() / 1000);

@@ -227,7 +227,7 @@ export default function HealthChecksTable({
             header: () => <span className="p-3">Uptime (30d)</span>,
             cell: ({ row }) => {
                 return (
-                    <UptimeMiniBar targetId={row.original.targetHealthCheckId} days={30} />
+                    <UptimeMiniBar orgId={orgId} healthCheckId={row.original.targetHealthCheckId} days={30} />
                 );
             }
         },

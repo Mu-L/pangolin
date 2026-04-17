@@ -657,6 +657,7 @@ authenticated.delete(
 
 authenticated.get(
     "/org/:orgId/event-streaming-destinations",
+    verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listEventStreamingDestinations),
     eventStreamingDestination.listEventStreamingDestinations
@@ -692,6 +693,7 @@ authenticated.delete(
 
 authenticated.get(
     "/org/:orgId/alert-rules",
+    verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listAlertRules),
     alertRule.listAlertRules
@@ -699,6 +701,7 @@ authenticated.get(
 
 authenticated.get(
     "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getAlertRule),
     alertRule.getAlertRule
@@ -706,6 +709,7 @@ authenticated.get(
 
 authenticated.get(
     "/org/:orgId/health-checks",
+    verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listHealthChecks),
     healthChecks.listHealthChecks
@@ -737,4 +741,12 @@ authenticated.delete(
     verifyUserHasAction(ActionsEnum.deleteHealthCheck),
     logActionAudit(ActionsEnum.deleteHealthCheck),
     healthChecks.deleteHealthCheck
+);
+
+authenticated.get(
+    "/org/:orgId/health-check/:healthCheckId/status-history",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getTarget),
+    healthChecks.getHealthCheckStatusHistory
 );

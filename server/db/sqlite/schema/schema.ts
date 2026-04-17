@@ -1181,6 +1181,16 @@ export const deviceWebAuthCodes = sqliteTable("deviceWebAuthCodes", {
     })
 });
 
+export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
+    messageId: integer("messageId").primaryKey({ autoIncrement: true }),
+    wsClientId: text("clientId"),
+    messageType: text("messageType"),
+    sentAt: integer("sentAt").notNull(),
+    receivedAt: integer("receivedAt"),
+    error: text("error"),
+    complete: integer("complete", { mode: "boolean" }).notNull().default(false)
+});
+
 export const statusHistory = sqliteTable("statusHistory", {
     id: integer("id").primaryKey({ autoIncrement: true }),
     entityType: text("entityType").notNull(), // "site" | "healthCheck"
@@ -1194,16 +1204,6 @@ export const statusHistory = sqliteTable("statusHistory", {
     index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
     index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
 ]);
-
-export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
-    messageId: integer("messageId").primaryKey({ autoIncrement: true }),
-    wsClientId: text("clientId"),
-    messageType: text("messageType"),
-    sentAt: integer("sentAt").notNull(),
-    receivedAt: integer("receivedAt"),
-    error: text("error"),
-    complete: integer("complete", { mode: "boolean" }).notNull().default(false)
-});
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;

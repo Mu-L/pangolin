@@ -292,13 +292,6 @@ authenticated.get(
     site.getSiteStatusHistory
 );
 
-authenticated.get(
-    "/target/:targetId/health-check/status-history",
-    verifyTargetAccess,
-    verifyUserHasAction(ActionsEnum.getTarget),
-    site.getHealthCheckStatusHistory
-);
-
 // Site Resource endpoints
 authenticated.put(
     "/org/:orgId/site-resource",

@@ -15,3 +15,4 @@ export * from "./listHealthChecks";
 export * from "./createHealthCheck";
 export * from "./updateHealthCheck";
 export * from "./deleteHealthCheck";
+export * from "./getStatusHistory";
