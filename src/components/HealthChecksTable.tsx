@@ -1,5 +1,7 @@
 "use client";
 
+import UptimeMiniBar from "@app/components/UptimeMiniBar";
+
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import HealthCheckCredenza, {
     HealthCheckRow
@@ -217,6 +219,16 @@ export default function HealthChecksTable({
                         </span>
                     );
                 }
+            }
+        },
+        {
+            id: "uptime",
+            friendlyName: "Uptime",
+            header: () => <span className="p-3">Uptime (30d)</span>,
+            cell: ({ row }) => {
+                return (
+                    <UptimeMiniBar targetId={row.original.targetHealthCheckId} days={30} />
+                );
             }
         },
         {

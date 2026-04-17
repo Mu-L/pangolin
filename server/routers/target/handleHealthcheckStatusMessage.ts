@@ -1,4 +1,4 @@
-import { db, targets, resources, sites, targetHealthCheck } from "@server/db";
+import { db, targets, resources, sites, targetHealthCheck, statusHistory } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
 import { eq, and } from "drizzle-orm";
@@ -136,6 +136,15 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 })
                 .where(eq(targetHealthCheck.targetId, targetIdNum))
                 .execute();
+
+            // Log the state change to status history
+            await db.insert(statusHistory).values({
+                entityType: "healthCheck",
+                entityId: targetCheck.targetHealthCheckId,
+                orgId: targetCheck.orgId || targetCheck.resourceOrgId,
+                status: healthStatus.status,
+                timestamp: Math.floor(Date.now() / 1000),
+            }).execute();
 
             // because we are checking above if there was a change we can fire the alert here because it changed
             if (healthStatus.status === "unhealthy") {

@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
+import UptimeMiniBar from "@app/components/UptimeMiniBar";
 
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
@@ -220,6 +221,17 @@ export default function SitesTable({
                 } else {
                     return <span>-</span>;
                 }
+            }
+        },
+        {
+            id: "uptime",
+            friendlyName: "Uptime",
+            header: () => <span className="p-3">Uptime (30d)</span>,
+            cell: ({ row }) => {
+                const originalRow = row.original;
+                return (
+                    <UptimeMiniBar siteId={originalRow.id} days={30} />
+                );
             }
         },
         {

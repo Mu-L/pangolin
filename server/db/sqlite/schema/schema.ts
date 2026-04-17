@@ -1181,6 +1181,20 @@ export const deviceWebAuthCodes = sqliteTable("deviceWebAuthCodes", {
     })
 });
 
+export const statusHistory = sqliteTable("statusHistory", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    entityType: text("entityType").notNull(), // "site" | "healthCheck"
+    entityId: integer("entityId").notNull(),  // siteId or targetHealthCheckId
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    status: text("status").notNull(), // "online"/"offline" for sites; "healthy"/"unhealthy"/"unknown" for healthChecks
+    timestamp: integer("timestamp").notNull(), // unix epoch seconds
+}, (table) => [
+    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
+    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
+]);
+
 export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
     messageId: integer("messageId").primaryKey({ autoIncrement: true }),
     wsClientId: text("clientId"),
@@ -1258,3 +1272,4 @@ export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
+export type StatusHistory = InferSelectModel<typeof statusHistory>;

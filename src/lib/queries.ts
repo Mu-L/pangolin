@@ -1,4 +1,5 @@
 import { build } from "@server/build";
+import type { StatusHistoryResponse } from "@server/routers/site/getStatusHistory";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
 import type { ListDomainsResponse } from "@server/routers/domain";
@@ -304,7 +305,30 @@ export const orgQueries = {
                 >(`/org/${orgId}/health-checks`, { signal });
                 return res.data.data.healthChecks;
             }
-        })
+        }),
+    siteStatusHistory: ({ siteId, days = 90 }: { siteId: number; days?: number }) =>
+        queryOptions({
+            queryKey: ["SITE_STATUS_HISTORY", siteId, days] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<StatusHistoryResponse>
+                >(`/site/${siteId}/status-history?days=${days}`, { signal });
+                return res.data.data;
+            },
+            refetchInterval: 60_000,
+        }),
+
+    healthCheckStatusHistory: ({ targetId, days = 90 }: { targetId: number; days?: number }) =>
+        queryOptions({
+            queryKey: ["HC_STATUS_HISTORY", targetId, days] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<StatusHistoryResponse>
+                >(`/target/${targetId}/health-check/status-history?days=${days}`, { signal });
+                return res.data.data;
+            },
+            refetchInterval: 60_000,
+        }),
 };
 
 export const logAnalyticsFiltersSchema = z.object({

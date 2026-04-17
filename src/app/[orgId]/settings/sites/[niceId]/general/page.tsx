@@ -1,5 +1,7 @@
 "use client";
 
+import UptimeBar from "@app/components/UptimeBar";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -222,6 +224,19 @@ export default function GeneralPage() {
                         Save All Settings
                     </Button>
                 </SettingsSectionFooter>
+            </SettingsSection>
+            <SettingsSection>
+                <SettingsSectionHeader>
+                    <SettingsSectionTitle>Uptime</SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        Site availability over the last 90 days.
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    {site?.siteId && (
+                        <UptimeBar siteId={site.siteId} days={90} />
+                    )}
+                </SettingsSectionBody>
             </SettingsSection>
         </SettingsContainer>
     );

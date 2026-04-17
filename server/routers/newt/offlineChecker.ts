@@ -1,4 +1,4 @@
-import { db, newts, sites, targetHealthCheck, targets } from "@server/db";
+import { db, newts, sites, targetHealthCheck, targets, statusHistory } from "@server/db";
 import {
     hasActiveConnections,
 } from "#dynamic/routers/ws";
@@ -77,6 +77,14 @@ export const startNewtOfflineChecker = (): void => {
                     .set({ online: false })
                     .where(eq(sites.siteId, staleSite.siteId));
 
+                await db.insert(statusHistory).values({
+                    entityType: "site",
+                    entityId: staleSite.siteId,
+                    orgId: staleSite.orgId,
+                    status: "offline",
+                    timestamp: Math.floor(Date.now() / 1000),
+                }).execute();
+
                 const healthChecksOnSite = await db
                     .select()
                     .from(targetHealthCheck)
@@ -147,6 +155,14 @@ export const startNewtOfflineChecker = (): void => {
                         .set({ online: false })
                         .where(eq(sites.siteId, site.siteId));
 
+                    await db.insert(statusHistory).values({
+                        entityType: "site",
+                        entityId: site.siteId,
+                        orgId: site.orgId,
+                        status: "offline",
+                        timestamp: Math.floor(Date.now() / 1000),
+                    }).execute();
+
                     await fireSiteOfflineAlert(site.orgId, site.siteId, site.name);
                 } else if (
                     lastBandwidthUpdate >= wireguardOfflineThreshold &&
@@ -160,6 +176,14 @@ export const startNewtOfflineChecker = (): void => {
                         .update(sites)
                         .set({ online: true })
                         .where(eq(sites.siteId, site.siteId));
+
+                    await db.insert(statusHistory).values({
+                        entityType: "site",
+                        entityId: site.siteId,
+                        orgId: site.orgId,
+                        status: "online",
+                        timestamp: Math.floor(Date.now() / 1000),
+                    }).execute();
 
                     await fireSiteOnlineAlert(site.orgId, site.siteId, site.name);
                 }

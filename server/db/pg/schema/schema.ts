@@ -1159,3 +1159,19 @@ export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
 export type Network = InferSelectModel<typeof networks>;
+
+export const statusHistory = pgTable("statusHistory", {
+    id: serial("id").primaryKey(),
+    entityType: varchar("entityType").notNull(),
+    entityId: integer("entityId").notNull(),
+    orgId: varchar("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    status: varchar("status").notNull(),
+    timestamp: integer("timestamp").notNull(),
+}, (table) => [
+    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
+    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
+]);
+
+export type StatusHistory = InferSelectModel<typeof statusHistory>;

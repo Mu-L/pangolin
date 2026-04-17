@@ -1,0 +1,208 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { orgQueries } from "@app/lib/queries";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger
+} from "@app/components/ui/tooltip";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { createApiClient } from "@app/lib/api";
+import { cn } from "@app/lib/cn";
+
+function formatDuration(seconds: number): string {
+    if (seconds === 0) return "0s";
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.round(seconds % 60);
+    if (h > 0) return s > 0 ? `${h}h ${m}m ${s}s` : `${h}h ${m}m`;
+    if (m > 0 && s > 0) return `${m}m ${s}s`;
+    return `${m}m`;
+}
+
+function formatDate(dateStr: string): string {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+function formatTime(ts: number): string {
+    return new Date(ts * 1000).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+const barColorClass: Record<string, string> = {
+    good: "bg-green-500",
+    degraded: "bg-yellow-500",
+    bad: "bg-red-500",
+    no_data: "bg-zinc-700"
+};
+
+type UptimeBarProps = {
+    siteId?: number;
+    targetId?: number;
+    days?: number;
+    title?: string;
+    className?: string;
+};
+
+export default function UptimeBar({
+    siteId,
+    targetId,
+    days = 90,
+    title,
+    className
+}: UptimeBarProps) {
+    const api = createApiClient(useEnvContext());
+
+    const siteQuery = useQuery({
+        ...orgQueries.siteStatusHistory({ siteId: siteId ?? 0, days }),
+        enabled: siteId != null,
+        meta: { api }
+    });
+
+    const hcQuery = useQuery({
+        ...orgQueries.healthCheckStatusHistory({ targetId: targetId ?? 0, days }),
+        enabled: targetId != null && siteId == null,
+        meta: { api }
+    });
+
+    const { data, isLoading } = siteId != null ? siteQuery : hcQuery;
+
+    if (isLoading) {
+        return (
+            <div className={cn("space-y-2", className)}>
+                {title && (
+                    <div className="text-sm font-medium">{title}</div>
+                )}
+                <div className="flex gap-0.5 h-8">
+                    {Array.from({ length: days }).map((_, i) => (
+                        <div
+                            key={i}
+                            className="flex-1 rounded-sm bg-zinc-800 animate-pulse"
+                        />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (!data) return null;
+
+    const allNoData = data.days.every((d) => d.status === "no_data");
+
+    return (
+        <div className={cn("space-y-3", className)}>
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+                {title && (
+                    <span className="text-sm font-medium">{title}</span>
+                )}
+                <div className="flex items-center gap-4 text-sm ml-auto">
+                    {!allNoData && (
+                        <>
+                            <span className="text-muted-foreground">
+                                <span className="font-semibold text-foreground">
+                                    {data.overallUptimePercent.toFixed(2)}%
+                                </span>{" "}
+                                uptime
+                            </span>
+                            {data.totalDowntimeSeconds > 0 && (
+                                <span className="text-muted-foreground">
+                                    <span className="font-semibold text-foreground">
+                                        {formatDuration(
+                                            data.totalDowntimeSeconds
+                                        )}
+                                    </span>{" "}
+                                    downtime
+                                </span>
+                            )}
+                        </>
+                    )}
+                    {allNoData && (
+                        <span className="text-muted-foreground text-xs">
+                            No data available
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Bar row */}
+            <div className="flex gap-0.5 h-8">
+                {data.days.map((day, i) => (
+                    <Tooltip key={i}>
+                        <TooltipTrigger asChild>
+                            <div
+                                className={cn(
+                                    "flex-1 rounded-sm cursor-default transition-opacity hover:opacity-80",
+                                    barColorClass[day.status]
+                                )}
+                            />
+                        </TooltipTrigger>
+                        <TooltipContent
+                            side="top"
+                            className="max-w-[220px] p-3 space-y-1"
+                        >
+                            <div className="font-semibold text-xs">
+                                {formatDate(day.date)}
+                            </div>
+                            {day.status !== "no_data" && (
+                                <div className="text-xs text-primary-foreground/80">
+                                    Uptime:{" "}
+                                    <span className="font-medium text-primary-foreground">
+                                        {day.uptimePercent.toFixed(1)}%
+                                    </span>
+                                </div>
+                            )}
+                            {day.totalDowntimeSeconds > 0 && (
+                                <div className="text-xs text-primary-foreground/80">
+                                    Downtime:{" "}
+                                    <span className="font-medium text-primary-foreground">
+                                        {formatDuration(
+                                            day.totalDowntimeSeconds
+                                        )}
+                                    </span>
+                                </div>
+                            )}
+                            {day.downtimeWindows.length > 0 && (
+                                <div className="pt-1 space-y-0.5 border-t border-primary-foreground/20">
+                                    {day.downtimeWindows.map((w, wi) => (
+                                        <div
+                                            key={wi}
+                                            className="text-xs text-primary-foreground/70"
+                                        >
+                                            {formatTime(w.start)}
+                                            {w.end
+                                                ? ` – ${formatTime(w.end)}`
+                                                : " – ongoing"}{" "}
+                                            <span className="capitalize">
+                                                ({w.status})
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {day.status === "no_data" && (
+                                <div className="text-xs text-primary-foreground/60">
+                                    No monitoring data
+                                </div>
+                            )}
+                        </TooltipContent>
+                    </Tooltip>
+                ))}
+            </div>
+
+            {/* Date labels */}
+            <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{days} days ago</span>
+                <span>Today</span>
+            </div>
+        </div>
+    );
+}
