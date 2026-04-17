@@ -21,7 +21,6 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { and, eq, sql } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
-import privateConfig from "#private/lib/config";
 
 const paramsSchema = z
     .object({
@@ -47,18 +46,6 @@ export async function unassociateOrgIdp(
         }
 
         const { orgId, idpId } = parsedParams.data;
-
-        if (
-            privateConfig.getRawPrivateConfig().app.identity_provider_mode !==
-            "org"
-        ) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Organization-specific IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'org' in the private configuration to enable this feature."
-                )
-            );
-        }
 
         const [association] = await db
             .select()

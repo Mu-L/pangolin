@@ -24,7 +24,6 @@ import { idp, idpOrg, orgs, roles, userOrgs } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { CreateOrgIdpResponse } from "@server/routers/orgIdp/types";
 import { generateOidcRedirectUrl } from "@server/lib/idp/generateRedirectUrl";
-import privateConfig from "#private/lib/config";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
@@ -104,18 +103,6 @@ export async function importOrgIdp(
         }
 
         const { sourceOrgId } = parsedBody.data;
-
-        if (
-            privateConfig.getRawPrivateConfig().app.identity_provider_mode !==
-            "org"
-        ) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Organization-specific IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'org' in the private configuration to enable this feature."
-                )
-            );
-        }
 
         if (sourceOrgId === targetOrgId) {
             return next(
