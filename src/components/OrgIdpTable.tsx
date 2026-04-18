@@ -50,6 +50,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 import type { ListUserAdminOrgIdpsResponse } from "@server/routers/orgIdp/types";
 import { cn } from "@app/lib/cn";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type IdpRow = {
     idpId: number;
@@ -85,8 +87,11 @@ export default function IdpTable({ idps, orgId }: Props) {
 
     const api = createApiClient(useEnvContext());
     const { user } = useUserContext();
+    const { isPaidUser } = usePaidStatus();
     const router = useRouter();
     const t = useTranslations();
+
+    const canImportOrgOidcIdp = isPaidUser(tierMatrix.orgOidc);
 
     const { data: adminIdpsRaw = [] } = useQuery({
         queryKey: ["admin-org-idps", user.userId],
@@ -378,7 +383,11 @@ export default function IdpTable({ idps, orgId }: Props) {
                                             key={`${row.idpId}:${row.orgId}`}
                                             className="items-start gap-3 py-2.5"
                                             value={`${row.idpId}:${row.orgId}:${row.orgName}:${row.name}`}
+                                            disabled={!canImportOrgOidcIdp}
                                             onSelect={() => {
+                                                if (!canImportOrgOidcIdp) {
+                                                    return;
+                                                }
                                                 void importIdp(row);
                                             }}
                                         >
