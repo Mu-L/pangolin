@@ -123,6 +123,7 @@ export enum ActionsEnum {
     deleteOrgDomain = "deleteOrgDomain",
     restartOrgDomain = "restartOrgDomain",
     sendUsageNotification = "sendUsageNotification",
+    sendTrialNotification = "sendTrialNotification",
     createRemoteExitNode = "createRemoteExitNode",
     updateRemoteExitNode = "updateRemoteExitNode",
     getRemoteExitNode = "getRemoteExitNode",

@@ -84,6 +84,8 @@ export const subscriptions = sqliteTable("subscriptions", {
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt"),
     version: integer("version"),
+    expiresAt: integer("expiresAt"),
+    trial: integer("trial", { mode: "boolean" }).default(false),
     billingCycleAnchor: integer("billingCycleAnchor"),
     type: text("type") // tier1, tier2, tier3, or license
 });

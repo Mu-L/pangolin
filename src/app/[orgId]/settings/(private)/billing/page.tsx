@@ -219,6 +219,7 @@ export default function BillingPage() {
     );
 
     const [hasSubscription, setHasSubscription] = useState(false);
+    const [isTrial, setIsTrial] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [currentTier, setCurrentTier] = useState<Tier | null>(null);
 
@@ -263,6 +264,7 @@ export default function BillingPage() {
                     setHasSubscription(
                         tierSub.subscription.status === "active"
                     );
+                    setIsTrial(tierSub.subscription.expiresAt != null);
                 }
 
                 // Find license subscription
@@ -558,7 +560,7 @@ export default function BillingPage() {
     // Get button label and action for each plan
     const getPlanAction = (plan: PlanOption) => {
         if (plan.id === "enterprise") {
-            if (plan.id === currentPlanId) {
+            if (plan.id === currentPlanId && !isTrial) {
                 return {
                     label: "Manage Current Plan",
                     action: handleModifySubscription,
@@ -597,6 +599,19 @@ export default function BillingPage() {
                     disabled: false
                 };
             }
+            // If this is a trial subscription, show an upgrade button that starts a real checkout
+            if (isTrial) {
+                return {
+                    label: "Upgrade",
+                    action: () => {
+                        if (plan.tierType) {
+                            handleStartSubscription(plan.tierType);
+                        }
+                    },
+                    variant: "default" as const,
+                    disabled: isProblematicState
+                };
+            }
             return {
                 label: "Manage Current Plan",
                 action: handleModifySubscription,
@@ -610,7 +625,8 @@ export default function BillingPage() {
         );
         const planIndex = planOptions.findIndex((p) => p.id === plan.id);
 
-        if (planIndex < currentIndex) {
+        // During a trial, never show a downgrade option — all non-current plans are upgrades
+        if (!isTrial && planIndex < currentIndex) {
             return {
                 label: "Downgrade",
                 action: () => {
@@ -642,18 +658,23 @@ export default function BillingPage() {
             label: "Upgrade",
             action: () => {
                 if (plan.tierType) {
-                    showTierConfirmation(
-                        plan.tierType,
-                        "upgrade",
-                        plan.name,
-                        plan.price + (" " + plan.priceDetail || "")
-                    );
+                    // During a trial, go straight to checkout instead of the tier-change flow
+                    if (isTrial) {
+                        handleStartSubscription(plan.tierType);
+                    } else {
+                        showTierConfirmation(
+                            plan.tierType,
+                            "upgrade",
+                            plan.name,
+                            plan.price + (" " + plan.priceDetail || "")
+                        );
+                    }
                 } else {
                     handleModifySubscription();
                 }
             },
             variant: "outline" as const,
-            disabled: isProblematicState
+            disabled: isProblematicState || (isTrial && plan.id == "basic")
         };
     };
 

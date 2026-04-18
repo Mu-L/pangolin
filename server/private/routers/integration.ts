@@ -48,6 +48,14 @@ authenticated.post(
     org.sendUsageNotification
 );
 
+authenticated.post(
+    `/org/:orgId/send-trial-notification`,
+    verifyApiKeyIsRoot,
+    verifyApiKeyHasAction(ActionsEnum.sendTrialNotification),
+    logActionAudit(ActionsEnum.sendTrialNotification),
+    org.sendTrialNotification
+);
+
 authenticated.delete(
     "/idp/:idpId",
     verifyApiKeyIsRoot,
