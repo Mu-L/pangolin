@@ -115,6 +115,19 @@ export default function GeneralPage() {
         <SettingsContainer>
             <SettingsSection>
                 <SettingsSectionHeader>
+                    <SettingsSectionTitle>Uptime</SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        Site availability over the last 90 days.
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    {site?.siteId && (
+                        <UptimeBar siteId={site.siteId} days={90} />
+                    )}
+                </SettingsSectionBody>
+            </SettingsSection>
+            <SettingsSection>
+                <SettingsSectionHeader>
                     <SettingsSectionTitle>
                         {t("generalSettings")}
                     </SettingsSectionTitle>
@@ -224,19 +237,6 @@ export default function GeneralPage() {
                         Save All Settings
                     </Button>
                 </SettingsSectionFooter>
-            </SettingsSection>
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>Uptime</SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        Site availability over the last 90 days.
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
-                <SettingsSectionBody>
-                    {site?.siteId && (
-                        <UptimeBar siteId={site.siteId} days={90} />
-                    )}
-                </SettingsSectionBody>
             </SettingsSection>
         </SettingsContainer>
     );

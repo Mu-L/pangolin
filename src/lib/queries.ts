@@ -323,6 +323,23 @@ export const orgQueries = {
             }
         }),
 
+    resourceStatusHistory: ({
+        resourceId,
+        days = 90
+    }: {
+        resourceId?: number;
+        days?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["RESOURCE_STATUS_HISTORY", resourceId, days] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<StatusHistoryResponse>
+                >(`/resource/${resourceId}/status-history?days=${days}`, { signal });
+                return res.data.data;
+            }
+        }),
+
     healthCheckStatusHistory: ({
         orgId,
         healthCheckId,

@@ -47,6 +47,7 @@ const barColorClass: Record<string, string> = {
 type UptimeBarProps = {
     orgId?: string;
     siteId?: number;
+    resourceId?: number;
     healthCheckId?: number;
     days?: number;
     title?: string;
@@ -56,6 +57,7 @@ type UptimeBarProps = {
 export default function UptimeBar({
     orgId,
     siteId,
+    resourceId,
     healthCheckId,
     days = 90,
     title,
@@ -71,11 +73,20 @@ export default function UptimeBar({
 
     const hcQuery = useQuery({
         ...orgQueries.healthCheckStatusHistory({ orgId: orgId ?? "", healthCheckId: healthCheckId ?? 0, days }),
-        enabled: healthCheckId != null && siteId == null,
+        enabled: healthCheckId != null && siteId == null && resourceId == null,
         meta: { api }
     });
 
-    const { data, isLoading } = siteId != null ? siteQuery : hcQuery;
+    const resourceQuery = useQuery({
+        ...orgQueries.resourceStatusHistory({ resourceId, days }),
+        enabled: resourceId != null && siteId == null && healthCheckId == null,
+        meta: { api }
+    });
+
+    const { data, isLoading } =
+        siteId != null ? siteQuery :
+        resourceId != null ? resourceQuery :
+        hcQuery;
 
     if (isLoading) {
         return (

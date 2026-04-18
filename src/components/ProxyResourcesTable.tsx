@@ -516,7 +516,7 @@ export default function ProxyResourcesTable({
         },
         {
             id: "statusHistory",
-            friendlyName: t("statusHistory"),
+            friendlyName: t("uptime30d"),
             header: () => <span className="p-3">{t("statusHistory")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;

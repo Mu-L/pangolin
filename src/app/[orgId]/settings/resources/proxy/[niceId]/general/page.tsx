@@ -62,6 +62,7 @@ import { GetResourceResponse } from "@server/routers/resource/getResource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import UptimeBar from "@app/components/UptimeBar";
 
 type MaintenanceSectionFormProps = {
     resource: GetResourceResponse;
@@ -578,6 +579,19 @@ export default function GeneralForm() {
     return (
         <>
             <SettingsContainer>
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>Uptime</SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            Site availability over the last 90 days.
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+                    <SettingsSectionBody>
+                        {resource?.resourceId && (
+                            <UptimeBar resourceId={resource.resourceId} days={90} />
+                        )}
+                    </SettingsSectionBody>
+                </SettingsSection>
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
