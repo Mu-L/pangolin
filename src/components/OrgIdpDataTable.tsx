@@ -1,19 +1,24 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@app/components/ui/data-table";
+import {
+    DataTable,
+    type DataTableAddAction
+} from "@app/components/ui/data-table";
 import { useTranslations } from "next-intl";
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
     onAdd?: () => void;
+    addActions?: DataTableAddAction[];
 }
 
 export function IdpDataTable<TData, TValue>({
     columns,
     data,
-    onAdd
+    onAdd,
+    addActions
 }: DataTableProps<TData, TValue>) {
     const t = useTranslations();
 
@@ -27,6 +32,7 @@ export function IdpDataTable<TData, TValue>({
             searchColumn="name"
             addButtonText={t("idpAdd")}
             onAdd={onAdd}
+            addActions={addActions}
             enableColumnVisibility={true}
             stickyRightColumn="actions"
         />

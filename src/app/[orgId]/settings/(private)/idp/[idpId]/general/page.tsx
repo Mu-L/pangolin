@@ -97,7 +97,8 @@ export default function GeneralPage() {
         emailPath: z.string().nullable().optional(),
         namePath: z.string().nullable().optional(),
         scopes: z.string().min(1, { message: t("idpScopeRequired") }),
-        autoProvision: z.boolean().default(false)
+        autoProvision: z.boolean().default(false),
+        orgMapping: z.string().optional()
     });
 
     // Google form schema (simplified)
@@ -109,7 +110,8 @@ export default function GeneralPage() {
             .min(1, { message: t("idpClientSecretRequired") }),
         roleMapping: z.string().nullable().optional(),
         roleId: z.number().nullable().optional(),
-        autoProvision: z.boolean().default(false)
+        autoProvision: z.boolean().default(false),
+        orgMapping: z.string().optional()
     });
 
     // Azure form schema (simplified with tenant ID)
@@ -122,7 +124,8 @@ export default function GeneralPage() {
         tenantId: z.string().min(1, { message: t("idpTenantIdRequired") }),
         roleMapping: z.string().nullable().optional(),
         roleId: z.number().nullable().optional(),
-        autoProvision: z.boolean().default(false)
+        autoProvision: z.boolean().default(false),
+        orgMapping: z.string().optional()
     });
 
     type OidcFormValues = z.infer<typeof OidcFormSchema>;
@@ -160,7 +163,8 @@ export default function GeneralPage() {
             autoProvision: true,
             roleMapping: null,
             roleId: null,
-            tenantId: ""
+            tenantId: "",
+            orgMapping: ""
         }
     });
 
@@ -227,7 +231,8 @@ export default function GeneralPage() {
                         clientSecret: data.idpOidcConfig.clientSecret,
                         autoProvision: data.idp.autoProvision,
                         roleMapping: roleMapping || null,
-                        roleId: null
+                        roleId: null,
+                        orgMapping: data.idpOrg?.orgMapping ?? ""
                     };
 
                     // Add variant-specific fields
@@ -344,12 +349,14 @@ export default function GeneralPage() {
             }
 
             // Build payload based on variant
+            const orgMappingTrimmed = data.orgMapping?.trim() ?? "";
             let payload: any = {
                 name: data.name,
                 clientId: data.clientId,
                 clientSecret: data.clientSecret,
                 autoProvision: data.autoProvision,
-                roleMapping: roleMappingExpression
+                roleMapping: roleMappingExpression,
+                orgMapping: orgMappingTrimmed === "" ? null : orgMappingTrimmed
             };
 
             // Add variant-specific fields
@@ -532,6 +539,10 @@ export default function GeneralPage() {
                                     }
                                     rawExpression={rawRoleExpression}
                                     onRawExpressionChange={setRawRoleExpression}
+                                    orgMappingField={{
+                                        control: form.control,
+                                        name: "orgMapping"
+                                    }}
                                 />
                             </form>
                         </Form>

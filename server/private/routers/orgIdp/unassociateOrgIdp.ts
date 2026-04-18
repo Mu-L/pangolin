@@ -13,35 +13,23 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, idpOrg } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import { idp, idpOidcConfig, idpOrg } from "@server/db";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const paramsSchema = z
     .object({
-        orgId: z.string().optional(), // Optional; used with org idp in saas
-        idpId: z.coerce.number<number>()
+        orgId: z.string().nonempty(),
+        idpId: z.coerce.number<number>().int().positive()
     })
     .strict();
 
-registry.registerPath({
-    method: "delete",
-    path: "/org/{orgId}/idp/{idpId}",
-    description: "Delete IDP for a specific organization.",
-    tags: [OpenAPITags.OrgIdp],
-    request: {
-        params: paramsSchema
-    },
-    responses: {}
-});
-
-export async function deleteOrgIdp(
+export async function unassociateOrgIdp(
     req: Request,
     res: Response,
     next: NextFunction
@@ -57,37 +45,46 @@ export async function deleteOrgIdp(
             );
         }
 
-        const { idpId } = parsedParams.data;
+        const { orgId, idpId } = parsedParams.data;
 
-        // Check if IDP exists
-        const [existingIdp] = await db
+        const [association] = await db
             .select()
-            .from(idp)
-            .where(eq(idp.idpId, idpId));
+            .from(idpOrg)
+            .where(and(eq(idpOrg.idpId, idpId), eq(idpOrg.orgId, orgId)))
+            .limit(1);
 
-        if (!existingIdp) {
-            return next(createHttpError(HttpCode.NOT_FOUND, "IdP not found"));
+        if (!association) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `IdP with ID ${idpId} is not associated with organization ${orgId}`
+                )
+            );
         }
 
-        // Delete the IDP and its related records in a transaction
-        await db.transaction(async (trx) => {
-            // Delete OIDC config if it exists
-            await trx
-                .delete(idpOidcConfig)
-                .where(eq(idpOidcConfig.idpId, idpId));
+        const [{ count }] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(idpOrg)
+            .where(eq(idpOrg.idpId, idpId));
 
-            // Delete IDP-org mappings
-            await trx.delete(idpOrg).where(eq(idpOrg.idpId, idpId));
+        if (count <= 1) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "This is the last organization associated with this identity provider. Delete it instead."
+                )
+            );
+        }
 
-            // Delete the IDP itself
-            await trx.delete(idp).where(eq(idp.idpId, idpId));
-        });
+        await db
+            .delete(idpOrg)
+            .where(and(eq(idpOrg.idpId, idpId), eq(idpOrg.orgId, orgId)));
 
         return response<null>(res, {
             data: null,
             success: true,
             error: false,
-            message: "IdP deleted successfully",
+            message: "Org IdP unassociated successfully",
             status: HttpCode.OK
         });
     } catch (error) {
