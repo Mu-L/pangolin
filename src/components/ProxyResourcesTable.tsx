@@ -56,6 +56,7 @@ import {
     TooltipTrigger
 } from "@app/components/ui/tooltip";
 import type { StatusHistoryResponse } from "@server/lib/statusHistory";
+import UptimeMiniBar from "./UptimeMiniBar";
 
 export type TargetHealth = {
     targetId: number;
@@ -338,82 +339,6 @@ export default function ProxyResourcesTable({
         );
     }
 
-    function ResourceStatusHistory({
-        resourceId,
-        api
-    }: {
-        resourceId: number;
-        api: ReturnType<typeof createApiClient>;
-    }) {
-        const { data: history, isLoading: loading } = useQuery({
-            queryKey: ["RESOURCE_STATUS_HISTORY", resourceId, 30],
-            queryFn: async ({ signal }) => {
-                const res = await api.get(
-                    `/resource/${resourceId}/status-history`,
-                    {
-                        params: { days: 30 },
-                        signal
-                    }
-                );
-                return (res.data.data ?? res.data) as StatusHistoryResponse;
-            },
-            staleTime: 5 * 60 * 1000,
-            meta: { api }
-        });
-
-        if (loading) {
-            return (
-                <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 90 }).map((_, i) => (
-                        <div
-                            key={i}
-                            className="w-1 h-6 rounded-sm bg-muted animate-pulse"
-                        />
-                    ))}
-                </div>
-            );
-        }
-
-        if (!history) return null;
-
-        return (
-            <div className="flex items-center gap-2">
-                <TooltipProvider>
-                    <div className="flex items-center gap-0.5">
-                        {history.days.map((bucket, i) => {
-                            const colorClass =
-                                bucket.status === "good"
-                                    ? "bg-green-500"
-                                    : bucket.status === "degraded"
-                                      ? "bg-yellow-500"
-                                      : bucket.status === "bad"
-                                        ? "bg-red-500"
-                                        : "bg-muted";
-                            return (
-                                <Tooltip key={i}>
-                                    <TooltipTrigger asChild>
-                                        <div
-                                            className={`w-1 h-6 rounded-sm ${colorClass} cursor-default`}
-                                        />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <span>
-                                            {bucket.date}:{" "}
-                                            {bucket.uptimePercent}% uptime
-                                        </span>
-                                    </TooltipContent>
-                                </Tooltip>
-                            );
-                        })}
-                    </div>
-                </TooltipProvider>
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {history.overallUptimePercent.toFixed(1)}% uptime
-                </span>
-            </div>
-        );
-    }
-
     const proxyColumns: ExtendedColumnDef<ResourceRow>[] = [
         {
             accessorKey: "name",
@@ -517,14 +442,11 @@ export default function ProxyResourcesTable({
         {
             id: "statusHistory",
             friendlyName: t("uptime30d"),
-            header: () => <span className="p-3">{t("statusHistory")}</span>,
+            header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
-                    <ResourceStatusHistory
-                        resourceId={resourceRow.id}
-                        api={api}
-                    />
+                    <UptimeMiniBar resourceId={resourceRow.id} days={30} />
                 );
             }
         },
