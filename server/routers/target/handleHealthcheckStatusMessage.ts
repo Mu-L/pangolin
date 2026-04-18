@@ -1,4 +1,11 @@
-import { db, targets, resources, sites, targetHealthCheck, statusHistory } from "@server/db";
+import {
+    db,
+    targets,
+    resources,
+    sites,
+    targetHealthCheck,
+    statusHistory
+} from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
 import { eq, and } from "drizzle-orm";
@@ -88,6 +95,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     orgId: targetHealthCheck.orgId,
                     targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
                     resourceOrgId: resources.orgId,
+                    resourceId: resources.resourceId,
                     name: targetHealthCheck.name,
                     hcStatus: targetHealthCheck.hcHealth
                 })
@@ -134,8 +142,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         | "healthy"
                         | "unhealthy"
                 })
-                .where(eq(targetHealthCheck.targetId, targetIdNum))
-                .execute();
+                .where(eq(targetHealthCheck.targetId, targetIdNum));
 
             // Log the state change to status history
             await db.insert(statusHistory).values({
@@ -143,8 +150,49 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 entityId: targetCheck.targetHealthCheckId,
                 orgId: targetCheck.orgId || targetCheck.resourceOrgId,
                 status: healthStatus.status,
-                timestamp: Math.floor(Date.now() / 1000),
-            }).execute();
+                timestamp: Math.floor(Date.now() / 1000)
+            });
+
+            if (targetCheck.resourceId) {
+                // Log the state change to status history for the resource as well
+                // so we can show the resource status along with the site
+
+                // if the status is healthy we should check if ALL of the targets on the resource are currently healthy and if not then dont mark the resource as healthy yet, we want to wait until all targets are healthy to mark the resource as healthy
+                let status = healthStatus.status;
+                if (healthStatus.status === "healthy") {
+                    const otherTargets = await db
+                        .select({ hcHealth: targetHealthCheck.hcHealth })
+                        .from(targets)
+                        .innerJoin(
+                            targetHealthCheck,
+                            eq(targets.targetId, targetHealthCheck.targetId)
+                        )
+                        .where(
+                            and(
+                                eq(targets.resourceId, targetCheck.resourceId),
+                                eq(targets.targetId, targetIdNum) // only check the other targets, not the one we just updated
+                            )
+                        );
+
+                    const allHealthy = otherTargets.every(
+                        (t) => t.hcHealth === "healthy"
+                    );
+                    if (!allHealthy) {
+                        logger.debug(
+                            `Not marking resource ${targetCheck.resourceId} as healthy because not all targets are healthy`
+                        );
+                        status = "unhealthy";
+                    }
+                }
+
+                await db.insert(statusHistory).values({
+                    entityType: "resource",
+                    entityId: targetCheck.resourceId,
+                    orgId: targetCheck.orgId || targetCheck.resourceOrgId,
+                    status: status,
+                    timestamp: Math.floor(Date.now() / 1000)
+                });
+            }
 
             // because we are checking above if there was a change we can fire the alert here because it changed
             if (healthStatus.status === "unhealthy") {
