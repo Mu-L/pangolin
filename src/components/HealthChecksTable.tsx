@@ -150,7 +150,7 @@ export default function HealthChecksTable({
                 </Button>
             ),
             cell: ({ row }) => (
-                <span>{row.original.name}</span>
+                <span>{row.original.name ? row.original.name : "-"}</span>
             )
         },
         {
