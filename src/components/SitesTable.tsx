@@ -30,7 +30,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
@@ -84,6 +84,13 @@ export default function SitesTable({
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 10_000);
+        return () => clearInterval(interval);
+    }, []);
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -226,7 +233,7 @@ export default function SitesTable({
         {
             id: "uptime",
             friendlyName: "Uptime",
-            header: () => <span className="p-3">Uptime (30d)</span>,
+            header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 const originalRow = row.original;
                 return (

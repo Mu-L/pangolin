@@ -1,4 +1,8 @@
 {
+    "contactSalesEnable": "Contact sales to enable this feature.",
+    "contactSalesBookDemo": "Book a demo",
+    "contactSalesOr": "or",
+    "contactSalesContactUs": "contact us",
     "setupCreate": "Create the organization, site, and resources",
     "headerAuthCompatibilityInfo": "Enable this to force a 401 Unauthorized response when an authentication token is missing. This is required for browsers or specific HTTP libraries that do not send credentials without a server challenge.",
     "headerAuthCompatibility": "Extended compatibility",
@@ -3047,5 +3051,6 @@
     "healthCheckTabStrategy": "Strategy",
     "healthCheckTabConnection": "Connection",
     "healthCheckTabAdvanced": "Advanced",
-    "healthCheckStrategyNotAvailable": "This strategy is not available. Please contact sales to enable this feature."
+    "healthCheckStrategyNotAvailable": "This strategy is not available. Please contact sales to enable this feature.",
+    "uptime30d": "Uptime (30d)"
 }

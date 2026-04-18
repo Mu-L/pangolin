@@ -428,6 +428,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/resource/:resourceId/status-history",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.getResource),
+    resource.getResourceStatusHistory
+);
+
+authenticated.get(
     "/org/:orgId/resources",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listResources),

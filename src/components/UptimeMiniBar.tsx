@@ -54,13 +54,15 @@ export default function UptimeMiniBar({
     const siteQuery = useQuery({
         ...orgQueries.siteStatusHistory({ siteId: siteId ?? 0, days }),
         enabled: siteId != null,
-        meta: { api }
+        meta: { api },
+        staleTime: 5 * 60 * 1000
     });
 
     const hcQuery = useQuery({
         ...orgQueries.healthCheckStatusHistory({ orgId: orgId ?? "", healthCheckId: healthCheckId ?? 0, days }),
         enabled: healthCheckId != null && siteId == null,
-        meta: { api }
+        meta: { api },
+        staleTime: 5 * 60 * 1000
     });
 
     const { data, isLoading } = siteId != null ? siteQuery : hcQuery;
