@@ -8,6 +8,11 @@ import RolesTable, { type RoleRow } from "@app/components/RolesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Roles"
+};
 
 type RolesPageProps = {
     params: Promise<{ orgId: string }>;

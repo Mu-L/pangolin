@@ -11,6 +11,11 @@ import { Button } from "@app/components/ui/button";
 import { ArrowRight, Plug } from "lucide-react";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Pending Sites"
+};
 
 type PendingSitesPageProps = {
     params: Promise<{ orgId: string }>;
