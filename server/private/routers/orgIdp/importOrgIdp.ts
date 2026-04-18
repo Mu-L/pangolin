@@ -188,7 +188,7 @@ export async function importOrgIdp(
             idpId,
             orgId: targetOrgId,
             roleMapping: null,
-            orgMapping: `'${targetOrgId}'`
+            orgMapping: null
         });
 
         const redirectUrl = await generateOidcRedirectUrl(idpId, targetOrgId);

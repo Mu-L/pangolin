@@ -154,16 +154,11 @@ export async function createOrgOidcIdp(
                 variant
             });
 
-            const orgMapping =
-                orgMappingBody !== undefined
-                    ? orgMappingBody
-                    : `'${orgId}'`;
-
             await trx.insert(idpOrg).values({
                 idpId: idpRes.idpId,
                 orgId: orgId,
                 roleMapping: roleMapping || null,
-                orgMapping
+                orgMapping: orgMappingBody
             });
         });
 
