@@ -40,7 +40,9 @@ import {
     verifyRoleAccess,
     verifyUserAccess,
     verifyUserCanSetUserOrgRoles,
-    verifySiteProvisioningKeyAccess
+    verifySiteProvisioningKeyAccess,
+    verifyIsLoggedInUser,
+    verifyAdmin
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -87,6 +89,7 @@ authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.createIdp),
@@ -95,9 +98,22 @@ authenticated.put(
 );
 
 authenticated.post(
+    "/org/:orgId/idp/:idpId/import",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyAdmin,
+    logActionAudit(ActionsEnum.createIdp),
+    orgIdp.importOrgIdp
+);
+
+authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyLimits,
@@ -109,11 +125,23 @@ authenticated.post(
 authenticated.delete(
     "/org/:orgId/idp/:idpId",
     verifyValidLicense,
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyUserHasAction(ActionsEnum.deleteIdp),
     logActionAudit(ActionsEnum.deleteIdp),
     orgIdp.deleteOrgIdp
+);
+
+authenticated.delete(
+    "/org/:orgId/idp/:idpId/association",
+    verifyValidLicense,
+    orgIdp.requireOrgIdentityProviderMode,
+    verifyOrgAccess,
+    verifyIdpAccess,
+    verifyUserHasAction(ActionsEnum.deleteIdp),
+    logActionAudit(ActionsEnum.deleteIdp),
+    orgIdp.unassociateOrgIdp
 );
 
 authenticated.get(
@@ -125,15 +153,13 @@ authenticated.get(
     orgIdp.getOrgIdp
 );
 
-authenticated.get(
-    "/org/:orgId/idp",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.listIdps),
-    orgIdp.listOrgIdps
-);
-
 authenticated.get("/org/:orgId/idp", orgIdp.listOrgIdps); // anyone can see this; it's just a list of idp names and ids
+
+authenticated.get(
+    "/user/:userId/admin-org-idps",
+    verifyIsLoggedInUser,
+    orgIdp.listUserAdminOrgIdps
+);
 
 authenticated.get(
     "/org/:orgId/certificate/:domainId/:domain",

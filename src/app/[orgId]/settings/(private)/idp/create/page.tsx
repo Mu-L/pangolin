@@ -91,7 +91,8 @@ export default function Page() {
         tenantId: z.string().optional(),
         autoProvision: z.boolean().default(false),
         roleMapping: z.string().nullable().optional(),
-        roleId: z.number().nullable().optional()
+        roleId: z.number().nullable().optional(),
+        orgMapping: z.string().optional()
     });
 
     type CreateIdpFormValues = z.infer<typeof createIdpFormSchema>;
@@ -112,7 +113,8 @@ export default function Page() {
             tenantId: "",
             autoProvision: false,
             roleMapping: null,
-            roleId: null
+            roleId: null,
+            orgMapping: ""
         }
     });
 
@@ -177,7 +179,7 @@ export default function Page() {
                 return;
             }
 
-            const payload = {
+            const payload: Record<string, unknown> = {
                 name: data.name,
                 clientId: data.clientId,
                 clientSecret: data.clientSecret,
@@ -191,6 +193,10 @@ export default function Page() {
                 scopes: data.scopes,
                 variant: data.type
             };
+            const trimmedOrgMapping = data.orgMapping?.trim();
+            if (trimmedOrgMapping) {
+                payload.orgMapping = trimmedOrgMapping;
+            }
 
             // Use the appropriate endpoint based on provider type
             const endpoint = "oidc";
@@ -336,6 +342,10 @@ export default function Page() {
                                     }
                                     rawExpression={rawRoleExpression}
                                     onRawExpressionChange={setRawRoleExpression}
+                                    orgMappingField={{
+                                        control: form.control,
+                                        name: "orgMapping"
+                                    }}
                                 />
                             </form>
                         </Form>

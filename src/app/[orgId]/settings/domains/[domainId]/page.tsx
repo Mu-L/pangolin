@@ -11,6 +11,11 @@ import { GetDNSRecordsResponse } from "@server/routers/domain";
 import DNSRecordsTable from "@app/components/DNSRecordTable";
 import DomainCertForm from "@app/components/DomainCertForm";
 import { build } from "@server/build";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Domain"
+};
 
 interface DomainSettingsPageProps {
     params: Promise<{ domainId: string; orgId: string }>;

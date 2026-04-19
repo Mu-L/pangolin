@@ -6,8 +6,8 @@ import {
 } from "@app/components/StrategySelect";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import type { IdpOidcProviderType } from "@app/lib/idp/oidcIdpProviderDefaults";
+import IdpTypeIcon from "@app/components/IdpTypeIcon";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import { useEffect, useMemo } from "react";
 
 type Props = {
@@ -32,7 +32,8 @@ export function OidcIdpProviderTypeSelect({ value, onTypeChange }: Props) {
                 {
                     id: "oidc",
                     title: "OAuth2/OIDC",
-                    description: t("idpOidcDescription")
+                    description: t("idpOidcDescription"),
+                    icon: <IdpTypeIcon type="oidc" size={24} />
                 }
             ];
             if (hideTemplates) {
@@ -44,29 +45,13 @@ export function OidcIdpProviderTypeSelect({ value, onTypeChange }: Props) {
                     id: "google",
                     title: t("idpGoogleTitle"),
                     description: t("idpGoogleDescription"),
-                    icon: (
-                        <Image
-                            src="/idp/google.png"
-                            alt={t("idpGoogleAlt")}
-                            width={24}
-                            height={24}
-                            className="rounded"
-                        />
-                    )
+                    icon: <IdpTypeIcon type="google" size={24} />
                 },
                 {
                     id: "azure",
                     title: t("idpAzureTitle"),
                     description: t("idpAzureDescription"),
-                    icon: (
-                        <Image
-                            src="/idp/azure.png"
-                            alt={t("idpAzureAlt")}
-                            width={24}
-                            height={24}
-                            className="rounded"
-                        />
-                    )
+                    icon: <IdpTypeIcon type="azure" size={24} />
                 }
             ];
         }, [hideTemplates, t]);

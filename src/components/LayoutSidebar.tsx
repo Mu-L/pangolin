@@ -24,10 +24,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FaGithub } from "react-icons/fa";
 import SidebarLicenseButton from "./SidebarLicenseButton";
 import { SidebarSupportButton } from "./SidebarSupportButton";
-import { is } from "drizzle-orm";
 
 const ProductUpdates = dynamic(() => import("./ProductUpdates"), {
     ssr: false
@@ -223,11 +221,11 @@ export function LayoutSidebar({
             )}
 
             <div className="pt-1 flex flex-col shrink-0 gap-2 w-full border-t border-border">
-                {canShowProductUpdates && (
+                {canShowProductUpdates ? (
                     <div className="px-4">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />
                     </div>
-                )}
+                ) : <div className="mt-0.2"></div>}
 
                 {build === "enterprise" && (
                     <div className="px-4">
@@ -291,7 +289,6 @@ export function LayoutSidebar({
                                             : build === "enterprise"
                                               ? t("enterpriseEdition")
                                               : "Pangolin Cloud"}
-                                        <FaGithub size={12} />
                                     </Link>
                                 </div>
                                 {build === "enterprise" &&

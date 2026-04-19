@@ -10,7 +10,8 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { Tier } from "@server/types/Tiers";
 import { useParams } from "next/navigation";
 
-const TIER_ORDER: Tier[] = ["tier1", "tier2", "tier3", "enterprise"];
+// const TIER_ORDER: Tier[] = ["tier1", "tier2", "tier3", "enterprise"];
+const TIER_ORDER: Tier[] = ["tier2", "tier3", "enterprise"];
 
 const TIER_TRANSLATION_KEYS: Record<
     Tier,

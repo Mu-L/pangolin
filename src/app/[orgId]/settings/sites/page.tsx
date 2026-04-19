@@ -5,7 +5,12 @@ import { AxiosResponse } from "axios";
 import SitesTable, { SiteRow } from "@app/components/SitesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import SitesBanner from "@app/components/SitesBanner";
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+
+export const metadata: Metadata = {
+    title: "Sites"
+};
 
 type SitesPageProps = {
     params: Promise<{ orgId: string }>;

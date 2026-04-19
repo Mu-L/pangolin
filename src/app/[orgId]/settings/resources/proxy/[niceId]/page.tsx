@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+    title: "Proxy Resource"
+};
 
 export default async function ResourcePage(props: {
     params: Promise<{ niceId: string; orgId: string }>;

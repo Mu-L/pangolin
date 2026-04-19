@@ -8,7 +8,11 @@ import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import SiteInfoCard from "@app/components/SiteInfoCard";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
 
+export const metadata: Metadata = {
+    title: "Site"
+};
 
 interface SettingsLayoutProps {
     children: React.ReactNode;

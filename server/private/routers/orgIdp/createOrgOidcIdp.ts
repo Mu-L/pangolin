@@ -27,7 +27,6 @@ import config from "@server/lib/config";
 import { CreateOrgIdpResponse } from "@server/routers/orgIdp/types";
 import { isSubscribed } from "#private/lib/isSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import privateConfig from "#private/lib/config";
 import { build } from "@server/build";
 
 const paramsSchema = z.strictObject({ orgId: z.string().nonempty() });
@@ -45,6 +44,7 @@ const bodySchema = z.strictObject({
     autoProvision: z.boolean().optional(),
     variant: z.enum(["oidc", "google", "azure"]).optional().default("oidc"),
     roleMapping: z.string().optional(),
+    orgMapping: z.string().nullish(),
     tags: z.string().optional()
 });
 
@@ -94,18 +94,6 @@ export async function createOrgOidcIdp(
             );
         }
 
-        if (
-            privateConfig.getRawPrivateConfig().app.identity_provider_mode !==
-            "org"
-        ) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    "Organization-specific IdP creation is not allowed in the current identity provider mode. Set app.identity_provider_mode to 'org' in the private configuration to enable this feature."
-                )
-            );
-        }
-
         const {
             clientId,
             clientSecret,
@@ -118,6 +106,7 @@ export async function createOrgOidcIdp(
             name,
             variant,
             roleMapping,
+            orgMapping: orgMappingBody,
             tags
         } = parsedBody.data;
 
@@ -169,7 +158,7 @@ export async function createOrgOidcIdp(
                 idpId: idpRes.idpId,
                 orgId: orgId,
                 roleMapping: roleMapping || null,
-                orgMapping: `'${orgId}'`
+                orgMapping: orgMappingBody
             });
         });
 
