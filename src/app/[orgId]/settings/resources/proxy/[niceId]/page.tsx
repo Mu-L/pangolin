@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-    title: "Proxy Resource"
+    title: "Public Resource"
 };
 
 export default async function ResourcePage(props: {
