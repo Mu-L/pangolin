@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func installCrowdsec(config Config) error {
+func installCrowdsec(config Config, installDir string) error {
 
 	if err := stopContainers(config.InstallationContainerType); err != nil {
 		return fmt.Errorf("failed to stop containers: %v", err)
@@ -41,7 +41,7 @@ func installCrowdsec(config Config) error {
 		os.Exit(1)
 	}
 
-	setupTraefikLogRotate()
+	setupTraefikLogRotate(installDir)
 
 	if err := copyDockerService("config/crowdsec/docker-compose.yml", "docker-compose.yml", "crowdsec"); err != nil {
 		fmt.Printf("Error copying docker service: %v\n", err)
@@ -219,20 +219,9 @@ func CheckAndAddCrowdsecDependency(composePath string) error {
 // copytruncate is used so Traefik does not need to be restarted or sent a
 // signal after rotation — it keeps writing to the same file descriptor while
 // the rotated copy is made and the original is truncated in place.
-func setupTraefikLogRotate() {
+func setupTraefikLogRotate(installDir string) {
 	const logrotateDir = "/etc/logrotate.d"
 	const logrotateFile = "/etc/logrotate.d/pangolin-traefik"
-
-	// Resolve the absolute path to the install directory so the logrotate
-	// config references the correct log file regardless of where the user
-	// installed Pangolin.
-	installDir, err := filepath.Abs(".")
-	if err != nil {
-		fmt.Printf("[logrotate] Warning: could not resolve install directory: %v\n", err)
-		fmt.Println("[logrotate] Skipping logrotate setup. Set it up manually:")
-		printLogrotateConfig("<install_dir>/config/traefik/logs/access.log")
-		return
-	}
 
 	logPath := filepath.Join(installDir, "config/traefik/logs/access.log")
 
