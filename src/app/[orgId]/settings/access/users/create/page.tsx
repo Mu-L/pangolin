@@ -46,7 +46,7 @@ import { Checkbox } from "@app/components/ui/checkbox";
 import { ListIdpsResponse } from "@server/routers/idp";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
-import Image from "next/image";
+import IdpTypeIcon from "@app/components/IdpTypeIcon";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import OrgRolesTagField from "@app/components/OrgRolesTagField";
@@ -152,31 +152,8 @@ export default function Page() {
 
     const getIdpIcon = (variant: string | null) => {
         if (!variant) return null;
-
-        switch (variant.toLowerCase()) {
-            case "google":
-                return (
-                    <Image
-                        src="/idp/google.png"
-                        alt={t("idpGoogleAlt")}
-                        width={24}
-                        height={24}
-                        className="rounded"
-                    />
-                );
-            case "azure":
-                return (
-                    <Image
-                        src="/idp/azure.png"
-                        alt={t("idpAzureAlt")}
-                        width={24}
-                        height={24}
-                        className="rounded"
-                    />
-                );
-            default:
-                return null;
-        }
+        const type = variant.toLowerCase();
+        return <IdpTypeIcon type={type} size={24} />;
     };
 
     const validFor = [

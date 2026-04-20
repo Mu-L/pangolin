@@ -24,7 +24,6 @@ import {
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import IdpAutoProvisionUsersDescription from "@app/components/IdpAutoProvisionUsersDescription";
 import { SwitchInput } from "@app/components/SwitchInput";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Button } from "@app/components/ui/button";
 import { Input } from "@app/components/ui/input";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -34,7 +33,6 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { applyOidcIdpProviderType } from "@app/lib/idp/oidcIdpProviderDefaults";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { InfoIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -220,27 +218,36 @@ export default function Page() {
                                             )}
                                         />
 
-                                        <div className="flex items-start mb-0">
-                                            <SwitchInput
-                                                id="auto-provision-toggle"
-                                                label={t(
-                                                    "idpAutoProvisionUsers"
-                                                )}
-                                                defaultChecked={form.getValues(
-                                                    "autoProvision"
-                                                )}
-                                                onCheckedChange={(checked) => {
-                                                    form.setValue(
-                                                        "autoProvision",
-                                                        checked
-                                                    );
-                                                }}
-                                            />
-                                        </div>
                                     </form>
                                 </Form>
                             </SettingsSectionForm>
                         </fieldset>
+                    </SettingsSectionBody>
+                </SettingsSection>
+
+                <SettingsSection>
+                    <SettingsSectionHeader>
+                        <SettingsSectionTitle>
+                            {t("idpAutoProvisionUsers")}
+                        </SettingsSectionTitle>
+                        <SettingsSectionDescription>
+                            <IdpAutoProvisionUsersDescription />
+                        </SettingsSectionDescription>
+                    </SettingsSectionHeader>
+                    <SettingsSectionBody>
+                        <div className="space-y-2">
+                            <SwitchInput
+                                id="auto-provision-toggle"
+                                label={t("idpAutoProvisionUsers")}
+                                defaultChecked={form.getValues("autoProvision")}
+                                onCheckedChange={(checked) => {
+                                    form.setValue("autoProvision", checked);
+                                }}
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                {t("idpAutoProvisionConfigureAfterCreate")}
+                            </p>
+                        </div>
                     </SettingsSectionBody>
                 </SettingsSection>
 

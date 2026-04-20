@@ -11,6 +11,11 @@ import OrgProvider from "@app/providers/OrgProvider";
 import { ListDomainsResponse } from "@server/routers/domain";
 import { toUnicode } from "punycode";
 import { getCachedOrg } from "@app/lib/api/getCachedOrg";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Domains"
+};
 
 type Props = {
     params: Promise<{ orgId: string }>;

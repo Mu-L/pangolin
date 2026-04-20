@@ -8,6 +8,11 @@ import { ListClientsResponse } from "@server/routers/client";
 import { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
 import type { Pagination } from "@server/types/Pagination";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Machine Clients"
+};
 
 type ClientsPageProps = {
     params: Promise<{ orgId: string }>;

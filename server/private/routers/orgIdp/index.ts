@@ -12,7 +12,11 @@
  */
 
 export * from "./createOrgOidcIdp";
+export * from "./importOrgIdp";
 export * from "./getOrgIdp";
 export * from "./listOrgIdps";
+export * from "./listUserAdminOrgIdps";
 export * from "./updateOrgOidcIdp";
 export * from "./deleteOrgIdp";
+export * from "./unassociateOrgIdp";
+export * from "./requireOrgIdentityProviderMode";

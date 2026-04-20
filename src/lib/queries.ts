@@ -1,7 +1,8 @@
 import { build } from "@server/build";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
-import type { ListDomainsResponse } from "@server/routers/domain";
+import type { ListDomainsResponse, GetDNSRecordsResponse } from "@server/routers/domain";
+import type { GetDomainResponse } from "@server/routers/domain/getDomain";
 import type {
     GetResourceWhitelistResponse,
     ListResourceNamesResponse,
@@ -606,5 +607,51 @@ export const approvalQueries = {
                 }
                 return false;
             }
+        })
+};
+
+export const domainQueries = {
+    getDomain: ({
+        orgId,
+        domainId
+    }: {
+        orgId: string;
+        domainId: string;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "DOMAIN", domainId] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDomainResponse>
+                >(`/org/${orgId}/domain/${domainId}`, { signal });
+                return res.data.data;
+            },
+            refetchInterval: durationToMs(10, "seconds")
+        }),
+    getDNSRecords: ({
+        orgId,
+        domainId
+    }: {
+        orgId: string;
+        domainId: string;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "DOMAIN",
+                domainId,
+                "DNS_RECORDS"
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDNSRecordsResponse>
+                >(
+                    `/org/${orgId}/domain/${domainId}/dns-records`,
+                    { signal }
+                );
+                return res.data.data;
+            },
+            refetchInterval: durationToMs(10, "seconds")
         })
 };

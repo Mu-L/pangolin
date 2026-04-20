@@ -7,6 +7,11 @@ import { type ListUserDevicesResponse } from "@server/routers/client";
 import type { Pagination } from "@server/types/Pagination";
 import { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "User Devices"
+};
 
 type ClientsPageProps = {
     params: Promise<{ orgId: string }>;

@@ -221,11 +221,11 @@ export function LayoutSidebar({
             )}
 
             <div className="pt-1 flex flex-col shrink-0 gap-2 w-full border-t border-border">
-                {canShowProductUpdates && (
+                {canShowProductUpdates ? (
                     <div className="px-4">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />
                     </div>
-                )}
+                ) : <div className="mt-0.2"></div>}
 
                 {build === "enterprise" && (
                     <div className="px-4">

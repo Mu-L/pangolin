@@ -10,13 +10,12 @@ import {
     MoreHorizontal,
     RefreshCw
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { Badge } from "@app/components/ui/badge";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import CreateDomainForm from "@app/components/CreateDomainForm";
 import { useToast } from "@app/hooks/useToast";
@@ -34,6 +33,10 @@ import {
     TooltipTrigger
 } from "./ui/tooltip";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { orgQueries } from "@app/lib/queries";
+import { toUnicode } from "punycode";
+import { durationToMs } from "@app/lib/durationToMs";
 
 export type DomainRow = {
     domainId: string;
@@ -59,32 +62,32 @@ export default function DomainsTable({ domains, orgId }: Props) {
     const [selectedDomain, setSelectedDomain] = useState<DomainRow | null>(
         null
     );
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [restartingDomains, setRestartingDomains] = useState<Set<string>>(
         new Set()
     );
     const env = useEnvContext();
     const api = createApiClient(env);
-    const router = useRouter();
     const t = useTranslations();
     const { toast } = useToast();
     const { org } = useOrgContext();
+    const queryClient = useQueryClient();
 
-    const refreshData = async () => {
-        setIsRefreshing(true);
-        try {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            router.refresh();
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
+    const { data: rawDomains, isRefetching, refetch } = useQuery({
+        ...orgQueries.domains({ orgId }),
+        initialData: domains as any,
+        refetchInterval: durationToMs(10, "seconds")
+    });
+
+    const tableData = useMemo(
+        () =>
+            (rawDomains ?? []).map((d) => ({
+                ...d,
+                baseDomain: toUnicode(d.baseDomain),
+                type: d.type ?? "",
+                errorMessage: d.errorMessage ?? null
+            } as DomainRow)),
+        [rawDomains]
+    );
 
     const deleteDomain = async (domainId: string) => {
         try {
@@ -94,7 +97,7 @@ export default function DomainsTable({ domains, orgId }: Props) {
                 description: t("domainDeletedDescription")
             });
             setIsDeleteModalOpen(false);
-            refreshData();
+            refetch();
         } catch (e) {
             toast({
                 title: t("error"),
@@ -114,7 +117,7 @@ export default function DomainsTable({ domains, orgId }: Props) {
                     fallback: "Domain verification restarted successfully"
                 })
             });
-            refreshData();
+            refetch();
         } catch (e) {
             toast({
                 title: t("error"),
@@ -361,16 +364,16 @@ export default function DomainsTable({ domains, orgId }: Props) {
                 open={isCreateModalOpen}
                 setOpen={setIsCreateModalOpen}
                 onCreated={(domain) => {
-                    refreshData();
+                    refetch();
                 }}
             />
 
             <DomainsDataTable
                 columns={columns}
-                data={domains}
+                data={tableData}
                 onAdd={() => setIsCreateModalOpen(true)}
-                onRefresh={refreshData}
-                isRefreshing={isRefreshing}
+                onRefresh={refetch}
+                isRefreshing={isRefetching}
             />
         </>
     );

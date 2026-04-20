@@ -10,7 +10,12 @@ import type { ListResourcesResponse } from "@server/routers/resource";
 import type { ListAllSiteResourcesByOrgResponse } from "@server/routers/siteResource";
 import type { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+    title: "Private Resources"
+};
 
 export interface ClientResourcesPageProps {
     params: Promise<{ orgId: string }>;

@@ -7,6 +7,11 @@ import ExitNodesTable, {
 } from "@app/components/ExitNodesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Remote Exit Nodes"
+};
 
 type RemoteExitNodesPageProps = {
     params: Promise<{ orgId: string }>;
