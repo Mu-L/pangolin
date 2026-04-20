@@ -2917,5 +2917,6 @@
     "idpUnassociateWarning": "This cannot be undone for this organization.",
     "idpUnassociatedDescription": "Identity provider unassociated from this organization successfully",
     "idpUnassociateMenu": "Unassociate",
-    "idpDeleteAllOrgsMenu": "Delete"
+    "idpDeleteAllOrgsMenu": "Delete",
+    "publicIpEndpoint": "Endpoint"
 }

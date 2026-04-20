@@ -19,12 +19,11 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
-import { OpenAPITags, registry } from "@server/openApi";
 import { idp, idpOrg, orgs, roles, userOrgs } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { CreateOrgIdpResponse } from "@server/routers/orgIdp/types";
 import { generateOidcRedirectUrl } from "@server/lib/idp/generateRedirectUrl";
-import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
+import { checkOrgAccessPolicy } from "#private/lib/checkOrgAccessPolicy";
 import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 const paramsSchema = z.strictObject({
