@@ -44,12 +44,38 @@ import {
 } from "@app/lib/alertRuleForm";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
+import { Bell, Globe, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
+
+const EXTERNAL_INTEGRATIONS = [
+    {
+        id: "pagerduty",
+        name: "PagerDuty",
+        logo: "/third-party/pgd.png"
+    },
+    {
+        id: "opsgenie",
+        name: "Opsgenie",
+        logo: "/third-party/opsgenie.png"
+    },
+    {
+        id: "servicenow",
+        name: "ServiceNow",
+        logo: "/third-party/servicenow.png"
+    },
+    {
+        id: "incidentio",
+        name: "Incident.io",
+        logo: "/third-party/incidentio.png"
+    }
+] as const;
+
+const EXTERNAL_IDS = EXTERNAL_INTEGRATIONS.map((i) => i.id);
 
 export function DropdownAddAction({
     onAdd
@@ -58,8 +84,15 @@ export function DropdownAddAction({
 }) {
     const t = useTranslations();
     const [open, setOpen] = useState(false);
+    const [salesFor, setSalesFor] = useState<string | null>(null);
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+            open={open}
+            onOpenChange={(o) => {
+                setOpen(o);
+                if (!o) setSalesFor(null);
+            }}
+        >
             <PopoverTrigger asChild>
                 <Button type="button" variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-1" />
@@ -67,29 +100,84 @@ export function DropdownAddAction({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-48" align="start">
-                <Command>
-                    <CommandList>
-                        <CommandGroup>
-                            <CommandItem
-                                onSelect={() => {
-                                    onAdd("notify");
-                                    setOpen(false);
-                                }}
-                            >
-                                {t("alertingActionNotify")}
-                            </CommandItem>
-                            <CommandItem
-                                onSelect={() => {
-                                    onAdd("webhook");
-                                    setOpen(false);
-                                }}
-                            >
-                                {t("alertingActionWebhook")}
-                            </CommandItem>
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
+            <PopoverContent
+                className={salesFor ? "w-80 p-3" : "p-0 w-52"}
+                align="start"
+            >
+                {salesFor ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <img
+                                src={
+                                    EXTERNAL_INTEGRATIONS.find(
+                                        (i) => i.id === salesFor
+                                    )?.logo
+                                }
+                                alt={salesFor}
+                                className="h-5 w-5 object-contain"
+                            />
+                            <span className="text-sm font-medium">
+                                {
+                                    EXTERNAL_INTEGRATIONS.find(
+                                        (i) => i.id === salesFor
+                                    )?.name
+                                }
+                            </span>
+                        </div>
+                        <ContactSalesBanner />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setSalesFor(null)}
+                        >
+                            ← Back
+                        </Button>
+                    </div>
+                ) : (
+                    <Command>
+                        <CommandList>
+                            <CommandGroup heading="Built-in">
+                                <CommandItem
+                                    onSelect={() => {
+                                        onAdd("notify");
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Bell className="h-4 w-4 mr-2 text-muted-foreground" />
+                                    {t("alertingActionNotify")}
+                                </CommandItem>
+                                <CommandItem
+                                    onSelect={() => {
+                                        onAdd("webhook");
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+                                    {t("alertingActionWebhook")}
+                                </CommandItem>
+                            </CommandGroup>
+                            <CommandGroup heading="Integrations">
+                                {EXTERNAL_INTEGRATIONS.map((integration) => (
+                                    <CommandItem
+                                        key={integration.id}
+                                        onSelect={() =>
+                                            setSalesFor(integration.id)
+                                        }
+                                    >
+                                        <img
+                                            src={integration.logo}
+                                            alt={integration.name}
+                                            className="h-4 w-4 mr-2 object-contain"
+                                        />
+                                        {integration.name}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                )}
             </PopoverContent>
         </Popover>
     );
@@ -382,6 +470,43 @@ export function ActionBlock({
 }) {
     const t = useTranslations();
     const type = useWatch({ control, name: `actions.${index}.type` });
+    const [displayType, setDisplayType] = useState<string>(type ?? "notify");
+
+    useEffect(() => {
+        if (!EXTERNAL_IDS.includes(displayType as any)) {
+            setDisplayType(type ?? "notify");
+        }
+    }, [type]);
+
+    const isPremium = EXTERNAL_IDS.includes(displayType as any);
+
+    const actionTypeOptions = [
+        {
+            id: "notify",
+            title: t("alertingActionNotify"),
+            description: t("alertingActionNotifyDescription"),
+            icon: <Bell className="h-5 w-5" />
+        },
+        {
+            id: "webhook",
+            title: t("alertingActionWebhook"),
+            description: t("alertingActionWebhookDescription"),
+            icon: <Globe className="h-5 w-5" />
+        },
+        ...EXTERNAL_INTEGRATIONS.map((integration) => ({
+            id: integration.id,
+            title: integration.name,
+            description: t("alertingExternalIntegration"),
+            icon: (
+                <img
+                    src={integration.logo}
+                    alt={integration.name}
+                    className="h-5 w-5 object-contain"
+                />
+            )
+        }))
+    ];
+
     return (
         <div className="rounded-lg border p-4 space-y-3 relative">
             {canRemove && (
@@ -395,56 +520,44 @@ export function ActionBlock({
                     <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
             )}
-            <FormField
-                control={control}
-                name={`actions.${index}.type`}
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>{t("alertingActionType")}</FormLabel>
-                        <Select
-                            value={field.value}
-                            onValueChange={(v) => {
-                                const nt = v as AlertRuleFormAction["type"];
-                                if (nt === "notify") {
-                                    onUpdate({
-                                        type: "notify",
-                                        userTags: [],
-                                        roleTags: [],
-                                        emailTags: []
-                                    });
-                                } else {
-                                    onUpdate({
-                                        type: "webhook",
-                                        url: "",
-                                        method: "POST",
-                                        headers: [],
-                                        authType: "none",
-                                        bearerToken: "",
-                                        basicCredentials: "",
-                                        customHeaderName: "",
-                                        customHeaderValue: ""
-                                    });
-                                }
-                            }}
-                        >
-                            <FormControl>
-                                <SelectTrigger className="max-w-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="notify">
-                                    {t("alertingActionNotify")}
-                                </SelectItem>
-                                <SelectItem value="webhook">
-                                    {t("alertingActionWebhook")}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-            />
-            {type === "notify" && (
+            <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                    {t("alertingActionType")}
+                </Label>
+                <StrategySelect
+                    options={actionTypeOptions}
+                    value={displayType}
+                    cols={2}
+                    onChange={(v) => {
+                        setDisplayType(v);
+                        if (!EXTERNAL_IDS.includes(v as any)) {
+                            const nt = v as AlertRuleFormAction["type"];
+                            if (nt === "notify") {
+                                onUpdate({
+                                    type: "notify",
+                                    userTags: [],
+                                    roleTags: [],
+                                    emailTags: []
+                                });
+                            } else {
+                                onUpdate({
+                                    type: "webhook",
+                                    url: "",
+                                    method: "POST",
+                                    headers: [],
+                                    authType: "none",
+                                    bearerToken: "",
+                                    basicCredentials: "",
+                                    customHeaderName: "",
+                                    customHeaderValue: ""
+                                });
+                            }
+                        }
+                    }}
+                />
+            </div>
+            {isPremium && <ContactSalesBanner />}
+            {!isPremium && type === "notify" && (
                 <NotifyActionFields
                     orgId={orgId}
                     index={index}
@@ -452,7 +565,7 @@ export function ActionBlock({
                     form={form}
                 />
             )}
-            {type === "webhook" && (
+            {!isPremium && type === "webhook" && (
                 <WebhookActionFields
                     index={index}
                     control={control}
