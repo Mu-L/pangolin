@@ -479,6 +479,9 @@ export const alertRules = sqliteTable("alertRules", {
         .notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    allSites: integer("allSites", { mode: "boolean" }).notNull().default(false),
+    allHealthChecks: integer("allHealthChecks", { mode: "boolean" }).notNull().default(false),
+    allResources: integer("allResources", { mode: "boolean" }).notNull().default(false),
     lastTriggeredAt: integer("lastTriggeredAt"),
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt").notNull()

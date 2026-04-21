@@ -217,8 +217,11 @@ export async function updateAlertRule(
             enabled,
             cooldownSeconds,
             siteIds,
+            allSites,
             healthCheckIds,
+            allHealthChecks,
             resourceIds,
+            allResources,
             userIds,
             roleIds,
             emails,
@@ -233,8 +236,10 @@ export async function updateAlertRule(
         if (name !== undefined) updateData.name = name;
         if (eventType !== undefined) updateData.eventType = eventType;
         if (enabled !== undefined) updateData.enabled = enabled;
-        if (cooldownSeconds !== undefined)
-            updateData.cooldownSeconds = cooldownSeconds;
+        if (cooldownSeconds !== undefined) updateData.cooldownSeconds = cooldownSeconds;
+        if (allSites !== undefined) updateData.allSites = allSites;
+        if (allHealthChecks !== undefined) updateData.allHealthChecks = allHealthChecks;
+        if (allResources !== undefined) updateData.allResources = allResources;
 
         await db
             .update(alertRules)
@@ -247,12 +252,14 @@ export async function updateAlertRule(
             );
 
         // --- Full-replace site associations if siteIds was provided ---
-        if (siteIds !== undefined) {
+        if (siteIds !== undefined || allSites !== undefined) {
             await db
                 .delete(alertSites)
                 .where(eq(alertSites.alertRuleId, alertRuleId));
 
-            if (siteIds.length > 0) {
+            // Only insert junction rows when allSites is not true
+            const effectiveAllSites = allSites ?? false;
+            if (!effectiveAllSites && siteIds !== undefined && siteIds.length > 0) {
                 await db.insert(alertSites).values(
                     siteIds.map((siteId) => ({
                         alertRuleId,
@@ -263,12 +270,13 @@ export async function updateAlertRule(
         }
 
         // --- Full-replace health check associations if healthCheckIds was provided ---
-        if (healthCheckIds !== undefined) {
+        if (healthCheckIds !== undefined || allHealthChecks !== undefined) {
             await db
                 .delete(alertHealthChecks)
                 .where(eq(alertHealthChecks.alertRuleId, alertRuleId));
 
-            if (healthCheckIds.length > 0) {
+            const effectiveAllHealthChecks = allHealthChecks ?? false;
+            if (!effectiveAllHealthChecks && healthCheckIds !== undefined && healthCheckIds.length > 0) {
                 await db.insert(alertHealthChecks).values(
                     healthCheckIds.map((healthCheckId) => ({
                         alertRuleId,
@@ -279,12 +287,13 @@ export async function updateAlertRule(
         }
 
         // --- Full-replace resource associations if resourceIds was provided ---
-        if (resourceIds !== undefined) {
+        if (resourceIds !== undefined || allResources !== undefined) {
             await db
                 .delete(alertResources)
                 .where(eq(alertResources.alertRuleId, alertRuleId));
 
-            if (resourceIds.length > 0) {
+            const effectiveAllResources = allResources ?? false;
+            if (!effectiveAllResources && resourceIds !== undefined && resourceIds.length > 0) {
                 await db.insert(alertResources).values(
                     resourceIds.map((resourceId) => ({
                         alertRuleId,

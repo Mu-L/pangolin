@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db } from "@server/db";
 import {
     alertRules,
@@ -49,11 +49,9 @@ export async function processAlerts(context: AlertContext): Promise<void> {
     // ------------------------------------------------------------------
     // 1. Find matching alert rules
     // ------------------------------------------------------------------
-    // Rules with no junction-table entries match ALL sites / health checks.
-    // Rules with junction entries match only those specific IDs.
-    // We implement this with a LEFT JOIN: a NULL join result means the rule
-    // has no scope restrictions (match all); a non-NULL result that satisfies
-    // the id equality filter means an explicit match.
+    // Rules with allSites / allHealthChecks / allResources set to true match
+    // ANY event of that type. Rules without these flags set match only the
+    // specific IDs listed in the junction tables.
     const baseConditions = and(
         eq(alertRules.orgId, context.orgId),
         eq(alertRules.eventType, context.eventType),
@@ -74,12 +72,20 @@ export async function processAlerts(context: AlertContext): Promise<void> {
                 and(
                     baseConditions,
                     or(
-                        eq(alertSites.siteId, context.siteId),
-                        isNull(alertSites.alertRuleId)
+                        eq(alertRules.allSites, true),
+                        eq(alertSites.siteId, context.siteId)
                     )
                 )
             );
-        rules = rows.map((r) => r.alertRules);
+        // Deduplicate in case a rule matched on multiple junction rows
+        const seen = new Set<number>();
+        rules = rows
+            .map((r) => r.alertRules)
+            .filter((r) => {
+                if (seen.has(r.alertRuleId)) return false;
+                seen.add(r.alertRuleId);
+                return true;
+            });
     } else if (context.healthCheckId != null) {
         const rows = await db
             .select()
@@ -92,12 +98,19 @@ export async function processAlerts(context: AlertContext): Promise<void> {
                 and(
                     baseConditions,
                     or(
-                        eq(alertHealthChecks.healthCheckId, context.healthCheckId),
-                        isNull(alertHealthChecks.alertRuleId)
+                        eq(alertRules.allHealthChecks, true),
+                        eq(alertHealthChecks.healthCheckId, context.healthCheckId)
                     )
                 )
             );
-        rules = rows.map((r) => r.alertRules);
+        const seen = new Set<number>();
+        rules = rows
+            .map((r) => r.alertRules)
+            .filter((r) => {
+                if (seen.has(r.alertRuleId)) return false;
+                seen.add(r.alertRuleId);
+                return true;
+            });
     } else if (context.resourceId != null) {
         const rows = await db
             .select()
@@ -110,12 +123,19 @@ export async function processAlerts(context: AlertContext): Promise<void> {
                 and(
                     baseConditions,
                     or(
-                        eq(alertResources.resourceId, context.resourceId),
-                        isNull(alertResources.alertRuleId)
+                        eq(alertRules.allResources, true),
+                        eq(alertResources.resourceId, context.resourceId)
                     )
                 )
             );
-        rules = rows.map((r) => r.alertRules);
+        const seen = new Set<number>();
+        rules = rows
+            .map((r) => r.alertRules)
+            .filter((r) => {
+                if (seen.has(r.alertRuleId)) return false;
+                seen.add(r.alertRuleId);
+                return true;
+            });
     } else {
         rules = [];
     }

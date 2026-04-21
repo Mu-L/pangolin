@@ -488,6 +488,9 @@ export const alertRules = pgTable("alertRules", {
     // Nullable depending on eventType
     enabled: boolean("enabled").notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    allSites: boolean("allSites").notNull().default(false),
+    allHealthChecks: boolean("allHealthChecks").notNull().default(false),
+    allResources: boolean("allResources").notNull().default(false),
     lastTriggeredAt: bigint("lastTriggeredAt", { mode: "number" }), // nullable
     createdAt: bigint("createdAt", { mode: "number" }).notNull(),
     updatedAt: bigint("updatedAt", { mode: "number" }).notNull()

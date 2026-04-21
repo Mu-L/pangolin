@@ -230,6 +230,7 @@ export async function createTarget(
             .values({
                 orgId: resource.orgId,
                 targetId: newTarget[0].targetId,
+                name: `Resource ${resource.name} - ${targetData.ip}:${targetData.port}`,
                 hcEnabled: targetData.hcEnabled ?? false,
                 hcPath: targetData.hcPath ?? null,
                 hcScheme: targetData.hcScheme ?? null,

@@ -246,6 +246,9 @@ export async function createAlertRule(
                 eventType,
                 enabled,
                 cooldownSeconds,
+                allSites,
+                allHealthChecks,
+                allResources,
                 createdAt: now,
                 updatedAt: now
             })
