@@ -12,13 +12,15 @@ interface DataTableProps<TData, TValue> {
     data: TData[];
     onAdd?: () => void;
     addActions?: DataTableAddAction[];
+    addButtonDisabled?: boolean;
 }
 
 export function IdpDataTable<TData, TValue>({
     columns,
     data,
     onAdd,
-    addActions
+    addActions,
+    addButtonDisabled
 }: DataTableProps<TData, TValue>) {
     const t = useTranslations();
 
@@ -33,6 +35,7 @@ export function IdpDataTable<TData, TValue>({
             addButtonText={t("idpAdd")}
             onAdd={onAdd}
             addActions={addActions}
+            addButtonDisabled={addButtonDisabled}
             enableColumnVisibility={true}
             stickyRightColumn="actions"
         />
