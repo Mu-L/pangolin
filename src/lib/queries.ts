@@ -256,14 +256,25 @@ export const orgQueries = {
             }
         }),
 
-    alertRules: ({ orgId }: { orgId: string }) =>
+    alertRules: ({
+        orgId,
+        limit = 20,
+        offset = 0
+    }: {
+        orgId: string;
+        limit?: number;
+        offset?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "ALERT_RULES"] as const,
+            queryKey: ["ORG", orgId, "ALERT_RULES", { limit, offset }] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<ListAlertRulesResponse>
-                >(`/org/${orgId}/alert-rules`, { signal });
-                return res.data.data.alertRules;
+                >(`/org/${orgId}/alert-rules?limit=${limit}&offset=${offset}`, { signal });
+                return {
+                    alertRules: res.data.data.alertRules,
+                    pagination: res.data.data.pagination
+                };
             }
         }),
 
@@ -289,9 +300,17 @@ export const orgQueries = {
             }
         }),
 
-    standaloneHealthChecks: ({ orgId }: { orgId: string }) =>
+    standaloneHealthChecks: ({
+        orgId,
+        limit = 20,
+        offset = 0
+    }: {
+        orgId: string;
+        limit?: number;
+        offset?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"] as const,
+            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS", { limit, offset }] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<{
@@ -325,8 +344,11 @@ export const orgQueries = {
                             offset: number;
                         };
                     }>
-                >(`/org/${orgId}/health-checks`, { signal });
-                return res.data.data.healthChecks;
+                >(`/org/${orgId}/health-checks?limit=${limit}&offset=${offset}`, { signal });
+                return {
+                    healthChecks: res.data.data.healthChecks,
+                    pagination: res.data.data.pagination
+                };
             }
         }),
     siteStatusHistory: ({

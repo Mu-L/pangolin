@@ -24,6 +24,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
+import type { DataTablePaginationState } from "@app/components/ui/data-table";
 
 type AlertingRulesTableProps = {
     orgId: string;
@@ -106,16 +108,39 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<AlertRuleRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
+    const [pageIndex, setPageIndex] = useState(0);
+    const [pageSize, setPageSize] = useState(() => {
+        if (typeof window === "undefined") return 20;
+        try {
+            const stored = localStorage.getItem("Org-alerting-rules-table-size");
+            if (stored) {
+                const parsed = parseInt(stored, 10);
+                if (parsed > 0 && parsed <= 1000) return parsed;
+            }
+        } catch {}
+        return 20;
+    });
 
     const {
-        data: rows = [],
+        data,
         isLoading,
         refetch,
         isRefetching
-    } = useQuery(orgQueries.alertRules({ orgId }));
+    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize }));
+
+    const rows = data?.alertRules ?? [];
+    const total = data?.pagination.total ?? 0;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+    const paginationState: DataTablePaginationState = { pageIndex, pageSize, pageCount };
+
+    const handlePaginationChange = (newState: PaginationState) => {
+        setPageIndex(newState.pageIndex);
+        setPageSize(newState.pageSize);
+    };
 
     const invalidate = () =>
-        queryClient.invalidateQueries(orgQueries.alertRules({ orgId }));
+        queryClient.invalidateQueries({ queryKey: ["ORG", orgId, "ALERT_RULES"] });
 
     const setEnabled = async (rule: AlertRuleRow, enabled: boolean) => {
         setTogglingId(rule.alertRuleId);
@@ -296,6 +321,8 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
                 enableColumnVisibility
                 stickyLeftColumn="name"
                 stickyRightColumn="rowActions"
+                pagination={paginationState}
+                onPaginationChange={handlePaginationChange}
             />
         </>
     );

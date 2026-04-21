@@ -24,6 +24,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import type { PaginationState } from "@tanstack/react-table";
+import type { DataTablePaginationState } from "@app/components/ui/data-table";
 import Link from "next/link";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -75,21 +77,54 @@ export default function HealthChecksTable({
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<HealthCheckRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
+    const [pageIndex, setPageIndex] = useState(0);
+    const [pageSize, setPageSize] = useState(() => {
+        if (typeof window === "undefined") return 20;
+        try {
+            const stored = localStorage.getItem(
+                "Org-standalone-health-checks-table-size"
+            );
+            if (stored) {
+                const parsed = parseInt(stored, 10);
+                if (parsed > 0 && parsed <= 1000) return parsed;
+            }
+        } catch {}
+        return 20;
+    });
 
     const {
-        data: rows = [],
+        data,
         isLoading,
         refetch,
         isRefetching
     } = useQuery({
-        ...orgQueries.standaloneHealthChecks({ orgId }),
+        ...orgQueries.standaloneHealthChecks({
+            orgId,
+            limit: pageSize,
+            offset: pageIndex * pageSize
+        }),
         refetchInterval: 10_000
     });
 
+    const rows = data?.healthChecks ?? [];
+    const total = data?.pagination.total ?? 0;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+    const paginationState: DataTablePaginationState = {
+        pageIndex,
+        pageSize,
+        pageCount
+    };
+
+    const handlePaginationChange = (newState: PaginationState) => {
+        setPageIndex(newState.pageIndex);
+        setPageSize(newState.pageSize);
+    };
+
     const invalidate = () =>
-        queryClient.invalidateQueries(
-            orgQueries.standaloneHealthChecks({ orgId })
-        );
+        queryClient.invalidateQueries({
+            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"]
+        });
 
     const handleToggleEnabled = async (
         row: HealthCheckRow,
@@ -356,6 +391,8 @@ export default function HealthChecksTable({
                 enableColumnVisibility
                 stickyLeftColumn="name"
                 stickyRightColumn="rowActions"
+                pagination={paginationState}
+                onPaginationChange={handlePaginationChange}
             />
         </>
     );
