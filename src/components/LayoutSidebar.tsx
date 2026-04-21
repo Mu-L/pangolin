@@ -220,7 +220,12 @@ export function LayoutSidebar({
                 </div>
             )}
 
-            <div className="pt-1 flex flex-col shrink-0 gap-2 w-full border-t border-border">
+            <div
+                className={cn(
+                    "pt-1 flex flex-col shrink-0 gap-2 w-full border-t border-border",
+                    isSidebarCollapsed && "pb-2"
+                )}
+            >
                 {canShowProductUpdates ? (
                     <div className="px-4">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />
