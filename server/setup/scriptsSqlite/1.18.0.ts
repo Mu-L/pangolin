@@ -67,6 +67,25 @@ export default async function migration() {
             `Found ${existingHealthChecks.length} existing targetHealthCheck row(s) to migrate`
         );
 
+        // Query existing siteResources with siteId before the transaction recreates
+        // the table without that column. We use this data below to create a dedicated
+        // network for each resource.
+        const existingSiteResourcesForNetwork = db
+            .prepare(
+                `SELECT sr."siteResourceId", sr."orgId", sr."siteId"
+                 FROM 'siteResources' sr
+                 WHERE sr."siteId" IS NOT NULL`
+            )
+            .all() as {
+            siteResourceId: number;
+            orgId: string;
+            siteId: number;
+        }[];
+
+        console.log(
+            `Found ${existingSiteResourcesForNetwork.length} existing siteResource(s) to migrate to networks`
+        );
+
         db.transaction(() => {
             db.prepare(
                 `
@@ -236,7 +255,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain" FROM 'siteResources';
+                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
             `
             ).run();
             db.prepare(
@@ -314,6 +333,36 @@ export default async function migration() {
         })();
 
         db.pragma("foreign_keys = ON");
+
+        // Create a dedicated network for each existing siteResource and link the
+        // old siteId via siteNetworks. Then set networkId and defaultNetworkId on
+        // the siteResource row so the app can use the new network model.
+        if (existingSiteResourcesForNetwork.length > 0) {
+            const insertNetwork = db.prepare(
+                `INSERT INTO 'networks' ("scope", "orgId") VALUES (?, ?)`
+            );
+            const insertSiteNetwork = db.prepare(
+                `INSERT INTO 'siteNetworks' ("siteId", "networkId") VALUES (?, ?)`
+            );
+            const updateSiteResource = db.prepare(
+                `UPDATE 'siteResources' SET "networkId" = ?, "defaultNetworkId" = ? WHERE "siteResourceId" = ?`
+            );
+
+            const migrateNetworks = db.transaction(() => {
+                for (const sr of existingSiteResourcesForNetwork) {
+                    const result = insertNetwork.run("resource", sr.orgId);
+                    const networkId = result.lastInsertRowid as number;
+                    insertSiteNetwork.run(sr.siteId, networkId);
+                    updateSiteResource.run(networkId, networkId, sr.siteResourceId);
+                }
+            });
+
+            migrateNetworks();
+
+            console.log(
+                `Migrated ${existingSiteResourcesForNetwork.length} siteResource(s) to networks`
+            );
+        }
 
         // Re-insert targetHealthCheck rows with corrected IDs:
         // targetHealthCheckId is set to the same integer as targetId (1:1 mapping),
@@ -401,3 +450,5 @@ export default async function migration() {
 
     console.log(`${version} migration complete`);
 }
+
+await migration();

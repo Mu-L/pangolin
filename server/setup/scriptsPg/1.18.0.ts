@@ -61,6 +61,22 @@ export default async function migration() {
         `Found ${existingHealthChecks.length} existing targetHealthCheck row(s) to migrate`
     );
 
+    // Query existing siteResources with siteId before it is dropped by the DDL below.
+    const siteResourcesForNetworkQuery = await db.execute(
+        sql`SELECT sr."siteResourceId", sr."orgId", sr."siteId"
+            FROM "siteResources" sr
+            WHERE sr."siteId" IS NOT NULL`
+    );
+    const existingSiteResourcesForNetwork = siteResourcesForNetworkQuery.rows as {
+        siteResourceId: number;
+        orgId: string;
+        siteId: number;
+    }[];
+
+    console.log(
+        `Found ${existingSiteResourcesForNetwork.length} existing siteResource(s) to migrate to networks`
+    );
+
     try {
         await db.execute(sql`BEGIN`);
 
@@ -424,6 +440,45 @@ export default async function migration() {
         } catch (e) {
             console.error(
                 "Error while migrating targetHealthCheck rows:",
+                e
+            );
+            throw e;
+        }
+    }
+
+    // Create a dedicated "resource"-scoped network for each existing siteResource,
+    // populate siteNetworks with the old siteId, and set networkId / defaultNetworkId
+    // on the siteResource row.
+    if (existingSiteResourcesForNetwork.length > 0) {
+        try {
+            for (const sr of existingSiteResourcesForNetwork) {
+                const networkResult = await db.execute(sql`
+                    INSERT INTO "networks" ("scope", "orgId")
+                    VALUES ('resource', ${sr.orgId})
+                    RETURNING "networkId"
+                `);
+                const networkId = (
+                    networkResult.rows[0] as { networkId: number }
+                ).networkId;
+
+                await db.execute(sql`
+                    INSERT INTO "siteNetworks" ("siteId", "networkId")
+                    VALUES (${sr.siteId}, ${networkId})
+                `);
+
+                await db.execute(sql`
+                    UPDATE "siteResources"
+                    SET "networkId" = ${networkId}, "defaultNetworkId" = ${networkId}
+                    WHERE "siteResourceId" = ${sr.siteResourceId}
+                `);
+            }
+
+            console.log(
+                `Migrated ${existingSiteResourcesForNetwork.length} siteResource(s) to networks`
+            );
+        } catch (e) {
+            console.error(
+                "Error while migrating siteResources to networks:",
                 e
             );
             throw e;
