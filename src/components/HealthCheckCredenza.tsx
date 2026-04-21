@@ -41,6 +41,11 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
 import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SitesSelector } from "@app/components/site-selector";
+import type { Selectedsite } from "@app/components/site-selector";
+import { CaretSortIcon } from "@radix-ui/react-icons";
+import { cn } from "@app/lib/cn";
 
 export type HealthCheckConfig = {
     hcEnabled: boolean;
@@ -84,6 +89,9 @@ export type HealthCheckRow = {
     resourceId: number | null;
     resourceName: string | null;
     resourceNiceId: string | null;
+    siteId: number | null;
+    siteName: string | null;
+    siteNiceId: string | null;
 };
 
 export type HealthCheckCredenzaProps =
@@ -132,6 +140,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const [loading, setLoading] = useState(false);
+    const [selectedSite, setSelectedSite] = useState<Selectedsite | null>(null);
 
     const healthCheckSchema = z
         .object({
@@ -280,8 +289,14 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                     hcStatus: initialValues.hcStatus ?? null,
                     hcHeaders: parsedHeaders
                 });
+                if (initialValues.siteId && initialValues.siteName) {
+                    setSelectedSite({ siteId: initialValues.siteId, name: initialValues.siteName, type: "" });
+                } else {
+                    setSelectedSite(null);
+                }
             } else {
                 form.reset(DEFAULT_VALUES);
+                setSelectedSite(null);
             }
         }
     }, [open]);
@@ -331,6 +346,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
         try {
             const payload = {
                 name: (values as any).name,
+                siteId: selectedSite?.siteId,
                 hcEnabled: values.hcEnabled,
                 hcMode: values.hcMode,
                 hcScheme: values.hcScheme,
@@ -437,6 +453,42 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                         </FormItem>
                                     )}
                                 />
+                            )}
+
+                            {/* Site picker (submit mode only) */}
+                            {mode === "submit" && (
+                                <div className="mt-4">
+                                    <FormItem>
+                                        <FormLabel>{t("site")}</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className={cn(
+                                                        "w-full justify-between",
+                                                        !selectedSite && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <span className="truncate">
+                                                        {selectedSite ? selectedSite.name : t("siteSelect")}
+                                                    </span>
+                                                    <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="p-0 w-full min-w-64">
+                                                <SitesSelector
+                                                    orgId={orgId!}
+                                                    selectedSite={selectedSite}
+                                                    onSelectSite={(site) => {
+                                                        setSelectedSite(site);
+                                                    }}
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </FormItem>
+                                </div>
                             )}
 
                             <div className="mt-5">

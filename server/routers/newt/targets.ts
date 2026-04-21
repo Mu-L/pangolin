@@ -2,13 +2,6 @@ import { Target, TargetHealthCheck } from "@server/db";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
 import { canCompress } from "@server/lib/clientVersionChecks";
-import semver from "semver";
-
-const NEWT_V2_TARGET_HEALTH_CHECK_VERSION = ">=1.12.0";
-
-export function supportsTargetHealthChecksV2(version?: string | null) {
-    return version ? semver.satisfies(version, NEWT_V2_TARGET_HEALTH_CHECK_VERSION) : false;
-}
 
 export async function addTargets(
     newtId: string,
@@ -90,7 +83,7 @@ export async function addTargets(
         }
 
         return {
-            id: supportsTargetHealthChecksV2(version) ? target.targetId : hc.targetHealthCheckId,
+            id: hc.targetHealthCheckId,
             hcEnabled: hc.hcEnabled,
             hcPath: hc.hcPath,
             hcScheme: hc.hcScheme,
@@ -121,6 +114,96 @@ export async function addTargets(
             type: `newt/healthcheck/add`,
             data: {
                 targets: validHealthCheckTargets
+            }
+        },
+        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
+    );
+}
+
+export async function addStandaloneHealthCheck(
+    newtId: string,
+    healthCheck: TargetHealthCheck,
+    version?: string | null
+) {
+    const isTCP = healthCheck.hcMode?.toLowerCase() === "tcp";
+    if (
+        !healthCheck.hcHostname ||
+        !healthCheck.hcPort ||
+        !healthCheck.hcInterval
+    ) {
+        logger.debug(
+            `Skipping standalone health check ${healthCheck.targetHealthCheckId} due to missing fields`
+        );
+        return;
+    }
+    if (!isTCP && (!healthCheck.hcPath || !healthCheck.hcMethod)) {
+        logger.debug(
+            `Skipping standalone health check ${healthCheck.targetHealthCheckId} due to missing HTTP health check fields`
+        );
+        return;
+    }
+
+    const hcHeadersParse = healthCheck.hcHeaders
+        ? JSON.parse(healthCheck.hcHeaders)
+        : null;
+    const hcHeadersSend: { [key: string]: string } = {};
+    if (hcHeadersParse) {
+        hcHeadersParse.forEach((header: { name: string; value: string }) => {
+            hcHeadersSend[header.name] = header.value;
+        });
+    }
+
+    let hcStatus: number | undefined = undefined;
+    if (healthCheck.hcStatus) {
+        const parsedStatus = parseInt(healthCheck.hcStatus.toString());
+        if (!isNaN(parsedStatus)) {
+            hcStatus = parsedStatus;
+        }
+    }
+
+    await sendToClient(
+        newtId,
+        {
+            type: `newt/healthcheck/add`,
+            data: {
+                targets: [
+                    {
+                        id: healthCheck.targetHealthCheckId,
+                        hcEnabled: healthCheck.hcEnabled,
+                        hcPath: healthCheck.hcPath,
+                        hcScheme: healthCheck.hcScheme,
+                        hcMode: healthCheck.hcMode,
+                        hcHostname: healthCheck.hcHostname,
+                        hcPort: healthCheck.hcPort,
+                        hcInterval: healthCheck.hcInterval,
+                        hcUnhealthyInterval: healthCheck.hcUnhealthyInterval,
+                        hcTimeout: healthCheck.hcTimeout,
+                        hcHeaders: hcHeadersSend,
+                        hcFollowRedirects: healthCheck.hcFollowRedirects,
+                        hcMethod: healthCheck.hcMethod,
+                        hcStatus: hcStatus,
+                        hcTlsServerName: healthCheck.hcTlsServerName,
+                        hcHealthyThreshold: healthCheck.hcHealthyThreshold,
+                        hcUnhealthyThreshold: healthCheck.hcUnhealthyThreshold
+                    }
+                ]
+            }
+        },
+        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
+    );
+}
+
+export async function removeStandaloneHealthCheck(
+    newtId: string,
+    healthCheckId: number,
+    version?: string | null
+) {
+    await sendToClient(
+        newtId,
+        {
+            type: `newt/healthcheck/remove`,
+            data: {
+                ids: [healthCheckId]
             }
         },
         { incrementConfigVersion: true, compress: canCompress(version, "newt") }

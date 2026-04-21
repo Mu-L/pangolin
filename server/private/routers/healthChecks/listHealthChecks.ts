@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, targetHealthCheck, targets, resources } from "@server/db";
+import { db, targetHealthCheck, targets, resources, sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -97,6 +97,9 @@ export async function listHealthChecks(
             .select({
                 targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
                 name: targetHealthCheck.name,
+                siteId: targetHealthCheck.siteId,
+                siteName: sites.name,
+                siteNiceId: sites.niceId,
                 hcEnabled: targetHealthCheck.hcEnabled,
                 hcHealth: targetHealthCheck.hcHealth,
                 hcMode: targetHealthCheck.hcMode,
@@ -121,6 +124,7 @@ export async function listHealthChecks(
             .from(targetHealthCheck)
             .leftJoin(targets, eq(targetHealthCheck.targetId, targets.targetId))
             .leftJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .leftJoin(sites, eq(targetHealthCheck.siteId, sites.siteId))
             .where(whereClause)
             .orderBy(sql`${targetHealthCheck.targetHealthCheckId} DESC`)
             .limit(limit)
@@ -136,6 +140,9 @@ export async function listHealthChecks(
                 healthChecks: list.map((row) => ({
                     targetHealthCheckId: row.targetHealthCheckId,
                     name: row.name ?? "",
+                    siteId: row.siteId ?? null,
+                    siteName: row.siteName ?? null,
+                    siteNiceId: row.siteNiceId ?? null,
                     hcEnabled: row.hcEnabled,
                     hcHealth: (row.hcHealth ?? "unknown") as
                         | "unknown"

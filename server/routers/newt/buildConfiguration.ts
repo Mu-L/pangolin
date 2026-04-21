@@ -21,7 +21,6 @@ import {
     generateSubnetProxyTargetV2,
     SubnetProxyTargetV2
 } from "@server/lib/ip";
-import { supportsTargetHealthChecksV2 } from "./targets";
 
 export async function buildClientConfigurationForNewtClient(
     site: Site,
@@ -205,7 +204,14 @@ export async function buildTargetConfigurationForNewtClient(
             port: targets.port,
             internalPort: targets.internalPort,
             enabled: targets.enabled,
-            protocol: resources.protocol,
+            protocol: resources.protocol
+        })
+        .from(targets)
+        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
+
+    const allHealthChecks = await db
+        .select({
             targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
             hcEnabled: targetHealthCheck.hcEnabled,
             hcPath: targetHealthCheck.hcPath,
@@ -224,13 +230,8 @@ export async function buildTargetConfigurationForNewtClient(
             hcHealthyThreshold: targetHealthCheck.hcHealthyThreshold,
             hcUnhealthyThreshold: targetHealthCheck.hcUnhealthyThreshold
         })
-        .from(targets)
-        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
-        .leftJoin(
-            targetHealthCheck,
-            eq(targets.targetId, targetHealthCheck.targetId)
-        )
-        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
+        .from(targetHealthCheck)
+        .where(eq(targetHealthCheck.siteId, siteId));
 
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
@@ -254,7 +255,7 @@ export async function buildTargetConfigurationForNewtClient(
         { tcpTargets: [] as string[], udpTargets: [] as string[] }
     );
 
-    const healthCheckTargets = allTargets.map((target) => {
+    const healthCheckTargets = allHealthChecks.map((target) => {
         // make sure the stuff is defined
         const isTCP = target.hcMode?.toLowerCase() === "tcp";
         if (!target.hcHostname || !target.hcPort || !target.hcInterval) {
@@ -278,9 +279,7 @@ export async function buildTargetConfigurationForNewtClient(
         }
 
         return {
-            id: supportsTargetHealthChecksV2(version)
-                ? target.targetId
-                : target.targetHealthCheckId,
+            id: target.targetHealthCheckId,
             hcEnabled: target.hcEnabled,
             hcPath: target.hcPath,
             hcScheme: target.hcScheme,

@@ -2,6 +2,9 @@ export type ListHealthChecksResponse = {
     healthChecks: {
         targetHealthCheckId: number;
         name: string;
+        siteId: number | null;
+        siteName: string | null;
+        siteNiceId: string | null;
         hcEnabled: boolean;
         hcHealth: "unknown" | "healthy" | "unhealthy";
         hcMode: string | null;
