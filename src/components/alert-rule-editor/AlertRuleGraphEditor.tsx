@@ -2,9 +2,9 @@
 
 import {
     ActionBlock,
+    AddActionPanel,
     AlertRuleSourceFields,
-    AlertRuleTriggerFields,
-    DropdownAddAction
+    AlertRuleTriggerFields
 } from "@app/components/alert-rule-editor/AlertRuleFields";
 import { SettingsContainer } from "@app/components/Settings";
 import { Button } from "@app/components/ui/button";
@@ -693,47 +693,43 @@ export default function AlertRuleGraphEditor({
                             )}
                             {isActionsSidebar && (
                                 <div className="space-y-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="text-sm font-medium">
-                                                    {t(
-                                                        "alertingSectionActions"
-                                                    )}
-                                                </span>
-                                                <DropdownAddAction
-                                                    onAdd={(type) => {
-                                                        const newIndex =
-                                                            fields.length;
-                                                        if (type === "notify") {
-                                                            append({
-                                                                type: "notify",
-                                                                userTags: [],
-                                                                roleTags: [],
-                                                                emailTags: []
-                                                            });
-                                                        } else {
-                                                            append({
-                                                                type: "webhook",
-                                                                url: "",
-                                                                method: "POST",
-                                                                headers: [
-                                                                    {
-                                                                        key: "",
-                                                                        value: ""
-                                                                    }
-                                                                ],
-                                                                authType: "none",
-                                                                bearerToken: "",
-                                                                basicCredentials: "",
-                                                                customHeaderName: "",
-                                                                customHeaderValue: ""
-                                                            });
-                                                        }
-                                                        setSelectedStep(
-                                                            `action-${newIndex}`
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
+                                            <span className="text-sm font-medium">
+                                                {t("alertingSectionActions")}
+                                            </span>
+                                            <AddActionPanel
+                                                onAdd={(type) => {
+                                                    const newIndex =
+                                                        fields.length;
+                                                    if (type === "notify") {
+                                                        append({
+                                                            type: "notify",
+                                                            userTags: [],
+                                                            roleTags: [],
+                                                            emailTags: []
+                                                        });
+                                                    } else {
+                                                        append({
+                                                            type: "webhook",
+                                                            url: "",
+                                                            method: "POST",
+                                                            headers: [
+                                                                {
+                                                                    key: "",
+                                                                    value: ""
+                                                                }
+                                                            ],
+                                                            authType: "none",
+                                                            bearerToken: "",
+                                                            basicCredentials: "",
+                                                            customHeaderName: "",
+                                                            customHeaderValue: ""
+                                                        });
+                                                    }
+                                                    setSelectedStep(
+                                                        `action-${newIndex}`
+                                                    );
+                                                }}
+                                            />
                                             {fields.map((f, index) => (
                                                 <ActionBlock
                                                     key={f.id}
