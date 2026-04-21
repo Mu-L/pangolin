@@ -35,6 +35,7 @@ import { orgQueries } from "@app/lib/queries";
 interface UptimeAlertSectionProps {
     orgId: string;
     siteId?: number;
+    startingName?: string;
     resourceId?: number;
     days?: number;
 }
@@ -42,6 +43,7 @@ interface UptimeAlertSectionProps {
 export default function UptimeAlertSection({
     orgId,
     siteId,
+    startingName,
     resourceId,
     days = 90
 }: UptimeAlertSectionProps) {
@@ -49,7 +51,7 @@ export default function UptimeAlertSection({
     const queryClient = useQueryClient();
 
     const [open, setOpen] = useState(false);
-    const [name, setName] = useState("Uptime Alert");
+    const [name, setName] = useState(`${siteId ? "Site" : "Resource"} ${startingName} Alert`);
     const [userTags, setUserTags] = useState<Tag[]>([]);
     const [roleTags, setRoleTags] = useState<Tag[]>([]);
     const [emailTags, setEmailTags] = useState<Tag[]>([]);
@@ -156,7 +158,7 @@ export default function UptimeAlertSection({
 
     const alertButton = alertRulesLoading ? null : hasRules ? (
         <Button variant="outline" size="sm" asChild>
-            <Link href={`/${orgId}/settings/alerting`}>
+            <Link href={`/${orgId}/settings/alerting?siteId=${siteId}&resourceId=${resourceId}`}>
                 <BellRing className="size-4 mr-2" />
                 View Alerts
             </Link>

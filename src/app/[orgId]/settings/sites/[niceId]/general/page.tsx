@@ -117,6 +117,7 @@ export default function GeneralPage() {
                 <UptimeAlertSection
                     orgId={site.orgId}
                     siteId={site.siteId}
+                    startingName={site.name}
                 />
             )}
             <SettingsSection>

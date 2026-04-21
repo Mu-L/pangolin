@@ -583,6 +583,7 @@ export default function GeneralForm() {
                     <UptimeAlertSection
                         orgId={resource.orgId}
                         resourceId={resource.resourceId}
+                        startingName={resource.name}
                     />
                 )}
                 <SettingsSection>

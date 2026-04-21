@@ -31,6 +31,8 @@ import { useDebouncedCallback } from "use-debounce";
 
 type AlertingRulesTableProps = {
     orgId: string;
+    siteId?: number;
+    resourceId?: number;
 };
 
 type AlertRuleRow = {
@@ -99,7 +101,7 @@ function triggerLabel(
     }
 }
 
-export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
+export default function AlertingRulesTable({ orgId, siteId, resourceId }: AlertingRulesTableProps) {
     const router = useRouter();
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -127,7 +129,7 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
         isLoading,
         refetch,
         isRefetching
-    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize, query }));
+    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize, query, siteId, resourceId }));
 
     const rows = data?.alertRules ?? [];
     const total = data?.pagination.total ?? 0;
