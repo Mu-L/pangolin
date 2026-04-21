@@ -467,8 +467,10 @@ export const alertRules = sqliteTable("alertRules", {
         .$type<
             | "site_online"
             | "site_offline"
+            | "site_toggle"
             | "health_check_healthy"
-            | "health_check_not_healthy"
+            | "health_check_unhealthy"
+            | "health_check_toggle"
         >()
         .notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),

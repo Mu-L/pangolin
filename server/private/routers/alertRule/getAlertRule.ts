@@ -47,8 +47,10 @@ export type GetAlertRuleResponse = {
     eventType:
         | "site_online"
         | "site_offline"
+        | "site_toggle"
         | "health_check_healthy"
-        | "health_check_not_healthy";
+        | "health_check_unhealthy"
+        | "health_check_toggle";
     enabled: boolean;
     cooldownSeconds: number;
     lastTriggeredAt: number | null;
@@ -59,7 +61,7 @@ export type GetAlertRuleResponse = {
     recipients: {
         recipientId: number;
         userId: string | null;
-        roleId: string | null;
+        roleId: number | null;
         email: string | null;
     }[];
     webhookActions: {
@@ -177,24 +179,27 @@ export async function getAlertRule(
                 healthCheckIds: healthCheckRows.map((r) => r.healthCheckId),
                 recipients,
                 webhookActions: webhooks.map((w) => {
-                            let parsedConfig: WebhookAlertConfig | null = null;
-                            if (w.config) {
-                                try {
-                                    const serverSecret = config.getRawConfig().server.secret!;
-                                    const decrypted = decrypt(w.config, serverSecret);
-                                    parsedConfig = JSON.parse(decrypted) as WebhookAlertConfig;
-                                } catch {
-                                    // best-effort – return null if decryption fails
-                                }
-                            }
-                            return {
-                                webhookActionId: w.webhookActionId,
-                                webhookUrl: w.webhookUrl,
-                                enabled: w.enabled,
-                                lastSentAt: w.lastSentAt ?? null,
-                                config: parsedConfig
-                            };
-                        })
+                    let parsedConfig: WebhookAlertConfig | null = null;
+                    if (w.config) {
+                        try {
+                            const serverSecret =
+                                config.getRawConfig().server.secret!;
+                            const decrypted = decrypt(w.config, serverSecret);
+                            parsedConfig = JSON.parse(
+                                decrypted
+                            ) as WebhookAlertConfig;
+                        } catch {
+                            // best-effort – return null if decryption fails
+                        }
+                    }
+                    return {
+                        webhookActionId: w.webhookActionId,
+                        webhookUrl: w.webhookUrl,
+                        enabled: w.enabled,
+                        lastSentAt: w.lastSentAt ?? null,
+                        config: parsedConfig
+                    };
+                })
             },
             success: true,
             error: false,

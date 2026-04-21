@@ -31,12 +31,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-
-const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
-const HC_EVENT_TYPES = [
-    "health_check_healthy",
-    "health_check_not_healthy"
-] as const;
+import { HC_EVENT_TYPES, SITE_EVENT_TYPES } from "./createAlertRule";
 
 const paramsSchema = z
     .object({
@@ -57,10 +52,8 @@ const bodySchema = z
         name: z.string().nonempty().optional(),
         eventType: z
             .enum([
-                "site_online",
-                "site_offline",
-                "health_check_healthy",
-                "health_check_not_healthy"
+                ...HC_EVENT_TYPES,
+                ...SITE_EVENT_TYPES
             ])
             .optional(),
         enabled: z.boolean().optional(),

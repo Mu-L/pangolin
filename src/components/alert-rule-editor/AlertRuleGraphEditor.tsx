@@ -94,10 +94,14 @@ function summarizeTrigger(v: AlertRuleFormValues, t: AlertRuleT) {
             return t("alertingTriggerSiteOnline");
         case "site_offline":
             return t("alertingTriggerSiteOffline");
+        case "site_toggle":
+            return t("alertingTriggerSiteToggle");
         case "health_check_healthy":
             return t("alertingTriggerHcHealthy");
         case "health_check_unhealthy":
             return t("alertingTriggerHcUnhealthy");
+        case "health_check_toggle":
+            return t("alertingTriggerHcToggle");
         default:
             return v.trigger;
     }

@@ -72,10 +72,14 @@ function buildSubject(context: AlertContext): string {
             return "[Alert] Site Back Online";
         case "site_offline":
             return "[Alert] Site Offline";
+        case "site_toggle":
+            return "[Alert] Site Toggled";
         case "health_check_healthy":
             return "[Alert] Health Check Recovered";
-        case "health_check_not_healthy":
+        case "health_check_unhealthy":
             return "[Alert] Health Check Failing";
+        case "health_check_toggle":
+            return "[Alert] Health Check Toggled";
         default: {
             // Exhaustiveness fallback – should never be reached with a
             // well-typed caller, but keeps runtime behaviour predictable.

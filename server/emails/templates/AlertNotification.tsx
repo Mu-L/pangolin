@@ -15,8 +15,10 @@ import {
 export type AlertEventType =
     | "site_online"
     | "site_offline"
+    | "site_toggle"
     | "health_check_healthy"
-    | "health_check_not_healthy";
+    | "health_check_unhealthy"
+    | "health_check_toggle";
 
 interface Props {
     eventType: AlertEventType;
@@ -50,6 +52,15 @@ function getEventMeta(eventType: AlertEventType): {
                 statusLabel: "Offline",
                 statusColor: "#dc2626"
             };
+        case "site_toggle":
+            return {
+                heading: "Site Status Changed",
+                previewText: "A site in your organization has changed status.",
+                summary:
+                    "A site in your organization has changed status. Please review the details below and take action if needed.",
+                statusLabel: "Status Changed",
+                statusColor: "#f59e0b"
+            };
         case "health_check_healthy":
             return {
                 heading: "Health Check Recovered",
@@ -60,7 +71,7 @@ function getEventMeta(eventType: AlertEventType): {
                 statusLabel: "Healthy",
                 statusColor: "#16a34a"
             };
-        case "health_check_not_healthy":
+        case "health_check_unhealthy":
             return {
                 heading: "Health Check Failing",
                 previewText:
@@ -69,6 +80,25 @@ function getEventMeta(eventType: AlertEventType): {
                     "A health check in your organization is currently failing. Please review the details below and take action if needed.",
                 statusLabel: "Not Healthy",
                 statusColor: "#dc2626"
+            };
+        case "health_check_toggle":
+            return {
+                heading: "Health Check Status Changed",
+                previewText:
+                    "A health check in your organization has changed status.",
+                summary:
+                    "A health check in your organization has changed status. Please review the details below and take action if needed.",
+                statusLabel: "Status Changed",
+                statusColor: "#f59e0b"
+            };
+        default:
+            return {
+                heading: "Alert Notification",
+                previewText: "An alert event has occurred in your organization.",
+                summary:
+                    "An alert event has occurred in your organization. Please review the details below and take action if needed.",
+                statusLabel: "Alert",
+                statusColor: "#f59e0b"
             };
     }
 }

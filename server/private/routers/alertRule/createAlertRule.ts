@@ -30,12 +30,12 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { and, eq } from "drizzle-orm";
 
-const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
-const HC_EVENT_TYPES = [
+export const SITE_EVENT_TYPES = ["site_online", "site_offline", "site_toggle"] as const;
+export const HC_EVENT_TYPES = [
     "health_check_healthy",
-    "health_check_not_healthy"
+    "health_check_unhealthy",
+    "health_check_toggle"
 ] as const;
 
 const paramsSchema = z.strictObject({
@@ -52,10 +52,8 @@ const bodySchema = z
     .strictObject({
         name: z.string().nonempty(),
         eventType: z.enum([
-            "site_online",
-            "site_offline",
-            "health_check_healthy",
-            "health_check_not_healthy"
+            ...HC_EVENT_TYPES,
+            ...SITE_EVENT_TYPES
         ]),
         enabled: z.boolean().optional().default(true),
         cooldownSeconds: z.number().int().nonnegative().optional().default(300),

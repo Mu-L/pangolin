@@ -18,8 +18,10 @@
 export type AlertEventType =
     | "site_online"
     | "site_offline"
+    | "site_toggle"
     | "health_check_healthy"
-    | "health_check_not_healthy";
+    | "health_check_unhealthy"
+    | "health_check_toggle";
 
 // ---------------------------------------------------------------------------
 // Webhook authentication config (stored as encrypted JSON in the DB)

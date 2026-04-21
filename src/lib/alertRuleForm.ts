@@ -13,14 +13,16 @@ export const tagSchema = z.object({
 // ---------------------------------------------------------------------------
 // Form-layer types
 // NOTE: the form uses "health_check_unhealthy" internally; it maps to the
-//       backend's "health_check_not_healthy" at the API boundary.
+//       backend's "health_check_unhealthy" at the API boundary.
 // ---------------------------------------------------------------------------
 
 export type AlertTrigger =
     | "site_online"
     | "site_offline"
+    | "site_toggle"
     | "health_check_healthy"
-    | "health_check_unhealthy";
+    | "health_check_unhealthy"
+    | "health_check_toggle";
 
 export type AlertRuleFormAction =
     | {
@@ -60,8 +62,10 @@ export type AlertRuleApiPayload = {
     eventType:
         | "site_online"
         | "site_offline"
+        | "site_toggle"
         | "health_check_healthy"
-        | "health_check_not_healthy";
+        | "health_check_unhealthy"
+        | "health_check_toggle";
     enabled: boolean;
     siteIds: number[];
     healthCheckIds: number[];
@@ -112,33 +116,15 @@ export type AlertRuleApiResponse = {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function triggerToEventType(
-    trigger: AlertTrigger
-): AlertRuleApiPayload["eventType"] {
-    if (trigger === "health_check_unhealthy") {
-        return "health_check_not_healthy";
-    }
-    return trigger as AlertRuleApiPayload["eventType"];
-}
-
-function eventTypeToTrigger(eventType: string): AlertTrigger {
-    if (eventType === "health_check_not_healthy") {
-        return "health_check_unhealthy";
-    }
-    return eventType as AlertTrigger;
-}
-
-// ---------------------------------------------------------------------------
 // Zod form schema (for react-hook-form validation)
 // ---------------------------------------------------------------------------
 
 export function buildFormSchema(t: (k: string) => string) {
     return z
         .object({
-            name: z.string().min(1, { message: t("alertingErrorNameRequired") }),
+            name: z
+                .string()
+                .min(1, { message: t("alertingErrorNameRequired") }),
             enabled: z.boolean(),
             sourceType: z.enum(["site", "health_check"]),
             siteIds: z.array(z.number()),
@@ -146,36 +132,37 @@ export function buildFormSchema(t: (k: string) => string) {
             trigger: z.enum([
                 "site_online",
                 "site_offline",
+                "site_toggle",
                 "health_check_healthy",
-                "health_check_unhealthy"
+                "health_check_unhealthy",
+                "health_check_toggle"
             ]),
-            actions: z
-                .array(
-                    z.discriminatedUnion("type", [
-                        z.object({
-                            type: z.literal("notify"),
-                            userTags: z.array(tagSchema),
-                            roleTags: z.array(tagSchema),
-                            emailTags: z.array(tagSchema)
-                        }),
-                        z.object({
-                            type: z.literal("webhook"),
-                            url: z.string(),
-                            method: z.string(),
-                            headers: z.array(
-                                z.object({
-                                    key: z.string(),
-                                    value: z.string()
-                                })
-                            ),
-                            authType: z.enum(["none", "bearer", "basic", "custom"]),
-                            bearerToken: z.string(),
-                            basicCredentials: z.string(),
-                            customHeaderName: z.string(),
-                            customHeaderValue: z.string()
-                        })
-                    ])
-                )
+            actions: z.array(
+                z.discriminatedUnion("type", [
+                    z.object({
+                        type: z.literal("notify"),
+                        userTags: z.array(tagSchema),
+                        roleTags: z.array(tagSchema),
+                        emailTags: z.array(tagSchema)
+                    }),
+                    z.object({
+                        type: z.literal("webhook"),
+                        url: z.string(),
+                        method: z.string(),
+                        headers: z.array(
+                            z.object({
+                                key: z.string(),
+                                value: z.string()
+                            })
+                        ),
+                        authType: z.enum(["none", "bearer", "basic", "custom"]),
+                        bearerToken: z.string(),
+                        basicCredentials: z.string(),
+                        customHeaderName: z.string(),
+                        customHeaderValue: z.string()
+                    })
+                ])
+            )
         })
         .superRefine((val, ctx) => {
             if (val.actions.length === 0) {
@@ -202,10 +189,15 @@ export function buildFormSchema(t: (k: string) => string) {
                     path: ["healthCheckIds"]
                 });
             }
-            const siteTriggers: AlertTrigger[] = ["site_online", "site_offline"];
+            const siteTriggers: AlertTrigger[] = [
+                "site_online",
+                "site_offline",
+                "site_toggle"
+            ];
             const hcTriggers: AlertTrigger[] = [
                 "health_check_healthy",
-                "health_check_unhealthy"
+                "health_check_unhealthy",
+                "health_check_toggle"
             ];
             if (
                 val.sourceType === "site" &&
@@ -286,7 +278,7 @@ export function defaultFormValues(): AlertRuleFormValues {
 export function apiResponseToFormValues(
     rule: AlertRuleApiResponse
 ): AlertRuleFormValues {
-    const trigger = eventTypeToTrigger(rule.eventType);
+    const trigger = rule.eventType;
     const sourceType = rule.eventType.startsWith("site_")
         ? "site"
         : "health_check";
@@ -318,7 +310,9 @@ export function apiResponseToFormValues(
             headers: cfg?.headers?.length
                 ? cfg.headers
                 : [{ key: "", value: "" }],
-            authType: (cfg?.authType as "none" | "bearer" | "basic" | "custom") ?? "none",
+            authType:
+                (cfg?.authType as "none" | "bearer" | "basic" | "custom") ??
+                "none",
             bearerToken: cfg?.bearerToken ?? "",
             basicCredentials: cfg?.basicCredentials ?? "",
             customHeaderName: cfg?.customHeaderName ?? "",
@@ -342,7 +336,7 @@ export function apiResponseToFormValues(
         sourceType,
         siteIds: rule.siteIds,
         healthCheckIds: rule.healthCheckIds,
-        trigger,
+        trigger: trigger as AlertTrigger,
         actions
     };
 }
@@ -354,7 +348,7 @@ export function apiResponseToFormValues(
 export function formValuesToApiPayload(
     values: AlertRuleFormValues
 ): AlertRuleApiPayload {
-    const eventType = triggerToEventType(values.trigger);
+    const eventType = values.trigger;
 
     // Collect all notify-type actions and merge their recipient lists
     const allUserIds: string[] = [];
@@ -368,9 +362,7 @@ export function formValuesToApiPayload(
             allUserIds.push(...action.userTags.map((t) => t.id));
             allRoleIds.push(...action.roleTags.map((t) => Number(t.id)));
             allEmails.push(
-                ...action.emailTags
-                    .map((t) => t.text.trim())
-                    .filter(Boolean)
+                ...action.emailTags.map((t) => t.text.trim()).filter(Boolean)
             );
         } else if (action.type === "webhook") {
             webhookActions.push({

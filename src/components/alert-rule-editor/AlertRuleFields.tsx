@@ -888,7 +888,8 @@ export function AlertRuleSourceFields({
                                 if (next === "site") {
                                     if (
                                         curTrigger !== "site_online" &&
-                                        curTrigger !== "site_offline"
+                                        curTrigger !== "site_offline" &&
+                                        curTrigger !== "site_toggle"
                                     ) {
                                         setValue("trigger", "site_offline", {
                                             shouldValidate: true
@@ -896,7 +897,8 @@ export function AlertRuleSourceFields({
                                     }
                                 } else if (
                                     curTrigger !== "health_check_healthy" &&
-                                    curTrigger !== "health_check_unhealthy"
+                                    curTrigger !== "health_check_unhealthy" &&
+                                    curTrigger !== "health_check_toggle"
                                 ) {
                                     setValue(
                                         "trigger",
@@ -996,6 +998,9 @@ export function AlertRuleTriggerFields({
                                     <SelectItem value="site_offline">
                                         {t("alertingTriggerSiteOffline")}
                                     </SelectItem>
+                                    <SelectItem value="site_toggle">
+                                        {t("alertingTriggerSiteToggle")}
+                                    </SelectItem>
                                 </>
                             ) : (
                                 <>
@@ -1004,6 +1009,9 @@ export function AlertRuleTriggerFields({
                                     </SelectItem>
                                     <SelectItem value="health_check_unhealthy">
                                         {t("alertingTriggerHcUnhealthy")}
+                                    </SelectItem>
+                                    <SelectItem value="health_check_toggle">
+                                        {t("alertingTriggerHcToggle")}
                                     </SelectItem>
                                 </>
                             )}
