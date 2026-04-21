@@ -21,7 +21,6 @@ import {
     generateSubnetProxyTargetV2,
     SubnetProxyTargetV2
 } from "@server/lib/ip";
-import { supportsTargetHealthChecksV2 } from "./targets";
 
 export async function buildClientConfigurationForNewtClient(
     site: Site,
@@ -232,12 +231,7 @@ export async function buildTargetConfigurationForNewtClient(
             hcUnhealthyThreshold: targetHealthCheck.hcUnhealthyThreshold
         })
         .from(targetHealthCheck)
-        .where(
-            and(
-                eq(targetHealthCheck.siteId, siteId),
-                eq(targetHealthCheck.hcEnabled, true)
-            )
-        );
+        .where(eq(targetHealthCheck.siteId, siteId));
 
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
@@ -285,9 +279,7 @@ export async function buildTargetConfigurationForNewtClient(
         }
 
         return {
-            id: supportsTargetHealthChecksV2(version)
-                ? target.targetId
-                : target.targetHealthCheckId,
+            id: target.targetHealthCheckId,
             hcEnabled: target.hcEnabled,
             hcPath: target.hcPath,
             hcScheme: target.hcScheme,

@@ -2,15 +2,6 @@ import { Target, TargetHealthCheck } from "@server/db";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
 import { canCompress } from "@server/lib/clientVersionChecks";
-import semver from "semver";
-
-const NEWT_V2_TARGET_HEALTH_CHECK_VERSION = ">=1.12.0";
-
-export function supportsTargetHealthChecksV2(version?: string | null) {
-    return version
-        ? semver.satisfies(version, NEWT_V2_TARGET_HEALTH_CHECK_VERSION)
-        : false;
-}
 
 export async function addTargets(
     newtId: string,
@@ -92,9 +83,7 @@ export async function addTargets(
         }
 
         return {
-            id: supportsTargetHealthChecksV2(version)
-                ? target.targetId
-                : hc.targetHealthCheckId,
+            id: hc.targetHealthCheckId,
             hcEnabled: hc.hcEnabled,
             hcPath: hc.hcPath,
             hcScheme: hc.hcScheme,
