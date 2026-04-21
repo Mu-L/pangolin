@@ -400,7 +400,11 @@ function ProxyResourceTargetsForm({
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -424,7 +428,11 @@ function ProxyResourceTargetsForm({
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId, config)
+                                    updateTarget(row.original.targetId,
+                                        config.path === null && config.pathMatchType === null
+                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                            : config
+                                    )
                                 }
                                 trigger={
                                     <Button
@@ -670,6 +678,7 @@ function ProxyResourceTargetsForm({
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        getRowId: (row) => String(row.targetId),
         state: {
             pagination: {
                 pageIndex: 0,
@@ -774,8 +783,12 @@ function ProxyResourceTargetsForm({
             }
 
             toast({
-                title: t("settingsUpdated"),
-                description: t("settingsUpdatedDescription")
+                title: targets.length === 0
+                    ? t("targetTargetsCleared")
+                    : t("settingsUpdated"),
+                description: targets.length === 0
+                    ? t("targetTargetsClearedDescription")
+                    : t("settingsUpdatedDescription")
             });
 
             setTargetsToRemove([]);

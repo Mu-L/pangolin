@@ -4,7 +4,7 @@ import { AxiosResponse } from "axios";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import SiteProvisioningKeysTable, {
     SiteProvisioningKeyRow
-} from "../../../../../components/SiteProvisioningKeysTable";
+} from "@app/components/SiteProvisioningKeysTable";
 import { ListSiteProvisioningKeysResponse } from "@server/routers/siteProvisioning/types";
 import { getTranslations } from "next-intl/server";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -12,6 +12,11 @@ import DismissableBanner from "@app/components/DismissableBanner";
 import Link from "next/link";
 import { Button } from "@app/components/ui/button";
 import { ArrowRight, Plug } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Provisioning Keys"
+};
 
 type ProvisioningKeysPageProps = {
     params: Promise<{ orgId: string }>;

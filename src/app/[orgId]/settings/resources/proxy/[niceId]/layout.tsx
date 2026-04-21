@@ -14,6 +14,11 @@ import OrgProvider from "@app/providers/OrgProvider";
 import { cache } from "react";
 import ResourceInfoBox from "@app/components/ResourceInfoBox";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Public Resource"
+};
 
 export const dynamic = "force-dynamic";
 

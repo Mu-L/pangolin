@@ -33,7 +33,7 @@ import { Button } from "@app/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@app/components/ui/input";
 import { DataTablePagination } from "@app/components/DataTablePagination";
-import { Plus, Search, RefreshCw, Columns, Filter } from "lucide-react";
+import { ChevronDown, Plus, Search, RefreshCw, Columns, Filter } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -46,6 +46,7 @@ import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger
@@ -165,15 +166,24 @@ export type DataTablePaginationState = PaginationState & {
 
 export type DataTablePaginationUpdateFn = (newPage: PaginationState) => void;
 
+/** When set (non-empty), replaces the single add button with a dropdown; `onAdd` is not used. */
+export type DataTableAddAction = {
+    label: string;
+    onSelect: () => void;
+};
+
 type DataTableProps<TData, TValue> = {
     columns: ExtendedColumnDef<TData, TValue>[];
     data: TData[];
     title?: string;
     addButtonText?: string;
     onAdd?: () => void;
+    /** Prefer over `onAdd` when non-empty. */
+    addActions?: DataTableAddAction[];
     addButtonDisabled?: boolean;
     onRefresh?: () => void;
     isRefreshing?: boolean;
+    refreshButtonDisabled?: boolean;
     searchPlaceholder?: string;
     searchColumn?: string;
     defaultSort?: {
@@ -204,9 +214,11 @@ export function DataTable<TData, TValue>({
     title,
     addButtonText,
     onAdd,
+    addActions,
     addButtonDisabled = false,
     onRefresh,
     isRefreshing,
+    refreshButtonDisabled = false,
     searchPlaceholder = "Search...",
     searchColumn = "name",
     defaultSort,
@@ -624,7 +636,7 @@ export function DataTable<TData, TValue>({
                                 <Button
                                     variant="outline"
                                     onClick={onRefresh}
-                                    disabled={isRefreshing}
+                                    disabled={isRefreshing || refreshButtonDisabled}
                                 >
                                     <RefreshCw
                                         className={`mr-0 sm:mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -635,13 +647,45 @@ export function DataTable<TData, TValue>({
                                 </Button>
                             </div>
                         )}
-                        {onAdd && addButtonText && (
+                        {addActions && addActions.length > 0 && addButtonText ? (
                             <div>
-                                <Button onClick={onAdd} disabled={addButtonDisabled}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    {addButtonText}
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            disabled={addButtonDisabled}
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            {addButtonText}
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {addActions.map((action, i) => (
+                                            <DropdownMenuItem
+                                                key={i}
+                                                onSelect={() =>
+                                                    action.onSelect()
+                                                }
+                                            >
+                                                {action.label}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
+                        ) : (
+                            onAdd &&
+                            addButtonText && (
+                                <div>
+                                    <Button
+                                        onClick={onAdd}
+                                        disabled={addButtonDisabled}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {addButtonText}
+                                    </Button>
+                                </div>
+                            )
                         )}
                     </div>
                 </CardHeader>

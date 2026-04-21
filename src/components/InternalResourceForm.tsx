@@ -566,19 +566,21 @@ export function InternalResourceForm({
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="niceId"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{t("identifier")}</FormLabel>
-                                <FormControl>
-                                    <Input {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    {variant === "edit" && (
+                        <FormField
+                            control={form.control}
+                            name="niceId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{t("identifier")}</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
                     <FormField
                         control={form.control}
                         name="siteId"
@@ -612,6 +614,7 @@ export function InternalResourceForm({
                                         <SitesSelector
                                             orgId={orgId}
                                             selectedSite={selectedSite}
+                                            filterTypes={["newt"]}
                                             onSelectSite={(site) => {
                                                 setSelectedSite(site);
                                                 field.onChange(site.siteId);
@@ -1173,7 +1176,7 @@ export function InternalResourceForm({
                                                                             </span>
                                                                         )
                                                                     )}
-                                                                    <span className="pl-1">
+                                                                    <span className="pl-1 font-normal">
                                                                         {t(
                                                                             "accessClientSelect"
                                                                         )}

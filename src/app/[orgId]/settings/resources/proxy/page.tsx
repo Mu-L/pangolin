@@ -13,6 +13,11 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { toUnicode } from "punycode";
 import { cache } from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Public Resources"
+};
 
 export interface ProxyResourcesPageProps {
     params: Promise<{ orgId: string }>;
@@ -95,7 +100,8 @@ export default async function ProxyResourcesPage(
                 ip: target.ip,
                 port: target.port,
                 enabled: target.enabled,
-                healthStatus: target.healthStatus
+                healthStatus: target.healthStatus,
+                siteName: target.siteName
             }))
         };
     });

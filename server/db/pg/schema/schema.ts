@@ -101,7 +101,7 @@ export const sites = pgTable("sites", {
     lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
     listenPort: integer("listenPort"),
     dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true),
-    status: varchar("status").$type<"pending" | "approved">()
+    status: varchar("status").$type<"pending" | "approved">().default("approved")
 });
 
 export const resources = pgTable("resources", {
@@ -1080,6 +1080,7 @@ export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;
 export type VersionMigration = InferSelectModel<typeof versionMigrations>;
 export type ResourceRule = InferSelectModel<typeof resourceRules>;
 export type Domain = InferSelectModel<typeof domains>;
+export type DnsRecord = InferSelectModel<typeof dnsRecords>;
 export type SupporterKey = InferSelectModel<typeof supporterKey>;
 export type Idp = InferSelectModel<typeof idp>;
 export type ApiKey = InferSelectModel<typeof apiKeys>;

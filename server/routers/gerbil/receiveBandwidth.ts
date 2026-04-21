@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { sql } from "drizzle-orm";
-import { db } from "@server/db";
+import { db, DB_TYPE } from "@server/db";
 import logger from "@server/logger";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
@@ -96,12 +96,8 @@ async function dbQueryRows<T extends Record<string, unknown>>(
     return (await anyDb.all(query)) as T[];
 }
 
-/**
- * Returns true when the active database driver is SQLite (better-sqlite3).
- * Used to select the appropriate bulk-update strategy.
- */
 function isSQLite(): boolean {
-    return typeof (db as any).execute !== "function";
+    return DB_TYPE == "sqlite";
 }
 
 /**
@@ -175,9 +171,8 @@ export async function flushSiteBandwidthToDb(): Promise<void> {
                 }
 
                 // PostgreSQL: batch UPDATE … FROM (VALUES …) — single round-trip per chunk.
-                const valuesList = chunk.map(
-                    ([publicKey, { bytesIn, bytesOut }]) =>
-                        sql`(${publicKey}, ${bytesIn}, ${bytesOut})`
+                const valuesList = chunk.map(([publicKey, { bytesIn, bytesOut }]) =>
+                    sql`(${publicKey}::text, ${bytesIn}::real, ${bytesOut}::real)`
                 );
                 const valuesClause = sql.join(valuesList, sql`, `);
                 return dbQueryRows<{ orgId: string; pubKey: string }>(sql`

@@ -60,8 +60,7 @@ function createDb() {
             })
         );
     } else {
-        const maxReplicaConnections =
-            poolConfig?.max_replica_connections || 20;
+        const maxReplicaConnections = poolConfig?.max_replica_connections || 20;
         for (const conn of replicaConnections) {
             const replicaPool = createPool(
                 conn.connection_string,
@@ -92,3 +91,4 @@ export const primaryDb = db.$primary;
 export type Transaction = Parameters<
     Parameters<(typeof db)["transaction"]>[0]
 >[0];
+export const DB_TYPE: "pg" | "sqlite" = "pg";

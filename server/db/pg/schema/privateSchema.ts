@@ -8,7 +8,8 @@ import {
     real,
     text,
     index,
-    primaryKey
+    primaryKey,
+    uniqueIndex
 } from "drizzle-orm/pg-core";
 import { InferSelectModel } from "drizzle-orm";
 import {
@@ -417,6 +418,46 @@ export const siteProvisioningKeyOrg = pgTable(
     ]
 );
 
+export const eventStreamingDestinations = pgTable(
+    "eventStreamingDestinations",
+    {
+        destinationId: serial("destinationId").primaryKey(),
+        orgId: varchar("orgId", { length: 255 })
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        sendConnectionLogs: boolean("sendConnectionLogs").notNull().default(false),
+        sendRequestLogs: boolean("sendRequestLogs").notNull().default(false),
+        sendActionLogs: boolean("sendActionLogs").notNull().default(false),
+        sendAccessLogs: boolean("sendAccessLogs").notNull().default(false),
+        type: varchar("type", { length: 50 }).notNull(), // e.g. "http", "kafka", etc.
+        config: text("config").notNull(), // JSON string with the configuration for the destination
+        enabled: boolean("enabled").notNull().default(true),
+        createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+        updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+    }
+);
+
+export const eventStreamingCursors = pgTable(
+    "eventStreamingCursors",
+    {
+        cursorId: serial("cursorId").primaryKey(),
+        destinationId: integer("destinationId")
+            .notNull()
+            .references(() => eventStreamingDestinations.destinationId, {
+                onDelete: "cascade"
+            }),
+        logType: varchar("logType", { length: 50 }).notNull(), // "request" | "action" | "access" | "connection"
+        lastSentId: bigint("lastSentId", { mode: "number" }).notNull().default(0),
+        lastSentAt: bigint("lastSentAt", { mode: "number" }) // epoch milliseconds, null if never sent
+    },
+    (table) => [
+        uniqueIndex("idx_eventStreamingCursors_dest_type").on(
+            table.destinationId,
+            table.logType
+        )
+    ]
+);
+
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -439,3 +480,18 @@ export type LoginPageBranding = InferSelectModel<typeof loginPageBranding>;
 export type ActionAuditLog = InferSelectModel<typeof actionAuditLog>;
 export type AccessAuditLog = InferSelectModel<typeof accessAuditLog>;
 export type ConnectionAuditLog = InferSelectModel<typeof connectionAuditLog>;
+export type SessionTransferToken = InferSelectModel<
+    typeof sessionTransferToken
+>;
+export type BannedEmail = InferSelectModel<typeof bannedEmails>;
+export type BannedIp = InferSelectModel<typeof bannedIps>;
+export type SiteProvisioningKey = InferSelectModel<typeof siteProvisioningKeys>;
+export type SiteProvisioningKeyOrg = InferSelectModel<
+    typeof siteProvisioningKeyOrg
+>;
+export type EventStreamingDestination = InferSelectModel<
+    typeof eventStreamingDestinations
+>;
+export type EventStreamingCursor = InferSelectModel<
+    typeof eventStreamingCursors
+>;

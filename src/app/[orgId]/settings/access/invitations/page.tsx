@@ -3,15 +3,19 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import { AxiosResponse } from "axios";
 import InvitationsTable, {
     InvitationRow
-} from "../../../../../components/InvitationsTable";
+} from "@app/components/InvitationsTable";
 import { GetOrgResponse } from "@server/routers/org";
 import { cache } from "react";
 import OrgProvider from "@app/providers/OrgProvider";
 import UserProvider from "@app/providers/UserProvider";
 import { verifySession } from "@app/lib/auth/verifySession";
-import AccessPageHeaderAndNav from "../../../../../components/AccessPageHeaderAndNav";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Invitations"
+};
 
 type InvitationsPageProps = {
     params: Promise<{ orgId: string }>;

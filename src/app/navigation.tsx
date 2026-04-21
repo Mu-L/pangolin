@@ -23,6 +23,7 @@ import {
     Settings,
     SquareMousePointer,
     TicketCheck,
+    Unplug,
     User,
     UserCog,
     Users,
@@ -196,6 +197,11 @@ export const orgNavSections = (
                                   title: "sidebarLogsConnection",
                                   href: "/{orgId}/settings/logs/connection",
                                   icon: <Cable className="size-4 flex-none" />
+                              },
+                              {
+                                  title: "sidebarLogsStreaming",
+                                  href: "/{orgId}/settings/logs/streaming",
+                                  icon: <Unplug className="size-4 flex-none" />
                               }
                           ]
                         : [])

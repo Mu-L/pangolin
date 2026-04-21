@@ -477,7 +477,7 @@ export default function BillingPage() {
     };
 
     const handleContactUs = () => {
-        window.open("https://pangolin.net/talk-to-us", "_blank");
+        window.open("https://pangolin.net/contact", "_blank");
     };
 
     // Get current plan ID from tier
@@ -490,6 +490,10 @@ export default function BillingPage() {
     };
 
     const currentPlanId = getCurrentPlanId();
+
+    const visiblePlanOptions = planOptions.filter(
+        (plan) => plan.id !== "home" || currentPlanId === "home"
+    );
 
     // Check if subscription is in a problematic state that requires attention
     const hasProblematicSubscription = (): boolean => {
@@ -554,6 +558,14 @@ export default function BillingPage() {
     // Get button label and action for each plan
     const getPlanAction = (plan: PlanOption) => {
         if (plan.id === "enterprise") {
+            if (plan.id === currentPlanId) {
+                return {
+                    label: "Manage Current Plan",
+                    action: handleModifySubscription,
+                    variant: "default" as const,
+                    disabled: false
+                };
+            }
             return {
                 label: "Contact Us",
                 action: handleContactUs,
@@ -803,8 +815,8 @@ export default function BillingPage() {
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     {/* Plan Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        {planOptions.map((plan) => {
+                    <div className={cn("grid grid-cols-1 gap-4", visiblePlanOptions.length === 5 ? "md:grid-cols-5" : "md:grid-cols-4")}>
+                        {visiblePlanOptions.map((plan) => {
                             const isCurrentPlan = plan.id === currentPlanId;
                             const planAction = getPlanAction(plan);
 

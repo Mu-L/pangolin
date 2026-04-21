@@ -20,7 +20,6 @@ import {
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -31,7 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { InfoIcon, ExternalLink, CheckIcon } from "lucide-react";
-import PolicyTable, { PolicyRow } from "../../../../../components/PolicyTable";
+import PolicyTable, { PolicyRow } from "@app/components/PolicyTable";
 import { AxiosResponse } from "axios";
 import { ListOrgsResponse } from "@server/routers/org";
 import { ListRolesResponse } from "@server/routers/role";
@@ -63,7 +62,7 @@ import {
     SettingsSectionForm
 } from "@app/components/Settings";
 import { useTranslations } from "next-intl";
-import RoleMappingConfigFields from "@app/components/RoleMappingConfigFields";
+import AutoProvisionConfigWidget from "@app/components/AutoProvisionConfigWidget";
 import {
     compileRoleMappingExpression,
     createMappingBuilderRule,
@@ -499,9 +498,17 @@ export default function PoliciesPage() {
                                 id="policy-default-mappings-form"
                                 className="space-y-6"
                             >
-                                <RoleMappingConfigFields
-                                    fieldIdPrefix="admin-idp-default-role"
-                                    showFreeformRoleNamesHint={true}
+                                <AutoProvisionConfigWidget
+                                    showAutoProvisionSwitch={false}
+                                    autoProvision={true}
+                                    onAutoProvisionChange={() => {}}
+                                    orgMappingField={{
+                                        control: defaultMappingsForm.control,
+                                        name: "defaultOrgMapping",
+                                        labelKey: "defaultMappingsOrg"
+                                    }}
+                                    roleMappingFieldIdPrefix="admin-idp-default-role"
+                                    showFreeformRoleNamesHint
                                     roleMappingMode={defaultRoleMappingMode}
                                     onRoleMappingModeChange={
                                         setDefaultRoleMappingMode
@@ -527,27 +534,6 @@ export default function PoliciesPage() {
                                     onRawExpressionChange={
                                         setDefaultRawRoleExpression
                                     }
-                                />
-
-                                <FormField
-                                    control={defaultMappingsForm.control}
-                                    name="defaultOrgMapping"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("defaultMappingsOrg")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormDescription>
-                                                {t(
-                                                    "defaultMappingsOrgDescription"
-                                                )}
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
                                 />
                             </form>
                         </Form>
@@ -687,9 +673,15 @@ export default function PoliciesPage() {
                                     )}
                                 />
 
-                                <RoleMappingConfigFields
-                                    fieldIdPrefix="admin-idp-policy-role"
-                                    showFreeformRoleNamesHint={false}
+                                <AutoProvisionConfigWidget
+                                    showAutoProvisionSwitch={false}
+                                    autoProvision={true}
+                                    onAutoProvisionChange={() => {}}
+                                    orgMappingField={{
+                                        control: form.control,
+                                        name: "orgMapping"
+                                    }}
+                                    roleMappingFieldIdPrefix="admin-idp-policy-role"
                                     roleMappingMode={policyRoleMappingMode}
                                     onRoleMappingModeChange={
                                         setPolicyRoleMappingMode
@@ -715,27 +707,6 @@ export default function PoliciesPage() {
                                     onRawExpressionChange={
                                         setPolicyRawRoleExpression
                                     }
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="orgMapping"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("orgMappingPathOptional")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormDescription>
-                                                {t(
-                                                    "defaultMappingsOrgDescription"
-                                                )}
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
                                 />
                             </form>
                         </Form>

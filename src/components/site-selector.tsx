@@ -24,12 +24,14 @@ export type SitesSelectorProps = {
     orgId: string;
     selectedSite?: Selectedsite | null;
     onSelectSite: (selected: Selectedsite) => void;
+    filterTypes?: string[];
 };
 
 export function SitesSelector({
     orgId,
     selectedSite,
-    onSelectSite
+    onSelectSite,
+    filterTypes
 }: SitesSelectorProps) {
     const t = useTranslations();
     const [siteSearchQuery, setSiteSearchQuery] = useState("");
@@ -45,7 +47,9 @@ export function SitesSelector({
 
     // always include the selected site in the list of sites shown
     const sitesShown = useMemo(() => {
-        const allSites: Array<Selectedsite> = [...sites];
+        const allSites: Array<Selectedsite> = filterTypes
+            ? sites.filter((s) => filterTypes.includes(s.type))
+            : [...sites];
         if (
             debouncedQuery.trim().length === 0 &&
             selectedSite &&
@@ -54,7 +58,7 @@ export function SitesSelector({
             allSites.unshift(selectedSite);
         }
         return allSites;
-    }, [debouncedQuery, sites, selectedSite]);
+    }, [debouncedQuery, sites, selectedSite, filterTypes]);
 
     return (
         <Command shouldFilter={false}>

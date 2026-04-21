@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025 Fossorial, Inc.
+ * Copyright (c) 2025-2026 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -671,10 +671,7 @@ export async function getTraefikConfig(
 
                         // TODO: HOW TO HANDLE ^^^^^^ BETTER
                         const anySitesOnline = targets.some(
-                            (target) =>
-                            target.site.online ||
-                            target.site.type === "local" ||
-                            target.site.type === "wireguard"
+                            (target) => target.site.online
                         );
 
                         return (
@@ -802,10 +799,7 @@ export async function getTraefikConfig(
                     servers: (() => {
                         // Check if any sites are online
                         const anySitesOnline = targets.some(
-                            (target) =>
-                            target.site.online ||
-                            target.site.type === "local" ||
-                            target.site.type === "wireguard"
+                            (target) => target.site.online
                         );
 
                         return targets

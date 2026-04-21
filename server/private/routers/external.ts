@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025 Fossorial, Inc.
+ * Copyright (c) 2025-2026 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -28,6 +28,7 @@ import * as approval from "#private/routers/approvals";
 import * as ssh from "#private/routers/ssh";
 import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
+import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 
 import {
     verifyOrgAccess,
@@ -39,7 +40,9 @@ import {
     verifyRoleAccess,
     verifyUserAccess,
     verifyUserCanSetUserOrgRoles,
-    verifySiteProvisioningKeyAccess
+    verifySiteProvisioningKeyAccess,
+    verifyIsLoggedInUser,
+    verifyAdmin
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -86,6 +89,7 @@ authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.createIdp),
@@ -94,9 +98,22 @@ authenticated.put(
 );
 
 authenticated.post(
+    "/org/:orgId/idp/:idpId/import",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyAdmin,
+    logActionAudit(ActionsEnum.createIdp),
+    orgIdp.importOrgIdp
+);
+
+authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyLimits,
@@ -108,11 +125,23 @@ authenticated.post(
 authenticated.delete(
     "/org/:orgId/idp/:idpId",
     verifyValidLicense,
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyUserHasAction(ActionsEnum.deleteIdp),
     logActionAudit(ActionsEnum.deleteIdp),
     orgIdp.deleteOrgIdp
+);
+
+authenticated.delete(
+    "/org/:orgId/idp/:idpId/association",
+    verifyValidLicense,
+    orgIdp.requireOrgIdentityProviderMode,
+    verifyOrgAccess,
+    verifyIdpAccess,
+    verifyUserHasAction(ActionsEnum.deleteIdp),
+    logActionAudit(ActionsEnum.deleteIdp),
+    orgIdp.unassociateOrgIdp
 );
 
 authenticated.get(
@@ -124,15 +153,13 @@ authenticated.get(
     orgIdp.getOrgIdp
 );
 
-authenticated.get(
-    "/org/:orgId/idp",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.listIdps),
-    orgIdp.listOrgIdps
-);
-
 authenticated.get("/org/:orgId/idp", orgIdp.listOrgIdps); // anyone can see this; it's just a list of idp names and ids
+
+authenticated.get(
+    "/user/:userId/admin-org-idps",
+    verifyIsLoggedInUser,
+    orgIdp.listUserAdminOrgIdps
+);
 
 authenticated.get(
     "/org/:orgId/certificate/:domainId/:domain",
@@ -211,6 +238,13 @@ if (build === "saas") {
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),
         generateLicense.generateNewEnterpriseLicense
+    );
+
+    authenticated.post(
+        "/org/:orgId/license/:licenseKey/clear-instance-name",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        generateLicense.clearInstanceName
     );
 
     authenticated.post(
@@ -614,4 +648,40 @@ authenticated.patch(
     verifyUserHasAction(ActionsEnum.updateSiteProvisioningKey),
     logActionAudit(ActionsEnum.updateSiteProvisioningKey),
     siteProvisioning.updateSiteProvisioningKey
+);
+
+authenticated.put(
+    "/org/:orgId/event-streaming-destination",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createEventStreamingDestination),
+    logActionAudit(ActionsEnum.createEventStreamingDestination),
+    eventStreamingDestination.createEventStreamingDestination
+);
+
+authenticated.post(
+    "/org/:orgId/event-streaming-destination/:destinationId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.updateEventStreamingDestination),
+    logActionAudit(ActionsEnum.updateEventStreamingDestination),
+    eventStreamingDestination.updateEventStreamingDestination
+);
+
+authenticated.delete(
+    "/org/:orgId/event-streaming-destination/:destinationId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteEventStreamingDestination),
+    logActionAudit(ActionsEnum.deleteEventStreamingDestination),
+    eventStreamingDestination.deleteEventStreamingDestination
+);
+
+authenticated.get(
+    "/org/:orgId/event-streaming-destinations",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listEventStreamingDestinations),
+    eventStreamingDestination.listEventStreamingDestinations
 );

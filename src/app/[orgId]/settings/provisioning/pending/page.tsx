@@ -9,6 +9,13 @@ import DismissableBanner from "@app/components/DismissableBanner";
 import Link from "next/link";
 import { Button } from "@app/components/ui/button";
 import { ArrowRight, Plug } from "lucide-react";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Pending Sites"
+};
 
 type PendingSitesPageProps = {
     params: Promise<{ orgId: string }>;
@@ -96,6 +103,10 @@ export default async function PendingSitesPage(props: PendingSitesPageProps) {
                     </Button>
                 </Link>
             </DismissableBanner>
+            <PaidFeaturesAlert
+                tiers={tierMatrix[TierFeature.SiteProvisioningKeys]}
+            />
+
             <PendingSitesTable
                 sites={siteRows}
                 orgId={params.orgId}
