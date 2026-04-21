@@ -38,6 +38,7 @@ const createSiteResourceSchema = z
         name: z.string().min(1).max(255),
         mode: z.enum(["host", "cidr", "port"]),
         siteId: z.int(),
+        niceId: z.string().optional(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
         // destinationPort: z.int().positive().optional(),
@@ -160,6 +161,7 @@ export async function createSiteResource(
         const {
             name,
             siteId,
+            niceId,
             mode,
             // protocol,
             // proxyPort,
@@ -278,7 +280,11 @@ export async function createSiteResource(
             tierMatrix.sshPam
         );
 
-        const niceId = await getUniqueSiteResourceName(orgId);
+        let updatedNiceId = niceId;
+        if (!niceId) {
+            updatedNiceId = await getUniqueSiteResourceName(orgId);
+        }
+
         let aliasAddress: string | null = null;
         if (mode == "host") {
             // we can only have an alias on a host
@@ -290,7 +296,7 @@ export async function createSiteResource(
             // Create the site resource
             const insertValues: typeof siteResources.$inferInsert = {
                 siteId,
-                niceId,
+                niceId: updatedNiceId!,
                 orgId,
                 name,
                 mode: mode as "host" | "cidr",
