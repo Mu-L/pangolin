@@ -21,6 +21,7 @@ import {
     generateSubnetProxyTargetV2,
     SubnetProxyTargetV2
 } from "@server/lib/ip";
+import { supportsTargetHealthChecksV2 } from "./targets";
 
 export async function buildClientConfigurationForNewtClient(
     site: Site,
@@ -86,7 +87,8 @@ export async function buildClientConfigurationForNewtClient(
                     //         )
                     //     );
 
-                    if (!client.clientSitesAssociationsCache.isJitMode) { // if we are adding sites through jit then dont add the site to the olm
+                    if (!client.clientSitesAssociationsCache.isJitMode) {
+                        // if we are adding sites through jit then dont add the site to the olm
                         // update the peer info on the olm
                         // if the peer has not been added yet this will be a no-op
                         await updatePeer(client.clients.clientId, {
@@ -189,7 +191,10 @@ export async function buildClientConfigurationForNewtClient(
     };
 }
 
-export async function buildTargetConfigurationForNewtClient(siteId: number) {
+export async function buildTargetConfigurationForNewtClient(
+    siteId: number,
+    version?: string | null
+) {
     // Get all enabled targets with their resource protocol information
     const allTargets = await db
         .select({
@@ -201,7 +206,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             internalPort: targets.internalPort,
             enabled: targets.enabled,
             protocol: resources.protocol,
-            hcId: targetHealthCheck.targetHealthCheckId,
+            targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
             hcEnabled: targetHealthCheck.hcEnabled,
             hcPath: targetHealthCheck.hcPath,
             hcScheme: targetHealthCheck.hcScheme,
@@ -273,8 +278,9 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
         }
 
         return {
-            id: target.targetId,
-            hcId: target.hcId,
+            id: supportsTargetHealthChecksV2(version)
+                ? target.targetId
+                : target.targetHealthCheckId,
             hcEnabled: target.hcEnabled,
             hcPath: target.hcPath,
             hcScheme: target.hcScheme,

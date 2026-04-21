@@ -46,7 +46,7 @@ import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
@@ -484,8 +484,8 @@ function NotifyActionFields({
         number | null
     >(null);
 
-    const { data: orgUsers = [] } = useQuery(orgQueries.users({ orgId }));
-    const { data: orgRoles = [] } = useQuery(orgQueries.roles({ orgId }));
+    const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery(orgQueries.users({ orgId }));
+    const { data: orgRoles = [], isLoading: isLoadingRoles } = useQuery(orgQueries.roles({ orgId }));
 
     const allUsers = useMemo(
         () =>
@@ -507,6 +507,50 @@ function NotifyActionFields({
                 .filter((r) => r.text !== "Admin"),
         [orgRoles]
     );
+
+    const hasResolvedTagsRef = useRef(false);
+
+    useEffect(() => {
+        if (isLoadingUsers || isLoadingRoles) return;
+        if (hasResolvedTagsRef.current) return;
+
+        const currentUserTags = form.getValues(
+            `actions.${index}.userTags`
+        ) as Tag[];
+        const currentRoleTags = form.getValues(
+            `actions.${index}.roleTags`
+        ) as Tag[];
+
+        const resolvedUserTags = currentUserTags.map((tag) => {
+            const match = allUsers.find((u) => u.id === tag.id);
+            return match ? { id: tag.id, text: match.text } : tag;
+        });
+
+        const resolvedRoleTags = currentRoleTags.map((tag) => {
+            const match = allRoles.find((r) => r.id === tag.id);
+            return match ? { id: tag.id, text: match.text } : tag;
+        });
+
+        const userTagsNeedUpdate = resolvedUserTags.some(
+            (t, i) => t.text !== currentUserTags[i]?.text
+        );
+        const roleTagsNeedUpdate = resolvedRoleTags.some(
+            (t, i) => t.text !== currentRoleTags[i]?.text
+        );
+
+        if (userTagsNeedUpdate) {
+            form.setValue(`actions.${index}.userTags`, resolvedUserTags, {
+                shouldDirty: false
+            });
+        }
+        if (roleTagsNeedUpdate) {
+            form.setValue(`actions.${index}.roleTags`, resolvedRoleTags, {
+                shouldDirty: false
+            });
+        }
+
+        hasResolvedTagsRef.current = true;
+    }, [isLoadingUsers, isLoadingRoles, allUsers, allRoles]);
 
     const userTags = (useWatch({ control, name: `actions.${index}.userTags` }) ?? []) as Tag[];
     const roleTags = (useWatch({ control, name: `actions.${index}.roleTags` }) ?? []) as Tag[];

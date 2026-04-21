@@ -14,6 +14,7 @@ import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckNotHealthyAlert
 } from "#dynamic/lib/alerts";
+import { supportsTargetHealthChecksV2 } from "@server/routers/newt/targets";
 
 interface TargetHealthStatus {
     status: string;
@@ -73,6 +74,8 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
         let successCount = 0;
         let errorCount = 0;
 
+        const isV2 = supportsTargetHealthChecksV2(newt.version);
+
         // Process each target status update
         for (const [targetId, healthStatus] of Object.entries(data.targets)) {
             logger.debug(
@@ -88,34 +91,78 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 continue;
             }
 
-            const [targetCheck] = await db
-                .select({
-                    targetId: targets.targetId,
-                    siteId: targets.siteId,
-                    orgId: targetHealthCheck.orgId,
-                    targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
-                    resourceOrgId: resources.orgId,
-                    resourceId: resources.resourceId,
-                    name: targetHealthCheck.name,
-                    hcStatus: targetHealthCheck.hcHealth
-                })
-                .from(targets)
-                .innerJoin(
-                    resources,
-                    eq(targets.resourceId, resources.resourceId)
-                )
-                .innerJoin(sites, eq(targets.siteId, sites.siteId))
-                .innerJoin(
-                    targetHealthCheck,
-                    eq(targets.targetId, targetHealthCheck.targetId)
-                )
-                .where(
-                    and(
-                        eq(targets.targetId, targetIdNum),
-                        eq(sites.siteId, newt.siteId)
+            let targetCheck: {
+                targetId: number;
+                siteId: number | null;
+                orgId: string | null;
+                targetHealthCheckId: number;
+                resourceOrgId: string | null;
+                resourceId: number | null;
+                name: string | null;
+                hcStatus: string | null;
+            } | undefined;
+
+            if (isV2) {
+                // New newt (>= 1.12.0): the key is the targetId
+                [targetCheck] = await db
+                    .select({
+                        targetId: targets.targetId,
+                        siteId: targets.siteId,
+                        orgId: targetHealthCheck.orgId,
+                        targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
+                        resourceOrgId: resources.orgId,
+                        resourceId: resources.resourceId,
+                        name: targetHealthCheck.name,
+                        hcStatus: targetHealthCheck.hcHealth
+                    })
+                    .from(targets)
+                    .innerJoin(
+                        resources,
+                        eq(targets.resourceId, resources.resourceId)
                     )
-                )
-                .limit(1);
+                    .innerJoin(sites, eq(targets.siteId, sites.siteId))
+                    .innerJoin(
+                        targetHealthCheck,
+                        eq(targets.targetId, targetHealthCheck.targetId)
+                    )
+                    .where(
+                        and(
+                            eq(targets.targetId, targetIdNum),
+                            eq(sites.siteId, newt.siteId)
+                        )
+                    )
+                    .limit(1);
+            } else {
+                // Old newt (< 1.12.0): the key is the targetHealthCheckId
+                [targetCheck] = await db
+                    .select({
+                        targetId: targets.targetId,
+                        siteId: targets.siteId,
+                        orgId: targetHealthCheck.orgId,
+                        targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
+                        resourceOrgId: resources.orgId,
+                        resourceId: resources.resourceId,
+                        name: targetHealthCheck.name,
+                        hcStatus: targetHealthCheck.hcHealth
+                    })
+                    .from(targetHealthCheck)
+                    .innerJoin(
+                        targets,
+                        eq(targetHealthCheck.targetId, targets.targetId)
+                    )
+                    .innerJoin(
+                        resources,
+                        eq(targets.resourceId, resources.resourceId)
+                    )
+                    .innerJoin(sites, eq(targets.siteId, sites.siteId))
+                    .where(
+                        and(
+                            eq(targetHealthCheck.targetHealthCheckId, targetIdNum),
+                            eq(sites.siteId, newt.siteId)
+                        )
+                    )
+                    .limit(1);
+            }
 
             if (!targetCheck) {
                 logger.warn(
@@ -142,7 +189,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         | "healthy"
                         | "unhealthy"
                 })
-                .where(eq(targetHealthCheck.targetId, targetIdNum));
+                .where(eq(targetHealthCheck.targetId, targetCheck.targetId));
 
             // Log the state change to status history
             await db.insert(statusHistory).values({
@@ -170,7 +217,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         .where(
                             and(
                                 eq(targets.resourceId, targetCheck.resourceId),
-                                eq(targets.targetId, targetIdNum) // only check the other targets, not the one we just updated
+                                eq(targets.targetId, targetCheck.targetId) // only check the other targets, not the one we just updated
                             )
                         );
 
