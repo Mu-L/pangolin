@@ -50,8 +50,11 @@ export type AlertRuleFormValues = {
     name: string;
     enabled: boolean;
     sourceType: "site" | "health_check" | "resource";
+    allSites: boolean;
     siteIds: number[];
+    allHealthChecks: boolean;
     healthCheckIds: number[];
+    allResources: boolean;
     resourceIds: number[];
     trigger: AlertTrigger;
     actions: AlertRuleFormAction[];
@@ -74,8 +77,11 @@ export type AlertRuleApiPayload = {
         | "resource_unhealthy"
         | "resource_toggle";
     enabled: boolean;
+    allSites: boolean;
     siteIds: number[];
+    allHealthChecks: boolean;
     healthCheckIds: number[];
+    allResources: boolean;
     resourceIds: number[];
     userIds: string[];
     roleIds: number[];
@@ -136,8 +142,11 @@ export function buildFormSchema(t: (k: string) => string) {
                 .min(1, { message: t("alertingErrorNameRequired") }),
             enabled: z.boolean(),
             sourceType: z.enum(["site", "health_check", "resource"]),
+            allSites: z.boolean(),
             siteIds: z.array(z.number()),
+            allHealthChecks: z.boolean(),
             healthCheckIds: z.array(z.number()),
+            allResources: z.boolean(),
             resourceIds: z.array(z.number()),
             trigger: z.enum([
                 "site_online",
@@ -185,7 +194,11 @@ export function buildFormSchema(t: (k: string) => string) {
                     path: ["actions"]
                 });
             }
-            if (val.sourceType === "site" && val.siteIds.length === 0) {
+            if (
+                val.sourceType === "site" &&
+                !val.allSites &&
+                val.siteIds.length === 0
+            ) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: t("alertingErrorPickSites"),
@@ -194,6 +207,7 @@ export function buildFormSchema(t: (k: string) => string) {
             }
             if (
                 val.sourceType === "health_check" &&
+                !val.allHealthChecks &&
                 val.healthCheckIds.length === 0
             ) {
                 ctx.addIssue({
@@ -204,6 +218,7 @@ export function buildFormSchema(t: (k: string) => string) {
             }
             if (
                 val.sourceType === "resource" &&
+                !val.allResources &&
                 val.resourceIds.length === 0
             ) {
                 ctx.addIssue({
@@ -295,8 +310,11 @@ export function defaultFormValues(): AlertRuleFormValues {
         name: "",
         enabled: true,
         sourceType: "site",
+        allSites: true,
         siteIds: [],
+        allHealthChecks: true,
         healthCheckIds: [],
+        allResources: true,
         resourceIds: [],
         trigger: "site_toggle",
         actions: [
@@ -371,12 +389,21 @@ export function apiResponseToFormValues(
         });
     }
 
+    const allSites = sourceType === "site" && rule.siteIds.length === 0;
+    const allHealthChecks =
+        sourceType === "health_check" && rule.healthCheckIds.length === 0;
+    const allResources =
+        sourceType === "resource" && (rule.resourceIds?.length ?? 0) === 0;
+
     return {
         name: rule.name,
         enabled: rule.enabled,
         sourceType,
+        allSites,
         siteIds: rule.siteIds,
+        allHealthChecks,
         healthCheckIds: rule.healthCheckIds,
+        allResources,
         resourceIds: rule.resourceIds ?? [],
         trigger: trigger as AlertTrigger,
         actions
@@ -432,9 +459,12 @@ export function formValuesToApiPayload(
         name: values.name.trim(),
         eventType,
         enabled: values.enabled,
-        siteIds: values.siteIds,
-        healthCheckIds: values.healthCheckIds,
-        resourceIds: values.resourceIds,
+        allSites: values.allSites,
+        siteIds: values.allSites ? [] : values.siteIds,
+        allHealthChecks: values.allHealthChecks,
+        healthCheckIds: values.allHealthChecks ? [] : values.healthCheckIds,
+        allResources: values.allResources,
+        resourceIds: values.allResources ? [] : values.resourceIds,
         userIds: uniqueUserIds,
         roleIds: uniqueRoleIds,
         emails: uniqueEmails,

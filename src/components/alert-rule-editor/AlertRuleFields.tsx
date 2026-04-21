@@ -35,6 +35,7 @@ import {
     RadioGroupItem
 } from "@app/components/ui/radio-group";
 import { Label } from "@app/components/ui/label";
+import { StrategySelect } from "@app/components/StrategySelect";
 import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
@@ -957,6 +958,58 @@ export function AlertRuleSourceFields({
     const t = useTranslations();
     const { setValue, getValues } = useFormContext<AlertRuleFormValues>();
     const sourceType = useWatch({ control, name: "sourceType" });
+    const allSites = useWatch({ control, name: "allSites" });
+    const allHealthChecks = useWatch({ control, name: "allHealthChecks" });
+    const allResources = useWatch({ control, name: "allResources" });
+
+    const siteStrategyOptions = useMemo(
+        () => [
+            {
+                id: "all" as const,
+                title: t("alertingAllSites"),
+                description: t("alertingAllSitesDescription")
+            },
+            {
+                id: "specific" as const,
+                title: t("alertingSpecificSites"),
+                description: t("alertingSpecificSitesDescription")
+            }
+        ],
+        [t]
+    );
+
+    const healthCheckStrategyOptions = useMemo(
+        () => [
+            {
+                id: "all" as const,
+                title: t("alertingAllHealthChecks"),
+                description: t("alertingAllHealthChecksDescription")
+            },
+            {
+                id: "specific" as const,
+                title: t("alertingSpecificHealthChecks"),
+                description: t("alertingSpecificHealthChecksDescription")
+            }
+        ],
+        [t]
+    );
+
+    const resourceStrategyOptions = useMemo(
+        () => [
+            {
+                id: "all" as const,
+                title: t("alertingAllResources"),
+                description: t("alertingAllResourcesDescription")
+            },
+            {
+                id: "specific" as const,
+                title: t("alertingSpecificResources"),
+                description: t("alertingSpecificResourcesDescription")
+            }
+        ],
+        [t]
+    );
+
     return (
         <div className="space-y-4">
             <FormField
@@ -1029,55 +1082,131 @@ export function AlertRuleSourceFields({
                 )}
             />
             {sourceType === "site" ? (
-                <FormField
-                    control={control}
-                    name="siteIds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>{t("alertingPickSites")}</FormLabel>
-                            <SiteMultiSelect
-                                orgId={orgId}
-                                value={field.value}
-                                onChange={field.onChange}
-                            />
-                            <FormMessage />
-                        </FormItem>
+                <>
+                    <FormField
+                        control={control}
+                        name="allSites"
+                        render={({ field }) => (
+                            <FormItem>
+                                <StrategySelect
+                                    options={siteStrategyOptions}
+                                    value={field.value ? "all" : "specific"}
+                                    onChange={(v) => {
+                                        field.onChange(v === "all");
+                                        if (v === "all") {
+                                            setValue("siteIds", []);
+                                        }
+                                    }}
+                                    cols={2}
+                                />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {!allSites && (
+                        <FormField
+                            control={control}
+                            name="siteIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("alertingPickSites")}
+                                    </FormLabel>
+                                    <SiteMultiSelect
+                                        orgId={orgId}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
-                />
+                </>
             ) : sourceType === "resource" ? (
-                <FormField
-                    control={control}
-                    name="resourceIds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>{t("alertingPickResources")}</FormLabel>
-                            <ResourceMultiSelect
-                                orgId={orgId}
-                                value={field.value}
-                                onChange={field.onChange}
-                            />
-                            <FormMessage />
-                        </FormItem>
+                <>
+                    <FormField
+                        control={control}
+                        name="allResources"
+                        render={({ field }) => (
+                            <FormItem>
+                                <StrategySelect
+                                    options={resourceStrategyOptions}
+                                    value={field.value ? "all" : "specific"}
+                                    onChange={(v) => {
+                                        field.onChange(v === "all");
+                                        if (v === "all") {
+                                            setValue("resourceIds", []);
+                                        }
+                                    }}
+                                    cols={2}
+                                />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {!allResources && (
+                        <FormField
+                            control={control}
+                            name="resourceIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("alertingPickResources")}
+                                    </FormLabel>
+                                    <ResourceMultiSelect
+                                        orgId={orgId}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
-                />
+                </>
             ) : (
-                <FormField
-                    control={control}
-                    name="healthCheckIds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>
-                                {t("alertingPickHealthChecks")}
-                            </FormLabel>
-                            <HealthCheckMultiSelect
-                                orgId={orgId}
-                                value={field.value}
-                                onChange={field.onChange}
-                            />
-                            <FormMessage />
-                        </FormItem>
+                <>
+                    <FormField
+                        control={control}
+                        name="allHealthChecks"
+                        render={({ field }) => (
+                            <FormItem>
+                                <StrategySelect
+                                    options={healthCheckStrategyOptions}
+                                    value={field.value ? "all" : "specific"}
+                                    onChange={(v) => {
+                                        field.onChange(v === "all");
+                                        if (v === "all") {
+                                            setValue("healthCheckIds", []);
+                                        }
+                                    }}
+                                    cols={2}
+                                />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {!allHealthChecks && (
+                        <FormField
+                            control={control}
+                            name="healthCheckIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("alertingPickHealthChecks")}
+                                    </FormLabel>
+                                    <HealthCheckMultiSelect
+                                        orgId={orgId}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
-                />
+                </>
             )}
         </div>
     );

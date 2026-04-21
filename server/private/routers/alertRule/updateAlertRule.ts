@@ -33,6 +33,7 @@ import { and, eq } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import { HC_EVENT_TYPES, SITE_EVENT_TYPES, RESOURCE_EVENT_TYPES } from "./createAlertRule";
+import { invalidateAllRemoteExitNodeSessions } from "@server/private/auth/sessions/remoteExitNode";
 
 const paramsSchema = z
     .object({
@@ -62,8 +63,11 @@ const bodySchema = z
         cooldownSeconds: z.number().int().nonnegative().optional(),
         // Source join tables - if provided the full set is replaced
         siteIds: z.array(z.number().int().positive()).optional(),
+        allSites: z.boolean().optional(),
         healthCheckIds: z.array(z.number().int().positive()).optional(),
+        allHealthChecks: z.boolean().optional(),
         resourceIds: z.array(z.number().int().positive()).optional(),
+        allResources: z.boolean().optional(),
         // Recipient arrays - if any are provided the full recipient set is replaced
         userIds: z.array(z.string().nonempty()).optional(),
         roleIds: z.array(z.number()).optional(),
@@ -83,6 +87,30 @@ const bodySchema = z
         const isResourceEvent = (RESOURCE_EVENT_TYPES as readonly string[]).includes(
             val.eventType
         );
+
+        if (isSiteEvent && val.siteIds !== undefined && val.siteIds.length === 0 && !val.allSites) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one siteId is required for site event types when allSites is false",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isHcEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length === 0 && !val.allHealthChecks) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one healthCheckId is required for health check event types when allHealthChecks is false",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isResourceEvent && val.resourceIds !== undefined && val.resourceIds.length === 0 && !val.allResources) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one resourceId is required for resource event types when allResources is false",
+                path: ["resourceIds"]
+            });
+        }
 
         if (isSiteEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length > 0) {
             ctx.addIssue({

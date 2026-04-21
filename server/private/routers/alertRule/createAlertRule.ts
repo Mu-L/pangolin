@@ -66,14 +66,17 @@ const bodySchema = z
         cooldownSeconds: z.number().int().nonnegative().optional().default(300),
         // Source join tables - which is required depends on eventType
         siteIds: z.array(z.number().int().positive()).optional().default([]),
+        allSites: z.boolean().optional().default(false),
         healthCheckIds: z
             .array(z.number().int().positive())
             .optional()
             .default([]),
+        allHealthChecks: z.boolean().optional().default(false),
         resourceIds: z
             .array(z.number().int().positive())
             .optional()
             .default([]),
+        allResources: z.boolean().optional().default(false),
         // Email recipients (flat)
         userIds: z.array(z.string().nonempty()).optional().default([]),
         roleIds: z.array(z.number()).optional().default([]),
@@ -92,19 +95,19 @@ const bodySchema = z
             val.eventType
         );
 
-        if (isSiteEvent && val.siteIds.length === 0) {
+        if (isSiteEvent && !val.allSites && val.siteIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "At least one siteId is required for site event types",
+                message: "At least one siteId is required for site event types when allSites is false",
                 path: ["siteIds"]
             });
         }
 
-        if (isHcEvent && val.healthCheckIds.length === 0) {
+        if (isHcEvent && !val.allHealthChecks && val.healthCheckIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message:
-                    "At least one healthCheckId is required for health check event types",
+                    "At least one healthCheckId is required for health check event types when allHealthChecks is false",
                 path: ["healthCheckIds"]
             });
         }
@@ -125,10 +128,10 @@ const bodySchema = z
             });
         }
 
-        if (isResourceEvent && val.resourceIds.length === 0) {
+        if (isResourceEvent && !val.allResources && val.resourceIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "At least one resourceId is required for resource event types",
+                message: "At least one resourceId is required for resource event types when allResources is false",
                 path: ["resourceIds"]
             });
         }
@@ -222,8 +225,11 @@ export async function createAlertRule(
             enabled,
             cooldownSeconds,
             siteIds,
+            allSites,
             healthCheckIds,
+            allHealthChecks,
             resourceIds,
+            allResources,
             userIds,
             roleIds,
             emails,
@@ -245,8 +251,8 @@ export async function createAlertRule(
             })
             .returning();
 
-        // Insert site associations
-        if (siteIds.length > 0) {
+        // Insert site associations (skipped when allSites=true — empty junction = match all)
+        if (!allSites && siteIds.length > 0) {
             await db.insert(alertSites).values(
                 siteIds.map((siteId) => ({
                     alertRuleId: rule.alertRuleId,
@@ -255,8 +261,8 @@ export async function createAlertRule(
             );
         }
 
-        // Insert health check associations
-        if (healthCheckIds.length > 0) {
+        // Insert health check associations (skipped when allHealthChecks=true)
+        if (!allHealthChecks && healthCheckIds.length > 0) {
             await db.insert(alertHealthChecks).values(
                 healthCheckIds.map((healthCheckId) => ({
                     alertRuleId: rule.alertRuleId,
@@ -265,8 +271,8 @@ export async function createAlertRule(
             );
         }
 
-        // Insert resource associations
-        if (resourceIds.length > 0) {
+        // Insert resource associations (skipped when allResources=true)
+        if (!allResources && resourceIds.length > 0) {
             await db.insert(alertResources).values(
                 resourceIds.map((resourceId) => ({
                     alertRuleId: rule.alertRuleId,
