@@ -18,6 +18,11 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import {
+    alertRuleAllHealthChecksSelected,
+    alertRuleAllResourcesSelected,
+    alertRuleAllSitesSelected
+} from "@app/lib/alertRuleForm";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     ArrowDown01Icon,
@@ -71,6 +76,9 @@ function sourceSummary(
     rule: AlertRuleRow,
     t: (k: string, o?: Record<string, number | string>) => string
 ) {
+    if (alertRuleAllSitesSelected(rule.eventType, rule.siteIds)) {
+        return t("alertingSummaryAllSites");
+    }
     if (
         rule.eventType === "site_online" ||
         rule.eventType === "site_offline" ||
@@ -78,10 +86,16 @@ function sourceSummary(
     ) {
         return t("alertingSummarySites", { count: rule.siteIds.length });
     }
+    if (alertRuleAllResourcesSelected(rule.eventType, rule.resourceIds)) {
+        return t("alertingSummaryAllResources");
+    }
     if (rule.eventType.startsWith("resource_")) {
         return t("alertingSummaryResources", {
             count: rule.resourceIds.length
         });
+    }
+    if (alertRuleAllHealthChecksSelected(rule.eventType, rule.healthCheckIds)) {
+        return t("alertingSummaryAllHealthChecks");
     }
     return t("alertingSummaryHealthChecks", {
         count: rule.healthCheckIds.length

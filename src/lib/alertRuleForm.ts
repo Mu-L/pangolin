@@ -322,6 +322,43 @@ export function defaultFormValues(): AlertRuleFormValues {
 }
 
 // ---------------------------------------------------------------------------
+// List/API row semantics: empty ID arrays mean "all" for that source kind
+// ---------------------------------------------------------------------------
+
+export function alertRuleAllSitesSelected(
+    eventType: string,
+    siteIds: number[]
+): boolean {
+    const siteEvent =
+        eventType === "site_online" ||
+        eventType === "site_offline" ||
+        eventType === "site_toggle";
+    return siteEvent && siteIds.length === 0;
+}
+
+export function alertRuleAllResourcesSelected(
+    eventType: string,
+    resourceIds: number[] | undefined
+): boolean {
+    return eventType.startsWith("resource_") && (resourceIds?.length ?? 0) === 0;
+}
+
+export function alertRuleAllHealthChecksSelected(
+    eventType: string,
+    healthCheckIds: number[]
+): boolean {
+    if (
+        eventType === "site_online" ||
+        eventType === "site_offline" ||
+        eventType === "site_toggle" ||
+        eventType.startsWith("resource_")
+    ) {
+        return false;
+    }
+    return healthCheckIds.length === 0;
+}
+
+// ---------------------------------------------------------------------------
 // API response → form values
 // ---------------------------------------------------------------------------
 
@@ -372,11 +409,15 @@ export function apiResponseToFormValues(
         });
     }
 
-    const allSites = sourceType === "site" && rule.siteIds.length === 0;
-    const allHealthChecks =
-        sourceType === "health_check" && rule.healthCheckIds.length === 0;
-    const allResources =
-        sourceType === "resource" && (rule.resourceIds?.length ?? 0) === 0;
+    const allSites = alertRuleAllSitesSelected(rule.eventType, rule.siteIds);
+    const allHealthChecks = alertRuleAllHealthChecksSelected(
+        rule.eventType,
+        rule.healthCheckIds
+    );
+    const allResources = alertRuleAllResourcesSelected(
+        rule.eventType,
+        rule.resourceIds
+    );
 
     return {
         name: rule.name,
