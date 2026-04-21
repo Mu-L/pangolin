@@ -133,7 +133,10 @@ export default function AlertRuleGraphEditor({
                 const res = await api.put<
                     AxiosResponse<CreateAlertRuleResponse>
                 >(`/org/${orgId}/alert-rule`, payload);
-                toast({ title: t("alertingRuleSaved") });
+                toast({
+                    title: t("alertingRuleSaved"),
+                    description: t("alertingRuleSavedCreatedDescription")
+                });
                 router.replace(
                     `/${orgId}/settings/alerting/${res.data.data.alertRuleId}`
                 );
@@ -142,7 +145,10 @@ export default function AlertRuleGraphEditor({
                     `/org/${orgId}/alert-rule/${alertRuleId}`,
                     payload
                 );
-                toast({ title: t("alertingRuleSaved") });
+                toast({
+                    title: t("alertingRuleSaved"),
+                    description: t("alertingRuleSavedUpdatedDescription")
+                });
             }
         } catch (e) {
             toast({
@@ -216,9 +222,7 @@ export default function AlertRuleGraphEditor({
                                                             onCheckedChange={
                                                                 field.onChange
                                                             }
-                                                            disabled={
-                                                                disabled
-                                                            }
+                                                            disabled={disabled}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -229,8 +233,9 @@ export default function AlertRuleGraphEditor({
                                             type="submit"
                                             className="w-full"
                                             disabled={isSaving}
+                                            loading={isSaving}
                                         >
-                                            {isSaving ? t("saving") : t("save")}
+                                            {t("save")}
                                         </Button>
                                     </fieldset>
                                 </CardContent>
@@ -244,8 +249,7 @@ export default function AlertRuleGraphEditor({
                                     isLast={false}
                                     title={t("alertingSectionSource")}
                                     accent={{
-                                        labelClass:
-                                            "text-emerald-600 dark:text-emerald-400",
+                                        labelClass: "",
                                         icon: Flag
                                     }}
                                 >
@@ -268,8 +272,7 @@ export default function AlertRuleGraphEditor({
                                     isLast={false}
                                     title={t("alertingSectionTrigger")}
                                     accent={{
-                                        labelClass:
-                                            "text-amber-600 dark:text-amber-400",
+                                        labelClass: "",
                                         icon: Cog
                                     }}
                                 >
@@ -291,8 +294,7 @@ export default function AlertRuleGraphEditor({
                                     isLast
                                     title={t("alertingSectionActions")}
                                     accent={{
-                                        labelClass:
-                                            "text-blue-600 dark:text-blue-400",
+                                        labelClass: "",
                                         icon: Zap
                                     }}
                                 >
@@ -337,21 +339,36 @@ export default function AlertRuleGraphEditor({
                                                     }
                                                 }}
                                             />
-                                            {fields.map((f, index) => (
-                                                <ActionBlock
-                                                    key={f.id}
-                                                    orgId={orgId}
-                                                    index={index}
-                                                    control={form.control}
-                                                    form={form}
-                                                    onRemove={() =>
-                                                        remove(index)
-                                                    }
-                                                    onUpdate={(val) =>
-                                                        update(index, val)
-                                                    }
-                                                    canRemove
+                                            {fields.length > 0 && (
+                                                <div
+                                                    role="separator"
+                                                    aria-hidden
+                                                    className="-mx-4 border-t border-border sm:-mx-5 my-6"
                                                 />
+                                            )}
+                                            {fields.map((f, index) => (
+                                                <div key={f.id}>
+                                                    {index > 0 && (
+                                                        <div
+                                                            role="separator"
+                                                            aria-hidden
+                                                            className="-mx-4 border-t border-border sm:-mx-5 my-6"
+                                                        />
+                                                    )}
+                                                    <ActionBlock
+                                                        orgId={orgId}
+                                                        index={index}
+                                                        control={form.control}
+                                                        form={form}
+                                                        onRemove={() =>
+                                                            remove(index)
+                                                        }
+                                                        onUpdate={(val) =>
+                                                            update(index, val)
+                                                        }
+                                                        canRemove
+                                                    />
+                                                </div>
                                             ))}
                                         </div>
                                     </fieldset>

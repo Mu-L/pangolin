@@ -66,17 +66,16 @@ function sourceSummary(
         return t("alertingSummarySites", { count: rule.siteIds.length });
     }
     if (rule.eventType.startsWith("resource_")) {
-        return t("alertingSummaryResources", { count: rule.resourceIds.length });
+        return t("alertingSummaryResources", {
+            count: rule.resourceIds.length
+        });
     }
     return t("alertingSummaryHealthChecks", {
         count: rule.healthCheckIds.length
     });
 }
 
-function triggerLabel(
-    rule: AlertRuleRow,
-    t: (k: string) => string
-) {
+function triggerLabel(rule: AlertRuleRow, t: (k: string) => string) {
     switch (rule.eventType) {
         case "site_online":
             return t("alertingTriggerSiteOnline");
@@ -101,7 +100,11 @@ function triggerLabel(
     }
 }
 
-export default function AlertingRulesTable({ orgId, siteId, resourceId }: AlertingRulesTableProps) {
+export default function AlertingRulesTable({
+    orgId,
+    siteId,
+    resourceId
+}: AlertingRulesTableProps) {
     const router = useRouter();
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -124,18 +127,26 @@ export default function AlertingRulesTable({ orgId, siteId, resourceId }: Alerti
     const pageIndex = page - 1;
     const query = searchParams.get("query") ?? undefined;
 
-    const {
-        data,
-        isLoading,
-        refetch,
-        isRefetching
-    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize, query, siteId, resourceId }));
+    const { data, isLoading, refetch, isRefetching } = useQuery(
+        orgQueries.alertRules({
+            orgId,
+            limit: pageSize,
+            offset: pageIndex * pageSize,
+            query,
+            siteId,
+            resourceId
+        })
+    );
 
     const rows = data?.alertRules ?? [];
     const total = data?.pagination.total ?? 0;
     const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
-    const paginationState: DataTablePaginationState = { pageIndex, pageSize, pageCount };
+    const paginationState: DataTablePaginationState = {
+        pageIndex,
+        pageSize,
+        pageCount
+    };
 
     const handlePaginationChange = (newState: PaginationState) => {
         searchParams.set("page", (newState.pageIndex + 1).toString());
@@ -154,7 +165,9 @@ export default function AlertingRulesTable({ orgId, siteId, resourceId }: Alerti
     }, 300);
 
     const invalidate = () =>
-        queryClient.invalidateQueries({ queryKey: ["ORG", orgId, "ALERT_RULES"] });
+        queryClient.invalidateQueries({
+            queryKey: ["ORG", orgId, "ALERT_RULES"]
+        });
 
     const setEnabled = async (rule: AlertRuleRow, enabled: boolean) => {
         setTogglingId(rule.alertRuleId);
@@ -210,9 +223,7 @@ export default function AlertingRulesTable({ orgId, siteId, resourceId }: Alerti
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             ),
-            cell: ({ row }) => (
-                <span className="font-medium">{row.original.name}</span>
-            )
+            cell: ({ row }) => <span>{row.original.name}</span>
         },
         {
             id: "source",
@@ -231,6 +242,18 @@ export default function AlertingRulesTable({ orgId, siteId, resourceId }: Alerti
             cell: ({ row }) => <span>{triggerLabel(row.original, t)}</span>
         },
         {
+            accessorKey: "lastTriggeredAt",
+            friendlyName: t("lastTriggeredAt"),
+            header: () => <span className="p-3">{t("lastTriggeredAt")}</span>,
+            cell: ({ row }) => (
+                <span>
+                    {row.original.lastTriggeredAt
+                        ? moment(row.original.lastTriggeredAt).format("lll")
+                        : "-"}
+                </span>
+            )
+        },
+        {
             accessorKey: "enabled",
             friendlyName: t("alertingColumnEnabled"),
             header: () => (
@@ -246,14 +269,6 @@ export default function AlertingRulesTable({ orgId, siteId, resourceId }: Alerti
                     />
                 );
             }
-        },
-        {
-            accessorKey: "createdAt",
-            friendlyName: t("createdAt"),
-            header: () => <span className="p-3">{t("createdAt")}</span>,
-            cell: ({ row }) => (
-                <span>{moment(row.original.createdAt).format("lll")}</span>
-            )
         },
         {
             id: "rowActions",

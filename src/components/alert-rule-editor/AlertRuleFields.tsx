@@ -144,7 +144,6 @@ export function AddActionPanel({
             {!isPremiumSelected && (
                 <Button
                     type="button"
-                    size="sm"
                     disabled={!isBuiltInSelected}
                     onClick={handleAdd}
                 >
@@ -458,13 +457,13 @@ export function ActionBlock({
         );
 
     return (
-        <div className="rounded-lg border p-4 space-y-3 relative">
+        <div className="relative space-y-3 pr-10 pt-1">
             {canRemove && (
                 <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute top-2 right-2 h-8 w-8"
+                    className="absolute top-1 right-0 h-8 w-8"
                     onClick={onRemove}
                 >
                     <Trash2 className="h-4 w-4 text-destructive" />

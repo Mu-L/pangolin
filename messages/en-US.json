@@ -1375,9 +1375,11 @@
     "alertingDeleteRule": "Delete alert rule",
     "alertingRuleDeleted": "Alert rule deleted",
     "alertingRuleSaved": "Alert rule saved",
+    "alertingRuleSavedCreatedDescription": "Your new alert rule was created. You can keep editing it on this page.",
+    "alertingRuleSavedUpdatedDescription": "Your changes to this alert rule were saved.",
     "alertingEditRule": "Edit Alert Rule",
     "alertingCreateRule": "Create Alert Rule",
-    "alertingRuleCredenzaDescription": "Choose what to watch, when to fire, and how to notify your team.",
+    "alertingRuleCredenzaDescription": "Choose what to watch, when to fire, and how to notify",
     "alertingRuleNamePlaceholder": "Production site down",
     "alertingRuleEnabled": "Rule enabled",
     "alertingSectionSource": "Source",
@@ -1417,7 +1419,7 @@
     "alertingTriggerResourceToggle": "Resource status changes",
     "alertingSourceResource": "Resource",
     "alertingSectionActions": "Actions",
-    "alertingAddAction": "Add action",
+    "alertingAddAction": "Add Action",
     "alertingActionNotify": "Email",
     "alertingActionNotifyDescription": "Send email notifications to users or roles",
     "alertingActionWebhook": "Webhook",
@@ -3112,5 +3114,6 @@
     "idpUnassociatedDescription": "Identity provider unassociated from this organization successfully",
     "idpUnassociateMenu": "Unassociate",
     "idpDeleteAllOrgsMenu": "Delete",
-    "publicIpEndpoint": "Endpoint"
+    "publicIpEndpoint": "Endpoint",
+    "lastTriggeredAt": "Last Trigger"
 }
