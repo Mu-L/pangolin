@@ -13,6 +13,7 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { useUserContext } from "@app/hooks/useUserContext";
+import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
 import { cn } from "@app/lib/cn";
 import { approvalQueries } from "@app/lib/queries";
 import { build } from "@server/build";
@@ -28,6 +29,10 @@ import SidebarLicenseButton from "./SidebarLicenseButton";
 import { SidebarSupportButton } from "./SidebarSupportButton";
 
 const ProductUpdates = dynamic(() => import("./ProductUpdates"), {
+    ssr: false
+});
+
+const ShowTrialCard = dynamic(() => import("./ShowTrialCard"), {
     ssr: false
 });
 
@@ -55,6 +60,7 @@ export function LayoutSidebar({
     const { user } = useUserContext();
     const { isUnlocked, licenseStatus } = useLicenseStatusContext();
     const { env } = useEnvContext();
+    const subscriptionContext = useSubscriptionStatusContext();
     const t = useTranslations();
 
     // Fetch pending approval count if we have an orgId and it's not an admin page
@@ -121,6 +127,11 @@ export function LayoutSidebar({
     const currentOrg = orgs.find((org) => org.orgId === orgId);
     const canShowProductUpdates =
         user.serverAdmin || Boolean(currentOrg?.isOwner || currentOrg?.isAdmin);
+
+    const showTrial =
+        build === "saas" &&
+        Boolean(orgId) &&
+        subscriptionContext?.isTrial
 
     return (
         <div
@@ -232,6 +243,12 @@ export function LayoutSidebar({
                     </div>
                 ) : <div className="mt-0.2"></div>}
 
+                {showTrial && (
+                    <div className="px-4">
+                        <ShowTrialCard isCollapsed={isSidebarCollapsed} />
+                    </div>
+                )}
+
                 {build === "enterprise" && (
                     <div className="px-4">
                         <SidebarLicenseButton
@@ -251,6 +268,7 @@ export function LayoutSidebar({
                         />
                     </div>
                 )}
+
                 {!isSidebarCollapsed && (
                     <div className="px-4 space-y-2 pb-4">
                         {loadFooterLinks() ? (

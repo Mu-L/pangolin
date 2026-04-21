@@ -12,3 +12,4 @@
  */
 
 export * from "./sendUsageNotifications";
+export * from "./sendTrialNotification";
