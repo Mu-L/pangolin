@@ -27,7 +27,9 @@ export default function EditAlertRulePage() {
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
 
-    const [formValues, setFormValues] = useState<AlertRuleFormValues | null | undefined>(undefined);
+    const [formValues, setFormValues] = useState<
+        AlertRuleFormValues | null | undefined
+    >(undefined);
 
     useEffect(() => {
         if (isNaN(alertRuleId)) {
@@ -65,9 +67,6 @@ export default function EditAlertRulePage() {
                     title={t("alertingEditRule")}
                     description={t("alertingRuleCredenzaDescription")}
                 />
-                <div className="min-h-[12rem] flex items-center justify-center text-muted-foreground text-sm">
-                    {t("loading")}
-                </div>
             </>
         );
     }
