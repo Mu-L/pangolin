@@ -163,7 +163,7 @@
     "proxyResourceTitle": "Manage Public Resources",
     "proxyResourceDescription": "Create and manage resources that are publicly accessible through a web browser",
     "proxyResourcesBannerTitle": "Web-based Public Access",
-    "proxyResourcesBannerDescription": "Public resources are HTTPS or TCP/UDP proxies accessible to anyone on the internet through a web browser. Unlike private resources, they do not require client-side software and can include identity and context-aware access policies.",
+    "proxyResourcesBannerDescription": "Public resources are HTTPS proxies accessible to anyone on the internet through a web browser. Unlike private resources, they do not require client-side software and can include identity and context-aware access policies.",
     "clientResourceTitle": "Manage Private Resources",
     "clientResourceDescription": "Create and manage resources that are only accessible through a connected client",
     "privateResourcesBannerTitle": "Zero-Trust Private Access",
