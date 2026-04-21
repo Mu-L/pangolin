@@ -213,9 +213,9 @@ export const orgNavSections = (
                 icon: <Building2 className="size-4 flex-none" />,
                 items: [
                     {
-                        title: "sidebarApiKeys",
-                        href: "/{orgId}/settings/api-keys",
-                        icon: <KeyRound className="size-4 flex-none" />
+                        title: "sidebarAlerting",
+                        href: "/{orgId}/settings/alerting",
+                        icon: <BellRing className="size-4 flex-none" />
                     },
                     {
                         title: "sidebarProvisioning",
@@ -228,9 +228,9 @@ export const orgNavSections = (
                         icon: <ReceiptText className="size-4 flex-none" />
                     },
                     {
-                        title: "sidebarAlerting",
-                        href: "/{orgId}/settings/alerting",
-                        icon: <BellRing className="size-4 flex-none" />
+                        title: "sidebarApiKeys",
+                        href: "/{orgId}/settings/api-keys",
+                        icon: <KeyRound className="size-4 flex-none" />
                     }
                 ]
             },
