@@ -12,6 +12,11 @@ import DismissableBanner from "@app/components/DismissableBanner";
 import Link from "next/link";
 import { Button } from "@app/components/ui/button";
 import { ArrowRight, Plug } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Provisioning Keys"
+};
 
 type ProvisioningKeysPageProps = {
     params: Promise<{ orgId: string }>;

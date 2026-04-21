@@ -21,6 +21,7 @@ import {
     exitNodes,
     sessions,
     clients,
+    resources,
     siteResources,
     targetHealthCheck,
     sites
@@ -477,13 +478,21 @@ export const alertRules = pgTable("alertRules", {
         .$type<
             | "site_online"
             | "site_offline"
+            | "site_toggle"
             | "health_check_healthy"
-            | "health_check_not_healthy"
+            | "health_check_unhealthy"
+            | "health_check_toggle"
+            | "resource_healthy"
+            | "resource_unhealthy"
+            | "resource_toggle"
         >()
         .notNull(),
     // Nullable depending on eventType
     enabled: boolean("enabled").notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    allSites: boolean("allSites").notNull().default(false),
+    allHealthChecks: boolean("allHealthChecks").notNull().default(false),
+    allResources: boolean("allResources").notNull().default(false),
     lastTriggeredAt: bigint("lastTriggeredAt", { mode: "number" }), // nullable
     createdAt: bigint("createdAt", { mode: "number" }).notNull(),
     updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
@@ -509,6 +518,15 @@ export const alertHealthChecks = pgTable("alertHealthChecks", {
         })
 });
 
+export const alertResources = pgTable("alertResources", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" })
+});
+
 // Separating channels by type avoids the mixed-shape problem entirely
 export const alertEmailActions = pgTable("alertEmailActions", {
     emailActionId: serial("emailActionId").primaryKey(),
@@ -530,7 +548,7 @@ export const alertEmailRecipients = pgTable("alertEmailRecipients", {
     userId: varchar("userId").references(() => users.userId, {
         onDelete: "cascade"
     }),
-    roleId: varchar("roleId").references(() => roles.roleId, {
+    roleId: integer("roleId").references(() => roles.roleId, {
         onDelete: "cascade"
     }),
     email: varchar("email", { length: 255 }) // external emails not tied to a user
@@ -584,3 +602,4 @@ export type EventStreamingDestination = InferSelectModel<
 export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
+export type AlertResources = InferSelectModel<typeof alertResources>;

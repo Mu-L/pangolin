@@ -55,7 +55,7 @@ export async function fireHealthCheckHealthyAlert(
 }
 
 /**
- * Fire a `health_check_not_healthy` alert for the given health check.
+ * Fire a `health_check_unhealthy` alert for the given health check.
  *
  * Call this after a health check has been detected as failing so that any
  * matching `alertRules` can dispatch their email and webhook actions.
@@ -73,7 +73,7 @@ export async function fireHealthCheckNotHealthyAlert(
 ): Promise<void> {
     try {
         await processAlerts({
-            eventType: "health_check_not_healthy",
+            eventType: "health_check_unhealthy",
             orgId,
             healthCheckId,
             data: {

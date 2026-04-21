@@ -13,6 +13,7 @@ import {
 import { Switch } from "@app/components/ui/switch";
 import { toast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
@@ -24,9 +25,14 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
+import type { DataTablePaginationState } from "@app/components/ui/data-table";
+import { useDebouncedCallback } from "use-debounce";
 
 type AlertingRulesTableProps = {
     orgId: string;
+    siteId?: number;
+    resourceId?: number;
 };
 
 type AlertRuleRow = {
@@ -41,6 +47,7 @@ type AlertRuleRow = {
     updatedAt: number;
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
 };
 
 function ruleHref(orgId: string, ruleId: number) {
@@ -53,9 +60,13 @@ function sourceSummary(
 ) {
     if (
         rule.eventType === "site_online" ||
-        rule.eventType === "site_offline"
+        rule.eventType === "site_offline" ||
+        rule.eventType === "site_toggle"
     ) {
         return t("alertingSummarySites", { count: rule.siteIds.length });
+    }
+    if (rule.eventType.startsWith("resource_")) {
+        return t("alertingSummaryResources", { count: rule.resourceIds.length });
     }
     return t("alertingSummaryHealthChecks", {
         count: rule.healthCheckIds.length
@@ -71,16 +82,26 @@ function triggerLabel(
             return t("alertingTriggerSiteOnline");
         case "site_offline":
             return t("alertingTriggerSiteOffline");
+        case "site_toggle":
+            return t("alertingTriggerSiteToggle");
         case "health_check_healthy":
             return t("alertingTriggerHcHealthy");
-        case "health_check_not_healthy":
+        case "health_check_unhealthy":
             return t("alertingTriggerHcUnhealthy");
+        case "health_check_toggle":
+            return t("alertingTriggerHcToggle");
+        case "resource_healthy":
+            return t("alertingTriggerResourceHealthy");
+        case "resource_unhealthy":
+            return t("alertingTriggerResourceUnhealthy");
+        case "resource_toggle":
+            return t("alertingTriggerResourceToggle");
         default:
             return rule.eventType;
     }
 }
 
-export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
+export default function AlertingRulesTable({ orgId, siteId, resourceId }: AlertingRulesTableProps) {
     const router = useRouter();
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -88,19 +109,52 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
 
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
+
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<AlertRuleRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
 
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+    const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
+    const pageIndex = page - 1;
+    const query = searchParams.get("query") ?? undefined;
+
     const {
-        data: rows = [],
+        data,
         isLoading,
         refetch,
         isRefetching
-    } = useQuery(orgQueries.alertRules({ orgId }));
+    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize, query, siteId, resourceId }));
+
+    const rows = data?.alertRules ?? [];
+    const total = data?.pagination.total ?? 0;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+    const paginationState: DataTablePaginationState = { pageIndex, pageSize, pageCount };
+
+    const handlePaginationChange = (newState: PaginationState) => {
+        searchParams.set("page", (newState.pageIndex + 1).toString());
+        searchParams.set("pageSize", newState.pageSize.toString());
+        filter({ searchParams });
+    };
+
+    const handleSearchChange = useDebouncedCallback((value: string) => {
+        if (value) {
+            searchParams.set("query", value);
+        } else {
+            searchParams.delete("query");
+        }
+        searchParams.delete("page");
+        filter({ searchParams });
+    }, 300);
 
     const invalidate = () =>
-        queryClient.invalidateQueries(orgQueries.alertRules({ orgId }));
+        queryClient.invalidateQueries({ queryKey: ["ORG", orgId, "ALERT_RULES"] });
 
     const setEnabled = async (rule: AlertRuleRow, enabled: boolean) => {
         setTogglingId(rule.alertRuleId);
@@ -268,19 +322,22 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
             <DataTable
                 columns={columns}
                 data={rows}
-                persistPageSize="Org-alerting-rules-table"
                 title={t("alertingRules")}
                 searchPlaceholder={t("alertingSearchRules")}
-                searchColumn="name"
+                onSearch={handleSearchChange}
+                searchQuery={query}
+                manualFiltering
                 onAdd={() => {
                     router.push(`/${orgId}/settings/alerting/create`);
                 }}
                 onRefresh={() => refetch()}
-                isRefreshing={isRefetching || isLoading}
+                isRefreshing={isRefetching || isLoading || isFiltering}
                 addButtonText={t("alertingAddRule")}
                 enableColumnVisibility
                 stickyLeftColumn="name"
                 stickyRightColumn="rowActions"
+                pagination={paginationState}
+                onPaginationChange={handlePaginationChange}
             />
         </>
     );

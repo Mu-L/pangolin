@@ -18,8 +18,13 @@
 export type AlertEventType =
     | "site_online"
     | "site_offline"
+    | "site_toggle"
     | "health_check_healthy"
-    | "health_check_not_healthy";
+    | "health_check_unhealthy"
+    | "health_check_toggle"
+    | "resource_healthy"
+    | "resource_unhealthy"
+    | "resource_toggle";
 
 // ---------------------------------------------------------------------------
 // Webhook authentication config (stored as encrypted JSON in the DB)
@@ -58,6 +63,8 @@ export interface AlertContext {
     siteId?: number;
     /** Set for health_check_* events */
     healthCheckId?: number;
+    /** Set for resource_* events */
+    resourceId?: number;
     /** Human-readable context data included in emails and webhook payloads */
     data: Record<string, unknown>;
 }

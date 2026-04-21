@@ -141,7 +141,9 @@ export async function updateProxyResources(
                 .insert(targetHealthCheck)
                 .values({
                     name: `${targetData.hostname}:${targetData.port}`,
+                    siteId: site.siteId,
                     targetId: newTarget.targetId,
+                    orgId: orgId,
                     hcEnabled: healthcheckData?.enabled || false,
                     hcPath: healthcheckData?.path,
                     hcScheme: healthcheckData?.scheme,

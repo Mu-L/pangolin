@@ -192,7 +192,7 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
     }
 
     const { tcpTargets, udpTargets, validHealthCheckTargets } =
-        await buildTargetConfigurationForNewtClient(siteId);
+        await buildTargetConfigurationForNewtClient(siteId, newtVersion);
 
     logger.debug(
         `Sending health check targets to newt ${newt.newtId}: ${JSON.stringify(validHealthCheckTargets)}`

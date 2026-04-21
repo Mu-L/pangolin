@@ -154,7 +154,10 @@ export enum ActionsEnum {
     createHealthCheck = "createHealthCheck",
     updateHealthCheck = "updateHealthCheck",
     deleteHealthCheck = "deleteHealthCheck",
-    listHealthChecks = "listHealthChecks"
+    listHealthChecks = "listHealthChecks",
+    triggerSiteAlert = "triggerSiteAlert",
+    triggerResourceAlert = "triggerResourceAlert",
+    triggerHealthCheckAlert = "triggerHealthCheckAlert"
 }
 
 export async function checkUserActionPermission(

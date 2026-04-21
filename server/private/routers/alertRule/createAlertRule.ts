@@ -13,11 +13,12 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, roles } from "@server/db";
 import {
     alertRules,
     alertSites,
     alertHealthChecks,
+    alertResources,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -31,10 +32,16 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 
-const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
-const HC_EVENT_TYPES = [
+export const SITE_EVENT_TYPES = ["site_online", "site_offline", "site_toggle"] as const;
+export const HC_EVENT_TYPES = [
     "health_check_healthy",
-    "health_check_not_healthy"
+    "health_check_unhealthy",
+    "health_check_toggle"
+] as const;
+export const RESOURCE_EVENT_TYPES = [
+    "resource_healthy",
+    "resource_unhealthy",
+    "resource_toggle"
 ] as const;
 
 const paramsSchema = z.strictObject({
@@ -51,22 +58,28 @@ const bodySchema = z
     .strictObject({
         name: z.string().nonempty(),
         eventType: z.enum([
-            "site_online",
-            "site_offline",
-            "health_check_healthy",
-            "health_check_not_healthy"
+            ...HC_EVENT_TYPES,
+            ...SITE_EVENT_TYPES,
+            ...RESOURCE_EVENT_TYPES
         ]),
         enabled: z.boolean().optional().default(true),
         cooldownSeconds: z.number().int().nonnegative().optional().default(300),
         // Source join tables - which is required depends on eventType
         siteIds: z.array(z.number().int().positive()).optional().default([]),
+        allSites: z.boolean().optional().default(false),
         healthCheckIds: z
             .array(z.number().int().positive())
             .optional()
             .default([]),
+        allHealthChecks: z.boolean().optional().default(false),
+        resourceIds: z
+            .array(z.number().int().positive())
+            .optional()
+            .default([]),
+        allResources: z.boolean().optional().default(false),
         // Email recipients (flat)
         userIds: z.array(z.string().nonempty()).optional().default([]),
-        roleIds: z.array(z.string().nonempty()).optional().default([]),
+        roleIds: z.array(z.number()).optional().default([]),
         emails: z.array(z.string().email()).optional().default([]),
         // Webhook actions
         webhookActions: z.array(webhookActionSchema).optional().default([])
@@ -78,21 +91,23 @@ const bodySchema = z
         const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
             val.eventType
         );
+        const isResourceEvent = (RESOURCE_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
 
-        if (isSiteEvent && val.siteIds.length === 0) {
+        if (isSiteEvent && !val.allSites && val.siteIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message:
-                    "At least one siteId is required for site event types",
+                message: "At least one siteId is required for site event types when allSites is false",
                 path: ["siteIds"]
             });
         }
 
-        if (isHcEvent && val.healthCheckIds.length === 0) {
+        if (isHcEvent && !val.allHealthChecks && val.healthCheckIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message:
-                    "At least one healthCheckId is required for health check event types",
+                    "At least one healthCheckId is required for health check event types when allHealthChecks is false",
                 path: ["healthCheckIds"]
             });
         }
@@ -108,9 +123,48 @@ const bodySchema = z
         if (isHcEvent && val.siteIds.length > 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message:
-                    "siteIds must not be set for health check event types",
+                message: "siteIds must not be set for health check event types",
                 path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && !val.allResources && val.resourceIds.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one resourceId is required for resource event types when allResources is false",
+                path: ["resourceIds"]
+            });
+        }
+
+        if (isResourceEvent && val.siteIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "siteIds must not be set for resource event types",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.healthCheckIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "healthCheckIds must not be set for resource event types",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isSiteEvent && val.resourceIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "resourceIds must not be set for site event types",
+                path: ["resourceIds"]
+            });
+        }
+
+        if (isHcEvent && val.resourceIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "resourceIds must not be set for health check event types",
+                path: ["resourceIds"]
             });
         }
     });
@@ -171,7 +225,11 @@ export async function createAlertRule(
             enabled,
             cooldownSeconds,
             siteIds,
+            allSites,
             healthCheckIds,
+            allHealthChecks,
+            resourceIds,
+            allResources,
             userIds,
             roleIds,
             emails,
@@ -188,13 +246,16 @@ export async function createAlertRule(
                 eventType,
                 enabled,
                 cooldownSeconds,
+                allSites,
+                allHealthChecks,
+                allResources,
                 createdAt: now,
                 updatedAt: now
             })
             .returning();
 
-        // Insert site associations
-        if (siteIds.length > 0) {
+        // Insert site associations (skipped when allSites=true — empty junction = match all)
+        if (!allSites && siteIds.length > 0) {
             await db.insert(alertSites).values(
                 siteIds.map((siteId) => ({
                     alertRuleId: rule.alertRuleId,
@@ -203,8 +264,8 @@ export async function createAlertRule(
             );
         }
 
-        // Insert health check associations
-        if (healthCheckIds.length > 0) {
+        // Insert health check associations (skipped when allHealthChecks=true)
+        if (!allHealthChecks && healthCheckIds.length > 0) {
             await db.insert(alertHealthChecks).values(
                 healthCheckIds.map((healthCheckId) => ({
                     alertRuleId: rule.alertRuleId,
@@ -213,10 +274,22 @@ export async function createAlertRule(
             );
         }
 
+        // Insert resource associations (skipped when allResources=true)
+        if (!allResources && resourceIds.length > 0) {
+            await db.insert(alertResources).values(
+                resourceIds.map((resourceId) => ({
+                    alertRuleId: rule.alertRuleId,
+                    resourceId
+                }))
+            );
+        }
+
         // Create the email action pivot row and recipients if any recipients
         // were supplied (userIds, roleIds, or raw emails).
         const hasRecipients =
-            userIds.length > 0 || roleIds.length > 0 || emails.length > 0;
+            userIds.length > 0 ||
+            roleIds.length > 0 ||
+            emails.length > 0;
 
         if (hasRecipients) {
             const [emailActionRow] = await db
@@ -228,7 +301,7 @@ export async function createAlertRule(
                 ...userIds.map((userId) => ({
                     emailActionId: emailActionRow.emailActionId,
                     userId,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email: null as string | null
                 })),
                 ...roleIds.map((roleId) => ({
@@ -240,7 +313,7 @@ export async function createAlertRule(
                 ...emails.map((email) => ({
                     emailActionId: emailActionRow.emailActionId,
                     userId: null as string | null,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email
                 }))
             ];
@@ -254,7 +327,10 @@ export async function createAlertRule(
                 webhookActions.map((wa) => ({
                     alertRuleId: rule.alertRuleId,
                     webhookUrl: wa.webhookUrl,
-                    config: wa.config != null ? encrypt(wa.config, serverSecret) : null,
+                    config:
+                        wa.config != null
+                            ? encrypt(wa.config, serverSecret)
+                            : null,
                     enabled: wa.enabled
                 }))
             );

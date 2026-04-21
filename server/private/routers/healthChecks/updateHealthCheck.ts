@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, targetHealthCheck } from "@server/db";
+import { db, targetHealthCheck, newts, sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -21,6 +21,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, isNull } from "drizzle-orm";
+import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
 
 const paramsSchema = z
     .object({
@@ -34,6 +35,7 @@ const paramsSchema = z
 
 const bodySchema = z.strictObject({
     name: z.string().nonempty().optional(),
+    siteId: z.number().int().positive().optional(),
     hcEnabled: z.boolean().optional(),
     hcMode: z.string().optional(),
     hcHostname: z.string().optional(),
@@ -55,6 +57,7 @@ const bodySchema = z.strictObject({
 export type UpdateHealthCheckResponse = {
     targetHealthCheckId: number;
     name: string | null;
+    siteId: number | null;
     hcEnabled: boolean;
     hcHealth: string | null;
     hcMode: string | null;
@@ -125,10 +128,7 @@ export async function updateHealthCheck(
             .from(targetHealthCheck)
             .where(
                 and(
-                    eq(
-                        targetHealthCheck.targetHealthCheckId,
-                        healthCheckId
-                    ),
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
                     eq(targetHealthCheck.orgId, orgId),
                     isNull(targetHealthCheck.targetId)
                 )
@@ -145,6 +145,7 @@ export async function updateHealthCheck(
 
         const {
             name,
+            siteId,
             hcEnabled,
             hcMode,
             hcHostname,
@@ -166,6 +167,7 @@ export async function updateHealthCheck(
         const updateData: Record<string, unknown> = {};
 
         if (name !== undefined) updateData.name = name;
+        if (siteId !== undefined) updateData.siteId = siteId;
         if (hcEnabled !== undefined) updateData.hcEnabled = hcEnabled;
         if (hcMode !== undefined) updateData.hcMode = hcMode;
         if (hcHostname !== undefined) updateData.hcHostname = hcHostname;
@@ -193,19 +195,28 @@ export async function updateHealthCheck(
             .set(updateData)
             .where(
                 and(
-                    eq(
-                        targetHealthCheck.targetHealthCheckId,
-                        healthCheckId
-                    ),
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
                     eq(targetHealthCheck.orgId, orgId),
                     isNull(targetHealthCheck.targetId)
                 )
             )
             .returning();
 
+        // Push updated health check to newt if the site is a newt site
+        const [newt] = await db
+            .select()
+            .from(newts)
+            .where(eq(newts.siteId, updated.siteId))
+            .limit(1);
+
+        if (newt) {
+            await addStandaloneHealthCheck(newt.newtId, updated, newt.version);
+        }
+
         return response<UpdateHealthCheckResponse>(res, {
             data: {
                 targetHealthCheckId: updated.targetHealthCheckId,
+                siteId: updated.siteId ?? null,
                 name: updated.name ?? null,
                 hcEnabled: updated.hcEnabled,
                 hcHealth: updated.hcHealth ?? null,

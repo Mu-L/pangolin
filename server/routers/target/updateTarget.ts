@@ -228,6 +228,7 @@ export async function updateTarget(
         const [updatedHc] = await db
             .update(targetHealthCheck)
             .set({
+                siteId: parsedBody.data.siteId,
                 hcEnabled: parsedBody.data.hcEnabled || false,
                 hcPath: parsedBody.data.hcPath,
                 hcScheme: parsedBody.data.hcScheme,

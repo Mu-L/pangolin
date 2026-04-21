@@ -86,7 +86,8 @@ export async function buildClientConfigurationForNewtClient(
                     //         )
                     //     );
 
-                    if (!client.clientSitesAssociationsCache.isJitMode) { // if we are adding sites through jit then dont add the site to the olm
+                    if (!client.clientSitesAssociationsCache.isJitMode) {
+                        // if we are adding sites through jit then dont add the site to the olm
                         // update the peer info on the olm
                         // if the peer has not been added yet this will be a no-op
                         await updatePeer(client.clients.clientId, {
@@ -189,7 +190,10 @@ export async function buildClientConfigurationForNewtClient(
     };
 }
 
-export async function buildTargetConfigurationForNewtClient(siteId: number) {
+export async function buildTargetConfigurationForNewtClient(
+    siteId: number,
+    version?: string | null
+) {
     // Get all enabled targets with their resource protocol information
     const allTargets = await db
         .select({
@@ -200,8 +204,15 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             port: targets.port,
             internalPort: targets.internalPort,
             enabled: targets.enabled,
-            protocol: resources.protocol,
-            hcId: targetHealthCheck.targetHealthCheckId,
+            protocol: resources.protocol
+        })
+        .from(targets)
+        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
+
+    const allHealthChecks = await db
+        .select({
+            targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
             hcEnabled: targetHealthCheck.hcEnabled,
             hcPath: targetHealthCheck.hcPath,
             hcScheme: targetHealthCheck.hcScheme,
@@ -219,13 +230,8 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
             hcHealthyThreshold: targetHealthCheck.hcHealthyThreshold,
             hcUnhealthyThreshold: targetHealthCheck.hcUnhealthyThreshold
         })
-        .from(targets)
-        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
-        .leftJoin(
-            targetHealthCheck,
-            eq(targets.targetId, targetHealthCheck.targetId)
-        )
-        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
+        .from(targetHealthCheck)
+        .where(eq(targetHealthCheck.siteId, siteId));
 
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
@@ -249,7 +255,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
         { tcpTargets: [] as string[], udpTargets: [] as string[] }
     );
 
-    const healthCheckTargets = allTargets.map((target) => {
+    const healthCheckTargets = allHealthChecks.map((target) => {
         // make sure the stuff is defined
         const isTCP = target.hcMode?.toLowerCase() === "tcp";
         if (!target.hcHostname || !target.hcPort || !target.hcInterval) {
@@ -273,8 +279,7 @@ export async function buildTargetConfigurationForNewtClient(siteId: number) {
         }
 
         return {
-            id: target.targetId,
-            hcId: target.hcId,
+            id: target.targetHealthCheckId,
             hcEnabled: target.hcEnabled,
             hcPath: target.hcPath,
             hcScheme: target.hcScheme,

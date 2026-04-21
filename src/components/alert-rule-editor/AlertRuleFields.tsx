@@ -35,6 +35,7 @@ import {
     RadioGroupItem
 } from "@app/components/ui/radio-group";
 import { Label } from "@app/components/ui/label";
+import { StrategySelect } from "@app/components/StrategySelect";
 import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
@@ -43,54 +44,115 @@ import {
 } from "@app/lib/alertRuleForm";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
+import { Bell, Globe, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
 
-export function DropdownAddAction({
+export function AddActionPanel({
     onAdd
 }: {
     onAdd: (type: AlertRuleFormAction["type"]) => void;
 }) {
     const t = useTranslations();
-    const [open, setOpen] = useState(false);
+
+
+    const EXTERNAL_INTEGRATIONS = [
+        {
+            id: "pagerduty",
+            name: "PagerDuty",
+            logo: "/third-party/pgd.png",
+            description: "Send alerts to PagerDuty for incident management",
+            descriptionKey: t("alertingExternalPagerDutyDescription")
+        },
+        {
+            id: "opsgenie",
+            name: "Opsgenie",
+            logo: "/third-party/opsgenie.png",
+            description: "Route alerts to Opsgenie for on-call management",
+            descriptionKey: t("alertingExternalOpsgenieDescription")
+        },
+        {
+            id: "servicenow",
+            name: "ServiceNow",
+            logo: "/third-party/servicenow.png",
+            description: "Create ServiceNow incidents from alert events",
+            descriptionKey: t("alertingExternalServiceNowDescription")
+        },
+        {
+            id: "incidentio",
+            name: "Incident.io",
+            logo: "/third-party/incidentio.png",
+            description: "Trigger Incident.io workflows from alert events",
+            descriptionKey: t("alertingExternalIncidentIoDescription")
+        }
+    ] as const;
+
+    const EXTERNAL_IDS = EXTERNAL_INTEGRATIONS.map((i) => i.id);
+
+    const [selected, setSelected] = useState<string | null>(null);
+
+    const isPremiumSelected =
+        selected !== null && EXTERNAL_IDS.includes(selected as any);
+    const isBuiltInSelected = selected !== null && !isPremiumSelected;
+
+    const actionTypeOptions = [
+        {
+            id: "notify",
+            title: t("alertingActionNotify"),
+            description: t("alertingActionNotifyDescription"),
+            icon: <Bell className="h-5 w-5" />
+        },
+        {
+            id: "webhook",
+            title: t("alertingActionWebhook"),
+            description: t("alertingActionWebhookDescription"),
+            icon: <Globe className="h-5 w-5" />
+        },
+        ...EXTERNAL_INTEGRATIONS.map((integration) => ({
+            id: integration.id,
+            title: integration.name,
+            description: integration.description,
+            icon: (
+                <img
+                    src={integration.logo}
+                    alt={integration.name}
+                    className="h-5 w-5 object-contain"
+                />
+            )
+        }))
+    ];
+
+    const handleAdd = () => {
+        if (!isBuiltInSelected) return;
+        onAdd(selected as AlertRuleFormAction["type"]);
+        setSelected(null);
+    };
+
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button type="button" variant="outline" size="sm">
+        <div className="space-y-3">
+            <StrategySelect
+                options={actionTypeOptions}
+                value={selected}
+                cols={2}
+                onChange={(v) => setSelected(v)}
+            />
+            {isPremiumSelected && <ContactSalesBanner />}
+            {!isPremiumSelected && (
+                <Button
+                    type="button"
+                    size="sm"
+                    disabled={!isBuiltInSelected}
+                    onClick={handleAdd}
+                >
                     <Plus className="h-4 w-4 mr-1" />
                     {t("alertingAddAction")}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="p-0 w-48" align="start">
-                <Command>
-                    <CommandList>
-                        <CommandGroup>
-                            <CommandItem
-                                onSelect={() => {
-                                    onAdd("notify");
-                                    setOpen(false);
-                                }}
-                            >
-                                {t("alertingActionNotify")}
-                            </CommandItem>
-                            <CommandItem
-                                onSelect={() => {
-                                    onAdd("webhook");
-                                    setOpen(false);
-                                }}
-                            >
-                                {t("alertingActionWebhook")}
-                            </CommandItem>
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+            )}
+        </div>
     );
 }
 
@@ -275,6 +337,93 @@ function HealthCheckMultiSelect({
     );
 }
 
+function ResourceMultiSelect({
+    orgId,
+    value,
+    onChange
+}: {
+    orgId: string;
+    value: number[];
+    onChange: (v: number[]) => void;
+}) {
+    const t = useTranslations();
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
+    const [debounced] = useDebounce(q, 150);
+
+    const { data: resources = [] } = useQuery(
+        orgQueries.resources({ orgId, query: debounced, perPage: 10 })
+    );
+
+    const shown = useMemo(() => {
+        return resources;
+    }, [resources]);
+
+    const toggle = (id: number) => {
+        if (value.includes(id)) {
+            onChange(value.filter((x) => x !== id));
+        } else {
+            onChange([...value, id]);
+        }
+    };
+
+    const summary =
+        value.length === 0
+            ? t("alertingSelectResources")
+            : t("alertingResourcesSelected", { count: value.length });
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                >
+                    <span className="truncate">{summary}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+            >
+                <Command shouldFilter={false}>
+                    <CommandInput
+                        placeholder={t("alertingSelectResources")}
+                        value={q}
+                        onValueChange={setQ}
+                    />
+                    <CommandList>
+                        <CommandEmpty>
+                            {t("alertingResourcesEmpty")}
+                        </CommandEmpty>
+                        <CommandGroup>
+                            {shown.map((r) => (
+                                <CommandItem
+                                    key={r.resourceId}
+                                    value={`${r.resourceId}:${r.name}`}
+                                    onSelect={() => toggle(r.resourceId)}
+                                    className="cursor-pointer"
+                                >
+                                    <Checkbox
+                                        checked={value.includes(r.resourceId)}
+                                        className="mr-2 pointer-events-none shrink-0"
+                                        aria-hidden
+                                        tabIndex={-1}
+                                    />
+                                    <span className="truncate">{r.name}</span>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export function ActionBlock({
     orgId,
     index,
@@ -294,6 +443,20 @@ export function ActionBlock({
 }) {
     const t = useTranslations();
     const type = useWatch({ control, name: `actions.${index}.type` });
+
+    const typeHeader =
+        type === "notify" ? (
+            <div className="flex items-center gap-2 text-sm font-medium">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                {t("alertingActionNotify")}
+            </div>
+        ) : (
+            <div className="flex items-center gap-2 text-sm font-medium">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                {t("alertingActionWebhook")}
+            </div>
+        );
+
     return (
         <div className="rounded-lg border p-4 space-y-3 relative">
             {canRemove && (
@@ -307,55 +470,7 @@ export function ActionBlock({
                     <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
             )}
-            <FormField
-                control={control}
-                name={`actions.${index}.type`}
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>{t("alertingActionType")}</FormLabel>
-                        <Select
-                            value={field.value}
-                            onValueChange={(v) => {
-                                const nt = v as AlertRuleFormAction["type"];
-                                if (nt === "notify") {
-                                    onUpdate({
-                                        type: "notify",
-                                        userTags: [],
-                                        roleTags: [],
-                                        emailTags: []
-                                    });
-                                } else {
-                                    onUpdate({
-                                        type: "webhook",
-                                        url: "",
-                                        method: "POST",
-                                        headers: [],
-                                        authType: "none",
-                                        bearerToken: "",
-                                        basicCredentials: "",
-                                        customHeaderName: "",
-                                        customHeaderValue: ""
-                                    });
-                                }
-                            }}
-                        >
-                            <FormControl>
-                                <SelectTrigger className="max-w-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="notify">
-                                    {t("alertingActionNotify")}
-                                </SelectItem>
-                                <SelectItem value="webhook">
-                                    {t("alertingActionWebhook")}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-            />
+            {typeHeader}
             {type === "notify" && (
                 <NotifyActionFields
                     orgId={orgId}
@@ -396,8 +511,8 @@ function NotifyActionFields({
         number | null
     >(null);
 
-    const { data: orgUsers = [] } = useQuery(orgQueries.users({ orgId }));
-    const { data: orgRoles = [] } = useQuery(orgQueries.roles({ orgId }));
+    const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery(orgQueries.users({ orgId }));
+    const { data: orgRoles = [], isLoading: isLoadingRoles } = useQuery(orgQueries.roles({ orgId }));
 
     const allUsers = useMemo(
         () =>
@@ -419,6 +534,50 @@ function NotifyActionFields({
                 .filter((r) => r.text !== "Admin"),
         [orgRoles]
     );
+
+    const hasResolvedTagsRef = useRef(false);
+
+    useEffect(() => {
+        if (isLoadingUsers || isLoadingRoles) return;
+        if (hasResolvedTagsRef.current) return;
+
+        const currentUserTags = form.getValues(
+            `actions.${index}.userTags`
+        ) as Tag[];
+        const currentRoleTags = form.getValues(
+            `actions.${index}.roleTags`
+        ) as Tag[];
+
+        const resolvedUserTags = currentUserTags.map((tag) => {
+            const match = allUsers.find((u) => u.id === tag.id);
+            return match ? { id: tag.id, text: match.text } : tag;
+        });
+
+        const resolvedRoleTags = currentRoleTags.map((tag) => {
+            const match = allRoles.find((r) => r.id === tag.id);
+            return match ? { id: tag.id, text: match.text } : tag;
+        });
+
+        const userTagsNeedUpdate = resolvedUserTags.some(
+            (t, i) => t.text !== currentUserTags[i]?.text
+        );
+        const roleTagsNeedUpdate = resolvedRoleTags.some(
+            (t, i) => t.text !== currentRoleTags[i]?.text
+        );
+
+        if (userTagsNeedUpdate) {
+            form.setValue(`actions.${index}.userTags`, resolvedUserTags, {
+                shouldDirty: false
+            });
+        }
+        if (roleTagsNeedUpdate) {
+            form.setValue(`actions.${index}.roleTags`, resolvedRoleTags, {
+                shouldDirty: false
+            });
+        }
+
+        hasResolvedTagsRef.current = true;
+    }, [isLoadingUsers, isLoadingRoles, allUsers, allRoles]);
 
     const userTags = (useWatch({ control, name: `actions.${index}.userTags` }) ?? []) as Tag[];
     const roleTags = (useWatch({ control, name: `actions.${index}.roleTags` }) ?? []) as Tag[];
@@ -870,6 +1029,58 @@ export function AlertRuleSourceFields({
     const t = useTranslations();
     const { setValue, getValues } = useFormContext<AlertRuleFormValues>();
     const sourceType = useWatch({ control, name: "sourceType" });
+    const allSites = useWatch({ control, name: "allSites" });
+    const allHealthChecks = useWatch({ control, name: "allHealthChecks" });
+    const allResources = useWatch({ control, name: "allResources" });
+
+    const siteStrategyOptions = useMemo(
+        () => [
+            {
+                id: "all" as const,
+                title: t("alertingAllSites"),
+                description: t("alertingAllSitesDescription")
+            },
+            {
+                id: "specific" as const,
+                title: t("alertingSpecificSites"),
+                description: t("alertingSpecificSitesDescription")
+            }
+        ],
+        [t]
+    );
+
+    const healthCheckStrategyOptions = useMemo(
+        () => [
+            {
+                id: "all" as const,
+                title: t("alertingAllHealthChecks"),
+                description: t("alertingAllHealthChecksDescription")
+            },
+            {
+                id: "specific" as const,
+                title: t("alertingSpecificHealthChecks"),
+                description: t("alertingSpecificHealthChecksDescription")
+            }
+        ],
+        [t]
+    );
+
+    const resourceStrategyOptions = useMemo(
+        () => [
+            {
+                id: "all" as const,
+                title: t("alertingAllResources"),
+                description: t("alertingAllResourcesDescription")
+            },
+            {
+                id: "specific" as const,
+                title: t("alertingSpecificResources"),
+                description: t("alertingSpecificResourcesDescription")
+            }
+        ],
+        [t]
+    );
+
     return (
         <div className="space-y-4">
             <FormField
@@ -888,19 +1099,33 @@ export function AlertRuleSourceFields({
                                 if (next === "site") {
                                     if (
                                         curTrigger !== "site_online" &&
-                                        curTrigger !== "site_offline"
+                                        curTrigger !== "site_offline" &&
+                                        curTrigger !== "site_toggle"
                                     ) {
-                                        setValue("trigger", "site_offline", {
+                                        setValue("trigger", "site_toggle", {
                                             shouldValidate: true
                                         });
                                     }
+                                } else if (next === "resource") {
+                                    if (
+                                        curTrigger !== "resource_healthy" &&
+                                        curTrigger !== "resource_unhealthy" &&
+                                        curTrigger !== "resource_toggle"
+                                    ) {
+                                        setValue(
+                                            "trigger",
+                                            "resource_toggle",
+                                            { shouldValidate: true }
+                                        );
+                                    }
                                 } else if (
                                     curTrigger !== "health_check_healthy" &&
-                                    curTrigger !== "health_check_unhealthy"
+                                    curTrigger !== "health_check_unhealthy" &&
+                                    curTrigger !== "health_check_toggle"
                                 ) {
                                     setValue(
                                         "trigger",
-                                        "health_check_unhealthy",
+                                        "health_check_toggle",
                                         { shouldValidate: true }
                                     );
                                 }
@@ -918,6 +1143,9 @@ export function AlertRuleSourceFields({
                                 <SelectItem value="health_check">
                                     {t("alertingSourceHealthCheck")}
                                 </SelectItem>
+                                <SelectItem value="resource">
+                                    {t("alertingSourceResource")}
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -925,39 +1153,131 @@ export function AlertRuleSourceFields({
                 )}
             />
             {sourceType === "site" ? (
-                <FormField
-                    control={control}
-                    name="siteIds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>{t("alertingPickSites")}</FormLabel>
-                            <SiteMultiSelect
-                                orgId={orgId}
-                                value={field.value}
-                                onChange={field.onChange}
-                            />
-                            <FormMessage />
-                        </FormItem>
+                <>
+                    <FormField
+                        control={control}
+                        name="allSites"
+                        render={({ field }) => (
+                            <FormItem>
+                                <StrategySelect
+                                    options={siteStrategyOptions}
+                                    value={field.value ? "all" : "specific"}
+                                    onChange={(v) => {
+                                        field.onChange(v === "all");
+                                        if (v === "all") {
+                                            setValue("siteIds", []);
+                                        }
+                                    }}
+                                    cols={2}
+                                />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {!allSites && (
+                        <FormField
+                            control={control}
+                            name="siteIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("alertingPickSites")}
+                                    </FormLabel>
+                                    <SiteMultiSelect
+                                        orgId={orgId}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
-                />
+                </>
+            ) : sourceType === "resource" ? (
+                <>
+                    <FormField
+                        control={control}
+                        name="allResources"
+                        render={({ field }) => (
+                            <FormItem>
+                                <StrategySelect
+                                    options={resourceStrategyOptions}
+                                    value={field.value ? "all" : "specific"}
+                                    onChange={(v) => {
+                                        field.onChange(v === "all");
+                                        if (v === "all") {
+                                            setValue("resourceIds", []);
+                                        }
+                                    }}
+                                    cols={2}
+                                />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {!allResources && (
+                        <FormField
+                            control={control}
+                            name="resourceIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("alertingPickResources")}
+                                    </FormLabel>
+                                    <ResourceMultiSelect
+                                        orgId={orgId}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+                </>
             ) : (
-                <FormField
-                    control={control}
-                    name="healthCheckIds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>
-                                {t("alertingPickHealthChecks")}
-                            </FormLabel>
-                            <HealthCheckMultiSelect
-                                orgId={orgId}
-                                value={field.value}
-                                onChange={field.onChange}
-                            />
-                            <FormMessage />
-                        </FormItem>
+                <>
+                    <FormField
+                        control={control}
+                        name="allHealthChecks"
+                        render={({ field }) => (
+                            <FormItem>
+                                <StrategySelect
+                                    options={healthCheckStrategyOptions}
+                                    value={field.value ? "all" : "specific"}
+                                    onChange={(v) => {
+                                        field.onChange(v === "all");
+                                        if (v === "all") {
+                                            setValue("healthCheckIds", []);
+                                        }
+                                    }}
+                                    cols={2}
+                                />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {!allHealthChecks && (
+                        <FormField
+                            control={control}
+                            name="healthCheckIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("alertingPickHealthChecks")}
+                                    </FormLabel>
+                                    <HealthCheckMultiSelect
+                                        orgId={orgId}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
-                />
+                </>
             )}
         </div>
     );
@@ -990,6 +1310,9 @@ export function AlertRuleTriggerFields({
                         <SelectContent>
                             {sourceType === "site" ? (
                                 <>
+                                    <SelectItem value="site_toggle">
+                                        {t("alertingTriggerSiteToggle")}
+                                    </SelectItem>
                                     <SelectItem value="site_online">
                                         {t("alertingTriggerSiteOnline")}
                                     </SelectItem>
@@ -997,8 +1320,23 @@ export function AlertRuleTriggerFields({
                                         {t("alertingTriggerSiteOffline")}
                                     </SelectItem>
                                 </>
+                            ) : sourceType === "resource" ? (
+                                <>
+                                    <SelectItem value="resource_toggle">
+                                        {t("alertingTriggerResourceToggle")}
+                                    </SelectItem>
+                                    <SelectItem value="resource_healthy">
+                                        {t("alertingTriggerResourceHealthy")}
+                                    </SelectItem>
+                                    <SelectItem value="resource_unhealthy">
+                                        {t("alertingTriggerResourceUnhealthy")}
+                                    </SelectItem>
+                                </>
                             ) : (
                                 <>
+                                    <SelectItem value="health_check_toggle">
+                                        {t("alertingTriggerHcToggle")}
+                                    </SelectItem>
                                     <SelectItem value="health_check_healthy">
                                         {t("alertingTriggerHcHealthy")}
                                     </SelectItem>

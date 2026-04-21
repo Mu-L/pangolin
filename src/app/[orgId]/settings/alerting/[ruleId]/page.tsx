@@ -49,7 +49,6 @@ export default function EditAlertRulePage() {
                 });
                 setFormValues(null);
             });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orgId, alertRuleId]);
 
     useEffect(() => {

@@ -24,6 +24,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import type { PaginationState } from "@tanstack/react-table";
+import type { DataTablePaginationState } from "@app/components/ui/data-table";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -72,24 +76,66 @@ export default function HealthChecksTable({
     const isPaid = isPaidUser(tierMatrix.standaloneHealthChecks);
 
     const [credenzaOpen, setCredenzaOpen] = useState(false);
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
+
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<HealthCheckRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
 
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+    const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
+    const pageIndex = page - 1;
+    const query = searchParams.get("query") ?? undefined;
+
     const {
-        data: rows = [],
+        data,
         isLoading,
         refetch,
         isRefetching
     } = useQuery({
-        ...orgQueries.standaloneHealthChecks({ orgId }),
+        ...orgQueries.standaloneHealthChecks({
+            orgId,
+            limit: pageSize,
+            offset: pageIndex * pageSize,
+            query
+        }),
         refetchInterval: 10_000
     });
 
+    const rows = data?.healthChecks ?? [];
+    const total = data?.pagination.total ?? 0;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+    const paginationState: DataTablePaginationState = {
+        pageIndex,
+        pageSize,
+        pageCount
+    };
+
+    const handlePaginationChange = (newState: PaginationState) => {
+        searchParams.set("page", (newState.pageIndex + 1).toString());
+        searchParams.set("pageSize", newState.pageSize.toString());
+        filter({ searchParams });
+    };
+
+    const handleSearchChange = useDebouncedCallback((value: string) => {
+        if (value) {
+            searchParams.set("query", value);
+        } else {
+            searchParams.delete("query");
+        }
+        searchParams.delete("page");
+        filter({ searchParams });
+    }, 300);
+
     const invalidate = () =>
-        queryClient.invalidateQueries(
-            orgQueries.standaloneHealthChecks({ orgId })
-        );
+        queryClient.invalidateQueries({
+            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"]
+        });
 
     const handleToggleEnabled = async (
         row: HealthCheckRow,
@@ -188,6 +234,27 @@ export default function HealthChecksTable({
                     <Link href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}>
                         <Button variant="outline" size="sm">
                             {r.resourceName}
+                            <ArrowUpRight className="ml-2 h-3 w-3" />
+                        </Button>
+                    </Link>
+                );
+            }
+        },
+        {
+            id: "site",
+            friendlyName: "Site",
+            header: () => (
+                <span className="p-3">Site</span>
+            ),
+            cell: ({ row }) => {
+                const r = row.original;
+                if (!r.siteId || !r.siteName || !r.siteNiceId) {
+                    return <span className="text-neutral-400">-</span>;
+                }
+                return (
+                    <Link href={`/${orgId}/settings/sites/${r.siteNiceId}/general`}>
+                        <Button variant="outline" size="sm">
+                            {r.siteName}
                             <ArrowUpRight className="ml-2 h-3 w-3" />
                         </Button>
                     </Link>
@@ -341,21 +408,24 @@ export default function HealthChecksTable({
             <DataTable
                 columns={columns}
                 data={rows}
-                persistPageSize="Org-standalone-health-checks-table"
                 title={t("standaloneHcTableTitle")}
                 searchPlaceholder={t("standaloneHcSearchPlaceholder")}
-                searchColumn="name"
+                onSearch={handleSearchChange}
+                searchQuery={query}
+                manualFiltering
                 onAdd={() => {
                     setSelected(null);
                     setCredenzaOpen(true);
                 }}
                 addButtonDisabled={!isPaid}
                 onRefresh={() => refetch()}
-                isRefreshing={isRefetching || isLoading}
+                isRefreshing={isRefetching || isLoading || isFiltering}
                 addButtonText={t("standaloneHcAddButton")}
                 enableColumnVisibility
                 stickyLeftColumn="name"
                 stickyRightColumn="rowActions"
+                pagination={paginationState}
+                onPaginationChange={handlePaginationChange}
             />
         </>
     );

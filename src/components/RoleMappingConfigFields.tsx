@@ -79,10 +79,7 @@ export default function RoleMappingConfigFields({
     );
 
     useEffect(() => {
-        if (
-            !supportsMultipleRolesPerUser &&
-            mappingBuilderRules.length > 1
-        ) {
+        if (!supportsMultipleRolesPerUser && mappingBuilderRules.length > 1) {
             onMappingBuilderRulesChange([mappingBuilderRules[0]]);
         }
     }, [
@@ -95,11 +92,7 @@ export default function RoleMappingConfigFields({
         if (!supportsMultipleRolesPerUser && fixedRoleNames.length > 1) {
             onFixedRoleNamesChange([fixedRoleNames[0]]);
         }
-    }, [
-        supportsMultipleRolesPerUser,
-        fixedRoleNames,
-        onFixedRoleNamesChange
-    ]);
+    }, [supportsMultipleRolesPerUser, fixedRoleNames, onFixedRoleNamesChange]);
 
     const fixedRadioId = `${fieldIdPrefix}-fixed-roles-mode`;
     const builderRadioId = `${fieldIdPrefix}-mapping-builder-mode`;
@@ -116,7 +109,6 @@ export default function RoleMappingConfigFields({
     return (
         <div className="space-y-4">
             <div>
-                <FormLabel className="mb-2">{t("roleMapping")}</FormLabel>
                 <FormDescription className="mb-4">
                     {t("roleMappingDescription")}
                 </FormDescription>
@@ -272,7 +264,9 @@ export default function RoleMappingConfigFields({
                                 supportsMultipleRolesPerUser={
                                     supportsMultipleRolesPerUser
                                 }
-                                showRemoveButton={mappingBuilderShowsRemoveColumn}
+                                showRemoveButton={
+                                    mappingBuilderShowsRemoveColumn
+                                }
                                 rule={rule}
                                 onChange={(nextRule) => {
                                     const nextRules = mappingBuilderRules.map(
@@ -390,12 +384,10 @@ function BuilderRuleRow({
                             text: name
                         }))}
                         setTags={(nextTags) => {
-                            const prevRoleTags = rule.roleNames.map(
-                                (name) => ({
-                                    id: name,
-                                    text: name
-                                })
-                            );
+                            const prevRoleTags = rule.roleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }));
                             const next =
                                 typeof nextTags === "function"
                                     ? nextTags(prevRoleTags)

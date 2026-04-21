@@ -99,19 +99,19 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     name: targetHealthCheck.name,
                     hcStatus: targetHealthCheck.hcHealth
                 })
-                .from(targets)
+                .from(targetHealthCheck)
+                .innerJoin(
+                    targets,
+                    eq(targetHealthCheck.targetId, targets.targetId)
+                )
                 .innerJoin(
                     resources,
                     eq(targets.resourceId, resources.resourceId)
                 )
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
-                .innerJoin(
-                    targetHealthCheck,
-                    eq(targets.targetId, targetHealthCheck.targetId)
-                )
                 .where(
                     and(
-                        eq(targets.targetId, targetIdNum),
+                        eq(targetHealthCheck.targetHealthCheckId, targetIdNum),
                         eq(sites.siteId, newt.siteId)
                     )
                 )
@@ -142,13 +142,21 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         | "healthy"
                         | "unhealthy"
                 })
-                .where(eq(targetHealthCheck.targetId, targetIdNum));
+                .where(eq(targetHealthCheck.targetId, targetCheck.targetId));
+
+            const orgId = targetCheck.orgId || targetCheck.resourceOrgId; // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+            if (!orgId) {
+                logger.warn(
+                    `No org ID found for target ${targetId}, skipping status history logging`
+                );
+                continue;
+            }
 
             // Log the state change to status history
             await db.insert(statusHistory).values({
                 entityType: "healthCheck",
                 entityId: targetCheck.targetHealthCheckId,
-                orgId: targetCheck.orgId || targetCheck.resourceOrgId,
+                orgId: orgId,
                 status: healthStatus.status,
                 timestamp: Math.floor(Date.now() / 1000)
             });
@@ -170,7 +178,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         .where(
                             and(
                                 eq(targets.resourceId, targetCheck.resourceId),
-                                eq(targets.targetId, targetIdNum) // only check the other targets, not the one we just updated
+                                eq(targets.targetId, targetCheck.targetId) // only check the other targets, not the one we just updated
                             )
                         );
 
@@ -188,7 +196,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 await db.insert(statusHistory).values({
                     entityType: "resource",
                     entityId: targetCheck.resourceId,
-                    orgId: targetCheck.orgId || targetCheck.resourceOrgId,
+                    orgId: orgId,
                     status: status,
                     timestamp: Math.floor(Date.now() / 1000)
                 });
@@ -197,13 +205,13 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
             // because we are checking above if there was a change we can fire the alert here because it changed
             if (healthStatus.status === "unhealthy") {
                 await fireHealthCheckHealthyAlert(
-                    targetCheck.orgId || targetCheck.resourceOrgId, // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+                    orgId,
                     targetCheck.targetHealthCheckId,
                     targetCheck.name
                 );
             } else if (healthStatus.status === "healthy") {
                 await fireHealthCheckNotHealthyAlert(
-                    targetCheck.orgId || targetCheck.resourceOrgId, // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+                    orgId,
                     targetCheck.targetHealthCheckId,
                     targetCheck.name
                 );

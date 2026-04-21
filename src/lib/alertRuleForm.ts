@@ -13,14 +13,19 @@ export const tagSchema = z.object({
 // ---------------------------------------------------------------------------
 // Form-layer types
 // NOTE: the form uses "health_check_unhealthy" internally; it maps to the
-//       backend's "health_check_not_healthy" at the API boundary.
+//       backend's "health_check_unhealthy" at the API boundary.
 // ---------------------------------------------------------------------------
 
 export type AlertTrigger =
     | "site_online"
     | "site_offline"
+    | "site_toggle"
     | "health_check_healthy"
-    | "health_check_unhealthy";
+    | "health_check_unhealthy"
+    | "health_check_toggle"
+    | "resource_healthy"
+    | "resource_unhealthy"
+    | "resource_toggle";
 
 export type AlertRuleFormAction =
     | {
@@ -44,9 +49,13 @@ export type AlertRuleFormAction =
 export type AlertRuleFormValues = {
     name: string;
     enabled: boolean;
-    sourceType: "site" | "health_check";
+    sourceType: "site" | "health_check" | "resource";
+    allSites: boolean;
     siteIds: number[];
+    allHealthChecks: boolean;
     healthCheckIds: number[];
+    allResources: boolean;
+    resourceIds: number[];
     trigger: AlertTrigger;
     actions: AlertRuleFormAction[];
 };
@@ -60,13 +69,22 @@ export type AlertRuleApiPayload = {
     eventType:
         | "site_online"
         | "site_offline"
+        | "site_toggle"
         | "health_check_healthy"
-        | "health_check_not_healthy";
+        | "health_check_unhealthy"
+        | "health_check_toggle"
+        | "resource_healthy"
+        | "resource_unhealthy"
+        | "resource_toggle";
     enabled: boolean;
+    allSites: boolean;
     siteIds: number[];
+    allHealthChecks: boolean;
     healthCheckIds: number[];
+    allResources: boolean;
+    resourceIds: number[];
     userIds: string[];
-    roleIds: string[];
+    roleIds: number[];
     emails: string[];
     webhookActions: {
         webhookUrl: string;
@@ -88,10 +106,11 @@ export type AlertRuleApiResponse = {
     updatedAt: number;
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
     recipients: {
         recipientId: number;
         userId: string | null;
-        roleId: string | null;
+        roleId: number | null;
         email: string | null;
     }[];
     webhookActions: {
@@ -112,70 +131,60 @@ export type AlertRuleApiResponse = {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function triggerToEventType(
-    trigger: AlertTrigger
-): AlertRuleApiPayload["eventType"] {
-    if (trigger === "health_check_unhealthy") {
-        return "health_check_not_healthy";
-    }
-    return trigger as AlertRuleApiPayload["eventType"];
-}
-
-function eventTypeToTrigger(eventType: string): AlertTrigger {
-    if (eventType === "health_check_not_healthy") {
-        return "health_check_unhealthy";
-    }
-    return eventType as AlertTrigger;
-}
-
-// ---------------------------------------------------------------------------
 // Zod form schema (for react-hook-form validation)
 // ---------------------------------------------------------------------------
 
 export function buildFormSchema(t: (k: string) => string) {
     return z
         .object({
-            name: z.string().min(1, { message: t("alertingErrorNameRequired") }),
+            name: z
+                .string()
+                .min(1, { message: t("alertingErrorNameRequired") }),
             enabled: z.boolean(),
-            sourceType: z.enum(["site", "health_check"]),
+            sourceType: z.enum(["site", "health_check", "resource"]),
+            allSites: z.boolean(),
             siteIds: z.array(z.number()),
+            allHealthChecks: z.boolean(),
             healthCheckIds: z.array(z.number()),
+            allResources: z.boolean(),
+            resourceIds: z.array(z.number()),
             trigger: z.enum([
                 "site_online",
                 "site_offline",
+                "site_toggle",
                 "health_check_healthy",
-                "health_check_unhealthy"
+                "health_check_unhealthy",
+                "health_check_toggle",
+                "resource_healthy",
+                "resource_unhealthy",
+                "resource_toggle"
             ]),
-            actions: z
-                .array(
-                    z.discriminatedUnion("type", [
-                        z.object({
-                            type: z.literal("notify"),
-                            userTags: z.array(tagSchema),
-                            roleTags: z.array(tagSchema),
-                            emailTags: z.array(tagSchema)
-                        }),
-                        z.object({
-                            type: z.literal("webhook"),
-                            url: z.string(),
-                            method: z.string(),
-                            headers: z.array(
-                                z.object({
-                                    key: z.string(),
-                                    value: z.string()
-                                })
-                            ),
-                            authType: z.enum(["none", "bearer", "basic", "custom"]),
-                            bearerToken: z.string(),
-                            basicCredentials: z.string(),
-                            customHeaderName: z.string(),
-                            customHeaderValue: z.string()
-                        })
-                    ])
-                )
+            actions: z.array(
+                z.discriminatedUnion("type", [
+                    z.object({
+                        type: z.literal("notify"),
+                        userTags: z.array(tagSchema),
+                        roleTags: z.array(tagSchema),
+                        emailTags: z.array(tagSchema)
+                    }),
+                    z.object({
+                        type: z.literal("webhook"),
+                        url: z.string(),
+                        method: z.string(),
+                        headers: z.array(
+                            z.object({
+                                key: z.string(),
+                                value: z.string()
+                            })
+                        ),
+                        authType: z.enum(["none", "bearer", "basic", "custom"]),
+                        bearerToken: z.string(),
+                        basicCredentials: z.string(),
+                        customHeaderName: z.string(),
+                        customHeaderValue: z.string()
+                    })
+                ])
+            )
         })
         .superRefine((val, ctx) => {
             if (val.actions.length === 0) {
@@ -185,7 +194,11 @@ export function buildFormSchema(t: (k: string) => string) {
                     path: ["actions"]
                 });
             }
-            if (val.sourceType === "site" && val.siteIds.length === 0) {
+            if (
+                val.sourceType === "site" &&
+                !val.allSites &&
+                val.siteIds.length === 0
+            ) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: t("alertingErrorPickSites"),
@@ -194,6 +207,7 @@ export function buildFormSchema(t: (k: string) => string) {
             }
             if (
                 val.sourceType === "health_check" &&
+                !val.allHealthChecks &&
                 val.healthCheckIds.length === 0
             ) {
                 ctx.addIssue({
@@ -202,10 +216,31 @@ export function buildFormSchema(t: (k: string) => string) {
                     path: ["healthCheckIds"]
                 });
             }
-            const siteTriggers: AlertTrigger[] = ["site_online", "site_offline"];
+            if (
+                val.sourceType === "resource" &&
+                !val.allResources &&
+                val.resourceIds.length === 0
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("alertingErrorPickResources"),
+                    path: ["resourceIds"]
+                });
+            }
+            const siteTriggers: AlertTrigger[] = [
+                "site_online",
+                "site_offline",
+                "site_toggle"
+            ];
             const hcTriggers: AlertTrigger[] = [
                 "health_check_healthy",
-                "health_check_unhealthy"
+                "health_check_unhealthy",
+                "health_check_toggle"
+            ];
+            const resourceTriggers: AlertTrigger[] = [
+                "resource_healthy",
+                "resource_unhealthy",
+                "resource_toggle"
             ];
             if (
                 val.sourceType === "site" &&
@@ -224,6 +259,16 @@ export function buildFormSchema(t: (k: string) => string) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: t("alertingErrorTriggerHealth"),
+                    path: ["trigger"]
+                });
+            }
+            if (
+                val.sourceType === "resource" &&
+                !resourceTriggers.includes(val.trigger)
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("alertingErrorTriggerResource"),
                     path: ["trigger"]
                 });
             }
@@ -265,9 +310,13 @@ export function defaultFormValues(): AlertRuleFormValues {
         name: "",
         enabled: true,
         sourceType: "site",
+        allSites: true,
         siteIds: [],
+        allHealthChecks: true,
         healthCheckIds: [],
-        trigger: "site_offline",
+        allResources: true,
+        resourceIds: [],
+        trigger: "site_toggle",
         actions: [
             {
                 type: "notify",
@@ -286,9 +335,11 @@ export function defaultFormValues(): AlertRuleFormValues {
 export function apiResponseToFormValues(
     rule: AlertRuleApiResponse
 ): AlertRuleFormValues {
-    const trigger = eventTypeToTrigger(rule.eventType);
+    const trigger = rule.eventType;
     const sourceType = rule.eventType.startsWith("site_")
         ? "site"
+        : rule.eventType.startsWith("resource_")
+        ? "resource"
         : "health_check";
 
     // Collect notify recipients into a single notify action (if any)
@@ -297,7 +348,7 @@ export function apiResponseToFormValues(
         .map((r) => ({ id: r.userId!, text: r.userId! }));
     const roleTags = rule.recipients
         .filter((r) => r.roleId != null)
-        .map((r) => ({ id: r.roleId!, text: r.roleId! }));
+        .map((r) => ({ id: String(r.roleId!), text: String(r.roleId!) }));
     const emailTags = rule.recipients
         .filter((r) => r.email != null)
         .map((r) => ({ id: r.email!, text: r.email! }));
@@ -318,7 +369,9 @@ export function apiResponseToFormValues(
             headers: cfg?.headers?.length
                 ? cfg.headers
                 : [{ key: "", value: "" }],
-            authType: (cfg?.authType as "none" | "bearer" | "basic" | "custom") ?? "none",
+            authType:
+                (cfg?.authType as "none" | "bearer" | "basic" | "custom") ??
+                "none",
             bearerToken: cfg?.bearerToken ?? "",
             basicCredentials: cfg?.basicCredentials ?? "",
             customHeaderName: cfg?.customHeaderName ?? "",
@@ -336,13 +389,23 @@ export function apiResponseToFormValues(
         });
     }
 
+    const allSites = sourceType === "site" && rule.siteIds.length === 0;
+    const allHealthChecks =
+        sourceType === "health_check" && rule.healthCheckIds.length === 0;
+    const allResources =
+        sourceType === "resource" && (rule.resourceIds?.length ?? 0) === 0;
+
     return {
         name: rule.name,
         enabled: rule.enabled,
         sourceType,
+        allSites,
         siteIds: rule.siteIds,
+        allHealthChecks,
         healthCheckIds: rule.healthCheckIds,
-        trigger,
+        allResources,
+        resourceIds: rule.resourceIds ?? [],
+        trigger: trigger as AlertTrigger,
         actions
     };
 }
@@ -354,11 +417,11 @@ export function apiResponseToFormValues(
 export function formValuesToApiPayload(
     values: AlertRuleFormValues
 ): AlertRuleApiPayload {
-    const eventType = triggerToEventType(values.trigger);
+    const eventType = values.trigger;
 
     // Collect all notify-type actions and merge their recipient lists
     const allUserIds: string[] = [];
-    const allRoleIds: string[] = [];
+    const allRoleIds: number[] = [];
     const allEmails: string[] = [];
 
     const webhookActions: AlertRuleApiPayload["webhookActions"] = [];
@@ -366,11 +429,9 @@ export function formValuesToApiPayload(
     for (const action of values.actions) {
         if (action.type === "notify") {
             allUserIds.push(...action.userTags.map((t) => t.id));
-            allRoleIds.push(...action.roleTags.map((t) => t.id));
+            allRoleIds.push(...action.roleTags.map((t) => Number(t.id)));
             allEmails.push(
-                ...action.emailTags
-                    .map((t) => t.text.trim())
-                    .filter(Boolean)
+                ...action.emailTags.map((t) => t.text.trim()).filter(Boolean)
             );
         } else if (action.type === "webhook") {
             webhookActions.push({
@@ -391,15 +452,19 @@ export function formValuesToApiPayload(
 
     // Deduplicate
     const uniqueUserIds = [...new Set(allUserIds)];
-    const uniqueRoleIds = [...new Set(allRoleIds)];
+    const uniqueRoleIds: number[] = [...new Set(allRoleIds)];
     const uniqueEmails = [...new Set(allEmails)];
 
     return {
         name: values.name.trim(),
         eventType,
         enabled: values.enabled,
-        siteIds: values.siteIds,
-        healthCheckIds: values.healthCheckIds,
+        allSites: values.allSites,
+        siteIds: values.allSites ? [] : values.siteIds,
+        allHealthChecks: values.allHealthChecks,
+        healthCheckIds: values.allHealthChecks ? [] : values.healthCheckIds,
+        allResources: values.allResources,
+        resourceIds: values.allResources ? [] : values.resourceIds,
         userIds: uniqueUserIds,
         roleIds: uniqueRoleIds,
         emails: uniqueEmails,

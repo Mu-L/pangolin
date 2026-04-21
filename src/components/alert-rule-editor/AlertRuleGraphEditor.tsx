@@ -2,9 +2,9 @@
 
 import {
     ActionBlock,
+    AddActionPanel,
     AlertRuleSourceFields,
-    AlertRuleTriggerFields,
-    DropdownAddAction
+    AlertRuleTriggerFields
 } from "@app/components/alert-rule-editor/AlertRuleFields";
 import { SettingsContainer } from "@app/components/Settings";
 import { Button } from "@app/components/ui/button";
@@ -82,6 +82,12 @@ function summarizeSource(v: AlertRuleFormValues, t: AlertRuleT) {
         }
         return t("alertingSummarySites", { count: v.siteIds.length });
     }
+    if (v.sourceType === "resource") {
+        if (v.resourceIds.length === 0) {
+            return t("alertingNodeNotConfigured");
+        }
+        return t("alertingSummaryResources", { count: v.resourceIds.length });
+    }
     if (v.healthCheckIds.length === 0) {
         return t("alertingNodeNotConfigured");
     }
@@ -94,10 +100,20 @@ function summarizeTrigger(v: AlertRuleFormValues, t: AlertRuleT) {
             return t("alertingTriggerSiteOnline");
         case "site_offline":
             return t("alertingTriggerSiteOffline");
+        case "site_toggle":
+            return t("alertingTriggerSiteToggle");
         case "health_check_healthy":
             return t("alertingTriggerHcHealthy");
         case "health_check_unhealthy":
             return t("alertingTriggerHcUnhealthy");
+        case "health_check_toggle":
+            return t("alertingTriggerHcToggle");
+        case "resource_healthy":
+            return t("alertingTriggerResourceHealthy");
+        case "resource_unhealthy":
+            return t("alertingTriggerResourceUnhealthy");
+        case "resource_toggle":
+            return t("alertingTriggerResourceToggle");
         default:
             return v.trigger;
     }
@@ -330,13 +346,21 @@ export default function AlertRuleGraphEditor({
         useWatch({ control: form.control, name: "enabled" }) ?? true;
     const wSourceType =
         useWatch({ control: form.control, name: "sourceType" }) ?? "site";
+    const wAllSites =
+        useWatch({ control: form.control, name: "allSites" }) ?? true;
     const wSiteIds =
         useWatch({ control: form.control, name: "siteIds" }) ?? [];
+    const wAllHealthChecks =
+        useWatch({ control: form.control, name: "allHealthChecks" }) ?? true;
     const wHealthCheckIds =
         useWatch({ control: form.control, name: "healthCheckIds" }) ?? [];
+    const wAllResources =
+        useWatch({ control: form.control, name: "allResources" }) ?? true;
+    const wResourceIds =
+        useWatch({ control: form.control, name: "resourceIds" }) ?? [];
     const wTrigger =
         useWatch({ control: form.control, name: "trigger" }) ??
-        "site_offline";
+        "site_toggle";
     const wActions =
         useWatch({ control: form.control, name: "actions" }) ?? [];
 
@@ -345,8 +369,12 @@ export default function AlertRuleGraphEditor({
             name: wName,
             enabled: wEnabled,
             sourceType: wSourceType,
+            allSites: wAllSites,
             siteIds: wSiteIds,
+            allHealthChecks: wAllHealthChecks,
             healthCheckIds: wHealthCheckIds,
+            allResources: wAllResources,
+            resourceIds: wResourceIds,
             trigger: wTrigger,
             actions: wActions
         }),
@@ -354,8 +382,12 @@ export default function AlertRuleGraphEditor({
             wName,
             wEnabled,
             wSourceType,
+            wAllSites,
             wSiteIds,
+            wAllHealthChecks,
             wHealthCheckIds,
+            wAllResources,
+            wResourceIds,
             wTrigger,
             wActions
         ]
@@ -673,47 +705,43 @@ export default function AlertRuleGraphEditor({
                             )}
                             {isActionsSidebar && (
                                 <div className="space-y-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="text-sm font-medium">
-                                                    {t(
-                                                        "alertingSectionActions"
-                                                    )}
-                                                </span>
-                                                <DropdownAddAction
-                                                    onAdd={(type) => {
-                                                        const newIndex =
-                                                            fields.length;
-                                                        if (type === "notify") {
-                                                            append({
-                                                                type: "notify",
-                                                                userTags: [],
-                                                                roleTags: [],
-                                                                emailTags: []
-                                                            });
-                                                        } else {
-                                                            append({
-                                                                type: "webhook",
-                                                                url: "",
-                                                                method: "POST",
-                                                                headers: [
-                                                                    {
-                                                                        key: "",
-                                                                        value: ""
-                                                                    }
-                                                                ],
-                                                                authType: "none",
-                                                                bearerToken: "",
-                                                                basicCredentials: "",
-                                                                customHeaderName: "",
-                                                                customHeaderValue: ""
-                                                            });
-                                                        }
-                                                        setSelectedStep(
-                                                            `action-${newIndex}`
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
+                                            <span className="text-sm font-medium">
+                                                {t("alertingSectionActions")}
+                                            </span>
+                                            <AddActionPanel
+                                                onAdd={(type) => {
+                                                    const newIndex =
+                                                        fields.length;
+                                                    if (type === "notify") {
+                                                        append({
+                                                            type: "notify",
+                                                            userTags: [],
+                                                            roleTags: [],
+                                                            emailTags: []
+                                                        });
+                                                    } else {
+                                                        append({
+                                                            type: "webhook",
+                                                            url: "",
+                                                            method: "POST",
+                                                            headers: [
+                                                                {
+                                                                    key: "",
+                                                                    value: ""
+                                                                }
+                                                            ],
+                                                            authType: "none",
+                                                            bearerToken: "",
+                                                            basicCredentials: "",
+                                                            customHeaderName: "",
+                                                            customHeaderValue: ""
+                                                        });
+                                                    }
+                                                    setSelectedStep(
+                                                        `action-${newIndex}`
+                                                    );
+                                                }}
+                                            />
                                             {fields.map((f, index) => (
                                                 <ActionBlock
                                                     key={f.id}

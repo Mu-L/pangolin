@@ -18,6 +18,7 @@ import {
     alertRules,
     alertSites,
     alertHealthChecks,
+    alertResources,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -31,12 +32,8 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-
-const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
-const HC_EVENT_TYPES = [
-    "health_check_healthy",
-    "health_check_not_healthy"
-] as const;
+import { HC_EVENT_TYPES, SITE_EVENT_TYPES, RESOURCE_EVENT_TYPES } from "./createAlertRule";
+import { invalidateAllRemoteExitNodeSessions } from "@server/private/auth/sessions/remoteExitNode";
 
 const paramsSchema = z
     .object({
@@ -57,20 +54,23 @@ const bodySchema = z
         name: z.string().nonempty().optional(),
         eventType: z
             .enum([
-                "site_online",
-                "site_offline",
-                "health_check_healthy",
-                "health_check_not_healthy"
+                ...HC_EVENT_TYPES,
+                ...SITE_EVENT_TYPES,
+                ...RESOURCE_EVENT_TYPES
             ])
             .optional(),
         enabled: z.boolean().optional(),
         cooldownSeconds: z.number().int().nonnegative().optional(),
         // Source join tables - if provided the full set is replaced
         siteIds: z.array(z.number().int().positive()).optional(),
+        allSites: z.boolean().optional(),
         healthCheckIds: z.array(z.number().int().positive()).optional(),
+        allHealthChecks: z.boolean().optional(),
+        resourceIds: z.array(z.number().int().positive()).optional(),
+        allResources: z.boolean().optional(),
         // Recipient arrays - if any are provided the full recipient set is replaced
         userIds: z.array(z.string().nonempty()).optional(),
-        roleIds: z.array(z.string().nonempty()).optional(),
+        roleIds: z.array(z.number()).optional(),
         emails: z.array(z.string().email()).optional(),
         // Webhook actions - if provided the full webhook set is replaced
         webhookActions: z.array(webhookActionSchema).optional()
@@ -84,6 +84,33 @@ const bodySchema = z
         const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
             val.eventType
         );
+        const isResourceEvent = (RESOURCE_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
+
+        if (isSiteEvent && val.siteIds !== undefined && val.siteIds.length === 0 && !val.allSites) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one siteId is required for site event types when allSites is false",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isHcEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length === 0 && !val.allHealthChecks) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one healthCheckId is required for health check event types when allHealthChecks is false",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isResourceEvent && val.resourceIds !== undefined && val.resourceIds.length === 0 && !val.allResources) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one resourceId is required for resource event types when allResources is false",
+                path: ["resourceIds"]
+            });
+        }
 
         if (isSiteEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length > 0) {
             ctx.addIssue({
@@ -98,6 +125,22 @@ const bodySchema = z
                 code: z.ZodIssueCode.custom,
                 message: "siteIds must not be set for health check event types",
                 path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.siteIds !== undefined && val.siteIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "siteIds must not be set for resource event types",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "healthCheckIds must not be set for resource event types",
+                path: ["healthCheckIds"]
             });
         }
     });
@@ -174,7 +217,11 @@ export async function updateAlertRule(
             enabled,
             cooldownSeconds,
             siteIds,
+            allSites,
             healthCheckIds,
+            allHealthChecks,
+            resourceIds,
+            allResources,
             userIds,
             roleIds,
             emails,
@@ -189,8 +236,10 @@ export async function updateAlertRule(
         if (name !== undefined) updateData.name = name;
         if (eventType !== undefined) updateData.eventType = eventType;
         if (enabled !== undefined) updateData.enabled = enabled;
-        if (cooldownSeconds !== undefined)
-            updateData.cooldownSeconds = cooldownSeconds;
+        if (cooldownSeconds !== undefined) updateData.cooldownSeconds = cooldownSeconds;
+        if (allSites !== undefined) updateData.allSites = allSites;
+        if (allHealthChecks !== undefined) updateData.allHealthChecks = allHealthChecks;
+        if (allResources !== undefined) updateData.allResources = allResources;
 
         await db
             .update(alertRules)
@@ -203,12 +252,14 @@ export async function updateAlertRule(
             );
 
         // --- Full-replace site associations if siteIds was provided ---
-        if (siteIds !== undefined) {
+        if (siteIds !== undefined || allSites !== undefined) {
             await db
                 .delete(alertSites)
                 .where(eq(alertSites.alertRuleId, alertRuleId));
 
-            if (siteIds.length > 0) {
+            // Only insert junction rows when allSites is not true
+            const effectiveAllSites = allSites ?? false;
+            if (!effectiveAllSites && siteIds !== undefined && siteIds.length > 0) {
                 await db.insert(alertSites).values(
                     siteIds.map((siteId) => ({
                         alertRuleId,
@@ -219,16 +270,34 @@ export async function updateAlertRule(
         }
 
         // --- Full-replace health check associations if healthCheckIds was provided ---
-        if (healthCheckIds !== undefined) {
+        if (healthCheckIds !== undefined || allHealthChecks !== undefined) {
             await db
                 .delete(alertHealthChecks)
                 .where(eq(alertHealthChecks.alertRuleId, alertRuleId));
 
-            if (healthCheckIds.length > 0) {
+            const effectiveAllHealthChecks = allHealthChecks ?? false;
+            if (!effectiveAllHealthChecks && healthCheckIds !== undefined && healthCheckIds.length > 0) {
                 await db.insert(alertHealthChecks).values(
                     healthCheckIds.map((healthCheckId) => ({
                         alertRuleId,
                         healthCheckId
+                    }))
+                );
+            }
+        }
+
+        // --- Full-replace resource associations if resourceIds was provided ---
+        if (resourceIds !== undefined || allResources !== undefined) {
+            await db
+                .delete(alertResources)
+                .where(eq(alertResources.alertRuleId, alertRuleId));
+
+            const effectiveAllResources = allResources ?? false;
+            if (!effectiveAllResources && resourceIds !== undefined && resourceIds.length > 0) {
+                await db.insert(alertResources).values(
+                    resourceIds.map((resourceId) => ({
+                        alertRuleId,
+                        resourceId
                     }))
                 );
             }
@@ -244,7 +313,7 @@ export async function updateAlertRule(
             const newRecipients = [
                 ...(userIds ?? []).map((userId) => ({
                     userId,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email: null as string | null
                 })),
                 ...(roleIds ?? []).map((roleId) => ({
@@ -254,7 +323,7 @@ export async function updateAlertRule(
                 })),
                 ...(emails ?? []).map((email) => ({
                     userId: null as string | null,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email
                 }))
             ];

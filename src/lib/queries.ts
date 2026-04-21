@@ -1,7 +1,8 @@
 import { build } from "@server/build";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
-import type { ListDomainsResponse } from "@server/routers/domain";
+import type { ListDomainsResponse, GetDNSRecordsResponse } from "@server/routers/domain";
+import type { GetDomainResponse } from "@server/routers/domain/getDomain";
 import type {
     GetResourceWhitelistResponse,
     ListResourceNamesResponse,
@@ -255,26 +256,88 @@ export const orgQueries = {
             }
         }),
 
-    alertRules: ({ orgId }: { orgId: string }) =>
+    alertRules: ({
+        orgId,
+        limit = 20,
+        offset = 0,
+        query,
+        siteId,
+        resourceId
+    }: {
+        orgId: string;
+        limit?: number;
+        offset?: number;
+        query?: string;
+        siteId?: number;
+        resourceId?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "ALERT_RULES"] as const,
+            queryKey: ["ORG", orgId, "ALERT_RULES", { limit, offset, query, siteId, resourceId }] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                sp.set("limit", String(limit));
+                sp.set("offset", String(offset));
+                if (query) sp.set("query", query);
+                if (siteId != null) sp.set("siteId", String(siteId));
+                if (resourceId != null) sp.set("resourceId", String(resourceId));
                 const res = await meta!.api.get<
                     AxiosResponse<ListAlertRulesResponse>
-                >(`/org/${orgId}/alert-rules`, { signal });
+                >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
+                return {
+                    alertRules: res.data.data.alertRules,
+                    pagination: res.data.data.pagination
+                };
+            }
+        }),
+
+    alertRulesForSource: ({
+        orgId,
+        siteId,
+        resourceId
+    }: {
+        orgId: string;
+        siteId?: number;
+        resourceId?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "ALERT_RULES", { siteId, resourceId }] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                if (siteId != null) sp.set("siteId", String(siteId));
+                if (resourceId != null) sp.set("resourceId", String(resourceId));
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAlertRulesResponse>
+                >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
                 return res.data.data.alertRules;
             }
         }),
 
-    standaloneHealthChecks: ({ orgId }: { orgId: string }) =>
+    standaloneHealthChecks: ({
+        orgId,
+        limit = 20,
+        offset = 0,
+        query
+    }: {
+        orgId: string;
+        limit?: number;
+        offset?: number;
+        query?: string;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"] as const,
+            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS", { limit, offset, query }] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                sp.set("limit", String(limit));
+                sp.set("offset", String(offset));
+                if (query) sp.set("query", query);
                 const res = await meta!.api.get<
                     AxiosResponse<{
                         healthChecks: {
                             targetHealthCheckId: number;
                             name: string;
+                            siteId: number | null;
+                            siteName: string | null;
+                            siteNiceId: string | null;
                             hcEnabled: boolean;
                             hcHealth: "unknown" | "healthy" | "unhealthy";
                             hcMode: string | null;
@@ -302,8 +365,11 @@ export const orgQueries = {
                             offset: number;
                         };
                     }>
-                >(`/org/${orgId}/health-checks`, { signal });
-                return res.data.data.healthChecks;
+                >(`/org/${orgId}/health-checks?${sp.toString()}`, { signal });
+                return {
+                    healthChecks: res.data.data.healthChecks,
+                    pagination: res.data.data.pagination
+                };
             }
         }),
     siteStatusHistory: ({
@@ -606,5 +672,51 @@ export const approvalQueries = {
                 }
                 return false;
             }
+        })
+};
+
+export const domainQueries = {
+    getDomain: ({
+        orgId,
+        domainId
+    }: {
+        orgId: string;
+        domainId: string;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "DOMAIN", domainId] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDomainResponse>
+                >(`/org/${orgId}/domain/${domainId}`, { signal });
+                return res.data.data;
+            },
+            refetchInterval: durationToMs(10, "seconds")
+        }),
+    getDNSRecords: ({
+        orgId,
+        domainId
+    }: {
+        orgId: string;
+        domainId: string;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "DOMAIN",
+                domainId,
+                "DNS_RECORDS"
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDNSRecordsResponse>
+                >(
+                    `/org/${orgId}/domain/${domainId}/dns-records`,
+                    { signal }
+                );
+                return res.data.data;
+            },
+            refetchInterval: durationToMs(10, "seconds")
         })
 };

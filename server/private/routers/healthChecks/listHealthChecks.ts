@@ -11,13 +11,13 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db, targetHealthCheck, targets, resources } from "@server/db";
+import { db, targetHealthCheck, targets, resources, sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, like, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -39,7 +39,8 @@ const querySchema = z.object({
         .optional()
         .default("0")
         .transform(Number)
-        .pipe(z.int().nonnegative())
+        .pipe(z.int().nonnegative()),
+    query: z.string().optional()
 });
 
 registry.registerPath({
@@ -80,16 +81,25 @@ export async function listHealthChecks(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { limit, offset, query } = parsedQuery.data;
 
         const whereClause = and(
             eq(targetHealthCheck.orgId, orgId),
+            query
+                ? like(
+                      sql`LOWER(${targetHealthCheck.name})`,
+                      `%${query.toLowerCase()}%`
+                  )
+                : undefined
         );
 
         const list = await db
             .select({
                 targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
                 name: targetHealthCheck.name,
+                siteId: targetHealthCheck.siteId,
+                siteName: sites.name,
+                siteNiceId: sites.niceId,
                 hcEnabled: targetHealthCheck.hcEnabled,
                 hcHealth: targetHealthCheck.hcHealth,
                 hcMode: targetHealthCheck.hcMode,
@@ -114,6 +124,7 @@ export async function listHealthChecks(
             .from(targetHealthCheck)
             .leftJoin(targets, eq(targetHealthCheck.targetId, targets.targetId))
             .leftJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .leftJoin(sites, eq(targetHealthCheck.siteId, sites.siteId))
             .where(whereClause)
             .orderBy(sql`${targetHealthCheck.targetHealthCheckId} DESC`)
             .limit(limit)
@@ -129,6 +140,9 @@ export async function listHealthChecks(
                 healthChecks: list.map((row) => ({
                     targetHealthCheckId: row.targetHealthCheckId,
                     name: row.name ?? "",
+                    siteId: row.siteId ?? null,
+                    siteName: row.siteName ?? null,
+                    siteNiceId: row.siteNiceId ?? null,
                     hcEnabled: row.hcEnabled,
                     hcHealth: (row.hcHealth ?? "unknown") as
                         | "unknown"

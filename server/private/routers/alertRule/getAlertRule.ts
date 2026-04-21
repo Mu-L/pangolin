@@ -18,6 +18,7 @@ import {
     alertRules,
     alertSites,
     alertHealthChecks,
+    alertResources,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -31,7 +32,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { WebhookAlertConfig } from "@server/lib/alerts/types";
+import { WebhookAlertConfig } from "#private/lib/alerts/types";
 
 const paramsSchema = z
     .object({
@@ -47,8 +48,13 @@ export type GetAlertRuleResponse = {
     eventType:
         | "site_online"
         | "site_offline"
+        | "site_toggle"
         | "health_check_healthy"
-        | "health_check_not_healthy";
+        | "health_check_unhealthy"
+        | "health_check_toggle"
+        | "resource_healthy"
+        | "resource_unhealthy"
+        | "resource_toggle";
     enabled: boolean;
     cooldownSeconds: number;
     lastTriggeredAt: number | null;
@@ -56,10 +62,11 @@ export type GetAlertRuleResponse = {
     updatedAt: number;
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
     recipients: {
         recipientId: number;
         userId: string | null;
-        roleId: string | null;
+        roleId: number | null;
         email: string | null;
     }[];
     webhookActions: {
@@ -128,6 +135,12 @@ export async function getAlertRule(
             .from(alertHealthChecks)
             .where(eq(alertHealthChecks.alertRuleId, alertRuleId));
 
+        // Fetch resource associations
+        const resourceRows = await db
+            .select()
+            .from(alertResources)
+            .where(eq(alertResources.alertRuleId, alertRuleId));
+
         // Resolve the single email action row for this rule, then collect all
         // recipients into a flat list. The emailAction pivot row is an internal
         // implementation detail and is not surfaced to callers.
@@ -175,26 +188,30 @@ export async function getAlertRule(
                 updatedAt: rule.updatedAt,
                 siteIds: siteRows.map((r) => r.siteId),
                 healthCheckIds: healthCheckRows.map((r) => r.healthCheckId),
+                resourceIds: resourceRows.map((r) => r.resourceId),
                 recipients,
                 webhookActions: webhooks.map((w) => {
-                            let parsedConfig: WebhookAlertConfig | null = null;
-                            if (w.config) {
-                                try {
-                                    const serverSecret = config.getRawConfig().server.secret!;
-                                    const decrypted = decrypt(w.config, serverSecret);
-                                    parsedConfig = JSON.parse(decrypted) as WebhookAlertConfig;
-                                } catch {
-                                    // best-effort – return null if decryption fails
-                                }
-                            }
-                            return {
-                                webhookActionId: w.webhookActionId,
-                                webhookUrl: w.webhookUrl,
-                                enabled: w.enabled,
-                                lastSentAt: w.lastSentAt ?? null,
-                                config: parsedConfig
-                            };
-                        })
+                    let parsedConfig: WebhookAlertConfig | null = null;
+                    if (w.config) {
+                        try {
+                            const serverSecret =
+                                config.getRawConfig().server.secret!;
+                            const decrypted = decrypt(w.config, serverSecret);
+                            parsedConfig = JSON.parse(
+                                decrypted
+                            ) as WebhookAlertConfig;
+                        } catch {
+                            // best-effort – return null if decryption fails
+                        }
+                    }
+                    return {
+                        webhookActionId: w.webhookActionId,
+                        webhookUrl: w.webhookUrl,
+                        enabled: w.enabled,
+                        lastSentAt: w.lastSentAt ?? null,
+                        config: parsedConfig
+                    };
+                })
             },
             success: true,
             error: false,

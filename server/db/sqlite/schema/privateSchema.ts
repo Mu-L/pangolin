@@ -13,6 +13,7 @@ import {
     domains,
     exitNodes,
     orgs,
+    resources,
     roles,
     sessions,
     siteResources,
@@ -469,12 +470,20 @@ export const alertRules = sqliteTable("alertRules", {
         .$type<
             | "site_online"
             | "site_offline"
+            | "site_toggle"
             | "health_check_healthy"
-            | "health_check_not_healthy"
+            | "health_check_unhealthy"
+            | "health_check_toggle"
+            | "resource_healthy"
+            | "resource_unhealthy"
+            | "resource_toggle"
         >()
         .notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    allSites: integer("allSites", { mode: "boolean" }).notNull().default(false),
+    allHealthChecks: integer("allHealthChecks", { mode: "boolean" }).notNull().default(false),
+    allResources: integer("allResources", { mode: "boolean" }).notNull().default(false),
     lastTriggeredAt: integer("lastTriggeredAt"),
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt").notNull()
@@ -500,6 +509,15 @@ export const alertHealthChecks = sqliteTable("alertHealthChecks", {
         })
 });
 
+export const alertResources = sqliteTable("alertResources", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" })
+});
+
 export const alertEmailActions = sqliteTable("alertEmailActions", {
     emailActionId: integer("emailActionId").primaryKey({ autoIncrement: true }),
     alertRuleId: integer("alertRuleId")
@@ -515,7 +533,7 @@ export const alertEmailRecipients = sqliteTable("alertEmailRecipients", {
         .notNull()
         .references(() => alertEmailActions.emailActionId, { onDelete: "cascade" }),
     userId: text("userId").references(() => users.userId, { onDelete: "cascade" }),
-    roleId: text("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
+    roleId: integer("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
     email: text("email")
 });
 
@@ -561,3 +579,4 @@ export type EventStreamingDestination = InferSelectModel<
 export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
+export type AlertResources = InferSelectModel<typeof alertResources>;

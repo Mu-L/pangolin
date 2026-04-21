@@ -13,13 +13,15 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, targetHealthCheck } from "@server/db";
+import { db, targetHealthCheck, newts, sites } from "@server/db";
+import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -27,6 +29,7 @@ const paramsSchema = z.strictObject({
 
 const bodySchema = z.strictObject({
     name: z.string().nonempty(),
+    siteId: z.number().int().positive(),
     hcEnabled: z.boolean().default(false),
     hcMode: z.string().default("http"),
     hcHostname: z.string().optional(),
@@ -97,6 +100,7 @@ export async function createHealthCheck(
 
         const {
             name,
+            siteId,
             hcEnabled,
             hcMode,
             hcHostname,
@@ -120,6 +124,7 @@ export async function createHealthCheck(
             .values({
                 targetId: null,
                 orgId,
+                siteId,
                 name,
                 hcEnabled,
                 hcMode,
@@ -139,6 +144,31 @@ export async function createHealthCheck(
                 hcUnhealthyThreshold
             })
             .returning();
+
+        // Push health check to newt if the site is a newt site
+        if (siteId) {
+            const [site] = await db
+                .select()
+                .from(sites)
+                .where(eq(sites.siteId, siteId))
+                .limit(1);
+
+            if (site && site.type === "newt") {
+                const [newt] = await db
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, site.siteId))
+                    .limit(1);
+
+                if (newt) {
+                    await addStandaloneHealthCheck(
+                        newt.newtId,
+                        record,
+                        newt.version
+                    );
+                }
+            }
+        }
 
         return response<CreateHealthCheckResponse>(res, {
             data: {

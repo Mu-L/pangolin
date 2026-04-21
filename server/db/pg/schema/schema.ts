@@ -194,6 +194,9 @@ export const targetHealthCheck = pgTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
+    siteId: integer("siteId").references(() => sites.siteId, {
+        onDelete: "cascade"
+    }).notNull(),
     name: varchar("name"),
     hcEnabled: boolean("hcEnabled").notNull().default(false),
     hcPath: varchar("hcPath"),
