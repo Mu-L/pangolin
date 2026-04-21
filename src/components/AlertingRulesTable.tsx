@@ -16,7 +16,6 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { orgQueries } from "@app/lib/queries";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import {
     alertRuleAllHealthChecksSelected,
@@ -34,10 +33,9 @@ import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import type { DataTablePaginationState } from "@app/components/ui/data-table";
 import { useDebouncedCallback } from "use-debounce";
@@ -47,13 +45,7 @@ const alertRulesEnabledQuerySchema = z
     .optional()
     .catch(undefined);
 
-type AlertingRulesTableProps = {
-    orgId: string;
-    siteId?: number;
-    resourceId?: number;
-};
-
-type AlertRuleRow = {
+export type AlertRuleRow = {
     alertRuleId: number;
     orgId: string;
     name: string;
@@ -66,6 +58,12 @@ type AlertRuleRow = {
     siteIds: number[];
     healthCheckIds: number[];
     resourceIds: number[];
+};
+
+type AlertingRulesTableProps = {
+    orgId: string;
+    alertRules: AlertRuleRow[];
+    rowCount: number;
 };
 
 function ruleHref(orgId: string, ruleId: number) {
@@ -129,13 +127,13 @@ function triggerLabel(rule: AlertRuleRow, t: (k: string) => string) {
 
 export default function AlertingRulesTable({
     orgId,
-    siteId,
-    resourceId
+    alertRules,
+    rowCount
 }: AlertingRulesTableProps) {
     const router = useRouter();
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
-    const queryClient = useQueryClient();
+    const [isRefreshing, startRefresh] = useTransition();
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
 
@@ -167,23 +165,15 @@ export default function AlertingRulesTable({
         [t]
     );
 
-    const { data, isLoading, refetch, isRefetching } = useQuery(
-        orgQueries.alertRules({
-            orgId,
-            limit: pageSize,
-            offset: pageIndex * pageSize,
-            query,
-            siteId,
-            resourceId,
-            sortBy,
-            order,
-            enabled: enabledForQuery
-        })
-    );
-
-    const rows = data?.alertRules ?? [];
-    const total = data?.pagination.total ?? 0;
+    const rows = alertRules;
+    const total = rowCount;
     const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+    function refreshList() {
+        startRefresh(() => {
+            router.refresh();
+        });
+    }
 
     const paginationState: DataTablePaginationState = {
         pageIndex,
@@ -223,18 +213,13 @@ export default function AlertingRulesTable({
         filter({ searchParams: sp });
     }
 
-    const invalidate = () =>
-        queryClient.invalidateQueries({
-            queryKey: ["ORG", orgId, "ALERT_RULES"]
-        });
-
     const setEnabled = async (rule: AlertRuleRow, enabled: boolean) => {
         setTogglingId(rule.alertRuleId);
         try {
             await api.post(`/org/${orgId}/alert-rule/${rule.alertRuleId}`, {
                 enabled
             });
-            await invalidate();
+            refreshList();
         } catch (e) {
             toast({
                 title: t("error"),
@@ -252,7 +237,7 @@ export default function AlertingRulesTable({
             await api.delete(
                 `/org/${orgId}/alert-rule/${selected.alertRuleId}`
             );
-            await invalidate();
+            refreshList();
             toast({ title: t("alertingRuleDeleted") });
         } catch (e) {
             toast({
@@ -442,8 +427,8 @@ export default function AlertingRulesTable({
                 onAdd={() => {
                     router.push(`/${orgId}/settings/alerting/create`);
                 }}
-                onRefresh={() => refetch()}
-                isRefreshing={isRefetching || isLoading || isFiltering}
+                onRefresh={refreshList}
+                isRefreshing={isRefreshing || isFiltering}
                 addButtonText={t("alertingAddRule")}
                 enableColumnVisibility
                 stickyLeftColumn="name"

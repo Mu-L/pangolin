@@ -158,7 +158,9 @@ export default function UptimeAlertSection({
 
     const alertButton = alertRulesLoading ? null : hasRules ? (
         <Button variant="outline" asChild>
-            <Link href={`/${orgId}/settings/alerting?siteId=${siteId}&resourceId=${resourceId}`}>
+            <Link
+                href={`/${orgId}/settings/alerting/rules?siteId=${siteId}&resourceId=${resourceId}`}
+            >
                 <BellRing className="size-4 mr-2" />
                 View Alerts
             </Link>

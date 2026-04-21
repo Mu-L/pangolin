@@ -33,7 +33,7 @@ export default function EditAlertRulePage() {
 
     useEffect(() => {
         if (isNaN(alertRuleId)) {
-            router.replace(`/${orgId}/settings/alerting`);
+            router.replace(`/${orgId}/settings/alerting/rules`);
             return;
         }
 
@@ -56,7 +56,7 @@ export default function EditAlertRulePage() {
 
     useEffect(() => {
         if (formValues === null) {
-            router.replace(`/${orgId}/settings/alerting`);
+            router.replace(`/${orgId}/settings/alerting/rules`);
         }
     }, [formValues, orgId, router]);
 

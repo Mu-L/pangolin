@@ -6,7 +6,6 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import HealthCheckCredenza, {
     HealthCheckRow
 } from "@app/components/HealthCheckCredenza";
-import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
@@ -19,22 +18,23 @@ import { Switch } from "@app/components/ui/switch";
 import { toast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { orgQueries } from "@app/lib/queries";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
 import type { PaginationState } from "@tanstack/react-table";
 import type { DataTablePaginationState } from "@app/components/ui/data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
+    healthChecks: HealthCheckRow[];
+    rowCount: number;
 };
 
 function formatTarget(row: HealthCheckRow): string {
@@ -57,21 +57,15 @@ const healthLabel: Record<HealthCheckRow["hcHealth"], string> = {
     unknown: "Unknown"
 };
 
-const healthVariant: Record<
-    HealthCheckRow["hcHealth"],
-    "green" | "red" | "secondary"
-> = {
-    healthy: "green",
-    unhealthy: "red",
-    unknown: "secondary"
-};
-
 export default function HealthChecksTable({
-    orgId
+    orgId,
+    healthChecks,
+    rowCount
 }: StandaloneHealthChecksTableProps) {
+    const router = useRouter();
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
-    const queryClient = useQueryClient();
+    const [isRefreshing, startRefresh] = useTransition();
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.standaloneHealthChecks);
 
@@ -91,24 +85,22 @@ export default function HealthChecksTable({
     const pageIndex = page - 1;
     const query = searchParams.get("query") ?? undefined;
 
-    const {
-        data,
-        isLoading,
-        refetch,
-        isRefetching
-    } = useQuery({
-        ...orgQueries.standaloneHealthChecks({
-            orgId,
-            limit: pageSize,
-            offset: pageIndex * pageSize,
-            query
-        }),
-        refetchInterval: 10_000
-    });
-
-    const rows = data?.healthChecks ?? [];
-    const total = data?.pagination.total ?? 0;
+    const rows = healthChecks;
+    const total = rowCount;
     const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+    function refreshList() {
+        startRefresh(() => {
+            router.refresh();
+        });
+    }
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 10_000);
+        return () => clearInterval(interval);
+    }, [router]);
 
     const paginationState: DataTablePaginationState = {
         pageIndex,
@@ -132,11 +124,6 @@ export default function HealthChecksTable({
         filter({ searchParams });
     }, 300);
 
-    const invalidate = () =>
-        queryClient.invalidateQueries({
-            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"]
-        });
-
     const handleToggleEnabled = async (
         row: HealthCheckRow,
         enabled: boolean
@@ -147,7 +134,7 @@ export default function HealthChecksTable({
                 `/org/${orgId}/health-check/${row.targetHealthCheckId}`,
                 { hcEnabled: enabled }
             );
-            await invalidate();
+            refreshList();
         } catch (e) {
             toast({
                 title: t("error"),
@@ -165,7 +152,7 @@ export default function HealthChecksTable({
             await api.delete(
                 `/org/${orgId}/health-check/${selected.targetHealthCheckId}`
             );
-            await invalidate();
+            refreshList();
             toast({ title: t("standaloneHcDeleted") });
         } catch (e) {
             toast({
@@ -400,7 +387,7 @@ export default function HealthChecksTable({
                 }}
                 orgId={orgId}
                 initialValues={selected}
-                onSaved={invalidate}
+                onSaved={refreshList}
             />
 
             <PaidFeaturesAlert tiers={tierMatrix.standaloneHealthChecks} />
@@ -418,8 +405,8 @@ export default function HealthChecksTable({
                     setCredenzaOpen(true);
                 }}
                 addButtonDisabled={!isPaid}
-                onRefresh={() => refetch()}
-                isRefreshing={isRefetching || isLoading || isFiltering}
+                onRefresh={refreshList}
+                isRefreshing={isRefreshing || isFiltering}
                 addButtonText={t("standaloneHcAddButton")}
                 enableColumnVisibility
                 stickyLeftColumn="name"
