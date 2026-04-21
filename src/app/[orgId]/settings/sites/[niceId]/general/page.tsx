@@ -1,6 +1,6 @@
 "use client";
 
-import UptimeBar from "@app/components/UptimeBar";
+import UptimeAlertSection from "@app/components/UptimeAlertSection";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -113,19 +113,12 @@ export default function GeneralPage() {
 
     return (
         <SettingsContainer>
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>Uptime</SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        Site availability over the last 90 days.
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
-                <SettingsSectionBody>
-                    {site?.siteId && (
-                        <UptimeBar siteId={site.siteId} days={90} />
-                    )}
-                </SettingsSectionBody>
-            </SettingsSection>
+            {site?.siteId && site?.orgId && (
+                <UptimeAlertSection
+                    orgId={site.orgId}
+                    siteId={site.siteId}
+                />
+            )}
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>

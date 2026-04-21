@@ -21,7 +21,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -39,7 +39,17 @@ const querySchema = z.strictObject({
         .optional()
         .default("0")
         .transform(Number)
-        .pipe(z.number().int().nonnegative())
+        .pipe(z.number().int().nonnegative()),
+    siteId: z
+        .string()
+        .optional()
+        .transform((v) => (v !== undefined ? Number(v) : undefined))
+        .pipe(z.number().int().positive().optional()),
+    resourceId: z
+        .string()
+        .optional()
+        .transform((v) => (v !== undefined ? Number(v) : undefined))
+        .pipe(z.number().int().positive().optional())
 });
 
 export type ListAlertRulesResponse = {
@@ -102,12 +112,66 @@ export async function listAlertRules(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { limit, offset, siteId, resourceId } = parsedQuery.data;
+
+        // Resolve siteId filter → matching alertRuleIds
+        let siteFilterRuleIds: number[] | null = null;
+        if (siteId !== undefined) {
+            const rows = await db
+                .select({ alertRuleId: alertSites.alertRuleId })
+                .from(alertSites)
+                .where(eq(alertSites.siteId, siteId));
+            siteFilterRuleIds = rows.map((r) => r.alertRuleId);
+            if (siteFilterRuleIds.length === 0) {
+                return response<ListAlertRulesResponse>(res, {
+                    data: {
+                        alertRules: [],
+                        pagination: { total: 0, limit, offset }
+                    },
+                    success: true,
+                    error: false,
+                    message: "Alert rules retrieved successfully",
+                    status: HttpCode.OK
+                });
+            }
+        }
+
+        // Resolve resourceId filter → matching alertRuleIds
+        let resourceFilterRuleIds: number[] | null = null;
+        if (resourceId !== undefined) {
+            const rows = await db
+                .select({ alertRuleId: alertResources.alertRuleId })
+                .from(alertResources)
+                .where(eq(alertResources.resourceId, resourceId));
+            resourceFilterRuleIds = rows.map((r) => r.alertRuleId);
+            if (resourceFilterRuleIds.length === 0) {
+                return response<ListAlertRulesResponse>(res, {
+                    data: {
+                        alertRules: [],
+                        pagination: { total: 0, limit, offset }
+                    },
+                    success: true,
+                    error: false,
+                    message: "Alert rules retrieved successfully",
+                    status: HttpCode.OK
+                });
+            }
+        }
+
+        const whereClause = and(
+            eq(alertRules.orgId, orgId),
+            siteFilterRuleIds !== null
+                ? inArray(alertRules.alertRuleId, siteFilterRuleIds)
+                : undefined,
+            resourceFilterRuleIds !== null
+                ? inArray(alertRules.alertRuleId, resourceFilterRuleIds)
+                : undefined
+        );
 
         const list = await db
             .select()
             .from(alertRules)
-            .where(eq(alertRules.orgId, orgId))
+            .where(whereClause)
             .orderBy(sql`${alertRules.createdAt} DESC`)
             .limit(limit)
             .offset(offset);
@@ -115,7 +179,7 @@ export async function listAlertRules(
         const [{ count }] = await db
             .select({ count: sql<number>`count(*)` })
             .from(alertRules)
-            .where(eq(alertRules.orgId, orgId));
+            .where(whereClause);
 
         // Batch-fetch site and health-check associations for all returned rules
         // in two queries rather than N+1 individual lookups.

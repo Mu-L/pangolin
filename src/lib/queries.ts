@@ -267,6 +267,28 @@ export const orgQueries = {
             }
         }),
 
+    alertRulesForSource: ({
+        orgId,
+        siteId,
+        resourceId
+    }: {
+        orgId: string;
+        siteId?: number;
+        resourceId?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "ALERT_RULES", { siteId, resourceId }] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                if (siteId != null) sp.set("siteId", String(siteId));
+                if (resourceId != null) sp.set("resourceId", String(resourceId));
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAlertRulesResponse>
+                >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
+                return res.data.data.alertRules;
+            }
+        }),
+
     standaloneHealthChecks: ({ orgId }: { orgId: string }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS"] as const,
