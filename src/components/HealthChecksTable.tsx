@@ -241,6 +241,27 @@ export default function HealthChecksTable({
             }
         },
         {
+            id: "site",
+            friendlyName: "Site",
+            header: () => (
+                <span className="p-3">Site</span>
+            ),
+            cell: ({ row }) => {
+                const r = row.original;
+                if (!r.siteId || !r.siteName || !r.siteNiceId) {
+                    return <span className="text-neutral-400">-</span>;
+                }
+                return (
+                    <Link href={`/${orgId}/settings/sites/${r.siteNiceId}/general`}>
+                        <Button variant="outline" size="sm">
+                            {r.siteName}
+                            <ArrowUpRight className="ml-2 h-3 w-3" />
+                        </Button>
+                    </Link>
+                );
+            }
+        },
+        {
             id: "health",
             friendlyName: t("standaloneHcColumnHealth"),
             header: () => (
