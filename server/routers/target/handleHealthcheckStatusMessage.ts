@@ -191,11 +191,19 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 })
                 .where(eq(targetHealthCheck.targetId, targetCheck.targetId));
 
+            const orgId = targetCheck.orgId || targetCheck.resourceOrgId; // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+            if (!orgId) {
+                logger.warn(
+                    `No org ID found for target ${targetId}, skipping status history logging`
+                );
+                continue;
+            }
+
             // Log the state change to status history
             await db.insert(statusHistory).values({
                 entityType: "healthCheck",
                 entityId: targetCheck.targetHealthCheckId,
-                orgId: targetCheck.orgId || targetCheck.resourceOrgId,
+                orgId: orgId,
                 status: healthStatus.status,
                 timestamp: Math.floor(Date.now() / 1000)
             });
@@ -235,7 +243,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 await db.insert(statusHistory).values({
                     entityType: "resource",
                     entityId: targetCheck.resourceId,
-                    orgId: targetCheck.orgId || targetCheck.resourceOrgId,
+                    orgId: orgId,
                     status: status,
                     timestamp: Math.floor(Date.now() / 1000)
                 });
@@ -244,13 +252,13 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
             // because we are checking above if there was a change we can fire the alert here because it changed
             if (healthStatus.status === "unhealthy") {
                 await fireHealthCheckHealthyAlert(
-                    targetCheck.orgId || targetCheck.resourceOrgId, // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+                    orgId,
                     targetCheck.targetHealthCheckId,
                     targetCheck.name
                 );
             } else if (healthStatus.status === "healthy") {
                 await fireHealthCheckNotHealthyAlert(
-                    targetCheck.orgId || targetCheck.resourceOrgId, // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
+                    orgId,
                     targetCheck.targetHealthCheckId,
                     targetCheck.name
                 );

@@ -346,10 +346,16 @@ export default function AlertRuleGraphEditor({
         useWatch({ control: form.control, name: "enabled" }) ?? true;
     const wSourceType =
         useWatch({ control: form.control, name: "sourceType" }) ?? "site";
+    const wAllSites =
+        useWatch({ control: form.control, name: "allSites" }) ?? true;
     const wSiteIds =
         useWatch({ control: form.control, name: "siteIds" }) ?? [];
+    const wAllHealthChecks =
+        useWatch({ control: form.control, name: "allHealthChecks" }) ?? true;
     const wHealthCheckIds =
         useWatch({ control: form.control, name: "healthCheckIds" }) ?? [];
+    const wAllResources =
+        useWatch({ control: form.control, name: "allResources" }) ?? true;
     const wResourceIds =
         useWatch({ control: form.control, name: "resourceIds" }) ?? [];
     const wTrigger =
@@ -363,8 +369,11 @@ export default function AlertRuleGraphEditor({
             name: wName,
             enabled: wEnabled,
             sourceType: wSourceType,
+            allSites: wAllSites,
             siteIds: wSiteIds,
+            allHealthChecks: wAllHealthChecks,
             healthCheckIds: wHealthCheckIds,
+            allResources: wAllResources,
             resourceIds: wResourceIds,
             trigger: wTrigger,
             actions: wActions
@@ -373,8 +382,11 @@ export default function AlertRuleGraphEditor({
             wName,
             wEnabled,
             wSourceType,
+            wAllSites,
             wSiteIds,
+            wAllHealthChecks,
             wHealthCheckIds,
+            wAllResources,
             wResourceIds,
             wTrigger,
             wActions
