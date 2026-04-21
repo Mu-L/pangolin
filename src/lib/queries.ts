@@ -259,18 +259,24 @@ export const orgQueries = {
     alertRules: ({
         orgId,
         limit = 20,
-        offset = 0
+        offset = 0,
+        query
     }: {
         orgId: string;
         limit?: number;
         offset?: number;
+        query?: string;
     }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "ALERT_RULES", { limit, offset }] as const,
+            queryKey: ["ORG", orgId, "ALERT_RULES", { limit, offset, query }] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                sp.set("limit", String(limit));
+                sp.set("offset", String(offset));
+                if (query) sp.set("query", query);
                 const res = await meta!.api.get<
                     AxiosResponse<ListAlertRulesResponse>
-                >(`/org/${orgId}/alert-rules?limit=${limit}&offset=${offset}`, { signal });
+                >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
                 return {
                     alertRules: res.data.data.alertRules,
                     pagination: res.data.data.pagination
@@ -303,15 +309,21 @@ export const orgQueries = {
     standaloneHealthChecks: ({
         orgId,
         limit = 20,
-        offset = 0
+        offset = 0,
+        query
     }: {
         orgId: string;
         limit?: number;
         offset?: number;
+        query?: string;
     }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS", { limit, offset }] as const,
+            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS", { limit, offset, query }] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                sp.set("limit", String(limit));
+                sp.set("offset", String(offset));
+                if (query) sp.set("query", query);
                 const res = await meta!.api.get<
                     AxiosResponse<{
                         healthChecks: {
@@ -344,7 +356,7 @@ export const orgQueries = {
                             offset: number;
                         };
                     }>
-                >(`/org/${orgId}/health-checks?limit=${limit}&offset=${offset}`, { signal });
+                >(`/org/${orgId}/health-checks?${sp.toString()}`, { signal });
                 return {
                     healthChecks: res.data.data.healthChecks,
                     pagination: res.data.data.pagination

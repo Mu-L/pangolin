@@ -17,7 +17,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, like, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -39,7 +39,8 @@ const querySchema = z.object({
         .optional()
         .default("0")
         .transform(Number)
-        .pipe(z.int().nonnegative())
+        .pipe(z.int().nonnegative()),
+    query: z.string().optional()
 });
 
 registry.registerPath({
@@ -80,10 +81,16 @@ export async function listHealthChecks(
                 )
             );
         }
-        const { limit, offset } = parsedQuery.data;
+        const { limit, offset, query } = parsedQuery.data;
 
         const whereClause = and(
             eq(targetHealthCheck.orgId, orgId),
+            query
+                ? like(
+                      sql`LOWER(${targetHealthCheck.name})`,
+                      `%${query.toLowerCase()}%`
+                  )
+                : undefined
         );
 
         const list = await db

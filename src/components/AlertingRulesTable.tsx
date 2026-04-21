@@ -13,6 +13,7 @@ import {
 import { Switch } from "@app/components/ui/switch";
 import { toast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
@@ -26,6 +27,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import type { DataTablePaginationState } from "@app/components/ui/data-table";
+import { useDebouncedCallback } from "use-debounce";
 
 type AlertingRulesTableProps = {
     orgId: string;
@@ -105,28 +107,27 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
 
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
+
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<AlertRuleRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
-    const [pageIndex, setPageIndex] = useState(0);
-    const [pageSize, setPageSize] = useState(() => {
-        if (typeof window === "undefined") return 20;
-        try {
-            const stored = localStorage.getItem("Org-alerting-rules-table-size");
-            if (stored) {
-                const parsed = parseInt(stored, 10);
-                if (parsed > 0 && parsed <= 1000) return parsed;
-            }
-        } catch {}
-        return 20;
-    });
+
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+    const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
+    const pageIndex = page - 1;
+    const query = searchParams.get("query") ?? undefined;
 
     const {
         data,
         isLoading,
         refetch,
         isRefetching
-    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize }));
+    } = useQuery(orgQueries.alertRules({ orgId, limit: pageSize, offset: pageIndex * pageSize, query }));
 
     const rows = data?.alertRules ?? [];
     const total = data?.pagination.total ?? 0;
@@ -135,9 +136,20 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
     const paginationState: DataTablePaginationState = { pageIndex, pageSize, pageCount };
 
     const handlePaginationChange = (newState: PaginationState) => {
-        setPageIndex(newState.pageIndex);
-        setPageSize(newState.pageSize);
+        searchParams.set("page", (newState.pageIndex + 1).toString());
+        searchParams.set("pageSize", newState.pageSize.toString());
+        filter({ searchParams });
     };
+
+    const handleSearchChange = useDebouncedCallback((value: string) => {
+        if (value) {
+            searchParams.set("query", value);
+        } else {
+            searchParams.delete("query");
+        }
+        searchParams.delete("page");
+        filter({ searchParams });
+    }, 300);
 
     const invalidate = () =>
         queryClient.invalidateQueries({ queryKey: ["ORG", orgId, "ALERT_RULES"] });
@@ -308,15 +320,16 @@ export default function AlertingRulesTable({ orgId }: AlertingRulesTableProps) {
             <DataTable
                 columns={columns}
                 data={rows}
-                persistPageSize="Org-alerting-rules-table"
                 title={t("alertingRules")}
                 searchPlaceholder={t("alertingSearchRules")}
-                searchColumn="name"
+                onSearch={handleSearchChange}
+                searchQuery={query}
+                manualFiltering
                 onAdd={() => {
                     router.push(`/${orgId}/settings/alerting/create`);
                 }}
                 onRefresh={() => refetch()}
-                isRefreshing={isRefetching || isLoading}
+                isRefreshing={isRefetching || isLoading || isFiltering}
                 addButtonText={t("alertingAddRule")}
                 enableColumnVisibility
                 stickyLeftColumn="name"

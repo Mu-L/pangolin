@@ -21,7 +21,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, like, sql } from "drizzle-orm";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -40,6 +40,7 @@ const querySchema = z.strictObject({
         .default("0")
         .transform(Number)
         .pipe(z.number().int().nonnegative()),
+    query: z.string().optional(),
     siteId: z
         .string()
         .optional()
@@ -112,7 +113,7 @@ export async function listAlertRules(
                 )
             );
         }
-        const { limit, offset, siteId, resourceId } = parsedQuery.data;
+        const { limit, offset, query, siteId, resourceId } = parsedQuery.data;
 
         // Resolve siteId filter → matching alertRuleIds
         let siteFilterRuleIds: number[] | null = null;
@@ -160,6 +161,9 @@ export async function listAlertRules(
 
         const whereClause = and(
             eq(alertRules.orgId, orgId),
+            query
+                ? like(sql`LOWER(${alertRules.name})`, `%${query.toLowerCase()}%`)
+                : undefined,
             siteFilterRuleIds !== null
                 ? inArray(alertRules.alertRuleId, siteFilterRuleIds)
                 : undefined,

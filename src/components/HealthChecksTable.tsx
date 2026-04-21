@@ -26,6 +26,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PaginationState } from "@tanstack/react-table";
 import type { DataTablePaginationState } from "@app/components/ui/data-table";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
@@ -74,23 +76,20 @@ export default function HealthChecksTable({
     const isPaid = isPaidUser(tierMatrix.standaloneHealthChecks);
 
     const [credenzaOpen, setCredenzaOpen] = useState(false);
+    const {
+        navigate: filter,
+        isNavigating: isFiltering,
+        searchParams
+    } = useNavigationContext();
+
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<HealthCheckRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
-    const [pageIndex, setPageIndex] = useState(0);
-    const [pageSize, setPageSize] = useState(() => {
-        if (typeof window === "undefined") return 20;
-        try {
-            const stored = localStorage.getItem(
-                "Org-standalone-health-checks-table-size"
-            );
-            if (stored) {
-                const parsed = parseInt(stored, 10);
-                if (parsed > 0 && parsed <= 1000) return parsed;
-            }
-        } catch {}
-        return 20;
-    });
+
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+    const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
+    const pageIndex = page - 1;
+    const query = searchParams.get("query") ?? undefined;
 
     const {
         data,
@@ -101,7 +100,8 @@ export default function HealthChecksTable({
         ...orgQueries.standaloneHealthChecks({
             orgId,
             limit: pageSize,
-            offset: pageIndex * pageSize
+            offset: pageIndex * pageSize,
+            query
         }),
         refetchInterval: 10_000
     });
@@ -117,9 +117,20 @@ export default function HealthChecksTable({
     };
 
     const handlePaginationChange = (newState: PaginationState) => {
-        setPageIndex(newState.pageIndex);
-        setPageSize(newState.pageSize);
+        searchParams.set("page", (newState.pageIndex + 1).toString());
+        searchParams.set("pageSize", newState.pageSize.toString());
+        filter({ searchParams });
     };
+
+    const handleSearchChange = useDebouncedCallback((value: string) => {
+        if (value) {
+            searchParams.set("query", value);
+        } else {
+            searchParams.delete("query");
+        }
+        searchParams.delete("page");
+        filter({ searchParams });
+    }, 300);
 
     const invalidate = () =>
         queryClient.invalidateQueries({
@@ -376,17 +387,18 @@ export default function HealthChecksTable({
             <DataTable
                 columns={columns}
                 data={rows}
-                persistPageSize="Org-standalone-health-checks-table"
                 title={t("standaloneHcTableTitle")}
                 searchPlaceholder={t("standaloneHcSearchPlaceholder")}
-                searchColumn="name"
+                onSearch={handleSearchChange}
+                searchQuery={query}
+                manualFiltering
                 onAdd={() => {
                     setSelected(null);
                     setCredenzaOpen(true);
                 }}
                 addButtonDisabled={!isPaid}
                 onRefresh={() => refetch()}
-                isRefreshing={isRefetching || isLoading}
+                isRefreshing={isRefetching || isLoading || isFiltering}
                 addButtonText={t("standaloneHcAddButton")}
                 enableColumnVisibility
                 stickyLeftColumn="name"
