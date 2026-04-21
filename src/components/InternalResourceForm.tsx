@@ -1066,7 +1066,7 @@ export function InternalResourceForm({
                                                             ]
                                                         )
                                                     }
-                                                    enableAutocomplete={true}
+                                                    enableAutocomplete
                                                     autocompleteOptions={
                                                         allRoles
                                                     }

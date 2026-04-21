@@ -3,18 +3,9 @@ import type { ListClientsResponse } from "@server/routers/client";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "./ui/command";
-import { cn } from "@app/lib/cn";
 
-import { CheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { MultiSelectTags } from "./multi-select-tags";
 
 export type SelectedMachine = Pick<
     ListClientsResponse["clients"][number],
@@ -57,52 +48,71 @@ export function MachinesSelector({
         return allMachines;
     }, [machines, selectedMachines, debouncedValue]);
 
-    const selectedMachinesIds = new Set(
-        selectedMachines.map((m) => m.clientId)
-    );
+    // const selectedMachinesIds = new Set(
+    //     selectedMachines.map((m) => m.clientId)
+    // );
 
     return (
-        <Command shouldFilter={false}>
-            <CommandInput
-                placeholder={t("machineSearch")}
-                value={machineSearchQuery}
-                onValueChange={setMachineSearchQuery}
-            />
-            <CommandList>
-                <CommandEmpty>{t("machineNotFound")}</CommandEmpty>
-                <CommandGroup>
-                    {machinesShown.map((m) => (
-                        <CommandItem
-                            value={`${m.name}:${m.clientId}`}
-                            key={m.clientId}
-                            onSelect={() => {
-                                let newMachineClients = [];
-                                if (selectedMachinesIds.has(m.clientId)) {
-                                    newMachineClients = selectedMachines.filter(
-                                        (mc) => mc.clientId !== m.clientId
-                                    );
-                                } else {
-                                    newMachineClients = [
-                                        ...selectedMachines,
-                                        m
-                                    ];
-                                }
-                                onSelectMachines(newMachineClients);
-                            }}
-                        >
-                            <CheckIcon
-                                className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedMachinesIds.has(m.clientId)
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                )}
-                            />
-                            {`${m.name}`}
-                        </CommandItem>
-                    ))}
-                </CommandGroup>
-            </CommandList>
-        </Command>
+        <MultiSelectTags
+            emptyPlaceholder={t("machineNotFound")}
+            searchPlaceholder={t("machineSearch")}
+            value={selectedMachines.map((m) => ({
+                ...m,
+                text: m.name,
+                id: m.clientId.toString()
+            }))}
+            onChange={(values) => {
+                onSelectMachines(values);
+            }}
+            options={machinesShown.map((m) => ({
+                ...m,
+                id: m.clientId.toString(),
+                text: m.name
+            }))}
+            onSearch={setMachineSearchQuery}
+            searchQuery={machineSearchQuery}
+        />
+        // <Command shouldFilter={false}>
+        //     <CommandInput
+        //         placeholder={t("machineSearch")}
+        //         value={machineSearchQuery}
+        //         onValueChange={setMachineSearchQuery}
+        //     />
+        //     <CommandList>
+        //         <CommandEmpty>{t("machineNotFound")}</CommandEmpty>
+        //         <CommandGroup>
+        //             {machinesShown.map((m) => (
+        //                 <CommandItem
+        //                     value={`${m.name}:${m.clientId}`}
+        //                     key={m.clientId}
+        //                     onSelect={() => {
+        //                         let newMachineClients = [];
+        //                         if (selectedMachinesIds.has(m.clientId)) {
+        //                             newMachineClients = selectedMachines.filter(
+        //                                 (mc) => mc.clientId !== m.clientId
+        //                             );
+        //                         } else {
+        //                             newMachineClients = [
+        //                                 ...selectedMachines,
+        //                                 m
+        //                             ];
+        //                         }
+        //                         onSelectMachines(newMachineClients);
+        //                     }}
+        //                 >
+        //                     <CheckIcon
+        //                         className={cn(
+        //                             "mr-2 h-4 w-4",
+        //                             selectedMachinesIds.has(m.clientId)
+        //                                 ? "opacity-100"
+        //                                 : "opacity-0"
+        //                         )}
+        //                     />
+        //                     {`${m.name}`}
+        //                 </CommandItem>
+        //             ))}
+        //         </CommandGroup>
+        //     </CommandList>
+        // </Command>
     );
 }
