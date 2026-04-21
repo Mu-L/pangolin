@@ -21,7 +21,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, inArray, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -50,7 +50,10 @@ const querySchema = z.strictObject({
         .string()
         .optional()
         .transform((v) => (v !== undefined ? Number(v) : undefined))
-        .pipe(z.number().int().positive().optional())
+        .pipe(z.number().int().positive().optional()),
+    sort_by: z.enum(["name", "last_triggered_at"]).optional(),
+    order: z.enum(["asc", "desc"]).optional().default("asc"),
+    enabled: z.enum(["true", "false"]).optional()
 });
 
 export type ListAlertRulesResponse = {
@@ -113,7 +116,16 @@ export async function listAlertRules(
                 )
             );
         }
-        const { limit, offset, query, siteId, resourceId } = parsedQuery.data;
+        const {
+            limit,
+            offset,
+            query,
+            siteId,
+            resourceId,
+            sort_by,
+            order,
+            enabled: enabledFilter
+        } = parsedQuery.data;
 
         // Resolve siteId filter → matching alertRuleIds
         let siteFilterRuleIds: number[] | null = null;
@@ -169,14 +181,28 @@ export async function listAlertRules(
                 : undefined,
             resourceFilterRuleIds !== null
                 ? inArray(alertRules.alertRuleId, resourceFilterRuleIds)
+                : undefined,
+            enabledFilter !== undefined
+                ? eq(alertRules.enabled, enabledFilter === "true")
                 : undefined
         );
+
+        const orderByClause =
+            sort_by === "name"
+                ? order === "asc"
+                    ? asc(alertRules.name)
+                    : desc(alertRules.name)
+                : sort_by === "last_triggered_at"
+                  ? order === "asc"
+                      ? sql`${alertRules.lastTriggeredAt} ASC NULLS FIRST`
+                      : sql`${alertRules.lastTriggeredAt} DESC NULLS LAST`
+                  : sql`${alertRules.createdAt} DESC`;
 
         const list = await db
             .select()
             .from(alertRules)
             .where(whereClause)
-            .orderBy(sql`${alertRules.createdAt} DESC`)
+            .orderBy(orderByClause)
             .limit(limit)
             .offset(offset);
 

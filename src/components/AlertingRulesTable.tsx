@@ -17,17 +17,30 @@ import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
+import {
+    ArrowDown01Icon,
+    ArrowUp10Icon,
+    ChevronsUpDownIcon,
+    MoreHorizontal
+} from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import z from "zod";
+import { ColumnFilterButton } from "./ColumnFilterButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import type { DataTablePaginationState } from "@app/components/ui/data-table";
 import { useDebouncedCallback } from "use-debounce";
+
+const alertRulesEnabledQuerySchema = z
+    .enum(["true", "false"])
+    .optional()
+    .catch(undefined);
 
 type AlertingRulesTableProps = {
     orgId: string;
@@ -126,6 +139,19 @@ export default function AlertingRulesTable({
     const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
     const pageIndex = page - 1;
     const query = searchParams.get("query") ?? undefined;
+    const sortBy = searchParams.get("sort_by") ?? undefined;
+    const order = searchParams.get("order") ?? undefined;
+    const enabledForQuery = alertRulesEnabledQuerySchema.parse(
+        searchParams.get("enabled") ?? undefined
+    );
+
+    const enabledFilterOptions = useMemo(
+        () => [
+            { value: "true", label: t("enabled") },
+            { value: "false", label: t("disabled") }
+        ],
+        [t]
+    );
 
     const { data, isLoading, refetch, isRefetching } = useQuery(
         orgQueries.alertRules({
@@ -134,7 +160,10 @@ export default function AlertingRulesTable({
             offset: pageIndex * pageSize,
             query,
             siteId,
-            resourceId
+            resourceId,
+            sortBy,
+            order,
+            enabled: enabledForQuery
         })
     );
 
@@ -163,6 +192,22 @@ export default function AlertingRulesTable({
         searchParams.delete("page");
         filter({ searchParams });
     }, 300);
+
+    function toggleSort(column: string) {
+        filter({
+            searchParams: getNextSortOrder(column, searchParams)
+        });
+    }
+
+    function handleEnabledFilter(value: string | undefined | null) {
+        const sp = new URLSearchParams(searchParams);
+        sp.delete("enabled");
+        sp.delete("page");
+        if (value) {
+            sp.set("enabled", value);
+        }
+        filter({ searchParams: sp });
+    }
 
     const invalidate = () =>
         queryClient.invalidateQueries({
@@ -212,17 +257,25 @@ export default function AlertingRulesTable({
             accessorKey: "name",
             enableHiding: false,
             friendlyName: t("name"),
-            header: ({ column }) => (
-                <Button
-                    variant="ghost"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === "asc")
-                    }
-                >
-                    {t("name")}
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            ),
+            header: () => {
+                const nameOrder = getSortDirection("name", searchParams);
+                const Icon =
+                    nameOrder === "asc"
+                        ? ArrowDown01Icon
+                        : nameOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
+                return (
+                    <Button
+                        variant="ghost"
+                        className="p-3"
+                        onClick={() => toggleSort("name")}
+                    >
+                        {t("name")}
+                        <Icon className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
             cell: ({ row }) => <span>{row.original.name}</span>
         },
         {
@@ -244,7 +297,28 @@ export default function AlertingRulesTable({
         {
             accessorKey: "lastTriggeredAt",
             friendlyName: t("lastTriggeredAt"),
-            header: () => <span className="p-3">{t("lastTriggeredAt")}</span>,
+            header: () => {
+                const triggerOrder = getSortDirection(
+                    "last_triggered_at",
+                    searchParams
+                );
+                const Icon =
+                    triggerOrder === "asc"
+                        ? ArrowDown01Icon
+                        : triggerOrder === "desc"
+                          ? ArrowUp10Icon
+                          : ChevronsUpDownIcon;
+                return (
+                    <Button
+                        variant="ghost"
+                        className="p-3"
+                        onClick={() => toggleSort("last_triggered_at")}
+                    >
+                        {t("lastTriggeredAt")}
+                        <Icon className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
             cell: ({ row }) => (
                 <span>
                     {row.original.lastTriggeredAt
@@ -257,7 +331,15 @@ export default function AlertingRulesTable({
             accessorKey: "enabled",
             friendlyName: t("alertingColumnEnabled"),
             header: () => (
-                <span className="p-3">{t("alertingColumnEnabled")}</span>
+                <ColumnFilterButton
+                    options={enabledFilterOptions}
+                    selectedValue={enabledForQuery}
+                    onValueChange={handleEnabledFilter}
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("alertingColumnEnabled")}
+                    className="p-3"
+                />
             ),
             cell: ({ row }) => {
                 const r = row.original;
@@ -342,6 +424,7 @@ export default function AlertingRulesTable({
                 onSearch={handleSearchChange}
                 searchQuery={query}
                 manualFiltering
+                manualSorting
                 onAdd={() => {
                     router.push(`/${orgId}/settings/alerting/create`);
                 }}

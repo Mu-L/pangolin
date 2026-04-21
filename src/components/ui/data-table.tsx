@@ -199,6 +199,8 @@ type DataTableProps<TData, TValue> = {
     columnVisibility?: Record<string, boolean>;
     enableColumnVisibility?: boolean;
     manualFiltering?: boolean;
+    /** When true, row order is controlled externally (e.g. server-side sorting). */
+    manualSorting?: boolean;
     onSearch?: (input: string) => void;
     searchQuery?: string;
     pagination?: DataTablePaginationState;
@@ -232,6 +234,7 @@ export function DataTable<TData, TValue>({
     enableColumnVisibility = false,
     persistColumnVisibility = false,
     manualFiltering = false,
+    manualSorting = false,
     pagination: paginationState,
     stickyLeftColumn,
     onSearch,
@@ -353,6 +356,7 @@ export function DataTable<TData, TValue>({
               }
             : setPagination,
         manualFiltering,
+        manualSorting,
         manualPagination: Boolean(paginationState),
         pageCount: paginationState?.pageCount,
         initialState: {

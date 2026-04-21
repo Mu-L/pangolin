@@ -1399,7 +1399,7 @@
     "alertingSpecificHealthChecksDescription": "Choose specific health checks to watch",
     "alertingAllResources": "All Resources",
     "alertingAllResourcesDescription": "Alert fires for any resource",
-    "alertingSpecificResources": "Specific resources",
+    "alertingSpecificResources": "Specific Resources",
     "alertingSpecificResourcesDescription": "Choose specific resources to watch",
     "alertingSelectResources": "Select resources…",
     "alertingResourcesSelected": "{count} resources selected",

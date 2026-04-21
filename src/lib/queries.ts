@@ -262,7 +262,10 @@ export const orgQueries = {
         offset = 0,
         query,
         siteId,
-        resourceId
+        resourceId,
+        sortBy,
+        order,
+        enabled
     }: {
         orgId: string;
         limit?: number;
@@ -270,9 +273,17 @@ export const orgQueries = {
         query?: string;
         siteId?: number;
         resourceId?: number;
+        sortBy?: string;
+        order?: string;
+        enabled?: string;
     }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "ALERT_RULES", { limit, offset, query, siteId, resourceId }] as const,
+            queryKey: [
+                "ORG",
+                orgId,
+                "ALERT_RULES",
+                { limit, offset, query, siteId, resourceId, sortBy, order, enabled }
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams();
                 sp.set("limit", String(limit));
@@ -280,6 +291,11 @@ export const orgQueries = {
                 if (query) sp.set("query", query);
                 if (siteId != null) sp.set("siteId", String(siteId));
                 if (resourceId != null) sp.set("resourceId", String(resourceId));
+                if (sortBy) {
+                    sp.set("sort_by", sortBy);
+                    if (order) sp.set("order", order);
+                }
+                if (enabled) sp.set("enabled", enabled);
                 const res = await meta!.api.get<
                     AxiosResponse<ListAlertRulesResponse>
                 >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
