@@ -93,7 +93,7 @@ export function AddActionPanel({
 
     const EXTERNAL_IDS = EXTERNAL_INTEGRATIONS.map((i) => i.id);
 
-    const [selected, setSelected] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string | null>("notify");
 
     const isPremiumSelected =
         selected !== null && EXTERNAL_IDS.includes(selected as any);

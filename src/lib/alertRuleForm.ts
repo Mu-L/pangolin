@@ -317,14 +317,7 @@ export function defaultFormValues(): AlertRuleFormValues {
         allResources: true,
         resourceIds: [],
         trigger: "site_toggle",
-        actions: [
-            {
-                type: "notify",
-                userTags: [],
-                roleTags: [],
-                emailTags: []
-            }
-        ]
+        actions: []
     };
 }
 
@@ -376,16 +369,6 @@ export function apiResponseToFormValues(
             basicCredentials: cfg?.basicCredentials ?? "",
             customHeaderName: cfg?.customHeaderName ?? "",
             customHeaderValue: cfg?.customHeaderValue ?? ""
-        });
-    }
-
-    // Always ensure at least one action so the form is valid
-    if (actions.length === 0) {
-        actions.push({
-            type: "notify",
-            userTags: [],
-            roleTags: [],
-            emailTags: []
         });
     }
 

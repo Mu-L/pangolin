@@ -1,6 +1,7 @@
 "use client";
 
 import AlertRuleGraphEditor from "@app/components/alert-rule-editor/AlertRuleGraphEditor";
+import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { apiResponseToFormValues } from "@app/lib/alertRuleForm";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -59,9 +60,15 @@ export default function EditAlertRulePage() {
 
     if (formValues === undefined) {
         return (
-            <div className="min-h-[12rem] flex items-center justify-center text-muted-foreground text-sm">
-                {t("loading")}
-            </div>
+            <>
+                <HeaderTitle
+                    title={t("alertingEditRule")}
+                    description={t("alertingRuleCredenzaDescription")}
+                />
+                <div className="min-h-[12rem] flex items-center justify-center text-muted-foreground text-sm">
+                    {t("loading")}
+                </div>
+            </>
         );
     }
 
@@ -70,13 +77,19 @@ export default function EditAlertRulePage() {
     }
 
     return (
-        <AlertRuleGraphEditor
-            key={alertRuleId}
-            orgId={orgId}
-            alertRuleId={alertRuleId}
-            initialValues={formValues}
-            isNew={false}
-            disabled={!isPaid}
-        />
+        <>
+            <HeaderTitle
+                title={t("alertingEditRule")}
+                description={t("alertingRuleCredenzaDescription")}
+            />
+            <AlertRuleGraphEditor
+                key={alertRuleId}
+                orgId={orgId}
+                alertRuleId={alertRuleId}
+                initialValues={formValues}
+                isNew={false}
+                disabled={!isPaid}
+            />
+        </>
     );
 }
