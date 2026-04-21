@@ -34,7 +34,7 @@ import { ChevronLeft, Cog, Flag, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { SwitchInput } from "@app/components/SwitchInput";
@@ -116,7 +116,7 @@ export default function AlertRuleGraphEditor({
     const [isSaving, setIsSaving] = useState(false);
     const schema = useMemo(() => buildFormSchema(t), [t]);
     const form = useForm<AlertRuleFormValues>({
-        resolver: zodResolver(schema),
+        resolver: zodResolver(schema) as Resolver<AlertRuleFormValues>,
         defaultValues: initialValues ?? defaultFormValues()
     });
 

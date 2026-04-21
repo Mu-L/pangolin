@@ -1156,6 +1156,7 @@ export function AlertRuleSourceFields({
                     <FormField
                         control={control}
                         name="allSites"
+                        shouldUnregister={false}
                         render={({ field }) => (
                             <FormItem>
                                 <StrategySelect
@@ -1198,6 +1199,7 @@ export function AlertRuleSourceFields({
                     <FormField
                         control={control}
                         name="allResources"
+                        shouldUnregister={false}
                         render={({ field }) => (
                             <FormItem>
                                 <StrategySelect
@@ -1240,6 +1242,7 @@ export function AlertRuleSourceFields({
                     <FormField
                         control={control}
                         name="allHealthChecks"
+                        shouldUnregister={false}
                         render={({ field }) => (
                             <FormItem>
                                 <StrategySelect

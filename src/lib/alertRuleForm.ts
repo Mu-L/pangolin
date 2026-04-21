@@ -142,12 +142,12 @@ export function buildFormSchema(t: (k: string) => string) {
                 .min(1, { message: t("alertingErrorNameRequired") }),
             enabled: z.boolean(),
             sourceType: z.enum(["site", "health_check", "resource"]),
-            allSites: z.boolean(),
-            siteIds: z.array(z.number()),
-            allHealthChecks: z.boolean(),
-            healthCheckIds: z.array(z.number()),
-            allResources: z.boolean(),
-            resourceIds: z.array(z.number()),
+            allSites: z.boolean().default(true),
+            siteIds: z.array(z.number()).default([]),
+            allHealthChecks: z.boolean().default(true),
+            healthCheckIds: z.array(z.number()).default([]),
+            allResources: z.boolean().default(true),
+            resourceIds: z.array(z.number()).default([]),
             trigger: z.enum([
                 "site_online",
                 "site_offline",
@@ -332,8 +332,8 @@ export function apiResponseToFormValues(
     const sourceType = rule.eventType.startsWith("site_")
         ? "site"
         : rule.eventType.startsWith("resource_")
-        ? "resource"
-        : "health_check";
+          ? "resource"
+          : "health_check";
 
     // Collect notify recipients into a single notify action (if any)
     const userTags = rule.recipients
