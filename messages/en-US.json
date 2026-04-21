@@ -523,7 +523,7 @@
     "userSettings": "User Information",
     "userSettingsDescription": "Enter the details for the new user",
     "inviteEmailSent": "Send invite email to user",
-    "inviteValid": "Valid For",
+    "inviteValid": "Invite Valid For (days)",
     "selectDuration": "Select duration",
     "selectResource": "Select Resource",
     "filterByResource": "Filter By Resource",

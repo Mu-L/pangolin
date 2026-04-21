@@ -467,7 +467,7 @@ export default function Page() {
 
             <div>
                 <SettingsContainer>
-                    {!inviteLink ? (
+                    {!inviteLink && userOptions.length > 1 ? (
                         <SettingsSection>
                             <SettingsSectionHeader>
                                 <SettingsSectionTitle>
@@ -490,7 +490,7 @@ export default function Page() {
                                             genericOidcForm.reset();
                                         }
                                     }}
-                                    cols={2}
+                                    cols={3}
                                 />
                             </SettingsSectionBody>
                         </SettingsSection>
