@@ -378,6 +378,7 @@ export default function ProxyResourcesTable({
         {
             accessorKey: "protocol",
             friendlyName: t("protocol"),
+            enableHiding: true,
             header: () => <span className="p-3">{t("protocol")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
@@ -684,7 +685,7 @@ export default function ProxyResourcesTable({
                 isRefreshing={isRefreshing || isFiltering}
                 isNavigatingToAddPage={isNavigatingToAddPage}
                 enableColumnVisibility
-                columnVisibility={{ niceId: false }}
+                columnVisibility={{ niceId: false, protocol: false }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
             />
