@@ -1,15 +1,23 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, idpOidcConfig } from "@server/db";
-import { idp, roles, userOrgRoles, userOrgs, users } from "@server/db";
+import {
+    idp,
+    idpOrg,
+    roles,
+    userOrgRoles,
+    userOrgs,
+    users
+} from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
-import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, like, or, sql } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import type { PaginatedResponse } from "@server/types/Pagination";
+import { UserType } from "@server/types/UserTypes";
 
 const listUsersParamsSchema = z.strictObject({
     orgId: z.string()
@@ -60,6 +68,41 @@ const listUsersSchema = z.strictObject({
             enum: ["asc", "desc"],
             default: "asc",
             description: "Sort order"
+        }),
+    idp_id: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (val === "internal") {
+                return "internal";
+            }
+            if (typeof val === "string" && /^\d+$/.test(val)) {
+                return parseInt(val, 10);
+            }
+            return undefined;
+        }, z.union([z.literal("internal"), z.number().int().positive()]).optional())
+        .openapi({
+            description:
+                'Filter by identity provider id, or "internal" for internal users'
+        }),
+    role_id: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            const raw = Array.isArray(val) ? val : [val];
+            const nums = raw
+                .map((v) =>
+                    typeof v === "string" ? parseInt(v, 10) : Number(v)
+                )
+                .filter((n) => Number.isInteger(n) && n > 0);
+            const unique = [...new Set(nums)];
+            return unique.length ? unique : undefined;
+        }, z.array(z.number().int().positive()).max(50).optional())
+        .openapi({
+            description:
+                "Filter users who have any of these role ids in the organization (repeat query param)"
         })
 });
 
@@ -125,7 +168,9 @@ export async function listUsers(
                 )
             );
         }
-        const { page, pageSize, sort_by, order, query } = parsedQuery.data;
+        const { page, pageSize, sort_by, order, query, idp_id, role_id } =
+            parsedQuery.data;
+        const roleIds = role_id ?? [];
 
         const parsedParams = listUsersParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -138,6 +183,41 @@ export async function listUsers(
         }
 
         const { orgId } = parsedParams.data;
+
+        if (typeof idp_id === "number") {
+            const idpOk = await db
+                .select({ one: sql`1` })
+                .from(idpOrg)
+                .where(
+                    and(eq(idpOrg.orgId, orgId), eq(idpOrg.idpId, idp_id))
+                )
+                .limit(1);
+            if (idpOk.length === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "idp_id is not linked to this organization"
+                    )
+                );
+            }
+        }
+
+        if (roleIds.length > 0) {
+            const validRoles = await db
+                .select({ roleId: roles.roleId })
+                .from(roles)
+                .where(
+                    and(eq(roles.orgId, orgId), inArray(roles.roleId, roleIds))
+                );
+            if (validRoles.length !== roleIds.length) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "One or more role_id values are not valid for this organization"
+                    )
+                );
+            }
+        }
 
         const conditions = [and(eq(userOrgs.orgId, orgId))];
 
@@ -156,6 +236,29 @@ export async function listUsers(
                         sql`LOWER(${users.email})`,
                         "%" + query.toLowerCase() + "%"
                     )
+                )
+            );
+        }
+
+        if (idp_id === "internal") {
+            conditions.push(eq(users.type, UserType.Internal));
+        } else if (typeof idp_id === "number") {
+            conditions.push(eq(users.idpId, idp_id));
+        }
+
+        if (roleIds.length > 0) {
+            conditions.push(
+                exists(
+                    db
+                        .select()
+                        .from(userOrgRoles)
+                        .where(
+                            and(
+                                eq(userOrgRoles.userId, users.userId),
+                                eq(userOrgRoles.orgId, orgId),
+                                inArray(userOrgRoles.roleId, roleIds)
+                            )
+                        )
                 )
             );
         }

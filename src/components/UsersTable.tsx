@@ -2,7 +2,6 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -28,10 +27,16 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import z from "zod";
+import { ColumnFilterButton } from "./ColumnFilterButton";
+import { ColumnMultiFilterButton } from "./ColumnMultiFilterButton";
 import IdpTypeBadge from "./IdpTypeBadge";
-import { ControlledDataTable } from "./ui/controlled-data-table";
+import {
+    ControlledDataTable,
+    type ExtendedColumnDef
+} from "./ui/controlled-data-table";
 import UserRoleBadges from "./UserRoleBadges";
 
 export type UserRow = {
@@ -49,16 +54,22 @@ export type UserRow = {
     isOwner: boolean;
 };
 
+type FilterOption = { value: string; label: string };
+
 type UsersTableProps = {
     users: UserRow[];
     pagination: PaginationState;
     rowCount: number;
+    idpFilterOptions: FilterOption[];
+    roleFilterOptions: FilterOption[];
 };
 
 export default function UsersTable({
     users,
     pagination,
-    rowCount
+    rowCount,
+    idpFilterOptions,
+    roleFilterOptions
 }: UsersTableProps) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
@@ -72,8 +83,47 @@ export default function UsersTable({
     const {
         navigate: filter,
         isNavigating: isFiltering,
-        searchParams
+        searchParams,
+        pathname
     } = useNavigationContext();
+
+    const idpIdParamSchema = z
+        .union([z.literal("internal"), z.string().regex(/^\d+$/)])
+        .optional()
+        .catch(undefined);
+
+    const roleIdsFromSearchParams = useMemo(() => {
+        const sp = new URLSearchParams(searchParams);
+        return [
+            ...new Set(sp.getAll("role_id").filter((id) => /^\d+$/.test(id)))
+        ];
+    }, [searchParams.toString()]);
+
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null
+    ) {
+        const sp = new URLSearchParams(searchParams);
+        sp.delete(column);
+        sp.delete("page");
+
+        if (value) {
+            sp.set(column, value);
+        }
+        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+    }
+
+    function handleRoleIdsChange(values: string[]) {
+        const sp = new URLSearchParams(searchParams);
+        sp.delete("role_id");
+        sp.delete("page");
+        for (const id of values) {
+            if (/^\d+$/.test(id)) {
+                sp.append("role_id", id);
+            }
+        }
+        startTransition(() => router.push(`${pathname}?${sp.toString()}`));
+    }
 
     const refreshData = async () => {
         startTransition(async () => {
@@ -118,8 +168,22 @@ export default function UsersTable({
         {
             accessorKey: "idpName",
             friendlyName: t("identityProvider"),
-            header: ({ column }) => {
-                return <span className="px-3">{t("identityProvider")}</span>;
+            header: () => {
+                return (
+                    <ColumnFilterButton
+                        options={idpFilterOptions}
+                        selectedValue={idpIdParamSchema.parse(
+                            searchParams.get("idp_id") ?? undefined
+                        )}
+                        onValueChange={(value) =>
+                            handleFilterChange("idp_id", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("identityProvider")}
+                        className="p-3"
+                    />
+                );
             },
             cell: ({ row }) => {
                 const userRow = row.original;
@@ -136,8 +200,18 @@ export default function UsersTable({
             id: "role",
             accessorFn: (row) => row.roleLabels.join(", "),
             friendlyName: t("role"),
-            header: ({ column }) => {
-                return <span className="px-3">{t("role")}</span>;
+            header: () => {
+                return (
+                    <ColumnMultiFilterButton
+                        options={roleFilterOptions}
+                        selectedValues={roleIdsFromSearchParams}
+                        onSelectedValuesChange={handleRoleIdsChange}
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("role")}
+                        className="p-3"
+                    />
+                );
             },
             cell: ({ row }) => {
                 return <UserRoleBadges roleLabels={row.original.roleLabels} />;

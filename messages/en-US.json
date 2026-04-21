@@ -270,6 +270,8 @@
     "accessUserManage": "Manage User",
     "accessUsersDescription": "Invite and manage users with access to this organization",
     "accessUsersSearch": "Search users...",
+    "accessUsersRoleFilterCount": "{count, plural, one {# role} other {# roles}}",
+    "accessUsersRoleFilterClear": "Clear role filters",
     "accessUserCreate": "Create User",
     "accessUserRemove": "Remove User",
     "username": "Username",

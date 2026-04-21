@@ -1,8 +1,9 @@
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import type { ListOrgIdpsResponse } from "@server/routers/orgIdp/types";
+import type { ListRolesResponse } from "@server/routers/role/listRoles";
 import { ListUsersResponse } from "@server/routers/user";
-import { AxiosResponse } from "axios";
 import UsersTable, { UserRow } from "@app/components/UsersTable";
 import { GetOrgResponse } from "@server/routers/org";
 import { cache } from "react";
@@ -29,7 +30,6 @@ export default async function UsersPage(props: UsersPageProps) {
     const searchParams = new URLSearchParams(await props.searchParams);
 
     const user = await verifySession();
-    const t = await getTranslations();
 
     let users: ListUsersResponse["users"] = [];
     let pagination: ListUsersResponse["pagination"] = {
@@ -39,23 +39,54 @@ export default async function UsersPage(props: UsersPageProps) {
     };
     let hasInvitations = false;
 
-    const res = await internal
-        .get<
-            AxiosResponse<ListUsersResponse>
-        >(`/org/${params.orgId}/users?${searchParams.toString()}`, await authCookieHeader())
-        .catch((e) => {});
+    const cookieHeader = await authCookieHeader();
 
-    if (res && res.status === 200) {
-        users = res.data.data.users;
-        pagination = res.data.data.pagination;
+    const [usersRes, idpsRes, rolesRes] = await Promise.all([
+        internal
+            .get(
+                `/org/${params.orgId}/users?${searchParams.toString()}`,
+                cookieHeader
+            )
+            .catch(() => {}),
+        internal
+            .get(`/org/${params.orgId}/idp?limit=500&offset=0`, cookieHeader)
+            .catch(() => {}),
+        internal
+            .get(`/org/${params.orgId}/roles?pageSize=500&page=1`, cookieHeader)
+            .catch(() => {})
+    ]);
+
+    if (usersRes && usersRes.status === 200) {
+        const list = usersRes.data.data as ListUsersResponse;
+        users = list.users;
+        pagination = list.pagination;
     }
 
+    const t = await getTranslations();
+
+    const orgIdps =
+        idpsRes && idpsRes.status === 200 ? (idpsRes.data.data.idps ?? []) : [];
+    const idpFilterOptions = [
+        { value: "internal", label: t("idpNameInternal") },
+        ...orgIdps.map((i: ListOrgIdpsResponse["idps"][number]) => ({
+            value: String(i.idpId),
+            label: i.name
+        }))
+    ];
+
+    const orgRoles =
+        rolesRes && rolesRes.status === 200
+            ? (rolesRes.data.data.roles ?? [])
+            : [];
+    const roleFilterOptions = orgRoles.map(
+        (r: ListRolesResponse["roles"][number]) => ({
+            value: String(r.roleId),
+            label: r.name
+        })
+    );
+
     const invitationsRes = await internal
-        .get<
-            AxiosResponse<{
-                pagination: { total: number };
-            }>
-        >(
+        .get(
             `/org/${params.orgId}/invitations?limit=1&offset=0`,
             await authCookieHeader()
         )
@@ -68,9 +99,7 @@ export default async function UsersPage(props: UsersPageProps) {
     let org: GetOrgResponse | null = null;
     const getOrg = cache(async () =>
         internal
-            .get<
-                AxiosResponse<GetOrgResponse>
-            >(`/org/${params.orgId}`, await authCookieHeader())
+            .get(`/org/${params.orgId}`, await authCookieHeader())
             .catch((e) => {
                 console.error(e);
             })
@@ -124,6 +153,8 @@ export default async function UsersPage(props: UsersPageProps) {
                             pageIndex: pagination.page - 1,
                             pageSize: pagination.pageSize
                         }}
+                        idpFilterOptions={idpFilterOptions}
+                        roleFilterOptions={roleFilterOptions}
                     />
                 </OrgProvider>
             </UserProvider>
