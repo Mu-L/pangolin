@@ -298,7 +298,7 @@ export function defaultFormValues(): AlertRuleFormValues {
         siteIds: [],
         healthCheckIds: [],
         resourceIds: [],
-        trigger: "site_offline",
+        trigger: "site_toggle",
         actions: [
             {
                 type: "notify",

@@ -73,13 +73,13 @@ function buildSubject(context: AlertContext): string {
         case "site_offline":
             return "[Alert] Site Offline";
         case "site_toggle":
-            return "[Alert] Site Toggled";
+            return "[Alert] Site Status Changed";
         case "health_check_healthy":
             return "[Alert] Health Check Recovered";
         case "health_check_unhealthy":
             return "[Alert] Health Check Failing";
         case "health_check_toggle":
-            return "[Alert] Health Check Toggled";
+            return "[Alert] Health Check Status Changed";
         case "resource_healthy":
             return "[Alert] Resource Healthy";
         case "resource_unhealthy":

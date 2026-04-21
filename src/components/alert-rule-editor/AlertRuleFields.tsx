@@ -978,7 +978,7 @@ export function AlertRuleSourceFields({
                                         curTrigger !== "site_offline" &&
                                         curTrigger !== "site_toggle"
                                     ) {
-                                        setValue("trigger", "site_offline", {
+                                        setValue("trigger", "site_toggle", {
                                             shouldValidate: true
                                         });
                                     }
@@ -990,7 +990,7 @@ export function AlertRuleSourceFields({
                                     ) {
                                         setValue(
                                             "trigger",
-                                            "resource_unhealthy",
+                                            "resource_toggle",
                                             { shouldValidate: true }
                                         );
                                     }
@@ -1001,7 +1001,7 @@ export function AlertRuleSourceFields({
                                 ) {
                                     setValue(
                                         "trigger",
-                                        "health_check_unhealthy",
+                                        "health_check_toggle",
                                         { shouldValidate: true }
                                     );
                                 }
@@ -1110,38 +1110,38 @@ export function AlertRuleTriggerFields({
                         <SelectContent>
                             {sourceType === "site" ? (
                                 <>
+                                    <SelectItem value="site_toggle">
+                                        {t("alertingTriggerSiteToggle")}
+                                    </SelectItem>
                                     <SelectItem value="site_online">
                                         {t("alertingTriggerSiteOnline")}
                                     </SelectItem>
                                     <SelectItem value="site_offline">
                                         {t("alertingTriggerSiteOffline")}
                                     </SelectItem>
-                                    <SelectItem value="site_toggle">
-                                        {t("alertingTriggerSiteToggle")}
-                                    </SelectItem>
                                 </>
                             ) : sourceType === "resource" ? (
                                 <>
+                                    <SelectItem value="resource_toggle">
+                                        {t("alertingTriggerResourceToggle")}
+                                    </SelectItem>
                                     <SelectItem value="resource_healthy">
                                         {t("alertingTriggerResourceHealthy")}
                                     </SelectItem>
                                     <SelectItem value="resource_unhealthy">
                                         {t("alertingTriggerResourceUnhealthy")}
                                     </SelectItem>
-                                    <SelectItem value="resource_toggle">
-                                        {t("alertingTriggerResourceToggle")}
-                                    </SelectItem>
                                 </>
                             ) : (
                                 <>
+                                    <SelectItem value="health_check_toggle">
+                                        {t("alertingTriggerHcToggle")}
+                                    </SelectItem>
                                     <SelectItem value="health_check_healthy">
                                         {t("alertingTriggerHcHealthy")}
                                     </SelectItem>
                                     <SelectItem value="health_check_unhealthy">
                                         {t("alertingTriggerHcUnhealthy")}
-                                    </SelectItem>
-                                    <SelectItem value="health_check_toggle">
-                                        {t("alertingTriggerHcToggle")}
                                     </SelectItem>
                                 </>
                             )}

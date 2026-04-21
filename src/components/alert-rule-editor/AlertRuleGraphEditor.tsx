@@ -354,7 +354,7 @@ export default function AlertRuleGraphEditor({
         useWatch({ control: form.control, name: "resourceIds" }) ?? [];
     const wTrigger =
         useWatch({ control: form.control, name: "trigger" }) ??
-        "site_offline";
+        "site_toggle";
     const wActions =
         useWatch({ control: form.control, name: "actions" }) ?? [];
 
