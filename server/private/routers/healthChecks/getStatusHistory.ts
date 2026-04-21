@@ -43,7 +43,7 @@ export async function getHealthCheckStatusHistory(
         }
 
         const entityType = "healthCheck";
-        const entityId = parsedParams.data.healthCheckId
+        const entityId = parsedParams.data.healthCheckId;
         const { days } = parsedQuery.data;
 
         const nowSec = Math.floor(Date.now() / 1000);

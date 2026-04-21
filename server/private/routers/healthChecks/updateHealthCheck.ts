@@ -34,6 +34,7 @@ const paramsSchema = z
 
 const bodySchema = z.strictObject({
     name: z.string().nonempty().optional(),
+    siteId: z.number().int().positive().optional(),
     hcEnabled: z.boolean().optional(),
     hcMode: z.string().optional(),
     hcHostname: z.string().optional(),
@@ -55,6 +56,7 @@ const bodySchema = z.strictObject({
 export type UpdateHealthCheckResponse = {
     targetHealthCheckId: number;
     name: string | null;
+    siteId: number | null;
     hcEnabled: boolean;
     hcHealth: string | null;
     hcMode: string | null;
@@ -145,6 +147,7 @@ export async function updateHealthCheck(
 
         const {
             name,
+            siteId,
             hcEnabled,
             hcMode,
             hcHostname,
@@ -166,6 +169,7 @@ export async function updateHealthCheck(
         const updateData: Record<string, unknown> = {};
 
         if (name !== undefined) updateData.name = name;
+        if (siteId !== undefined) updateData.siteId = siteId;
         if (hcEnabled !== undefined) updateData.hcEnabled = hcEnabled;
         if (hcMode !== undefined) updateData.hcMode = hcMode;
         if (hcHostname !== undefined) updateData.hcHostname = hcHostname;
@@ -206,6 +210,7 @@ export async function updateHealthCheck(
         return response<UpdateHealthCheckResponse>(res, {
             data: {
                 targetHealthCheckId: updated.targetHealthCheckId,
+                siteId: updated.siteId ?? null,
                 name: updated.name ?? null,
                 hcEnabled: updated.hcEnabled,
                 hcHealth: updated.hcHealth ?? null,

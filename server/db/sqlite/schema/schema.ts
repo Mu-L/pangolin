@@ -217,6 +217,9 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
+    siteId: integer("siteId").references(() => sites.siteId, {
+        onDelete: "cascade"
+    }).notNull(),
     name: text("name"),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()

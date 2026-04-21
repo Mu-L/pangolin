@@ -27,6 +27,7 @@ const paramsSchema = z.strictObject({
 
 const bodySchema = z.strictObject({
     name: z.string().nonempty(),
+    siteId: z.number().int().positive(),
     hcEnabled: z.boolean().default(false),
     hcMode: z.string().default("http"),
     hcHostname: z.string().optional(),
@@ -97,6 +98,7 @@ export async function createHealthCheck(
 
         const {
             name,
+            siteId,
             hcEnabled,
             hcMode,
             hcHostname,
@@ -120,6 +122,7 @@ export async function createHealthCheck(
             .values({
                 targetId: null,
                 orgId,
+                siteId,
                 name,
                 hcEnabled,
                 hcMode,
