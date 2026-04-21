@@ -21,6 +21,7 @@ import {
     exitNodes,
     sessions,
     clients,
+    resources,
     siteResources,
     targetHealthCheck,
     sites
@@ -479,6 +480,9 @@ export const alertRules = pgTable("alertRules", {
             | "health_check_healthy"
             | "health_check_unhealthy"
             | "health_check_toggle"
+            | "resource_healthy"
+            | "resource_unhealthy"
+            | "resource_toggle"
         >()
         .notNull(),
     // Nullable depending on eventType
@@ -507,6 +511,15 @@ export const alertHealthChecks = pgTable("alertHealthChecks", {
         .references(() => targetHealthCheck.targetHealthCheckId, {
             onDelete: "cascade"
         })
+});
+
+export const alertResources = pgTable("alertResources", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
 // Separating channels by type avoids the mixed-shape problem entirely
@@ -584,3 +597,4 @@ export type EventStreamingDestination = InferSelectModel<
 export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
+export type AlertResources = InferSelectModel<typeof alertResources>;

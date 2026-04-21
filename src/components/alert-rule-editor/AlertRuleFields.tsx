@@ -275,6 +275,93 @@ function HealthCheckMultiSelect({
     );
 }
 
+function ResourceMultiSelect({
+    orgId,
+    value,
+    onChange
+}: {
+    orgId: string;
+    value: number[];
+    onChange: (v: number[]) => void;
+}) {
+    const t = useTranslations();
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
+    const [debounced] = useDebounce(q, 150);
+
+    const { data: resources = [] } = useQuery(
+        orgQueries.resources({ orgId, query: debounced, perPage: 10 })
+    );
+
+    const shown = useMemo(() => {
+        return resources;
+    }, [resources]);
+
+    const toggle = (id: number) => {
+        if (value.includes(id)) {
+            onChange(value.filter((x) => x !== id));
+        } else {
+            onChange([...value, id]);
+        }
+    };
+
+    const summary =
+        value.length === 0
+            ? t("alertingSelectResources")
+            : t("alertingResourcesSelected", { count: value.length });
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                >
+                    <span className="truncate">{summary}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+            >
+                <Command shouldFilter={false}>
+                    <CommandInput
+                        placeholder={t("alertingSelectResources")}
+                        value={q}
+                        onValueChange={setQ}
+                    />
+                    <CommandList>
+                        <CommandEmpty>
+                            {t("alertingResourcesEmpty")}
+                        </CommandEmpty>
+                        <CommandGroup>
+                            {shown.map((r) => (
+                                <CommandItem
+                                    key={r.resourceId}
+                                    value={`${r.resourceId}:${r.name}`}
+                                    onSelect={() => toggle(r.resourceId)}
+                                    className="cursor-pointer"
+                                >
+                                    <Checkbox
+                                        checked={value.includes(r.resourceId)}
+                                        className="mr-2 pointer-events-none shrink-0"
+                                        aria-hidden
+                                        tabIndex={-1}
+                                    />
+                                    <span className="truncate">{r.name}</span>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export function ActionBlock({
     orgId,
     index,
@@ -895,6 +982,18 @@ export function AlertRuleSourceFields({
                                             shouldValidate: true
                                         });
                                     }
+                                } else if (next === "resource") {
+                                    if (
+                                        curTrigger !== "resource_healthy" &&
+                                        curTrigger !== "resource_unhealthy" &&
+                                        curTrigger !== "resource_toggle"
+                                    ) {
+                                        setValue(
+                                            "trigger",
+                                            "resource_unhealthy",
+                                            { shouldValidate: true }
+                                        );
+                                    }
                                 } else if (
                                     curTrigger !== "health_check_healthy" &&
                                     curTrigger !== "health_check_unhealthy" &&
@@ -920,6 +1019,9 @@ export function AlertRuleSourceFields({
                                 <SelectItem value="health_check">
                                     {t("alertingSourceHealthCheck")}
                                 </SelectItem>
+                                <SelectItem value="resource">
+                                    {t("alertingSourceResource")}
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -934,6 +1036,22 @@ export function AlertRuleSourceFields({
                         <FormItem>
                             <FormLabel>{t("alertingPickSites")}</FormLabel>
                             <SiteMultiSelect
+                                orgId={orgId}
+                                value={field.value}
+                                onChange={field.onChange}
+                            />
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            ) : sourceType === "resource" ? (
+                <FormField
+                    control={control}
+                    name="resourceIds"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t("alertingPickResources")}</FormLabel>
+                            <ResourceMultiSelect
                                 orgId={orgId}
                                 value={field.value}
                                 onChange={field.onChange}
@@ -1000,6 +1118,18 @@ export function AlertRuleTriggerFields({
                                     </SelectItem>
                                     <SelectItem value="site_toggle">
                                         {t("alertingTriggerSiteToggle")}
+                                    </SelectItem>
+                                </>
+                            ) : sourceType === "resource" ? (
+                                <>
+                                    <SelectItem value="resource_healthy">
+                                        {t("alertingTriggerResourceHealthy")}
+                                    </SelectItem>
+                                    <SelectItem value="resource_unhealthy">
+                                        {t("alertingTriggerResourceUnhealthy")}
+                                    </SelectItem>
+                                    <SelectItem value="resource_toggle">
+                                        {t("alertingTriggerResourceToggle")}
                                     </SelectItem>
                                 </>
                             ) : (

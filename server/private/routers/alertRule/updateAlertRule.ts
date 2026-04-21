@@ -18,6 +18,7 @@ import {
     alertRules,
     alertSites,
     alertHealthChecks,
+    alertResources,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -31,7 +32,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { HC_EVENT_TYPES, SITE_EVENT_TYPES } from "./createAlertRule";
+import { HC_EVENT_TYPES, SITE_EVENT_TYPES, RESOURCE_EVENT_TYPES } from "./createAlertRule";
 
 const paramsSchema = z
     .object({
@@ -53,7 +54,8 @@ const bodySchema = z
         eventType: z
             .enum([
                 ...HC_EVENT_TYPES,
-                ...SITE_EVENT_TYPES
+                ...SITE_EVENT_TYPES,
+                ...RESOURCE_EVENT_TYPES
             ])
             .optional(),
         enabled: z.boolean().optional(),
@@ -61,6 +63,7 @@ const bodySchema = z
         // Source join tables - if provided the full set is replaced
         siteIds: z.array(z.number().int().positive()).optional(),
         healthCheckIds: z.array(z.number().int().positive()).optional(),
+        resourceIds: z.array(z.number().int().positive()).optional(),
         // Recipient arrays - if any are provided the full recipient set is replaced
         userIds: z.array(z.string().nonempty()).optional(),
         roleIds: z.array(z.number()).optional(),
@@ -77,6 +80,9 @@ const bodySchema = z
         const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
             val.eventType
         );
+        const isResourceEvent = (RESOURCE_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
 
         if (isSiteEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length > 0) {
             ctx.addIssue({
@@ -91,6 +97,22 @@ const bodySchema = z
                 code: z.ZodIssueCode.custom,
                 message: "siteIds must not be set for health check event types",
                 path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.siteIds !== undefined && val.siteIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "siteIds must not be set for resource event types",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.healthCheckIds !== undefined && val.healthCheckIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "healthCheckIds must not be set for resource event types",
+                path: ["healthCheckIds"]
             });
         }
     });
@@ -168,6 +190,7 @@ export async function updateAlertRule(
             cooldownSeconds,
             siteIds,
             healthCheckIds,
+            resourceIds,
             userIds,
             roleIds,
             emails,
@@ -222,6 +245,22 @@ export async function updateAlertRule(
                     healthCheckIds.map((healthCheckId) => ({
                         alertRuleId,
                         healthCheckId
+                    }))
+                );
+            }
+        }
+
+        // --- Full-replace resource associations if resourceIds was provided ---
+        if (resourceIds !== undefined) {
+            await db
+                .delete(alertResources)
+                .where(eq(alertResources.alertRuleId, alertRuleId));
+
+            if (resourceIds.length > 0) {
+                await db.insert(alertResources).values(
+                    resourceIds.map((resourceId) => ({
+                        alertRuleId,
+                        resourceId
                     }))
                 );
             }

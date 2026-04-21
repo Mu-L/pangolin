@@ -82,6 +82,12 @@ function summarizeSource(v: AlertRuleFormValues, t: AlertRuleT) {
         }
         return t("alertingSummarySites", { count: v.siteIds.length });
     }
+    if (v.sourceType === "resource") {
+        if (v.resourceIds.length === 0) {
+            return t("alertingNodeNotConfigured");
+        }
+        return t("alertingSummaryResources", { count: v.resourceIds.length });
+    }
     if (v.healthCheckIds.length === 0) {
         return t("alertingNodeNotConfigured");
     }
@@ -102,6 +108,12 @@ function summarizeTrigger(v: AlertRuleFormValues, t: AlertRuleT) {
             return t("alertingTriggerHcUnhealthy");
         case "health_check_toggle":
             return t("alertingTriggerHcToggle");
+        case "resource_healthy":
+            return t("alertingTriggerResourceHealthy");
+        case "resource_unhealthy":
+            return t("alertingTriggerResourceUnhealthy");
+        case "resource_toggle":
+            return t("alertingTriggerResourceToggle");
         default:
             return v.trigger;
     }
@@ -338,6 +350,8 @@ export default function AlertRuleGraphEditor({
         useWatch({ control: form.control, name: "siteIds" }) ?? [];
     const wHealthCheckIds =
         useWatch({ control: form.control, name: "healthCheckIds" }) ?? [];
+    const wResourceIds =
+        useWatch({ control: form.control, name: "resourceIds" }) ?? [];
     const wTrigger =
         useWatch({ control: form.control, name: "trigger" }) ??
         "site_offline";
@@ -351,6 +365,7 @@ export default function AlertRuleGraphEditor({
             sourceType: wSourceType,
             siteIds: wSiteIds,
             healthCheckIds: wHealthCheckIds,
+            resourceIds: wResourceIds,
             trigger: wTrigger,
             actions: wActions
         }),
@@ -360,6 +375,7 @@ export default function AlertRuleGraphEditor({
             wSourceType,
             wSiteIds,
             wHealthCheckIds,
+            wResourceIds,
             wTrigger,
             wActions
         ]

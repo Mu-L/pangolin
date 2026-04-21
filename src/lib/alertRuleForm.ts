@@ -22,7 +22,10 @@ export type AlertTrigger =
     | "site_toggle"
     | "health_check_healthy"
     | "health_check_unhealthy"
-    | "health_check_toggle";
+    | "health_check_toggle"
+    | "resource_healthy"
+    | "resource_unhealthy"
+    | "resource_toggle";
 
 export type AlertRuleFormAction =
     | {
@@ -46,9 +49,10 @@ export type AlertRuleFormAction =
 export type AlertRuleFormValues = {
     name: string;
     enabled: boolean;
-    sourceType: "site" | "health_check";
+    sourceType: "site" | "health_check" | "resource";
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
     trigger: AlertTrigger;
     actions: AlertRuleFormAction[];
 };
@@ -65,10 +69,14 @@ export type AlertRuleApiPayload = {
         | "site_toggle"
         | "health_check_healthy"
         | "health_check_unhealthy"
-        | "health_check_toggle";
+        | "health_check_toggle"
+        | "resource_healthy"
+        | "resource_unhealthy"
+        | "resource_toggle";
     enabled: boolean;
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
     userIds: string[];
     roleIds: number[];
     emails: string[];
@@ -92,6 +100,7 @@ export type AlertRuleApiResponse = {
     updatedAt: number;
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
     recipients: {
         recipientId: number;
         userId: string | null;
@@ -126,16 +135,20 @@ export function buildFormSchema(t: (k: string) => string) {
                 .string()
                 .min(1, { message: t("alertingErrorNameRequired") }),
             enabled: z.boolean(),
-            sourceType: z.enum(["site", "health_check"]),
+            sourceType: z.enum(["site", "health_check", "resource"]),
             siteIds: z.array(z.number()),
             healthCheckIds: z.array(z.number()),
+            resourceIds: z.array(z.number()),
             trigger: z.enum([
                 "site_online",
                 "site_offline",
                 "site_toggle",
                 "health_check_healthy",
                 "health_check_unhealthy",
-                "health_check_toggle"
+                "health_check_toggle",
+                "resource_healthy",
+                "resource_unhealthy",
+                "resource_toggle"
             ]),
             actions: z.array(
                 z.discriminatedUnion("type", [
@@ -189,6 +202,16 @@ export function buildFormSchema(t: (k: string) => string) {
                     path: ["healthCheckIds"]
                 });
             }
+            if (
+                val.sourceType === "resource" &&
+                val.resourceIds.length === 0
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("alertingErrorPickResources"),
+                    path: ["resourceIds"]
+                });
+            }
             const siteTriggers: AlertTrigger[] = [
                 "site_online",
                 "site_offline",
@@ -198,6 +221,11 @@ export function buildFormSchema(t: (k: string) => string) {
                 "health_check_healthy",
                 "health_check_unhealthy",
                 "health_check_toggle"
+            ];
+            const resourceTriggers: AlertTrigger[] = [
+                "resource_healthy",
+                "resource_unhealthy",
+                "resource_toggle"
             ];
             if (
                 val.sourceType === "site" &&
@@ -216,6 +244,16 @@ export function buildFormSchema(t: (k: string) => string) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: t("alertingErrorTriggerHealth"),
+                    path: ["trigger"]
+                });
+            }
+            if (
+                val.sourceType === "resource" &&
+                !resourceTriggers.includes(val.trigger)
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: t("alertingErrorTriggerResource"),
                     path: ["trigger"]
                 });
             }
@@ -259,6 +297,7 @@ export function defaultFormValues(): AlertRuleFormValues {
         sourceType: "site",
         siteIds: [],
         healthCheckIds: [],
+        resourceIds: [],
         trigger: "site_offline",
         actions: [
             {
@@ -281,6 +320,8 @@ export function apiResponseToFormValues(
     const trigger = rule.eventType;
     const sourceType = rule.eventType.startsWith("site_")
         ? "site"
+        : rule.eventType.startsWith("resource_")
+        ? "resource"
         : "health_check";
 
     // Collect notify recipients into a single notify action (if any)
@@ -336,6 +377,7 @@ export function apiResponseToFormValues(
         sourceType,
         siteIds: rule.siteIds,
         healthCheckIds: rule.healthCheckIds,
+        resourceIds: rule.resourceIds ?? [],
         trigger: trigger as AlertTrigger,
         actions
     };
@@ -392,6 +434,7 @@ export function formValuesToApiPayload(
         enabled: values.enabled,
         siteIds: values.siteIds,
         healthCheckIds: values.healthCheckIds,
+        resourceIds: values.resourceIds,
         userIds: uniqueUserIds,
         roleIds: uniqueRoleIds,
         emails: uniqueEmails,

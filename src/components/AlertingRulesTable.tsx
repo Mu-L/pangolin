@@ -41,6 +41,7 @@ type AlertRuleRow = {
     updatedAt: number;
     siteIds: number[];
     healthCheckIds: number[];
+    resourceIds: number[];
 };
 
 function ruleHref(orgId: string, ruleId: number) {
@@ -53,9 +54,13 @@ function sourceSummary(
 ) {
     if (
         rule.eventType === "site_online" ||
-        rule.eventType === "site_offline"
+        rule.eventType === "site_offline" ||
+        rule.eventType === "site_toggle"
     ) {
         return t("alertingSummarySites", { count: rule.siteIds.length });
+    }
+    if (rule.eventType.startsWith("resource_")) {
+        return t("alertingSummaryResources", { count: rule.resourceIds.length });
     }
     return t("alertingSummaryHealthChecks", {
         count: rule.healthCheckIds.length
@@ -79,6 +84,12 @@ function triggerLabel(
             return t("alertingTriggerHcUnhealthy");
         case "health_check_toggle":
             return t("alertingTriggerHcToggle");
+        case "resource_healthy":
+            return t("alertingTriggerResourceHealthy");
+        case "resource_unhealthy":
+            return t("alertingTriggerResourceUnhealthy");
+        case "resource_toggle":
+            return t("alertingTriggerResourceToggle");
         default:
             return rule.eventType;
     }

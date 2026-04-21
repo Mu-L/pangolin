@@ -13,6 +13,7 @@ import {
     domains,
     exitNodes,
     orgs,
+    resources,
     roles,
     sessions,
     siteResources,
@@ -471,6 +472,9 @@ export const alertRules = sqliteTable("alertRules", {
             | "health_check_healthy"
             | "health_check_unhealthy"
             | "health_check_toggle"
+            | "resource_healthy"
+            | "resource_unhealthy"
+            | "resource_toggle"
         >()
         .notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
@@ -498,6 +502,15 @@ export const alertHealthChecks = sqliteTable("alertHealthChecks", {
         .references(() => targetHealthCheck.targetHealthCheckId, {
             onDelete: "cascade"
         })
+});
+
+export const alertResources = sqliteTable("alertResources", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
 export const alertEmailActions = sqliteTable("alertEmailActions", {
@@ -561,3 +574,4 @@ export type EventStreamingDestination = InferSelectModel<
 export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
+export type AlertResources = InferSelectModel<typeof alertResources>;

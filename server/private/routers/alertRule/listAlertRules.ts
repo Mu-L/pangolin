@@ -14,7 +14,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { alertRules, alertSites, alertHealthChecks } from "@server/db";
+import { alertRules, alertSites, alertHealthChecks, alertResources } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -55,6 +55,7 @@ export type ListAlertRulesResponse = {
         updatedAt: number;
         siteIds: number[];
         healthCheckIds: number[];
+        resourceIds: number[];
     }[];
     pagination: {
         total: number;
@@ -138,6 +139,14 @@ export async function listAlertRules(
                       )
                 : [];
 
+        const resourceRows =
+            ruleIds.length > 0
+                ? await db
+                      .select()
+                      .from(alertResources)
+                      .where(inArray(alertResources.alertRuleId, ruleIds))
+                : [];
+
         // Index by alertRuleId for O(1) lookup when building the response
         const sitesByRule = new Map<number, number[]>();
         for (const row of siteRows) {
@@ -151,6 +160,13 @@ export async function listAlertRules(
             const existing = healthChecksByRule.get(row.alertRuleId) ?? [];
             existing.push(row.healthCheckId);
             healthChecksByRule.set(row.alertRuleId, existing);
+        }
+
+        const resourcesByRule = new Map<number, number[]>();
+        for (const row of resourceRows) {
+            const existing = resourcesByRule.get(row.alertRuleId) ?? [];
+            existing.push(row.resourceId);
+            resourcesByRule.set(row.alertRuleId, existing);
         }
 
         return response<ListAlertRulesResponse>(res, {
@@ -167,7 +183,8 @@ export async function listAlertRules(
                     updatedAt: rule.updatedAt,
                     siteIds: sitesByRule.get(rule.alertRuleId) ?? [],
                     healthCheckIds:
-                        healthChecksByRule.get(rule.alertRuleId) ?? []
+                        healthChecksByRule.get(rule.alertRuleId) ?? [],
+                    resourceIds: resourcesByRule.get(rule.alertRuleId) ?? []
                 })),
                 pagination: {
                     total: count,

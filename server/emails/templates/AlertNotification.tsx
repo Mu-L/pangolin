@@ -18,7 +18,10 @@ export type AlertEventType =
     | "site_toggle"
     | "health_check_healthy"
     | "health_check_unhealthy"
-    | "health_check_toggle";
+    | "health_check_toggle"
+    | "resource_healthy"
+    | "resource_unhealthy"
+    | "resource_toggle";
 
 interface Props {
     eventType: AlertEventType;
@@ -88,6 +91,34 @@ function getEventMeta(eventType: AlertEventType): {
                     "A health check in your organization has changed status.",
                 summary:
                     "A health check in your organization has changed status. Please review the details below and take action if needed.",
+                statusLabel: "Status Changed",
+                statusColor: "#f59e0b"
+            };
+        case "resource_healthy":
+            return {
+                heading: "Resource Healthy",
+                previewText: "A resource in your organization is now healthy.",
+                summary:
+                    "A resource in your organization has recovered and is now reporting a healthy status.",
+                statusLabel: "Healthy",
+                statusColor: "#16a34a"
+            };
+        case "resource_unhealthy":
+            return {
+                heading: "Resource Unhealthy",
+                previewText: "A resource in your organization is not healthy.",
+                summary:
+                    "A resource in your organization is currently unhealthy. Please review the details below and take action if needed.",
+                statusLabel: "Unhealthy",
+                statusColor: "#dc2626"
+            };
+        case "resource_toggle":
+            return {
+                heading: "Resource Status Changed",
+                previewText:
+                    "A resource in your organization has changed status.",
+                summary:
+                    "A resource in your organization has changed status. Please review the details below and take action if needed.",
                 statusLabel: "Status Changed",
                 statusColor: "#f59e0b"
             };

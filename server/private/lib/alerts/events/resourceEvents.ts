@@ -19,72 +19,108 @@ import { processAlerts } from "../processAlerts";
 // ---------------------------------------------------------------------------
 
 /**
- * Fire a `health_check_healthy` alert for the given health check.
+ * Fire a `resource_healthy` alert for the given resource.
  *
- * Call this after a previously-failing health check has recovered so that any
+ * Call this after a previously-unhealthy resource has recovered so that any
  * matching `alertRules` can dispatch their email and webhook actions.
  *
- * @param orgId         - Organisation that owns the health check.
- * @param healthCheckId - Numeric primary key of the health check.
- * @param healthCheckName - Human-readable name shown in notifications (optional).
- * @param extra         - Any additional key/value pairs to include in the payload.
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
  */
-export async function fireHealthCheckHealthyAlert(
+export async function fireResourceHealthyAlert(
     orgId: string,
-    healthCheckId: number,
-    healthCheckName?: string | null,
+    resourceId: number,
+    resourceName?: string | null,
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
         await processAlerts({
-            eventType: "health_check_healthy",
+            eventType: "resource_healthy",
             orgId,
-            healthCheckId,
+            resourceId,
             data: {
-                healthCheckId,
-                ...(healthCheckName != null ? { healthCheckName } : {}),
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }
         });
     } catch (err) {
         logger.error(
-            `fireHealthCheckHealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
+            `fireResourceHealthyAlert: unexpected error for resourceId ${resourceId}`,
             err
         );
     }
 }
 
 /**
- * Fire a `health_check_unhealthy` alert for the given health check.
+ * Fire a `resource_unhealthy` alert for the given resource.
  *
- * Call this after a health check has been detected as failing so that any
+ * Call this after a resource has been detected as unhealthy so that any
  * matching `alertRules` can dispatch their email and webhook actions.
  *
- * @param orgId         - Organisation that owns the health check.
- * @param healthCheckId - Numeric primary key of the health check.
- * @param healthCheckName - Human-readable name shown in notifications (optional).
- * @param extra         - Any additional key/value pairs to include in the payload.
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
  */
-export async function fireHealthCheckNotHealthyAlert(
+export async function fireResourceUnhealthyAlert(
     orgId: string,
-    healthCheckId: number,
-    healthCheckName?: string | null,
+    resourceId: number,
+    resourceName?: string | null,
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
         await processAlerts({
-            eventType: "health_check_unhealthy",
+            eventType: "resource_unhealthy",
             orgId,
-            healthCheckId,
+            resourceId,
             data: {
-                healthCheckId,
-                ...(healthCheckName != null ? { healthCheckName } : {}),
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }
         });
     } catch (err) {
         logger.error(
-            `fireHealthCheckNotHealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
+            `fireResourceUnhealthyAlert: unexpected error for resourceId ${resourceId}`,
+            err
+        );
+    }
+}
+
+/**
+ * Fire a `resource_toggle` alert for the given resource.
+ *
+ * Call this when a resource's enabled/disabled status is toggled so that any
+ * matching `alertRules` can dispatch their email and webhook actions.
+ *
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
+ */
+export async function fireResourceToggleAlert(
+    orgId: string,
+    resourceId: number,
+    resourceName?: string | null,
+    extra?: Record<string, unknown>
+): Promise<void> {
+    try {
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+    } catch (err) {
+        logger.error(
+            `fireResourceToggleAlert: unexpected error for resourceId ${resourceId}`,
             err
         );
     }

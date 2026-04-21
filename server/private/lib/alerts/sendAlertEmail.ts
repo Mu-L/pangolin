@@ -80,6 +80,12 @@ function buildSubject(context: AlertContext): string {
             return "[Alert] Health Check Failing";
         case "health_check_toggle":
             return "[Alert] Health Check Toggled";
+        case "resource_healthy":
+            return "[Alert] Resource Healthy";
+        case "resource_unhealthy":
+            return "[Alert] Resource Unhealthy";
+        case "resource_toggle":
+            return "[Alert] Resource Status Changed";
         default: {
             // Exhaustiveness fallback – should never be reached with a
             // well-typed caller, but keeps runtime behaviour predictable.

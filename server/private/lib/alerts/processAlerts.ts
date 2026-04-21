@@ -17,6 +17,7 @@ import {
     alertRules,
     alertSites,
     alertHealthChecks,
+    alertResources,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions,
@@ -93,6 +94,24 @@ export async function processAlerts(context: AlertContext): Promise<void> {
                     or(
                         eq(alertHealthChecks.healthCheckId, context.healthCheckId),
                         isNull(alertHealthChecks.alertRuleId)
+                    )
+                )
+            );
+        rules = rows.map((r) => r.alertRules);
+    } else if (context.resourceId != null) {
+        const rows = await db
+            .select()
+            .from(alertRules)
+            .leftJoin(
+                alertResources,
+                eq(alertResources.alertRuleId, alertRules.alertRuleId)
+            )
+            .where(
+                and(
+                    baseConditions,
+                    or(
+                        eq(alertResources.resourceId, context.resourceId),
+                        isNull(alertResources.alertRuleId)
                     )
                 )
             );

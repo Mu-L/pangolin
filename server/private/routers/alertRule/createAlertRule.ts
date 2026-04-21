@@ -18,6 +18,7 @@ import {
     alertRules,
     alertSites,
     alertHealthChecks,
+    alertResources,
     alertEmailActions,
     alertEmailRecipients,
     alertWebhookActions
@@ -37,6 +38,11 @@ export const HC_EVENT_TYPES = [
     "health_check_unhealthy",
     "health_check_toggle"
 ] as const;
+export const RESOURCE_EVENT_TYPES = [
+    "resource_healthy",
+    "resource_unhealthy",
+    "resource_toggle"
+] as const;
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -53,13 +59,18 @@ const bodySchema = z
         name: z.string().nonempty(),
         eventType: z.enum([
             ...HC_EVENT_TYPES,
-            ...SITE_EVENT_TYPES
+            ...SITE_EVENT_TYPES,
+            ...RESOURCE_EVENT_TYPES
         ]),
         enabled: z.boolean().optional().default(true),
         cooldownSeconds: z.number().int().nonnegative().optional().default(300),
         // Source join tables - which is required depends on eventType
         siteIds: z.array(z.number().int().positive()).optional().default([]),
         healthCheckIds: z
+            .array(z.number().int().positive())
+            .optional()
+            .default([]),
+        resourceIds: z
             .array(z.number().int().positive())
             .optional()
             .default([]),
@@ -75,6 +86,9 @@ const bodySchema = z
             val.eventType
         );
         const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
+            val.eventType
+        );
+        const isResourceEvent = (RESOURCE_EVENT_TYPES as readonly string[]).includes(
             val.eventType
         );
 
@@ -108,6 +122,46 @@ const bodySchema = z
                 code: z.ZodIssueCode.custom,
                 message: "siteIds must not be set for health check event types",
                 path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.resourceIds.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one resourceId is required for resource event types",
+                path: ["resourceIds"]
+            });
+        }
+
+        if (isResourceEvent && val.siteIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "siteIds must not be set for resource event types",
+                path: ["siteIds"]
+            });
+        }
+
+        if (isResourceEvent && val.healthCheckIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "healthCheckIds must not be set for resource event types",
+                path: ["healthCheckIds"]
+            });
+        }
+
+        if (isSiteEvent && val.resourceIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "resourceIds must not be set for site event types",
+                path: ["resourceIds"]
+            });
+        }
+
+        if (isHcEvent && val.resourceIds.length > 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "resourceIds must not be set for health check event types",
+                path: ["resourceIds"]
             });
         }
     });
@@ -169,6 +223,7 @@ export async function createAlertRule(
             cooldownSeconds,
             siteIds,
             healthCheckIds,
+            resourceIds,
             userIds,
             roleIds,
             emails,
@@ -206,6 +261,16 @@ export async function createAlertRule(
                 healthCheckIds.map((healthCheckId) => ({
                     alertRuleId: rule.alertRuleId,
                     healthCheckId
+                }))
+            );
+        }
+
+        // Insert resource associations
+        if (resourceIds.length > 0) {
+            await db.insert(alertResources).values(
+                resourceIds.map((resourceId) => ({
+                    alertRuleId: rule.alertRuleId,
+                    resourceId
                 }))
             );
         }
