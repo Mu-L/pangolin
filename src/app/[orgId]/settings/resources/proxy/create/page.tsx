@@ -776,9 +776,15 @@ export default function Page() {
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId,
-                                        config.path === null && config.pathMatchType === null
-                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                    updateTarget(
+                                        row.original.targetId,
+                                        config.path === null &&
+                                            config.pathMatchType === null
+                                            ? {
+                                                  ...config,
+                                                  rewritePath: null,
+                                                  rewritePathType: null
+                                              }
                                             : config
                                     )
                                 }
@@ -804,9 +810,15 @@ export default function Page() {
                                     pathMatchType: row.original.pathMatchType
                                 }}
                                 onChange={(config) =>
-                                    updateTarget(row.original.targetId,
-                                        config.path === null && config.pathMatchType === null
-                                            ? { ...config, rewritePath: null, rewritePathType: null }
+                                    updateTarget(
+                                        row.original.targetId,
+                                        config.path === null &&
+                                            config.pathMatchType === null
+                                            ? {
+                                                  ...config,
+                                                  rewritePath: null,
+                                                  rewritePathType: null
+                                              }
                                             : config
                                     )
                                 }
@@ -1061,7 +1073,7 @@ export default function Page() {
                                                                 : null
                                                         );
                                                     }}
-                                                    cols={2}
+                                                    cols={3}
                                                 />
                                             </>
                                         )}
@@ -1118,28 +1130,30 @@ export default function Page() {
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
                                     <SettingsSectionBody>
-                                        <DomainPicker
-                                            orgId={orgId as string}
-                                            warnOnProvidedDomain={
-                                                remoteExitNodes.length >= 1
-                                            }
-                                            onDomainChange={(res) => {
-                                                if (!res) return;
+                                        <SettingsSectionForm>
+                                            <DomainPicker
+                                                orgId={orgId as string}
+                                                warnOnProvidedDomain={
+                                                    remoteExitNodes.length >= 1
+                                                }
+                                                onDomainChange={(res) => {
+                                                    if (!res) return;
 
-                                                httpForm.setValue(
-                                                    "subdomain",
-                                                    res.subdomain
-                                                );
-                                                httpForm.setValue(
-                                                    "domainId",
-                                                    res.domainId
-                                                );
-                                                console.log(
-                                                    "Domain changed:",
-                                                    res
-                                                );
-                                            }}
-                                        />
+                                                    httpForm.setValue(
+                                                        "subdomain",
+                                                        res.subdomain
+                                                    );
+                                                    httpForm.setValue(
+                                                        "domainId",
+                                                        res.domainId
+                                                    );
+                                                    console.log(
+                                                        "Domain changed:",
+                                                        res
+                                                    );
+                                                }}
+                                            />
+                                        </SettingsSectionForm>
                                     </SettingsSectionBody>
                                 </SettingsSection>
                             ) : (
@@ -1155,98 +1169,101 @@ export default function Page() {
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
                                     <SettingsSectionBody>
-                                        <Form {...tcpUdpForm}>
-                                            <form
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                        e.preventDefault(); // block default enter refresh
-                                                    }
-                                                }}
-                                                className="space-y-4 grid gap-4 grid-cols-1 md:grid-cols-2 items-start"
-                                                id="tcp-udp-settings-form"
-                                            >
-                                                <Controller
-                                                    control={tcpUdpForm.control}
-                                                    name="protocol"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t("protocol")}
-                                                            </FormLabel>
-                                                            <Select
-                                                                onValueChange={
-                                                                    field.onChange
-                                                                }
-                                                                {...field}
-                                                            >
-                                                                <FormControl>
-                                                                    <SelectTrigger>
-                                                                        <SelectValue
-                                                                            placeholder={t(
-                                                                                "protocolSelect"
-                                                                            )}
-                                                                        />
-                                                                    </SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="tcp">
-                                                                        TCP
-                                                                    </SelectItem>
-                                                                    <SelectItem value="udp">
-                                                                        UDP
-                                                                    </SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                        <SettingsSectionForm>
+                                            <Form {...tcpUdpForm}>
+                                                <form
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            e.preventDefault(); // block default enter refresh
+                                                        }
+                                                    }}
+                                                    className="space-y-4 grid gap-4 grid-cols-1 md:grid-cols-2 items-start"
+                                                    id="tcp-udp-settings-form"
+                                                >
+                                                    <Controller
+                                                        control={
+                                                            tcpUdpForm.control
+                                                        }
+                                                        name="protocol"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>
+                                                                    {t(
+                                                                        "protocol"
+                                                                    )}
+                                                                </FormLabel>
+                                                                <Select
+                                                                    onValueChange={
+                                                                        field.onChange
+                                                                    }
+                                                                    {...field}
+                                                                >
+                                                                    <FormControl>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue
+                                                                                placeholder={t(
+                                                                                    "protocolSelect"
+                                                                                )}
+                                                                            />
+                                                                        </SelectTrigger>
+                                                                    </FormControl>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="tcp">
+                                                                            TCP
+                                                                        </SelectItem>
+                                                                        <SelectItem value="udp">
+                                                                            UDP
+                                                                        </SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
 
-                                                <FormField
-                                                    control={tcpUdpForm.control}
-                                                    name="proxyPort"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t(
-                                                                    "resourcePortNumber"
-                                                                )}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={
-                                                                        field.value ??
-                                                                        ""
-                                                                    }
-                                                                    onChange={(
-                                                                        e
-                                                                    ) =>
-                                                                        field.onChange(
+                                                    <FormField
+                                                        control={
+                                                            tcpUdpForm.control
+                                                        }
+                                                        name="proxyPort"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>
+                                                                    {t(
+                                                                        "resourcePortNumber"
+                                                                    )}
+                                                                </FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={
+                                                                            field.value ??
+                                                                            ""
+                                                                        }
+                                                                        onChange={(
                                                                             e
-                                                                                .target
-                                                                                .value
-                                                                                ? parseInt(
-                                                                                      e
-                                                                                          .target
-                                                                                          .value
-                                                                                  )
-                                                                                : undefined
-                                                                        )
-                                                                    }
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                            <FormDescription>
-                                                                {t(
-                                                                    "resourcePortNumberDescription"
-                                                                )}
-                                                            </FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </form>
-                                        </Form>
+                                                                        ) =>
+                                                                            field.onChange(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                                    ? parseInt(
+                                                                                          e
+                                                                                              .target
+                                                                                              .value
+                                                                                      )
+                                                                                    : undefined
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </form>
+                                            </Form>
+                                        </SettingsSectionForm>
                                     </SettingsSectionBody>
                                 </SettingsSection>
                             )}

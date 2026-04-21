@@ -52,6 +52,7 @@ import type { ListUserAdminOrgIdpsResponse } from "@server/routers/orgIdp/types"
 import { cn } from "@app/lib/cn";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { isIdpGlobalModeBannerVisible } from "@app/components/IdpGlobalModeBanner";
 
 export type IdpRow = {
     idpId: number;
@@ -85,13 +86,15 @@ export default function IdpTable({ idps, orgId }: Props) {
     const [importSubmitting, setImportSubmitting] = useState(false);
     const [debouncedImportSearch] = useDebounce(importSearchQuery, 150);
 
-    const api = createApiClient(useEnvContext());
+    const envContext = useEnvContext();
+    const api = createApiClient(envContext);
     const { user } = useUserContext();
     const { isPaidUser } = usePaidStatus();
     const router = useRouter();
     const t = useTranslations();
 
     const canImportOrgOidcIdp = isPaidUser(tierMatrix.orgOidc);
+    const addIdpDisabled = isIdpGlobalModeBannerVisible(envContext.env);
 
     const { data: adminIdpsRaw = [] } = useQuery({
         queryKey: ["admin-org-idps", user.userId],
@@ -184,23 +187,6 @@ export default function IdpTable({ idps, orgId }: Props) {
     };
 
     const columns: ExtendedColumnDef<IdpRow>[] = [
-        {
-            accessorKey: "idpId",
-            friendlyName: "ID",
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        ID
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
-        },
         {
             accessorKey: "name",
             friendlyName: t("name"),
@@ -427,6 +413,7 @@ export default function IdpTable({ idps, orgId }: Props) {
             <IdpDataTable
                 columns={columns}
                 data={idps}
+                addButtonDisabled={addIdpDisabled}
                 addActions={[
                     {
                         label: t("idpAddActionCreateNew"),

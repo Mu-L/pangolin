@@ -76,8 +76,8 @@ export function OrgSelector({
                     className={cn(
                         "cursor-pointer transition-colors",
                         isCollapsed
-                            ? "w-full h-16 flex items-center justify-center hover:bg-muted"
-                            : "w-full px-5 py-4 hover:bg-muted"
+                            ? "w-full h-16 flex items-center justify-center hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50"
+                            : "w-full px-5 py-4 hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50"
                     )}
                 >
                     {isCollapsed ? (
@@ -172,7 +172,7 @@ export function OrgSelector({
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="w-full justify-start h-8 font-normal text-muted-foreground hover:text-foreground"
+                            className="w-full justify-start h-8 font-normal text-muted-foreground"
                             onClick={() => {
                                 setOpen(false);
                                 router.push("/setup");

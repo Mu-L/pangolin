@@ -103,7 +103,8 @@ export async function listDomains(
 
         const [{ count }] = await db
             .select({ count: sql<number>`count(*)` })
-            .from(domains);
+            .from(orgDomains)
+            .where(eq(orgDomains.orgId, orgId));
 
         return response<ListDomainsResponse>(res, {
             data: {
