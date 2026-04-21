@@ -450,5 +450,3 @@ export default async function migration() {
 
     console.log(`${version} migration complete`);
 }
-
-await migration();
