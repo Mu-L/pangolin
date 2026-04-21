@@ -37,7 +37,7 @@ const DEFAULT_FORMAT: PayloadFormat = "json_array";
  *
  * **Payload formats** (controlled by `config.format`):
  *
- * - `json_array` (default) — one POST per batch, body is a JSON array:
+ * - `json_array` (default) - one POST per batch, body is a JSON array:
  *   ```json
  *   [
  *     { "event": "request", "timestamp": "2024-01-01T00:00:00.000Z", "data": { … } },
@@ -46,7 +46,7 @@ const DEFAULT_FORMAT: PayloadFormat = "json_array";
  *   ```
  *   `Content-Type: application/json`
  *
- * - `ndjson` — one POST per batch, body is newline-delimited JSON (one object
+ * - `ndjson` - one POST per batch, body is newline-delimited JSON (one object
  *   per line, no outer array).  Required by Splunk HEC, Elastic/OpenSearch,
  *   and Grafana Loki:
  *   ```
@@ -55,7 +55,7 @@ const DEFAULT_FORMAT: PayloadFormat = "json_array";
  *   ```
  *   `Content-Type: application/x-ndjson`
  *
- * - `json_single` — one POST **per event**, body is a plain JSON object.
+ * - `json_single` - one POST **per event**, body is a plain JSON object.
  *   Use only for endpoints that cannot handle batches at all.
  *
  * With a body template each event is rendered through the template before

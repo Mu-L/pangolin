@@ -34,10 +34,6 @@ export const privateConfigSchema = z.object({
         }),
     server: z
         .object({
-            encryption_key: z
-                .string()
-                .optional()
-                .transform(getEnvOrYaml("SERVER_ENCRYPTION_KEY")),
             reo_client_id: z
                 .string()
                 .optional()
@@ -95,10 +91,21 @@ export const privateConfigSchema = z.object({
         .object({
             enable_redis: z.boolean().optional().default(false),
             use_pangolin_dns: z.boolean().optional().default(false),
-            use_org_only_idp: z.boolean().optional()
+            use_org_only_idp: z.boolean().optional(),
+            enable_acme_cert_sync: z.boolean().optional().default(true)
         })
         .optional()
         .prefault({}),
+    acme: z
+        .object({
+            acme_json_path: z
+                .string()
+                .optional()
+                .default("config/letsencrypt/acme.json"),
+            resolver: z.string().optional().default("letsencrypt"),
+            sync_interval_ms: z.number().optional().default(5000)
+        })
+        .optional(),
     branding: z
         .object({
             app_name: z.string().optional(),

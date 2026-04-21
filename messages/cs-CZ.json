@@ -1994,7 +1994,7 @@
         "description": "Spolehlivější a nízko udržovaný Pangolinův server s dalšími zvony a bičkami",
         "introTitle": "Spravovaný Pangolin",
         "introDescription": "je možnost nasazení určená pro lidi, kteří chtějí jednoduchost a spolehlivost při zachování soukromých a samoobslužných dat.",
-        "introDetail": "Pomocí této volby stále provozujete vlastní uzel Pangolin — tunely, SSL terminály a provoz všech pobytů na vašem serveru. Rozdíl spočívá v tom, že řízení a monitorování se řeší prostřednictvím našeho cloudového panelu, který odemkne řadu výhod:",
+        "introDetail": "Pomocí této volby stále provozujete vlastní uzel Pangolin - tunely, SSL terminály a provoz všech pobytů na vašem serveru. Rozdíl spočívá v tom, že řízení a monitorování se řeší prostřednictvím našeho cloudového panelu, který odemkne řadu výhod:",
         "benefitSimplerOperations": {
             "title": "Jednoduchý provoz",
             "description": "Není třeba spouštět svůj vlastní poštovní server nebo nastavit komplexní upozornění. Ze schránky dostanete upozornění na zdravotní kontrolu a výpadek."

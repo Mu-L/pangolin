@@ -18,12 +18,13 @@ import {
 } from "#private/routers/remoteExitNode";
 import { MessageHandler } from "@server/routers/ws";
 import { build } from "@server/build";
-import { handleConnectionLogMessage } from "#private/routers/newt";
+import { handleConnectionLogMessage, handleRequestLogMessage } from "#private/routers/newt";
 
 export const messageHandlers: Record<string, MessageHandler> = {
     "remoteExitNode/register": handleRemoteExitNodeRegisterMessage,
     "remoteExitNode/ping": handleRemoteExitNodePingMessage,
     "newt/access-log": handleConnectionLogMessage,
+    "newt/request-log": handleRequestLogMessage,
 };
 
 if (build != "saas") {

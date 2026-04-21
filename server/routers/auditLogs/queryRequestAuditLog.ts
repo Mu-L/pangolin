@@ -1,8 +1,8 @@
-import { logsDb, primaryLogsDb, requestAuditLog, resources, db, primaryDb } from "@server/db";
+import { logsDb, primaryLogsDb, requestAuditLog, resources, siteResources, db, primaryDb } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
-import { eq, gt, lt, and, count, desc, inArray } from "drizzle-orm";
+import { eq, gt, lt, and, count, desc, inArray, isNull, or } from "drizzle-orm";
 import { OpenAPITags } from "@server/openApi";
 import { z } from "zod";
 import createHttpError from "http-errors";
@@ -92,7 +92,10 @@ function getWhere(data: Q) {
         lt(requestAuditLog.timestamp, data.timeEnd),
         eq(requestAuditLog.orgId, data.orgId),
         data.resourceId
-            ? eq(requestAuditLog.resourceId, data.resourceId)
+            ? or(
+                  eq(requestAuditLog.resourceId, data.resourceId),
+                  eq(requestAuditLog.siteResourceId, data.resourceId)
+              )
             : undefined,
         data.actor ? eq(requestAuditLog.actor, data.actor) : undefined,
         data.method ? eq(requestAuditLog.method, data.method) : undefined,
@@ -110,15 +113,16 @@ export function queryRequest(data: Q) {
     return primaryLogsDb
         .select({
             id: requestAuditLog.id,
-            timestamp: requestAuditLog.timestamp,
-            orgId: requestAuditLog.orgId,
-            action: requestAuditLog.action,
-            reason: requestAuditLog.reason,
-            actorType: requestAuditLog.actorType,
-            actor: requestAuditLog.actor,
-            actorId: requestAuditLog.actorId,
-            resourceId: requestAuditLog.resourceId,
-            ip: requestAuditLog.ip,
+                timestamp: requestAuditLog.timestamp,
+                orgId: requestAuditLog.orgId,
+                action: requestAuditLog.action,
+                reason: requestAuditLog.reason,
+                actorType: requestAuditLog.actorType,
+                actor: requestAuditLog.actor,
+                actorId: requestAuditLog.actorId,
+                resourceId: requestAuditLog.resourceId,
+                siteResourceId: requestAuditLog.siteResourceId,
+                ip: requestAuditLog.ip,
             location: requestAuditLog.location,
             userAgent: requestAuditLog.userAgent,
             metadata: requestAuditLog.metadata,
@@ -137,37 +141,73 @@ export function queryRequest(data: Q) {
 }
 
 async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryRequest>>) {
-    // If logs database is the same as main database, we can do a join
-    // Otherwise, we need to fetch resource details separately
     const resourceIds = logs
         .map(log => log.resourceId)
         .filter((id): id is number => id !== null && id !== undefined);
 
-    if (resourceIds.length === 0) {
+    const siteResourceIds = logs
+        .filter(log => log.resourceId == null && log.siteResourceId != null)
+        .map(log => log.siteResourceId)
+        .filter((id): id is number => id !== null && id !== undefined);
+
+    if (resourceIds.length === 0 && siteResourceIds.length === 0) {
         return logs.map(log => ({ ...log, resourceName: null, resourceNiceId: null }));
     }
 
-    // Fetch resource details from main database
-    const resourceDetails = await primaryDb
-        .select({
-            resourceId: resources.resourceId,
-            name: resources.name,
-            niceId: resources.niceId
-        })
-        .from(resources)
-        .where(inArray(resources.resourceId, resourceIds));
+    const resourceMap = new Map<number, { name: string | null; niceId: string | null }>();
 
-    // Create a map for quick lookup
-    const resourceMap = new Map(
-        resourceDetails.map(r => [r.resourceId, { name: r.name, niceId: r.niceId }])
-    );
+    if (resourceIds.length > 0) {
+        const resourceDetails = await primaryDb
+            .select({
+                resourceId: resources.resourceId,
+                name: resources.name,
+                niceId: resources.niceId
+            })
+            .from(resources)
+            .where(inArray(resources.resourceId, resourceIds));
+
+        for (const r of resourceDetails) {
+            resourceMap.set(r.resourceId, { name: r.name, niceId: r.niceId });
+        }
+    }
+
+    const siteResourceMap = new Map<number, { name: string | null; niceId: string | null }>();
+
+    if (siteResourceIds.length > 0) {
+        const siteResourceDetails = await primaryDb
+            .select({
+                siteResourceId: siteResources.siteResourceId,
+                name: siteResources.name,
+                niceId: siteResources.niceId
+            })
+            .from(siteResources)
+            .where(inArray(siteResources.siteResourceId, siteResourceIds));
+
+        for (const r of siteResourceDetails) {
+            siteResourceMap.set(r.siteResourceId, { name: r.name, niceId: r.niceId });
+        }
+    }
 
     // Enrich logs with resource details
-    return logs.map(log => ({
-        ...log,
-        resourceName: log.resourceId ? resourceMap.get(log.resourceId)?.name ?? null : null,
-        resourceNiceId: log.resourceId ? resourceMap.get(log.resourceId)?.niceId ?? null : null
-    }));
+    return logs.map(log => {
+        if (log.resourceId != null) {
+            const details = resourceMap.get(log.resourceId);
+            return {
+                ...log,
+                resourceName: details?.name ?? null,
+                resourceNiceId: details?.niceId ?? null
+            };
+        } else if (log.siteResourceId != null) {
+            const details = siteResourceMap.get(log.siteResourceId);
+            return {
+                ...log,
+                resourceId: log.siteResourceId,
+                resourceName: details?.name ?? null,
+                resourceNiceId: details?.niceId ?? null
+            };
+        }
+        return { ...log, resourceName: null, resourceNiceId: null };
+    });
 }
 
 export function countRequestQuery(data: Q) {
@@ -211,7 +251,8 @@ async function queryUniqueFilterAttributes(
         uniqueLocations,
         uniqueHosts,
         uniquePaths,
-        uniqueResources
+        uniqueResources,
+        uniqueSiteResources
     ] = await Promise.all([
         primaryLogsDb
             .selectDistinct({ actor: requestAuditLog.actor })
@@ -239,6 +280,13 @@ async function queryUniqueFilterAttributes(
             })
             .from(requestAuditLog)
             .where(baseConditions)
+            .limit(DISTINCT_LIMIT + 1),
+        primaryLogsDb
+            .selectDistinct({
+                id: requestAuditLog.siteResourceId
+            })
+            .from(requestAuditLog)
+            .where(and(baseConditions, isNull(requestAuditLog.resourceId)))
             .limit(DISTINCT_LIMIT + 1)
     ]);
 
@@ -259,6 +307,10 @@ async function queryUniqueFilterAttributes(
         .map(row => row.id)
         .filter((id): id is number => id !== null);
 
+    const siteResourceIds = uniqueSiteResources
+        .map(row => row.id)
+        .filter((id): id is number => id !== null);
+
     let resourcesWithNames: Array<{ id: number; name: string | null }> = [];
 
     if (resourceIds.length > 0) {
@@ -270,10 +322,31 @@ async function queryUniqueFilterAttributes(
             .from(resources)
             .where(inArray(resources.resourceId, resourceIds));
 
-        resourcesWithNames = resourceDetails.map(r => ({
-            id: r.resourceId,
-            name: r.name
-        }));
+        resourcesWithNames = [
+            ...resourcesWithNames,
+            ...resourceDetails.map(r => ({
+                id: r.resourceId,
+                name: r.name
+            }))
+        ];
+    }
+
+    if (siteResourceIds.length > 0) {
+        const siteResourceDetails = await primaryDb
+            .select({
+                siteResourceId: siteResources.siteResourceId,
+                name: siteResources.name
+            })
+            .from(siteResources)
+            .where(inArray(siteResources.siteResourceId, siteResourceIds));
+
+        resourcesWithNames = [
+            ...resourcesWithNames,
+            ...siteResourceDetails.map(r => ({
+                id: r.siteResourceId,
+                name: r.name
+            }))
+        ];
     }
 
     return {

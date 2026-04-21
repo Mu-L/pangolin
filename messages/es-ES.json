@@ -2119,7 +2119,7 @@
     "selectDomainForOrgAuthPage": "Seleccione un dominio para la página de autenticación de la organización",
     "domainPickerProvidedDomain": "Dominio proporcionado",
     "domainPickerFreeProvidedDomain": "Dominio proporcionado gratis",
-    "domainPickerFreeDomainsPaidFeature": "Los dominios proporcionados son una función de pago. Suscríbete para obtener un dominio incluido con tu plan — no necesitas traer el tuyo propio.",
+    "domainPickerFreeDomainsPaidFeature": "Los dominios proporcionados son una función de pago. Suscríbete para obtener un dominio incluido con tu plan - no necesitas traer el tuyo propio.",
     "domainPickerVerified": "Verificado",
     "domainPickerUnverified": "Sin verificar",
     "domainPickerManual": "Manual",
@@ -2297,7 +2297,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "Divulgación de uso",
-                "description": "Seleccione el nivel de licencia que refleje con precisión su uso previsto. La Licencia Personal permite el uso libre del Software para actividades comerciales individuales, no comerciales o de pequeña escala con ingresos brutos anuales inferiores a $100,000 USD. Cualquier uso más allá de estos límites — incluyendo el uso dentro de una empresa, organización, u otro entorno de generación de ingresos — requiere una Licencia Empresarial válida y el pago de la cuota de licencia aplicable. Todos los usuarios, ya sean personales o empresariales, deben cumplir con las Condiciones de Licencia Comercial Fossorial."
+                "description": "Seleccione el nivel de licencia que refleje con precisión su uso previsto. La Licencia Personal permite el uso libre del Software para actividades comerciales individuales, no comerciales o de pequeña escala con ingresos brutos anuales inferiores a $100,000 USD. Cualquier uso más allá de estos límites - incluyendo el uso dentro de una empresa, organización, u otro entorno de generación de ingresos - requiere una Licencia Empresarial válida y el pago de la cuota de licencia aplicable. Todos los usuarios, ya sean personales o empresariales, deben cumplir con las Condiciones de Licencia Comercial Fossorial."
             },
             "trialPeriodInformation": {
                 "title": "Información del período de prueba",
@@ -2882,7 +2882,7 @@
     "httpDestFormatJsonArrayTitle": "Matriz JSON",
     "httpDestFormatJsonArrayDescription": "Una petición por lote, cuerpo es una matriz JSON. Compatible con la mayoría de los webhooks y Datadog.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "Una petición por lote, el cuerpo es JSON delimitado por línea — un objeto por línea, sin arrays externos. Requerido por Splunk HEC, Elastic / OpenSearch, y Grafana Loki.",
+    "httpDestFormatNdjsonDescription": "Una petición por lote, el cuerpo es JSON delimitado por línea - un objeto por línea, sin arrays externos. Requerido por Splunk HEC, Elastic / OpenSearch, y Grafana Loki.",
     "httpDestFormatSingleTitle": "Un evento por solicitud",
     "httpDestFormatSingleDescription": "Envía un HTTP POST separado para cada evento individual. Úsalo sólo para los extremos que no pueden manejar lotes.",
     "httpDestLogTypesTitle": "Tipos de Log",

@@ -17,7 +17,6 @@ import { getUserDeviceName } from "@server/db/names";
 import { buildSiteConfigurationForOlmClient } from "./buildConfiguration";
 import { OlmErrorCodes, sendOlmError } from "./error";
 import { handleFingerprintInsertion } from "./fingerprintingUtils";
-import { Alias } from "@server/lib/ip";
 import { build } from "@server/build";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";

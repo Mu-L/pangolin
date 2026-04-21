@@ -29,6 +29,8 @@ import * as ssh from "#private/routers/ssh";
 import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
+import * as alertRule from "#private/routers/alertRule";
+import * as healthChecks from "#private/routers/healthChecks";
 
 import {
     verifyOrgAccess,
@@ -681,7 +683,96 @@ authenticated.delete(
 
 authenticated.get(
     "/org/:orgId/event-streaming-destinations",
+    verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listEventStreamingDestinations),
     eventStreamingDestination.listEventStreamingDestinations
+);
+
+authenticated.put(
+    "/org/:orgId/alert-rule",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createAlertRule),
+    logActionAudit(ActionsEnum.createAlertRule),
+    alertRule.createAlertRule
+);
+
+authenticated.post(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateAlertRule),
+    logActionAudit(ActionsEnum.updateAlertRule),
+    alertRule.updateAlertRule
+);
+
+authenticated.delete(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteAlertRule),
+    logActionAudit(ActionsEnum.deleteAlertRule),
+    alertRule.deleteAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rules",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listAlertRules),
+    alertRule.listAlertRules
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getAlertRule),
+    alertRule.getAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/health-checks",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listHealthChecks),
+    healthChecks.listHealthChecks
+);
+
+authenticated.put(
+    "/org/:orgId/health-check",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createHealthCheck),
+    logActionAudit(ActionsEnum.createHealthCheck),
+    healthChecks.createHealthCheck
+);
+
+authenticated.post(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateHealthCheck),
+    logActionAudit(ActionsEnum.updateHealthCheck),
+    healthChecks.updateHealthCheck
+);
+
+authenticated.delete(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteHealthCheck),
+    logActionAudit(ActionsEnum.deleteHealthCheck),
+    healthChecks.deleteHealthCheck
+);
+
+authenticated.get(
+    "/org/:orgId/health-check/:healthCheckId/status-history",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getTarget),
+    healthChecks.getHealthCheckStatusHistory
 );

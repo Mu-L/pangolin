@@ -175,15 +175,18 @@ export default function DomainPicker({
                         domainId: firstOrExistingDomain.domainId
                     };
 
+                    const base = firstOrExistingDomain.baseDomain;
+                    const sub =
+                        firstOrExistingDomain.type !== "cname"
+                            ? defaultSubdomain?.trim() || undefined
+                            : undefined;
+
                     onDomainChange?.({
                         domainId: firstOrExistingDomain.domainId,
                         type: "organization",
-                        subdomain:
-                            firstOrExistingDomain.type !== "cname"
-                                ? defaultSubdomain || undefined
-                                : undefined,
-                        fullDomain: firstOrExistingDomain.baseDomain,
-                        baseDomain: firstOrExistingDomain.baseDomain
+                        subdomain: sub,
+                        fullDomain: sub ? `${sub}.${base}` : base,
+                        baseDomain: base
                     });
                 }
             }

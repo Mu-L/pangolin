@@ -17,14 +17,14 @@ export async function getUserLocale(): Promise<Locale> {
         return cookieLocale as Locale;
     }
 
-    // No cookie found — try to restore from user's saved locale in DB
+    // No cookie found - try to restore from user's saved locale in DB
     try {
         const res = await internal.get("/user", await authCookieHeader());
         const userLocale = res.data?.data?.locale;
         if (userLocale && locales.includes(userLocale as Locale)) {
             // Try to cache in a cookie so subsequent requests skip the API
             // call. cookies().set() is only permitted in Server Actions and
-            // Route Handlers — not during rendering — so we isolate it so
+            // Route Handlers - not during rendering - so we isolate it so
             // that a write failure doesn't prevent the locale from being
             // returned for the current request.
             try {
@@ -40,7 +40,7 @@ export async function getUserLocale(): Promise<Locale> {
             return userLocale as Locale;
         }
     } catch {
-        // User not logged in or API unavailable — fall through
+        // User not logged in or API unavailable - fall through
     }
 
     const headerList = await headers();

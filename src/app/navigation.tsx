@@ -2,6 +2,7 @@ import { SidebarNavItem } from "@app/components/SidebarNav";
 import { Env } from "@app/lib/types/env";
 import { build } from "@server/build";
 import {
+    BellRing,
     Boxes,
     Building2,
     Cable,
@@ -212,9 +213,9 @@ export const orgNavSections = (
                 icon: <Building2 className="size-4 flex-none" />,
                 items: [
                     {
-                        title: "sidebarApiKeys",
-                        href: "/{orgId}/settings/api-keys",
-                        icon: <KeyRound className="size-4 flex-none" />
+                        title: "sidebarAlerting",
+                        href: "/{orgId}/settings/alerting",
+                        icon: <BellRing className="size-4 flex-none" />
                     },
                     {
                         title: "sidebarProvisioning",
@@ -225,6 +226,11 @@ export const orgNavSections = (
                         title: "sidebarBluePrints",
                         href: "/{orgId}/settings/blueprints",
                         icon: <ReceiptText className="size-4 flex-none" />
+                    },
+                    {
+                        title: "sidebarApiKeys",
+                        href: "/{orgId}/settings/api-keys",
+                        icon: <KeyRound className="size-4 flex-none" />
                     }
                 ]
             },

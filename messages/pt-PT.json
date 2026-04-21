@@ -1994,7 +1994,7 @@
         "description": "Servidor Pangolin auto-hospedado mais confiável e com baixa manutenção com sinos extras e assobiamentos",
         "introTitle": "Pangolin Auto-Hospedado Gerenciado",
         "introDescription": "é uma opção de implantação projetada para pessoas que querem simplicidade e confiança adicional, mantendo os seus dados privados e auto-hospedados.",
-        "introDetail": "Com esta opção, você ainda roda seu próprio nó Pangolin — seus túneis, terminação SSL e tráfego todos permanecem no seu servidor. A diferença é que a gestão e a monitorização são geridos através do nosso painel de nuvem, que desbloqueia vários benefícios:",
+        "introDetail": "Com esta opção, você ainda roda seu próprio nó Pangolin - seus túneis, terminação SSL e tráfego todos permanecem no seu servidor. A diferença é que a gestão e a monitorização são geridos através do nosso painel de nuvem, que desbloqueia vários benefícios:",
         "benefitSimplerOperations": {
             "title": "Operações simples",
             "description": "Não é necessário executar o seu próprio servidor de e-mail ou configurar um alerta complexo. Você receberá fora de caixa verificações de saúde e alertas de tempo de inatividade."
@@ -2119,7 +2119,7 @@
     "selectDomainForOrgAuthPage": "Selecione um domínio para a página de autenticação da organização",
     "domainPickerProvidedDomain": "Domínio fornecido",
     "domainPickerFreeProvidedDomain": "Domínio fornecido grátis",
-    "domainPickerFreeDomainsPaidFeature": "Os domínios fornecidos são um recurso pago. Assine para obter um domínio incluído no seu plano — não há necessidade de trazer o seu próprio.",
+    "domainPickerFreeDomainsPaidFeature": "Os domínios fornecidos são um recurso pago. Assine para obter um domínio incluído no seu plano - não há necessidade de trazer o seu próprio.",
     "domainPickerVerified": "Verificada",
     "domainPickerUnverified": "Não verificado",
     "domainPickerManual": "Manual",
@@ -2297,7 +2297,7 @@
         "alerts": {
             "commercialUseDisclosure": {
                 "title": "Divulgação de uso",
-                "description": "Selecione o nível de licença que reflete corretamente seu uso pretendido. A Licença Pessoal permite o uso livre do Software para atividades comerciais individuais, não comerciais ou em pequena escala com rendimento bruto anual inferior a 100.000 USD. Qualquer uso além destes limites — incluindo uso dentro de um negócio, organização, ou outro ambiente gerador de receitas — requer uma Licença Enterprise válida e o pagamento da taxa aplicável de licenciamento. Todos os usuários, pessoais ou empresariais, devem cumprir os Termos da Licença Comercial Fossorial."
+                "description": "Selecione o nível de licença que reflete corretamente seu uso pretendido. A Licença Pessoal permite o uso livre do Software para atividades comerciais individuais, não comerciais ou em pequena escala com rendimento bruto anual inferior a 100.000 USD. Qualquer uso além destes limites - incluindo uso dentro de um negócio, organização, ou outro ambiente gerador de receitas - requer uma Licença Enterprise válida e o pagamento da taxa aplicável de licenciamento. Todos os usuários, pessoais ou empresariais, devem cumprir os Termos da Licença Comercial Fossorial."
             },
             "trialPeriodInformation": {
                 "title": "Informações do Período de Avaliação",
@@ -2882,7 +2882,7 @@
     "httpDestFormatJsonArrayTitle": "Matriz JSON",
     "httpDestFormatJsonArrayDescription": "Um pedido por lote, o corpo é um array JSON. Compatível com a maioria dos webhooks genéricos e Datadog.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "Um pedido por lote, o corpo é um JSON delimitado por nova-linha — um objeto por linha, sem array exterior. Requerido pelo Splunk HEC, Elástico / OpenSearch, e Grafana Loki.",
+    "httpDestFormatNdjsonDescription": "Um pedido por lote, o corpo é um JSON delimitado por nova-linha - um objeto por linha, sem array exterior. Requerido pelo Splunk HEC, Elástico / OpenSearch, e Grafana Loki.",
     "httpDestFormatSingleTitle": "Um Evento por Requisição",
     "httpDestFormatSingleDescription": "Envia um POST HTTP separado para cada evento. Utilize apenas para endpoints que não podem manipular lotes.",
     "httpDestLogTypesTitle": "Tipos de log",

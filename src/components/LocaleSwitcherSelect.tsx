@@ -36,7 +36,7 @@ export default function LocaleSwitcherSelect({
         });
         // Persist locale to the database (fire-and-forget)
         api.post("/user/locale", { locale }).catch(() => {
-            // Silently ignore errors — cookie is already set as fallback
+            // Silently ignore errors - cookie is already set as fallback
         });
     }
 

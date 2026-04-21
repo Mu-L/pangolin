@@ -14,6 +14,7 @@
 import * as orgIdp from "#private/routers/orgIdp";
 import * as org from "#private/routers/org";
 import * as logs from "#private/routers/auditLogs";
+import * as alertEvents from "#private/routers/alertEvents";
 
 import {
     verifyApiKeyHasAction,
@@ -39,6 +40,27 @@ import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export const unauthenticated = ua;
 export const authenticated = a;
+
+authenticated.post(
+    "/org/:orgId/site/:siteId/trigger-alert",
+    verifyApiKeyIsRoot,
+    verifyApiKeyHasAction(ActionsEnum.triggerSiteAlert),
+    alertEvents.triggerSiteAlert
+);
+
+authenticated.post(
+    "/org/:orgId/resource/:resourceId/trigger-alert",
+    verifyApiKeyIsRoot,
+    verifyApiKeyHasAction(ActionsEnum.triggerResourceAlert),
+    alertEvents.triggerResourceAlert
+);
+
+authenticated.post(
+    "/org/:orgId/health-check/:healthCheckId/trigger-alert",
+    verifyApiKeyIsRoot,
+    verifyApiKeyHasAction(ActionsEnum.triggerHealthCheckAlert),
+    alertEvents.triggerHealthCheckAlert
+);
 
 authenticated.post(
     `/org/:orgId/send-usage-notification`,

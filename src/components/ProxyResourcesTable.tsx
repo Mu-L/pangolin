@@ -19,6 +19,7 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import type { PaginationState } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
 import {
     ArrowDown01Icon,
@@ -37,6 +38,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+    useEffect,
     useOptimistic,
     useRef,
     useState,
@@ -47,6 +49,14 @@ import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "@app/components/ui/tooltip";
+import type { StatusHistoryResponse } from "@server/lib/statusHistory";
+import UptimeMiniBar from "./UptimeMiniBar";
 
 export type TargetHealth = {
     targetId: number;
@@ -160,6 +170,13 @@ export default function ProxyResourcesTable({
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 10_000);
+        return () => clearInterval(interval);
+    }, []);
 
     const refreshData = () => {
         startTransition(() => {
@@ -361,6 +378,7 @@ export default function ProxyResourcesTable({
         {
             accessorKey: "protocol",
             friendlyName: t("protocol"),
+            enableHiding: true,
             header: () => <span className="p-3">{t("protocol")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
@@ -420,6 +438,17 @@ export default function ProxyResourcesTable({
                     unknown: 0
                 };
                 return statusOrder[statusA] - statusOrder[statusB];
+            }
+        },
+        {
+            id: "statusHistory",
+            friendlyName: t("uptime30d"),
+            header: () => <span className="p-3">{t("uptime30d")}</span>,
+            cell: ({ row }) => {
+                const resourceRow = row.original;
+                return (
+                    <UptimeMiniBar resourceId={resourceRow.id} days={30} />
+                );
             }
         },
         {
@@ -656,7 +685,7 @@ export default function ProxyResourcesTable({
                 isRefreshing={isRefreshing || isFiltering}
                 isNavigatingToAddPage={isNavigatingToAddPage}
                 enableColumnVisibility
-                columnVisibility={{ niceId: false }}
+                columnVisibility={{ niceId: false, protocol: false }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
             />

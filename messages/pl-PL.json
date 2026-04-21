@@ -1994,7 +1994,7 @@
         "description": "Większa niezawodność i niska konserwacja serwera Pangolin z dodatkowymi dzwonkami i sygnałami",
         "introTitle": "Zarządzany samowystarczalny Pangolin",
         "introDescription": "jest opcją wdrażania zaprojektowaną dla osób, które chcą prostoty i dodatkowej niezawodności, przy jednoczesnym utrzymaniu swoich danych prywatnych i samodzielnych.",
-        "introDetail": "Z tą opcją nadal obsługujesz swój własny węzeł Pangolin — tunele, zakończenie SSL i ruch na Twoim serwerze. Różnica polega na tym, że zarządzanie i monitorowanie odbywa się za pomocą naszej tablicy rozdzielczej, która odblokowuje szereg korzyści:",
+        "introDetail": "Z tą opcją nadal obsługujesz swój własny węzeł Pangolin - tunele, zakończenie SSL i ruch na Twoim serwerze. Różnica polega na tym, że zarządzanie i monitorowanie odbywa się za pomocą naszej tablicy rozdzielczej, która odblokowuje szereg korzyści:",
         "benefitSimplerOperations": {
             "title": "Uproszczone operacje",
             "description": "Nie ma potrzeby uruchamiania własnego serwera pocztowego lub ustawiania skomplikowanych powiadomień. Będziesz mieć kontrolę zdrowia i powiadomienia o przestoju."
@@ -2119,7 +2119,7 @@
     "selectDomainForOrgAuthPage": "Wybierz domenę dla strony uwierzytelniania organizacji",
     "domainPickerProvidedDomain": "Dostarczona domena",
     "domainPickerFreeProvidedDomain": "Darmowa oferowana domena",
-    "domainPickerFreeDomainsPaidFeature": "Dostarczane domeny to funkcja płatna. Subskrybuj, aby uzyskać domenę w ramach swojego planu — nie ma potrzeby przynoszenia własnej.",
+    "domainPickerFreeDomainsPaidFeature": "Dostarczane domeny to funkcja płatna. Subskrybuj, aby uzyskać domenę w ramach swojego planu - nie ma potrzeby przynoszenia własnej.",
     "domainPickerVerified": "Zweryfikowano",
     "domainPickerUnverified": "Niezweryfikowane",
     "domainPickerManual": "Podręcznik",
@@ -2882,7 +2882,7 @@
     "httpDestFormatJsonArrayTitle": "Tablica JSON",
     "httpDestFormatJsonArrayDescription": "Jedna prośba na partię, treść jest tablicą JSON. Kompatybilna z najbardziej ogólnymi webhookami i Datadog.",
     "httpDestFormatNdjsonTitle": "NDJSON",
-    "httpDestFormatNdjsonDescription": "Jedno żądanie na partię, ciałem jest plik JSON rozdzielony na newline-delimited — jeden obiekt na wiersz, bez tablicy zewnętrznej. Wymagane przez Splunk HEC, Elastic / OpenSesearch i Grafana Loki.",
+    "httpDestFormatNdjsonDescription": "Jedno żądanie na partię, ciałem jest plik JSON rozdzielony na newline-delimited - jeden obiekt na wiersz, bez tablicy zewnętrznej. Wymagane przez Splunk HEC, Elastic / OpenSesearch i Grafana Loki.",
     "httpDestFormatSingleTitle": "Jedno wydarzenie na żądanie",
     "httpDestFormatSingleDescription": "Wysyła oddzielny POST HTTP dla każdego zdarzenia. Użyj tylko dla punktów końcowych, które nie mogą obsługiwać partii.",
     "httpDestLogTypesTitle": "Typy logów",

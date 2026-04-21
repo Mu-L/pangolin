@@ -34,9 +34,9 @@ export async function ensureRootApiKey() {
         const envApiKey = process.env.PANGOLIN_ROOT_API_KEY;
 
         if (!envApiKey) {
-            logger.debug(
-                "PANGOLIN_ROOT_API_KEY not set. Root API key from environment skipped."
-            );
+            // logger.debug(
+            //     "PANGOLIN_ROOT_API_KEY not set. Root API key from environment skipped."
+            // );
             return;
         }
 
