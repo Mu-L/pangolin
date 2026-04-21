@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, targetHealthCheck } from "@server/db";
+import { db, targetHealthCheck, newts, sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -21,6 +21,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, isNull } from "drizzle-orm";
+import { removeStandaloneHealthCheck } from "@server/routers/newt/targets";
 
 const paramsSchema = z
     .object({
@@ -90,6 +91,21 @@ export async function deleteHealthCheck(
                     isNull(targetHealthCheck.targetId)
                 )
             );
+
+        // Remove health check from newt if the site is a newt site
+        const [newt] = await db
+            .select()
+            .from(newts)
+            .where(eq(newts.siteId, existing.siteId))
+            .limit(1);
+
+        if (newt) {
+            await removeStandaloneHealthCheck(
+                newt.newtId,
+                healthCheckId,
+                newt.version
+            );
+        }
 
         return response<null>(res, {
             data: null,

@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, targetHealthCheck } from "@server/db";
+import { db, targetHealthCheck, newts, sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -21,6 +21,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, isNull } from "drizzle-orm";
+import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
 
 const paramsSchema = z
     .object({
@@ -127,10 +128,7 @@ export async function updateHealthCheck(
             .from(targetHealthCheck)
             .where(
                 and(
-                    eq(
-                        targetHealthCheck.targetHealthCheckId,
-                        healthCheckId
-                    ),
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
                     eq(targetHealthCheck.orgId, orgId),
                     isNull(targetHealthCheck.targetId)
                 )
@@ -197,15 +195,23 @@ export async function updateHealthCheck(
             .set(updateData)
             .where(
                 and(
-                    eq(
-                        targetHealthCheck.targetHealthCheckId,
-                        healthCheckId
-                    ),
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
                     eq(targetHealthCheck.orgId, orgId),
                     isNull(targetHealthCheck.targetId)
                 )
             )
             .returning();
+
+        // Push updated health check to newt if the site is a newt site
+        const [newt] = await db
+            .select()
+            .from(newts)
+            .where(eq(newts.siteId, updated.siteId))
+            .limit(1);
+
+        if (newt) {
+            await addStandaloneHealthCheck(newt.newtId, updated, newt.version);
+        }
 
         return response<UpdateHealthCheckResponse>(res, {
             data: {
