@@ -380,7 +380,7 @@
     "userTitle": "Manage All Users",
     "userDescription": "View and manage all users in the system",
     "userAbount": "About User Management",
-    "userAbountDescription": "This table displays all root user objects in the system. Each user may belong to multiple organizations. Removing a user from an organization does not delete their root user object - they will remain in the system. To completely remove a user from the system, you must delete their root user object using the delete action in this table.",
+    "userAbountDescription": "This table displays all base user objects in the system. Each user may belong to multiple organizations. Removing a user from an organization does not delete their base user object. They will remain in the system. To completely remove a user from the system, you must delete their base user object using the delete action in this table.",
     "userServer": "Server Users",
     "userSearch": "Search server users...",
     "userErrorDelete": "Error deleting user",
