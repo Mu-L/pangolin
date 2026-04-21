@@ -1176,7 +1176,7 @@ export function InternalResourceForm({
                                                                             </span>
                                                                         )
                                                                     )}
-                                                                    <span className="pl-1">
+                                                                    <span className="pl-1 font-normal">
                                                                         {t(
                                                                             "accessClientSelect"
                                                                         )}

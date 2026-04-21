@@ -188,23 +188,6 @@ export default function IdpTable({ idps, orgId }: Props) {
 
     const columns: ExtendedColumnDef<IdpRow>[] = [
         {
-            accessorKey: "idpId",
-            friendlyName: "ID",
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        ID
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
-        },
-        {
             accessorKey: "name",
             friendlyName: t("name"),
             header: ({ column }) => {
