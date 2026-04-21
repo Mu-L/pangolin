@@ -528,7 +528,7 @@ export const alertEmailRecipients = pgTable("alertEmailRecipients", {
     userId: varchar("userId").references(() => users.userId, {
         onDelete: "cascade"
     }),
-    roleId: varchar("roleId").references(() => roles.roleId, {
+    roleId: integer("roleId").references(() => roles.roleId, {
         onDelete: "cascade"
     }),
     email: varchar("email", { length: 255 }) // external emails not tied to a user

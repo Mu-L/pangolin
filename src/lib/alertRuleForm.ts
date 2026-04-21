@@ -66,7 +66,7 @@ export type AlertRuleApiPayload = {
     siteIds: number[];
     healthCheckIds: number[];
     userIds: string[];
-    roleIds: string[];
+    roleIds: number[];
     emails: string[];
     webhookActions: {
         webhookUrl: string;
@@ -91,7 +91,7 @@ export type AlertRuleApiResponse = {
     recipients: {
         recipientId: number;
         userId: string | null;
-        roleId: string | null;
+        roleId: number | null;
         email: string | null;
     }[];
     webhookActions: {
@@ -297,7 +297,7 @@ export function apiResponseToFormValues(
         .map((r) => ({ id: r.userId!, text: r.userId! }));
     const roleTags = rule.recipients
         .filter((r) => r.roleId != null)
-        .map((r) => ({ id: r.roleId!, text: r.roleId! }));
+        .map((r) => ({ id: String(r.roleId!), text: String(r.roleId!) }));
     const emailTags = rule.recipients
         .filter((r) => r.email != null)
         .map((r) => ({ id: r.email!, text: r.email! }));
@@ -358,7 +358,7 @@ export function formValuesToApiPayload(
 
     // Collect all notify-type actions and merge their recipient lists
     const allUserIds: string[] = [];
-    const allRoleIds: string[] = [];
+    const allRoleIds: number[] = [];
     const allEmails: string[] = [];
 
     const webhookActions: AlertRuleApiPayload["webhookActions"] = [];
@@ -366,7 +366,7 @@ export function formValuesToApiPayload(
     for (const action of values.actions) {
         if (action.type === "notify") {
             allUserIds.push(...action.userTags.map((t) => t.id));
-            allRoleIds.push(...action.roleTags.map((t) => t.id));
+            allRoleIds.push(...action.roleTags.map((t) => Number(t.id)));
             allEmails.push(
                 ...action.emailTags
                     .map((t) => t.text.trim())
@@ -391,7 +391,7 @@ export function formValuesToApiPayload(
 
     // Deduplicate
     const uniqueUserIds = [...new Set(allUserIds)];
-    const uniqueRoleIds = [...new Set(allRoleIds)];
+    const uniqueRoleIds: number[] = [...new Set(allRoleIds)];
     const uniqueEmails = [...new Set(allEmails)];
 
     return {

@@ -513,7 +513,7 @@ export const alertEmailRecipients = sqliteTable("alertEmailRecipients", {
         .notNull()
         .references(() => alertEmailActions.emailActionId, { onDelete: "cascade" }),
     userId: text("userId").references(() => users.userId, { onDelete: "cascade" }),
-    roleId: text("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
+    roleId: integer("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
     email: text("email")
 });
 

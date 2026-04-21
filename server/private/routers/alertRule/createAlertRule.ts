@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, roles } from "@server/db";
 import {
     alertRules,
     alertSites,
@@ -30,6 +30,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
+import { and, eq } from "drizzle-orm";
 
 const SITE_EVENT_TYPES = ["site_online", "site_offline"] as const;
 const HC_EVENT_TYPES = [
@@ -66,7 +67,7 @@ const bodySchema = z
             .default([]),
         // Email recipients (flat)
         userIds: z.array(z.string().nonempty()).optional().default([]),
-        roleIds: z.array(z.string().nonempty()).optional().default([]),
+        roleIds: z.array(z.number()).optional().default([]),
         emails: z.array(z.string().email()).optional().default([]),
         // Webhook actions
         webhookActions: z.array(webhookActionSchema).optional().default([])
@@ -82,8 +83,7 @@ const bodySchema = z
         if (isSiteEvent && val.siteIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message:
-                    "At least one siteId is required for site event types",
+                message: "At least one siteId is required for site event types",
                 path: ["siteIds"]
             });
         }
@@ -108,8 +108,7 @@ const bodySchema = z
         if (isHcEvent && val.siteIds.length > 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message:
-                    "siteIds must not be set for health check event types",
+                message: "siteIds must not be set for health check event types",
                 path: ["siteIds"]
             });
         }
@@ -216,7 +215,9 @@ export async function createAlertRule(
         // Create the email action pivot row and recipients if any recipients
         // were supplied (userIds, roleIds, or raw emails).
         const hasRecipients =
-            userIds.length > 0 || roleIds.length > 0 || emails.length > 0;
+            userIds.length > 0 ||
+            roleIds.length > 0 ||
+            emails.length > 0;
 
         if (hasRecipients) {
             const [emailActionRow] = await db
@@ -228,7 +229,7 @@ export async function createAlertRule(
                 ...userIds.map((userId) => ({
                     emailActionId: emailActionRow.emailActionId,
                     userId,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email: null as string | null
                 })),
                 ...roleIds.map((roleId) => ({
@@ -240,7 +241,7 @@ export async function createAlertRule(
                 ...emails.map((email) => ({
                     emailActionId: emailActionRow.emailActionId,
                     userId: null as string | null,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email
                 }))
             ];
@@ -254,7 +255,10 @@ export async function createAlertRule(
                 webhookActions.map((wa) => ({
                     alertRuleId: rule.alertRuleId,
                     webhookUrl: wa.webhookUrl,
-                    config: wa.config != null ? encrypt(wa.config, serverSecret) : null,
+                    config:
+                        wa.config != null
+                            ? encrypt(wa.config, serverSecret)
+                            : null,
                     enabled: wa.enabled
                 }))
             );

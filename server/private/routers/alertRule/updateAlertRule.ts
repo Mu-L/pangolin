@@ -70,7 +70,7 @@ const bodySchema = z
         healthCheckIds: z.array(z.number().int().positive()).optional(),
         // Recipient arrays - if any are provided the full recipient set is replaced
         userIds: z.array(z.string().nonempty()).optional(),
-        roleIds: z.array(z.string().nonempty()).optional(),
+        roleIds: z.array(z.number()).optional(),
         emails: z.array(z.string().email()).optional(),
         // Webhook actions - if provided the full webhook set is replaced
         webhookActions: z.array(webhookActionSchema).optional()
@@ -244,7 +244,7 @@ export async function updateAlertRule(
             const newRecipients = [
                 ...(userIds ?? []).map((userId) => ({
                     userId,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email: null as string | null
                 })),
                 ...(roleIds ?? []).map((roleId) => ({
@@ -254,7 +254,7 @@ export async function updateAlertRule(
                 })),
                 ...(emails ?? []).map((email) => ({
                     userId: null as string | null,
-                    roleId: null as string | null,
+                    roleId: null as number | null,
                     email
                 }))
             ];
