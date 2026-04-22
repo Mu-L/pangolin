@@ -17,3 +17,4 @@ export * from "./sendAlertWebhook";
 export * from "./sendAlertEmail";
 export * from "./events/siteEvents";
 export * from "./events/healthCheckEvents";
+export * from "./events/resourceEvents";

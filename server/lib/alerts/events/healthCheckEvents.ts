@@ -9,7 +9,7 @@ export async function fireHealthCheckHealthyAlert(
     return;
 }
 
-export async function fireHealthCheckUnealthyAlert(
+export async function fireHealthCheckUnhealthyAlert(
     orgId: string,
     healthCheckId: number,
     healthCheckName?: string,

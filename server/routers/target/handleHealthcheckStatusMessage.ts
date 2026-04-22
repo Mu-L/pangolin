@@ -14,7 +14,10 @@ import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckUnhealthyAlert
 } from "#dynamic/lib/alerts";
-import { fireResourceHealthyAlert, fireResourceUnhealthyAlert } from "@server/private/lib/alerts/events/resourceEvents";
+import {
+    fireResourceHealthyAlert,
+    fireResourceUnhealthyAlert
+} from "#dynamic/lib/alerts";
 
 interface TargetHealthStatus {
     status: string;
@@ -223,13 +226,13 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 await fireHealthCheckUnhealthyAlert(
                     orgId,
                     targetCheck.targetHealthCheckId,
-                    targetCheck.name
+                    targetCheck.name ?? undefined
                 );
             } else if (healthStatus.status === "healthy") {
                 await fireHealthCheckHealthyAlert(
                     orgId,
                     targetCheck.targetHealthCheckId,
-                    targetCheck.name
+                    targetCheck.name ?? undefined
                 );
             }
 
