@@ -34,6 +34,7 @@ import { orgQueries } from "@app/lib/queries";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { useTranslations } from "next-intl";
 
 interface UptimeAlertSectionProps {
     orgId: string;
@@ -50,6 +51,7 @@ export default function UptimeAlertSection({
     resourceId,
     days = 90
 }: UptimeAlertSectionProps) {
+    const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
     const { isPaidUser } = usePaidStatus();
@@ -57,7 +59,7 @@ export default function UptimeAlertSection({
 
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(
-        `${siteId ? "Site" : "Resource"} ${startingName} Alert`
+        `${siteId ? t("site") : t("resource")} ${startingName} ${t("alertLabel")}`
     );
     const [userTags, setUserTags] = useState<Tag[]>([]);
     const [roleTags, setRoleTags] = useState<Tag[]>([]);
@@ -112,9 +114,8 @@ export default function UptimeAlertSection({
         ) {
             toast({
                 variant: "destructive",
-                title: "No recipients",
-                description:
-                    "Please add at least one user, role, or email to notify."
+                title: t("uptimeAlertNoRecipients"),
+                description: t("uptimeAlertNoRecipientsDescription")
             });
             return;
         }
@@ -136,12 +137,12 @@ export default function UptimeAlertSection({
             });
 
             toast({
-                title: "Alert created",
-                description: "You will be notified when this changes status."
+                title: t("uptimeAlertCreated"),
+                description: t("uptimeAlertCreatedDescription")
             });
 
             setOpen(false);
-            setName("Uptime Alert");
+            setName(t("uptimeSectionTitle"));
             setUserTags([]);
             setRoleTags([]);
             setEmailTags([]);
@@ -156,8 +157,8 @@ export default function UptimeAlertSection({
         } catch (e) {
             toast({
                 variant: "destructive",
-                title: "Failed to create alert",
-                description: formatAxiosError(e, "An error occurred.")
+                title: t("uptimeAlertCreateFailed"),
+                description: formatAxiosError(e, t("errorOccurred"))
             });
         }
         setLoading(false);
@@ -174,19 +175,19 @@ export default function UptimeAlertSection({
     const alertButton = alertRulesLoading ? (
         <Button variant="outline" type="button" loading aria-busy="true">
             <BellPlus className="size-4 mr-2" />
-            Add Alert
+            {t("uptimeAddAlert")}
         </Button>
     ) : hasRules ? (
         <Button variant="outline" asChild>
             <Link href={rulesListHref}>
                 <BellRing className="size-4 mr-2" />
-                View Alerts
+                {t("uptimeViewAlerts")}
             </Link>
         </Button>
     ) : (
         <Button variant="outline" onClick={() => setOpen(true)}>
             <BellPlus className="size-4 mr-2" />
-            Add Alert
+            {t("uptimeAddAlert")}
         </Button>
     );
 
@@ -196,9 +197,11 @@ export default function UptimeAlertSection({
                 <SettingsSectionHeader>
                     <div className="flex justify-between items-start">
                         <div>
-                            <SettingsSectionTitle>Uptime</SettingsSectionTitle>
+                            <SettingsSectionTitle>
+                                {t("uptimeSectionTitle")}
+                            </SettingsSectionTitle>
                             <SettingsSectionDescription>
-                                Availability over the last {days} days
+                                {t("uptimeSectionDescription", { days })}
                             </SettingsSectionDescription>
                         </div>
                         {alertButton}
@@ -216,11 +219,13 @@ export default function UptimeAlertSection({
             <Credenza open={open} onOpenChange={setOpen}>
                 <CredenzaContent>
                     <CredenzaHeader>
-                        <CredenzaTitle>Create Email Alert</CredenzaTitle>
+                        <CredenzaTitle>
+                            {t("uptimeCreateEmailAlert")}
+                        </CredenzaTitle>
                         <CredenzaDescription>
-                            Get notified by email when this{" "}
-                            {siteId ? "site" : "resource"} goes offline or comes
-                            back online.
+                            {siteId
+                                ? t("uptimeAlertDescriptionSite")
+                                : t("uptimeAlertDescriptionResource")}
                         </CredenzaDescription>
                     </CredenzaHeader>
                     <CredenzaBody>
@@ -232,20 +237,22 @@ export default function UptimeAlertSection({
                             >
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="alert-name">Name</Label>
+                                        <Label htmlFor="alert-name">
+                                            {t("name")}
+                                        </Label>
                                         <Input
                                             id="alert-name"
                                             value={name}
                                             onChange={(e) => setName(e.target.value)}
-                                            placeholder="Alert name"
+                                            placeholder={t("uptimeAlertNamePlaceholder")}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Notify Users</Label>
+                                        <Label>{t("alertingNotifyUsers")}</Label>
                                         <TagInput
                                             activeTagIndex={activeUserTagIndex}
                                             setActiveTagIndex={setActiveUserTagIndex}
-                                            placeholder="Select users..."
+                                            placeholder={t("alertingSelectUsers")}
                                             size="sm"
                                             tags={userTags}
                                             setTags={(newTags) => {
@@ -263,11 +270,11 @@ export default function UptimeAlertSection({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Notify Roles</Label>
+                                        <Label>{t("alertingNotifyRoles")}</Label>
                                         <TagInput
                                             activeTagIndex={activeRoleTagIndex}
                                             setActiveTagIndex={setActiveRoleTagIndex}
-                                            placeholder="Select roles..."
+                                            placeholder={t("alertingSelectRoles")}
                                             size="sm"
                                             tags={roleTags}
                                             setTags={(newTags) => {
@@ -285,11 +292,11 @@ export default function UptimeAlertSection({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Additional Emails</Label>
+                                        <Label>{t("uptimeAdditionalEmails")}</Label>
                                         <TagInput
                                             activeTagIndex={activeEmailTagIndex}
                                             setActiveTagIndex={setActiveEmailTagIndex}
-                                            placeholder="Enter email addresses..."
+                                            placeholder={t("alertingEmailPlaceholder")}
                                             size="sm"
                                             tags={emailTags}
                                             setTags={(newTags) => {
@@ -313,14 +320,14 @@ export default function UptimeAlertSection({
                     </CredenzaBody>
                     <CredenzaFooter>
                         <CredenzaClose asChild>
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant="outline">{t("cancel")}</Button>
                         </CredenzaClose>
                         <Button
                             onClick={handleSubmit}
                             loading={loading}
                             disabled={loading || !isPaid}
                         >
-                            Create Alert
+                            {t("uptimeCreateAlert")}
                         </Button>
                     </CredenzaFooter>
                 </CredenzaContent>

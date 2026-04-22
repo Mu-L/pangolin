@@ -714,7 +714,7 @@ function WebhookActionFields({
                 name={`actions.${index}.url`}
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>URL</FormLabel>
+                        <FormLabel>{t("webhookUrlLabel")}</FormLabel>
                         <FormControl>
                             <Input
                                 {...field}
@@ -961,7 +961,7 @@ function WebhookHeadersField({
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormControl>
-                                    <Input {...field} placeholder="Key" />
+                                    <Input {...field} placeholder={t("webhookHeaderKeyPlaceholder")} />
                                 </FormControl>
                             </FormItem>
                         )}
@@ -972,7 +972,7 @@ function WebhookHeadersField({
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormControl>
-                                    <Input {...field} placeholder="Value" />
+                                    <Input {...field} placeholder={t("webhookHeaderValuePlaceholder")} />
                                 </FormControl>
                             </FormItem>
                         )}
