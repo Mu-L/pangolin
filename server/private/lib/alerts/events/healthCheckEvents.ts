@@ -102,7 +102,7 @@ export async function fireHealthCheckUnhealthyAlert(
         });
     } catch (err) {
         logger.error(
-            `fireHealthCheckNotHealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
+            `fireHealthCheckUnhealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
             err
         );
     }
