@@ -50,6 +50,7 @@ import IdpTypeIcon from "@app/components/IdpTypeIcon";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import OrgRolesTagField from "@app/components/OrgRolesTagField";
+import CopyToClipboard from "@app/components/CopyToClipboard";
 
 type UserType = "internal" | "oidc";
 
@@ -670,9 +671,8 @@ export default function Page() {
                                                     days: expiresInDays
                                                 })}
                                             </p>
-                                            <CopyTextBox
+                                            <CopyToClipboard
                                                 text={inviteLink}
-                                                wrapText={false}
                                             />
                                         </div>
                                     </SettingsSectionBody>

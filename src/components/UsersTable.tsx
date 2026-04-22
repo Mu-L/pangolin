@@ -382,6 +382,7 @@ export default function UsersTable({
                 pagination={pagination}
                 rowCount={rowCount}
                 isNavigatingToAddPage={isNavigatingToAddPage}
+                addButtonText={t("accessUserCreate")}
                 searchQuery={searchParams.get("query")?.toString()}
                 onSearch={handleSearchChange}
                 onPaginationChange={handlePaginationChange}
