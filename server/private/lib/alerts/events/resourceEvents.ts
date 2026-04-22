@@ -41,7 +41,6 @@ export async function fireResourceHealthyAlert(
             orgId,
             resourceId,
             data: {
-                resourceId,
                 ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }
@@ -87,7 +86,6 @@ export async function fireResourceUnhealthyAlert(
             orgId,
             resourceId,
             data: {
-                resourceId,
                 ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }
@@ -133,7 +131,6 @@ export async function fireResourceToggleAlert(
             orgId,
             resourceId,
             data: {
-                resourceId,
                 ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }

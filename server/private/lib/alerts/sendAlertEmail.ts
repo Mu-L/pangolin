@@ -36,13 +36,17 @@ export async function sendAlertEmail(
     const from = config.getNoReplyEmail();
     const subject = buildSubject(context);
 
+    const baseUrl = config.getRawConfig().app.dashboard_url!.replace(/\/$/, "");
+    const dashboardLink = `${baseUrl}/${context.orgId}/settings`;
+
     for (const to of recipients) {
         try {
             await sendEmail(
                 AlertNotification({
                     eventType: context.eventType,
                     orgId: context.orgId,
-                    data: context.data
+                    data: context.data,
+                    dashboardLink
                 }),
                 {
                     from,

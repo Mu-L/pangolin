@@ -36,8 +36,8 @@ export const NotifyTrialExpiring = ({
           : `Your trial for ${orgName} ends in ${daysRemaining} days.`;
 
     const heading = hasEnded
-        ? "Your Trial Has Ended"
-        : "Your Trial Is Ending Soon";
+        ? "Your Trial Ended"
+        : "Your Trial is Ending Soon";
 
     return (
         <Html>

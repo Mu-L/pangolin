@@ -8,9 +8,11 @@ import {
     EmailHeading,
     EmailInfoSection,
     EmailLetterHead,
+    EmailSection,
     EmailSignature,
     EmailText
 } from "./components/Email";
+import ButtonLink from "./components/ButtonLink";
 
 export type AlertEventType =
     | "site_online"
@@ -23,11 +25,38 @@ export type AlertEventType =
     | "resource_unhealthy"
     | "resource_toggle";
 
-interface Props {
+// ---------------------------------------------------------------------------
+// Local preview / layout testing
+// ---------------------------------------------------------------------------
+//
+// Set to `true` while running `npm run email` or otherwise rendering this
+// template without real alert context. Uses `alertNotificationFixture` below
+// and ignores props passed by callers (including real alert sends). Must be
+// `false` before shipping or triggering real alert emails.
+
+export const USE_FAKE_ALERT_NOTIFICATION_DATA = true;
+
+export type AlertNotificationProps = {
     eventType: AlertEventType;
     orgId: string;
     data: Record<string, unknown>;
-}
+    dashboardLink: string;
+};
+
+/** Sample props for previews; also used when `USE_FAKE_ALERT_NOTIFICATION_DATA` is true. */
+export const alertNotificationFixture: AlertNotificationProps = {
+    eventType: "site_online",
+    orgId: "org_preview_7a3c2f91",
+    dashboardLink:
+        "https://app.pangolin.net/org_preview_7a3c2f91/settings/alerting/rules",
+    data: {
+        siteId: 42,
+        healthCheckName: "Edge API – readiness probe",
+        targetUrl: "https://api.example.com/internal/health",
+        lastFailureMessage: "Connection timed out after 5000ms",
+        consecutiveFailures: 3
+    }
+};
 
 function getEventMeta(eventType: AlertEventType): {
     heading: string;
@@ -51,7 +80,7 @@ function getEventMeta(eventType: AlertEventType): {
                 heading: "Site Offline",
                 previewText: "A site in your organization has gone offline.",
                 summary:
-                    "A site in your organization has gone offline and is no longer reachable. Please investigate as soon as possible.",
+                    "A site in your organization has gone offline and is no longer reachable.",
                 statusLabel: "Offline",
                 statusColor: "#dc2626"
             };
@@ -59,8 +88,7 @@ function getEventMeta(eventType: AlertEventType): {
             return {
                 heading: "Site Status Changed",
                 previewText: "A site in your organization has changed status.",
-                summary:
-                    "A site in your organization has changed status. Please review the details below and take action if needed.",
+                summary: "A site in your organization has changed status.",
                 statusLabel: "Status Changed",
                 statusColor: "#f59e0b"
             };
@@ -80,7 +108,7 @@ function getEventMeta(eventType: AlertEventType): {
                 previewText:
                     "A health check in your organization is not healthy.",
                 summary:
-                    "A health check in your organization is currently failing. Please review the details below and take action if needed.",
+                    "A health check in your organization is currently failing.",
                 statusLabel: "Not Healthy",
                 statusColor: "#dc2626"
             };
@@ -90,7 +118,7 @@ function getEventMeta(eventType: AlertEventType): {
                 previewText:
                     "A health check in your organization has changed status.",
                 summary:
-                    "A health check in your organization has changed status. Please review the details below and take action if needed.",
+                    "A health check in your organization has changed status.",
                 statusLabel: "Status Changed",
                 statusColor: "#f59e0b"
             };
@@ -108,7 +136,7 @@ function getEventMeta(eventType: AlertEventType): {
                 heading: "Resource Unhealthy",
                 previewText: "A resource in your organization is not healthy.",
                 summary:
-                    "A resource in your organization is currently unhealthy. Please review the details below and take action if needed.",
+                    "A resource in your organization is currently unhealthy.",
                 statusLabel: "Unhealthy",
                 statusColor: "#dc2626"
             };
@@ -117,17 +145,16 @@ function getEventMeta(eventType: AlertEventType): {
                 heading: "Resource Status Changed",
                 previewText:
                     "A resource in your organization has changed status.",
-                summary:
-                    "A resource in your organization has changed status. Please review the details below and take action if needed.",
+                summary: "A resource in your organization has changed status.",
                 statusLabel: "Status Changed",
                 statusColor: "#f59e0b"
             };
         default:
             return {
                 heading: "Alert Notification",
-                previewText: "An alert event has occurred in your organization.",
-                summary:
-                    "An alert event has occurred in your organization. Please review the details below and take action if needed.",
+                previewText:
+                    "An alert event has occurred in your organization.",
+                summary: "An alert event has occurred in your organization.",
                 statusLabel: "Alert",
                 statusColor: "#f59e0b"
             };
@@ -148,17 +175,22 @@ function formatDataItems(
         }));
 }
 
-export const AlertNotification = ({ eventType, orgId, data }: Props) => {
+export const AlertNotification = (props: AlertNotificationProps) => {
+    const { eventType, orgId, data, dashboardLink } =
+        USE_FAKE_ALERT_NOTIFICATION_DATA ? alertNotificationFixture : props;
     const meta = getEventMeta(eventType);
     const dataItems = formatDataItems(data);
 
     const allItems: { label: string; value: React.ReactNode }[] = [
         { label: "Organization", value: orgId },
-        { label: "Status", value: (
-            <span style={{ color: meta.statusColor, fontWeight: 600 }}>
-                {meta.statusLabel}
-            </span>
-        )},
+        {
+            label: "Status",
+            value: (
+                <span style={{ color: meta.statusColor, fontWeight: 600 }}>
+                    {meta.statusLabel}
+                </span>
+            )
+        },
         { label: "Time", value: new Date().toUTCString() },
         ...dataItems
     ];
@@ -184,9 +216,15 @@ export const AlertNotification = ({ eventType, orgId, data }: Props) => {
                         />
 
                         <EmailText>
-                            Log in to your dashboard to view more details and
-                            manage your alert rules.
+                            Open your dashboard to view more details and manage
+                            your alert rules.
                         </EmailText>
+
+                        <EmailSection>
+                            <ButtonLink href={dashboardLink}>
+                                Open Dashboard
+                            </ButtonLink>
+                        </EmailSection>
 
                         <EmailFooter>
                             <EmailSignature />

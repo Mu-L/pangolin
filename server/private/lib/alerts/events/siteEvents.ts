@@ -41,7 +41,6 @@ export async function fireSiteOnlineAlert(
             orgId,
             siteId,
             data: {
-                siteId,
                 ...(siteName != null ? { siteName } : {}),
                 ...extra
             }
@@ -87,7 +86,6 @@ export async function fireSiteOfflineAlert(
             orgId,
             siteId,
             data: {
-                siteId,
                 ...(siteName != null ? { siteName } : {}),
                 ...extra
             }
