@@ -174,11 +174,7 @@ export default function AlertRuleGraphEditor({
                                 <CardContent className="p-4 sm:p-5 space-y-4">
                                     <fieldset
                                         disabled={disabled}
-                                        className={
-                                            disabled
-                                                ? "opacity-50 pointer-events-none"
-                                                : "space-y-4"
-                                        }
+                                        className={`space-y-4${disabled ? " opacity-50 pointer-events-none" : ""}`}
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
                                             {isNew && (
