@@ -46,7 +46,7 @@ export type SiteRow = {
     mbIn: string;
     mbOut: string;
     orgId: string;
-    type: "newt" | "wireguard";
+    type: "newt" | "wireguard" | "local";
     newtVersion?: string;
     newtUpdateAvailable?: boolean;
     online: boolean;
@@ -236,6 +236,9 @@ export default function SitesTable({
             header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 const originalRow = row.original;
+                if (originalRow.type == "local") {
+                    return <span>-</span>;
+                }
                 return (
                     <UptimeMiniBar siteId={originalRow.id} days={30} />
                 );

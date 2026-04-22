@@ -113,7 +113,7 @@ export default function GeneralPage() {
 
     return (
         <SettingsContainer>
-            {site?.siteId && site?.orgId && (
+            {site?.siteId && site?.orgId && site.type != "local" && (
                 <UptimeAlertSection
                     orgId={site.orgId}
                     siteId={site.siteId}

@@ -15,6 +15,8 @@ import logger from "@server/logger";
 import { AlertContext, WebhookAlertConfig } from "@server/routers/alertRule/types";
 
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
 
 /**
  * Sends a single webhook POST for an alert event.
@@ -49,45 +51,70 @@ export async function sendAlertWebhook(
     const body = JSON.stringify(payload);
     const headers = buildHeaders(webhookConfig);
 
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let lastError: Error | undefined;
 
-    let response: Response;
-    try {
-        response = await fetch(url, {
-            method: webhookConfig.method ?? "POST",
-            headers,
-            body,
-            signal: controller.signal
-        });
-    } catch (err: unknown) {
-        const isAbort = err instanceof Error && err.name === "AbortError";
-        if (isAbort) {
-            throw new Error(
-                `Alert webhook: request to "${url}" timed out after ${REQUEST_TIMEOUT_MS} ms`
-            );
-        }
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`Alert webhook: request to "${url}" failed – ${msg}`);
-    } finally {
-        clearTimeout(timeoutHandle);
-    }
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    if (!response.ok) {
-        let snippet = "";
+        let response: Response;
         try {
-            const text = await response.text();
-            snippet = text.slice(0, 300);
-        } catch {
-            // best-effort
+            response = await fetch(url, {
+                method: webhookConfig.method ?? "POST",
+                headers,
+                body,
+                signal: controller.signal
+            });
+        } catch (err: unknown) {
+            clearTimeout(timeoutHandle);
+            const isAbort = err instanceof Error && err.name === "AbortError";
+            if (isAbort) {
+                lastError = new Error(
+                    `Alert webhook: request to "${url}" timed out after ${REQUEST_TIMEOUT_MS} ms`
+                );
+            } else {
+                const msg = err instanceof Error ? err.message : String(err);
+                lastError = new Error(`Alert webhook: request to "${url}" failed – ${msg}`);
+            }
+            if (attempt < MAX_RETRIES) {
+                const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+                logger.warn(
+                    `Alert webhook: attempt ${attempt}/${MAX_RETRIES} failed – retrying in ${delay} ms. ${lastError.message}`
+                );
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+            continue;
+        } finally {
+            clearTimeout(timeoutHandle);
         }
-        throw new Error(
-            `Alert webhook: server at "${url}" returned HTTP ${response.status} ${response.statusText}` +
-                (snippet ? ` – ${snippet}` : "")
-        );
+
+        if (!response.ok) {
+            let snippet = "";
+            try {
+                const text = await response.text();
+                snippet = text.slice(0, 300);
+            } catch {
+                // best-effort
+            }
+            lastError = new Error(
+                `Alert webhook: server at "${url}" returned HTTP ${response.status} ${response.statusText}` +
+                    (snippet ? ` – ${snippet}` : "")
+            );
+            if (attempt < MAX_RETRIES) {
+                const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+                logger.warn(
+                    `Alert webhook: attempt ${attempt}/${MAX_RETRIES} failed – retrying in ${delay} ms. ${lastError.message}`
+                );
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+            continue;
+        }
+
+        logger.debug(`Alert webhook sent successfully to "${url}" for event "${context.eventType}" (attempt ${attempt}/${MAX_RETRIES})`);
+        return;
     }
 
-    logger.debug(`Alert webhook sent successfully to "${url}" for event "${context.eventType}"`);
+    throw lastError ?? new Error(`Alert webhook: all ${MAX_RETRIES} attempts failed for "${url}"`);
 }
 
 // ---------------------------------------------------------------------------
