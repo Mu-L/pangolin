@@ -10,7 +10,10 @@ import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
 export const metadata: Metadata = {
-    title: `Auth - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
+    title: {
+        template: `%s - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
+        default: `Auth - ${process.env.BRANDING_APP_NAME || "Pangolin"}`
+    },
     description: ""
 };
 

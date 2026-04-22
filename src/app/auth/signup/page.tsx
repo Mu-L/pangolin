@@ -7,6 +7,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Create Account"
+};
 
 export const dynamic = "force-dynamic";
 

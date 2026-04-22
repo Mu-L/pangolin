@@ -27,6 +27,11 @@ import { CheckOrgUserAccessResponse } from "@server/routers/org";
 import OrgPolicyRequired from "@app/components/OrgPolicyRequired";
 import { isOrgSubscribed } from "@app/lib/api/isOrgSubscribed";
 import { normalizePostAuthPath } from "@server/lib/normalizePostAuthPath";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Resource Access"
+};
 
 export const dynamic = "force-dynamic";
 

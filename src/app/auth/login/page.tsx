@@ -17,6 +17,11 @@ import { priv } from "@app/lib/api";
 import { AxiosResponse } from "axios";
 import { LoginFormIDP } from "@app/components/LoginForm";
 import { ListIdpsResponse } from "@server/routers/idp";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Log In"
+};
 
 export const dynamic = "force-dynamic";
 
