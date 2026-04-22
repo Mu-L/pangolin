@@ -25,37 +25,11 @@ export type AlertEventType =
     | "resource_unhealthy"
     | "resource_toggle";
 
-// ---------------------------------------------------------------------------
-// Local preview / layout testing
-// ---------------------------------------------------------------------------
-//
-// Set to `true` while running `npm run email` or otherwise rendering this
-// template without real alert context. Uses `alertNotificationFixture` below
-// and ignores props passed by callers (including real alert sends). Must be
-// `false` before shipping or triggering real alert emails.
-
-export const USE_FAKE_ALERT_NOTIFICATION_DATA = true;
-
 export type AlertNotificationProps = {
     eventType: AlertEventType;
     orgId: string;
     data: Record<string, unknown>;
     dashboardLink: string;
-};
-
-/** Sample props for previews; also used when `USE_FAKE_ALERT_NOTIFICATION_DATA` is true. */
-export const alertNotificationFixture: AlertNotificationProps = {
-    eventType: "site_online",
-    orgId: "org_preview_7a3c2f91",
-    dashboardLink:
-        "https://app.pangolin.net/org_preview_7a3c2f91/settings/alerting/rules",
-    data: {
-        siteId: 42,
-        healthCheckName: "Edge API – readiness probe",
-        targetUrl: "https://api.example.com/internal/health",
-        lastFailureMessage: "Connection timed out after 5000ms",
-        consecutiveFailures: 3
-    }
 };
 
 function getEventMeta(eventType: AlertEventType): {
@@ -176,8 +150,7 @@ function formatDataItems(
 }
 
 export const AlertNotification = (props: AlertNotificationProps) => {
-    const { eventType, orgId, data, dashboardLink } =
-        USE_FAKE_ALERT_NOTIFICATION_DATA ? alertNotificationFixture : props;
+    const { eventType, orgId, data, dashboardLink } = props;
     const meta = getEventMeta(eventType);
     const dataItems = formatDataItems(data);
 
