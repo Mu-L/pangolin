@@ -28,7 +28,7 @@ import {
 } from "@app/lib/alertRuleForm";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import type { CreateAlertRuleResponse } from "@server/private/routers/alertRule";
+import type { CreateAlertRuleResponse } from "@server/routers/alertRule/types";
 import type { AxiosResponse } from "axios";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeft, Cog, Flag, Zap } from "lucide-react";

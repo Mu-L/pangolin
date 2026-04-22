@@ -32,7 +32,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { WebhookAlertConfig } from "#private/lib/alerts/types";
+import { GetAlertRuleResponse, WebhookAlertConfig } from "@server/routers/alertRule/types";
 
 const paramsSchema = z
     .object({
@@ -40,43 +40,6 @@ const paramsSchema = z
         alertRuleId: z.coerce.number<number>()
     })
     .strict();
-
-export type GetAlertRuleResponse = {
-    alertRuleId: number;
-    orgId: string;
-    name: string;
-    eventType:
-        | "site_online"
-        | "site_offline"
-        | "site_toggle"
-        | "health_check_healthy"
-        | "health_check_unhealthy"
-        | "health_check_toggle"
-        | "resource_healthy"
-        | "resource_unhealthy"
-        | "resource_toggle";
-    enabled: boolean;
-    cooldownSeconds: number;
-    lastTriggeredAt: number | null;
-    createdAt: number;
-    updatedAt: number;
-    siteIds: number[];
-    healthCheckIds: number[];
-    resourceIds: number[];
-    recipients: {
-        recipientId: number;
-        userId: string | null;
-        roleId: number | null;
-        email: string | null;
-    }[];
-    webhookActions: {
-        webhookActionId: number;
-        webhookUrl: string;
-        enabled: boolean;
-        lastSentAt: number | null;
-        config: WebhookAlertConfig | null;
-    }[];
-};
 
 registry.registerPath({
     method: "get",

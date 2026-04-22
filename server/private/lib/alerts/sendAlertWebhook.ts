@@ -12,7 +12,7 @@
  */
 
 import logger from "@server/logger";
-import { AlertContext, WebhookAlertConfig } from "./types";
+import { AlertContext, WebhookAlertConfig } from "@server/routers/alertRule/types";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
