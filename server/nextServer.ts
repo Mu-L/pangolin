@@ -29,7 +29,7 @@ export async function createNextServer() {
     nextServer.listen(nextPort, (err?: any) => {
         if (err) throw err;
         logger.info(
-            `Next.js server is running on http://localhost:${nextPort}`
+            `Dashboard Web UI server is running on http://localhost:${nextPort}`
         );
     });
 
