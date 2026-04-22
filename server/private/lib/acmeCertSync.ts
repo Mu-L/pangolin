@@ -279,7 +279,11 @@ async function syncAcmeCerts(
     }
 
     for (const cert of resolverData.Certificates) {
-        const domain = cert.domain?.main;
+        const rawDomain = cert.domain?.main;
+        const domain = rawDomain.startsWith("*.")
+            ? rawDomain.slice(2)
+            : rawDomain;
+        const wildcard = rawDomain.startsWith("*.");
 
         if (!domain) {
             logger.debug(`acmeCertSync: skipping cert with missing domain`);
@@ -309,7 +313,12 @@ async function syncAcmeCerts(
         const existing = await db
             .select()
             .from(certificates)
-            .where(eq(certificates.domain, domain))
+            .where(
+                and(
+                    eq(certificates.domain, domain),
+                    eq(certificates.wildcard, wildcard)
+                )
+            )
             .limit(1);
 
         let oldCertPem: string | null = null;
@@ -364,7 +373,6 @@ async function syncAcmeCerts(
             }
         }
 
-        const wildcard = domain.startsWith("*.");
         const encryptedCert = encrypt(
             certPem,
             config.getRawConfig().server.secret!

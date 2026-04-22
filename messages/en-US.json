@@ -2908,7 +2908,7 @@
     "maintenancePageTimeTitle": "Estimated Completion Time (Optional)",
     "privateMaintenanceScreenTitle": "Private Placeholder Screen",
     "privateMaintenanceScreenMessage": "This domain is being used on a private resource. Please connect using the Pangolin client to access this resource.",
-    "privateMaintenanceScreenSteps": "Once connected, if you are still seeing this message your browser's DNS cache may still point to the old address. To fix this: fully close and reopen your browser, then navigate back to this page.",
+    "privateMaintenanceScreenSteps": "Once connected, if you are still seeing this message your browser's DNS cache may still point to the old address. To fix this: fully close and reopen this tab, or your browser, then navigate back to this page.",
     "maintenanceTime": "e.g., 2 hours, Nov 1 at 5:00 PM",
     "maintenanceEstimatedTimeDescription": "When you expect maintenance to be completed",
     "editDomain": "Edit Domain",
