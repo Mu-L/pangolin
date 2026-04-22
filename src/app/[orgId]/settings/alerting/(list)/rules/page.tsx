@@ -46,6 +46,9 @@ export default async function AlertingRulesPage(props: AlertingRulesPageProps) {
     const resourceId = parsePositiveInt(
         searchParams.get("resourceId") ?? undefined
     );
+    const healthCheckId = parsePositiveInt(
+        searchParams.get("healthCheckId") ?? undefined
+    );
 
     const apiSp = new URLSearchParams();
     apiSp.set("limit", String(pageSize));
@@ -53,6 +56,8 @@ export default async function AlertingRulesPage(props: AlertingRulesPageProps) {
     if (query) apiSp.set("query", query);
     if (siteId != null) apiSp.set("siteId", String(siteId));
     if (resourceId != null) apiSp.set("resourceId", String(resourceId));
+    if (healthCheckId != null)
+        apiSp.set("healthCheckId", String(healthCheckId));
     if (sortBy) {
         apiSp.set("sort_by", sortBy);
         if (order) apiSp.set("order", order);

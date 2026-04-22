@@ -51,7 +51,9 @@ export default function UptimeAlertSection({
     const queryClient = useQueryClient();
 
     const [open, setOpen] = useState(false);
-    const [name, setName] = useState(`${siteId ? "Site" : "Resource"} ${startingName} Alert`);
+    const [name, setName] = useState(
+        `${siteId ? "Site" : "Resource"} ${startingName} Alert`
+    );
     const [userTags, setUserTags] = useState<Tag[]>([]);
     const [roleTags, setRoleTags] = useState<Tag[]>([]);
     const [emailTags, setEmailTags] = useState<Tag[]>([]);
@@ -129,8 +131,7 @@ export default function UptimeAlertSection({
 
             toast({
                 title: "Alert created",
-                description:
-                    "You will be notified when this changes status."
+                description: "You will be notified when this changes status."
             });
 
             setOpen(false);
@@ -156,11 +157,17 @@ export default function UptimeAlertSection({
         setLoading(false);
     }
 
+    const rulesListSearch = new URLSearchParams();
+    if (siteId != null) rulesListSearch.set("siteId", String(siteId));
+    if (resourceId != null)
+        rulesListSearch.set("resourceId", String(resourceId));
+    const rulesListHref = `/${orgId}/settings/alerting/rules${
+        rulesListSearch.toString() ? `?${rulesListSearch}` : ""
+    }`;
+
     const alertButton = alertRulesLoading ? null : hasRules ? (
         <Button variant="outline" asChild>
-            <Link
-                href={`/${orgId}/settings/alerting/rules?siteId=${siteId}&resourceId=${resourceId}`}
-            >
+            <Link href={rulesListHref}>
                 <BellRing className="size-4 mr-2" />
                 View Alerts
             </Link>
@@ -201,8 +208,8 @@ export default function UptimeAlertSection({
                         <CredenzaTitle>Create Email Alert</CredenzaTitle>
                         <CredenzaDescription>
                             Get notified by email when this{" "}
-                            {siteId ? "site" : "resource"} goes offline or
-                            comes back online.
+                            {siteId ? "site" : "resource"} goes offline or comes
+                            back online.
                         </CredenzaDescription>
                     </CredenzaHeader>
                     <CredenzaBody>

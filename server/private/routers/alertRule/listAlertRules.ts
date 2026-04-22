@@ -14,14 +14,19 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { alertRules, alertSites, alertHealthChecks, alertResources } from "@server/db";
+import {
+    alertRules,
+    alertSites,
+    alertHealthChecks,
+    alertResources
+} from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -51,10 +56,33 @@ const querySchema = z.strictObject({
         .optional()
         .transform((v) => (v !== undefined ? Number(v) : undefined))
         .pipe(z.number().int().positive().optional()),
+    healthCheckId: z
+        .string()
+        .optional()
+        .transform((v) => (v !== undefined ? Number(v) : undefined))
+        .pipe(z.number().int().positive().optional()),
     sort_by: z.enum(["name", "last_triggered_at"]).optional(),
     order: z.enum(["asc", "desc"]).optional().default("asc"),
     enabled: z.enum(["true", "false"]).optional()
 });
+
+const SITE_ALERT_EVENT_TYPES = [
+    "site_online",
+    "site_offline",
+    "site_toggle"
+] as const;
+
+const RESOURCE_ALERT_EVENT_TYPES = [
+    "resource_healthy",
+    "resource_unhealthy",
+    "resource_toggle"
+] as const;
+
+const HEALTH_CHECK_ALERT_EVENT_TYPES = [
+    "health_check_healthy",
+    "health_check_unhealthy",
+    "health_check_toggle"
+] as const;
 
 export type ListAlertRulesResponse = {
     alertRules: {
@@ -122,66 +150,110 @@ export async function listAlertRules(
             query,
             siteId,
             resourceId,
+            healthCheckId,
             sort_by,
             order,
             enabled: enabledFilter
         } = parsedQuery.data;
 
-        // Resolve siteId filter → matching alertRuleIds
-        let siteFilterRuleIds: number[] | null = null;
-        if (siteId !== undefined) {
-            const rows = await db
-                .select({ alertRuleId: alertSites.alertRuleId })
-                .from(alertSites)
-                .where(eq(alertSites.siteId, siteId));
-            siteFilterRuleIds = rows.map((r) => r.alertRuleId);
-            if (siteFilterRuleIds.length === 0) {
-                return response<ListAlertRulesResponse>(res, {
-                    data: {
-                        alertRules: [],
-                        pagination: { total: 0, limit, offset }
-                    },
-                    success: true,
-                    error: false,
-                    message: "Alert rules retrieved successfully",
-                    status: HttpCode.OK
-                });
-            }
-        }
+        const explicitSiteRuleIds: number[] =
+            siteId !== undefined
+                ? (
+                      await db
+                          .select({ alertRuleId: alertSites.alertRuleId })
+                          .from(alertSites)
+                          .where(eq(alertSites.siteId, siteId))
+                  ).map((r) => r.alertRuleId)
+                : [];
 
-        // Resolve resourceId filter → matching alertRuleIds
-        let resourceFilterRuleIds: number[] | null = null;
-        if (resourceId !== undefined) {
-            const rows = await db
-                .select({ alertRuleId: alertResources.alertRuleId })
-                .from(alertResources)
-                .where(eq(alertResources.resourceId, resourceId));
-            resourceFilterRuleIds = rows.map((r) => r.alertRuleId);
-            if (resourceFilterRuleIds.length === 0) {
-                return response<ListAlertRulesResponse>(res, {
-                    data: {
-                        alertRules: [],
-                        pagination: { total: 0, limit, offset }
-                    },
-                    success: true,
-                    error: false,
-                    message: "Alert rules retrieved successfully",
-                    status: HttpCode.OK
-                });
-            }
-        }
+        const explicitResourceRuleIds: number[] =
+            resourceId !== undefined
+                ? (
+                      await db
+                          .select({
+                              alertRuleId: alertResources.alertRuleId
+                          })
+                          .from(alertResources)
+                          .where(eq(alertResources.resourceId, resourceId))
+                  ).map((r) => r.alertRuleId)
+                : [];
+
+        const explicitHealthCheckRuleIds: number[] =
+            healthCheckId !== undefined
+                ? (
+                      await db
+                          .select({
+                              alertRuleId: alertHealthChecks.alertRuleId
+                          })
+                          .from(alertHealthChecks)
+                          .where(
+                              eq(alertHealthChecks.healthCheckId, healthCheckId)
+                          )
+                  ).map((r) => r.alertRuleId)
+                : [];
+
+        const allSitesWildcardClause = and(
+            eq(alertRules.allSites, true),
+            inArray(alertRules.eventType, SITE_ALERT_EVENT_TYPES)
+        );
+
+        const siteScopeClause =
+            siteId !== undefined
+                ? explicitSiteRuleIds.length > 0
+                    ? or(
+                          allSitesWildcardClause,
+                          inArray(alertRules.alertRuleId, explicitSiteRuleIds)
+                      )
+                    : allSitesWildcardClause
+                : undefined;
+
+        const allResourcesWildcardClause = and(
+            eq(alertRules.allResources, true),
+            inArray(alertRules.eventType, RESOURCE_ALERT_EVENT_TYPES)
+        );
+
+        const resourceScopeClause =
+            resourceId !== undefined
+                ? explicitResourceRuleIds.length > 0
+                    ? or(
+                          allResourcesWildcardClause,
+                          inArray(
+                              alertRules.alertRuleId,
+                              explicitResourceRuleIds
+                          )
+                      )
+                    : allResourcesWildcardClause
+                : undefined;
+
+        const allHealthChecksWildcardClause = and(
+            eq(alertRules.allHealthChecks, true),
+            inArray(alertRules.eventType, HEALTH_CHECK_ALERT_EVENT_TYPES)
+        );
+
+        const healthCheckScopeClause =
+            healthCheckId !== undefined
+                ? explicitHealthCheckRuleIds.length > 0
+                    ? or(
+                          allHealthChecksWildcardClause,
+                          inArray(
+                              alertRules.alertRuleId,
+                              explicitHealthCheckRuleIds
+                          )
+                      )
+                    : allHealthChecksWildcardClause
+                : undefined;
 
         const whereClause = and(
             eq(alertRules.orgId, orgId),
             query
-                ? like(sql`LOWER(${alertRules.name})`, `%${query.toLowerCase()}%`)
+                ? like(
+                      sql`LOWER(${alertRules.name})`,
+                      `%${query.toLowerCase()}%`
+                  )
                 : undefined,
-            siteFilterRuleIds !== null
-                ? inArray(alertRules.alertRuleId, siteFilterRuleIds)
-                : undefined,
-            resourceFilterRuleIds !== null
-                ? inArray(alertRules.alertRuleId, resourceFilterRuleIds)
-                : undefined,
+            siteScopeClause,
+            resourceScopeClause,
+            healthCheckScopeClause,
             enabledFilter !== undefined
                 ? eq(alertRules.enabled, enabledFilter === "true")
                 : undefined
@@ -228,9 +300,7 @@ export async function listAlertRules(
                 ? await db
                       .select()
                       .from(alertHealthChecks)
-                      .where(
-                          inArray(alertHealthChecks.alertRuleId, ruleIds)
-                      )
+                      .where(inArray(alertHealthChecks.alertRuleId, ruleIds))
                 : [];
 
         const resourceRows =

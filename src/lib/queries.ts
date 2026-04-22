@@ -1,7 +1,10 @@
 import { build } from "@server/build";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
-import type { ListDomainsResponse, GetDNSRecordsResponse } from "@server/routers/domain";
+import type {
+    ListDomainsResponse,
+    GetDNSRecordsResponse
+} from "@server/routers/domain";
 import type { GetDomainResponse } from "@server/routers/domain/getDomain";
 import type {
     GetResourceWhitelistResponse,
@@ -263,6 +266,7 @@ export const orgQueries = {
         query,
         siteId,
         resourceId,
+        healthCheckId,
         sortBy,
         order,
         enabled
@@ -273,6 +277,7 @@ export const orgQueries = {
         query?: string;
         siteId?: number;
         resourceId?: number;
+        healthCheckId?: number;
         sortBy?: string;
         order?: string;
         enabled?: string;
@@ -282,7 +287,17 @@ export const orgQueries = {
                 "ORG",
                 orgId,
                 "ALERT_RULES",
-                { limit, offset, query, siteId, resourceId, sortBy, order, enabled }
+                {
+                    limit,
+                    offset,
+                    query,
+                    siteId,
+                    resourceId,
+                    healthCheckId,
+                    sortBy,
+                    order,
+                    enabled
+                }
             ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams();
@@ -290,7 +305,10 @@ export const orgQueries = {
                 sp.set("offset", String(offset));
                 if (query) sp.set("query", query);
                 if (siteId != null) sp.set("siteId", String(siteId));
-                if (resourceId != null) sp.set("resourceId", String(resourceId));
+                if (resourceId != null)
+                    sp.set("resourceId", String(resourceId));
+                if (healthCheckId != null)
+                    sp.set("healthCheckId", String(healthCheckId));
                 if (sortBy) {
                     sp.set("sort_by", sortBy);
                     if (order) sp.set("order", order);
@@ -309,18 +327,29 @@ export const orgQueries = {
     alertRulesForSource: ({
         orgId,
         siteId,
-        resourceId
+        resourceId,
+        healthCheckId
     }: {
         orgId: string;
         siteId?: number;
         resourceId?: number;
+        healthCheckId?: number;
     }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "ALERT_RULES", { siteId, resourceId }] as const,
+            queryKey: [
+                "ORG",
+                orgId,
+                "ALERT_RULES",
+                { siteId, resourceId, healthCheckId }
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams();
-                if (siteId != null) sp.set("siteId", String(siteId));
-                if (resourceId != null) sp.set("resourceId", String(resourceId));
+                if (siteId != null && siteId !== undefined)
+                    sp.set("siteId", String(siteId));
+                if (resourceId != null && resourceId !== undefined)
+                    sp.set("resourceId", String(resourceId));
+                if (healthCheckId != null && healthCheckId !== undefined)
+                    sp.set("healthCheckId", String(healthCheckId));
                 const res = await meta!.api.get<
                     AxiosResponse<ListAlertRulesResponse>
                 >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
@@ -340,7 +369,12 @@ export const orgQueries = {
         query?: string;
     }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "STANDALONE_HEALTH_CHECKS", { limit, offset, query }] as const,
+            queryKey: [
+                "ORG",
+                orgId,
+                "STANDALONE_HEALTH_CHECKS",
+                { limit, offset, query }
+            ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams();
                 sp.set("limit", String(limit));
@@ -417,7 +451,9 @@ export const orgQueries = {
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<StatusHistoryResponse>
-                >(`/resource/${resourceId}/status-history?days=${days}`, { signal });
+                >(`/resource/${resourceId}/status-history?days=${days}`, {
+                    signal
+                });
                 return res.data.data;
             }
         }),
@@ -692,13 +728,7 @@ export const approvalQueries = {
 };
 
 export const domainQueries = {
-    getDomain: ({
-        orgId,
-        domainId
-    }: {
-        orgId: string;
-        domainId: string;
-    }) =>
+    getDomain: ({ orgId, domainId }: { orgId: string; domainId: string }) =>
         queryOptions({
             queryKey: ["ORG", orgId, "DOMAIN", domainId] as const,
             queryFn: async ({ signal, meta }) => {
@@ -709,13 +739,7 @@ export const domainQueries = {
             },
             refetchInterval: durationToMs(10, "seconds")
         }),
-    getDNSRecords: ({
-        orgId,
-        domainId
-    }: {
-        orgId: string;
-        domainId: string;
-    }) =>
+    getDNSRecords: ({ orgId, domainId }: { orgId: string; domainId: string }) =>
         queryOptions({
             queryKey: [
                 "ORG",
@@ -727,10 +751,7 @@ export const domainQueries = {
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<GetDNSRecordsResponse>
-                >(
-                    `/org/${orgId}/domain/${domainId}/dns-records`,
-                    { signal }
-                );
+                >(`/org/${orgId}/domain/${domainId}/dns-records`, { signal });
                 return res.data.data;
             },
             refetchInterval: durationToMs(10, "seconds")
