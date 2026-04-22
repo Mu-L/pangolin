@@ -416,7 +416,8 @@ export class TraefikConfigManager {
                         // Get valid certificates for domains not covered by wildcards
                         validCertificates =
                             await getValidCertificatesForDomains(
-                                domainsToFetch
+                                domainsToFetch,
+                                true
                             );
                         this.lastCertificateFetch = new Date();
                         this.lastKnownDomains = new Set(domains);
