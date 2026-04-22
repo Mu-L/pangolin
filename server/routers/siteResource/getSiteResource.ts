@@ -17,38 +17,34 @@ const getSiteResourceParamsSchema = z.strictObject({
         .transform((val) => (val ? Number(val) : undefined))
         .pipe(z.int().positive().optional())
         .optional(),
-    siteId: z.string().transform(Number).pipe(z.int().positive()),
     niceId: z.string().optional(),
     orgId: z.string()
 });
 
 async function query(
     siteResourceId?: number,
-    siteId?: number,
     niceId?: string,
     orgId?: string
 ) {
-    if (siteResourceId && siteId && orgId) {
+    if (siteResourceId && orgId) {
         const [siteResource] = await db
             .select()
             .from(siteResources)
             .where(
                 and(
                     eq(siteResources.siteResourceId, siteResourceId),
-                    eq(siteResources.siteId, siteId),
                     eq(siteResources.orgId, orgId)
                 )
             )
             .limit(1);
         return siteResource;
-    } else if (niceId && siteId && orgId) {
+    } else if (niceId && orgId) {
         const [siteResource] = await db
             .select()
             .from(siteResources)
             .where(
                 and(
                     eq(siteResources.niceId, niceId),
-                    eq(siteResources.siteId, siteId),
                     eq(siteResources.orgId, orgId)
                 )
             )
@@ -84,7 +80,6 @@ registry.registerPath({
     request: {
         params: z.object({
             niceId: z.string(),
-            siteId: z.number(),
             orgId: z.string()
         })
     },
@@ -107,10 +102,10 @@ export async function getSiteResource(
             );
         }
 
-        const { siteResourceId, siteId, niceId, orgId } = parsedParams.data;
+        const { siteResourceId, niceId, orgId } = parsedParams.data;
 
         // Get the site resource
-        const siteResource = await query(siteResourceId, siteId, niceId, orgId);
+        const siteResource = await query(siteResourceId, niceId, orgId);
 
         if (!siteResource) {
             return next(

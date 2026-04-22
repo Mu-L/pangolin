@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
+import UptimeMiniBar from "@app/components/UptimeMiniBar";
 
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
@@ -29,7 +30,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
@@ -83,6 +84,13 @@ export default function SitesTable({
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 10_000);
+        return () => clearInterval(interval);
+    }, []);
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -212,7 +220,7 @@ export default function SitesTable({
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                                 <span>{t("offline")}</span>
                             </span>
                         );
@@ -220,6 +228,17 @@ export default function SitesTable({
                 } else {
                     return <span>-</span>;
                 }
+            }
+        },
+        {
+            id: "uptime",
+            friendlyName: "Uptime",
+            header: () => <span className="p-3">{t("uptime30d")}</span>,
+            cell: ({ row }) => {
+                const originalRow = row.original;
+                return (
+                    <UptimeMiniBar siteId={originalRow.id} days={30} />
+                );
             }
         },
         {
@@ -363,9 +382,9 @@ export default function SitesTable({
                         <Link
                             href={`/${originalRow.orgId}/settings/remote-exit-nodes/${originalRow.remoteExitNodeId}`}
                         >
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 {originalRow.exitNodeName}
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
                         </Link>
                     );

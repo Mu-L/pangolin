@@ -36,7 +36,7 @@ export default function LocaleSwitcherSelect({
         });
         // Persist locale to the database (fire-and-forget)
         api.post("/user/locale", { locale }).catch(() => {
-            // Silently ignore errors — cookie is already set as fallback
+            // Silently ignore errors - cookie is already set as fallback
         });
     }
 
@@ -53,7 +53,7 @@ export default function LocaleSwitcherSelect({
                     )}
                     aria-label={label}
                 >
-                    <Languages className="h-4 w-4" />
+                    <Languages className="text-muted-foreground h-4 w-4" />
                     <span className="text-left flex-1">
                         {selected?.label ?? label}
                     </span>

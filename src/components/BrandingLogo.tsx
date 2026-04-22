@@ -48,6 +48,7 @@ export default function BrandingLogo(props: BrandingLogoProps) {
     // we use `img` tag here because the `logoPath` could be any URL
     // and next.js `Image` component only accepts a restricted number of domains
     const Component = props.logoPath ? "img" : Image;
+    const isNextImage = Component === Image;
 
     return (
         path && (
@@ -56,6 +57,11 @@ export default function BrandingLogo(props: BrandingLogoProps) {
                 alt="Logo"
                 width={props.width}
                 height={props.height}
+                style={
+                    isNextImage
+                        ? { width: "auto", height: "auto" }
+                        : undefined
+                }
             />
         )
     );

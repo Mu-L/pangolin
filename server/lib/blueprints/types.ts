@@ -12,7 +12,7 @@ export const TargetHealthCheckSchema = z.object({
     hostname: z.string(),
     port: z.int().min(1).max(65535),
     enabled: z.boolean().optional().default(true),
-    path: z.string().optional().default("/"),
+    path: z.string().optional(),
     scheme: z.string().optional(),
     mode: z.string().default("http"),
     interval: z.int().default(30),
@@ -26,8 +26,10 @@ export const TargetHealthCheckSchema = z.object({
         .default(null),
     "follow-redirects": z.boolean().default(true),
     followRedirects: z.boolean().optional(), // deprecated alias
-    method: z.string().default("GET"),
-    status: z.int().optional()
+    method: z.string().optional(),
+    status: z.int().optional(),
+    "healthy-threshold": z.int().min(1).optional().default(1),
+    "unhealthy-threshold": z.int().min(1).optional().default(1)
 });
 
 // Schema for individual target within a resource
@@ -164,6 +166,7 @@ export const ResourceSchema = z
         name: z.string().optional(),
         protocol: z.enum(["http", "tcp", "udp"]).optional(),
         ssl: z.boolean().optional(),
+        scheme: z.enum(["http", "https"]).optional(),
         "full-domain": z.string().optional(),
         "proxy-port": z.int().min(1).max(65535).optional(),
         enabled: z.boolean().optional(),
@@ -325,16 +328,20 @@ export function isTargetsOnlyResource(resource: any): boolean {
 export const ClientResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr"]),
-        site: z.string(),
+        mode: z.enum(["host", "cidr", "http"]),
+        site: z.string(), // DEPRECATED IN FAVOR OF sites
+        sites: z.array(z.string()).optional().default([]),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
-        // destinationPort: z.int().positive().optional(),
+        "destination-port": z.int().positive().optional(),
         destination: z.string().min(1),
         // enabled: z.boolean().default(true),
         "tcp-ports": portRangeStringSchema.optional().default("*"),
         "udp-ports": portRangeStringSchema.optional().default("*"),
         "disable-icmp": z.boolean().optional().default(false),
+        "full-domain": z.string().optional(),
+        ssl: z.boolean().optional(),
+        scheme: z.enum(["http", "https"]).optional().nullable(),
         alias: z
             .string()
             .regex(
@@ -474,6 +481,39 @@ export const ConfigSchema = z
                 code: z.ZodIssueCode.custom,
                 path: ["proxy-resources"],
                 message: `Duplicate 'full-domain' values found: ${fullDomainDuplicates}`
+            });
+        }
+
+        // Enforce the full-domain uniqueness across client-resources in the same stack
+        const clientFullDomainMap = new Map<string, string[]>();
+
+        Object.entries(config["client-resources"]).forEach(
+            ([resourceKey, resource]) => {
+                const fullDomain = resource["full-domain"];
+                if (fullDomain) {
+                    if (!clientFullDomainMap.has(fullDomain)) {
+                        clientFullDomainMap.set(fullDomain, []);
+                    }
+                    clientFullDomainMap.get(fullDomain)!.push(resourceKey);
+                }
+            }
+        );
+
+        const clientFullDomainDuplicates = Array.from(
+            clientFullDomainMap.entries()
+        )
+            .filter(([_, resourceKeys]) => resourceKeys.length > 1)
+            .map(
+                ([fullDomain, resourceKeys]) =>
+                    `'${fullDomain}' used by resources: ${resourceKeys.join(", ")}`
+            )
+            .join("; ");
+
+        if (clientFullDomainDuplicates.length !== 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["client-resources"],
+                message: `Duplicate 'full-domain' values found: ${clientFullDomainDuplicates}`
             });
         }
 

@@ -33,7 +33,7 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
     return (
         <Alert>
             <AlertDescription>
-                <InfoSections cols={3}>
+                <InfoSections cols={site.endpoint ? 4 : 3}>
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>{site.niceId}</InfoSectionContent>
@@ -52,7 +52,7 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
                                         </div>
                                     ) : (
                                         <div className="text-neutral-500 flex items-center space-x-2">
-                                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                            <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                                             <span>{t("offline")}</span>
                                         </div>
                                     )}
@@ -68,6 +68,18 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
                             {getConnectionTypeString(site.type)}
                         </InfoSectionContent>
                     </InfoSection>
+                    {site.endpoint && (
+                        <InfoSection>
+                            <InfoSectionTitle>
+                                {t("publicIpEndpoint")}
+                            </InfoSectionTitle>
+                            <InfoSectionContent>
+                                {site.endpoint.includes(":")
+                                    ? site.endpoint.substring(0, site.endpoint.lastIndexOf(":"))
+                                    : site.endpoint}
+                            </InfoSectionContent>
+                        </InfoSection>
+                    )}
                 </InfoSections>
             </AlertDescription>
         </Alert>

@@ -60,9 +60,9 @@ export type AuthType = "none" | "bearer" | "basic" | "custom";
 /**
  * Controls how the batch of events is serialised into the HTTP request body.
  *
- * - `json_array`   – `[{…}, {…}]`  — default; one POST per batch wrapped in a
+ * - `json_array`   – `[{…}, {…}]`  - default; one POST per batch wrapped in a
  *                    JSON array.  Works with most generic webhooks and Datadog.
- * - `ndjson`       – `{…}\n{…}`    — newline-delimited JSON, one object per
+ * - `ndjson`       – `{…}\n{…}`    - newline-delimited JSON, one object per
  *                    line.  Required by Splunk HEC, Elastic/OpenSearch, Loki.
  * - `json_single`  – one HTTP POST per event, body is a plain JSON object.
  *                    Use only for endpoints that cannot handle batches at all.

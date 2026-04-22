@@ -285,6 +285,13 @@ authenticated.get(
     site.listContainers
 );
 
+authenticated.get(
+    "/site/:siteId/status-history",
+    verifySiteAccess,
+    verifyUserHasAction(ActionsEnum.getSite),
+    site.getSiteStatusHistory
+);
+
 // Site Resource endpoints
 authenticated.put(
     "/org/:orgId/site-resource",
@@ -418,6 +425,13 @@ authenticated.get(
     "/site/:siteId/resources",
     verifyUserHasAction(ActionsEnum.listResources),
     resource.listResources
+);
+
+authenticated.get(
+    "/resource/:resourceId/status-history",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.getResource),
+    resource.getResourceStatusHistory
 );
 
 authenticated.get(

@@ -22,6 +22,7 @@ import { TraefikConfigManager } from "@server/lib/traefik/TraefikConfigManager";
 import { initCleanup } from "#dynamic/cleanup";
 import license from "#dynamic/license/license";
 import { initLogCleanupInterval } from "@server/lib/cleanupLogs";
+import { initAcmeCertSync } from "#dynamic/lib/acmeCertSync";
 import { fetchServerIp } from "@server/lib/serverIpService";
 
 async function startServers() {
@@ -39,6 +40,7 @@ async function startServers() {
     initTelemetryClient();
 
     initLogCleanupInterval();
+    initAcmeCertSync();
 
     // Start all servers
     const apiServer = createApiServer();

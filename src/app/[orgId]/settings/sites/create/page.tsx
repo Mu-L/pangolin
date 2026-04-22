@@ -425,7 +425,7 @@ export default function Page() {
                         setRemoteExitNodeOptions(exitNodeOptions);
 
                         if (exitNodeOptions.length === 0) {
-                            // No remote exit nodes available — remove local option and default to newt
+                            // No remote exit nodes available - remove local option and default to newt
                             setTunnelTypes((prev: any) =>
                                 prev.filter((item: any) => item.id !== "local")
                             );
@@ -434,7 +434,7 @@ export default function Page() {
                     }
                 } catch (error) {
                     console.error("Failed to fetch remote exit nodes:", error);
-                    // If fetch fails, no remote exit nodes available — remove local option and default to newt
+                    // If fetch fails, no remote exit nodes available - remove local option and default to newt
                     setTunnelTypes((prev: any) =>
                         prev.filter((item: any) => item.id !== "local")
                     );

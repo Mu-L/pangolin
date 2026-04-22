@@ -153,7 +153,7 @@ export async function flushConnectionLogToDb(): Promise<void> {
                 );
             }
 
-            // Stop processing further batches from this snapshot — they will
+            // Stop processing further batches from this snapshot - they will
             // be picked up via the re-queued records on the next flush.
             const remaining = snapshot.slice(i + INSERT_BATCH_SIZE);
             if (remaining.length > 0) {
@@ -180,7 +180,7 @@ const flushTimer = setInterval(async () => {
 }, FLUSH_INTERVAL_MS);
 
 // Calling unref() means this timer will not keep the Node.js event loop alive
-// on its own — the process can still exit normally when there is no other work
+// on its own - the process can still exit normally when there is no other work
 // left. The graceful-shutdown path will call flushConnectionLogToDb() explicitly
 // before process.exit(), so no data is lost.
 flushTimer.unref();
@@ -223,7 +223,7 @@ export function logConnectionAudit(record: ConnectionLogRecord): void {
     buffer.push(record);
 
     if (buffer.length >= MAX_BUFFERED_RECORDS) {
-        // Fire and forget — errors are handled inside flushConnectionLogToDb
+        // Fire and forget - errors are handled inside flushConnectionLogToDb
         flushConnectionLogToDb().catch((error) => {
             logger.error(
                 "Unexpected error during size-triggered connection log flush:",

@@ -373,12 +373,12 @@ export default function UserDevicesTable({
                         <Link
                             href={`/${r.orgId}/settings/access/users/${r.userId}`}
                         >
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 {getUserDisplayName({
                                     email: r.userEmail,
                                     username: r.username
                                 }) || r.userId}
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
                         </Link>
                     ) : (
@@ -427,7 +427,7 @@ export default function UserDevicesTable({
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                                 <span>{t("disconnected")}</span>
                             </span>
                         );

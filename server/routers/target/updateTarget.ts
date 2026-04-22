@@ -32,8 +32,8 @@ const updateTargetBodySchema = z
         hcMode: z.string().optional().nullable(),
         hcHostname: z.string().optional().nullable(),
         hcPort: z.int().positive().optional().nullable(),
-        hcInterval: z.int().positive().min(5).optional().nullable(),
-        hcUnhealthyInterval: z.int().positive().min(5).optional().nullable(),
+        hcInterval: z.int().positive().min(1).optional().nullable(),
+        hcUnhealthyInterval: z.int().positive().min(1).optional().nullable(),
         hcTimeout: z.int().positive().min(1).optional().nullable(),
         hcHeaders: z
             .array(z.strictObject({ name: z.string(), value: z.string() }))
@@ -43,6 +43,8 @@ const updateTargetBodySchema = z
         hcMethod: z.string().min(1).optional().nullable(),
         hcStatus: z.int().optional().nullable(),
         hcTlsServerName: z.string().optional().nullable(),
+        hcHealthyThreshold: z.int().positive().min(1).optional().nullable(),
+        hcUnhealthyThreshold: z.int().positive().min(1).optional().nullable(),
         path: z.string().optional().nullable(),
         pathMatchType: z
             .enum(["exact", "prefix", "regex"])
@@ -226,6 +228,7 @@ export async function updateTarget(
         const [updatedHc] = await db
             .update(targetHealthCheck)
             .set({
+                siteId: parsedBody.data.siteId,
                 hcEnabled: parsedBody.data.hcEnabled || false,
                 hcPath: parsedBody.data.hcPath,
                 hcScheme: parsedBody.data.hcScheme,
@@ -240,6 +243,8 @@ export async function updateTarget(
                 hcMethod: parsedBody.data.hcMethod,
                 hcStatus: parsedBody.data.hcStatus,
                 hcTlsServerName: parsedBody.data.hcTlsServerName,
+                hcHealthyThreshold: parsedBody.data.hcHealthyThreshold,
+                hcUnhealthyThreshold: parsedBody.data.hcUnhealthyThreshold,
                 ...(hcHealthValue !== undefined && { hcHealth: hcHealthValue })
             })
             .where(eq(targetHealthCheck.targetId, targetId))

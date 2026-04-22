@@ -4,6 +4,8 @@ import {
     clientSitesAssociationsCache,
     db,
     exitNodes,
+    networks,
+    siteNetworks,
     siteResources,
     sites
 } from "@server/db";
@@ -59,15 +61,24 @@ export async function buildSiteConfigurationForOlmClient(
                     clientSiteResourcesAssociationsCache.siteResourceId
                 )
             )
+            .innerJoin(
+                networks,
+                eq(siteResources.networkId, networks.networkId)
+            )
+            .innerJoin(
+                siteNetworks,
+                eq(networks.networkId, siteNetworks.networkId)
+            )
             .where(
                 and(
-                    eq(siteResources.siteId, site.siteId),
+                    eq(siteNetworks.siteId, site.siteId),
                     eq(
                         clientSiteResourcesAssociationsCache.clientId,
                         client.clientId
                     )
                 )
             );
+
 
         if (jitMode) {
             // Add site configuration to the array

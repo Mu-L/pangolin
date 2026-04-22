@@ -72,7 +72,7 @@ class TelemetryClient {
                         logger.debug("Successfully sent analytics data");
                     });
             },
-            48 * 60 * 60 * 1000
+            336 * 60 * 60 * 1000
         );
 
         this.collectAndSendAnalytics().catch((err) => {

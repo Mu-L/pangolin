@@ -1,0 +1,144 @@
+/*
+ * This file is part of a proprietary work.
+ *
+ * Copyright (c) 2025-2026 Fossorial, Inc.
+ * All rights reserved.
+ *
+ * This file is licensed under the Fossorial Commercial License.
+ * You may not use this file except in compliance with the License.
+ * Unauthorized use, copying, modification, or distribution is strictly prohibited.
+ *
+ * This file is not licensed under the AGPLv3.
+ */
+
+import logger from "@server/logger";
+import { processAlerts } from "../processAlerts";
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Fire a `resource_healthy` alert for the given resource.
+ *
+ * Call this after a previously-unhealthy resource has recovered so that any
+ * matching `alertRules` can dispatch their email and webhook actions.
+ *
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
+ */
+export async function fireResourceHealthyAlert(
+    orgId: string,
+    resourceId: number,
+    resourceName?: string | null,
+    extra?: Record<string, unknown>
+): Promise<void> {
+    try {
+        await processAlerts({
+            eventType: "resource_healthy",
+            orgId,
+            resourceId,
+            data: {
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+    } catch (err) {
+        logger.error(
+            `fireResourceHealthyAlert: unexpected error for resourceId ${resourceId}`,
+            err
+        );
+    }
+}
+
+/**
+ * Fire a `resource_unhealthy` alert for the given resource.
+ *
+ * Call this after a resource has been detected as unhealthy so that any
+ * matching `alertRules` can dispatch their email and webhook actions.
+ *
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
+ */
+export async function fireResourceUnhealthyAlert(
+    orgId: string,
+    resourceId: number,
+    resourceName?: string | null,
+    extra?: Record<string, unknown>
+): Promise<void> {
+    try {
+        await processAlerts({
+            eventType: "resource_unhealthy",
+            orgId,
+            resourceId,
+            data: {
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+    } catch (err) {
+        logger.error(
+            `fireResourceUnhealthyAlert: unexpected error for resourceId ${resourceId}`,
+            err
+        );
+    }
+}
+
+/**
+ * Fire a `resource_toggle` alert for the given resource.
+ *
+ * Call this when a resource's enabled/disabled status is toggled so that any
+ * matching `alertRules` can dispatch their email and webhook actions.
+ *
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
+ */
+export async function fireResourceToggleAlert(
+    orgId: string,
+    resourceId: number,
+    resourceName?: string | null,
+    extra?: Record<string, unknown>
+): Promise<void> {
+    try {
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+    } catch (err) {
+        logger.error(
+            `fireResourceToggleAlert: unexpected error for resourceId ${resourceId}`,
+            err
+        );
+    }
+}

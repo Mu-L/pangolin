@@ -28,7 +28,7 @@ let staleNewtVersion: string | null = null;
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
-        const cachedVersion = await cache.get<string>("latestNewtVersion");
+        const cachedVersion = await cache.get<string>("cache:latestNewtVersion");
         if (cachedVersion) {
             return cachedVersion;
         }

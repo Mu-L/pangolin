@@ -31,8 +31,8 @@ const createTargetSchema = z.strictObject({
     hcMode: z.string().optional().nullable(),
     hcHostname: z.string().optional().nullable(),
     hcPort: z.int().positive().optional().nullable(),
-    hcInterval: z.int().positive().min(5).optional().nullable(),
-    hcUnhealthyInterval: z.int().positive().min(5).optional().nullable(),
+    hcInterval: z.int().positive().min(1).optional().nullable(),
+    hcUnhealthyInterval: z.int().positive().min(1).optional().nullable(),
     hcTimeout: z.int().positive().min(1).optional().nullable(),
     hcHeaders: z
         .array(z.strictObject({ name: z.string(), value: z.string() }))
@@ -42,6 +42,8 @@ const createTargetSchema = z.strictObject({
     hcMethod: z.string().min(1).optional().nullable(),
     hcStatus: z.int().optional().nullable(),
     hcTlsServerName: z.string().optional().nullable(),
+    hcHealthyThreshold: z.int().positive().min(1).optional().nullable(),
+    hcUnhealthyThreshold: z.int().positive().min(1).optional().nullable(),
     path: z.string().optional().nullable(),
     pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable(),
     rewritePath: z.string().optional().nullable(),
@@ -226,7 +228,10 @@ export async function createTarget(
         healthCheck = await db
             .insert(targetHealthCheck)
             .values({
+                orgId: resource.orgId,
                 targetId: newTarget[0].targetId,
+                siteId: targetData.siteId,
+                name: `Resource ${resource.name} - ${targetData.ip}:${targetData.port}`,
                 hcEnabled: targetData.hcEnabled ?? false,
                 hcPath: targetData.hcPath ?? null,
                 hcScheme: targetData.hcScheme ?? null,
@@ -241,7 +246,9 @@ export async function createTarget(
                 hcMethod: targetData.hcMethod ?? null,
                 hcStatus: targetData.hcStatus ?? null,
                 hcHealth: "unknown",
-                hcTlsServerName: targetData.hcTlsServerName ?? null
+                hcTlsServerName: targetData.hcTlsServerName ?? null,
+                hcHealthyThreshold: targetData.hcHealthyThreshold ?? null,
+                hcUnhealthyThreshold: targetData.hcUnhealthyThreshold ?? null
             })
             .returning();
 
@@ -271,8 +278,8 @@ export async function createTarget(
 
         return response<CreateTargetResponse>(res, {
             data: {
-                ...newTarget[0],
-                ...healthCheck[0]
+                ...healthCheck[0],
+                ...newTarget[0]
             },
             success: true,
             error: false,

@@ -12,14 +12,6 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ContainersSelector } from "./ContainersSelector";
 import { Button } from "./ui/button";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "./ui/command";
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "./ui/select";
@@ -212,6 +204,12 @@ export function ResourceTargetAddressItem({
                         proxyTarget.port === 0 ? "" : proxyTarget.port
                     }
                     className="w-18.75 px-2 border-none placeholder-gray-400 rounded-l-xs"
+                    type="number"
+                    onKeyDown={(e) => {
+                        if (["e", "E", "+", "-", "."].includes(e.key)) {
+                            e.preventDefault();
+                        }
+                    }}
                     onBlur={(e) => {
                         const value = parseInt(e.target.value, 10);
                         if (!isNaN(value) && value > 0) {
@@ -227,6 +225,7 @@ export function ResourceTargetAddressItem({
                         }
                     }}
                 />
+
             </div>
         </div>
     );

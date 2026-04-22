@@ -1,5 +1,6 @@
 "use client";
 
+import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
@@ -24,7 +25,8 @@ import {
     ArrowUpRight,
     Check,
     ChevronsUpDownIcon,
-    MoreHorizontal
+    MoreHorizontal,
+    X
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -62,6 +64,9 @@ export default function PendingSitesTable({
 
     const [isRefreshing, startTransition] = useTransition();
     const [approvingIds, setApprovingIds] = useState<Set<number>>(new Set());
+    const [rejectingIds, setRejectingIds] = useState<Set<number>>(new Set());
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
@@ -121,6 +126,33 @@ export default function PendingSitesTable({
             });
         } finally {
             setApprovingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(siteId);
+                return next;
+            });
+        }
+    }
+
+    async function rejectSite(siteId: number) {
+        setRejectingIds((prev) => new Set(prev).add(siteId));
+        try {
+            await api.delete(`/site/${siteId}`);
+            toast({
+                title: t("success"),
+                description: t("siteDeleted"),
+                variant: "default"
+            });
+            setIsDeleteModalOpen(false);
+            setSelectedSite(null);
+            router.refresh();
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("siteErrorDelete"),
+                description: formatAxiosError(e, t("siteErrorDelete"))
+            });
+        } finally {
+            setRejectingIds((prev) => {
                 const next = new Set(prev);
                 next.delete(siteId);
                 return next;
@@ -204,7 +236,7 @@ export default function PendingSitesTable({
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                                 <span>{t("offline")}</span>
                             </span>
                         );
@@ -353,9 +385,9 @@ export default function PendingSitesTable({
                         <Link
                             href={`/${originalRow.orgId}/settings/remote-exit-nodes/${originalRow.remoteExitNodeId}`}
                         >
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 {originalRow.exitNodeName}
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
                         </Link>
                     );
@@ -387,6 +419,7 @@ export default function PendingSitesTable({
             cell: ({ row }) => {
                 const siteRow = row.original;
                 const isApproving = approvingIds.has(siteRow.id);
+                const isRejecting = rejectingIds.has(siteRow.id);
                 return (
                     <div className="flex items-center gap-2 justify-end">
                         <DropdownMenu>
@@ -409,7 +442,18 @@ export default function PendingSitesTable({
                         </DropdownMenu>
                         <Button
                             variant="outline"
-                            disabled={isApproving}
+                            disabled={isApproving || isRejecting}
+                            onClick={() => {
+                                setSelectedSite(siteRow);
+                                setIsDeleteModalOpen(true);
+                            }}
+                        >
+                            <X className="mr-2 w-4 h-4" />
+                            {t("reject")}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            disabled={isApproving || isRejecting}
                             onClick={() => approveSite(siteRow.id)}
                         >
                             <Check className="mr-2 w-4 h-4" />
@@ -446,28 +490,51 @@ export default function PendingSitesTable({
     }, 300);
 
     return (
-        <ControlledDataTable
-            columns={columns}
-            rows={sites}
-            tableId="pending-sites-table"
-            searchPlaceholder={t("searchSitesProgress")}
-            pagination={pagination}
-            onPaginationChange={handlePaginationChange}
-            searchQuery={searchParams.get("query")?.toString()}
-            onSearch={handleSearchChange}
-            onRefresh={refreshData}
-            isRefreshing={isRefreshing || isFiltering}
-            refreshButtonDisabled={!canUseSiteProvisioning}
-            rowCount={rowCount}
-            columnVisibility={{
-                niceId: false,
-                nice: false,
-                exitNode: false,
-                address: false
-            }}
-            enableColumnVisibility
-            stickyLeftColumn="name"
-            stickyRightColumn="actions"
-        />
+        <>
+            {selectedSite && (
+                <ConfirmDeleteDialog
+                    open={isDeleteModalOpen}
+                    setOpen={(val) => {
+                        setIsDeleteModalOpen(val);
+                        if (!val) {
+                            setSelectedSite(null);
+                        }
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("siteQuestionRemove")}</p>
+                            <p>{t("siteMessageRemove")}</p>
+                        </div>
+                    }
+                    buttonText={t("siteConfirmDelete")}
+                    onConfirm={async () => rejectSite(selectedSite.id)}
+                    string={selectedSite.name}
+                    title={t("siteDelete")}
+                />
+            )}
+            <ControlledDataTable
+                columns={columns}
+                rows={sites}
+                tableId="pending-sites-table"
+                searchPlaceholder={t("searchSitesProgress")}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                searchQuery={searchParams.get("query")?.toString()}
+                onSearch={handleSearchChange}
+                onRefresh={refreshData}
+                isRefreshing={isRefreshing || isFiltering}
+                refreshButtonDisabled={!canUseSiteProvisioning}
+                rowCount={rowCount}
+                columnVisibility={{
+                    niceId: false,
+                    nice: false,
+                    exitNode: false,
+                    address: false
+                }}
+                enableColumnVisibility
+                stickyLeftColumn="name"
+                stickyRightColumn="actions"
+            />
+        </>
     );
 }

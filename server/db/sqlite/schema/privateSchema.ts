@@ -13,9 +13,12 @@ import {
     domains,
     exitNodes,
     orgs,
+    resources,
+    roles,
     sessions,
     siteResources,
     sites,
+    targetHealthCheck,
     users
 } from "./schema";
 
@@ -82,6 +85,8 @@ export const subscriptions = sqliteTable("subscriptions", {
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt"),
     version: integer("version"),
+    expiresAt: integer("expiresAt"),
+    trial: integer("trial", { mode: "boolean" }).default(false),
     billingCycleAnchor: integer("billingCycleAnchor"),
     type: text("type") // tier1, tier2, tier3, or license
 });
@@ -455,6 +460,94 @@ export const eventStreamingCursors = sqliteTable(
     ]
 );
 
+export const alertRules = sqliteTable("alertRules", {
+    alertRuleId: integer("alertRuleId").primaryKey({ autoIncrement: true }),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    eventType: text("eventType")
+        .$type<
+            | "site_online"
+            | "site_offline"
+            | "site_toggle"
+            | "health_check_healthy"
+            | "health_check_unhealthy"
+            | "health_check_toggle"
+            | "resource_healthy"
+            | "resource_unhealthy"
+            | "resource_toggle"
+        >()
+        .notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    allSites: integer("allSites", { mode: "boolean" }).notNull().default(false),
+    allHealthChecks: integer("allHealthChecks", { mode: "boolean" }).notNull().default(false),
+    allResources: integer("allResources", { mode: "boolean" }).notNull().default(false),
+    lastTriggeredAt: integer("lastTriggeredAt"),
+    createdAt: integer("createdAt").notNull(),
+    updatedAt: integer("updatedAt").notNull()
+});
+
+export const alertSites = sqliteTable("alertSites", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, { onDelete: "cascade" })
+});
+
+export const alertHealthChecks = sqliteTable("alertHealthChecks", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    healthCheckId: integer("healthCheckId")
+        .notNull()
+        .references(() => targetHealthCheck.targetHealthCheckId, {
+            onDelete: "cascade"
+        })
+});
+
+export const alertResources = sqliteTable("alertResources", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" })
+});
+
+export const alertEmailActions = sqliteTable("alertEmailActions", {
+    emailActionId: integer("emailActionId").primaryKey({ autoIncrement: true }),
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    lastSentAt: integer("lastSentAt")
+});
+
+export const alertEmailRecipients = sqliteTable("alertEmailRecipients", {
+    recipientId: integer("recipientId").primaryKey({ autoIncrement: true }),
+    emailActionId: integer("emailActionId")
+        .notNull()
+        .references(() => alertEmailActions.emailActionId, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.userId, { onDelete: "cascade" }),
+    roleId: integer("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
+    email: text("email")
+});
+
+export const alertWebhookActions = sqliteTable("alertWebhookActions", {
+    webhookActionId: integer("webhookActionId").primaryKey({ autoIncrement: true }),
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    webhookUrl: text("webhookUrl").notNull(),
+    config: text("config"),  // encrypted JSON with auth config (authType, credentials)
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    lastSentAt: integer("lastSentAt")
+});
+
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -486,3 +579,4 @@ export type EventStreamingDestination = InferSelectModel<
 export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
+export type AlertResources = InferSelectModel<typeof alertResources>;
