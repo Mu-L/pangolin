@@ -33,7 +33,7 @@ const barColorClass: Record<string, string> = {
     good: "bg-green-500",
     degraded: "bg-yellow-500",
     bad: "bg-red-500",
-    no_data: "bg-zinc-700"
+    no_data: "bg-neutral-200 dark:bg-neutral-700"
 };
 
 type UptimeMiniBarProps = {
@@ -61,7 +61,11 @@ export default function UptimeMiniBar({
     });
 
     const hcQuery = useQuery({
-        ...orgQueries.healthCheckStatusHistory({ orgId: orgId ?? "", healthCheckId: healthCheckId ?? 0, days }),
+        ...orgQueries.healthCheckStatusHistory({
+            orgId: orgId ?? "",
+            healthCheckId: healthCheckId ?? 0,
+            days
+        }),
         enabled: healthCheckId != null && siteId == null && resourceId == null,
         meta: { api },
         staleTime: 5 * 60 * 1000
@@ -75,22 +79,36 @@ export default function UptimeMiniBar({
     });
 
     const { data, isLoading } =
-        siteId != null ? siteQuery :
-        resourceId != null ? resourceQuery :
-        hcQuery;
+        siteId != null
+            ? siteQuery
+            : resourceId != null
+              ? resourceQuery
+              : hcQuery;
 
     if (isLoading) {
         return (
             <div className="flex items-center gap-2">
-                <div className="flex gap-px h-5 w-24">
+                <div
+                    className="flex gap-px h-5"
+                    style={{ width: `${days * 5}px` }}
+                >
                     {Array.from({ length: days }).map((_, i) => (
                         <div
                             key={i}
-                            className="flex-1 rounded-[2px] bg-zinc-800 animate-pulse"
+                            className={cn(
+                                "flex-1 rounded-[2px] animate-pulse",
+                                barColorClass.no_data
+                            )}
                         />
                     ))}
                 </div>
-                <span className="text-xs text-muted-foreground w-12">—</span>
+                <span
+                    className="inline-flex min-w-[7ch] items-center justify-end text-xs text-muted-foreground whitespace-nowrap"
+                    aria-busy="true"
+                    aria-label="Loading uptime"
+                >
+                    <span className="h-4 w-[5.5ch] max-w-full rounded bg-muted animate-pulse" />
+                </span>
             </div>
         );
     }
@@ -101,10 +119,7 @@ export default function UptimeMiniBar({
 
     return (
         <div className="flex items-center gap-2">
-            <div
-                className="flex gap-px h-5"
-                style={{ width: `${days * 5}px` }}
-            >
+            <div className="flex gap-px h-5" style={{ width: `${days * 5}px` }}>
                 {data.days.map((day, i) => (
                     <Tooltip key={i}>
                         <TooltipTrigger asChild>

@@ -165,7 +165,12 @@ export default function UptimeAlertSection({
         rulesListSearch.toString() ? `?${rulesListSearch}` : ""
     }`;
 
-    const alertButton = alertRulesLoading ? null : hasRules ? (
+    const alertButton = alertRulesLoading ? (
+        <Button variant="outline" type="button" loading aria-busy="true">
+            <BellPlus className="size-4 mr-2" />
+            Add Alert
+        </Button>
+    ) : hasRules ? (
         <Button variant="outline" asChild>
             <Link href={rulesListHref}>
                 <BellRing className="size-4 mr-2" />

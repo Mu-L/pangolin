@@ -41,7 +41,7 @@ const barColorClass: Record<string, string> = {
     good: "bg-green-500",
     degraded: "bg-yellow-500",
     bad: "bg-red-500",
-    no_data: "bg-zinc-700"
+    no_data: "bg-neutral-200 dark:bg-neutral-700"
 };
 
 type UptimeBarProps = {
@@ -72,7 +72,11 @@ export default function UptimeBar({
     });
 
     const hcQuery = useQuery({
-        ...orgQueries.healthCheckStatusHistory({ orgId: orgId ?? "", healthCheckId: healthCheckId ?? 0, days }),
+        ...orgQueries.healthCheckStatusHistory({
+            orgId: orgId ?? "",
+            healthCheckId: healthCheckId ?? 0,
+            days
+        }),
         enabled: healthCheckId != null && siteId == null && resourceId == null,
         meta: { api }
     });
@@ -84,23 +88,42 @@ export default function UptimeBar({
     });
 
     const { data, isLoading } =
-        siteId != null ? siteQuery :
-        resourceId != null ? resourceQuery :
-        hcQuery;
+        siteId != null
+            ? siteQuery
+            : resourceId != null
+              ? resourceQuery
+              : hcQuery;
 
     if (isLoading) {
         return (
-            <div className={cn("space-y-2", className)}>
-                {title && (
-                    <div className="text-sm font-medium">{title}</div>
-                )}
+            <div className={cn("space-y-3", className)}>
+                <div className="flex items-center justify-between">
+                    {title && (
+                        <span className="text-sm font-medium">{title}</span>
+                    )}
+                    <div
+                        className="flex items-center gap-4 text-sm ml-auto"
+                        aria-busy="true"
+                        aria-label="Loading uptime summary"
+                    >
+                        <span className="h-4 w-[4.5rem] shrink-0 rounded-md bg-muted animate-pulse" />
+                        <span className="h-4 w-[7rem] shrink-0 rounded-md bg-muted animate-pulse" />
+                    </div>
+                </div>
                 <div className="flex gap-0.5 h-8">
                     {Array.from({ length: days }).map((_, i) => (
                         <div
                             key={i}
-                            className="flex-1 rounded-sm bg-zinc-800 animate-pulse"
+                            className={cn(
+                                "flex-1 rounded-sm animate-pulse",
+                                barColorClass.no_data
+                            )}
                         />
                     ))}
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{days} days ago</span>
+                    <span>Today</span>
                 </div>
             </div>
         );
@@ -114,9 +137,7 @@ export default function UptimeBar({
         <div className={cn("space-y-3", className)}>
             {/* Header row */}
             <div className="flex items-center justify-between">
-                {title && (
-                    <span className="text-sm font-medium">{title}</span>
-                )}
+                {title && <span className="text-sm font-medium">{title}</span>}
                 <div className="flex items-center gap-4 text-sm ml-auto">
                     {!allNoData && (
                         <>
