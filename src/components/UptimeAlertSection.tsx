@@ -73,9 +73,10 @@ export default function UptimeAlertSection({
     >(null);
     const [loading, setLoading] = useState(false);
 
-    const { data: alertRules, isLoading: alertRulesLoading } = useQuery(
-        orgQueries.alertRulesForSource({ orgId, siteId, resourceId })
-    );
+    const { data: alertRules, isLoading: alertRulesLoading } = useQuery({
+        ...orgQueries.alertRulesForSource({ orgId, siteId, resourceId }),
+        enabled: isPaid
+    });
 
     const { data: orgUsers = [] } = useQuery(orgQueries.users({ orgId }));
     const { data: orgRoles = [] } = useQuery(orgQueries.roles({ orgId }));
@@ -197,7 +198,7 @@ export default function UptimeAlertSection({
                         <div>
                             <SettingsSectionTitle>Uptime</SettingsSectionTitle>
                             <SettingsSectionDescription>
-                                Site availability over the last {days} days.
+                                Availability over the last {days} days
                             </SettingsSectionDescription>
                         </div>
                         {alertButton}

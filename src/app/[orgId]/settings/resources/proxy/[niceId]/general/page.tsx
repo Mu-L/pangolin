@@ -161,6 +161,7 @@ function MaintenanceSectionForm({
             </SettingsSectionHeader>
 
             <SettingsSectionBody>
+                <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
                 <SettingsSectionForm>
                     <Form {...maintenanceForm}>
                         <form
@@ -168,9 +169,6 @@ function MaintenanceSectionForm({
                             className="space-y-4"
                             id="maintenance-settings-form"
                         >
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.maintencePage}
-                            />
                             <FormField
                                 control={maintenanceForm.control}
                                 name="maintenanceModeEnabled"
