@@ -27,6 +27,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()

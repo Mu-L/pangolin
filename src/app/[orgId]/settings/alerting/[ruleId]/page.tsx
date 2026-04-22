@@ -12,7 +12,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { AxiosResponse } from "axios";
-import type { GetAlertRuleResponse } from "@server/private/routers/alertRule";
+import type { GetAlertRuleResponse } from "@server/routers/alertRule/types";
 import type { AlertRuleFormValues } from "@app/lib/alertRuleForm";
 
 export default function EditAlertRulePage() {

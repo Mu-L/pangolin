@@ -131,7 +131,7 @@ export function LayoutSidebar({
     const showTrial =
         build === "saas" &&
         Boolean(orgId) &&
-        subscriptionContext?.isTrial
+        subscriptionContext?.isTrial;
 
     return (
         <div

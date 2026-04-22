@@ -11,7 +11,6 @@
  * This file is not licensed under the AGPLv3.
  */
 
-export * from "./types";
 export * from "./processAlerts";
 export * from "./sendAlertWebhook";
 export * from "./sendAlertEmail";

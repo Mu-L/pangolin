@@ -27,9 +27,9 @@ import {
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
-import { AlertContext, WebhookAlertConfig } from "./types";
 import { sendAlertWebhook } from "./sendAlertWebhook";
 import { sendAlertEmail } from "./sendAlertEmail";
+import { AlertContext, WebhookAlertConfig } from "@server/routers/alertRule/types";
 
 /**
  * Core alert processing pipeline.

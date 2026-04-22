@@ -31,6 +31,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
+import { CreateAlertRuleResponse } from "@server/routers/alertRule/types";
 
 export const SITE_EVENT_TYPES = ["site_online", "site_offline", "site_toggle"] as const;
 export const HC_EVENT_TYPES = [
@@ -168,10 +169,6 @@ const bodySchema = z
             });
         }
     });
-
-export type CreateAlertRuleResponse = {
-    alertRuleId: number;
-};
 
 registry.registerPath({
     method: "put",

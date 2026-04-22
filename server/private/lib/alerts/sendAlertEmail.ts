@@ -15,7 +15,7 @@ import { sendEmail } from "@server/emails";
 import AlertNotification from "@server/emails/templates/AlertNotification";
 import config from "@server/lib/config";
 import logger from "@server/logger";
-import { AlertContext } from "./types";
+import { AlertContext } from "@server/routers/alertRule/types";
 
 /**
  * Sends an alert notification email to every address in `recipients`.
