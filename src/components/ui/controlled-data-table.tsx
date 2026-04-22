@@ -17,6 +17,7 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
+import { DataTableEmptyState } from "@/components/ui/data-table-empty-state";
 import { DataTablePagination } from "@app/components/DataTablePagination";
 import type { DataTableAddAction } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
@@ -249,6 +250,38 @@ export function ControlledDataTable<TData, TValue>({
         return "";
     };
 
+    const tableRows = table.getRowModel().rows;
+    const hasRows = tableRows.length > 0;
+    const hasAddAction = Boolean(
+        addButtonText && ((addActions && addActions.length > 0) || onAdd)
+    );
+    const showAddActionInEmptyState = !hasRows && hasAddAction;
+    const addAction = addActions && addActions.length > 0 && addButtonText ? (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    disabled={addButtonDisabled || isNavigatingToAddPage}
+                >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {addButtonText}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                {addActions.map((action, i) => (
+                    <DropdownMenuItem key={i} onSelect={() => action.onSelect()}>
+                        {action.label}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    ) : onAdd && addButtonText ? (
+        <Button onClick={onAdd} loading={isNavigatingToAddPage} disabled={addButtonDisabled}>
+            <Plus className="mr-2 h-4 w-4" />
+            {addButtonText}
+        </Button>
+    ) : null;
+
     return (
         <div className="container mx-auto max-w-12xl">
             <Card>
@@ -367,51 +400,15 @@ export function ControlledDataTable<TData, TValue>({
                                 </Button>
                             </div>
                         )}
-                        {addActions &&
-                        addActions.length > 0 &&
-                        addButtonText ? (
-                            <div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            disabled={
-                                                addButtonDisabled ||
-                                                isNavigatingToAddPage
-                                            }
-                                        >
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            {addButtonText}
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        {addActions.map((action, i) => (
-                                            <DropdownMenuItem
-                                                key={i}
-                                                onSelect={() =>
-                                                    action.onSelect()
-                                                }
-                                            >
-                                                {action.label}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        ) : (
-                            onAdd &&
-                            addButtonText && (
-                                <div>
-                                    <Button
-                                        onClick={onAdd}
-                                        loading={isNavigatingToAddPage}
-                                        disabled={addButtonDisabled}
-                                    >
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        {addButtonText}
-                                    </Button>
-                                </div>
-                            )
+                        {addAction && (
+                            <>
+                                <div className="sm:hidden">{addAction}</div>
+                                {!showAddActionInEmptyState && (
+                                    <div className="hidden sm:block">
+                                        {addAction}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </CardHeader>
@@ -606,14 +603,18 @@ export function ControlledDataTable<TData, TValue>({
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={columns.length}
-                                            className="h-24 text-center"
-                                        >
-                                            No results found.
-                                        </TableCell>
-                                    </TableRow>
+                                    <DataTableEmptyState
+                                        colSpan={columns.length}
+                                        action={
+                                            showAddActionInEmptyState
+                                                ? (
+                                                      <div className="hidden sm:block">
+                                                          {addAction}
+                                                      </div>
+                                                  )
+                                                : undefined
+                                        }
+                                    />
                                 )}
                             </TableBody>
                         </Table>
