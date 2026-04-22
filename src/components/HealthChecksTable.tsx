@@ -329,7 +329,7 @@ export default function HealthChecksTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                    disabled={!isPaid}
+                                    disabled={!isPaid || !!r.resourceId}
                                     onClick={() => {
                                         setSelected(r);
                                         setDeleteOpen(true);
@@ -339,18 +339,31 @@ export default function HealthChecksTable({
                                         {t("delete")}
                                     </span>
                                 </DropdownMenuItem>
+
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        <Button
-                            variant="outline"
-                            disabled={!isPaid}
-                            onClick={() => {
-                                setSelected(r);
-                                setCredenzaOpen(true);
-                            }}
-                        >
-                            {t("edit")}
-                        </Button>
+                        {r.resourceId && r.resourceName && r.resourceNiceId ? (
+                            <Link href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}>
+                                <Button
+                                    variant="outline"
+                                    disabled={!isPaid}
+                                >
+                                    {t("edit")}
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                disabled={!isPaid}
+                                onClick={() => {
+                                    setSelected(r);
+                                    setCredenzaOpen(true);
+                                }}
+                            >
+                                {t("edit")}
+                            </Button>
+                        )}
+
                     </div>
                 );
             }

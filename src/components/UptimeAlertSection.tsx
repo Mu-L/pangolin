@@ -31,6 +31,9 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { orgQueries } from "@app/lib/queries";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 interface UptimeAlertSectionProps {
     orgId: string;
@@ -49,6 +52,8 @@ export default function UptimeAlertSection({
 }: UptimeAlertSectionProps) {
     const api = createApiClient(useEnvContext());
     const queryClient = useQueryClient();
+    const { isPaidUser } = usePaidStatus();
+    const isPaid = isPaidUser(tierMatrix.alertingRules);
 
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(
@@ -219,82 +224,90 @@ export default function UptimeAlertSection({
                     </CredenzaHeader>
                     <CredenzaBody>
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="alert-name">Name</Label>
-                                <Input
-                                    id="alert-name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Alert name"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Notify Users</Label>
-                                <TagInput
-                                    activeTagIndex={activeUserTagIndex}
-                                    setActiveTagIndex={setActiveUserTagIndex}
-                                    placeholder="Select users..."
-                                    size="sm"
-                                    tags={userTags}
-                                    setTags={(newTags) => {
-                                        const next =
-                                            typeof newTags === "function"
-                                                ? newTags(userTags)
-                                                : newTags;
-                                        setUserTags(next as Tag[]);
-                                    }}
-                                    enableAutocomplete
-                                    autocompleteOptions={allUsers}
-                                    restrictTagsToAutocompleteOptions
-                                    allowDuplicates={false}
-                                    sortTags
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Notify Roles</Label>
-                                <TagInput
-                                    activeTagIndex={activeRoleTagIndex}
-                                    setActiveTagIndex={setActiveRoleTagIndex}
-                                    placeholder="Select roles..."
-                                    size="sm"
-                                    tags={roleTags}
-                                    setTags={(newTags) => {
-                                        const next =
-                                            typeof newTags === "function"
-                                                ? newTags(roleTags)
-                                                : newTags;
-                                        setRoleTags(next as Tag[]);
-                                    }}
-                                    enableAutocomplete
-                                    autocompleteOptions={allRoles}
-                                    restrictTagsToAutocompleteOptions
-                                    allowDuplicates={false}
-                                    sortTags
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Additional Emails</Label>
-                                <TagInput
-                                    activeTagIndex={activeEmailTagIndex}
-                                    setActiveTagIndex={setActiveEmailTagIndex}
-                                    placeholder="Enter email addresses..."
-                                    size="sm"
-                                    tags={emailTags}
-                                    setTags={(newTags) => {
-                                        const next =
-                                            typeof newTags === "function"
-                                                ? newTags(emailTags)
-                                                : newTags;
-                                        setEmailTags(next as Tag[]);
-                                    }}
-                                    allowDuplicates={false}
-                                    sortTags
-                                    validateTag={(tag) =>
-                                        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tag)
-                                    }
-                                    delimiterList={[",", "Enter"]}
-                                />
-                            </div>
+                            <PaidFeaturesAlert tiers={tierMatrix.alertingRules} />
+                            <fieldset
+                                disabled={!isPaid}
+                                className={!isPaid ? "opacity-50 pointer-events-none" : ""}
+                            >
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="alert-name">Name</Label>
+                                        <Input
+                                            id="alert-name"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="Alert name"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notify Users</Label>
+                                        <TagInput
+                                            activeTagIndex={activeUserTagIndex}
+                                            setActiveTagIndex={setActiveUserTagIndex}
+                                            placeholder="Select users..."
+                                            size="sm"
+                                            tags={userTags}
+                                            setTags={(newTags) => {
+                                                const next =
+                                                    typeof newTags === "function"
+                                                        ? newTags(userTags)
+                                                        : newTags;
+                                                setUserTags(next as Tag[]);
+                                            }}
+                                            enableAutocomplete
+                                            autocompleteOptions={allUsers}
+                                            restrictTagsToAutocompleteOptions
+                                            allowDuplicates={false}
+                                            sortTags
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notify Roles</Label>
+                                        <TagInput
+                                            activeTagIndex={activeRoleTagIndex}
+                                            setActiveTagIndex={setActiveRoleTagIndex}
+                                            placeholder="Select roles..."
+                                            size="sm"
+                                            tags={roleTags}
+                                            setTags={(newTags) => {
+                                                const next =
+                                                    typeof newTags === "function"
+                                                        ? newTags(roleTags)
+                                                        : newTags;
+                                                setRoleTags(next as Tag[]);
+                                            }}
+                                            enableAutocomplete
+                                            autocompleteOptions={allRoles}
+                                            restrictTagsToAutocompleteOptions
+                                            allowDuplicates={false}
+                                            sortTags
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Additional Emails</Label>
+                                        <TagInput
+                                            activeTagIndex={activeEmailTagIndex}
+                                            setActiveTagIndex={setActiveEmailTagIndex}
+                                            placeholder="Enter email addresses..."
+                                            size="sm"
+                                            tags={emailTags}
+                                            setTags={(newTags) => {
+                                                const next =
+                                                    typeof newTags === "function"
+                                                        ? newTags(emailTags)
+                                                        : newTags;
+                                                setEmailTags(next as Tag[]);
+                                            }}
+                                            allowDuplicates={false}
+                                            sortTags
+                                            validateTag={(tag) =>
+                                                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tag)
+                                            }
+                                            delimiterList={[",", "Enter"]}
+                                        />
+                                    </div>
+                                </div>
+                            </fieldset>
                         </div>
                     </CredenzaBody>
                     <CredenzaFooter>
@@ -304,7 +317,7 @@ export default function UptimeAlertSection({
                         <Button
                             onClick={handleSubmit}
                             loading={loading}
-                            disabled={loading}
+                            disabled={loading || !isPaid}
                         >
                             Create Alert
                         </Button>

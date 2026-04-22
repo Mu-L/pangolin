@@ -17,7 +17,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, like, sql } from "drizzle-orm";
+import { and, eq, isNotNull, like, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -85,6 +85,7 @@ export async function listHealthChecks(
 
         const whereClause = and(
             eq(targetHealthCheck.orgId, orgId),
+            isNotNull(targetHealthCheck.hcMode), // filter out the null ones attached to targets
             query
                 ? like(
                       sql`LOWER(${targetHealthCheck.name})`,
