@@ -101,7 +101,6 @@ export function LayoutMobileMenu({
                                                                     "serverAdmin"
                                                                 )}
                                                             </span>
-                                                            <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
                                                         </Link>
                                                     </div>
                                                 )}
