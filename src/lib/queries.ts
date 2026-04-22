@@ -361,25 +361,50 @@ export const orgQueries = {
         orgId,
         limit = 20,
         offset = 0,
-        query
+        query,
+        hcMode,
+        siteId,
+        resourceId,
+        hcHealth,
+        hcEnabled
     }: {
         orgId: string;
         limit?: number;
         offset?: number;
         query?: string;
+        hcMode?: "http" | "tcp" | "snmp" | "ping";
+        siteId?: number;
+        resourceId?: number;
+        hcHealth?: "healthy" | "unhealthy" | "unknown";
+        hcEnabled?: "true" | "false";
     }) =>
         queryOptions({
             queryKey: [
                 "ORG",
                 orgId,
                 "STANDALONE_HEALTH_CHECKS",
-                { limit, offset, query }
+                {
+                    limit,
+                    offset,
+                    query,
+                    hcMode,
+                    siteId,
+                    resourceId,
+                    hcHealth,
+                    hcEnabled
+                }
             ] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams();
                 sp.set("limit", String(limit));
                 sp.set("offset", String(offset));
                 if (query) sp.set("query", query);
+                if (hcMode) sp.set("hcMode", hcMode);
+                if (siteId != null) sp.set("siteId", String(siteId));
+                if (resourceId != null)
+                    sp.set("resourceId", String(resourceId));
+                if (hcHealth) sp.set("hcHealth", hcHealth);
+                if (hcEnabled) sp.set("hcEnabled", hcEnabled);
                 const res = await meta!.api.get<
                     AxiosResponse<{
                         healthChecks: {

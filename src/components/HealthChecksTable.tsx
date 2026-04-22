@@ -6,23 +6,42 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import HealthCheckCredenza, {
     HealthCheckRow
 } from "@app/components/HealthCheckCredenza";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
-import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
+import {
+    ControlledDataTable,
+    type ExtendedColumnDef
+} from "@app/components/ui/controlled-data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { Switch } from "@app/components/ui/switch";
 import { toast } from "@app/hooks/useToast";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { ArrowUpDown, ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import {
+    ResourceSelector,
+    SelectedResource
+} from "@app/components/resource-selector";
+import {
+    ArrowUpDown,
+    ArrowUpRight,
+    Funnel,
+    MoreHorizontal
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import type { PaginationState } from "@tanstack/react-table";
-import type { DataTablePaginationState } from "@app/components/ui/data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
@@ -30,11 +49,15 @@ import { useRouter } from "next/navigation";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { cn } from "@app/lib/cn";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
     healthChecks: HealthCheckRow[];
     rowCount: number;
+    pagination: PaginationState;
+    initialFilterSite?: Selectedsite | null;
+    initialFilterResource?: SelectedResource | null;
 };
 
 function formatTarget(row: HealthCheckRow): string {
@@ -42,6 +65,12 @@ function formatTarget(row: HealthCheckRow): string {
     if (row.hcMode === "tcp") {
         if (!row.hcPort) return row.hcHostname;
         return `${row.hcHostname}:${row.hcPort}`;
+    }
+    if (row.hcMode === "snmp" || row.hcMode === "ping") {
+        if (row.hcPort) {
+            return `${row.hcHostname}:${row.hcPort}`;
+        }
+        return row.hcHostname;
     }
     // HTTP / default
     const scheme = row.hcScheme ?? "http";
@@ -51,16 +80,13 @@ function formatTarget(row: HealthCheckRow): string {
     return `${scheme}://${host}${port}${path}`;
 }
 
-const healthLabel: Record<HealthCheckRow["hcHealth"], string> = {
-    healthy: "Healthy",
-    unhealthy: "Unhealthy",
-    unknown: "Unknown"
-};
-
 export default function HealthChecksTable({
     orgId,
     healthChecks,
-    rowCount
+    rowCount,
+    pagination,
+    initialFilterSite = null,
+    initialFilterResource = null
 }: StandaloneHealthChecksTableProps) {
     const router = useRouter();
     const t = useTranslations();
@@ -79,15 +105,56 @@ export default function HealthChecksTable({
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selected, setSelected] = useState<HealthCheckRow | null>(null);
     const [togglingId, setTogglingId] = useState<number | null>(null);
+    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
+    const [resourceFilterOpen, setResourceFilterOpen] = useState(false);
 
-    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-    const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? 20));
-    const pageIndex = page - 1;
+    const pageSize = pagination.pageSize;
     const query = searchParams.get("query") ?? undefined;
 
+    const siteIdQ = searchParams.get("siteId");
+    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+    const selectedSite: Selectedsite | null = useMemo(() => {
+        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
+            return null;
+        }
+        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
+            return initialFilterSite;
+        }
+        return {
+            siteId: siteIdNum,
+            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
+            type: "newt"
+        };
+    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
+
+    const resourceIdQ = searchParams.get("resourceId");
+    const resourceIdNum = resourceIdQ ? parseInt(resourceIdQ, 10) : NaN;
+    const selectedResource: SelectedResource | null = useMemo(() => {
+        if (
+            !resourceIdQ ||
+            !Number.isInteger(resourceIdNum) ||
+            resourceIdNum <= 0
+        ) {
+            return null;
+        }
+        if (
+            initialFilterResource &&
+            initialFilterResource.resourceId === resourceIdNum
+        ) {
+            return initialFilterResource;
+        }
+        return {
+            name: t("standaloneHcFilterResourceIdFallback", {
+                id: resourceIdNum
+            }),
+            resourceId: resourceIdNum,
+            fullDomain: null,
+            niceId: "",
+            ssl: false
+        };
+    }, [initialFilterResource, resourceIdQ, resourceIdNum, t]);
+
     const rows = healthChecks;
-    const total = rowCount;
-    const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
     function refreshList() {
         startRefresh(() => {
@@ -101,12 +168,6 @@ export default function HealthChecksTable({
         }, 10_000);
         return () => clearInterval(interval);
     }, [router]);
-
-    const paginationState: DataTablePaginationState = {
-        pageIndex,
-        pageSize,
-        pageCount
-    };
 
     const handlePaginationChange = (newState: PaginationState) => {
         searchParams.set("page", (newState.pageIndex + 1).toString());
@@ -123,6 +184,39 @@ export default function HealthChecksTable({
         searchParams.delete("page");
         filter({ searchParams });
     }, 300);
+
+    function handleFilterChange(
+        column: string,
+        value: string | undefined | null
+    ) {
+        const sp = new URLSearchParams(searchParams);
+        sp.delete(column);
+        sp.delete("page");
+        if (value) {
+            sp.set(column, value);
+        }
+        filter({ searchParams: sp });
+    }
+
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
+
+    const clearResourceFilter = () => {
+        handleFilterChange("resourceId", undefined);
+        setResourceFilterOpen(false);
+    };
+
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
+
+    const onPickResource = (resource: SelectedResource) => {
+        handleFilterChange("resourceId", String(resource.resourceId));
+        setResourceFilterOpen(false);
+    };
 
     const handleToggleEnabled = async (
         row: HealthCheckRow,
@@ -166,6 +260,27 @@ export default function HealthChecksTable({
         }
     };
 
+    const modeParam = searchParams.get("hcMode");
+    const selectedHcMode =
+        modeParam === "http" ||
+        modeParam === "tcp" ||
+        modeParam === "snmp" ||
+        modeParam === "ping"
+            ? modeParam
+            : undefined;
+    const healthParam = searchParams.get("hcHealth");
+    const selectedHcHealth =
+        healthParam === "healthy" ||
+        healthParam === "unhealthy" ||
+        healthParam === "unknown"
+            ? healthParam
+            : undefined;
+    const enabledParam = searchParams.get("hcEnabled");
+    const selectedHcEnabled =
+        enabledParam === "true" || enabledParam === "false"
+            ? enabledParam
+            : undefined;
+
     const columns: ExtendedColumnDef<HealthCheckRow>[] = [
         {
             accessorKey: "name",
@@ -190,12 +305,34 @@ export default function HealthChecksTable({
             id: "mode",
             friendlyName: t("standaloneHcColumnMode"),
             header: () => (
-                <span className="p-3">{t("standaloneHcColumnMode")}</span>
+                <ColumnFilterButton
+                    options={[
+                        {
+                            value: "http",
+                            label: t("standaloneHcFilterModeHttp")
+                        },
+                        { value: "tcp", label: t("standaloneHcFilterModeTcp") },
+                        {
+                            value: "snmp",
+                            label: t("standaloneHcFilterModeSnmp")
+                        },
+                        {
+                            value: "ping",
+                            label: t("standaloneHcFilterModePing")
+                        }
+                    ]}
+                    selectedValue={selectedHcMode}
+                    onValueChange={(value) =>
+                        handleFilterChange("hcMode", value)
+                    }
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("standaloneHcColumnMode")}
+                    className="p-3"
+                />
             ),
             cell: ({ row }) => (
-                <span>
-                    {row.original.hcMode?.toUpperCase() ?? "-"}
-                </span>
+                <span>{row.original.hcMode?.toUpperCase() ?? "-"}</span>
             )
         },
         {
@@ -208,9 +345,58 @@ export default function HealthChecksTable({
         },
         {
             id: "resource",
-            friendlyName: "Resource",
+            friendlyName: t("resource"),
             header: () => (
-                <span className="p-3">Resource</span>
+                <Popover
+                    open={resourceFilterOpen}
+                    onOpenChange={setResourceFilterOpen}
+                >
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedResource && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("resource")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedResource && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedResource.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearResourceFilter}
+                            >
+                                {t("standaloneHcFilterAnyResource")}
+                            </Button>
+                        </div>
+                        <ResourceSelector
+                            orgId={orgId}
+                            selectedResource={selectedResource}
+                            onSelectResource={onPickResource}
+                        />
+                    </PopoverContent>
+                </Popover>
             ),
             cell: ({ row }) => {
                 const r = row.original;
@@ -218,7 +404,9 @@ export default function HealthChecksTable({
                     return <span className="text-neutral-400">-</span>;
                 }
                 return (
-                    <Link href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}>
+                    <Link
+                        href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}
+                    >
                         <Button variant="outline" size="sm">
                             {r.resourceName}
                             <ArrowUpRight className="ml-2 h-3 w-3" />
@@ -229,9 +417,55 @@ export default function HealthChecksTable({
         },
         {
             id: "site",
-            friendlyName: "Site",
+            friendlyName: t("site"),
             header: () => (
-                <span className="p-3">Site</span>
+                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedSite && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("site")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedSite && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedSite.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearSiteFilter}
+                            >
+                                {t("standaloneHcFilterAnySite")}
+                            </Button>
+                        </div>
+                        <SitesSelector
+                            orgId={orgId}
+                            selectedSite={selectedSite}
+                            onSelectSite={onPickSite}
+                        />
+                    </PopoverContent>
+                </Popover>
             ),
             cell: ({ row }) => {
                 const r = row.original;
@@ -239,7 +473,9 @@ export default function HealthChecksTable({
                     return <span className="text-neutral-400">-</span>;
                 }
                 return (
-                    <Link href={`/${orgId}/settings/sites/${r.siteNiceId}/general`}>
+                    <Link
+                        href={`/${orgId}/settings/sites/${r.siteNiceId}/general`}
+                    >
                         <Button variant="outline" size="sm">
                             {r.siteName}
                             <ArrowUpRight className="ml-2 h-3 w-3" />
@@ -252,29 +488,52 @@ export default function HealthChecksTable({
             id: "health",
             friendlyName: t("standaloneHcColumnHealth"),
             header: () => (
-                <span className="p-3">{t("standaloneHcColumnHealth")}</span>
+                <ColumnFilterButton
+                    options={[
+                        {
+                            value: "healthy",
+                            label: t("standaloneHcHealthStateHealthy")
+                        },
+                        {
+                            value: "unhealthy",
+                            label: t("standaloneHcHealthStateUnhealthy")
+                        },
+                        {
+                            value: "unknown",
+                            label: t("standaloneHcHealthStateUnknown")
+                        }
+                    ]}
+                    selectedValue={selectedHcHealth}
+                    onValueChange={(value) =>
+                        handleFilterChange("hcHealth", value)
+                    }
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("standaloneHcColumnHealth")}
+                    className="p-3"
+                />
             ),
             cell: ({ row }) => {
                 const health = row.original.hcHealth;
                 if (health === "healthy") {
                     return (
                         <span className="text-green-500 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span>{healthLabel.healthy}</span>
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            <span>{t("standaloneHcHealthStateHealthy")}</span>
                         </span>
                     );
                 } else if (health === "unhealthy") {
                     return (
                         <span className="text-red-500 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                            <span>{healthLabel.unhealthy}</span>
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            <span>{t("standaloneHcHealthStateUnhealthy")}</span>
                         </span>
                     );
                 } else {
                     return (
                         <span className="text-neutral-500 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
-                            <span>{healthLabel.unknown}</span>
+                            <div className="w-2 h-2 bg-neutral-500 rounded-full" />
+                            <span>{t("standaloneHcHealthStateUnknown")}</span>
                         </span>
                     );
                 }
@@ -282,11 +541,15 @@ export default function HealthChecksTable({
         },
         {
             id: "uptime",
-            friendlyName: "Uptime",
+            friendlyName: t("uptime30d"),
             header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 return (
-                    <UptimeMiniBar orgId={orgId} healthCheckId={row.original.targetHealthCheckId} days={30} />
+                    <UptimeMiniBar
+                        orgId={orgId}
+                        healthCheckId={row.original.targetHealthCheckId}
+                        days={30}
+                    />
                 );
             }
         },
@@ -294,7 +557,26 @@ export default function HealthChecksTable({
             accessorKey: "hcEnabled",
             friendlyName: t("alertingColumnEnabled"),
             header: () => (
-                <span className="p-3">{t("alertingColumnEnabled")}</span>
+                <ColumnFilterButton
+                    options={[
+                        {
+                            value: "true",
+                            label: t("standaloneHcFilterEnabledOn")
+                        },
+                        {
+                            value: "false",
+                            label: t("standaloneHcFilterEnabledOff")
+                        }
+                    ]}
+                    selectedValue={selectedHcEnabled}
+                    onValueChange={(value) =>
+                        handleFilterChange("hcEnabled", value)
+                    }
+                    searchPlaceholder={t("searchPlaceholder")}
+                    emptyMessage={t("emptySearchOptions")}
+                    label={t("alertingColumnEnabled")}
+                    className="p-3"
+                />
             ),
             cell: ({ row }) => {
                 const r = row.original;
@@ -302,8 +584,7 @@ export default function HealthChecksTable({
                     <Switch
                         checked={r.hcEnabled}
                         disabled={
-                            !isPaid ||
-                            togglingId === r.targetHealthCheckId
+                            !isPaid || togglingId === r.targetHealthCheckId
                         }
                         onCheckedChange={(v) => handleToggleEnabled(r, v)}
                     />
@@ -339,15 +620,13 @@ export default function HealthChecksTable({
                                         {t("delete")}
                                     </span>
                                 </DropdownMenuItem>
-
                             </DropdownMenuContent>
                         </DropdownMenu>
                         {r.resourceId && r.resourceName && r.resourceNiceId ? (
-                            <Link href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}>
-                                <Button
-                                    variant="outline"
-                                    disabled={!isPaid}
-                                >
+                            <Link
+                                href={`/${orgId}/settings/resources/proxy/${r.resourceNiceId}`}
+                            >
+                                <Button variant="outline" disabled={!isPaid}>
                                     {t("edit")}
                                 </Button>
                             </Link>
@@ -363,7 +642,6 @@ export default function HealthChecksTable({
                                 {t("edit")}
                             </Button>
                         )}
-
                     </div>
                 );
             }
@@ -405,14 +683,13 @@ export default function HealthChecksTable({
 
             <PaidFeaturesAlert tiers={tierMatrix.standaloneHealthChecks} />
 
-            <DataTable
+            <ControlledDataTable
                 columns={columns}
-                data={rows}
-                title={t("standaloneHcTableTitle")}
+                rows={rows}
+                tableId="health-checks-table"
                 searchPlaceholder={t("standaloneHcSearchPlaceholder")}
                 onSearch={handleSearchChange}
                 searchQuery={query}
-                manualFiltering
                 onAdd={() => {
                     setSelected(null);
                     setCredenzaOpen(true);
@@ -424,8 +701,9 @@ export default function HealthChecksTable({
                 enableColumnVisibility
                 stickyLeftColumn="name"
                 stickyRightColumn="rowActions"
-                pagination={paginationState}
+                pagination={pagination}
                 onPaginationChange={handlePaginationChange}
+                rowCount={rowCount}
             />
         </>
     );

@@ -42,7 +42,7 @@ import {
     Search
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 // Extended ColumnDef type that includes optional friendlyName for column visibility dropdown
 export type ExtendedColumnDef<TData, TValue = unknown> = ColumnDef<
@@ -84,6 +84,8 @@ type ControlledDataTableProps<TData, TValue> = {
     isNavigatingToAddPage?: boolean;
     searchPlaceholder?: string;
     filters?: DataTableFilter[];
+    /** Extra filter controls (e.g. searchable entity pickers) shown after the filter dropdowns. */
+    filterExtras?: ReactNode;
     filterDisplayMode?: "label" | "calculated"; // Global filter display mode (can be overridden per filter)
     columnVisibility?: Record<string, boolean>;
     enableColumnVisibility?: boolean;
@@ -108,6 +110,7 @@ export function ControlledDataTable<TData, TValue>({
     refreshButtonDisabled = false,
     searchPlaceholder = "Search...",
     filters,
+    filterExtras,
     filterDisplayMode = "label",
     columnVisibility: defaultColumnVisibility,
     enableColumnVisibility = false,
@@ -343,6 +346,7 @@ export function ControlledDataTable<TData, TValue>({
                                 })}
                             </div>
                         )}
+                        {filterExtras}
                     </div>
                     <div className="flex items-center gap-2 sm:justify-end">
                         {onRefresh && (
@@ -350,7 +354,9 @@ export function ControlledDataTable<TData, TValue>({
                                 <Button
                                     variant="outline"
                                     onClick={onRefresh}
-                                    disabled={isRefreshing || refreshButtonDisabled}
+                                    disabled={
+                                        isRefreshing || refreshButtonDisabled
+                                    }
                                 >
                                     <RefreshCw
                                         className={`mr-0 sm:mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -361,7 +367,9 @@ export function ControlledDataTable<TData, TValue>({
                                 </Button>
                             </div>
                         )}
-                        {addActions && addActions.length > 0 && addButtonText ? (
+                        {addActions &&
+                        addActions.length > 0 &&
+                        addButtonText ? (
                             <div>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

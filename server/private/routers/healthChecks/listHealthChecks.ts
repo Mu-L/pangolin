@@ -17,7 +17,7 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
-import { and, eq, isNotNull, like, sql } from "drizzle-orm";
+import { and, eq, exists, isNotNull, like, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -40,7 +40,23 @@ const querySchema = z.object({
         .default("0")
         .transform(Number)
         .pipe(z.int().nonnegative()),
-    query: z.string().optional()
+    query: z.string().optional(),
+    hcMode: z.enum(["http", "tcp", "snmp", "ping"]).optional(),
+    siteId: z
+        .string()
+        .optional()
+        .transform((s) => (s == null || s === "" ? undefined : Number(s)))
+        .pipe(z.union([z.undefined(), z.number().int().positive()])),
+    resourceId: z
+        .string()
+        .optional()
+        .transform((s) => (s == null || s === "" ? undefined : Number(s)))
+        .pipe(z.union([z.undefined(), z.number().int().positive()])),
+    hcHealth: z.enum(["healthy", "unhealthy", "unknown"]).optional(),
+    hcEnabled: z
+        .enum(["true", "false"])
+        .optional()
+        .transform((v) => (v === undefined ? undefined : v === "true"))
 });
 
 registry.registerPath({
@@ -81,7 +97,30 @@ export async function listHealthChecks(
                 )
             );
         }
-        const { limit, offset, query } = parsedQuery.data;
+        const {
+            limit,
+            offset,
+            query,
+            hcMode,
+            siteId,
+            resourceId,
+            hcHealth,
+            hcEnabled
+        } = parsedQuery.data;
+
+        const resourceIdFilter = resourceId
+            ? exists(
+                  db
+                      .select()
+                      .from(targets)
+                      .where(
+                          and(
+                              eq(targets.targetId, targetHealthCheck.targetId),
+                              eq(targets.resourceId, resourceId)
+                          )
+                      )
+              )
+            : undefined;
 
         const whereClause = and(
             eq(targetHealthCheck.orgId, orgId),
@@ -91,6 +130,13 @@ export async function listHealthChecks(
                       sql`LOWER(${targetHealthCheck.name})`,
                       `%${query.toLowerCase()}%`
                   )
+                : undefined,
+            hcMode ? eq(targetHealthCheck.hcMode, hcMode) : undefined,
+            siteId ? eq(targetHealthCheck.siteId, siteId) : undefined,
+            resourceIdFilter,
+            hcHealth ? eq(targetHealthCheck.hcHealth, hcHealth) : undefined,
+            hcEnabled !== undefined
+                ? eq(targetHealthCheck.hcEnabled, hcEnabled)
                 : undefined
         );
 
