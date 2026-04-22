@@ -57,11 +57,6 @@ export default function BrandingLogo(props: BrandingLogoProps) {
                 alt="Logo"
                 width={props.width}
                 height={props.height}
-                style={
-                    isNextImage
-                        ? { width: "auto", height: "auto" }
-                        : undefined
-                }
             />
         )
     );
