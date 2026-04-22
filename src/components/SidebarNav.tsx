@@ -122,7 +122,7 @@ function CollapsibleNavItem({
                         "px-3 py-1.5",
                         isActive
                             ? "bg-sidebar-accent font-medium"
-                            : "text-muted-foreground hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50 hover:text-foreground",
+                            : "text-muted-foreground hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50 hover:text-foreground",
                         isDisabled && "cursor-not-allowed opacity-60"
                     )}
                     disabled={isDisabled}
@@ -257,7 +257,7 @@ function CollapsedNavItemWithPopover({
                                     "flex items-center rounded-md transition-colors px-2 py-2 justify-center w-full",
                                     isActive || isChildActive
                                         ? "bg-sidebar-accent font-medium"
-                                        : "text-muted-foreground hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50 hover:text-foreground",
+                                        : "text-muted-foreground hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50 hover:text-foreground",
                                     isDisabled &&
                                         "cursor-not-allowed opacity-60"
                                 )}
@@ -451,7 +451,7 @@ export function SidebarNav({
                     isCollapsed ? "px-2 py-2 justify-center" : "px-3 py-1.5",
                     isActive
                         ? "bg-sidebar-accent font-medium"
-                        : "text-muted-foreground hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50 hover:text-foreground",
+                        : "text-muted-foreground hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50 hover:text-foreground",
                     isDisabled && "cursor-not-allowed opacity-60"
                 )}
                 onClick={(e) => {

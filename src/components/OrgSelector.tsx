@@ -76,8 +76,8 @@ export function OrgSelector({
                     className={cn(
                         "cursor-pointer transition-colors",
                         isCollapsed
-                            ? "w-full h-16 flex items-center justify-center hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50"
-                            : "w-full px-5 py-4 hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50"
+                            ? "w-full h-16 flex items-center justify-center hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50"
+                            : "w-full px-5 py-4 hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50"
                     )}
                 >
                     {isCollapsed ? (
