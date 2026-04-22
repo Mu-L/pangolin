@@ -46,6 +46,16 @@ export async function fireResourceHealthyAlert(
                 ...extra
             }
         });
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
     } catch (err) {
         logger.error(
             `fireResourceHealthyAlert: unexpected error for resourceId ${resourceId}`,
@@ -74,6 +84,16 @@ export async function fireResourceUnhealthyAlert(
     try {
         await processAlerts({
             eventType: "resource_unhealthy",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+        await processAlerts({
+            eventType: "resource_toggle",
             orgId,
             resourceId,
             data: {

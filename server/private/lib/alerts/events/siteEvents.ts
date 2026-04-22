@@ -46,6 +46,16 @@ export async function fireSiteOnlineAlert(
                 ...extra
             }
         });
+        await processAlerts({
+            eventType: "site_toggle",
+            orgId,
+            siteId,
+            data: {
+                siteId,
+                ...(siteName != null ? { siteName } : {}),
+                ...extra
+            }
+        });
     } catch (err) {
         logger.error(
             `fireSiteOnlineAlert: unexpected error for siteId ${siteId}`,
@@ -74,6 +84,16 @@ export async function fireSiteOfflineAlert(
     try {
         await processAlerts({
             eventType: "site_offline",
+            orgId,
+            siteId,
+            data: {
+                siteId,
+                ...(siteName != null ? { siteName } : {}),
+                ...extra
+            }
+        });
+        await processAlerts({
+            eventType: "site_toggle",
             orgId,
             siteId,
             data: {

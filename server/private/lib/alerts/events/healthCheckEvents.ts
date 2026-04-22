@@ -46,6 +46,16 @@ export async function fireHealthCheckHealthyAlert(
                 ...extra
             }
         });
+        await processAlerts({
+            eventType: "health_check_toggle",
+            orgId,
+            healthCheckId,
+            data: {
+                healthCheckId,
+                ...(healthCheckName != null ? { healthCheckName } : {}),
+                ...extra
+            }
+        });
     } catch (err) {
         logger.error(
             `fireHealthCheckHealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
@@ -74,6 +84,16 @@ export async function fireHealthCheckNotHealthyAlert(
     try {
         await processAlerts({
             eventType: "health_check_unhealthy",
+            orgId,
+            healthCheckId,
+            data: {
+                healthCheckId,
+                ...(healthCheckName != null ? { healthCheckName } : {}),
+                ...extra
+            }
+        });
+        await processAlerts({
+            eventType: "health_check_toggle",
             orgId,
             healthCheckId,
             data: {
