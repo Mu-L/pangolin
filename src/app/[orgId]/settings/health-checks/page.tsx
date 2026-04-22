@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-    title: "Health checks"
+    title: "Health Checks"
 };
 
 type LegacyHealthChecksPageProps = {

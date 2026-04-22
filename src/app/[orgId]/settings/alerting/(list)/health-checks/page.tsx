@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 export const metadata: Metadata = {
-    title: "Health checks"
+    title: "Health Checks"
 };
 
 type AlertingHealthChecksPageProps = {
