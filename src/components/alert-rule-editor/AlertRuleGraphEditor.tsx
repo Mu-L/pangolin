@@ -40,6 +40,7 @@ import { useTranslations } from "next-intl";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { Badge } from "../ui/badge";
 
 const FORM_ID = "alert-rule-form";
 
@@ -181,9 +182,9 @@ export default function AlertRuleGraphEditor({
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
                                             {isNew && (
-                                                <span className="text-xs rounded-md border bg-muted px-2 py-1 text-muted-foreground">
+                                                <Badge variant="secondary" >
                                                     {t("alertingDraftBadge")}
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
                                         <FormField

@@ -189,7 +189,6 @@ export function LayoutSidebar({
                                         <span className="flex-1">
                                             {t("serverAdmin")}
                                         </span>
-                                        <ArrowRight className="h-4 w-4 shrink-0 ml-auto opacity-70" />
                                     </>
                                 )}
                             </Link>

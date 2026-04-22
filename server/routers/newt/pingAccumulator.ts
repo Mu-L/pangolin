@@ -381,7 +381,7 @@ export function startPingAccumulator(): void {
     // Don't prevent the process from exiting
     flushTimer.unref();
 
-    logger.info(
+    logger.debug(
         `Ping accumulator started (flush interval: ${FLUSH_INTERVAL_MS}ms)`
     );
 }

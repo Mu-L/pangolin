@@ -89,7 +89,7 @@ async function pushCertUpdateToAffectedNewts(
         return;
     }
 
-    logger.info(
+    logger.debug(
         `acmeCertSync: pushing cert update to ${affectedResources.length} affected site resource(s) for domain "${domain}"`
     );
 
@@ -187,7 +187,7 @@ async function pushCertUpdateToAffectedNewts(
                     newt.version
                 );
 
-                logger.info(
+                logger.debug(
                     `acmeCertSync: pushed cert update to newt for site ${siteId}, resource ${resource.siteResourceId}`
                 );
             }
@@ -400,7 +400,7 @@ async function syncAcmeCerts(
                 })
                 .where(eq(certificates.domain, domain));
 
-            logger.info(
+            logger.debug(
                 `acmeCertSync: updated certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
             );
 
@@ -423,7 +423,7 @@ async function syncAcmeCerts(
                 wildcard
             });
 
-            logger.info(
+            logger.debug(
                 `acmeCertSync: inserted new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
             );
 
@@ -461,7 +461,7 @@ export function initAcmeCertSync(): void {
     const resolver = privateConfigData.acme?.resolver ?? "letsencrypt";
     const intervalMs = privateConfigData.acme?.sync_interval_ms ?? 5000;
 
-    logger.info(
+    logger.debug(
         `acmeCertSync: starting ACME cert sync from "${acmeJsonPath}" using resolver "${resolver}" every ${intervalMs}ms`
     );
 
