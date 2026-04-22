@@ -12,6 +12,7 @@ import { Card, CardContent } from "@app/components/ui/card";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -201,6 +202,38 @@ export default function AlertRuleGraphEditor({
                                                             )}
                                                         />
                                                     </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="cooldownSeconds"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("alertingRuleCooldown")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            step={1}
+                                                            {...field}
+                                                            value={field.value}
+                                                            onChange={(e) =>
+                                                                field.onChange(
+                                                                    Number(
+                                                                        e.target
+                                                                            .value
+                                                                    )
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t("alertingRuleCooldownDescription")}
+                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

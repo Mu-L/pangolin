@@ -1469,6 +1469,8 @@
     "alertingConfigureTrigger": "Configure Trigger",
     "alertingConfigureActions": "Configure Actions",
     "alertingBackToRules": "Back to Rules",
+    "alertingRuleCooldown": "Cooldown (seconds)",
+    "alertingRuleCooldownDescription": "Minimum time between repeated alerts for the same rule. Set to 0 to fire every time.",
     "alertingDraftBadge": "Draft - save to store this rule",
     "alertingSidebarHint": "Click a step on the canvas to edit it here.",
     "alertingGraphCanvasTitle": "Rule Flow",

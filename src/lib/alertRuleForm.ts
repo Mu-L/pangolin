@@ -49,6 +49,7 @@ export type AlertRuleFormAction =
 export type AlertRuleFormValues = {
     name: string;
     enabled: boolean;
+    cooldownSeconds: number;
     sourceType: "site" | "health_check" | "resource";
     allSites: boolean;
     siteIds: number[];
@@ -66,6 +67,7 @@ export type AlertRuleFormValues = {
 
 export type AlertRuleApiPayload = {
     name: string;
+    cooldownSeconds: number;
     eventType:
         | "site_online"
         | "site_offline"
@@ -141,6 +143,7 @@ export function buildFormSchema(t: (k: string) => string) {
                 .string()
                 .min(1, { message: t("alertingErrorNameRequired") }),
             enabled: z.boolean(),
+            cooldownSeconds: z.number().int().nonnegative().default(0),
             sourceType: z.enum(["site", "health_check", "resource"]),
             allSites: z.boolean().default(true),
             siteIds: z.array(z.number()).default([]),
@@ -309,6 +312,7 @@ export function defaultFormValues(): AlertRuleFormValues {
     return {
         name: "",
         enabled: true,
+        cooldownSeconds: 0,
         sourceType: "site",
         allSites: true,
         siteIds: [],
@@ -422,6 +426,7 @@ export function apiResponseToFormValues(
     return {
         name: rule.name,
         enabled: rule.enabled,
+        cooldownSeconds: rule.cooldownSeconds ?? 0,
         sourceType,
         allSites,
         siteIds: rule.siteIds,
@@ -483,6 +488,7 @@ export function formValuesToApiPayload(
         name: values.name.trim(),
         eventType,
         enabled: values.enabled,
+        cooldownSeconds: values.cooldownSeconds,
         allSites: values.allSites,
         siteIds: values.allSites ? [] : values.siteIds,
         allHealthChecks: values.allHealthChecks,

@@ -39,7 +39,7 @@ const bodySchema = z.strictObject({
     hcMethod: z.string().default("GET"),
     hcInterval: z.number().int().positive().default(30),
     hcUnhealthyInterval: z.number().int().positive().default(30),
-    hcTimeout: z.number().int().positive().default(5),
+    hcTimeout: z.number().int().positive().default(1),
     hcHeaders: z.string().optional().nullable(),
     hcFollowRedirects: z.boolean().default(true),
     hcStatus: z.number().int().optional().nullable(),

@@ -8,12 +8,13 @@ import {
 } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import logger from "@server/logger";
 import {
     fireHealthCheckHealthyAlert,
-    fireHealthCheckNotHealthyAlert
+    fireHealthCheckUnhealthyAlert
 } from "#dynamic/lib/alerts";
+import { fireResourceHealthyAlert, fireResourceUnhealthyAlert } from "@server/private/lib/alerts/events/resourceEvents";
 
 interface TargetHealthStatus {
     status: string;
@@ -96,10 +97,12 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
                     resourceOrgId: resources.orgId,
                     resourceId: resources.resourceId,
+                    resourceName: resources.name,
                     name: targetHealthCheck.name,
-                    hcStatus: targetHealthCheck.hcHealth
+                    hcHealth: targetHealthCheck.hcHealth
                 })
                 .from(targetHealthCheck)
+                .innerJoin(sites, eq(targetHealthCheck.siteId, sites.siteId))
                 .innerJoin(
                     targets,
                     eq(targetHealthCheck.targetId, targets.targetId)
@@ -108,7 +111,6 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     resources,
                     eq(targets.resourceId, resources.resourceId)
                 )
-                .innerJoin(sites, eq(targets.siteId, sites.siteId))
                 .where(
                     and(
                         eq(targetHealthCheck.targetHealthCheckId, targetIdNum),
@@ -126,7 +128,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
             }
 
             // check if the status has changed
-            if (targetCheck.hcStatus === healthStatus.status) {
+            if (targetCheck.hcHealth === healthStatus.status) {
                 logger.debug(
                     `Health status for target ${targetId} is already ${healthStatus.status}, skipping update`
                 );
@@ -178,7 +180,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         .where(
                             and(
                                 eq(targets.resourceId, targetCheck.resourceId),
-                                eq(targets.targetId, targetCheck.targetId) // only check the other targets, not the one we just updated
+                                ne(targets.targetId, targetCheck.targetId) // only check the other targets, not the one we just updated
                             )
                         );
 
@@ -200,17 +202,31 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                     status: status,
                     timestamp: Math.floor(Date.now() / 1000)
                 });
+
+                if (status === "unhealthy") {
+                    await fireResourceUnhealthyAlert(
+                        orgId,
+                        targetCheck.resourceId,
+                        targetCheck.resourceName
+                    );
+                } else if (status === "healthy") {
+                    await fireResourceHealthyAlert(
+                        orgId,
+                        targetCheck.resourceId,
+                        targetCheck.resourceName
+                    );
+                }
             }
 
             // because we are checking above if there was a change we can fire the alert here because it changed
             if (healthStatus.status === "unhealthy") {
-                await fireHealthCheckHealthyAlert(
+                await fireHealthCheckUnhealthyAlert(
                     orgId,
                     targetCheck.targetHealthCheckId,
                     targetCheck.name
                 );
             } else if (healthStatus.status === "healthy") {
-                await fireHealthCheckNotHealthyAlert(
+                await fireHealthCheckHealthyAlert(
                     orgId,
                     targetCheck.targetHealthCheckId,
                     targetCheck.name

@@ -63,7 +63,7 @@ const bodySchema = z
             ...RESOURCE_EVENT_TYPES
         ]),
         enabled: z.boolean().optional().default(true),
-        cooldownSeconds: z.number().int().nonnegative().optional().default(300),
+        cooldownSeconds: z.number().int().nonnegative().optional().default(0),
         // Source join tables - which is required depends on eventType
         siteIds: z.array(z.number().int().positive()).optional().default([]),
         allSites: z.boolean().optional().default(false),

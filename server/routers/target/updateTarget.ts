@@ -32,8 +32,8 @@ const updateTargetBodySchema = z
         hcMode: z.string().optional().nullable(),
         hcHostname: z.string().optional().nullable(),
         hcPort: z.int().positive().optional().nullable(),
-        hcInterval: z.int().positive().min(5).optional().nullable(),
-        hcUnhealthyInterval: z.int().positive().min(5).optional().nullable(),
+        hcInterval: z.int().positive().min(1).optional().nullable(),
+        hcUnhealthyInterval: z.int().positive().min(1).optional().nullable(),
         hcTimeout: z.int().positive().min(1).optional().nullable(),
         hcHeaders: z
             .array(z.strictObject({ name: z.string(), value: z.string() }))

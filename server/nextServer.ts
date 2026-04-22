@@ -11,7 +11,7 @@ export async function createNextServer() {
     //   const app = next({ dev });
     const app = next({
         dev: process.env.ENVIRONMENT !== "prod",
-        turbopack: true
+        turbopack: false
     });
     const handle = app.getRequestHandler();
 

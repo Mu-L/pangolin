@@ -74,7 +74,7 @@ export async function fireHealthCheckHealthyAlert(
  * @param healthCheckName - Human-readable name shown in notifications (optional).
  * @param extra         - Any additional key/value pairs to include in the payload.
  */
-export async function fireHealthCheckNotHealthyAlert(
+export async function fireHealthCheckUnhealthyAlert(
     orgId: string,
     healthCheckId: number,
     healthCheckName?: string | null,

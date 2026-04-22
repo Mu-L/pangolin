@@ -23,7 +23,7 @@ import { fromError } from "zod-validation-error";
 import { eq, and } from "drizzle-orm";
 import {
     fireHealthCheckHealthyAlert,
-    fireHealthCheckNotHealthyAlert
+    fireHealthCheckUnhealthyAlert
 } from "#private/lib/alerts/events/healthCheckEvents";
 
 const paramsSchema = z.strictObject({
@@ -106,7 +106,7 @@ export async function triggerHealthCheckAlert(
                 healthCheck.name ?? undefined
             );
         } else {
-            await fireHealthCheckNotHealthyAlert(
+            await fireHealthCheckUnhealthyAlert(
                 orgId,
                 healthCheckId,
                 healthCheck.name ?? undefined
