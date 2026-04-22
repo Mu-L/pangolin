@@ -12,7 +12,7 @@ import {
 import { Checkbox } from "./ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useDebounce } from "use-debounce";
-import type { Selectedsite } from "./site-selector";
+import { SiteOnlineStatus, type Selectedsite } from "./site-selector";
 
 export type MultiSitesSelectorProps = {
     orgId: string;
@@ -107,7 +107,16 @@ export function MultiSitesSelector({
                                 aria-hidden
                                 tabIndex={-1}
                             />
-                            <span className="truncate">{site.name}</span>
+                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                                <span className="min-w-0 flex-1 truncate">
+                                    {site.name}
+                                </span>
+                                <SiteOnlineStatus
+                                    type={site.type}
+                                    online={site.online}
+                                    t={t}
+                                />
+                            </div>
                         </CommandItem>
                     ))}
                 </CommandGroup>
