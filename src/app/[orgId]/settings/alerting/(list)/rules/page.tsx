@@ -2,7 +2,7 @@ import AlertingRulesTable from "@app/components/AlertingRulesTable";
 import DismissableBanner from "@app/components/DismissableBanner";
 import { internal } from "@app/lib/api";
 import { authCookieHeader } from "@app/lib/api/cookies";
-import type { ListAlertRulesResponse } from "@server/private/routers/alertRule";
+import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import { AxiosResponse } from "axios";
 import { BellRing } from "lucide-react";
 import type { Metadata } from "next";

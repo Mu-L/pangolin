@@ -11,7 +11,7 @@ import type {
     ListResourceNamesResponse,
     ListResourcesResponse
 } from "@server/routers/resource";
-import type { ListAlertRulesResponse } from "@server/private/routers/alertRule";
+import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
