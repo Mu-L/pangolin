@@ -150,7 +150,7 @@ export async function validateAndConstructDomain(
         return {
             success: true,
             fullDomain,
-            subdomain: isWildcard ? "*" : (finalSubdomain ?? null),
+            subdomain: finalSubdomain ?? null,
             wildcard: isWildcard
         };
     } catch (error) {

@@ -1132,6 +1132,7 @@ export default function Page() {
                                     <SettingsSectionBody>
                                         <SettingsSectionForm>
                                             <DomainPicker
+                                                allowWildcard={true}
                                                 orgId={orgId as string}
                                                 warnOnProvidedDomain={
                                                     remoteExitNodes.length >= 1

@@ -670,6 +670,7 @@ export default function GeneralForm() {
                                         <div className="space-y-4">
                                             <div id="resource-domain-picker">
                                                 <DomainPicker
+                                                    allowWildcard={true}
                                                     key={resource.resourceId}
                                                     orgId={orgId as string}
                                                     cols={2}

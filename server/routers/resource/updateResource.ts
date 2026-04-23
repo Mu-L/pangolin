@@ -46,7 +46,7 @@ const updateHttpResourceBodySchema = z
                 "niceId can only contain letters, numbers, and dashes"
             )
             .optional(),
-        subdomain: subdomainSchema.nullable().optional(),
+        subdomain: z.string().nullable().optional(),
         ssl: z.boolean().optional(),
         sso: z.boolean().optional(),
         blockAccess: z.boolean().optional(),

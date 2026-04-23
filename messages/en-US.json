@@ -3175,5 +3175,6 @@
     "webhookUrlLabel": "URL",
     "webhookHeaderKeyPlaceholder": "Key",
     "webhookHeaderValuePlaceholder": "Value",
-    "alertLabel": "Alert"
+    "alertLabel": "Alert",
+    "domainPickerWildcardSubdomainNotAllowed": "Wildcard subdomains are not allowed."
 }
