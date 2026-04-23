@@ -1,5 +1,5 @@
 import { db } from "@server/db";
-import { sites, clients, olms, statusHistory } from "@server/db";
+import { sites, clients, olms } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import logger from "@server/logger";
 import { fireSiteOnlineAlert } from "#dynamic/lib/alerts";
@@ -147,13 +147,6 @@ async function flushSitePingsToDb(): Promise<void> {
             }, "flushSitePingsToDb");
 
             for (const site of newlyOnlineSites) {
-                await db.insert(statusHistory).values({
-                    entityType: "site",
-                    entityId: site.siteId,
-                    orgId: site.orgId,
-                    status: "online",
-                    timestamp: Math.floor(Date.now() / 1000),
-                }).execute();
                 await fireSiteOnlineAlert(site.orgId, site.siteId, site.name);
             }
         } catch (error) {

@@ -13,6 +13,9 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
+import { db, sites, statusHistory, targetHealthCheck } from "@server/db";
+import { and, eq, inArray } from "drizzle-orm";
+import { fireHealthCheckUnhealthyAlert } from "./healthCheckEvents";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -36,6 +39,14 @@ export async function fireSiteOnlineAlert(
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
+        await db.insert(statusHistory).values({
+            entityType: "site",
+            entityId: siteId,
+            orgId: orgId,
+            status: "online",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
         await processAlerts({
             eventType: "site_online",
             orgId,
@@ -81,6 +92,37 @@ export async function fireSiteOfflineAlert(
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
+        await db.insert(statusHistory).values({
+            entityType: "site",
+            entityId: siteId,
+            orgId: orgId,
+            status: "offline",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
+        const unhealthyHealthChecks = await db
+            .update(targetHealthCheck)
+            .set({ hcHealth: "unhealthy" })
+            .where(
+                and(
+                    eq(targetHealthCheck.orgId, orgId),
+                    eq(targetHealthCheck.siteId, siteId)
+                )
+            )
+            .returning();
+
+        for (const healthCheck of unhealthyHealthChecks) {
+            logger.info(
+                `Marking health check ${healthCheck.targetHealthCheckId} unhealthy due to site ${siteId} being marked offline`
+            );
+
+            await fireHealthCheckUnhealthyAlert(
+                healthCheck.orgId,
+                healthCheck.targetHealthCheckId,
+                healthCheck.name
+            );
+        }
+
         await processAlerts({
             eventType: "site_offline",
             orgId,

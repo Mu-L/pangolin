@@ -13,6 +13,18 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
+import {
+    db,
+    statusHistory,
+    targetHealthCheck,
+    targets,
+    resources
+} from "@server/db";
+import { eq } from "drizzle-orm";
+import {
+    fireResourceHealthyAlert,
+    fireResourceUnhealthyAlert
+} from "./resourceEvents";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -33,9 +45,20 @@ export async function fireHealthCheckHealthyAlert(
     orgId: string,
     healthCheckId: number,
     healthCheckName?: string | null,
+    healthCheckTargetId?: number | null,
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
+        await db.insert(statusHistory).values({
+            entityType: "health_check",
+            entityId: healthCheckId,
+            orgId: orgId,
+            status: "healthy",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
+        await handleResource(orgId, healthCheckTargetId);
+
         await processAlerts({
             eventType: "health_check_healthy",
             orgId,
@@ -78,9 +101,20 @@ export async function fireHealthCheckUnhealthyAlert(
     orgId: string,
     healthCheckId: number,
     healthCheckName?: string | null,
+    healthCheckTargetId?: number | null,
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
+        await db.insert(statusHistory).values({
+            entityType: "health_check",
+            entityId: healthCheckId,
+            orgId: orgId,
+            status: "unhealthy",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
+        await handleResource(orgId, healthCheckTargetId);
+
         await processAlerts({
             eventType: "health_check_unhealthy",
             orgId,
@@ -105,5 +139,65 @@ export async function fireHealthCheckUnhealthyAlert(
             `fireHealthCheckUnhealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
             err
         );
+    }
+}
+
+async function handleResource(orgId: string, healthCheckTargetId?: number | null) {
+    if (!healthCheckTargetId) {
+        return;
+    }
+    // we have resources lets get them
+    const [target] = await db
+        .select()
+        .from(targets)
+        .where(eq(targets.targetId, healthCheckTargetId))
+        .limit(1);
+
+    if (!target) {
+        return;
+    }
+    const [resource] = await db
+        .select()
+        .from(resources)
+        .where(eq(resources.resourceId, target.resourceId))
+        .limit(1);
+
+    if (!resource) {
+        return;
+    }
+    const otherTargets = await db
+        .select({ hcHealth: targetHealthCheck.hcHealth })
+        .from(targets)
+        .where(eq(targets.resourceId, resource.resourceId));
+
+    let health = "healthy";
+    const allHealthy = otherTargets.every((t) => t.hcHealth === "healthy");
+    if (!allHealthy) {
+        logger.debug(
+            `Not marking resource ${resource.resourceId} as healthy because not all targets are healthy`
+        );
+        health = "unhealthy";
+    }
+
+    if (health != resource.health) {
+        // it changed
+        await db
+            .update(resources)
+            .set({ health })
+            .where(eq(resources.resourceId, resource.resourceId));
+
+        if (health === "unhealthy") {
+            await fireResourceUnhealthyAlert(
+                orgId,
+                resource.resourceId,
+                resource.name
+            );
+        } else if (health === "healthy") {
+            await fireResourceHealthyAlert(
+                orgId,
+                resource.resourceId,
+                resource.name
+            );
+        }
     }
 }

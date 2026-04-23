@@ -89,16 +89,6 @@ export async function triggerResourceAlert(
             );
         }
 
-        if (eventType === "resource_healthy" || eventType === "resource_unhealthy") {
-            await db.insert(statusHistory).values({
-                entityType: "resource",
-                entityId: resourceId,
-                orgId,
-                status: eventType === "resource_healthy" ? "healthy" : "unhealthy",
-                timestamp: Math.floor(Date.now() / 1000)
-            });
-        }
-
         if (eventType === "resource_healthy") {
             await fireResourceHealthyAlert(
                 orgId,

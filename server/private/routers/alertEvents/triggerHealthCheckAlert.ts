@@ -91,14 +91,6 @@ export async function triggerHealthCheckAlert(
             );
         }
 
-        await db.insert(statusHistory).values({
-            entityType: "healthCheck",
-            entityId: healthCheckId,
-            orgId,
-            status: eventType === "health_check_healthy" ? "healthy" : "unhealthy",
-            timestamp: Math.floor(Date.now() / 1000)
-        });
-
         if (eventType === "health_check_healthy") {
             await fireHealthCheckHealthyAlert(
                 orgId,

@@ -1,5 +1,12 @@
 import { MessageHandler } from "@server/routers/ws";
-import { db, Newt, sites } from "@server/db";
+import {
+    db,
+    Newt,
+    sites,
+    statusHistory,
+    targetHealthCheck,
+    targets
+} from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
 import { fireSiteOfflineAlert } from "@server/lib/alerts";

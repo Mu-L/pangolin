@@ -94,26 +94,13 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
 
             const [targetCheck] = await db
                 .select({
-                    targetId: targets.targetId,
-                    siteId: targets.siteId,
+                    targetId: targetHealthCheck.targetId,
                     orgId: targetHealthCheck.orgId,
                     targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
-                    resourceOrgId: resources.orgId,
-                    resourceId: resources.resourceId,
-                    resourceName: resources.name,
                     name: targetHealthCheck.name,
                     hcHealth: targetHealthCheck.hcHealth
                 })
                 .from(targetHealthCheck)
-                .innerJoin(sites, eq(targetHealthCheck.siteId, sites.siteId))
-                .innerJoin(
-                    targets,
-                    eq(targetHealthCheck.targetId, targets.targetId)
-                )
-                .innerJoin(
-                    resources,
-                    eq(targets.resourceId, resources.resourceId)
-                )
                 .where(
                     and(
                         eq(targetHealthCheck.targetHealthCheckId, targetIdNum),
@@ -147,92 +134,22 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         | "healthy"
                         | "unhealthy"
                 })
-                .where(eq(targetHealthCheck.targetId, targetCheck.targetId));
-
-            const orgId = targetCheck.orgId || targetCheck.resourceOrgId; // for backwards compatibility, check both orgId fields because the target health checks dont have the orgId
-            if (!orgId) {
-                logger.warn(
-                    `No org ID found for target ${targetId}, skipping status history logging`
-                );
-                continue;
-            }
-
-            // Log the state change to status history
-            await db.insert(statusHistory).values({
-                entityType: "healthCheck",
-                entityId: targetCheck.targetHealthCheckId,
-                orgId: orgId,
-                status: healthStatus.status,
-                timestamp: Math.floor(Date.now() / 1000)
-            });
-
-            if (targetCheck.resourceId) {
-                // Log the state change to status history for the resource as well
-                // so we can show the resource status along with the site
-
-                // if the status is healthy we should check if ALL of the targets on the resource are currently healthy and if not then dont mark the resource as healthy yet, we want to wait until all targets are healthy to mark the resource as healthy
-                let status = healthStatus.status;
-                if (healthStatus.status === "healthy") {
-                    const otherTargets = await db
-                        .select({ hcHealth: targetHealthCheck.hcHealth })
-                        .from(targets)
-                        .innerJoin(
-                            targetHealthCheck,
-                            eq(targets.targetId, targetHealthCheck.targetId)
-                        )
-                        .where(
-                            and(
-                                eq(targets.resourceId, targetCheck.resourceId),
-                                ne(targets.targetId, targetCheck.targetId) // only check the other targets, not the one we just updated
-                            )
-                        );
-
-                    const allHealthy = otherTargets.every(
-                        (t) => t.hcHealth === "healthy"
-                    );
-                    if (!allHealthy) {
-                        logger.debug(
-                            `Not marking resource ${targetCheck.resourceId} as healthy because not all targets are healthy`
-                        );
-                        status = "unhealthy";
-                    }
-                }
-
-                await db.insert(statusHistory).values({
-                    entityType: "resource",
-                    entityId: targetCheck.resourceId,
-                    orgId: orgId,
-                    status: status,
-                    timestamp: Math.floor(Date.now() / 1000)
-                });
-
-                if (status === "unhealthy") {
-                    await fireResourceUnhealthyAlert(
-                        orgId,
-                        targetCheck.resourceId,
-                        targetCheck.resourceName
-                    );
-                } else if (status === "healthy") {
-                    await fireResourceHealthyAlert(
-                        orgId,
-                        targetCheck.resourceId,
-                        targetCheck.resourceName
-                    );
-                }
-            }
+                .where(eq(targetHealthCheck.targetHealthCheckId, targetCheck.targetHealthCheckId));
 
             // because we are checking above if there was a change we can fire the alert here because it changed
             if (healthStatus.status === "unhealthy") {
                 await fireHealthCheckUnhealthyAlert(
-                    orgId,
+                    targetCheck.orgId,
                     targetCheck.targetHealthCheckId,
-                    targetCheck.name ?? undefined
+                    targetCheck.name ?? undefined,
+                    targetCheck.targetId
                 );
             } else if (healthStatus.status === "healthy") {
                 await fireHealthCheckHealthyAlert(
-                    orgId,
+                    targetCheck.orgId,
                     targetCheck.targetHealthCheckId,
-                    targetCheck.name ?? undefined
+                    targetCheck.name ?? undefined,
+                    targetCheck.targetId
                 );
             }
 

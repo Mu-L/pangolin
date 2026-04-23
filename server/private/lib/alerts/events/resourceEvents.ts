@@ -13,6 +13,7 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
+import { db, statusHistory } from "@server/db";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -36,6 +37,14 @@ export async function fireResourceHealthyAlert(
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
+        await db.insert(statusHistory).values({
+            entityType: "resource",
+            entityId: resourceId,
+            orgId: orgId,
+            status: "healthy",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
         await processAlerts({
             eventType: "resource_healthy",
             orgId,
@@ -81,6 +90,14 @@ export async function fireResourceUnhealthyAlert(
     extra?: Record<string, unknown>
 ): Promise<void> {
     try {
+        await db.insert(statusHistory).values({
+            entityType: "resource",
+            entityId: resourceId,
+            orgId: orgId,
+            status: "unhealthy",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
         await processAlerts({
             eventType: "resource_unhealthy",
             orgId,
