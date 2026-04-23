@@ -2,19 +2,22 @@ export async function fireResourceHealthyAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx?: unknown
 ): Promise<void> {}
 
 export async function fireResourceUnhealthyAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx?: unknown
 ): Promise<void> {}
 
 export async function fireResourceToggleAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx?: unknown
 ): Promise<void> {}

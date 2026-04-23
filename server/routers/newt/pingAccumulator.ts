@@ -147,7 +147,9 @@ async function flushSitePingsToDb(): Promise<void> {
             }, "flushSitePingsToDb");
 
             for (const site of newlyOnlineSites) {
-                await fireSiteOnlineAlert(site.orgId, site.siteId, site.name);
+                await db.transaction(async (trx) => {
+                    await fireSiteOnlineAlert(site.orgId, site.siteId, site.name, undefined, trx);
+                });
             }
         } catch (error) {
             logger.error(

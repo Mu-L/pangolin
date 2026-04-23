@@ -4,7 +4,8 @@ export async function fireSiteOnlineAlert(
     orgId: string,
     siteId: number,
     siteName?: string,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx?: unknown
 ): Promise<void> {
     return;
 }
@@ -13,7 +14,8 @@ export async function fireSiteOfflineAlert(
     orgId: string,
     siteId: number,
     siteName?: string,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx?: unknown
 ): Promise<void> {
     return;
 }

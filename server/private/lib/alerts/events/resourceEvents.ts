@@ -13,7 +13,7 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
-import { db, statusHistory } from "@server/db";
+import { db, statusHistory, Transaction } from "@server/db";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -34,10 +34,11 @@ export async function fireResourceHealthyAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await db.insert(statusHistory).values({
+        await trx.insert(statusHistory).values({
             entityType: "resource",
             entityId: resourceId,
             orgId: orgId,
@@ -87,10 +88,11 @@ export async function fireResourceUnhealthyAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await db.insert(statusHistory).values({
+        await trx.insert(statusHistory).values({
             entityType: "resource",
             entityId: resourceId,
             orgId: orgId,
@@ -140,7 +142,8 @@ export async function fireResourceToggleAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
         await processAlerts({

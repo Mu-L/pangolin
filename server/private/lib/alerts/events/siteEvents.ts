@@ -13,7 +13,7 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
-import { db, sites, statusHistory, targetHealthCheck } from "@server/db";
+import { db, sites, statusHistory, targetHealthCheck, Transaction } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { fireHealthCheckUnhealthyAlert } from "./healthCheckEvents";
 
@@ -36,10 +36,11 @@ export async function fireSiteOnlineAlert(
     orgId: string,
     siteId: number,
     siteName?: string,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await db.insert(statusHistory).values({
+        await trx.insert(statusHistory).values({
             entityType: "site",
             entityId: siteId,
             orgId: orgId,
@@ -89,10 +90,11 @@ export async function fireSiteOfflineAlert(
     orgId: string,
     siteId: number,
     siteName?: string,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await db.insert(statusHistory).values({
+        await trx.insert(statusHistory).values({
             entityType: "site",
             entityId: siteId,
             orgId: orgId,
@@ -100,7 +102,7 @@ export async function fireSiteOfflineAlert(
             timestamp: Math.floor(Date.now() / 1000)
         });
 
-        const unhealthyHealthChecks = await db
+        const unhealthyHealthChecks = await trx
             .update(targetHealthCheck)
             .set({ hcHealth: "unhealthy" })
             .where(
@@ -119,7 +121,10 @@ export async function fireSiteOfflineAlert(
             await fireHealthCheckUnhealthyAlert(
                 healthCheck.orgId,
                 healthCheck.targetHealthCheckId,
-                healthCheck.name
+                healthCheck.name,
+                undefined,
+                undefined,
+                trx
             );
         }
 

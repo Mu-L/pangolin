@@ -14,10 +14,7 @@ import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckUnhealthyAlert
 } from "#dynamic/lib/alerts";
-import {
-    fireResourceHealthyAlert,
-    fireResourceUnhealthyAlert
-} from "#dynamic/lib/alerts";
+
 
 interface TargetHealthStatus {
     status: string;
@@ -125,33 +122,39 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 continue;
             }
 
-            // Update the target's health status in the database
-            await db
-                .update(targetHealthCheck)
-                .set({
-                    hcHealth: healthStatus.status as
-                        | "unknown"
-                        | "healthy"
-                        | "unhealthy"
-                })
-                .where(eq(targetHealthCheck.targetHealthCheckId, targetCheck.targetHealthCheckId));
+            // Update the target's health status in the database and fire alert in a transaction
+            await db.transaction(async (trx) => {
+                await trx
+                    .update(targetHealthCheck)
+                    .set({
+                        hcHealth: healthStatus.status as
+                            | "unknown"
+                            | "healthy"
+                            | "unhealthy"
+                    })
+                    .where(eq(targetHealthCheck.targetHealthCheckId, targetCheck.targetHealthCheckId));
 
-            // because we are checking above if there was a change we can fire the alert here because it changed
-            if (healthStatus.status === "unhealthy") {
-                await fireHealthCheckUnhealthyAlert(
-                    targetCheck.orgId,
-                    targetCheck.targetHealthCheckId,
-                    targetCheck.name ?? undefined,
-                    targetCheck.targetId
-                );
-            } else if (healthStatus.status === "healthy") {
-                await fireHealthCheckHealthyAlert(
-                    targetCheck.orgId,
-                    targetCheck.targetHealthCheckId,
-                    targetCheck.name ?? undefined,
-                    targetCheck.targetId
-                );
-            }
+                // because we are checking above if there was a change we can fire the alert here because it changed
+                if (healthStatus.status === "unhealthy") {
+                    await fireHealthCheckUnhealthyAlert(
+                        targetCheck.orgId,
+                        targetCheck.targetHealthCheckId,
+                        targetCheck.name ?? undefined,
+                        targetCheck.targetId,
+                        undefined,
+                        trx
+                    );
+                } else if (healthStatus.status === "healthy") {
+                    await fireHealthCheckHealthyAlert(
+                        targetCheck.orgId,
+                        targetCheck.targetHealthCheckId,
+                        targetCheck.name ?? undefined,
+                        targetCheck.targetId,
+                        undefined,
+                        trx
+                    );
+                }
+            });
 
             logger.debug(
                 `Updated health status for target ${targetId} to ${healthStatus.status}`

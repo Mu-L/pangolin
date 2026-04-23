@@ -77,16 +77,20 @@ export const startNewtOfflineChecker = (): void => {
                     `Marking site ${staleSite.siteId} offline: newt ${staleSite.newtId} has no recent ping and no active WebSocket connection`
                 );
 
-                await db
-                    .update(sites)
-                    .set({ online: false })
-                    .where(eq(sites.siteId, staleSite.siteId));
+                await db.transaction(async (trx) => {
+                    await trx
+                        .update(sites)
+                        .set({ online: false })
+                        .where(eq(sites.siteId, staleSite.siteId));
 
-                await fireSiteOfflineAlert(
-                    staleSite.orgId,
-                    staleSite.siteId,
-                    staleSite.name
-                );
+                    await fireSiteOfflineAlert(
+                        staleSite.orgId,
+                        staleSite.siteId,
+                        staleSite.name,
+                        undefined,
+                        trx
+                    );
+                });
             }
 
             // this part only effects self hosted. Its not efficient but we dont expect people to have very many wireguard sites
@@ -123,16 +127,20 @@ export const startNewtOfflineChecker = (): void => {
                         `Marking wireguard site ${site.siteId} offline: no bandwidth update in over ${OFFLINE_THRESHOLD_BANDWIDTH_MS / 60000} minutes`
                     );
 
-                    await db
-                        .update(sites)
-                        .set({ online: false })
-                        .where(eq(sites.siteId, site.siteId));
+                    await db.transaction(async (trx) => {
+                        await trx
+                            .update(sites)
+                            .set({ online: false })
+                            .where(eq(sites.siteId, site.siteId));
 
-                    await fireSiteOfflineAlert(
-                        site.orgId,
-                        site.siteId,
-                        site.name
-                    );
+                        await fireSiteOfflineAlert(
+                            site.orgId,
+                            site.siteId,
+                            site.name,
+                            undefined,
+                            trx
+                        );
+                    });
                 } else if (
                     lastBandwidthUpdate >= wireguardOfflineThreshold &&
                     !site.online
@@ -141,16 +149,20 @@ export const startNewtOfflineChecker = (): void => {
                         `Marking wireguard site ${site.siteId} online: recent bandwidth update`
                     );
 
-                    await db
-                        .update(sites)
-                        .set({ online: true })
-                        .where(eq(sites.siteId, site.siteId));
+                    await db.transaction(async (trx) => {
+                        await trx
+                            .update(sites)
+                            .set({ online: true })
+                            .where(eq(sites.siteId, site.siteId));
 
-                    await fireSiteOnlineAlert(
-                        site.orgId,
-                        site.siteId,
-                        site.name
-                    );
+                        await fireSiteOnlineAlert(
+                            site.orgId,
+                            site.siteId,
+                            site.name,
+                            undefined,
+                            trx
+                        );
+                    });
                 }
             }
         } catch (error) {

@@ -18,7 +18,8 @@ import {
     statusHistory,
     targetHealthCheck,
     targets,
-    resources
+    resources,
+    Transaction
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import {
@@ -46,10 +47,11 @@ export async function fireHealthCheckHealthyAlert(
     healthCheckId: number,
     healthCheckName?: string | null,
     healthCheckTargetId?: number | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await db.insert(statusHistory).values({
+        await trx.insert(statusHistory).values({
             entityType: "health_check",
             entityId: healthCheckId,
             orgId: orgId,
@@ -57,7 +59,7 @@ export async function fireHealthCheckHealthyAlert(
             timestamp: Math.floor(Date.now() / 1000)
         });
 
-        await handleResource(orgId, healthCheckTargetId);
+        await handleResource(orgId, healthCheckTargetId, trx);
 
         await processAlerts({
             eventType: "health_check_healthy",
@@ -102,10 +104,11 @@ export async function fireHealthCheckUnhealthyAlert(
     healthCheckId: number,
     healthCheckName?: string | null,
     healthCheckTargetId?: number | null,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await db.insert(statusHistory).values({
+        await trx.insert(statusHistory).values({
             entityType: "health_check",
             entityId: healthCheckId,
             orgId: orgId,
@@ -113,7 +116,7 @@ export async function fireHealthCheckUnhealthyAlert(
             timestamp: Math.floor(Date.now() / 1000)
         });
 
-        await handleResource(orgId, healthCheckTargetId);
+        await handleResource(orgId, healthCheckTargetId, trx);
 
         await processAlerts({
             eventType: "health_check_unhealthy",
@@ -142,12 +145,12 @@ export async function fireHealthCheckUnhealthyAlert(
     }
 }
 
-async function handleResource(orgId: string, healthCheckTargetId?: number | null) {
+async function handleResource(orgId: string, healthCheckTargetId?: number | null, trx: Transaction | typeof db = db) {
     if (!healthCheckTargetId) {
         return;
     }
     // we have resources lets get them
-    const [target] = await db
+    const [target] = await trx
         .select()
         .from(targets)
         .where(eq(targets.targetId, healthCheckTargetId))
@@ -156,7 +159,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
     if (!target) {
         return;
     }
-    const [resource] = await db
+    const [resource] = await trx
         .select()
         .from(resources)
         .where(eq(resources.resourceId, target.resourceId))
@@ -165,7 +168,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
     if (!resource) {
         return;
     }
-    const otherTargets = await db
+    const otherTargets = await trx
         .select({ hcHealth: targetHealthCheck.hcHealth })
         .from(targets)
         .where(eq(targets.resourceId, resource.resourceId));
@@ -181,7 +184,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
 
     if (health != resource.health) {
         // it changed
-        await db
+        await trx
             .update(resources)
             .set({ health })
             .where(eq(resources.resourceId, resource.resourceId));
@@ -190,13 +193,17 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
             await fireResourceUnhealthyAlert(
                 orgId,
                 resource.resourceId,
-                resource.name
+                resource.name,
+                undefined,
+                trx
             );
         } else if (health === "healthy") {
             await fireResourceHealthyAlert(
                 orgId,
                 resource.resourceId,
-                resource.name
+                resource.name,
+                undefined,
+                trx
             );
         }
     }
