@@ -97,10 +97,7 @@ export default function UptimeAlertSection({
     );
 
     const allRoles = useMemo(
-        () =>
-            orgRoles
-                .map((r) => ({ id: String(r.roleId), text: r.name }))
-                .filter((r) => r.text !== "Admin"),
+        () => orgRoles.map((r) => ({ id: String(r.roleId), text: r.name })),
         [orgRoles]
     );
 
