@@ -19,8 +19,6 @@ import { decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import cache from "#private/lib/cache";
 
-
-
 // Define the return type for clarity and type safety
 export type CertificateResult = {
     id: number;
@@ -78,6 +76,9 @@ export async function getValidCertificatesForDomains(
 
     const parentDomainsArray = Array.from(parentDomainsToQuery);
 
+    // Build wildcard variants: for each parent domain "example.com", also query "*.example.com"
+    const wildcardPrefixedArray = build != "saas" ? parentDomainsArray.map((d) => `*.${d}`) : [];
+
     // 4. Build and execute a single, efficient Drizzle query
     // This query fetches all potential exact and wildcard matches in one database round-trip.
     const potentialCerts = await db
@@ -91,10 +92,13 @@ export async function getValidCertificatesForDomains(
                 or(
                     // Condition for exact matches on the requested domains
                     inArray(certificates.domain, domainsToQueryArray),
-                    // Condition for wildcard matches on the parent domains
+                    // Condition for wildcard matches on the parent domains (stored as "example.com" or "*.example.com")
                     parentDomainsArray.length > 0
                         ? and(
-                              inArray(certificates.domain, parentDomainsArray),
+                              inArray(certificates.domain, [
+                                  ...parentDomainsArray,
+                                  ...wildcardPrefixedArray
+                              ]),
                               eq(certificates.wildcard, true)
                           )
                         : // If there are no possible parent domains, this condition is false
@@ -103,13 +107,18 @@ export async function getValidCertificatesForDomains(
             )
         );
 
+    // Helper to normalize a wildcard cert's domain to its bare parent domain (strips leading "*.")
+    const normalizeWildcardDomain = (domain: string): string =>
+        domain.startsWith("*.") ? domain.slice(2) : domain;
+
     // 5. Process the database results, prioritizing exact matches over wildcards
     const exactMatches = new Map<string, (typeof potentialCerts)[0]>();
     const wildcardMatches = new Map<string, (typeof potentialCerts)[0]>();
 
     for (const cert of potentialCerts) {
         if (cert.wildcard) {
-            wildcardMatches.set(cert.domain, cert);
+            // Normalize to bare parent domain so lookups are consistent regardless of storage format
+            wildcardMatches.set(normalizeWildcardDomain(cert.domain), cert);
         } else {
             exactMatches.set(cert.domain, cert);
         }
@@ -122,14 +131,15 @@ export async function getValidCertificatesForDomains(
         if (exactMatches.has(domain)) {
             foundCert = exactMatches.get(domain);
         }
-        // Priority 2: Check for a wildcard certificate that matches the exact domain
+        // Priority 2: Check for a wildcard certificate whose normalized domain equals the queried domain
         else {
-            if (wildcardMatches.has(domain)) {
-                foundCert = wildcardMatches.get(domain);
+            const normalizedDomain = normalizeWildcardDomain(domain);
+            if (wildcardMatches.has(normalizedDomain)) {
+                foundCert = wildcardMatches.get(normalizedDomain);
             }
             // Priority 3: Check for a wildcard match on the parent domain
             else {
-                const parts = domain.split(".");
+                const parts = normalizedDomain.split(".");
                 if (parts.length > 1) {
                     const parentDomain = parts.slice(1).join(".");
                     if (wildcardMatches.has(parentDomain)) {

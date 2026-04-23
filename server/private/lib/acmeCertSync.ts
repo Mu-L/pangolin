@@ -279,11 +279,8 @@ async function syncAcmeCerts(
     }
 
     for (const cert of resolverData.Certificates) {
-        const rawDomain = cert.domain?.main;
-        const domain = rawDomain.startsWith("*.")
-            ? rawDomain.slice(2)
-            : rawDomain;
-        const wildcard = rawDomain.startsWith("*.");
+        const domain = cert.domain?.main;
+        const wildcard = domain.startsWith("*.");
 
         if (!domain) {
             logger.debug(`acmeCertSync: skipping cert with missing domain`);
