@@ -329,7 +329,7 @@ export const ClientResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
         mode: z.enum(["host", "cidr", "http"]),
-        site: z.string(), // DEPRECATED IN FAVOR OF sites
+        site: z.string().optional(), // DEPRECATED IN FAVOR OF sites
         sites: z.array(z.string()).optional().default([]),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),

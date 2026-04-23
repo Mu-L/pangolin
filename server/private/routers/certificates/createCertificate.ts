@@ -15,7 +15,6 @@ import { Certificate, certificates, db, domains } from "@server/db";
 import logger from "@server/logger";
 import { Transaction } from "@server/db";
 import { eq, or, and, like } from "drizzle-orm";
-import privateConfig from "#private/lib/config";
 
 /**
  * Checks if a certificate exists for the given domain.
@@ -27,10 +26,6 @@ export async function createCertificate(
     domain: string,
     trx: Transaction | typeof db
 ) {
-    if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
-        return;
-    }
-
     const [domainRecord] = await trx
         .select()
         .from(domains)

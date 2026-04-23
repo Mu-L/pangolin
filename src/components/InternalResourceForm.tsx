@@ -59,6 +59,7 @@ import type { Selectedsite } from "./site-selector";
 import { MachinesSelector } from "./machines-selector";
 import DomainPicker from "@app/components/DomainPicker";
 import { SwitchInput } from "@app/components/SwitchInput";
+import CertificateStatus from "@app/components/CertificateStatus";
 
 // --- Helpers (shared) ---
 
@@ -1114,6 +1115,54 @@ export function InternalResourceForm({
                                         </FormItem>
                                     )}
                                 />
+                                <div className="flex items-start justify-between gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="ssl"
+                                        render={({ field }) => (
+                                            <FormItem className="flex-1">
+                                                <FormControl>
+                                                    <SwitchInput
+                                                        id="internal-resource-ssl"
+                                                        label={t(
+                                                            enableSslLabelKey
+                                                        )}
+                                                        description={t(
+                                                            enableSslDescriptionKey
+                                                        )}
+                                                        checked={!!field.value}
+                                                        onCheckedChange={
+                                                            field.onChange
+                                                        }
+                                                        disabled={
+                                                            httpSectionDisabled
+                                                        }
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {variant === "edit" &&
+                                        resource?.domainId &&
+                                        httpConfigFullDomain &&
+                                        form.watch("ssl") && (
+                                            <div className="flex items-center gap-1 pt-1">
+                                                <span className="text-sm font-medium text-muted-foreground">
+                                                    {t("certificateStatus")}:
+                                                </span>
+                                                <CertificateStatus
+                                                    orgId={resource.orgId}
+                                                    domainId={resource.domainId}
+                                                    fullDomain={
+                                                        httpConfigFullDomain
+                                                    }
+                                                    autoFetch={true}
+                                                    showLabel={false}
+                                                    polling={true}
+                                                />
+                                            </div>
+                                        )}
+                                </div>
                             </div>
                         ) : (
                             <div className="space-y-4">

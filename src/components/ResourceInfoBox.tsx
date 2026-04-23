@@ -30,7 +30,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
             <AlertDescription>
                 {/* 4 cols because of the certs */}
                 <InfoSections
-                    cols={resource.http && env.flags.usePangolinDns ? 5 : 4}
+                    cols={resource.http ? 5 : 4}
                 >
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
@@ -43,7 +43,10 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                             <InfoSection>
                                 <InfoSectionTitle>URL</InfoSectionTitle>
                                 <InfoSectionContent>
-                                    <CopyToClipboard text={fullUrl} isLink={true} />
+                                    <CopyToClipboard
+                                        text={fullUrl}
+                                        isLink={true}
+                                    />
                                 </InfoSectionContent>
                             </InfoSection>
                             <InfoSection>
@@ -133,8 +136,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                     {/* Certificate Status Column */}
                     {resource.http &&
                         resource.domainId &&
-                        resource.fullDomain &&
-                        env.flags.usePangolinDns && (
+                        resource.fullDomain && (
                             <InfoSection>
                                 <InfoSectionTitle>
                                     {t("certificateStatus", {

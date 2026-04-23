@@ -63,6 +63,7 @@ export async function fireSiteOnlineAlert(
             siteId,
             data: {
                 siteId,
+                status: "online",
                 ...(siteName != null ? { siteName } : {}),
                 ...extra
             }
@@ -143,6 +144,7 @@ export async function fireSiteOfflineAlert(
             siteId,
             data: {
                 siteId,
+                status: "offline",
                 ...(siteName != null ? { siteName } : {}),
                 ...extra
             }

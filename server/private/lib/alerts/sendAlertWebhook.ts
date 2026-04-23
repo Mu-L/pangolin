@@ -42,6 +42,7 @@ export async function sendAlertWebhook(
     const payload = {
         event: context.eventType,
         timestamp: new Date().toISOString(),
+        status: deriveStatus(context.eventType, context.data),
         data: {
             orgId: context.orgId,
             ...context.data
@@ -115,6 +116,38 @@ export async function sendAlertWebhook(
     }
 
     throw lastError ?? new Error(`Alert webhook: all ${MAX_RETRIES} attempts failed for "${url}"`);
+}
+
+// ---------------------------------------------------------------------------
+// Status derivation
+// ---------------------------------------------------------------------------
+
+function deriveStatus(
+    eventType: AlertContext["eventType"],
+    data: Record<string, unknown>
+): string {
+    switch (eventType) {
+        case "site_online":
+            return "online";
+        case "site_offline":
+            return "offline";
+        case "site_toggle":
+            return String(data.status ?? "unknown");
+        case "health_check_healthy":
+        case "resource_healthy":
+            return "healthy";
+        case "health_check_unhealthy":
+        case "resource_unhealthy":
+            return "unhealthy";
+        case "health_check_toggle":
+        case "resource_toggle":
+            return String(data.status ?? "unknown");
+        default: {
+            const _exhaustive: never = eventType;
+            void _exhaustive;
+            return "unknown";
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
