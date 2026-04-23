@@ -16,8 +16,11 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import config from "@server/lib/config";
-import { tlsNameSchema } from "@server/lib/schemas";
-import { subdomainSchema } from "@server/lib/schemas";
+import {
+    tlsNameSchema,
+    subdomainSchema,
+    wildcardSubdomainSchema
+} from "@server/lib/schemas";
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
@@ -73,7 +76,10 @@ const updateHttpResourceBodySchema = z
     .refine(
         (data) => {
             if (data.subdomain) {
-                return subdomainSchema.safeParse(data.subdomain).success;
+                return (
+                    subdomainSchema.safeParse(data.subdomain).success ||
+                    wildcardSubdomainSchema.safeParse(data.subdomain).success
+                );
             }
             return true;
         },
@@ -318,6 +324,22 @@ async function updateHttpResource(
         }
     }
 
+    // Wildcard subdomains are a paid feature
+    if (updateData.subdomain && updateData.subdomain.includes("*")) {
+        const isLicensed = await isLicensedOrSubscribed(
+            resource.orgId,
+            tierMatrix.wildcardSubdomain
+        );
+        if (!isLicensed) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "Wildcard subdomains are not supported on your current plan. Please upgrade to access this feature."
+                )
+            );
+        }
+    }
+
     if (updateData.domainId) {
         const domainId = updateData.domainId;
 
@@ -362,7 +384,11 @@ async function updateHttpResource(
             );
         }
 
-        const { fullDomain, subdomain: finalSubdomain } = domainResult;
+        const {
+            fullDomain,
+            subdomain: finalSubdomain,
+            wildcard
+        } = domainResult;
 
         logger.debug(`Full domain: ${fullDomain}`);
 
@@ -419,7 +445,7 @@ async function updateHttpResource(
         if (fullDomain && fullDomain !== resource.fullDomain) {
             await db
                 .update(resources)
-                .set({ fullDomain })
+                .set({ fullDomain, wildcard })
                 .where(eq(resources.resourceId, resource.resourceId));
         }
 

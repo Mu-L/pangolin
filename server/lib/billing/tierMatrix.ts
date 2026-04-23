@@ -23,7 +23,8 @@ export enum TierFeature {
     HTTPPrivateResources = "httpPrivateResources", // handle downgrade by disabling HTTP private resources
     DomainNamespaces = "domainNamespaces", // handle downgrade by removing custom domain namespaces
     StandaloneHealthChecks = "standaloneHealthChecks",
-    AlertingRules = "alertingRules"
+    AlertingRules = "alertingRules",
+    WildcardSubdomain = "wildcardSubdomain"
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
@@ -64,5 +65,6 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.HTTPPrivateResources]: ["tier3", "enterprise"],
     [TierFeature.DomainNamespaces]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.StandaloneHealthChecks]: ["tier2", "tier3", "enterprise"],
-    [TierFeature.AlertingRules]: ["tier2", "tier3", "enterprise"]
+    [TierFeature.AlertingRules]: ["tier2", "tier3", "enterprise"],
+    [TierFeature.WildcardSubdomain]: ["tier1", "tier2", "tier3", "enterprise"]
 };

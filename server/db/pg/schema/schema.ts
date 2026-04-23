@@ -158,7 +158,8 @@ export const resources = pgTable("resources", {
     maintenanceMessage: text("maintenanceMessage"),
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
-    health: varchar("health") // "healthy", "unhealthy"
+    health: varchar("health"), // "healthy", "unhealthy"
+    wildcard: boolean("wildcard").notNull().default(false)
 });
 
 export const targets = pgTable("targets", {

@@ -1947,6 +1947,8 @@
     "httpMethod": "Scheme",
     "selectHttpMethod": "Select scheme",
     "domainPickerSubdomainLabel": "Subdomain",
+    "domainPickerWildcard": "Wildcard",
+    "domainPickerWildcardPaidOnly": "Wildcard subdomains are a paid feature. Please upgrade to access this feature.",
     "domainPickerBaseDomainLabel": "Base Domain",
     "domainPickerSearchDomains": "Search domains...",
     "domainPickerNoDomainsFound": "No domains found",

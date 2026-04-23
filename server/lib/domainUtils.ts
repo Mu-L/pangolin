@@ -1,7 +1,7 @@
 import { db } from "@server/db";
-import { domains, orgDomains } from "@server/db";
+import { domains, orgDomains, domainNamespaces } from "@server/db";
 import { eq, and } from "drizzle-orm";
-import { subdomainSchema } from "@server/lib/schemas";
+import { subdomainSchema, wildcardSubdomainSchema } from "@server/lib/schemas";
 import { fromError } from "zod-validation-error";
 
 export type DomainValidationResult =
@@ -9,6 +9,7 @@ export type DomainValidationResult =
           success: true;
           fullDomain: string;
           subdomain: string | null;
+          wildcard: boolean;
       }
     | {
           success: false;
@@ -66,6 +67,47 @@ export async function validateAndConstructDomain(
             };
         }
 
+        // Detect wildcard subdomain request
+        const isWildcard =
+            subdomain !== undefined &&
+            subdomain !== null &&
+            subdomain.includes("*");
+
+        // Wildcard subdomains are not allowed on CNAME domains
+        if (isWildcard && domainRes.domains.type === "cname") {
+            return {
+                success: false,
+                error: "Wildcard subdomains are not supported for CNAME domains. CNAME domains must use a specific hostname."
+            };
+        }
+
+        // Wildcard subdomains are not allowed on namespace (provided/free) domains
+        if (isWildcard) {
+            const [namespaceDomain] = await db
+                .select()
+                .from(domainNamespaces)
+                .where(eq(domainNamespaces.domainId, domainId))
+                .limit(1);
+
+            if (namespaceDomain) {
+                return {
+                    success: false,
+                    error: "Wildcard subdomains are not supported for provided or free domains. Use a specific subdomain instead."
+                };
+            }
+        }
+
+        // Validate wildcard subdomain format
+        if (isWildcard) {
+            const parsedWildcard = wildcardSubdomainSchema.safeParse(subdomain);
+            if (!parsedWildcard.success) {
+                return {
+                    success: false,
+                    error: fromError(parsedWildcard.error).toString()
+                };
+            }
+        }
+
         // Construct full domain based on domain type
         let fullDomain = "";
         let finalSubdomain = subdomain;
@@ -81,13 +123,15 @@ export async function validateAndConstructDomain(
             finalSubdomain = null; // CNAME domains don't use subdomains
         } else if (domainRes.domains.type === "wildcard") {
             if (subdomain !== undefined && subdomain !== null) {
-                // Validate subdomain format for wildcard domains
-                const parsedSubdomain = subdomainSchema.safeParse(subdomain);
-                if (!parsedSubdomain.success) {
-                    return {
-                        success: false,
-                        error: fromError(parsedSubdomain.error).toString()
-                    };
+                if (!isWildcard) {
+                    // Validate regular subdomain format for wildcard domains
+                    const parsedSubdomain = subdomainSchema.safeParse(subdomain);
+                    if (!parsedSubdomain.success) {
+                        return {
+                            success: false,
+                            error: fromError(parsedSubdomain.error).toString()
+                        };
+                    }
                 }
                 fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
             } else {
@@ -100,13 +144,14 @@ export async function validateAndConstructDomain(
             finalSubdomain = null;
         }
 
-        // Convert to lowercase
+        // Convert to lowercase (preserve * as-is)
         fullDomain = fullDomain.toLowerCase();
 
         return {
             success: true,
             fullDomain,
-            subdomain: finalSubdomain ?? null
+            subdomain: isWildcard ? "*" : (finalSubdomain ?? null),
+            wildcard: isWildcard
         };
     } catch (error) {
         return {

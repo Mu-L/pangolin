@@ -27,6 +27,7 @@ import { cn } from "@/lib/cn";
 import {
     finalizeSubdomainSanitize,
     isValidSubdomainStructure,
+    isWildcardSubdomain,
     sanitizeInputRaw,
     validateByDomainType
 } from "@/lib/subdomain-utils";
@@ -77,6 +78,7 @@ interface DomainPickerProps {
             subdomain?: string;
             fullDomain: string;
             baseDomain: string;
+            wildcard?: boolean;
         } | null
     ) => void;
     cols?: number;
@@ -85,6 +87,7 @@ interface DomainPickerProps {
     defaultSubdomain?: string | null;
     defaultDomainId?: string | null;
     warnOnProvidedDomain?: boolean;
+    allowWildcard?: boolean;
 }
 
 export default function DomainPicker({
@@ -95,21 +98,31 @@ export default function DomainPicker({
     defaultSubdomain,
     defaultFullDomain,
     defaultDomainId,
-    warnOnProvidedDomain = false
+    warnOnProvidedDomain = false,
+    allowWildcard = false
 }: DomainPickerProps) {
     const { env } = useEnvContext();
     const { user } = useUserContext();
     const api = createApiClient({ env });
     const t = useTranslations();
-    const { hasSaasSubscription } = usePaidStatus();
+    const { hasSaasSubscription, isPaidUser } = usePaidStatus();
 
     const requiresPaywall =
         build === "saas" &&
         !hasSaasSubscription(tierMatrix[TierFeature.DomainNamespaces]) &&
         new Date(user.dateCreated) > new Date("2026-04-13");
 
+    const wildcardAllowed =
+        allowWildcard && isPaidUser(tierMatrix[TierFeature.WildcardSubdomain]);
+
     const { data = [], isLoading: loadingDomains } = useQuery(
         orgQueries.domains({ orgId })
+    );
+
+    // Wildcard mode toggle — only relevant when allowWildcard is true, the
+    // user has a paid plan, and the selected base domain supports it.
+    const [wildcardMode, setWildcardMode] = useState(
+        wildcardAllowed && !!defaultSubdomain && isWildcardSubdomain(defaultSubdomain)
     );
 
     if (!env.flags.usePangolinDns) {
@@ -180,13 +193,15 @@ export default function DomainPicker({
                         firstOrExistingDomain.type !== "cname"
                             ? defaultSubdomain?.trim() || undefined
                             : undefined;
+                    const isWc = allowWildcard && !!sub && isWildcardSubdomain(sub);
 
                     onDomainChange?.({
                         domainId: firstOrExistingDomain.domainId,
                         type: "organization",
                         subdomain: sub,
                         fullDomain: sub ? `${sub}.${base}` : base,
-                        baseDomain: base
+                        baseDomain: base,
+                        wildcard: isWc
                     });
                 }
             }
@@ -285,7 +300,7 @@ export default function DomainPicker({
     }, [userInput, debouncedCheckAvailability, selectedBaseDomain]);
 
     const finalizeSubdomain = (sub: string, base: DomainOption): string => {
-        const sanitized = finalizeSubdomainSanitize(sub);
+        const sanitized = finalizeSubdomainSanitize(sub, wildcardAllowed && wildcardMode);
 
         if (!sanitized) {
             toast({
@@ -301,7 +316,8 @@ export default function DomainPicker({
                 base.type === "provided-search"
                     ? "provided-search"
                     : "organization",
-            domainType: base.domainType
+            domainType: base.domainType,
+            allowWildcard: wildcardAllowed && wildcardMode
         });
 
         if (!ok) {
@@ -330,7 +346,7 @@ export default function DomainPicker({
     };
 
     const handleSubdomainChange = (value: string) => {
-        const raw = sanitizeInputRaw(value);
+        const raw = sanitizeInputRaw(value, wildcardAllowed && wildcardMode);
         setSubdomainInput(raw);
         setSelectedProvidedDomain(null);
 
@@ -338,13 +354,15 @@ export default function DomainPicker({
             const fullDomain = raw
                 ? `${raw}.${selectedBaseDomain.domain}`
                 : selectedBaseDomain.domain;
+            const isWc = wildcardAllowed && wildcardMode && isWildcardSubdomain(raw);
 
             onDomainChange?.({
                 domainId: selectedBaseDomain.domainId!,
                 type: "organization",
                 subdomain: raw || undefined,
                 fullDomain,
-                baseDomain: selectedBaseDomain.domain
+                baseDomain: selectedBaseDomain.domain,
+                wildcard: isWc
             });
         }
     };
@@ -365,6 +383,18 @@ export default function DomainPicker({
 
     const handleBaseDomainSelect = (option: DomainOption) => {
         let sub = subdomainInput;
+
+        // Wildcard mode is not applicable for cname or provided-search domains,
+        // or when the user doesn't have a paid plan.
+        const newWildcardMode =
+            wildcardAllowed &&
+            wildcardMode &&
+            option.type === "organization" &&
+            option.domainType !== "cname";
+
+        if (newWildcardMode !== wildcardMode) {
+            setWildcardMode(newWildcardMode);
+        }
 
         if (sub && sub.trim() !== "") {
             sub = finalizeSubdomain(sub, option) || "";
@@ -389,6 +419,7 @@ export default function DomainPicker({
         }
 
         const fullDomain = sub ? `${sub}.${option.domain}` : option.domain;
+        const isWc = newWildcardMode && !!sub && isWildcardSubdomain(sub);
 
         if (option.type === "provided-search") {
             onDomainChange?.(null); // prevent the modal from closing with `<subdomain>.Free Provided domain`
@@ -402,7 +433,8 @@ export default function DomainPicker({
                         ? sub || undefined
                         : undefined,
                 fullDomain,
-                baseDomain: option.domain
+                baseDomain: option.domain,
+                wildcard: isWc
             });
         }
     };
@@ -431,7 +463,8 @@ export default function DomainPicker({
                       selectedBaseDomain.type === "provided-search"
                           ? "provided-search"
                           : "organization",
-                  domainType: selectedBaseDomain.domainType
+                  domainType: selectedBaseDomain.domainType,
+                  allowWildcard: wildcardAllowed && wildcardMode
               })
             : true;
 
@@ -439,6 +472,31 @@ export default function DomainPicker({
         selectedBaseDomain &&
         selectedBaseDomain.type === "organization" &&
         selectedBaseDomain.domainType !== "cname";
+
+    // Wildcard toggle is shown when the caller opts in and the selected domain
+    // supports it (ns or wildcard type). Shown even when unpaid so we can
+    // render a disabled state explaining it's a paid feature.
+    const showWildcardToggle =
+        allowWildcard &&
+        showSubdomainInput &&
+        (selectedBaseDomain?.domainType === "ns" ||
+            selectedBaseDomain?.domainType === "wildcard");
+
+    const handleWildcardModeChange = (enabled: boolean) => {
+        setWildcardMode(enabled);
+        // Reset subdomain input when toggling modes to avoid invalid state
+        setSubdomainInput("");
+        if (selectedBaseDomain?.type === "organization") {
+            onDomainChange?.({
+                domainId: selectedBaseDomain.domainId!,
+                type: "organization",
+                subdomain: undefined,
+                fullDomain: selectedBaseDomain.domain,
+                baseDomain: selectedBaseDomain.domain,
+                wildcard: enabled ? true : false
+            });
+        }
+    };
     const showProvidedDomainSearch =
         selectedBaseDomain?.type === "provided-search";
 
@@ -463,9 +521,35 @@ export default function DomainPicker({
         <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="subdomain-input">
-                        {t("domainPickerSubdomainLabel")}
-                    </Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="subdomain-input">
+                            {t("domainPickerSubdomainLabel")}
+                        </Label>
+                        {showWildcardToggle && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    wildcardAllowed &&
+                                    handleWildcardModeChange(!wildcardMode)
+                                }
+                                title={
+                                    !wildcardAllowed
+                                        ? t("domainPickerWildcardPaidOnly")
+                                        : undefined
+                                }
+                                className={cn(
+                                    "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                                    !wildcardAllowed
+                                        ? "opacity-50 cursor-not-allowed border-input text-muted-foreground"
+                                        : wildcardMode
+                                          ? "bg-primary text-primary-foreground border-primary"
+                                          : "bg-transparent text-muted-foreground border-input hover:border-primary hover:text-primary"
+                                )}
+                            >
+                                {t("domainPickerWildcard")}
+                            </button>
+                        )}
+                    </div>
                     <Input
                         id="subdomain-input"
                         value={
@@ -477,7 +561,9 @@ export default function DomainPicker({
                             showProvidedDomainSearch
                                 ? ""
                                 : showSubdomainInput
-                                  ? ""
+                                  ? wildcardMode
+                                      ? "*.level1"
+                                      : ""
                                   : t("domainPickerNotAvailableForCname")
                         }
                         disabled={
@@ -498,7 +584,7 @@ export default function DomainPicker({
                     />
                     {showSubdomainInput &&
                         subdomainInput &&
-                        !isValidSubdomainStructure(subdomainInput) && (
+                        !isValidSubdomainStructure(subdomainInput, wildcardAllowed && wildcardMode) && (
                             <p className="text-sm text-red-500">
                                 {t("domainPickerInvalidSubdomainStructure")}
                             </p>

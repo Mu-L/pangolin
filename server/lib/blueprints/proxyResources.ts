@@ -1,5 +1,6 @@
 import {
     domains,
+    domainNamespaces,
     orgDomains,
     Resource,
     resourceHeaderAuth,
@@ -236,6 +237,7 @@ export async function updateProxyResources(
                         fullDomain: http ? resourceData["full-domain"] : null,
                         subdomain: domain ? domain.subdomain : null,
                         domainId: domain ? domain.domainId : null,
+                        wildcard: domain ? domain.wildcard : false,
                         enabled: resourceEnabled,
                         sso: resourceData.auth?.["sso-enabled"] || false,
                         skipToIdpId:
@@ -683,6 +685,7 @@ export async function updateProxyResources(
                     fullDomain: http ? resourceData["full-domain"] : null,
                     subdomain: domain ? domain.subdomain : null,
                     domainId: domain ? domain.domainId : null,
+                    wildcard: domain ? domain.wildcard : false,
                     enabled: resourceEnabled,
                     sso: resourceData.auth?.["sso-enabled"] || false,
                     skipToIdpId: resourceData.auth?.["auto-login-idp"] || null,
@@ -1152,7 +1155,9 @@ async function getDomainId(
     orgId: string,
     fullDomain: string,
     trx: Transaction
-): Promise<{ subdomain: string | null; domainId: string } | null> {
+): Promise<{ subdomain: string | null; domainId: string; wildcard: boolean } | null> {
+    const isWildcardFullDomain = fullDomain.startsWith("*.");
+
     const possibleDomains = await trx
         .select()
         .from(domains)
@@ -1165,6 +1170,11 @@ async function getDomainId(
     }
 
     const validDomains = possibleDomains.filter((domain) => {
+        // Wildcard full-domains are not allowed on CNAME domains
+        if (isWildcardFullDomain && domain.domains.type === "cname") {
+            return false;
+        }
+
         if (domain.domains.type == "ns" || domain.domains.type == "wildcard") {
             return (
                 fullDomain === domain.domains.baseDomain ||
@@ -1182,6 +1192,21 @@ async function getDomainId(
     const domainSelection = validDomains[0].domains;
     const baseDomain = domainSelection.baseDomain;
 
+    // Wildcard full-domains are not allowed on namespace (provided/free) domains
+    if (isWildcardFullDomain) {
+        const [namespaceDomain] = await trx
+            .select()
+            .from(domainNamespaces)
+            .where(eq(domainNamespaces.domainId, domainSelection.domainId))
+            .limit(1);
+
+        if (namespaceDomain) {
+            throw new Error(
+                `Wildcard full-domains are not supported for provided or free domains: ${fullDomain}`
+            );
+        }
+    }
+
     // remove the base domain of the domain
     let subdomain = null;
     if (fullDomain != baseDomain) {
@@ -1191,6 +1216,7 @@ async function getDomainId(
     // Return the first valid domain
     return {
         subdomain: subdomain,
-        domainId: domainSelection.domainId
+        domainId: domainSelection.domainId,
+        wildcard: isWildcardFullDomain
     };
 }
