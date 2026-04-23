@@ -100,6 +100,7 @@ export async function getTraefikConfig(
             headers: resources.headers,
             proxyProtocol: resources.proxyProtocol,
             proxyProtocolVersion: resources.proxyProtocolVersion,
+            wildcard: resources.wildcard,
 
             maintenanceModeEnabled: resources.maintenanceModeEnabled,
             maintenanceModeType: resources.maintenanceModeType,
@@ -238,6 +239,7 @@ export async function getTraefikConfig(
                 priority: priority, // may be null, we fallback later
                 domainCertResolver: row.domainCertResolver,
                 preferWildcardCert: row.preferWildcardCert,
+                wildcard: row.wildcard,
 
                 maintenanceModeEnabled: row.maintenanceModeEnabled,
                 maintenanceModeType: row.maintenanceModeType,
@@ -376,7 +378,16 @@ export async function getTraefikConfig(
                 ...additionalMiddlewares
             ];
 
-            let rule = `Host(\`${fullDomain}\`)`;
+            let rule: string;
+            if (resource.wildcard && fullDomain.startsWith("*.")) {
+                // Convert *.foo.bar.com -> HostRegexp(`^[^.]+\.foo\.bar\.com$`)
+                const escaped = fullDomain
+                    .slice(2) // remove leading "*."
+                    .replace(/\./g, "\\.");
+                rule = `HostRegexp(\`^[^.]+\\.${escaped}$\`)`;
+            } else {
+                rule = `Host(\`${fullDomain}\`)`;
+            }
 
             // priority logic
             let priority: number;
@@ -566,7 +577,7 @@ export async function getTraefikConfig(
                             resource.ssl ? entrypointHttps : entrypointHttp
                         ],
                         service: maintenanceServiceName,
-                        rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+                        rule: `${rule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
                         priority: 2001,
                         ...(resource.ssl ? { tls } : {})
                     };
