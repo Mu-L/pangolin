@@ -31,6 +31,8 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { validateAndConstructDomain } from "@server/lib/domainUtils";
+import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { build } from "@server/build";
 
 const createSiteResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -493,6 +495,10 @@ export async function createSiteResource(
         logger.info(
             `Created site resource ${newSiteResource.siteResourceId} for org ${orgId}`
         );
+
+        if (ssl && mode === "http" && domainId && fullDomain && build != "oss") {
+            await createCertificate(domainId, fullDomain, db);
+        }
 
         return response(res, {
             data: newSiteResource,
