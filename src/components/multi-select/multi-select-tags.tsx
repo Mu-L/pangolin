@@ -6,7 +6,7 @@ import {
     CommandInput,
     CommandItem,
     CommandList
-} from "./ui/command";
+} from "../ui/command";
 import { cn } from "@app/lib/cn";
 import { CheckIcon } from "lucide-react";
 

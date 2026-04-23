@@ -40,7 +40,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, ExternalLink } from "lucide-react";
+import {
+    ArrowDownIcon,
+    ChevronDownIcon,
+    ChevronsUpDown,
+    ExternalLink
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -50,7 +55,7 @@ import {
     formatMultiSitesSelectorLabel
 } from "./multi-site-selector";
 import type { Selectedsite } from "./site-selector";
-import { CaretSortIcon } from "@radix-ui/react-icons";
+
 import { MachinesSelector } from "./machines-selector";
 import DomainPicker from "@app/components/DomainPicker";
 import { SwitchInput } from "@app/components/SwitchInput";
@@ -155,7 +160,7 @@ export type InternalResourceData = {
 const tagSchema = z.object({ id: z.string(), text: z.string() });
 
 function buildSelectedSitesForResource(
-    resource: InternalResourceData,
+    resource: InternalResourceData
 ): Selectedsite[] {
     return resource.siteIds.map((siteId, idx) => ({
         name: resource.siteNames[idx] ?? "",
@@ -608,9 +613,7 @@ export function InternalResourceForm({
                     users: [],
                     clients: []
                 });
-                setSelectedSites(
-                    buildSelectedSitesForResource(resource)
-                );
+                setSelectedSites(buildSelectedSitesForResource(resource));
                 setTcpPortMode(
                     getPortModeFromString(resource.tcpPortRangeString)
                 );
@@ -877,7 +880,9 @@ export function InternalResourceForm({
                                                             field.value ??
                                                             "http"
                                                         }
-                                                        disabled={httpSectionDisabled}
+                                                        disabled={
+                                                            httpSectionDisabled
+                                                        }
                                                     >
                                                         <FormControl>
                                                             <SelectTrigger className="w-full">
@@ -918,7 +923,10 @@ export function InternalResourceForm({
                                                     <Input
                                                         {...field}
                                                         className="w-full"
-                                                        disabled={isHttpMode && httpSectionDisabled}
+                                                        disabled={
+                                                            isHttpMode &&
+                                                            httpSectionDisabled
+                                                        }
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -974,7 +982,9 @@ export function InternalResourceForm({
                                                                 field.value ??
                                                                 ""
                                                             }
-                                                            disabled={httpSectionDisabled}
+                                                            disabled={
+                                                                httpSectionDisabled
+                                                            }
                                                             onChange={(e) => {
                                                                 const raw =
                                                                     e.target
@@ -1009,7 +1019,9 @@ export function InternalResourceForm({
                         </div>
 
                         {isHttpMode && (
-                            <PaidFeaturesAlert tiers={tierMatrix.httpPrivateResources} />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.httpPrivateResources}
+                            />
                         )}
 
                         {isHttpMode ? (
@@ -1022,55 +1034,61 @@ export function InternalResourceForm({
                                         {t(httpConfigurationDescriptionKey)}
                                     </div>
                                 </div>
-                                <div className={httpSectionDisabled ? "pointer-events-none opacity-50" : undefined}>
-                                <DomainPicker
-                                    key={
-                                        variant === "edit" && siteResourceId
-                                            ? `http-domain-${siteResourceId}`
-                                            : "http-domain-create"
+                                <div
+                                    className={
+                                        httpSectionDisabled
+                                            ? "pointer-events-none opacity-50"
+                                            : undefined
                                     }
-                                    orgId={orgId}
-                                    cols={2}
-                                    hideFreeDomain
-                                    defaultSubdomain={
-                                        httpConfigSubdomain ?? undefined
-                                    }
-                                    defaultDomainId={
-                                        httpConfigDomainId ?? undefined
-                                    }
-                                    defaultFullDomain={
-                                        httpConfigFullDomain ?? undefined
-                                    }
-                                    onDomainChange={(res) => {
-                                        if (res === null) {
+                                >
+                                    <DomainPicker
+                                        key={
+                                            variant === "edit" && siteResourceId
+                                                ? `http-domain-${siteResourceId}`
+                                                : "http-domain-create"
+                                        }
+                                        orgId={orgId}
+                                        cols={2}
+                                        hideFreeDomain
+                                        defaultSubdomain={
+                                            httpConfigSubdomain ?? undefined
+                                        }
+                                        defaultDomainId={
+                                            httpConfigDomainId ?? undefined
+                                        }
+                                        defaultFullDomain={
+                                            httpConfigFullDomain ?? undefined
+                                        }
+                                        onDomainChange={(res) => {
+                                            if (res === null) {
+                                                form.setValue(
+                                                    "httpConfigSubdomain",
+                                                    null
+                                                );
+                                                form.setValue(
+                                                    "httpConfigDomainId",
+                                                    null
+                                                );
+                                                form.setValue(
+                                                    "httpConfigFullDomain",
+                                                    null
+                                                );
+                                                return;
+                                            }
                                             form.setValue(
                                                 "httpConfigSubdomain",
-                                                null
+                                                res.subdomain ?? null
                                             );
                                             form.setValue(
                                                 "httpConfigDomainId",
-                                                null
+                                                res.domainId
                                             );
                                             form.setValue(
                                                 "httpConfigFullDomain",
-                                                null
+                                                res.fullDomain
                                             );
-                                            return;
-                                        }
-                                        form.setValue(
-                                            "httpConfigSubdomain",
-                                            res.subdomain ?? null
-                                        );
-                                        form.setValue(
-                                            "httpConfigDomainId",
-                                            res.domainId
-                                        );
-                                        form.setValue(
-                                            "httpConfigFullDomain",
-                                            res.fullDomain
-                                        );
-                                    }}
-                                />
+                                        }}
+                                    />
                                 </div>
                                 <FormField
                                     control={form.control}
@@ -1088,7 +1106,9 @@ export function InternalResourceForm({
                                                     onCheckedChange={
                                                         field.onChange
                                                     }
-                                                    disabled={httpSectionDisabled}
+                                                    disabled={
+                                                        httpSectionDisabled
+                                                    }
                                                 />
                                             </FormControl>
                                         </FormItem>
@@ -1511,7 +1531,7 @@ export function InternalResourceForm({
                                                                 role="combobox"
                                                                 className={cn(
                                                                     "justify-between w-full",
-                                                                    "text-muted-foreground pl-1.5"
+                                                                    "text-muted-foreground pl-1.5 cursor-text"
                                                                 )}
                                                             >
                                                                 <span
@@ -1548,7 +1568,7 @@ export function InternalResourceForm({
                                                                         )}
                                                                     </span>
                                                                 </span>
-                                                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>

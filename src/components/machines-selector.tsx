@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { useTranslations } from "next-intl";
-import { MultiSelectTags } from "./multi-select-tags";
+import { MultiSelectTags } from "./multi-select/multi-select-tags";
 
 export type SelectedMachine = Pick<
     ListClientsResponse["clients"][number],
