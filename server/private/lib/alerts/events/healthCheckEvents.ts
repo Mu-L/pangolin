@@ -76,6 +76,7 @@ export async function fireHealthCheckHealthyAlert(
             healthCheckId,
             data: {
                 healthCheckId,
+                status: "healthy",
                 ...(healthCheckName != null ? { healthCheckName } : {}),
                 ...extra
             }
@@ -133,6 +134,7 @@ export async function fireHealthCheckUnhealthyAlert(
             healthCheckId,
             data: {
                 healthCheckId,
+                status: "unhealthy",
                 ...(healthCheckName != null ? { healthCheckName } : {}),
                 ...extra
             }

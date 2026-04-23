@@ -61,6 +61,7 @@ export async function fireResourceHealthyAlert(
             resourceId,
             data: {
                 resourceId,
+                status: "healthy",
                 ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }
@@ -115,6 +116,7 @@ export async function fireResourceUnhealthyAlert(
             resourceId,
             data: {
                 resourceId,
+                status: "unhealthy",
                 ...(resourceName != null ? { resourceName } : {}),
                 ...extra
             }
