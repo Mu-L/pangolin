@@ -18,6 +18,7 @@ import { and, eq, isNotNull, or, inArray, sql } from "drizzle-orm";
 import { decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import cache from "#private/lib/cache";
+import { build } from "@server/build";
 
 // Define the return type for clarity and type safety
 export type CertificateResult = {
