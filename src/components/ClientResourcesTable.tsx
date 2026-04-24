@@ -48,6 +48,7 @@ import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import {
     ResourceSitesStatusCell,
     type ResourceSiteRow
@@ -336,7 +337,7 @@ export default function ClientResourcesTable({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        className={dataTableFilterPopoverContentClassName}
                         align="start"
                     >
                         <div className="border-b p-1">

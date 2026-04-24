@@ -26,6 +26,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { Selectedsite, SitesSelector } from "@app/components/site-selector";
 import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -441,7 +442,7 @@ export default function ProxyResourcesTable({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        className={dataTableFilterPopoverContentClassName}
                         align="start"
                     >
                         <div className="border-b p-1">

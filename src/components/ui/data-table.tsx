@@ -34,6 +34,7 @@ import { Button } from "@app/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@app/components/ui/input";
 import { DataTablePagination } from "@app/components/DataTablePagination";
+import { dataTableFilterDropdownContentClassName } from "@app/lib/dataTableFilterPopover";
 import { ChevronDown, Plus, Search, RefreshCw, Columns, Filter } from "lucide-react";
 import {
     Card,
@@ -603,7 +604,9 @@ export function DataTable<TData, TValue>({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent
                                                 align="start"
-                                                className="w-48"
+                                                className={
+                                                    dataTableFilterDropdownContentClassName
+                                                }
                                             >
                                                 <DropdownMenuLabel>
                                                     {filter.label}

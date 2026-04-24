@@ -33,6 +33,7 @@ import {
 } from "@app/components/ui/dropdown-menu";
 import { Input } from "@app/components/ui/input";
 import { useStoredColumnVisibility } from "@app/hooks/useStoredColumnVisibility";
+import { dataTableFilterDropdownContentClassName } from "@app/lib/dataTableFilterPopover";
 
 import {
     ChevronDown,
@@ -345,7 +346,9 @@ export function ControlledDataTable<TData, TValue>({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent
                                                 align="start"
-                                                className="w-48"
+                                                className={
+                                                    dataTableFilterDropdownContentClassName
+                                                }
                                             >
                                                 <DropdownMenuLabel>
                                                     {filter.label}
