@@ -50,7 +50,7 @@ import {
     userOrgRoles,
     roles
 } from "@server/db";
-import { eq, and, inArray, isNotNull, ne } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { response } from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
@@ -492,7 +492,15 @@ hybridRouter.get(
                 );
             }
 
-            const [result] = await db
+            // Build wildcard domain candidates for the requested domain.
+            // e.g. "me.example.test.com" -> ["*.example.test.com", "*.test.com"]
+            const domainParts = domain.split(".");
+            const wildcardCandidates: string[] = [];
+            for (let i = 1; i < domainParts.length; i++) {
+                wildcardCandidates.push(`*.${domainParts.slice(i).join(".")}`);
+            }
+
+            const potentialResults = await db
                 .select()
                 .from(resources)
                 .leftJoin(
@@ -515,10 +523,28 @@ hybridRouter.get(
                     )
                 )
                 .innerJoin(orgs, eq(orgs.orgId, resources.orgId))
-                .where(eq(resources.fullDomain, domain))
-                .limit(1);
+                .where(
+                    or(
+                        // Exact match
+                        eq(resources.fullDomain, domain),
+                        // Wildcard match
+                        wildcardCandidates.length > 0
+                            ? and(
+                                  eq(resources.wildcard, true),
+                                  inArray(resources.fullDomain, wildcardCandidates)
+                              )
+                            : sql`false`
+                    )
+                );
+
+            // Prefer exact match over wildcard match
+            const exactMatch = potentialResults.find(
+                (r) => r.resources?.fullDomain === domain
+            );
+            const result = exactMatch ?? potentialResults[0];
 
             if (
+                result &&
                 await checkExitNodeOrg(
                     remoteExitNode.exitNodeId,
                     result.resources.orgId
