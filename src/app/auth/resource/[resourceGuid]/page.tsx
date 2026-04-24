@@ -106,9 +106,21 @@ export default async function ResourceAuthPage(props: {
             const redirectPort = new URL(searchParams.redirect).port;
             const serverResourceHostWithPort = `${serverResourceHost}:${redirectPort}`;
 
+            const wildcardMatchesRedirect = (wildcardDomain: string, host: string): boolean => {
+                if (!wildcardDomain.startsWith("*.")) return false;
+                const suffix = wildcardDomain.slice(1); // e.g. ".wildcard.owen.fosrl.io"
+                return host.endsWith(suffix) && host.length > suffix.length;
+            };
+
             if (serverResourceHost === redirectHost) {
                 redirectUrl = searchParams.redirect;
             } else if (serverResourceHostWithPort === redirectHost) {
+                redirectUrl = searchParams.redirect;
+            } else if (
+                authInfo.wildcard &&
+                authInfo.fullDomain &&
+                wildcardMatchesRedirect(authInfo.fullDomain, redirectHost)
+            ) {
                 redirectUrl = searchParams.redirect;
             }
         } catch (e) {}
