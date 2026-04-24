@@ -37,18 +37,25 @@ export async function createCertificate(
     }
 
     let existing: Certificate[] = [];
-    if (domainRecord.type == "ns") {
+    if (domainRecord.type == "ns" || domainRecord.type == "wildcard") {
         const domainLevelDown = domain.split(".").slice(1).join(".");
+        const wildcardPrefixed = `*.${domainLevelDown}`;
+
         existing = await trx
             .select()
             .from(certificates)
             .where(
                 and(
                     eq(certificates.domainId, domainId),
-                    eq(certificates.wildcard, true), // only NS domains can have wildcard certs
                     or(
                         eq(certificates.domain, domain),
-                        eq(certificates.domain, domainLevelDown)
+                        and(
+                            eq(certificates.wildcard, true),
+                            or(
+                                eq(certificates.domain, domainLevelDown),
+                                eq(certificates.domain, wildcardPrefixed)
+                            )
+                        )
                     )
                 )
             );
@@ -70,11 +77,28 @@ export async function createCertificate(
         return;
     }
 
+    let domainToWrite = domain;
+    if (
+        domainRecord.type == "wildcard" &&
+        domainRecord.preferWildcardCert &&
+        !domain.startsWith("*.")
+    ) {
+        // in this case traefik is going to generate a domain one level down so we need to store it that way
+        const parts = domain.split(".");
+        if (parts.length > 2) {
+            domainToWrite = parts.slice(1).join(".");
+            domainToWrite = `*.${domainToWrite}`;
+        }
+    }
+
     // No cert found, create a new one in pending state
     await trx.insert(certificates).values({
-        domain,
+        domain: domainToWrite,
         domainId,
-        wildcard: domainRecord.type == "ns", // we can only create wildcard certs for NS domains
+        wildcard:
+            domainRecord.type == "ns" ||
+            (domainRecord.type == "wildcard" &&
+                domainRecord.preferWildcardCert), // we can only create wildcard certs for NS domains
         status: "pending",
         updatedAt: Math.floor(Date.now() / 1000),
         createdAt: Math.floor(Date.now() / 1000)
