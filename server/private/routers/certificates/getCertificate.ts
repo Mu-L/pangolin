@@ -41,7 +41,7 @@ async function query(domainId: string, domain: string) {
     }
 
     let existing: any[] = [];
-    if (domainRecord.type == "ns" || domainRecord.type == "wildcard") { // the manual "wildcard" domains can have wildcard certs
+    if (domainRecord.type == "ns" || domainRecord.type == "wildcard") {
         const domainLevelDown = domain.split(".").slice(1).join(".");
         const wildcardPrefixed = `*.${domainLevelDown}`;
 
@@ -64,8 +64,13 @@ async function query(domainId: string, domain: string) {
                     eq(certificates.domainId, domainId),
                     or(
                         eq(certificates.domain, domain),
-                        eq(certificates.domain, domainLevelDown),
-                        eq(certificates.domain, wildcardPrefixed)
+                        and(
+                            eq(certificates.wildcard, true),
+                            or(
+                                eq(certificates.domain, domainLevelDown),
+                                eq(certificates.domain, wildcardPrefixed)
+                            )
+                        )
                     )
                 )
             );
