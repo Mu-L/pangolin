@@ -2,6 +2,11 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
+import {
+    ResourceSitesStatusCell,
+    type ResourceSiteRow
+} from "@app/components/ResourceSitesStatusCell";
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
@@ -11,9 +16,16 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { cn } from "@app/lib/cn";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -29,6 +41,7 @@ import {
     ChevronDown,
     ChevronsUpDownIcon,
     Clock,
+    Funnel,
     MoreHorizontal,
     ShieldCheck,
     ShieldOff,
@@ -39,6 +52,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
     useEffect,
+    useMemo,
     useOptimistic,
     useRef,
     useState,
@@ -83,6 +97,7 @@ export type ResourceRow = {
     targetHost?: string;
     targetPort?: number;
     targets?: TargetHealth[];
+    sites: ResourceSiteRow[];
 };
 
 function getOverallHealthStatus(
@@ -144,13 +159,15 @@ type ProxyResourcesTableProps = {
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
+    initialFilterSite?: Selectedsite | null;
 };
 
 export default function ProxyResourcesTable({
     resources,
     orgId,
     pagination,
-    rowCount
+    rowCount,
+    initialFilterSite = null
 }: ProxyResourcesTableProps) {
     const router = useRouter();
     const {
@@ -170,13 +187,30 @@ export default function ProxyResourcesTable({
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
+
+    const siteIdQ = searchParams.get("siteId");
+    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+    const selectedSite: Selectedsite | null = useMemo(() => {
+        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
+            return null;
+        }
+        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
+            return initialFilterSite;
+        }
+        return {
+            siteId: siteIdNum,
+            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
+            type: "newt"
+        };
+    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             router.refresh();
         }, 10_000);
         return () => clearInterval(interval);
-    }, []);
+    }, [router]);
 
     const refreshData = () => {
         startTransition(() => {
@@ -374,6 +408,67 @@ export default function ProxyResourcesTable({
             cell: ({ row }) => {
                 return <span>{row.original.nice || "-"}</span>;
             }
+        },
+        {
+            id: "sites",
+            accessorFn: (row) =>
+                row.sites.map((s) => s.siteName).join(", "),
+            friendlyName: t("sites"),
+            header: () => (
+                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedSite && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("sites")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedSite && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedSite.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearSiteFilter}
+                            >
+                                {t("standaloneHcFilterAnySite")}
+                            </Button>
+                        </div>
+                        <SitesSelector
+                            orgId={orgId}
+                            selectedSite={selectedSite}
+                            onSelectSite={onPickSite}
+                        />
+                    </PopoverContent>
+                </Popover>
+            ),
+            cell: ({ row }) => (
+                <ResourceSitesStatusCell
+                    orgId={row.original.orgId}
+                    resourceSites={row.original.sites}
+                />
+            )
         },
         {
             accessorKey: "protocol",
@@ -619,6 +714,16 @@ export default function ProxyResourcesTable({
             searchParams
         });
     }
+
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
+
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
