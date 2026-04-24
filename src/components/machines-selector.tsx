@@ -6,6 +6,7 @@ import { useDebounce } from "use-debounce";
 
 import { useTranslations } from "next-intl";
 import { MultiSelectTags } from "./multi-select/multi-select-tags";
+import { TagInput, type TagInputProps } from "./tags/tag-input";
 
 export type SelectedMachine = Pick<
     ListClientsResponse["clients"][number],
@@ -16,12 +17,27 @@ export type MachineSelectorProps = {
     orgId: string;
     selectedMachines?: SelectedMachine[];
     onSelectMachines: (machine: SelectedMachine[]) => void;
-};
+} & Omit<
+    TagInputProps,
+    | "activeTagIndex"
+    | "setActiveTagIndex"
+    | "placeholder"
+    | "size"
+    | "tags"
+    | "setTags"
+    | "value"
+    | "searchQuery"
+    | "onSearchQueryChange"
+    | "suggestedOptions"
+    | "enableAutocomplete"
+    | "autocompleteOptions"
+>;
 
 export function MachinesSelector({
     orgId,
     selectedMachines = [],
-    onSelectMachines
+    onSelectMachines,
+    ...props
 }: MachineSelectorProps) {
     const t = useTranslations();
     const [machineSearchQuery, setMachineSearchQuery] = useState("");
@@ -29,7 +45,7 @@ export function MachinesSelector({
     const [debouncedValue] = useDebounce(machineSearchQuery, 150);
 
     const { data: machines = [] } = useQuery(
-        orgQueries.machineClients({ orgId, perPage: 10, query: debouncedValue })
+        orgQueries.machineClients({ orgId, perPage: 3, query: debouncedValue })
     );
 
     // always include the selected machines in the list of machines shown (if the user isn't searching)
@@ -52,26 +68,68 @@ export function MachinesSelector({
     //     selectedMachines.map((m) => m.clientId)
     // );
 
+    const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
+
     return (
-        <MultiSelectTags
-            emptyPlaceholder={t("machineNotFound")}
-            searchPlaceholder={t("machineSearch")}
-            value={selectedMachines.map((m) => ({
-                ...m,
-                text: m.name,
-                id: m.clientId.toString()
-            }))}
-            onChange={(values) => {
-                onSelectMachines(values);
-            }}
-            options={machinesShown.map((m) => ({
-                ...m,
-                id: m.clientId.toString(),
-                text: m.name
-            }))}
-            onSearch={setMachineSearchQuery}
-            searchQuery={machineSearchQuery}
-        />
+        <>
+            <TagInput
+                {...props}
+                activeTagIndex={activeTagIndex}
+                setActiveTagIndex={setActiveTagIndex}
+                placeholder={t("accessClientSelect")}
+                size="sm"
+                tags={selectedMachines.map((mc) => ({
+                    id: mc.clientId.toString(),
+                    text: mc.name
+                }))}
+                setTags={(newTags) => {
+                    const tags =
+                        typeof newTags === "function"
+                            ? newTags(
+                                  selectedMachines.map((mc) => ({
+                                      id: mc.clientId.toString(),
+                                      text: mc.name
+                                  }))
+                              )
+                            : newTags;
+                    onSelectMachines(
+                        tags.map((tag) => ({
+                            clientId: Number(tag.id),
+                            name: tag.text
+                        }))
+                    );
+                }}
+                searchQuery={machineSearchQuery}
+                onSearchQueryChange={setMachineSearchQuery}
+                suggestedOptions={machinesShown.map((mc) => ({
+                    id: mc.clientId.toString(),
+                    text: mc.name
+                }))}
+                allowDuplicates={false}
+                restrictTagsToAutocompleteOptions
+                sortTags
+            />
+        </>
+        //    <MultiSelectTags
+        //         emptyPlaceholder={t("machineNotFound")}
+        //         searchPlaceholder={t("machineSearch")}
+        //         value={selectedMachines.map((m) => ({
+        //             ...m,
+        //             text: m.name,
+        //             id: m.clientId.toString()
+        //         }))}
+        //         onChange={(values) => {
+        //             onSelectMachines(values);
+        //         }}
+        //         options={machinesShown.map((m) => ({
+        //             ...m,
+        //             id: m.clientId.toString(),
+        //             text: m.name
+        //         }))}
+        //         onSearch={setMachineSearchQuery}
+        //         searchQuery={machineSearchQuery}
+        //     />
+
         // <Command shouldFilter={false}>
         //     <CommandInput
         //         placeholder={t("machineSearch")}

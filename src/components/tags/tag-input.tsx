@@ -85,6 +85,10 @@ export interface TagInputProps
     autocompleteFilter?: (option: string) => boolean;
     direction?: "row" | "column";
     onInputChange?: (value: string) => void;
+    searchQuery?: string;
+    onSearchQueryChange?: (value: string) => void;
+    autocompleteContent?: React.ReactNode;
+    suggestedOptions?: Tag[];
     customTagRenderer?: (tag: Tag, isActiveTag: boolean) => React.ReactNode;
     onFocus?: React.FocusEventHandler<HTMLInputElement>;
     onBlur?: React.FocusEventHandler<HTMLInputElement>;
@@ -157,10 +161,26 @@ export function TagInput({ ref, ...props }: TagInputProps) {
         disabled = false,
         usePortal = false,
         addOnPaste = false,
-        generateTagId = uuid
+        generateTagId = uuid,
+        searchQuery,
+        onSearchQueryChange,
+        autocompleteContent,
+        suggestedOptions
     } = props;
 
     const [inputValue, setInputValue] = React.useState("");
+    const isControlled = searchQuery !== undefined;
+    const effectiveQuery = isControlled ? searchQuery : inputValue;
+
+    const updateQuery = React.useCallback(
+        (action: React.SetStateAction<string>) => {
+            const resolved =
+                typeof action === "function" ? action(effectiveQuery) : action;
+            if (!isControlled) setInputValue(resolved);
+            onSearchQueryChange?.(resolved);
+        },
+        [isControlled, effectiveQuery, onSearchQueryChange]
+    );
     const [tagCount, setTagCount] = React.useState(Math.max(0, tags.length));
     const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -176,6 +196,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
     }
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (suggestedOptions !== undefined) return;
         const newValue = e.target.value;
         if (addOnPaste && newValue.includes(delimiter)) {
             const splitValues = newValue
@@ -234,9 +255,9 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                     );
                 }
             });
-            setInputValue("");
+            updateQuery("");
         } else {
-            setInputValue(newValue);
+            updateQuery(newValue);
         }
         onInputChange?.(newValue);
     };
@@ -247,8 +268,8 @@ export function TagInput({ ref, ...props }: TagInputProps) {
     };
 
     const handleInputBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-        if (addTagsOnBlur && inputValue.trim()) {
-            const newTagText = inputValue.trim();
+        if (addTagsOnBlur && effectiveQuery.trim()) {
+            const newTagText = effectiveQuery.trim();
 
             if (validateTag && !validateTag(newTagText)) {
                 return;
@@ -273,7 +294,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                 setTags([...tags, { id: newTagId, text: newTagText }]);
                 onTagAdd?.(newTagText);
                 setTagCount((prevTagCount) => prevTagCount + 1);
-                setInputValue("");
+                updateQuery("");
             }
         }
 
@@ -287,7 +308,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                 : e.key === delimiter || e.key === Delimiter.Enter
         ) {
             e.preventDefault();
-            const newTagText = inputValue.trim();
+            const newTagText = effectiveQuery.trim();
 
             // Check if the tag is in the autocomplete options if restrictTagsToAutocomplete is true
             if (
@@ -329,7 +350,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                 onTagAdd?.(newTagText);
                 setTagCount((prevTagCount) => prevTagCount + 1);
             }
-            setInputValue("");
+            updateQuery("");
         } else {
             switch (e.key) {
                 case "Delete":
@@ -419,9 +440,14 @@ export function TagInput({ ref, ...props }: TagInputProps) {
         onClearAll?.();
     };
 
-    // const filteredAutocompleteOptions = autocompleteFilter
-    //   ? autocompleteOptions?.filter((option) => autocompleteFilter(option.text))
-    //   : autocompleteOptions;
+    const mainInputValue =
+        suggestedOptions !== undefined ? "" : effectiveQuery;
+
+    const useAutocompleteComponent =
+        enableAutocomplete || suggestedOptions !== undefined;
+    const resolvedAutocompleteOptions = suggestedOptions ?? autocompleteOptions;
+    const disableAutocompleteSearch = suggestedOptions !== undefined;
+
     const displayedTags = sortTags ? [...tags].sort() : tags;
 
     const truncatedTags = truncate
@@ -436,13 +462,15 @@ export function TagInput({ ref, ...props }: TagInputProps) {
 
     return (
         <div
-            className={`w-full flex ${!inlineTags && tags.length > 0 ? "gap-3" : ""} ${
+            className={cn(
+                `w-full flex`,
+                !inlineTags && tags.length > 0 && "gap-3",
                 inputFieldPosition === "bottom"
                     ? "flex-col"
                     : inputFieldPosition === "top"
                       ? "flex-col-reverse"
                       : "flex-row"
-            }`}
+            )}
         >
             {!usePopoverForTags &&
                 (!inlineTags ? (
@@ -472,7 +500,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                         disabled={disabled}
                     />
                 ) : (
-                    !enableAutocomplete && (
+                    !useAutocompleteComponent && !autocompleteContent && (
                         <div className="w-full">
                             <div
                                 className={cn(
@@ -515,14 +543,14 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                             ? placeholderWhenFull
                                             : placeholder
                                     }
-                                    value={inputValue}
+                                    value={mainInputValue}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={handleInputFocus}
                                     onBlur={handleInputBlur}
                                     {...inputProps}
                                     className={cn(
-                                        "border-0 px-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                        "border-0 px-2 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
                                         // className,
                                         styleClasses?.input
                                     )}
@@ -544,16 +572,84 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                         </div>
                     )
                 ))}
-            {enableAutocomplete ? (
+            {!useAutocompleteComponent && autocompleteContent && (
+                <div className="w-full">
+                    <div
+                        className={cn(
+                            `flex flex-row flex-wrap items-center gap-1.5 p-1.5 w-full rounded-md border border-input text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50`,
+                            styleClasses?.inlineTagsContainer
+                        )}
+                    >
+                        <TagList
+                            tags={truncatedTags}
+                            customTagRenderer={customTagRenderer}
+                            variant={variant}
+                            size={size}
+                            shape={shape}
+                            borderStyle={borderStyle}
+                            textCase={textCase}
+                            interaction={interaction}
+                            animation={animation}
+                            textStyle={textStyle}
+                            onTagClick={onTagClick}
+                            draggable={draggable}
+                            onSortEnd={onSortEnd}
+                            onRemoveTag={removeTag}
+                            direction={direction}
+                            inlineTags={inlineTags}
+                            activeTagIndex={activeTagIndex}
+                            setActiveTagIndex={setActiveTagIndex}
+                            classStyleProps={{
+                                tagListClasses: styleClasses?.tagList,
+                                tagClasses: styleClasses?.tag
+                            }}
+                            disabled={disabled}
+                        />
+                        <Input
+                            ref={inputRef}
+                            id={id}
+                            type="text"
+                            placeholder={
+                                maxTags !== undefined && tags.length >= maxTags
+                                    ? placeholderWhenFull
+                                    : placeholder
+                            }
+                            value={mainInputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            onFocus={handleInputFocus}
+                            onBlur={handleInputBlur}
+                            {...inputProps}
+                            className={cn(
+                                "border-0 px-2 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                styleClasses?.input
+                            )}
+                            autoComplete="off"
+                            disabled={
+                                disabled ||
+                                (maxTags !== undefined && tags.length >= maxTags)
+                            }
+                        />
+                    </div>
+                    {autocompleteContent}
+                </div>
+            )}
+            {useAutocompleteComponent ? (
                 <div className="w-full">
                     <Autocomplete
                         tags={tags}
                         setTags={setTags}
-                        setInputValue={setInputValue}
+                        setInputValue={updateQuery}
                         autocompleteOptions={
-                            (autocompleteOptions || []) as Tag[]
+                            (resolvedAutocompleteOptions || []) as Tag[]
                         }
-                        filterQuery={inputValue}
+                        filterQuery={effectiveQuery}
+                        disableSearch={disableAutocompleteSearch}
+                        onFilterQueryChange={
+                            disableAutocompleteSearch
+                                ? onSearchQueryChange
+                                : undefined
+                        }
                         setTagCount={setTagCount}
                         maxTags={maxTags}
                         onTagAdd={onTagAdd}
@@ -579,7 +675,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                 // <CommandInput
                                 //   placeholder={maxTags !== undefined && tags.length >= maxTags ? placeholderWhenFull : placeholder}
                                 //   ref={inputRef}
-                                //   value={inputValue}
+                                //   value={mainInputValue}
                                 //   disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
                                 //   onChangeCapture={handleInputChange}
                                 //   onKeyDown={handleKeyDown}
@@ -601,7 +697,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                             ? placeholderWhenFull
                                             : placeholder
                                     }
-                                    value={inputValue}
+                                    value={mainInputValue}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={handleInputFocus}
@@ -662,7 +758,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                     {/* <CommandInput
                     placeholder={maxTags !== undefined && tags.length >= maxTags ? placeholderWhenFull : placeholder}
                     ref={inputRef}
-                    value={inputValue}
+                    value={mainInputValue}
                     disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
                     onChangeCapture={handleInputChange}
                     onKeyDown={handleKeyDown}
@@ -685,14 +781,14 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                                 ? placeholderWhenFull
                                                 : placeholder
                                         }
-                                        value={inputValue}
+                                        value={mainInputValue}
                                         onChange={handleInputChange}
                                         onKeyDown={handleKeyDown}
                                         onFocus={handleInputFocus}
                                         onBlur={handleInputBlur}
                                         {...inputProps}
                                         className={cn(
-                                            "border-0 px-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                            "border-0 px-2 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
                                             // className,
                                             styleClasses?.input
                                         )}
@@ -741,7 +837,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                 {/* <CommandInput
                   placeholder={maxTags !== undefined && tags.length >= maxTags ? placeholderWhenFull : placeholder}
                   ref={inputRef}
-                  value={inputValue}
+                  value={mainInputValue}
                   disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
                   onChangeCapture={handleInputChange}
                   onKeyDown={handleKeyDown}
@@ -763,14 +859,14 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                             ? placeholderWhenFull
                                             : placeholder
                                     }
-                                    value={inputValue}
+                                    value={mainInputValue}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={handleInputFocus}
                                     onBlur={handleInputBlur}
                                     {...inputProps}
                                     className={cn(
-                                        "border-0 px-0 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
+                                        "border-0 px-2 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
                                         // className,
                                         styleClasses?.input
                                     )}
@@ -806,7 +902,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                         ? placeholderWhenFull
                                         : placeholder
                                 }
-                                value={inputValue}
+                                value={mainInputValue}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyDown}
                                 onFocus={handleInputFocus}
@@ -866,7 +962,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                         ? placeholderWhenFull
                                         : placeholder
                                 }
-                                value={inputValue}
+                                value={mainInputValue}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyDown}
                                 onFocus={handleInputFocus}

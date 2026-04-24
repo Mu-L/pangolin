@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 import { TagInputStyleClassesProps, type Tag as TagType } from "./tag-input";
 import {
     Command,
@@ -35,6 +41,9 @@ type AutocompleteProps = {
     usePortal?: boolean;
     /** Narrows the dropdown list from the main field (cmdk search filters further). */
     filterQuery?: string;
+    /** When true, skip internal filtering and make the CommandInput controlled — parent owns filtering. */
+    disableSearch?: boolean;
+    onFilterQueryChange?: (value: string) => void;
 };
 
 export const Autocomplete: React.FC<AutocompleteProps> = ({
@@ -51,7 +60,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     children,
     classStyleProps,
     usePortal,
-    filterQuery = ""
+    filterQuery = "",
+    disableSearch = false,
+    onFilterQueryChange
 }) => {
     const triggerContainerRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
@@ -64,12 +75,13 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const [commandResetKey, setCommandResetKey] = useState(0);
 
     const visibleOptions = useMemo(() => {
+        if (disableSearch) return autocompleteOptions;
         const q = filterQuery.trim().toLowerCase();
         if (!q) return autocompleteOptions;
         return autocompleteOptions.filter((option) =>
             option.text.toLowerCase().includes(q)
         );
-    }, [autocompleteOptions, filterQuery]);
+    }, [autocompleteOptions, filterQuery, disableSearch]);
 
     useEffect(() => {
         if (isPopoverOpen) {
@@ -220,7 +232,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             >
                 <PopoverAnchor asChild>
                     <div
-                        className="relative h-full flex items-center rounded-md border border-input bg-transparent pr-3"
+                        className="relative h-full flex items-center rounded-md border border-input bg-transparent pr-1"
                         ref={triggerContainerRef}
                     >
                         {childrenWithProps}
@@ -260,10 +272,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                     side="bottom"
                     align="start"
                     forceMount
-                    className={cn(
-                        "p-0",
-                        classStyleProps?.popoverContent
-                    )}
+                    className={cn("p-0", classStyleProps?.popoverContent)}
                     style={{
                         width: `${popoverWidth}px`,
                         minWidth: `${popoverWidth}px`,
@@ -272,15 +281,25 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 >
                     <Command
                         key={commandResetKey}
+                        shouldFilter={!disableSearch}
                         className={cn(
                             "rounded-lg border-0 shadow-none",
                             classStyleProps?.command
                         )}
                     >
-                        <CommandInput
-                            placeholder={t("searchPlaceholder")}
-                            className="h-9"
-                        />
+                        {disableSearch ? (
+                            <CommandInput
+                                placeholder={t("searchPlaceholder")}
+                                className="h-9"
+                                value={filterQuery}
+                                onValueChange={onFilterQueryChange}
+                            />
+                        ) : (
+                            <CommandInput
+                                placeholder={t("searchPlaceholder")}
+                                className="h-9"
+                            />
+                        )}
                         <CommandList
                             className={cn(
                                 "max-h-[300px]",
@@ -300,7 +319,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                                             key={option.id}
                                             value={`${option.text} ${option.id}`}
                                             onSelect={() => toggleTag(option)}
-                                            className={classStyleProps?.commandItem}
+                                            className={
+                                                classStyleProps?.commandItem
+                                            }
                                         >
                                             <Check
                                                 className={cn(

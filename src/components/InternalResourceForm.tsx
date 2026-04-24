@@ -1572,7 +1572,22 @@ export function InternalResourceForm({
                                                 <FormLabel>
                                                     {t("machineClients")}
                                                 </FormLabel>
-                                                <Popover>
+                                                <MachinesSelector
+                                                    {...field}
+                                                    selectedMachines={
+                                                        field.value ?? []
+                                                    }
+                                                    orgId={orgId}
+                                                    onSelectMachines={(
+                                                        machines
+                                                    ) => {
+                                                        form.setValue(
+                                                            "clients",
+                                                            machines
+                                                        );
+                                                    }}
+                                                />
+                                                {/* <Popover>
                                                     <PopoverTrigger asChild>
                                                         <FormControl>
                                                             <Button
@@ -1638,7 +1653,7 @@ export function InternalResourceForm({
                                                             }}
                                                         />
                                                     </PopoverContent>
-                                                </Popover>
+                                                </Popover> */}
                                                 <FormMessage />
                                             </FormItem>
                                         )}
