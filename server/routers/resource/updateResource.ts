@@ -24,7 +24,7 @@ import {
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { validateAndConstructDomain } from "@server/lib/domainUtils";
+import { validateAndConstructDomain, checkWildcardDomainConflict } from "@server/lib/domainUtils";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -407,6 +407,16 @@ async function updateHttpResource(
                         HttpCode.CONFLICT,
                         "Resource with that domain already exists"
                     )
+                );
+            }
+
+            const wildcardConflict = await checkWildcardDomainConflict(
+                fullDomain,
+                resource.resourceId
+            );
+            if (wildcardConflict.conflict) {
+                return next(
+                    createHttpError(HttpCode.CONFLICT, wildcardConflict.message)
                 );
             }
 

@@ -906,6 +906,21 @@ export default function DomainPicker({
                     )}
                 </div>
             )}
+            {selectedBaseDomain?.domainType === "wildcard" &&
+                isWildcardSubdomain(subdomainInput) && (
+                    <p className="text-sm text-muted-foreground">
+                        {t("domainPickerWildcardCertWarning")}{" "}
+                        <a
+                            href="https://docs.pangolin.net/self-host/advanced/wild-card-domains#setting-up-wildcard-certificates"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline text-primary"
+                        >
+                            {t("domainPickerWildcardCertWarningLink")}
+                        </a>
+                        .
+                    </p>
+                )}
         </div>
     );
 }

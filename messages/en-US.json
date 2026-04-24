@@ -3176,5 +3176,7 @@
     "webhookHeaderKeyPlaceholder": "Key",
     "webhookHeaderValuePlaceholder": "Value",
     "alertLabel": "Alert",
-    "domainPickerWildcardSubdomainNotAllowed": "Wildcard subdomains are not allowed."
+    "domainPickerWildcardSubdomainNotAllowed": "Wildcard subdomains are not allowed.",
+    "domainPickerWildcardCertWarning": "Wildcard certificates must be configured separately in Traefik.",
+    "domainPickerWildcardCertWarningLink": "Learn more"
 }
