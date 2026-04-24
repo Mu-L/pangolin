@@ -4,6 +4,7 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
 import { DataTable } from "@app/components/ui/data-table";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
     DropdownMenu,
@@ -12,6 +13,11 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -23,12 +29,14 @@ import {
     ArrowUpRight,
     ChevronDown,
     ChevronsUpDownIcon,
+    Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { useMemo, useState, useTransition } from "react";
 
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
@@ -219,13 +227,15 @@ type ClientResourcesTableProps = {
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
+    initialFilterSite?: Selectedsite | null;
 };
 
 export default function ClientResourcesTable({
     internalResources,
     orgId,
     pagination,
-    rowCount
+    rowCount,
+    initialFilterSite = null
 }: ClientResourcesTableProps) {
     const router = useRouter();
     const {
@@ -247,8 +257,25 @@ export default function ClientResourcesTable({
     const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
 
     const [isRefreshing, startTransition] = useTransition();
+
+    const siteIdQ = searchParams.get("siteId");
+    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+    const selectedSite: Selectedsite | null = useMemo(() => {
+        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
+            return null;
+        }
+        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
+            return initialFilterSite;
+        }
+        return {
+            siteId: siteIdNum,
+            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
+            type: "newt"
+        };
+    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     const refreshData = () => {
         startTransition(() => {
@@ -391,7 +418,55 @@ export default function ClientResourcesTable({
             id: "sites",
             accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
             friendlyName: t("sites"),
-            header: () => <span className="p-3">{t("sites")}</span>,
+            header: () => (
+                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedSite && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("sites")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedSite && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedSite.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearSiteFilter}
+                            >
+                                {t("standaloneHcFilterAnySite")}
+                            </Button>
+                        </div>
+                        <SitesSelector
+                            orgId={orgId}
+                            selectedSite={selectedSite}
+                            onSelectSite={onPickSite}
+                        />
+                    </PopoverContent>
+                </Popover>
+            ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
@@ -575,6 +650,16 @@ export default function ClientResourcesTable({
             searchParams
         });
     }
+
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
+
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);

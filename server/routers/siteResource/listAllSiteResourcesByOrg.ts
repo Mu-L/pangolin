@@ -4,7 +4,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -68,6 +68,16 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
             enum: ["asc", "desc"],
             default: "asc",
             description: "Sort order"
+        }),
+    siteId: z.coerce
+        .number<string>()
+        .int()
+        .positive()
+        .optional()
+        .openapi({
+            type: "integer",
+            description:
+                "When set, only site resources associated with this site (via network) are returned"
         })
 });
 
@@ -199,10 +209,31 @@ export async function listAllSiteResourcesByOrg(
         }
 
         const { orgId } = parsedParams.data;
-        const { page, pageSize, query, mode, sort_by, order } =
+        const { page, pageSize, query, mode, sort_by, order, siteId } =
             parsedQuery.data;
 
         const conditions = [and(eq(siteResources.orgId, orgId))];
+
+        if (siteId != null) {
+            const resourcesForSite = db
+                .select({ id: siteResources.siteResourceId })
+                .from(siteResources)
+                .innerJoin(
+                    siteNetworks,
+                    eq(siteResources.networkId, siteNetworks.networkId)
+                )
+                .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+                .where(
+                    and(
+                        eq(siteResources.orgId, orgId),
+                        eq(sites.orgId, orgId),
+                        eq(sites.siteId, siteId)
+                    )
+                );
+            conditions.push(
+                inArray(siteResources.siteResourceId, resourcesForSite)
+            );
+        }
         if (query) {
             conditions.push(
                 or(
