@@ -62,7 +62,6 @@ async function query(domainId: string, domain: string) {
             .where(
                 and(
                     eq(certificates.domainId, domainId),
-                    eq(certificates.wildcard, true), // only NS domains can have wildcard certs
                     or(
                         eq(certificates.domain, domain),
                         eq(certificates.domain, domainLevelDown),
