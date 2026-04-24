@@ -101,7 +101,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 .where(
                     and(
                         eq(targetHealthCheck.targetHealthCheckId, targetIdNum),
-                        eq(sites.siteId, newt.siteId)
+                        eq(targetHealthCheck.siteId, newt.siteId)
                     )
                 )
                 .limit(1);
