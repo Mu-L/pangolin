@@ -312,8 +312,7 @@ async function syncAcmeCerts(
             .from(certificates)
             .where(
                 and(
-                    eq(certificates.domain, domain),
-                    eq(certificates.wildcard, wildcard)
+                    eq(certificates.domain, domain)
                 )
             )
             .limit(1);
@@ -392,6 +391,9 @@ async function syncAcmeCerts(
         }
 
         if (existing.length > 0) {
+            logger.debug(
+                `acmeCertSync: updating existing certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+            );
             await db
                 .update(certificates)
                 .set({
@@ -416,6 +418,9 @@ async function syncAcmeCerts(
                 oldKeyPem
             );
         } else {
+            logger.debug(
+                `acmeCertSync: inserting new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+            );
             await db.insert(certificates).values({
                 domain,
                 domainId,
