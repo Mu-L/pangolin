@@ -346,6 +346,14 @@ export default async function migration() {
         ALTER TABLE "siteResources" DROP COLUMN "protocol";
         `);
 
+        await db.execute(sql`
+        ALTER TABLE "resources" ADD "health" varchar;
+        `);
+
+        await db.execute(sql`
+        ALTER TABLE "resources" ADD "wildcard" boolean DEFAULT false NOT NULL;
+        `);
+
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
     } catch (e) {

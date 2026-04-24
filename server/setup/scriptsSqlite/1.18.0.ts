@@ -330,6 +330,17 @@ export default async function migration() {
                 ALTER TABLE 'sites' ADD 'networkId' integer REFERENCES networks(networkId);
             `
             ).run();
+            db.prepare(
+                `
+                ALTER TABLE 'resources' ADD 'health' text;
+            `
+            ).run();
+            db.prepare(
+                `
+                ALTER TABLE 'resources' ADD 'wildcard' integer DEFAULT false NOT NULL;
+            `
+            ).run();
+
         })();
 
         db.pragma("foreign_keys = ON");
