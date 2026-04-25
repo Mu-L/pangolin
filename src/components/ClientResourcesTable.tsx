@@ -4,6 +4,7 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
 import { DataTable } from "@app/components/ui/data-table";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
     DropdownMenu,
@@ -12,6 +13,11 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -23,12 +29,14 @@ import {
     ArrowUpRight,
     ChevronDown,
     ChevronsUpDownIcon,
+    Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { useMemo, useState, useTransition } from "react";
 
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
@@ -40,13 +48,13 @@ import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
+import {
+    ResourceSitesStatusCell,
+    type ResourceSiteRow
+} from "@app/components/ResourceSitesStatusCell";
 
-export type InternalResourceSiteRow = {
-    siteId: number;
-    siteName: string;
-    siteNiceId: string;
-    online: boolean;
-};
+export type InternalResourceSiteRow = ResourceSiteRow;
 
 export type InternalResourceRow = {
     id: number;
@@ -111,121 +119,20 @@ function isSafeUrlForLink(href: string): boolean {
     }
 }
 
-type AggregateSitesStatus = "allOnline" | "partial" | "allOffline";
-
-function aggregateSitesStatus(
-    resourceSites: InternalResourceSiteRow[]
-): AggregateSitesStatus {
-    if (resourceSites.length === 0) {
-        return "allOffline";
-    }
-    const onlineCount = resourceSites.filter((rs) => rs.online).length;
-    if (onlineCount === resourceSites.length) return "allOnline";
-    if (onlineCount > 0) return "partial";
-    return "allOffline";
-}
-
-function aggregateStatusDotClass(status: AggregateSitesStatus): string {
-    switch (status) {
-        case "allOnline":
-            return "bg-green-500";
-        case "partial":
-            return "bg-yellow-500";
-        case "allOffline":
-        default:
-            return "bg-neutral-500";
-    }
-}
-
-function ClientResourceSitesStatusCell({
-    orgId,
-    resourceSites
-}: {
-    orgId: string;
-    resourceSites: InternalResourceSiteRow[];
-}) {
-    const t = useTranslations();
-
-    if (resourceSites.length === 0) {
-        return <span>-</span>;
-    }
-
-    const aggregate = aggregateSitesStatus(resourceSites);
-    const countLabel = t("multiSitesSelectorSitesCount", {
-        count: resourceSites.length
-    });
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex h-8 items-center gap-2 px-0 font-normal"
-                >
-                    <div
-                        className={cn(
-                            "h-2 w-2 shrink-0 rounded-full",
-                            aggregateStatusDotClass(aggregate)
-                        )}
-                    />
-                    <span className="text-sm tabular-nums">{countLabel}</span>
-                    <ChevronDown className="h-3 w-3 shrink-0" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-56">
-                {resourceSites.map((site) => {
-                    const isOnline = site.online;
-                    return (
-                        <DropdownMenuItem key={site.siteId} asChild>
-                            <Link
-                                href={`/${orgId}/settings/sites/${site.siteNiceId}`}
-                                className="flex cursor-pointer items-center justify-between gap-4"
-                            >
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <div
-                                        className={cn(
-                                            "h-2 w-2 shrink-0 rounded-full",
-                                            isOnline
-                                                ? "bg-green-500"
-                                                : "bg-neutral-500"
-                                        )}
-                                    />
-                                    <span className="truncate">
-                                        {site.siteName}
-                                    </span>
-                                </div>
-                                <span
-                                    className={cn(
-                                        "shrink-0 capitalize",
-                                        isOnline
-                                            ? "text-green-600"
-                                            : "text-muted-foreground"
-                                    )}
-                                >
-                                    {isOnline ? t("online") : t("offline")}
-                                </span>
-                            </Link>
-                        </DropdownMenuItem>
-                    );
-                })}
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-}
-
 type ClientResourcesTableProps = {
     internalResources: InternalResourceRow[];
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
+    initialFilterSite?: Selectedsite | null;
 };
 
 export default function ClientResourcesTable({
     internalResources,
     orgId,
     pagination,
-    rowCount
+    rowCount,
+    initialFilterSite = null
 }: ClientResourcesTableProps) {
     const router = useRouter();
     const {
@@ -247,8 +154,25 @@ export default function ClientResourcesTable({
     const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
 
     const [isRefreshing, startTransition] = useTransition();
+
+    const siteIdQ = searchParams.get("siteId");
+    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+    const selectedSite: Selectedsite | null = useMemo(() => {
+        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
+            return null;
+        }
+        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
+            return initialFilterSite;
+        }
+        return {
+            siteId: siteIdNum,
+            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
+            type: "newt"
+        };
+    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     const refreshData = () => {
         startTransition(() => {
@@ -294,9 +218,7 @@ export default function ClientResourcesTable({
 
         if (siteNames.length === 1) {
             return (
-                <Link
-                    href={`/${orgId}/settings/sites/${siteNiceIds[0]}`}
-                >
+                <Link href={`/${orgId}/settings/sites/${siteNiceIds[0]}`}>
                     <Button variant="outline">
                         {siteNames[0]}
                         <ArrowUpRight className="ml-2 h-4 w-4" />
@@ -321,10 +243,7 @@ export default function ClientResourcesTable({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                     {siteNames.map((siteName, idx) => (
-                        <DropdownMenuItem
-                            key={siteNiceIds[idx]}
-                            asChild
-                        >
+                        <DropdownMenuItem key={siteNiceIds[idx]} asChild>
                             <Link
                                 href={`/${orgId}/settings/sites/${siteNiceIds[idx]}`}
                                 className="flex items-center gap-2 cursor-pointer"
@@ -391,11 +310,59 @@ export default function ClientResourcesTable({
             id: "sites",
             accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
             friendlyName: t("sites"),
-            header: () => <span className="p-3">{t("sites")}</span>,
+            header: () => (
+                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedSite && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("sites")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedSite && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedSite.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className={dataTableFilterPopoverContentClassName}
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearSiteFilter}
+                            >
+                                {t("standaloneHcFilterAnySite")}
+                            </Button>
+                        </div>
+                        <SitesSelector
+                            orgId={orgId}
+                            selectedSite={selectedSite}
+                            onSelectSite={onPickSite}
+                        />
+                    </PopoverContent>
+                </Popover>
+            ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
-                    <ClientResourceSitesStatusCell
+                    <ResourceSitesStatusCell
                         orgId={resourceRow.orgId}
                         resourceSites={resourceRow.sites}
                     />
@@ -575,6 +542,16 @@ export default function ClientResourcesTable({
             searchParams
         });
     }
+
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
+
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);

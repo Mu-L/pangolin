@@ -50,6 +50,7 @@ import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 
 type StandaloneHealthChecksTableProps = {
     orgId: string;
@@ -376,7 +377,7 @@ export default function HealthChecksTable({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        className={dataTableFilterPopoverContentClassName}
                         align="start"
                     >
                         <div className="border-b p-1">
@@ -445,7 +446,7 @@ export default function HealthChecksTable({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                        className="w-[min(20rem,var(--radix-popover-trigger-width))] p-0"
+                        className={dataTableFilterPopoverContentClassName}
                         align="start"
                     >
                         <div className="border-b p-1">

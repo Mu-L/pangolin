@@ -4,18 +4,29 @@ import { cn } from "@app/lib/cn";
 
 export function InfoSections({
     children,
-    cols
+    cols,
+    columnSizing = "content"
 }: {
     children: React.ReactNode;
     cols?: number;
+    /** content (default): fixed gap, columns hug content, left-aligned; fill: equal-width columns across the row */
+    columnSizing?: "fill" | "content";
 }) {
+    const n = cols || 1;
+    const track =
+        columnSizing === "fill" ? "minmax(0, 1fr)" : "minmax(0, max-content)";
+
     return (
         <div
-            className={`grid grid-cols-2 md:grid-cols-(--columns) md:gap-4 gap-2 md:items-start`}
+            className={cn(
+                "grid grid-cols-2 md:grid-cols-(--columns) md:gap-16 gap-2 md:items-start",
+                columnSizing === "content" &&
+                    "md:justify-items-start md:justify-start"
+            )}
             style={{
                 // @ts-expect-error dynamic props don't work with tailwind, but we can set the
                 // value of a CSS variable at runtime and tailwind will just reuse that value
-                "--columns": `repeat(${cols || 1}, minmax(0, 1fr))`
+                "--columns": `repeat(${n}, ${track})`
             }}
         >
             {children}

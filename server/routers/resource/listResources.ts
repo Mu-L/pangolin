@@ -113,6 +113,16 @@ const listResourcesSchema = z.object({
             enum: ["no_targets", "healthy", "degraded", "offline", "unknown"],
             description:
                 "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status. `no_targets` means the resource has no targets."
+        }),
+    siteId: z.coerce
+        .number<string>()
+        .int()
+        .positive()
+        .optional()
+        .openapi({
+            type: "integer",
+            description:
+                "When set, only resources that have at least one target on this site are returned"
         })
 });
 
@@ -140,6 +150,12 @@ export type ResourceWithTargets = {
         enabled: boolean;
         healthStatus: "healthy" | "unhealthy" | "unknown" | null;
         siteName: string | null;
+    }>;
+    sites: Array<{
+        siteId: number;
+        siteName: string;
+        siteNiceId: string;
+        online: boolean;
     }>;
 };
 
@@ -240,7 +256,8 @@ export async function listResources(
             query,
             healthStatus,
             sort_by,
-            order
+            order,
+            siteId
         } = parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
@@ -361,6 +378,18 @@ export async function listResources(
             if (typeof healthStatus !== "undefined") {
                 conditions.push(eq(resources.health, healthStatus));
             }
+            if (siteId != null) {
+                const resourcesWithSite = db
+                    .select({ resourceId: targets.resourceId })
+                    .from(targets)
+                    .innerJoin(sites, eq(targets.siteId, sites.siteId))
+                    .where(
+                        and(eq(sites.orgId, orgId), eq(sites.siteId, siteId))
+                    );
+                conditions.push(
+                    inArray(resources.resourceId, resourcesWithSite)
+                );
+            }
         }
 
         const baseQuery = queryResourcesBase().where(and(...conditions));
@@ -390,12 +419,15 @@ export async function listResources(
                       .select({
                           targetId: targets.targetId,
                           resourceId: targets.resourceId,
+                          siteId: targets.siteId,
                           ip: targets.ip,
                           port: targets.port,
                           enabled: targets.enabled,
                           healthStatus: targetHealthCheck.hcHealth,
                           hcEnabled: targetHealthCheck.hcEnabled,
-                          siteName: sites.name
+                          siteName: sites.name,
+                          siteNiceId: sites.niceId,
+                          siteOnline: sites.online
                       })
                       .from(targets)
                       .where(inArray(targets.resourceId, resourceIdList))
@@ -427,7 +459,8 @@ export async function listResources(
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,
-                    targets: []
+                    targets: [],
+                    sites: []
                 };
                 map.set(row.resourceId, entry);
             }
@@ -435,6 +468,33 @@ export async function listResources(
             entry.targets = allResourceTargets.filter(
                 (t) => t.resourceId === entry.resourceId
             );
+        }
+
+        for (const entry of map.values()) {
+            const raw = allResourceTargets.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
+            const siteById = new Map<
+                number,
+                {
+                    siteId: number;
+                    siteName: string;
+                    siteNiceId: string;
+                    online: boolean;
+                }
+            >();
+            for (const t of raw) {
+                if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
+                    continue;
+                }
+                siteById.set(t.siteId, {
+                    siteId: t.siteId,
+                    siteName: t.siteName ?? "",
+                    siteNiceId: t.siteNiceId ?? "",
+                    online: Boolean(t.siteOnline)
+                });
+            }
+            entry.sites = Array.from(siteById.values());
         }
 
         const resourcesList: ResourceWithTargets[] = Array.from(map.values());

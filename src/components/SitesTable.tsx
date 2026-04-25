@@ -239,9 +239,7 @@ export default function SitesTable({
                 if (originalRow.type == "local") {
                     return <span>-</span>;
                 }
-                return (
-                    <UptimeMiniBar siteId={originalRow.id} days={30} />
-                );
+                return <UptimeMiniBar siteId={originalRow.id} days={30} />;
             }
         },
         {
@@ -435,6 +433,22 @@ export default function SitesTable({
                                 >
                                     <DropdownMenuItem>
                                         {t("viewSettings")}
+                                    </DropdownMenuItem>
+                                </Link>
+                                <Link
+                                    className="block w-full"
+                                    href={`/${siteRow.orgId}/settings/resources/proxy?siteId=${siteRow.id}`}
+                                >
+                                    <DropdownMenuItem>
+                                        {t("sitesTableViewPublicResources")}
+                                    </DropdownMenuItem>
+                                </Link>
+                                <Link
+                                    className="block w-full"
+                                    href={`/${siteRow.orgId}/settings/resources/client?siteId=${siteRow.id}`}
+                                >
+                                    <DropdownMenuItem>
+                                        {t("sitesTableViewPrivateResources")}
                                     </DropdownMenuItem>
                                 </Link>
                                 <DropdownMenuItem
