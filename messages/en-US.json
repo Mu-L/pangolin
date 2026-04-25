@@ -93,6 +93,8 @@
     "siteConfirmCopy": "I have copied the config",
     "searchSitesProgress": "Search sites...",
     "siteAdd": "Add Site",
+    "sitesTableViewPublicResources": "View Public Resources",
+    "sitesTableViewPrivateResources": "View Private Resources",
     "siteInstallNewt": "Install Site",
     "siteInstallNewtDescription": "Install the site connector for your system",
     "WgConfiguration": "WireGuard Configuration",
