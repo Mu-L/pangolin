@@ -105,7 +105,7 @@ const listResourcesSchema = z.object({
                 "Filter resources based on authentication state. `protected` means the resource has at least one auth mechanism (password, pincode, header auth, SSO, or email whitelist). `not_protected` means the resource has no auth mechanisms. `none` means the resource is not protected by HTTP (i.e. it has no auth mechanisms and http is false)."
         }),
     healthStatus: z
-        .enum(["no_targets", "healthy", "degraded", "offline", "unknown"])
+        .enum(["healthy", "degraded", "unhealthy", "unknown"])
         .optional()
         .catch(undefined)
         .openapi({
@@ -143,27 +143,6 @@ export type ResourceWithTargets = {
     }>;
 };
 
-// Aggregate filters
-const total_targets = count(targets.targetId);
-const healthy_targets = sql<number>`SUM(
-                    CASE
-                    WHEN ${targetHealthCheck.hcHealth} = 'healthy' THEN 1
-                    ELSE 0
-                    END
-                ) `;
-const unknown_targets = sql<number>`SUM(
-                    CASE
-                    WHEN ${targetHealthCheck.hcHealth} = 'unknown' THEN 1
-                    ELSE 0
-                    END
-                ) `;
-const unhealthy_targets = sql<number>`SUM(
-                    CASE
-                    WHEN ${targetHealthCheck.hcHealth} = 'unhealthy' THEN 1
-                    ELSE 0
-                    END
-                ) `;
-
 function queryResourcesBase() {
     return db
         .select({
@@ -183,7 +162,8 @@ function queryResourcesBase() {
             niceId: resources.niceId,
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
+                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
+            health: resources.health
         })
         .from(resources)
         .leftJoin(
@@ -378,46 +358,12 @@ export async function listResources(
                     );
                     break;
             }
-        }
-
-        let aggregateFilters: SQL<any> | undefined = sql`1 = 1`;
-
-        if (typeof healthStatus !== "undefined") {
-            switch (healthStatus) {
-                case "healthy":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${healthy_targets} = ${total_targets}`
-                    );
-                    break;
-                case "degraded":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${unhealthy_targets} > 0`
-                    );
-                    break;
-                case "no_targets":
-                    aggregateFilters = sql`${total_targets} = 0`;
-                    break;
-                case "offline":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${healthy_targets} = 0`,
-                        sql`${unhealthy_targets} = ${total_targets}`
-                    );
-                    break;
-                case "unknown":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${unknown_targets} = ${total_targets}`
-                    );
-                    break;
+            if (typeof healthStatus !== "undefined") {
+                conditions.push(eq(resources.health, healthStatus));
             }
         }
 
-        const baseQuery = queryResourcesBase()
-            .where(and(...conditions))
-            .having(aggregateFilters);
+        const baseQuery = queryResourcesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(baseQuery.as("filtered_resources"));

@@ -166,6 +166,17 @@ export async function updateHealthCheck(
 
         const updateData: Record<string, unknown> = {};
 
+        const [existingHealthCheck] = await db
+            .select()
+            .from(targetHealthCheck)
+            .where(
+                and(
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
+                    eq(targetHealthCheck.orgId, orgId)
+                )
+            )
+            .limit(1);
+
         if (name !== undefined) updateData.name = name;
         if (siteId !== undefined) updateData.siteId = siteId;
         if (hcEnabled !== undefined) updateData.hcEnabled = hcEnabled;
@@ -189,6 +200,26 @@ export async function updateHealthCheck(
             updateData.hcHealthyThreshold = hcHealthyThreshold;
         if (hcUnhealthyThreshold !== undefined)
             updateData.hcUnhealthyThreshold = hcUnhealthyThreshold;
+
+        const hcEnabledTurnedOn =
+            parsedBody.data.hcEnabled === true &&
+            existingHealthCheck.hcEnabled === false;
+
+        let hcHealthValue: "unknown" | "healthy" | "unhealthy" | undefined;
+        if (
+            parsedBody.data.hcEnabled === false ||
+            parsedBody.data.hcEnabled === null
+        ) {
+            hcHealthValue = "unknown";
+        } else if (hcEnabledTurnedOn) {
+            hcHealthValue = "unhealthy";
+        } else {
+            hcHealthValue = undefined;
+        }
+
+        if (hcHealthValue) {
+            updateData.hcHealth = hcHealthValue;
+        }
 
         const [updated] = await db
             .update(targetHealthCheck)

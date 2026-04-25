@@ -245,7 +245,7 @@ export async function createTarget(
                 hcFollowRedirects: targetData.hcFollowRedirects ?? null,
                 hcMethod: targetData.hcMethod ?? null,
                 hcStatus: targetData.hcStatus ?? null,
-                hcHealth: "unknown",
+                hcHealth: targetData.hcEnabled ? "unhealthy" : "unknown",
                 hcTlsServerName: targetData.hcTlsServerName ?? null,
                 hcHealthyThreshold: targetData.hcHealthyThreshold ?? null,
                 hcUnhealthyThreshold: targetData.hcUnhealthyThreshold ?? null

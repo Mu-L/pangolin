@@ -141,7 +141,8 @@ export async function createHealthCheck(
                 hcStatus: hcStatus ?? null,
                 hcTlsServerName: hcTlsServerName ?? null,
                 hcHealthyThreshold,
-                hcUnhealthyThreshold
+                hcUnhealthyThreshold,
+                hcHealth: "unhealthy"
             })
             .returning();
 

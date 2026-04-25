@@ -327,7 +327,8 @@ async function createHttpResource(
                 ssl: true,
                 stickySession: stickySession,
                 postAuthPath: postAuthPath,
-                wildcard
+                wildcard,
+                health: "unknown"
             })
             .returning();
 

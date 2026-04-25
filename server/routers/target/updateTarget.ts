@@ -13,7 +13,7 @@ import { addTargets } from "../newt/targets";
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
-import { vs } from "@react-email/components";
+
 
 const updateTargetParamsSchema = z.strictObject({
     targetId: z.string().transform(Number).pipe(z.int().positive())
@@ -153,32 +153,6 @@ export async function updateTarget(
             );
         }
 
-        const targetData = {
-            ...target,
-            ...parsedBody.data
-        };
-
-        const existingTargets = await db
-            .select()
-            .from(targets)
-            .where(eq(targets.resourceId, target.resourceId));
-
-        const foundTarget = existingTargets.find(
-            (target) =>
-                target.targetId !== targetId && // Exclude the current target being updated
-                target.ip === targetData.ip &&
-                target.port === targetData.port &&
-                target.method === targetData.method &&
-                target.siteId === targetData.siteId
-        );
-
-        if (foundTarget) {
-            // log a warning
-            logger.warn(
-                `Target with IP ${targetData.ip}, port ${targetData.port}, method ${targetData.method} already exists for resource ID ${target.resourceId}`
-            );
-        }
-
         const { internalPort, targetIps } = await pickPort(site.siteId!, db);
 
         if (!internalPort) {
@@ -210,20 +184,46 @@ export async function updateTarget(
             .where(eq(targets.targetId, targetId))
             .returning();
 
+        const [existingHc] = await db
+            .select()
+            .from(targetHealthCheck)
+            .where(eq(targetHealthCheck.targetId, targetId))
+            .limit(1);
+
+        if (!existingHc) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Health check for target with ID ${targetId} not found`
+                )
+            );
+        }
+
         let hcHeaders = null;
         if (parsedBody.data.hcHeaders) {
             hcHeaders = JSON.stringify(parsedBody.data.hcHeaders);
         }
 
         // When health check is disabled, reset hcHealth to "unknown"
-        // to prevent previously unhealthy targets from being excluded
-        // Also when the site is not a newt, set hcHealth to "unknown"
-        const hcHealthValue =
+        // to prevent previously unhealthy targets from being excluded.
+        // Also when the site is not a newt, set hcHealth to "unknown".
+        // If hcEnabled is being turned on (was false, now true), set to "unhealthy"
+        // so the target must pass a health check before being considered healthy.
+        const hcEnabledTurnedOn =
+            parsedBody.data.hcEnabled === true && existingHc.hcEnabled === false;
+
+        let hcHealthValue: "unknown" | "healthy" | "unhealthy" | undefined;
+        if (
             parsedBody.data.hcEnabled === false ||
             parsedBody.data.hcEnabled === null ||
             site.type !== "newt"
-                ? "unknown"
-                : undefined;
+        ) {
+            hcHealthValue = "unknown";
+        } else if (hcEnabledTurnedOn) {
+            hcHealthValue = "unhealthy";
+        } else {
+            hcHealthValue = undefined;
+        }
 
         const [updatedHc] = await db
             .update(targetHealthCheck)
@@ -245,7 +245,7 @@ export async function updateTarget(
                 hcTlsServerName: parsedBody.data.hcTlsServerName,
                 hcHealthyThreshold: parsedBody.data.hcHealthyThreshold,
                 hcUnhealthyThreshold: parsedBody.data.hcUnhealthyThreshold,
-                ...(hcHealthValue !== undefined && { hcHealth: hcHealthValue })
+                hcHealth: hcHealthValue
             })
             .where(eq(targetHealthCheck.targetId, targetId))
             .returning();

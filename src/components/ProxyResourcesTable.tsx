@@ -83,54 +83,24 @@ export type ResourceRow = {
     targetHost?: string;
     targetPort?: number;
     targets?: TargetHealth[];
+    health?: "online" | "degraded" | "unhealthy" | "unknown";
 };
-
-function getOverallHealthStatus(
-    targets?: TargetHealth[]
-): "online" | "degraded" | "offline" | "unknown" {
-    if (!targets || targets.length === 0) {
-        return "unknown";
-    }
-
-    const monitoredTargets = targets.filter(
-        (t) => t.enabled && t.healthStatus && t.healthStatus !== "unknown"
-    );
-
-    if (monitoredTargets.length === 0) {
-        return "unknown";
-    }
-
-    const healthyCount = monitoredTargets.filter(
-        (t) => t.healthStatus === "healthy"
-    ).length;
-    const unhealthyCount = monitoredTargets.filter(
-        (t) => t.healthStatus === "unhealthy"
-    ).length;
-
-    if (healthyCount === monitoredTargets.length) {
-        return "online";
-    } else if (unhealthyCount === monitoredTargets.length) {
-        return "offline";
-    } else {
-        return "degraded";
-    }
-}
 
 function StatusIcon({
     status,
     className = ""
 }: {
-    status: "online" | "degraded" | "offline" | "unknown";
+    status: string | undefined | null;
     className?: string;
 }) {
     const iconClass = `h-4 w-4 ${className}`;
 
     switch (status) {
-        case "online":
+        case "healthy":
             return <CheckCircle2 className={`${iconClass} text-green-500`} />;
         case "degraded":
             return <CheckCircle2 className={`${iconClass} text-yellow-500`} />;
-        case "offline":
+        case "unhealthy":
             return <XCircle className={`${iconClass} text-destructive`} />;
         case "unknown":
             return <Clock className={`${iconClass} text-muted-foreground`} />;
@@ -231,12 +201,18 @@ export default function ProxyResourcesTable({
         }
     }
 
-    function TargetStatusCell({ targets }: { targets?: TargetHealth[] }) {
-        const overallStatus = getOverallHealthStatus(targets);
+    function TargetStatusCell({
+        targets,
+        healthStatus
+    }: {
+        targets?: TargetHealth[];
+        healthStatus?: string;
+    }) {
+        const overallStatus = healthStatus;
 
         if (!targets || targets.length === 0) {
             return (
-                <div id="LOOK_FOR_ME" className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                     <StatusIcon status="unknown" />
                     <span className="text-sm">
                         {t("resourcesTableNoTargets")}
@@ -266,8 +242,8 @@ export default function ProxyResourcesTable({
                                 t("resourcesTableHealthy")}
                             {overallStatus === "degraded" &&
                                 t("resourcesTableDegraded")}
-                            {overallStatus === "offline" &&
-                                t("resourcesTableOffline")}
+                            {overallStatus === "unhealthy" &&
+                                t("resourcesTableUnhealthy")}
                             {overallStatus === "unknown" &&
                                 t("resourcesTableUnknown")}
                         </span>
@@ -405,10 +381,9 @@ export default function ProxyResourcesTable({
                             value: "degraded",
                             label: t("resourcesTableDegraded")
                         },
-                        { value: "offline", label: t("resourcesTableOffline") },
                         {
-                            value: "no_targets",
-                            label: t("resourcesTableNoTargets")
+                            value: "unhealty",
+                            label: t("resourcesTableUnhealthy")
                         },
                         { value: "unknown", label: t("resourcesTableUnknown") }
                     ]}
@@ -429,12 +404,15 @@ export default function ProxyResourcesTable({
                 return <TargetStatusCell targets={resourceRow.targets} />;
             },
             sortingFn: (rowA, rowB) => {
-                const statusA = getOverallHealthStatus(rowA.original.targets);
-                const statusB = getOverallHealthStatus(rowB.original.targets);
+                const statusA = rowA.original.health;
+                const statusB = rowB.original.health;
+                if (!statusA && !statusB) return 0;
+                if (!statusA) return 1;
+                if (!statusB) return -1;
                 const statusOrder = {
                     online: 3,
                     degraded: 2,
-                    offline: 1,
+                    unhealthy: 1,
                     unknown: 0
                 };
                 return statusOrder[statusA] - statusOrder[statusB];
@@ -446,9 +424,7 @@ export default function ProxyResourcesTable({
             header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return (
-                    <UptimeMiniBar resourceId={resourceRow.id} days={30} />
-                );
+                return <UptimeMiniBar resourceId={resourceRow.id} days={30} />;
             }
         },
         {

@@ -173,15 +173,25 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
     const otherTargets = await trx
         .select({ hcHealth: targetHealthCheck.hcHealth })
         .from(targets)
+        .innerJoin(targetHealthCheck, eq(targetHealthCheck.targetId, targets.targetId))
         .where(eq(targets.resourceId, resource.resourceId));
 
     let health = "healthy";
     const allHealthy = otherTargets.every((t) => t.hcHealth === "healthy");
-    if (!allHealthy) {
+    const allUnhealthy = otherTargets.every((t) => t.hcHealth === "unhealthy");
+
+    if (allHealthy) {
+        health = "healthy";
+    } else if (allUnhealthy) {
         logger.debug(
-            `Not marking resource ${resource.resourceId} as healthy because not all targets are healthy`
+            `Marking resource ${resource.resourceId} as unhealthy because all targets are unhealthy`
         );
         health = "unhealthy";
+    } else {
+        logger.debug(
+            `Marking resource ${resource.resourceId} as degraded because some targets are unhealthy`
+        );
+        health = "degraded";
     }
 
     if (health != resource.health) {
