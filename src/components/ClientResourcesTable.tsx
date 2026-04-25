@@ -49,6 +49,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
+import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
 import {
     ResourceSitesStatusCell,
     type ResourceSiteRow
@@ -86,28 +87,13 @@ export type InternalResourceRow = {
     fullDomain?: string | null;
 };
 
-function resolveHttpHttpsDisplayPort(
-    mode: "http",
-    httpHttpsPort: number | null
-): number {
-    if (httpHttpsPort != null) {
-        return httpHttpsPort;
-    }
-    return 80;
-}
-
 function formatDestinationDisplay(row: InternalResourceRow): string {
-    const { mode, destination, httpHttpsPort, scheme } = row;
-    if (mode !== "http") {
-        return destination;
-    }
-    const port = resolveHttpHttpsDisplayPort(mode, httpHttpsPort);
-    const downstreamScheme = scheme ?? "http";
-    const hostPart =
-        destination.includes(":") && !destination.startsWith("[")
-            ? `[${destination}]`
-            : destination;
-    return `${downstreamScheme}://${hostPart}:${port}`;
+    return formatSiteResourceDestinationDisplay({
+        mode: row.mode,
+        destination: row.destination,
+        httpHttpsPort: row.httpHttpsPort,
+        scheme: row.scheme
+    });
 }
 
 function isSafeUrlForLink(href: string): boolean {
@@ -609,6 +595,7 @@ export default function ClientResourcesTable({
                 rows={internalResources}
                 tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
+                searchQuery={searchParams.get("query") ?? ""}
                 onAdd={() => setIsCreateDialogOpen(true)}
                 addButtonText={t("resourceAdd")}
                 onSearch={handleSearchChange}

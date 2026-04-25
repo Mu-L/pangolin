@@ -42,6 +42,10 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
             title: t("general"),
             href: `/${params.orgId}/settings/sites/${params.niceId}/general`
         },
+        {
+            title: t("siteResourcesTab"),
+            href: `/${params.orgId}/settings/sites/${params.niceId}/resources`
+        },
         ...(site.type !== "local"
             ? [
                   {
