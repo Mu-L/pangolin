@@ -24,7 +24,8 @@ import { eq, and } from "drizzle-orm";
 import {
     fireResourceHealthyAlert,
     fireResourceUnhealthyAlert,
-    fireResourceToggleAlert
+    fireResourceToggleAlert,
+    fireResourceDegradedAlert
 } from "#private/lib/alerts/events/resourceEvents";
 
 const paramsSchema = z.strictObject({
@@ -33,7 +34,12 @@ const paramsSchema = z.strictObject({
 });
 
 const bodySchema = z.strictObject({
-    eventType: z.enum(["resource_healthy", "resource_unhealthy", "resource_toggle"])
+    eventType: z.enum([
+        "resource_healthy",
+        "resource_unhealthy",
+        "resource_degraded",
+        "resource_toggle"
+    ])
 });
 
 export type TriggerResourceAlertResponse = {
@@ -101,8 +107,8 @@ export async function triggerResourceAlert(
                 resourceId,
                 resource.name ?? undefined
             );
-        } else {
-            await fireResourceToggleAlert(
+        } else if (eventType === "resource_degraded") {
+            await fireResourceDegradedAlert(
                 orgId,
                 resourceId,
                 resource.name ?? undefined

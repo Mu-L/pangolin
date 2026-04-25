@@ -12,7 +12,10 @@
  */
 
 import logger from "@server/logger";
-import { AlertContext, WebhookAlertConfig } from "@server/routers/alertRule/types";
+import {
+    AlertContext,
+    WebhookAlertConfig
+} from "@server/routers/alertRule/types";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RETRIES = 3;
@@ -56,7 +59,10 @@ export async function sendAlertWebhook(
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         const controller = new AbortController();
-        const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        const timeoutHandle = setTimeout(
+            () => controller.abort(),
+            REQUEST_TIMEOUT_MS
+        );
 
         let response: Response;
         try {
@@ -75,7 +81,9 @@ export async function sendAlertWebhook(
                 );
             } else {
                 const msg = err instanceof Error ? err.message : String(err);
-                lastError = new Error(`Alert webhook: request to "${url}" failed – ${msg}`);
+                lastError = new Error(
+                    `Alert webhook: request to "${url}" failed – ${msg}`
+                );
             }
             if (attempt < MAX_RETRIES) {
                 const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
@@ -111,11 +119,18 @@ export async function sendAlertWebhook(
             continue;
         }
 
-        logger.debug(`Alert webhook sent successfully to "${url}" for event "${context.eventType}" (attempt ${attempt}/${MAX_RETRIES})`);
+        logger.debug(
+            `Alert webhook sent successfully to "${url}" for event "${context.eventType}" (attempt ${attempt}/${MAX_RETRIES})`
+        );
         return;
     }
 
-    throw lastError ?? new Error(`Alert webhook: all ${MAX_RETRIES} attempts failed for "${url}"`);
+    throw (
+        lastError ??
+        new Error(
+            `Alert webhook: all ${MAX_RETRIES} attempts failed for "${url}"`
+        )
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +154,8 @@ function deriveStatus(
         case "health_check_unhealthy":
         case "resource_unhealthy":
             return "unhealthy";
+        case "resource_degraded":
+            return "degraded";
         case "health_check_toggle":
         case "resource_toggle":
             return String(data.status ?? "unknown");
@@ -154,7 +171,9 @@ function deriveStatus(
 // Header construction (mirrors HttpLogDestination.buildHeaders)
 // ---------------------------------------------------------------------------
 
-function buildHeaders(webhookConfig: WebhookAlertConfig): Record<string, string> {
+function buildHeaders(
+    webhookConfig: WebhookAlertConfig
+): Record<string, string> {
     const headers: Record<string, string> = {
         "Content-Type": "application/json"
     };

@@ -76,6 +76,7 @@ const SITE_ALERT_EVENT_TYPES = [
 const RESOURCE_ALERT_EVENT_TYPES = [
     "resource_healthy",
     "resource_unhealthy",
+    "resource_degraded",
     "resource_toggle"
 ] as const;
 

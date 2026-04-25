@@ -23,6 +23,7 @@ import {
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import {
+    fireResourceDegradedAlert,
     fireResourceHealthyAlert,
     fireResourceUnhealthyAlert
 } from "./resourceEvents";
@@ -211,6 +212,14 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
             );
         } else if (health === "healthy") {
             await fireResourceHealthyAlert(
+                orgId,
+                resource.resourceId,
+                resource.name,
+                undefined,
+                trx
+            );
+        } else if (health === "degraded") {
+            await fireResourceDegradedAlert(
                 orgId,
                 resource.resourceId,
                 resource.name,
