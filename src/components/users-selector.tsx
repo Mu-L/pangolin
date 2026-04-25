@@ -1,0 +1,64 @@
+import { orgQueries } from "@app/lib/queries";
+import type { ListUsersResponse } from "@server/routers/user";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useDebounce } from "use-debounce";
+
+import { useTranslations } from "next-intl";
+import { MultiSelectTagInput } from "./multi-select/multi-select-tag-input";
+
+export type SelectedUser = { id: string; text: string };
+
+export type UsersSelectorProps = {
+    orgId: string;
+    selectedUsers?: SelectedUser[];
+    onSelectUsers: (users: SelectedUser[]) => void;
+};
+
+export function UsersSelector({
+    orgId,
+    selectedUsers = [],
+    onSelectUsers
+}: UsersSelectorProps) {
+    const t = useTranslations();
+    const [userSearchQuery, setUserSearchQuery] = useState("");
+
+    const [debouncedValue] = useDebounce(userSearchQuery, 150);
+
+    // TODO: switch back to 7 items
+    const perPage = 1;
+
+    const { data: users = [] } = useQuery(
+        orgQueries.users({ orgId, perPage, query: debouncedValue })
+    );
+
+    // always include the selected users in the list (if the user isn't searching)
+    const usersShown = useMemo(() => {
+        const allUsers: Array<SelectedUser> = users.map((u) => ({
+            id: u.id,
+            text: getUserDisplayName(u)
+        }));
+        if (debouncedValue.trim().length === 0) {
+            for (const user of selectedUsers) {
+                if (!allUsers.find((u) => u.id === user.id)) {
+                    allUsers.unshift(user);
+                }
+            }
+        }
+        return allUsers;
+    }, [users, selectedUsers, debouncedValue]);
+
+    return (
+        <MultiSelectTagInput
+            buttonText={t("accessUserSelect")}
+            searchPlaceholder={t("search")}
+            emptyPlaceholder={t("userNotFoundWithUsername")}
+            searchQuery={userSearchQuery}
+            onSearch={setUserSearchQuery}
+            options={usersShown}
+            value={selectedUsers}
+            onChange={onSelectUsers}
+        />
+    );
+}

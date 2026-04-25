@@ -9,8 +9,8 @@ import { ChevronDownIcon, XIcon } from "lucide-react";
 import {
     type TagValue,
     type MultiSelectTagsProps,
-    MultiSelectTags
-} from "./multi-select-tags";
+    MultiSelectContent
+} from "./multi-select-content";
 import { useState } from "react";
 
 export interface MultiSelectInputProps<
@@ -19,7 +19,7 @@ export interface MultiSelectInputProps<
     buttonText?: string;
 }
 
-export function MultiSelectInput<T extends TagValue>({
+export function MultiSelectTagInput<T extends TagValue>({
     buttonText,
     ...props
 }: MultiSelectInputProps<T>) {
@@ -83,7 +83,7 @@ export function MultiSelectInput<T extends TagValue>({
                 </div>
             </PopoverTrigger>
             <PopoverContent className="p-0">
-                <MultiSelectTags {...props} />
+                <MultiSelectContent {...props} />
             </PopoverContent>
         </Popover>
     );

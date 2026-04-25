@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { useTranslations } from "next-intl";
-import { MultiSelectInput } from "./multi-select/multi-select-input";
+import { MultiSelectTagInput } from "./multi-select/multi-select-tag-input";
 
 export type SelectedMachine = Pick<
     ListClientsResponse["clients"][number],
@@ -46,11 +46,11 @@ export function MachinesSelector({
                 }
             }
         }
-        return allMachines.slice(0, perPage);
+        return allMachines;
     }, [machines, selectedMachines, debouncedValue]);
 
     return (
-        <MultiSelectInput
+        <MultiSelectTagInput
             buttonText={t("accessClientSelect")}
             searchPlaceholder={t("search")}
             emptyPlaceholder={t("machineNotFound")}

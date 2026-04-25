@@ -23,7 +23,7 @@ export type MultiSelectTagsProps<T extends TagValue> = {
     ref?: Ref<HTMLButtonElement>;
 };
 
-export function MultiSelectTags<T extends TagValue>({
+export function MultiSelectContent<T extends TagValue>({
     emptyPlaceholder,
     searchPlaceholder,
     searchQuery,
@@ -40,7 +40,8 @@ export function MultiSelectTags<T extends TagValue>({
                 value={searchQuery}
                 onValueChange={onSearch}
             />
-            <CommandList>
+            {/* FIXME: why isn't this list scrolling ????? */}
+            <CommandList className="scroll-py-0 max-h-20">
                 <CommandEmpty>{emptyPlaceholder}</CommandEmpty>
                 <CommandGroup>
                     {options.map((option) => (

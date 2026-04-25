@@ -60,6 +60,7 @@ import { MachinesSelector } from "./machines-selector";
 import DomainPicker from "@app/components/DomainPicker";
 import { SwitchInput } from "@app/components/SwitchInput";
 import CertificateStatus from "@app/components/CertificateStatus";
+import { UsersSelector } from "./users-selector";
 
 // --- Helpers (shared) ---
 
@@ -1522,7 +1523,7 @@ export function InternalResourceForm({
                                     render={({ field }) => (
                                         <FormItem className="flex flex-col items-start">
                                             <FormLabel>{t("users")}</FormLabel>
-                                            <FormControl>
+                                            {/* <FormControl>
                                                 <TagInput
                                                     {...field}
                                                     activeTagIndex={
@@ -1558,7 +1559,23 @@ export function InternalResourceForm({
                                                     }
                                                     sortTags={true}
                                                 />
-                                            </FormControl>
+                                            </FormControl> */}
+                                            <UsersSelector
+                                                {...field}
+                                                selectedUsers={
+                                                    field.value ?? []
+                                                }
+                                                orgId={orgId}
+                                                onSelectUsers={(newUsers) => {
+                                                    form.setValue(
+                                                        "users",
+                                                        newUsers as [
+                                                            Tag,
+                                                            ...Tag[]
+                                                        ]
+                                                    );
+                                                }}
+                                            />
                                             <FormMessage />
                                         </FormItem>
                                     )}
