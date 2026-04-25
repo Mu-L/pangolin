@@ -308,29 +308,6 @@ export default function SitesTable({
             }
         },
         {
-            id: "resources",
-            accessorKey: "resourceCount",
-            friendlyName: t("resources"),
-            header: () => <span className="p-3">{t("resources")}</span>,
-            cell: ({ row }) => {
-                const siteRow = row.original;
-                return (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setResourcesDialogSite(siteRow)}
-                        className="flex h-8 items-center gap-2 px-0 font-normal"
-                    >
-                        <span className="text-sm tabular-nums">
-                            {siteRow.resourceCount} {t("resources")}
-                        </span>
-                        <ChevronDown className="h-3 w-3 shrink-0" />
-                    </Button>
-                );
-            }
-        },
-        {
             accessorKey: "type",
             friendlyName: t("type"),
             header: () => {
@@ -374,6 +351,29 @@ export default function SitesTable({
                         </div>
                     );
                 }
+            }
+        },
+        {
+            id: "resources",
+            accessorKey: "resourceCount",
+            friendlyName: t("resources"),
+            header: () => <span className="p-3">{t("resources")}</span>,
+            cell: ({ row }) => {
+                const siteRow = row.original;
+                return (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setResourcesDialogSite(siteRow)}
+                        className="flex h-8 items-center gap-2 px-0 font-normal"
+                    >
+                        <span className="text-sm tabular-nums">
+                            {siteRow.resourceCount} {t("resources")}
+                        </span>
+                        <ChevronDown className="h-3 w-3 shrink-0" />
+                    </Button>
+                );
             }
         },
         {

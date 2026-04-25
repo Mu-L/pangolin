@@ -431,9 +431,6 @@ export default function SiteResourcesOverview({
         );
     }
 
-    /** Left column = whichever side has a greater total; ties default to public first. */
-    const publicOnLeft = publicTotal >= privateTotal;
-
     const publicColumn = (
         <OverviewColumn
             key="public"
@@ -471,9 +468,8 @@ export default function SiteResourcesOverview({
     return (
         <SettingsContainer>
             <div className="grid gap-6 md:grid-cols-2">
-                {publicOnLeft
-                    ? [publicColumn, privateColumn]
-                    : [privateColumn, publicColumn]}
+                {publicColumn}
+                {privateColumn}
             </div>
         </SettingsContainer>
     );
