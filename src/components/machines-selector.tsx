@@ -5,10 +5,7 @@ import { useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { useTranslations } from "next-intl";
-import {
-    SuggestionsTagInput,
-    type SuggestionsTagInputProps
-} from "./tags/suggestions-tag-input";
+import { MultiSelectInput } from "./multi-select/multi-select-input";
 
 export type SelectedMachine = Pick<
     ListClientsResponse["clients"][number],
@@ -19,22 +16,12 @@ export type MachineSelectorProps = {
     orgId: string;
     selectedMachines?: SelectedMachine[];
     onSelectMachines: (machine: SelectedMachine[]) => void;
-} & Omit<
-    SuggestionsTagInputProps,
-    | "tags"
-    | "setTags"
-    | "suggestedOptions"
-    | "searchQuery"
-    | "onSearchQueryChange"
-    | "activeTagIndex"
-    | "setActiveTagIndex"
->;
+};
 
 export function MachinesSelector({
     orgId,
     selectedMachines = [],
-    onSelectMachines,
-    ...props
+    onSelectMachines
 }: MachineSelectorProps) {
     const t = useTranslations();
     const [machineSearchQuery, setMachineSearchQuery] = useState("");
@@ -60,42 +47,29 @@ export function MachinesSelector({
         return allMachines;
     }, [machines, selectedMachines, debouncedValue]);
 
-    const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
-
     return (
-        <SuggestionsTagInput
-            {...props}
-            activeTagIndex={activeTagIndex}
-            setActiveTagIndex={setActiveTagIndex}
-            placeholder={t("accessClientSelect")}
-            tags={selectedMachines.map((mc) => ({
+        <MultiSelectInput
+            buttonText={t("accessClientSelect")}
+            searchPlaceholder={t("search")}
+            emptyPlaceholder={t("machineNotFound")}
+            searchQuery={machineSearchQuery}
+            onSearch={setMachineSearchQuery}
+            options={machinesShown.map((mc) => ({
                 id: mc.clientId.toString(),
                 text: mc.name
             }))}
-            setTags={(newTags) => {
-                const tags =
-                    typeof newTags === "function"
-                        ? newTags(
-                              selectedMachines.map((mc) => ({
-                                  id: mc.clientId.toString(),
-                                  text: mc.name
-                              }))
-                          )
-                        : newTags;
+            value={selectedMachines.map((mc) => ({
+                id: mc.clientId.toString(),
+                text: mc.name
+            }))}
+            onChange={(newValues) => {
                 onSelectMachines(
-                    tags.map((tag) => ({
-                        clientId: Number(tag.id),
-                        name: tag.text
+                    newValues.map((v) => ({
+                        clientId: Number(v.id),
+                        name: v.text
                     }))
                 );
             }}
-            searchQuery={machineSearchQuery}
-            onSearchQueryChange={setMachineSearchQuery}
-            suggestedOptions={machinesShown.map((mc) => ({
-                id: mc.clientId.toString(),
-                text: mc.name
-            }))}
-            allowDuplicates={false}
         />
     );
 }
