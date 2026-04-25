@@ -720,7 +720,7 @@ export default function MemberResourcesPortal({
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger className="min-w-0 max-w-full">
-                                                                <CardTitle className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                                                                <CardTitle className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                                                                     {
                                                                         resource.name
                                                                     }
@@ -822,7 +822,7 @@ export default function MemberResourcesPortal({
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger className="min-w-0 max-w-full">
-                                                                <CardTitle className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                                                                <CardTitle className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                                                                     {
                                                                         siteResource.name
                                                                     }

@@ -114,16 +114,11 @@ const listResourcesSchema = z.object({
             description:
                 "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status. `no_targets` means the resource has no targets."
         }),
-    siteId: z.coerce
-        .number<string>()
-        .int()
-        .positive()
-        .optional()
-        .openapi({
-            type: "integer",
-            description:
-                "When set, only resources that have at least one target on this site are returned"
-        })
+    siteId: z.coerce.number<string>().int().positive().optional().openapi({
+        type: "integer",
+        description:
+            "When set, only resources that have at least one target on this site are returned"
+    })
 });
 
 // grouped by resource with targets[])
@@ -269,6 +264,8 @@ export async function listResources(
                 )
             );
         }
+
+        await new Promise((resolve) => setTimeout(resolve, 3 * 1000));
 
         const orgId =
             parsedParams.data.orgId ||

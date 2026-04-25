@@ -86,7 +86,7 @@ export function OrgSelector({
                         <div className="flex items-center justify-between w-full min-w-0">
                             <div className="flex items-center min-w-0 flex-1">
                                 <div className="flex flex-col items-start min-w-0 flex-1 gap-1">
-                                    <span className="font-bold">
+                                    <span className="font-semibold">
                                         {t("org")}
                                     </span>
                                     <span className="text-sm text-muted-foreground truncate w-full text-left">

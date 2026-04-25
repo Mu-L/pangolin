@@ -836,7 +836,14 @@ export default function BillingPage() {
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
                     {/* Plan Cards Grid */}
-                    <div className={cn("grid grid-cols-1 gap-4", visiblePlanOptions.length === 5 ? "md:grid-cols-5" : "md:grid-cols-4")}>
+                    <div
+                        className={cn(
+                            "grid grid-cols-1 gap-4",
+                            visiblePlanOptions.length === 5
+                                ? "md:grid-cols-5"
+                                : "md:grid-cols-4"
+                        )}
+                    >
                         {visiblePlanOptions.map((plan) => {
                             const isCurrentPlan = plan.id === currentPlanId;
                             const planAction = getPlanAction(plan);
@@ -967,7 +974,7 @@ export default function BillingPage() {
                                 {t("billingCurrentUsage") || "Current Usage"}
                             </div>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-bold">
+                                <span className="text-3xl font-semibold">
                                     {getUserCount()}
                                 </span>
                                 <span className="text-lg">
@@ -1298,7 +1305,7 @@ export default function BillingPage() {
                                             "Current Keys"}
                                     </div>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-3xl font-bold">
+                                        <span className="text-3xl font-semibold">
                                             {getLicenseKeyCount()}
                                         </span>
                                         <span className="text-lg">

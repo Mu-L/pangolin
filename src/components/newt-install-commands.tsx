@@ -77,8 +77,12 @@ sudo install -d -m 0755 /etc/newt
 sudo tee /etc/newt/newt.env > /dev/null << 'EOF'
 NEWT_ID=${id}
 NEWT_SECRET=${secret}
-PANGOLIN_ENDPOINT=${endpoint}${!acceptClients ? `
-DISABLE_CLIENTS=true` : ""}
+PANGOLIN_ENDPOINT=${endpoint}${
+                        !acceptClients
+                            ? `
+DISABLE_CLIENTS=true`
+                            : ""
+                    }
 EOF
 sudo chmod 600 /etc/newt/newt.env`
                 },
@@ -232,9 +236,7 @@ WantedBy=default.target`
 
                 <OptionSelect<string>
                     label={
-                        platform === "windows"
-                            ? t("architecture")
-                            : t("method")
+                        platform === "windows" ? t("architecture") : t("method")
                     }
                     options={getArchitectures(platform).map((arch) => ({
                         value: arch,
@@ -247,7 +249,9 @@ WantedBy=default.target`
                 />
 
                 <div className="pt-4">
-                    <p className="font-bold mb-3">{t("siteConfiguration")}</p>
+                    <p className="font-semibold mb-3">
+                        {t("siteConfiguration")}
+                    </p>
                     <div className="flex items-center space-x-2 mb-2">
                         <CheckboxWithLabel
                             id="acceptClients"
@@ -269,7 +273,7 @@ WantedBy=default.target`
                 </div>
 
                 <div className="pt-4">
-                    <p className="font-bold mb-3">{t("commands")}</p>
+                    <p className="font-semibold mb-3">{t("commands")}</p>
                     {platform === "kubernetes" && (
                         <p className="text-sm text-muted-foreground mb-3">
                             For more and up to date Kubernetes installation

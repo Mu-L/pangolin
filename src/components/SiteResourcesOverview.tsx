@@ -199,7 +199,7 @@ function OverviewColumn({
         <div className="border-b px-5 py-5">
             <div className="flex items-start justify-between gap-4">
                 <div className="text-lg space-y-0.5 pb-6">
-                    <h2 className="text-1xl font-bold tracking-tight flex items-center gap-2">
+                    <h2 className="text-1xl font-semibold tracking-tight flex items-center gap-2">
                         {title}
                     </h2>
                     <p className="text-muted-foreground text-sm">
