@@ -28,8 +28,10 @@ export function MachinesSelector({
 
     const [debouncedValue] = useDebounce(machineSearchQuery, 150);
 
+    const perPage = 7;
+
     const { data: machines = [] } = useQuery(
-        orgQueries.machineClients({ orgId, perPage: 3, query: debouncedValue })
+        orgQueries.machineClients({ orgId, perPage, query: debouncedValue })
     );
 
     // always include the selected machines in the list (if the user isn't searching)
@@ -44,7 +46,7 @@ export function MachinesSelector({
                 }
             }
         }
-        return allMachines;
+        return allMachines.slice(0, perPage);
     }, [machines, selectedMachines, debouncedValue]);
 
     return (
