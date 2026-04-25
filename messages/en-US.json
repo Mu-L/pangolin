@@ -1903,6 +1903,7 @@
     "configureHealthCheck": "Configure Health Check",
     "configureHealthCheckDescription": "Set up health monitoring for {target}",
     "enableHealthChecks": "Enable Health Checks",
+    "healthCheckDisabledStateDescription": "When disabled, the site will not perform health checks and the state will be considered unknown.",
     "enableHealthChecksDescription": "Monitor the health of this target. You can monitor a different endpoint than the target if required.",
     "healthScheme": "Method",
     "healthSelectScheme": "Select Method",
