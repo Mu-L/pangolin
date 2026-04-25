@@ -34,6 +34,7 @@ import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
 
 export type ProxyResourcesResults = {
@@ -169,6 +170,18 @@ export async function updateProxyResources(
                 .returning();
 
             healthchecksToUpdate.push(newHealthcheck);
+
+            // Insert unknown status history when HC is created in disabled state
+            if (!healthcheckData?.enabled) {
+                await fireHealthCheckUnknownAlert(
+                    orgId,
+                    newHealthcheck.targetHealthCheckId,
+                    newHealthcheck.name,
+                    newHealthcheck.targetId,
+                    undefined,
+                    trx
+                );
+            }
         }
 
         // Find existing resource by niceId and orgId
@@ -556,6 +569,20 @@ export async function updateProxyResources(
                         ) {
                             targetsToUpdate.push(updatedTarget);
                         }
+                    }
+
+                    // Insert unknown status history when HC is disabled
+                    const isDisablingHc =
+                        !healthcheckData?.enabled && oldHealthcheck?.hcEnabled;
+                    if (isDisablingHc) {
+                        await fireHealthCheckUnknownAlert(
+                            orgId,
+                            newHealthcheck.targetHealthCheckId,
+                            newHealthcheck.name,
+                            newHealthcheck.targetId,
+                            undefined,
+                            trx
+                        );
                     }
                 } else {
                     await createTarget(existingResource.resourceId, targetData);

@@ -10,6 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { addPeer } from "../gerbil/peers";
 import { addTargets } from "../newt/targets";
+import { fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -225,6 +226,11 @@ export async function updateTarget(
             hcHealthValue = undefined;
         }
 
+        const isDisablingHc =
+            (parsedBody.data.hcEnabled === false ||
+                parsedBody.data.hcEnabled === null) &&
+            existingHc.hcEnabled === true;
+
         const [updatedHc] = await db
             .update(targetHealthCheck)
             .set({
@@ -249,6 +255,15 @@ export async function updateTarget(
             })
             .where(eq(targetHealthCheck.targetId, targetId))
             .returning();
+
+        if (isDisablingHc) {
+            await fireHealthCheckUnknownAlert(
+                resource.orgId,
+                existingHc.targetHealthCheckId,
+                existingHc.name,
+                updatedHc.targetId
+            );
+        }
 
         if (site.pubKey) {
             if (site.type == "wireguard") {
