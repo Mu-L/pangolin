@@ -88,7 +88,6 @@ export interface TagInputProps
     searchQuery?: string;
     onSearchQueryChange?: (value: string) => void;
     autocompleteContent?: React.ReactNode;
-    suggestedOptions?: Tag[];
     customTagRenderer?: (tag: Tag, isActiveTag: boolean) => React.ReactNode;
     onFocus?: React.FocusEventHandler<HTMLInputElement>;
     onBlur?: React.FocusEventHandler<HTMLInputElement>;
@@ -164,8 +163,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
         generateTagId = uuid,
         searchQuery,
         onSearchQueryChange,
-        autocompleteContent,
-        suggestedOptions
+        autocompleteContent
     } = props;
 
     const [inputValue, setInputValue] = React.useState("");
@@ -196,7 +194,6 @@ export function TagInput({ ref, ...props }: TagInputProps) {
     }
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (suggestedOptions !== undefined) return;
         const newValue = e.target.value;
         if (addOnPaste && newValue.includes(delimiter)) {
             const splitValues = newValue
@@ -440,14 +437,6 @@ export function TagInput({ ref, ...props }: TagInputProps) {
         onClearAll?.();
     };
 
-    const mainInputValue =
-        suggestedOptions !== undefined ? "" : effectiveQuery;
-
-    const useAutocompleteComponent =
-        enableAutocomplete || suggestedOptions !== undefined;
-    const resolvedAutocompleteOptions = suggestedOptions ?? autocompleteOptions;
-    const disableAutocompleteSearch = suggestedOptions !== undefined;
-
     const displayedTags = sortTags ? [...tags].sort() : tags;
 
     const truncatedTags = truncate
@@ -500,7 +489,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                         disabled={disabled}
                     />
                 ) : (
-                    !useAutocompleteComponent && !autocompleteContent && (
+                    !enableAutocomplete && !autocompleteContent && (
                         <div className="w-full">
                             <div
                                 className={cn(
@@ -543,7 +532,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                             ? placeholderWhenFull
                                             : placeholder
                                     }
-                                    value={mainInputValue}
+                                    value={effectiveQuery}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={handleInputFocus}
@@ -572,7 +561,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                         </div>
                     )
                 ))}
-            {!useAutocompleteComponent && autocompleteContent && (
+            {!enableAutocomplete && autocompleteContent && (
                 <div className="w-full">
                     <div
                         className={cn(
@@ -614,7 +603,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                     ? placeholderWhenFull
                                     : placeholder
                             }
-                            value={mainInputValue}
+                            value={effectiveQuery}
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
                             onFocus={handleInputFocus}
@@ -634,22 +623,16 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                     {autocompleteContent}
                 </div>
             )}
-            {useAutocompleteComponent ? (
+            {enableAutocomplete ? (
                 <div className="w-full">
                     <Autocomplete
                         tags={tags}
                         setTags={setTags}
                         setInputValue={updateQuery}
                         autocompleteOptions={
-                            (resolvedAutocompleteOptions || []) as Tag[]
+                            (autocompleteOptions || []) as Tag[]
                         }
                         filterQuery={effectiveQuery}
-                        disableSearch={disableAutocompleteSearch}
-                        onFilterQueryChange={
-                            disableAutocompleteSearch
-                                ? onSearchQueryChange
-                                : undefined
-                        }
                         setTagCount={setTagCount}
                         maxTags={maxTags}
                         onTagAdd={onTagAdd}
@@ -675,7 +658,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                 // <CommandInput
                                 //   placeholder={maxTags !== undefined && tags.length >= maxTags ? placeholderWhenFull : placeholder}
                                 //   ref={inputRef}
-                                //   value={mainInputValue}
+                                //   value={effectiveQuery}
                                 //   disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
                                 //   onChangeCapture={handleInputChange}
                                 //   onKeyDown={handleKeyDown}
@@ -697,7 +680,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                             ? placeholderWhenFull
                                             : placeholder
                                     }
-                                    value={mainInputValue}
+                                    value={effectiveQuery}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={handleInputFocus}
@@ -758,7 +741,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                     {/* <CommandInput
                     placeholder={maxTags !== undefined && tags.length >= maxTags ? placeholderWhenFull : placeholder}
                     ref={inputRef}
-                    value={mainInputValue}
+                    value={effectiveQuery}
                     disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
                     onChangeCapture={handleInputChange}
                     onKeyDown={handleKeyDown}
@@ -781,7 +764,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                                 ? placeholderWhenFull
                                                 : placeholder
                                         }
-                                        value={mainInputValue}
+                                        value={effectiveQuery}
                                         onChange={handleInputChange}
                                         onKeyDown={handleKeyDown}
                                         onFocus={handleInputFocus}
@@ -837,7 +820,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                 {/* <CommandInput
                   placeholder={maxTags !== undefined && tags.length >= maxTags ? placeholderWhenFull : placeholder}
                   ref={inputRef}
-                  value={mainInputValue}
+                  value={effectiveQuery}
                   disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
                   onChangeCapture={handleInputChange}
                   onKeyDown={handleKeyDown}
@@ -859,7 +842,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                             ? placeholderWhenFull
                                             : placeholder
                                     }
-                                    value={mainInputValue}
+                                    value={effectiveQuery}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={handleInputFocus}
@@ -902,7 +885,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                         ? placeholderWhenFull
                                         : placeholder
                                 }
-                                value={mainInputValue}
+                                value={effectiveQuery}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyDown}
                                 onFocus={handleInputFocus}
@@ -962,7 +945,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                                         ? placeholderWhenFull
                                         : placeholder
                                 }
-                                value={mainInputValue}
+                                value={effectiveQuery}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyDown}
                                 onFocus={handleInputFocus}

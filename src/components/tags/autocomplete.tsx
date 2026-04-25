@@ -41,9 +41,6 @@ type AutocompleteProps = {
     usePortal?: boolean;
     /** Narrows the dropdown list from the main field (cmdk search filters further). */
     filterQuery?: string;
-    /** When true, skip internal filtering and make the CommandInput controlled — parent owns filtering. */
-    disableSearch?: boolean;
-    onFilterQueryChange?: (value: string) => void;
 };
 
 export const Autocomplete: React.FC<AutocompleteProps> = ({
@@ -60,9 +57,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     children,
     classStyleProps,
     usePortal,
-    filterQuery = "",
-    disableSearch = false,
-    onFilterQueryChange
+    filterQuery = ""
 }) => {
     const triggerContainerRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
@@ -75,13 +70,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const [commandResetKey, setCommandResetKey] = useState(0);
 
     const visibleOptions = useMemo(() => {
-        if (disableSearch) return autocompleteOptions;
         const q = filterQuery.trim().toLowerCase();
         if (!q) return autocompleteOptions;
         return autocompleteOptions.filter((option) =>
             option.text.toLowerCase().includes(q)
         );
-    }, [autocompleteOptions, filterQuery, disableSearch]);
+    }, [autocompleteOptions, filterQuery]);
 
     useEffect(() => {
         if (isPopoverOpen) {
@@ -281,25 +275,15 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 >
                     <Command
                         key={commandResetKey}
-                        shouldFilter={!disableSearch}
                         className={cn(
                             "rounded-lg border-0 shadow-none",
                             classStyleProps?.command
                         )}
                     >
-                        {disableSearch ? (
-                            <CommandInput
-                                placeholder={t("searchPlaceholder")}
-                                className="h-9"
-                                value={filterQuery}
-                                onValueChange={onFilterQueryChange}
-                            />
-                        ) : (
-                            <CommandInput
-                                placeholder={t("searchPlaceholder")}
-                                className="h-9"
-                            />
-                        )}
+                        <CommandInput
+                            placeholder={t("searchPlaceholder")}
+                            className="h-9"
+                        />
                         <CommandList
                             className={cn(
                                 "max-h-[300px]",
