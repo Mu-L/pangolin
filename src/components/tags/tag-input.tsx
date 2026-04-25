@@ -87,7 +87,6 @@ export interface TagInputProps
     onInputChange?: (value: string) => void;
     searchQuery?: string;
     onSearchQueryChange?: (value: string) => void;
-    autocompleteContent?: React.ReactNode;
     customTagRenderer?: (tag: Tag, isActiveTag: boolean) => React.ReactNode;
     onFocus?: React.FocusEventHandler<HTMLInputElement>;
     onBlur?: React.FocusEventHandler<HTMLInputElement>;
@@ -162,8 +161,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
         addOnPaste = false,
         generateTagId = uuid,
         searchQuery,
-        onSearchQueryChange,
-        autocompleteContent
+        onSearchQueryChange
     } = props;
 
     const [inputValue, setInputValue] = React.useState("");
@@ -489,7 +487,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                         disabled={disabled}
                     />
                 ) : (
-                    !enableAutocomplete && !autocompleteContent && (
+                    !enableAutocomplete && (
                         <div className="w-full">
                             <div
                                 className={cn(
@@ -561,68 +559,7 @@ export function TagInput({ ref, ...props }: TagInputProps) {
                         </div>
                     )
                 ))}
-            {!enableAutocomplete && autocompleteContent && (
-                <div className="w-full">
-                    <div
-                        className={cn(
-                            `flex flex-row flex-wrap items-center gap-1.5 p-1.5 w-full rounded-md border border-input text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50`,
-                            styleClasses?.inlineTagsContainer
-                        )}
-                    >
-                        <TagList
-                            tags={truncatedTags}
-                            customTagRenderer={customTagRenderer}
-                            variant={variant}
-                            size={size}
-                            shape={shape}
-                            borderStyle={borderStyle}
-                            textCase={textCase}
-                            interaction={interaction}
-                            animation={animation}
-                            textStyle={textStyle}
-                            onTagClick={onTagClick}
-                            draggable={draggable}
-                            onSortEnd={onSortEnd}
-                            onRemoveTag={removeTag}
-                            direction={direction}
-                            inlineTags={inlineTags}
-                            activeTagIndex={activeTagIndex}
-                            setActiveTagIndex={setActiveTagIndex}
-                            classStyleProps={{
-                                tagListClasses: styleClasses?.tagList,
-                                tagClasses: styleClasses?.tag
-                            }}
-                            disabled={disabled}
-                        />
-                        <Input
-                            ref={inputRef}
-                            id={id}
-                            type="text"
-                            placeholder={
-                                maxTags !== undefined && tags.length >= maxTags
-                                    ? placeholderWhenFull
-                                    : placeholder
-                            }
-                            value={effectiveQuery}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            onFocus={handleInputFocus}
-                            onBlur={handleInputBlur}
-                            {...inputProps}
-                            className={cn(
-                                "border-0 px-2 h-5 bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 flex-1 w-fit shadow-none inset-shadow-none",
-                                styleClasses?.input
-                            )}
-                            autoComplete="off"
-                            disabled={
-                                disabled ||
-                                (maxTags !== undefined && tags.length >= maxTags)
-                            }
-                        />
-                    </div>
-                    {autocompleteContent}
-                </div>
-            )}
+
             {enableAutocomplete ? (
                 <div className="w-full">
                     <Autocomplete
