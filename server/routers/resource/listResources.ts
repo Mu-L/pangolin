@@ -138,6 +138,7 @@ export type ResourceWithTargets = {
     domainId: string | null;
     niceId: string;
     headerAuthId: number | null;
+    wildcard: boolean;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -171,6 +172,7 @@ function queryResourcesBase() {
             enabled: resources.enabled,
             domainId: resources.domainId,
             niceId: resources.niceId,
+            wildcard: resources.wildcard,
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
                 resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
@@ -453,6 +455,7 @@ export async function listResources(
                     http: row.http,
                     protocol: row.protocol,
                     proxyPort: row.proxyPort,
+                    wildcard: row.wildcard,
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,

@@ -25,6 +25,7 @@ export type AlertTrigger =
     | "health_check_toggle"
     | "resource_healthy"
     | "resource_unhealthy"
+    | "resource_degraded"
     | "resource_toggle";
 
 export type AlertRuleFormAction =
@@ -77,6 +78,7 @@ export type AlertRuleApiPayload = {
         | "health_check_toggle"
         | "resource_healthy"
         | "resource_unhealthy"
+        | "resource_degraded"
         | "resource_toggle";
     enabled: boolean;
     allSites: boolean;
@@ -160,6 +162,7 @@ export function buildFormSchema(t: (k: string) => string) {
                 "health_check_toggle",
                 "resource_healthy",
                 "resource_unhealthy",
+                "resource_degraded",
                 "resource_toggle"
             ]),
             actions: z.array(
@@ -243,6 +246,7 @@ export function buildFormSchema(t: (k: string) => string) {
             const resourceTriggers: AlertTrigger[] = [
                 "resource_healthy",
                 "resource_unhealthy",
+                "resource_degraded",
                 "resource_toggle"
             ];
             if (
@@ -344,7 +348,9 @@ export function alertRuleAllResourcesSelected(
     eventType: string,
     resourceIds: number[] | undefined
 ): boolean {
-    return eventType.startsWith("resource_") && (resourceIds?.length ?? 0) === 0;
+    return (
+        eventType.startsWith("resource_") && (resourceIds?.length ?? 0) === 0
+    );
 }
 
 export function alertRuleAllHealthChecksSelected(

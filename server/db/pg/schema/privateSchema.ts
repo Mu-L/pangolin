@@ -484,6 +484,7 @@ export const alertRules = pgTable("alertRules", {
             | "health_check_toggle"
             | "resource_healthy"
             | "resource_unhealthy"
+            | "resource_degraded"
             | "resource_toggle"
         >()
         .notNull(),

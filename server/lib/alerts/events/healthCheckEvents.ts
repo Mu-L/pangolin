@@ -21,3 +21,14 @@ export async function fireHealthCheckUnhealthyAlert(
 ): Promise<void> {
     return;
 }
+
+export async function fireHealthCheckUnknownAlert(
+    orgId: string,
+    healthCheckId: number,
+    healthCheckName?: string | null,
+    healthCheckTargetId?: number | null,
+    extra?: Record<string, unknown>,
+    trx?: unknown
+): Promise<void> {
+    return;
+}

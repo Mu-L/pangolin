@@ -47,15 +47,7 @@ import {
     PopoverTrigger
 } from "@app/components/ui/popover";
 import { CaretSortIcon } from "@radix-ui/react-icons";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "@app/components/ui/command";
-import { CheckIcon, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { Checkbox } from "@app/components/ui/checkbox";
 import { GenerateAccessTokenResponse } from "@server/routers/accessToken";
 import { constructShareLink } from "@app/lib/shareLinks";
@@ -275,10 +267,11 @@ export default function CreateShareLinkForm({
                                                         </PopoverTrigger>
                                                         <PopoverContent className="p-0">
                                                             <ResourceSelector
-                                                                orgId={
-                                                                    org.org
-                                                                        .orgId
-                                                                }
+                                                                                excludeWildcard
+                                                                                orgId={
+                                                                                    org.org
+                                                                                        .orgId
+                                                                                }
                                                                 selectedResource={
                                                                     selectedResource
                                                                 }

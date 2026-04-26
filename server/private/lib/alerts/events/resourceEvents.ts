@@ -130,9 +130,9 @@ export async function fireResourceUnhealthyAlert(
 }
 
 /**
- * Fire a `resource_toggle` alert for the given resource.
+ * Fire a `resource_degraded` alert for the given resource.
  *
- * Call this when a resource's enabled/disabled status is toggled so that any
+ * Call this after a resource has been detected as degraded so that any
  * matching `alertRules` can dispatch their email and webhook actions.
  *
  * @param orgId        - Organisation that owns the resource.
@@ -140,7 +140,7 @@ export async function fireResourceUnhealthyAlert(
  * @param resourceName - Human-readable name shown in notifications (optional).
  * @param extra        - Any additional key/value pairs to include in the payload.
  */
-export async function fireResourceToggleAlert(
+export async function fireResourceDegradedAlert(
     orgId: string,
     resourceId: number,
     resourceName?: string | null,
@@ -148,8 +148,16 @@ export async function fireResourceToggleAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
+        await trx.insert(statusHistory).values({
+            entityType: "resource",
+            entityId: resourceId,
+            orgId: orgId,
+            status: "degraded",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
         await processAlerts({
-            eventType: "resource_toggle",
+            eventType: "resource_degraded",
             orgId,
             resourceId,
             data: {
@@ -157,9 +165,66 @@ export async function fireResourceToggleAlert(
                 ...extra
             }
         });
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                status: "degraded",
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
     } catch (err) {
         logger.error(
-            `fireResourceToggleAlert: unexpected error for resourceId ${resourceId}`,
+            `fireResourceDegradedAlert: unexpected error for resourceId ${resourceId}`,
+            err
+        );
+    }
+}
+
+/**
+ * Fire a `resource_unknown` alert for the given resource.
+ *
+ * Call this when all health checks on a resource are disabled so that the
+ * resource status transitions to unknown.
+ *
+ * @param orgId        - Organisation that owns the resource.
+ * @param resourceId   - Numeric primary key of the resource.
+ * @param resourceName - Human-readable name shown in notifications (optional).
+ * @param extra        - Any additional key/value pairs to include in the payload.
+ */
+export async function fireResourceUnknownAlert(
+    orgId: string,
+    resourceId: number,
+    resourceName?: string | null,
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
+): Promise<void> {
+    try {
+        await trx.insert(statusHistory).values({
+            entityType: "resource",
+            entityId: resourceId,
+            orgId: orgId,
+            status: "unknown",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+
+        await processAlerts({
+            eventType: "resource_toggle",
+            orgId,
+            resourceId,
+            data: {
+                resourceId,
+                status: "unknown",
+                ...(resourceName != null ? { resourceName } : {}),
+                ...extra
+            }
+        });
+    } catch (err) {
+        logger.error(
+            `fireResourceUnknownAlert: unexpected error for resourceId ${resourceId}`,
             err
         );
     }

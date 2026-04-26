@@ -42,7 +42,8 @@ const barColorClass: Record<string, string> = {
     good: "bg-green-500",
     degraded: "bg-yellow-500",
     bad: "bg-red-500",
-    no_data: "bg-neutral-200 dark:bg-neutral-700"
+    no_data: "bg-neutral-200 dark:bg-neutral-700",
+    unknown: "bg-neutral-200 dark:bg-neutral-700"
 };
 
 type UptimeBarProps = {
@@ -188,7 +189,7 @@ export default function UptimeBar({
                             <div className="font-semibold text-xs">
                                 {formatDate(day.date)}
                             </div>
-                            {day.status !== "no_data" && (
+                            {day.status !== "no_data" && day.status !== "unknown" && (
                                 <div className="text-xs text-primary-foreground/80">
                                     {t("uptimeTooltipUptimeLabel")}:{" "}
                                     <span className="font-medium text-primary-foreground">
@@ -224,7 +225,7 @@ export default function UptimeBar({
                                     ))}
                                 </div>
                             )}
-                            {day.status === "no_data" && (
+                            {(day.status === "no_data" || day.status === "unknown") && (
                                 <div className="text-xs text-primary-foreground/60">
                                     {t("uptimeNoMonitoringData")}
                                 </div>

@@ -23,6 +23,7 @@ export type AlertEventType =
     | "health_check_toggle"
     | "resource_healthy"
     | "resource_unhealthy"
+    | "resource_degraded"
     | "resource_toggle";
 
 export type AlertNotificationProps = {
@@ -114,6 +115,15 @@ function getEventMeta(eventType: AlertEventType): {
                 statusLabel: "Unhealthy",
                 statusColor: "#dc2626"
             };
+        case "resource_degraded":
+            return {
+                heading: "Resource Unhealthy",
+                previewText: "A resource in your organization is not healthy.",
+                summary:
+                    "A resource in your organization is currently unhealthy.",
+                statusLabel: "Unhealthy",
+                statusColor: "#dc2626"
+            };
         case "resource_toggle":
             return {
                 heading: "Resource Status Changed",
@@ -135,7 +145,10 @@ function getEventMeta(eventType: AlertEventType): {
     }
 }
 
-function resolveToggleStatus(status: unknown): { label: string; color: string } {
+function resolveToggleStatus(status: unknown): {
+    label: string;
+    color: string;
+} {
     switch (String(status).toLowerCase()) {
         case "online":
             return { label: "Online", color: "#16a34a" };

@@ -18,7 +18,7 @@ export interface StatusHistoryDayBucket {
     uptimePercent: number; // 0-100
     totalDowntimeSeconds: number;
     downtimeWindows: { start: number; end: number | null; status: string }[];
-    status: "good" | "degraded" | "bad" | "no_data";
+    status: "good" | "degraded" | "bad" | "no_data" | "unknown";
 }
 
 export interface StatusHistoryResponse {
@@ -54,6 +54,7 @@ export function computeBuckets(
 
         const windows: { start: number; end: number | null; status: string }[] = [];
         let dayDowntime = 0;
+        let dayDegradedTime = 0;
 
         let windowStart = dayStartSec;
         let windowStatus = currentStatus;
@@ -63,10 +64,17 @@ export function computeBuckets(
                 const windowEnd = evt.timestamp;
                 const isDown =
                     windowStatus === "offline" ||
-                    windowStatus === "unhealthy" ||
-                    windowStatus === "unknown";
+                    windowStatus === "unhealthy";
+                const isDegraded = windowStatus === "degraded";
                 if (isDown) {
                     dayDowntime += windowEnd - windowStart;
+                    windows.push({
+                        start: windowStart,
+                        end: windowEnd,
+                        status: windowStatus,
+                    });
+                } else if (isDegraded) {
+                    dayDegradedTime += windowEnd - windowStart;
                     windows.push({
                         start: windowStart,
                         end: windowEnd,
@@ -83,10 +91,17 @@ export function computeBuckets(
             const finalEnd = Math.min(dayEndSec, nowSec);
             const isDown =
                 windowStatus === "offline" ||
-                windowStatus === "unhealthy" ||
-                windowStatus === "unknown";
+                windowStatus === "unhealthy";
+            const isDegraded = windowStatus === "degraded";
             if (isDown && finalEnd > windowStart) {
                 dayDowntime += finalEnd - windowStart;
+                windows.push({
+                    start: windowStart,
+                    end: finalEnd,
+                    status: windowStatus,
+                });
+            } else if (isDegraded && finalEnd > windowStart) {
+                dayDegradedTime += finalEnd - windowStart;
                 windows.push({
                     start: windowStart,
                     end: finalEnd,
@@ -105,7 +120,7 @@ export function computeBuckets(
             effectiveDayLength > 0
                 ? Math.max(
                       0,
-                      ((effectiveDayLength - dayDowntime) /
+                      ((effectiveDayLength - dayDowntime - dayDegradedTime) /
                           effectiveDayLength) *
                           100
                   )
@@ -113,11 +128,27 @@ export function computeBuckets(
 
         const dateStr = new Date(dayStartSec * 1000).toISOString().slice(0, 10);
 
+        const hasAnyData = currentStatus !== null || dayEvents.length > 0;
+
+        // The whole observable window is "unknown" if every status we have seen is unknown
+        const allStatuses = [
+            ...(currentStatus !== null ? [currentStatus] : []),
+            ...dayEvents.map((e) => e.status)
+        ];
+        const onlyUnknownData =
+            hasAnyData && allStatuses.every((s) => s === "unknown");
+
         let status: StatusHistoryDayBucket["status"] = "no_data";
-        if (currentStatus !== null || dayEvents.length > 0) {
-            if (uptimePct >= 99) status = "good";
-            else if (uptimePct >= 50) status = "degraded";
-            else status = "bad";
+        if (hasAnyData) {
+            if (onlyUnknownData) {
+                status = "unknown";
+            } else if (dayDowntime > 0 && uptimePct < 50) {
+                status = "bad";
+            } else if (dayDowntime > 0 || dayDegradedTime > 0) {
+                status = "degraded";
+            } else {
+                status = "good";
+            }
         }
 
         buckets.push({

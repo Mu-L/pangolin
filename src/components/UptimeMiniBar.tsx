@@ -34,7 +34,8 @@ const barColorClass: Record<string, string> = {
     good: "bg-green-500",
     degraded: "bg-yellow-500",
     bad: "bg-red-500",
-    no_data: "bg-neutral-200 dark:bg-neutral-700"
+    no_data: "bg-neutral-200 dark:bg-neutral-700",
+    unknown: "bg-neutral-200 dark:bg-neutral-700"
 };
 
 type UptimeMiniBarProps = {
@@ -137,7 +138,7 @@ export default function UptimeMiniBar({
                                 {formatDate(day.date)}
                             </div>
                             <div className="text-xs text-primary-foreground/80">
-                                {day.status === "no_data"
+                                {day.status === "no_data" || day.status === "unknown"
                                     ? t("uptimeNoData")
                                     : `${day.uptimePercent.toFixed(1)}% ${t("uptimeSuffix")}`}
                             </div>

@@ -37,6 +37,7 @@ export type GetAlertRuleResponse = {
         | "health_check_toggle"
         | "resource_healthy"
         | "resource_unhealthy"
+        | "resource_degraded"
         | "resource_toggle";
     enabled: boolean;
     cooldownSeconds: number;
@@ -94,6 +95,7 @@ export type AlertEventType =
     | "health_check_toggle"
     | "resource_healthy"
     | "resource_unhealthy"
+    | "resource_degraded"
     | "resource_toggle";
 
 // ---------------------------------------------------------------------------

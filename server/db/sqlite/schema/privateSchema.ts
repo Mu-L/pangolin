@@ -425,10 +425,18 @@ export const eventStreamingDestinations = sqliteTable(
         orgId: text("orgId")
             .notNull()
             .references(() => orgs.orgId, { onDelete: "cascade" }),
-        sendConnectionLogs: integer("sendConnectionLogs", { mode: "boolean" }).notNull().default(false),
-        sendRequestLogs: integer("sendRequestLogs", { mode: "boolean" }).notNull().default(false),
-        sendActionLogs: integer("sendActionLogs", { mode: "boolean" }).notNull().default(false),
-        sendAccessLogs: integer("sendAccessLogs", { mode: "boolean" }).notNull().default(false),
+        sendConnectionLogs: integer("sendConnectionLogs", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        sendRequestLogs: integer("sendRequestLogs", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        sendActionLogs: integer("sendActionLogs", { mode: "boolean" })
+            .notNull()
+            .default(false),
+        sendAccessLogs: integer("sendAccessLogs", { mode: "boolean" })
+            .notNull()
+            .default(false),
         type: text("type").notNull(), // e.g. "http", "kafka", etc.
         config: text("config").notNull(), // JSON string with the configuration for the destination
         enabled: integer("enabled", { mode: "boolean" })
@@ -476,14 +484,19 @@ export const alertRules = sqliteTable("alertRules", {
             | "health_check_toggle"
             | "resource_healthy"
             | "resource_unhealthy"
+            | "resource_degraded"
             | "resource_toggle"
         >()
         .notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
     allSites: integer("allSites", { mode: "boolean" }).notNull().default(false),
-    allHealthChecks: integer("allHealthChecks", { mode: "boolean" }).notNull().default(false),
-    allResources: integer("allResources", { mode: "boolean" }).notNull().default(false),
+    allHealthChecks: integer("allHealthChecks", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    allResources: integer("allResources", { mode: "boolean" })
+        .notNull()
+        .default(false),
     lastTriggeredAt: integer("lastTriggeredAt"),
     createdAt: integer("createdAt").notNull(),
     updatedAt: integer("updatedAt").notNull()
@@ -531,19 +544,27 @@ export const alertEmailRecipients = sqliteTable("alertEmailRecipients", {
     recipientId: integer("recipientId").primaryKey({ autoIncrement: true }),
     emailActionId: integer("emailActionId")
         .notNull()
-        .references(() => alertEmailActions.emailActionId, { onDelete: "cascade" }),
-    userId: text("userId").references(() => users.userId, { onDelete: "cascade" }),
-    roleId: integer("roleId").references(() => roles.roleId, { onDelete: "cascade" }),
+        .references(() => alertEmailActions.emailActionId, {
+            onDelete: "cascade"
+        }),
+    userId: text("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
+    roleId: integer("roleId").references(() => roles.roleId, {
+        onDelete: "cascade"
+    }),
     email: text("email")
 });
 
 export const alertWebhookActions = sqliteTable("alertWebhookActions", {
-    webhookActionId: integer("webhookActionId").primaryKey({ autoIncrement: true }),
+    webhookActionId: integer("webhookActionId").primaryKey({
+        autoIncrement: true
+    }),
     alertRuleId: integer("alertRuleId")
         .notNull()
         .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
     webhookUrl: text("webhookUrl").notNull(),
-    config: text("config"),  // encrypted JSON with auth config (authType, credentials)
+    config: text("config"), // encrypted JSON with auth config (authType, credentials)
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     lastSentAt: integer("lastSentAt")
 });

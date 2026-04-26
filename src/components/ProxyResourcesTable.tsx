@@ -32,7 +32,6 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import type { PaginationState } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
 import {
     ArrowDown01Icon,
