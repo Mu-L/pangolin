@@ -123,7 +123,7 @@ export default function UptimeAlertSection({
                 name,
                 eventType: siteId ? "site_toggle" : "resource_toggle",
                 enabled: true,
-                cooldownSeconds: 300,
+                cooldownSeconds: 0, // default to 0 here because we dont want the extra confusion
                 siteIds: siteId ? [siteId] : [],
                 healthCheckIds: [],
                 resourceIds: resourceId ? [resourceId] : [],
