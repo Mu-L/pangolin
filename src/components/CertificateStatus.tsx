@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { RotateCw } from "lucide-react";
+import { Loader2, RotateCw } from "lucide-react";
 import { useCertificate } from "@app/hooks/useCertificate";
 import { useTranslations } from "next-intl";
 
@@ -78,7 +78,11 @@ export default function CertificateStatus({
                         {t("certificateStatus")}:
                     </span>
                 )}
-                <span className="text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Loader2
+                        className="h-3.5 w-3.5 shrink-0 animate-spin"
+                        aria-hidden
+                    />
                     {t("loading")}
                 </span>
             </div>

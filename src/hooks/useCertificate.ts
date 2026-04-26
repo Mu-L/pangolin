@@ -47,18 +47,18 @@ export function useCertificate({
             if (showLoading) {
                 setCertLoading(true);
             }
-            setCertError(null);
             try {
                 const res = await api.get<
                     AxiosResponse<GetCertificateResponse>
                 >(`/org/${orgId}/certificate/${domainId}/${fullDomain}`);
                 const certData = res.data.data;
                 if (certData) {
+                    setCertError(null);
                     setCert(certData);
                 }
             } catch (error: any) {
                 console.error("Failed to fetch certificate:", error);
-                setCertError("Failed to fetch certificate");
+                setCertError("Failed");
             } finally {
                 if (showLoading) {
                     setCertLoading(false);
@@ -84,7 +84,7 @@ export function useCertificate({
             }, 500);
         } catch (error: any) {
             console.error("Failed to restart certificate:", error);
-            setCertError("Failed to restart certificate");
+            setCertError("Failed to restart");
         } finally {
             setRefreshing(false);
         }
