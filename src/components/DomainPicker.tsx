@@ -42,6 +42,7 @@ import {
     Check,
     CheckCircle2,
     ChevronsUpDown,
+    ExternalLink,
     KeyRound,
     Zap
 } from "lucide-react";
@@ -514,7 +515,7 @@ export default function DomainPicker({
                                 ? ""
                                 : showSubdomainInput
                                   ? wildcardAllowed
-                                      ? "*.level1 or level1"
+                                      ? "* or subdomain"
                                       : ""
                                   : t("domainPickerNotAvailableForCname")
                         }
@@ -914,9 +915,10 @@ export default function DomainPicker({
                             href="https://docs.pangolin.net/self-host/advanced/wild-card-domains#setting-up-wildcard-certificates"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="underline text-primary"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
                         >
                             {t("domainPickerWildcardCertWarningLink")}
+                            <ExternalLink className="size-3.5 shrink-0" />
                         </a>
                         .
                     </p>
