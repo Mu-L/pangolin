@@ -1596,7 +1596,7 @@
     "initialSetupDescription": "Create the intial server admin account. Only one server admin can exist. You can always change these credentials later.",
     "createAdminAccount": "Create Admin Account",
     "setupErrorCreateAdmin": "An error occurred while creating the server admin account.",
-    "certificateStatus": "Certificate Status",
+    "certificateStatus": "Certificate",
     "loading": "Loading",
     "loadingAnalytics": "Loading Analytics",
     "restart": "Restart",
