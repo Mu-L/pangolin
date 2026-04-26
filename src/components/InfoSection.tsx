@@ -19,7 +19,7 @@ export function InfoSections({
     return (
         <div
             className={cn(
-                "grid grid-cols-2 md:grid-cols-(--columns) md:gap-16 gap-2 md:items-start",
+                "grid grid-cols-2 md:grid-cols-(--columns) md:space-x-16 gap-4 md:items-start",
                 columnSizing === "content" &&
                     "md:justify-items-start md:justify-start"
             )}
