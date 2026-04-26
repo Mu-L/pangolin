@@ -36,7 +36,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Selectedsite, SitesSelector } from "@app/components/site-selector";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
@@ -143,6 +143,13 @@ export default function ClientResourcesTable({
     const [siteFilterOpen, setSiteFilterOpen] = useState(false);
 
     const [isRefreshing, startTransition] = useTransition();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 30_000);
+        return () => clearInterval(interval);
+    }, [router]);
 
     const siteIdQ = searchParams.get("siteId");
     const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;

@@ -178,7 +178,7 @@ export default function ProxyResourcesTable({
     useEffect(() => {
         const interval = setInterval(() => {
             router.refresh();
-        }, 10_000);
+        }, 30_000);
         return () => clearInterval(interval);
     }, [router]);
 
@@ -387,8 +387,7 @@ export default function ProxyResourcesTable({
         },
         {
             id: "sites",
-            accessorFn: (row) =>
-                row.sites.map((s) => s.siteName).join(", "),
+            accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
             friendlyName: t("sites"),
             header: () => (
                 <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>

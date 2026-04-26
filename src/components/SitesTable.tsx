@@ -102,7 +102,7 @@ export default function SitesTable({
     useEffect(() => {
         const interval = setInterval(() => {
             router.refresh();
-        }, 10_000);
+        }, 30_000);
         return () => clearInterval(interval);
     }, []);
 
