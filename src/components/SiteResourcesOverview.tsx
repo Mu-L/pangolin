@@ -12,6 +12,7 @@ import type { ListResourcesResponse } from "@server/routers/resource";
 import type ResponseT from "@server/types/Response";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -176,6 +177,8 @@ type OverviewColumnProps = {
     emptyLabel: string;
     isForbidden: boolean;
     isFetching: boolean;
+    /** When there are no rows and the first fetch (no SSR initial data) is in flight. */
+    isLoading: boolean;
     rows: OverviewRow[];
     canShowMore: boolean;
     onShowMore: () => void;
@@ -189,6 +192,7 @@ function OverviewColumn({
     emptyLabel,
     isForbidden,
     isFetching,
+    isLoading,
     rows,
     canShowMore,
     onShowMore
@@ -231,10 +235,23 @@ function OverviewColumn({
         <div className="min-w-0 overflow-hidden rounded-lg border h-full flex flex-col">
             {header}
             {rows.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center px-5 py-3">
-                    <p className="text-center text-sm text-muted-foreground">
-                        {emptyLabel}
-                    </p>
+                <div className="flex flex-1 items-center justify-center px-5 py-3 min-h-24">
+                    {isLoading ? (
+                        <div
+                            className="flex flex-col items-center justify-center gap-2"
+                            role="status"
+                        >
+                            <Loader2
+                                className="h-6 w-6 animate-spin text-muted-foreground"
+                                aria-hidden
+                            />
+                            <span className="sr-only">{t("loading")}</span>
+                        </div>
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground">
+                            {emptyLabel}
+                        </p>
+                    )}
                 </div>
             ) : (
                 <>
@@ -390,7 +407,14 @@ export default function SiteResourcesOverview({
         initialPrivateForbidden ||
         (privateQuery.isError && isForbidden(privateQuery.error));
 
+    const waitingOnPublicList =
+        enabled && !publicForbidden && publicQuery.isPending;
+    const waitingOnPrivateList =
+        enabled && !privateForbidden && privateQuery.isPending;
+
     const showEmptyPlaceholder =
+        !waitingOnPublicList &&
+        !waitingOnPrivateList &&
         !publicForbidden &&
         !privateForbidden &&
         publicList.length === 0 &&
@@ -431,6 +455,17 @@ export default function SiteResourcesOverview({
         );
     }
 
+    const publicEmptyLoading =
+        enabled &&
+        !publicForbidden &&
+        publicRows.length === 0 &&
+        publicQuery.isPending;
+    const privateEmptyLoading =
+        enabled &&
+        !privateForbidden &&
+        privateRows.length === 0 &&
+        privateQuery.isPending;
+
     const publicColumn = (
         <OverviewColumn
             key="public"
@@ -441,6 +476,7 @@ export default function SiteResourcesOverview({
             emptyLabel={t("siteResourcesEmptyPublic")}
             isForbidden={publicForbidden}
             isFetching={publicQuery.isFetching}
+            isLoading={publicEmptyLoading}
             rows={publicRows}
             canShowMore={publicList.length < publicTotal}
             onShowMore={() => setPublicPageSize((n) => n + LOAD_MORE_INCREMENT)}
@@ -457,6 +493,7 @@ export default function SiteResourcesOverview({
             emptyLabel={t("siteResourcesEmptyPrivate")}
             isForbidden={privateForbidden}
             isFetching={privateQuery.isFetching}
+            isLoading={privateEmptyLoading}
             rows={privateRows}
             canShowMore={privateList.length < privateTotal}
             onShowMore={() =>
