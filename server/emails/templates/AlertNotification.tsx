@@ -117,11 +117,11 @@ function getEventMeta(eventType: AlertEventType): {
             };
         case "resource_degraded":
             return {
-                heading: "Resource Unhealthy",
-                previewText: "A resource in your organization is not healthy.",
+                heading: "Resource Degraded",
+                previewText: "A resource in your organization is degraded.",
                 summary:
-                    "A resource in your organization is currently unhealthy.",
-                statusLabel: "Unhealthy",
+                    "A resource in your organization is currently degraded.",
+                statusLabel: "Degraded",
                 statusColor: "#dc2626"
             };
         case "resource_toggle":
@@ -158,6 +158,8 @@ function resolveToggleStatus(status: unknown): {
             return { label: "Healthy", color: "#16a34a" };
         case "unhealthy":
             return { label: "Unhealthy", color: "#dc2626" };
+        case "degraded":
+            return { label: "Degraded", color: "#dc2626" };
         default:
             return { label: String(status ?? "Unknown"), color: "#f59e0b" };
     }
