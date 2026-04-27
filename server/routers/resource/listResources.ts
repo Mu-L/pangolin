@@ -139,6 +139,7 @@ export type ResourceWithTargets = {
     niceId: string;
     headerAuthId: number | null;
     wildcard: boolean;
+    health: string | null;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -460,6 +461,7 @@ export async function listResources(
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,
+                    health: row.health ?? null,
                     targets: [],
                     sites: []
                 };

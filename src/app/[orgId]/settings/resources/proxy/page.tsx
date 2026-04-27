@@ -129,7 +129,8 @@ export default async function ProxyResourcesPage(
                 healthStatus: target.healthStatus,
                 siteName: target.siteName
             })),
-            sites: resource.sites ?? []
+            sites: resource.sites ?? [],
+            health: (resource.health as ResourceRow["health"]) ?? undefined
         };
     });
     return (
