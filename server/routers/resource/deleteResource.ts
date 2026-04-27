@@ -52,6 +52,16 @@ export async function deleteResource(
             .from(targets)
             .where(eq(targets.resourceId, resourceId));
 
+        const healthChecksToBeRemoved = await db
+            .select()
+            .from(targetHealthCheck)
+            .where(
+                inArray(
+                    targetHealthCheck.targetId,
+                    targetsToBeRemoved.map((t) => t.targetId)
+                )
+            );
+
         const [deletedResource] = await db
             .delete(resources)
             .where(eq(resources.resourceId, resourceId))
@@ -91,16 +101,11 @@ export async function deleteResource(
                         .where(eq(newts.siteId, site.siteId))
                         .limit(1);
 
-                    const [healthCheck] = await db
-                        .select()
-                        .from(targetHealthCheck)
-                        .where(eq(targetHealthCheck.targetId, target.targetId));
-
                     await removeTargets(
                         newt.newtId,
                         // [target],
                         [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
-                        [healthCheck],
+                        healthChecksToBeRemoved,
                         deletedResource.protocol,
                         newt.version
                     );
