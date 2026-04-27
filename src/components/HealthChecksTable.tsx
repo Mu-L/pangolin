@@ -586,7 +586,7 @@ export default function HealthChecksTable({
                     <Switch
                         checked={r.hcEnabled}
                         disabled={
-                            !isPaid || togglingId === r.targetHealthCheckId
+                            !isPaid || togglingId === r.targetHealthCheckId || !!r.resourceId
                         }
                         onCheckedChange={(v) => handleToggleEnabled(r, v)}
                     />

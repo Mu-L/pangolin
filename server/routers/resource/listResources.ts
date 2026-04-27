@@ -110,9 +110,9 @@ const listResourcesSchema = z.object({
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["no_targets", "healthy", "degraded", "offline", "unknown"],
+            enum: ["healthy", "degraded", "offline", "unknown"],
             description:
-                "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status. `no_targets` means the resource has no targets."
+                "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status."
         }),
     siteId: z.coerce.number<string>().int().positive().optional().openapi({
         type: "integer",
@@ -374,21 +374,22 @@ export async function listResources(
                     );
                     break;
             }
-            if (typeof healthStatus !== "undefined") {
-                conditions.push(eq(resources.health, healthStatus));
-            }
-            if (siteId != null) {
-                const resourcesWithSite = db
-                    .select({ resourceId: targets.resourceId })
-                    .from(targets)
-                    .innerJoin(sites, eq(targets.siteId, sites.siteId))
-                    .where(
-                        and(eq(sites.orgId, orgId), eq(sites.siteId, siteId))
-                    );
-                conditions.push(
-                    inArray(resources.resourceId, resourcesWithSite)
+        }
+
+        if (typeof healthStatus !== "undefined") {
+            conditions.push(eq(resources.health, healthStatus));
+        }
+        if (siteId != null) {
+            const resourcesWithSite = db
+                .select({ resourceId: targets.resourceId })
+                .from(targets)
+                .innerJoin(sites, eq(targets.siteId, sites.siteId))
+                .where(
+                    and(eq(sites.orgId, orgId), eq(sites.siteId, siteId))
                 );
-            }
+            conditions.push(
+                inArray(resources.resourceId, resourcesWithSite)
+            );
         }
 
         const baseQuery = queryResourcesBase().where(and(...conditions));

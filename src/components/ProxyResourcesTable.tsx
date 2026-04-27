@@ -90,7 +90,7 @@ export type ResourceRow = {
     targetHost?: string;
     targetPort?: number;
     targets?: TargetHealth[];
-    health?: "online" | "degraded" | "unhealthy" | "unknown";
+    health?: "healthy" | "degraded" | "unhealthy" | "unknown";
     sites: ResourceSiteRow[];
 };
 
@@ -265,8 +265,8 @@ export default function ProxyResourcesTable({
                     >
                         <StatusIcon status={overallStatus} />
                         <span className="text-sm">
-                            {overallStatus === "online" &&
-                                t("resourcesTableHealthy")}
+                            {overallStatus === "healthy" &&
+                                    t("resourcesTableHealthy")}
                             {overallStatus === "degraded" &&
                                 t("resourcesTableDegraded")}
                             {overallStatus === "unhealthy" &&
@@ -469,7 +469,7 @@ export default function ProxyResourcesTable({
                             label: t("resourcesTableDegraded")
                         },
                         {
-                            value: "unhealty",
+                            value: "unhealthy",
                             label: t("resourcesTableUnhealthy")
                         },
                         { value: "unknown", label: t("resourcesTableUnknown") }
@@ -488,7 +488,7 @@ export default function ProxyResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return <TargetStatusCell targets={resourceRow.targets} />;
+                return <TargetStatusCell targets={resourceRow.targets} healthStatus={resourceRow.health} />;
             },
             sortingFn: (rowA, rowB) => {
                 const statusA = rowA.original.health;
@@ -497,7 +497,7 @@ export default function ProxyResourcesTable({
                 if (!statusA) return 1;
                 if (!statusB) return -1;
                 const statusOrder = {
-                    online: 3,
+                    healthy: 3,
                     degraded: 2,
                     unhealthy: 1,
                     unknown: 0
