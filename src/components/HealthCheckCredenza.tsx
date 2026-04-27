@@ -119,7 +119,7 @@ const DEFAULT_VALUES = {
     name: "",
     hcEnabled: true,
     hcMode: "http",
-    hcScheme: "https",
+    hcScheme: "http",
     hcMethod: "GET",
     hcHostname: "",
     hcPort: "",
@@ -271,7 +271,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                     name: initialValues.name,
                     hcEnabled: initialValues.hcEnabled,
                     hcMode: initialValues.hcMode ?? "http",
-                    hcScheme: initialValues.hcScheme ?? "https",
+                    hcScheme: initialValues.hcScheme ?? "http",
                     hcMethod: initialValues.hcMethod ?? "GET",
                     hcHostname: initialValues.hcHostname ?? "",
                     hcPort: initialValues.hcPort
