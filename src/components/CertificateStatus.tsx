@@ -12,7 +12,6 @@ type CertificateStatusProps = {
     autoFetch?: boolean;
     showLabel?: boolean;
     className?: string;
-    disableRestartButton?: boolean;
     onRefresh?: () => void;
     polling?: boolean;
     pollingInterval?: number;
@@ -24,7 +23,6 @@ export default function CertificateStatus({
     fullDomain,
     autoFetch = true,
     showLabel = true,
-    disableRestartButton = false,
     className = "",
     onRefresh,
     polling = false,
@@ -120,6 +118,7 @@ export default function CertificateStatus({
     }
 
     const isPending = cert.status === "pending";
+    const disableRestartButton = cert.domainType === "wildcard";
 
     return (
         <div className={`flex items-center gap-2 ${className}`}>
@@ -133,7 +132,7 @@ export default function CertificateStatus({
                     variant="ghost"
                     className={`h-auto p-0 text-sm ${getStatusColor(cert.status)}`}
                     onClick={handleRefresh}
-                    disabled={refreshing}
+                    disabled={refreshing || disableRestartButton}
                     title={t("restartCertificate", {
                         defaultValue: "Restart Certificate"
                     })}

@@ -40,6 +40,8 @@ async function query(domainId: string, domain: string) {
         throw new Error(`Domain with ID ${domainId} not found`);
     }
 
+    const domainType = domainRecord.type;
+
     let existing: any[] = [];
     if (domainRecord.type == "ns" || domainRecord.type == "wildcard") {
         const domainLevelDown = domain.split(".").slice(1).join(".");
@@ -98,7 +100,7 @@ async function query(domainId: string, domain: string) {
             );
     }
 
-    return existing.length > 0 ? existing[0] : null;
+    return existing.length > 0 ? { ...existing[0], domainType } : null;
 }
 
 registry.registerPath({
