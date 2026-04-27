@@ -266,7 +266,7 @@ export async function createTarget(
                 await fireHealthCheckUnhealthyAlert(
                     healthCheck[0].orgId,
                     healthCheck[0].targetHealthCheckId,
-                    healthCheck[0].name,
+                    healthCheck[0].name || "",
                     healthCheck[0].targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
@@ -287,7 +287,7 @@ export async function createTarget(
                 await fireHealthCheckHealthyAlert(
                     healthCheck[0].orgId,
                     healthCheck[0].targetHealthCheckId,
-                    healthCheck[0].name,
+                    healthCheck[0].name || "",
                     healthCheck[0].targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
