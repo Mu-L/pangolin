@@ -29,6 +29,7 @@ import { Label } from "@app/components/ui/label";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import { AxiosResponse } from "axios";
 import { AlertCircle } from "lucide-react";
@@ -506,7 +507,7 @@ export default function GeneralForm() {
                     name: data.name,
                     niceId: data.niceId,
                     subdomain: data.subdomain
-                        ? toASCII(data.subdomain)
+                        ? toASCII(finalizeSubdomainSanitize(data.subdomain, true))
                         : undefined,
                     domainId: data.domainId,
                     proxyPort: data.proxyPort

@@ -488,7 +488,7 @@ export default function Page() {
                 const httpData = httpForm.getValues();
 
                 sanitizedSubdomain = httpData.subdomain
-                    ? finalizeSubdomainSanitize(httpData.subdomain)
+                    ? finalizeSubdomainSanitize(httpData.subdomain, true)
                     : undefined;
 
                 Object.assign(payload, {
