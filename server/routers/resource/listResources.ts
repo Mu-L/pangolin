@@ -268,8 +268,6 @@ export async function listResources(
             );
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 3 * 1000));
-
         const orgId =
             parsedParams.data.orgId ||
             req.userOrg?.orgId ||
