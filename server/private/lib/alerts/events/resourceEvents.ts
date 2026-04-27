@@ -14,6 +14,7 @@
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
 import { db, statusHistory, Transaction } from "@server/db";
+import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -35,6 +36,7 @@ export async function fireResourceHealthyAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
@@ -45,6 +47,11 @@ export async function fireResourceHealthyAlert(
             status: "healthy",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("resource", resourceId);
+
+        if (!send) {
+            return;
+        }
 
         await processAlerts({
             eventType: "resource_healthy",
@@ -90,6 +97,7 @@ export async function fireResourceUnhealthyAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
@@ -100,6 +108,11 @@ export async function fireResourceUnhealthyAlert(
             status: "unhealthy",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("resource", resourceId);
+
+        if (!send) {
+            return;
+        }
 
         await processAlerts({
             eventType: "resource_unhealthy",
@@ -145,6 +158,7 @@ export async function fireResourceDegradedAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
@@ -155,6 +169,11 @@ export async function fireResourceDegradedAlert(
             status: "degraded",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("resource", resourceId);
+
+        if (!send) {
+            return;
+        }
 
         await processAlerts({
             eventType: "resource_degraded",
@@ -200,6 +219,7 @@ export async function fireResourceUnknownAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
@@ -210,6 +230,11 @@ export async function fireResourceUnknownAlert(
             status: "unknown",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("resource", resourceId);
+
+        if (!send) {
+            return;
+        }
 
         await processAlerts({
             eventType: "resource_toggle",

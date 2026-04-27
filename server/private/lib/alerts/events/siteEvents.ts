@@ -14,6 +14,7 @@
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
 import { db, sites, statusHistory, targetHealthCheck, Transaction } from "@server/db";
+import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
 import { and, eq, inArray } from "drizzle-orm";
 import { fireHealthCheckUnhealthyAlert } from "./healthCheckEvents";
 
@@ -47,6 +48,7 @@ export async function fireSiteOnlineAlert(
             status: "online",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("site", siteId);
 
         await processAlerts({
             eventType: "site_online",
@@ -102,6 +104,7 @@ export async function fireSiteOfflineAlert(
             status: "offline",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("site", siteId);
 
         const unhealthyHealthChecks = await trx
             .update(targetHealthCheck)

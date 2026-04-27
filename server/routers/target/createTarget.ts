@@ -267,7 +267,7 @@ export async function createTarget(
                     healthCheck[0].orgId,
                     healthCheck[0].targetHealthCheckId,
                     healthCheck[0].name,
-                    undefined,
+                    healthCheck[0].targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
@@ -278,7 +278,7 @@ export async function createTarget(
                     healthCheck[0].orgId,
                     healthCheck[0].targetHealthCheckId,
                     healthCheck[0].name,
-                    undefined,
+                    healthCheck[0].targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
@@ -288,7 +288,7 @@ export async function createTarget(
                     healthCheck[0].orgId,
                     healthCheck[0].targetHealthCheckId,
                     healthCheck[0].name,
-                    undefined,
+                    healthCheck[0].targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx

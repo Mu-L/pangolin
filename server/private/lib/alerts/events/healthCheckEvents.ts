@@ -22,6 +22,7 @@ import {
     Transaction
 } from "@server/db";
 import { eq } from "drizzle-orm";
+import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
 import {
     fireResourceDegradedAlert,
     fireResourceHealthyAlert,
@@ -61,8 +62,9 @@ export async function fireHealthCheckHealthyAlert(
             status: "healthy",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("health_check", healthCheckId);
 
-        await handleResource(orgId, healthCheckTargetId, trx);
+        await handleResource(orgId, healthCheckTargetId, send, trx);
 
         if (!send) {
             return;
@@ -124,8 +126,9 @@ export async function fireHealthCheckUnhealthyAlert(
             status: "unhealthy",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("health_check", healthCheckId);
 
-        await handleResource(orgId, healthCheckTargetId, trx);
+        await handleResource(orgId, healthCheckTargetId, send, trx);
 
         if (!send) {
             return;
@@ -176,8 +179,9 @@ export async function fireHealthCheckUnknownAlert(
             status: "unknown",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("health_check", healthCheckId);
 
-        await handleResource(orgId, healthCheckTargetId, trx);
+        await handleResource(orgId, healthCheckTargetId, send, trx);
 
         if (!send) {
             return;
@@ -190,11 +194,11 @@ export async function fireHealthCheckUnknownAlert(
     }
 }
 
-async function handleResource(orgId: string, healthCheckTargetId?: number | null, trx: Transaction | typeof db = db) {
+async function handleResource(orgId: string, healthCheckTargetId?: number | null, send: boolean = true, trx: Transaction | typeof db = db) {
     if (!healthCheckTargetId) {
         return;
     }
-    // we have resources lets get them
+    // we have targets lets get them
     const [target] = await trx
         .select()
         .from(targets)
@@ -204,6 +208,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
     if (!target) {
         return;
     }
+
     const [resource] = await trx
         .select()
         .from(resources)
@@ -213,6 +218,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
     if (!resource) {
         return;
     }
+
     const otherTargets = await trx
         .select({ hcHealth: targetHealthCheck.hcHealth })
         .from(targets)
@@ -256,6 +262,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
                 resource.resourceId,
                 resource.name,
                 undefined,
+                send,
                 trx
             );
         } else if (health === "unhealthy") {
@@ -264,6 +271,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
                 resource.resourceId,
                 resource.name,
                 undefined,
+                send,
                 trx
             );
         } else if (health === "healthy") {
@@ -272,6 +280,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
                 resource.resourceId,
                 resource.name,
                 undefined,
+                send,
                 trx
             );
         } else if (health === "degraded") {
@@ -280,6 +289,7 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
                 resource.resourceId,
                 resource.name,
                 undefined,
+                send,
                 trx
             );
         }

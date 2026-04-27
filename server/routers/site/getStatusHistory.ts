@@ -1,14 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, statusHistory } from "@server/db";
-import { and, eq, gte, asc } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import {
-    computeBuckets,
+    getCachedStatusHistory,
     statusHistoryQuerySchema,
     StatusHistoryResponse
 } from "@server/lib/statusHistory";
@@ -46,39 +44,10 @@ export async function getSiteStatusHistory(
         const entityId = parsedParams.data.siteId;
         const { days } = parsedQuery.data;
 
-        const nowSec = Math.floor(Date.now() / 1000);
-        const startSec = nowSec - days * 86400;
-
-        const events = await db
-            .select()
-            .from(statusHistory)
-            .where(
-                and(
-                    eq(statusHistory.entityType, entityType),
-                    eq(statusHistory.entityId, entityId),
-                    gte(statusHistory.timestamp, startSec)
-                )
-            )
-            .orderBy(asc(statusHistory.timestamp));
-
-        const { buckets, totalDowntime } = computeBuckets(events, days);
-        const totalWindow = days * 86400;
-        const overallUptime =
-            totalWindow > 0
-                ? Math.max(
-                      0,
-                      ((totalWindow - totalDowntime) / totalWindow) * 100
-                  )
-                : 100;
+        const data = await getCachedStatusHistory(entityType, entityId, days);
 
         return response<StatusHistoryResponse>(res, {
-            data: {
-                entityType,
-                entityId,
-                days: buckets,
-                overallUptimePercent: Math.round(overallUptime * 100) / 100,
-                totalDowntimeSeconds: totalDowntime
-            },
+            data,
             success: true,
             error: false,
             message: "Status history retrieved successfully",

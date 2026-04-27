@@ -1,4 +1,73 @@
 import { z } from "zod";
+import { db, statusHistory } from "@server/db";
+import { and, eq, gte, asc } from "drizzle-orm";
+import cache from "@server/lib/cache";
+
+const STATUS_HISTORY_CACHE_TTL = 60; // seconds
+
+function statusHistoryCacheKey(
+    entityType: string,
+    entityId: number,
+    days: number
+): string {
+    return `statusHistory:${entityType}:${entityId}:${days}`;
+}
+
+export async function getCachedStatusHistory(
+    entityType: string,
+    entityId: number,
+    days: number
+): Promise<StatusHistoryResponse> {
+    const cacheKey = statusHistoryCacheKey(entityType, entityId, days);
+    const cached = await cache.get<StatusHistoryResponse>(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const startSec = nowSec - days * 86400;
+
+    const events = await db
+        .select()
+        .from(statusHistory)
+        .where(
+            and(
+                eq(statusHistory.entityType, entityType),
+                eq(statusHistory.entityId, entityId),
+                gte(statusHistory.timestamp, startSec)
+            )
+        )
+        .orderBy(asc(statusHistory.timestamp));
+
+    const { buckets, totalDowntime } = computeBuckets(events, days);
+    const totalWindow = days * 86400;
+    const overallUptime =
+        totalWindow > 0
+            ? Math.max(0, ((totalWindow - totalDowntime) / totalWindow) * 100)
+            : 100;
+
+    const result: StatusHistoryResponse = {
+        entityType,
+        entityId,
+        days: buckets,
+        overallUptimePercent: Math.round(overallUptime * 100) / 100,
+        totalDowntimeSeconds: totalDowntime
+    };
+
+    await cache.set(cacheKey, result, STATUS_HISTORY_CACHE_TTL);
+    return result;
+}
+
+export async function invalidateStatusHistoryCache(
+    entityType: string,
+    entityId: number
+): Promise<void> {
+    const prefix = `statusHistory:${entityType}:${entityId}:`;
+    const keys = cache.keys().filter((k) => k.startsWith(prefix));
+    if (keys.length > 0) {
+        await cache.del(keys);
+    }
+}
 
 export const statusHistoryQuerySchema = z
     .object({

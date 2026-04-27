@@ -228,12 +228,7 @@ export async function updateTarget(
                 hcHealthValue = undefined;
             }
 
-            const isDisablingHc =
-                (parsedBody.data.hcEnabled === false ||
-                    parsedBody.data.hcEnabled === null) &&
-                existingHc.hcEnabled === true;
-
-            const [updatedHc] = await trx
+            [updatedHc] = await trx
                 .update(targetHealthCheck)
                 .set({
                     siteId: parsedBody.data.siteId,
@@ -259,32 +254,41 @@ export async function updateTarget(
                 .returning();
 
             if (updatedHc.hcHealth === "unhealthy" && existingHc.hcHealth !== "unhealthy") {
+                logger.debug(
+                    `Health check ${updatedHc.targetHealthCheckId} for target ${targetId} is now unhealthy, firing alert`
+                );
                 await fireHealthCheckUnhealthyAlert(
                     updatedHc.orgId,
                     updatedHc.targetHealthCheckId,
                     updatedHc.name || "",
-                    undefined,
+                    updatedHc.targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
                 );
             } else if (updatedHc.hcHealth === "unknown" && existingHc.hcHealth !== "unknown") {
+                logger.debug(
+                    `Health check ${updatedHc.targetHealthCheckId} for target ${targetId} is now unknown, firing alert`
+                );
                 // if the health is unknown, we want to fire an alert to notify users to enable health checks
                 await fireHealthCheckUnknownAlert(
                     updatedHc.orgId,
                     updatedHc.targetHealthCheckId,
                     updatedHc.name,
-                    undefined,
+                    updatedHc.targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
                 );
             } else if (updatedHc.hcHealth === "healthy" && existingHc.hcHealth !== "healthy") {
+                logger.debug(
+                    `Health check ${updatedHc.targetHealthCheckId} for target ${targetId} is now healthy, firing alert`
+                );
                 await fireHealthCheckHealthyAlert(
                     updatedHc.orgId,
                     updatedHc.targetHealthCheckId,
                     updatedHc.name,
-                    undefined,
+                    updatedHc.targetId,
                     undefined,
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
