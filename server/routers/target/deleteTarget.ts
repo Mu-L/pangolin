@@ -12,6 +12,7 @@ import { fromError } from "zod-validation-error";
 import { removeTargets } from "../newt/targets";
 import { getAllowedIps } from "./helpers";
 import { OpenAPITags, registry } from "@server/openApi";
+import { targetHealthCheck } from "@server/db/pg";
 
 const deleteTargetSchema = z.strictObject({
     targetId: z.string().transform(Number).pipe(z.int().positive())
@@ -46,6 +47,11 @@ export async function deleteTarget(
 
         const { targetId } = parsedParams.data;
 
+        const [deletedHealthCheck] = await db
+            .delete(targetHealthCheck)
+            .where(eq(targetHealthCheck.targetId, targetId))
+            .returning();
+
         const [deletedTarget] = await db
             .delete(targets)
             .where(eq(targets.targetId, targetId))
@@ -74,38 +80,39 @@ export async function deleteTarget(
             );
         }
 
-        // const [site] = await db
-        //     .select()
-        //     .from(sites)
-        //     .where(eq(sites.siteId, resource.siteId!))
-        //     .limit(1);
-        //
-        // if (!site) {
-        //     return next(
-        //         createHttpError(
-        //             HttpCode.NOT_FOUND,
-        //             `Site with ID ${resource.siteId} not found`
-        //         )
-        //     );
-        // }
-        //
-        // if (site.pubKey) {
-        //     if (site.type == "wireguard") {
-        //         await addPeer(site.exitNodeId!, {
-        //             publicKey: site.pubKey,
-        //             allowedIps: await getAllowedIps(site.siteId)
-        //         });
-        //     } else if (site.type == "newt") {
-        //         // get the newt on the site by querying the newt table for siteId
-        //         const [newt] = await db
-        //             .select()
-        //             .from(newts)
-        //             .where(eq(newts.siteId, site.siteId))
-        //             .limit(1);
-        //
-        //         removeTargets(newt.newtId, [deletedTarget], resource.protocol, resource.proxyPort);
-        //     }
-        // }
+        const [site] = await db
+            .select()
+            .from(sites)
+            .where(eq(sites.siteId, targets.siteId))
+            .limit(1);
+
+        if (!site) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Site with ID ${targets.siteId} not found`
+                )
+            );
+        }
+
+        if (site.pubKey) {
+            if (site.type == "newt") {
+                // get the newt on the site by querying the newt table for siteId
+                const [newt] = await db
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, site.siteId))
+                    .limit(1);
+
+                await removeTargets(
+                    newt.newtId,
+                    [deletedTarget],
+                    [deletedHealthCheck],
+                    resource.protocol,
+                    newt.version
+                );
+            }
+        }
 
         return response(res, {
             data: null,

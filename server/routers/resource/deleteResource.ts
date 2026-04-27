@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, targetHealthCheck } from "@server/db";
 import { newts, resources, sites, targets } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -52,6 +52,16 @@ export async function deleteResource(
             .from(targets)
             .where(eq(targets.resourceId, resourceId));
 
+        const targetHealthChecksToBeRemoved = await db
+            .select()
+            .from(targetHealthCheck)
+            .where(
+                inArray(
+                    targetHealthCheck.targetId,
+                    targetsToBeRemoved.map((t) => t.targetId)
+                )
+            );
+
         const [deletedResource] = await db
             .delete(resources)
             .where(eq(resources.resourceId, resourceId))
@@ -66,44 +76,40 @@ export async function deleteResource(
             );
         }
 
-        // const [site] = await db
-        //     .select()
-        //     .from(sites)
-        //     .where(eq(sites.siteId, deletedResource.siteId!))
-        //     .limit(1);
-        //
-        // if (!site) {
-        //     return next(
-        //         createHttpError(
-        //             HttpCode.NOT_FOUND,
-        //             `Site with ID ${deletedResource.siteId} not found`
-        //         )
-        //     );
-        // }
-        //
-        // if (site.pubKey) {
-        //     if (site.type == "wireguard") {
-        //         await addPeer(site.exitNodeId!, {
-        //             publicKey: site.pubKey,
-        //             allowedIps: await getAllowedIps(site.siteId)
-        //         });
-        //     } else if (site.type == "newt") {
-        //         // get the newt on the site by querying the newt table for siteId
-        //         const [newt] = await db
-        //             .select()
-        //             .from(newts)
-        //             .where(eq(newts.siteId, site.siteId))
-        //             .limit(1);
-        //
-        //         removeTargets(
-        //             newt.newtId,
-        //             targetsToBeRemoved,
-        //             deletedResource.protocol,
-        //             deletedResource.proxyPort
-        //         );
-        //     }
-        // }
-        //
+        const [site] = await db
+            .select()
+            .from(sites)
+            .where(eq(sites.siteId, targets.siteId))
+            .limit(1);
+
+        if (!site) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Site with ID ${targets.siteId} not found`
+                )
+            );
+        }
+
+        if (site.pubKey) {
+            if (site.type == "newt") {
+                // get the newt on the site by querying the newt table for siteId
+                const [newt] = await db
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, site.siteId))
+                    .limit(1);
+
+                await removeTargets(
+                    newt.newtId,
+                    targetsToBeRemoved,
+                    targetHealthChecksToBeRemoved,
+                    deletedResource.protocol,
+                    newt.version
+                );
+            }
+        }
+
         return response(res, {
             data: null,
             success: true,
