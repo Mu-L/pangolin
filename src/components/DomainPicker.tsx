@@ -913,7 +913,7 @@ export default function DomainPicker({
                     <p className="text-sm text-muted-foreground">
                         {t("domainPickerWildcardCertWarning")}{" "}
                         <a
-                            href="https://docs.pangolin.net/self-host/advanced/wild-card-domains#setting-up-wildcard-certificates"
+                            href="https://docs.pangolin.net/manage/resources/public/wildcard-resources#requirements-for-wildcard-resources"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary hover:underline inline-flex items-center gap-1"
