@@ -2884,6 +2884,8 @@
     "editInternalResourceDialogAddClients": "Add Clients",
     "editInternalResourceDialogDestinationLabel": "Destination",
     "editInternalResourceDialogDestinationDescription": "Choose where this resource runs and how clients reach it. Selecting multiple sites will create a high availability resource that can be accessed from any of the selected sites.",
+    "internalResourceFormMultiSiteRoutingHelp": "Selecting multiple sites enables resilient routing and failover for high availability.",
+    "internalResourceFormMultiSiteRoutingHelpLearnMore": "Learn more",
     "editInternalResourceDialogPortRestrictionsDescription": "Restrict access to specific TCP/UDP ports or allow/block all ports.",
     "createInternalResourceDialogHttpConfiguration": "HTTP configuration",
     "createInternalResourceDialogHttpConfigurationDescription": "Choose the domain clients will use to reach this resource over HTTP or HTTPS.",
