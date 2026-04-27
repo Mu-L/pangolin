@@ -52,16 +52,6 @@ export async function deleteResource(
             .from(targets)
             .where(eq(targets.resourceId, resourceId));
 
-        const targetHealthChecksToBeRemoved = await db
-            .select()
-            .from(targetHealthCheck)
-            .where(
-                inArray(
-                    targetHealthCheck.targetId,
-                    targetsToBeRemoved.map((t) => t.targetId)
-                )
-            );
-
         const [deletedResource] = await db
             .delete(resources)
             .where(eq(resources.resourceId, resourceId))
@@ -76,37 +66,44 @@ export async function deleteResource(
             );
         }
 
-        const [site] = await db
-            .select()
-            .from(sites)
-            .where(eq(sites.siteId, targets.siteId))
-            .limit(1);
+        for (const target of targetsToBeRemoved) {
+            const [site] = await db
+                .select()
+                .from(sites)
+                .where(eq(sites.siteId, target.siteId))
+                .limit(1);
 
-        if (!site) {
-            return next(
-                createHttpError(
-                    HttpCode.NOT_FOUND,
-                    `Site with ID ${targets.siteId} not found`
-                )
-            );
-        }
-
-        if (site.pubKey) {
-            if (site.type == "newt") {
-                // get the newt on the site by querying the newt table for siteId
-                const [newt] = await db
-                    .select()
-                    .from(newts)
-                    .where(eq(newts.siteId, site.siteId))
-                    .limit(1);
-
-                await removeTargets(
-                    newt.newtId,
-                    targetsToBeRemoved,
-                    targetHealthChecksToBeRemoved,
-                    deletedResource.protocol,
-                    newt.version
+            if (!site) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Site with ID ${target.siteId} not found`
+                    )
                 );
+            }
+
+            if (site.pubKey) {
+                if (site.type == "newt") {
+                    // get the newt on the site by querying the newt table for siteId
+                    const [newt] = await db
+                        .select()
+                        .from(newts)
+                        .where(eq(newts.siteId, site.siteId))
+                        .limit(1);
+
+                    const [healthCheck] = await db
+                        .select()
+                        .from(targetHealthCheck)
+                        .where(eq(targetHealthCheck.targetId, target.targetId));
+
+                    await removeTargets(
+                        newt.newtId,
+                        [target],
+                        [healthCheck],
+                        deletedResource.protocol,
+                        newt.version
+                    );
+                }
             }
         }
 
