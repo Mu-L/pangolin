@@ -22,6 +22,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
+import { fireHealthCheckUnhealthyAlert } from "#private/lib/alerts";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -145,6 +146,15 @@ export async function createHealthCheck(
                 hcHealth: "unhealthy"
             })
             .returning();
+
+        await fireHealthCheckUnhealthyAlert(
+            record.orgId,
+            record.targetHealthCheckId,
+            record.name || "",
+            undefined,
+            undefined,
+            false // dont send the alert because we just want to create the alert, not notify users yet
+        );
 
         // Push health check to newt if the site is a newt site
         if (siteId) {

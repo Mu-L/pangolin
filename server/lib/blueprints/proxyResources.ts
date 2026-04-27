@@ -179,6 +179,7 @@ export async function updateProxyResources(
                     newHealthcheck.name,
                     newHealthcheck.targetId,
                     undefined,
+                    true,
                     trx
                 );
             }
@@ -581,6 +582,7 @@ export async function updateProxyResources(
                             newHealthcheck.name,
                             newHealthcheck.targetId,
                             undefined,
+                            true,
                             trx
                         );
                     }

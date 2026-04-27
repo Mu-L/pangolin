@@ -10,10 +10,11 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { addPeer } from "../gerbil/peers";
 import { addTargets } from "../newt/targets";
-import { fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
+import { fireHealthCheckHealthyAlert, fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
+import { fireHealthCheckUnhealthyAlert } from "@server/lib/alerts";
 
 
 const updateTargetParamsSchema = z.strictObject({
@@ -256,12 +257,33 @@ export async function updateTarget(
             .where(eq(targetHealthCheck.targetId, targetId))
             .returning();
 
-        if (isDisablingHc) {
+        if (updatedHc.hcHealth === "unhealthy" && existingHc.hcHealth !== "unhealthy") {
+            await fireHealthCheckUnhealthyAlert(
+                updatedHc.orgId,
+                updatedHc.targetHealthCheckId,
+                updatedHc.name || "",
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (updatedHc.hcHealth === "unknown" && existingHc.hcHealth !== "unknown") {
+            // if the health is unknown, we want to fire an alert to notify users to enable health checks
             await fireHealthCheckUnknownAlert(
-                resource.orgId,
-                existingHc.targetHealthCheckId,
-                existingHc.name,
-                updatedHc.targetId
+                updatedHc.orgId,
+                updatedHc.targetHealthCheckId,
+                updatedHc.name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (updatedHc.hcHealth === "healthy" && existingHc.hcHealth !== "healthy") {
+            await fireHealthCheckHealthyAlert(
+                updatedHc.orgId,
+                updatedHc.targetHealthCheckId,
+                updatedHc.name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
             );
         }
 

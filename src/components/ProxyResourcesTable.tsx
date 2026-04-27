@@ -63,13 +63,6 @@ import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
-import type { StatusHistoryResponse } from "@server/lib/statusHistory";
 import UptimeMiniBar from "./UptimeMiniBar";
 
 export type TargetHealth = {
@@ -466,7 +459,7 @@ export default function ProxyResourcesTable({
         {
             id: "status",
             accessorKey: "status",
-            friendlyName: t("status"),
+            friendlyName: t("health"),
             header: () => (
                 <ColumnFilterButton
                     options={[
@@ -489,7 +482,7 @@ export default function ProxyResourcesTable({
                     }
                     searchPlaceholder={t("searchPlaceholder")}
                     emptyMessage={t("emptySearchOptions")}
-                    label={t("status")}
+                    label={t("health")}
                     className="p-3"
                 />
             ),

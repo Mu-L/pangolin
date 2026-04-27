@@ -14,7 +14,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { resources, statusHistory } from "@server/db";
+import { resources } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -24,7 +24,6 @@ import { eq, and } from "drizzle-orm";
 import {
     fireResourceHealthyAlert,
     fireResourceUnhealthyAlert,
-    fireResourceToggleAlert,
     fireResourceDegradedAlert
 } from "#private/lib/alerts/events/resourceEvents";
 

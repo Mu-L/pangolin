@@ -22,6 +22,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, isNull } from "drizzle-orm";
 import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
+import { fireHealthCheckUnhealthyAlert, fireHealthCheckUnknownAlert, fireHealthCheckHealthyAlert } from "#private/lib/alerts";
 
 const paramsSchema = z
     .object({
@@ -232,6 +233,37 @@ export async function updateHealthCheck(
                 )
             )
             .returning();
+
+        if (updated.hcHealth === "unhealthy" && existingHealthCheck.hcHealth !== "unhealthy") {
+            await fireHealthCheckUnhealthyAlert(
+                updated.orgId,
+                updated.targetHealthCheckId,
+                updated.name || "",
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (updated.hcHealth === "unknown" && existingHealthCheck.hcHealth !== "unknown") {
+            // if the health is unknown, we want to fire an alert to notify users to enable health checks
+            await fireHealthCheckUnknownAlert(
+                updated.orgId,
+                updated.targetHealthCheckId,
+                updated.name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (updated.hcHealth === "healthy" && existingHealthCheck.hcHealth !== "healthy") {
+            await fireHealthCheckHealthyAlert(
+                updated.orgId,
+                updated.targetHealthCheckId,
+                updated.name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        }
+
 
         // Push updated health check to newt if the site is a newt site
         const [newt] = await db

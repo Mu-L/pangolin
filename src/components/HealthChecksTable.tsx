@@ -151,7 +151,8 @@ export default function HealthChecksTable({
             resourceId: resourceIdNum,
             fullDomain: null,
             niceId: "",
-            ssl: false
+            ssl: false,
+            wildcard: false
         };
     }, [initialFilterResource, resourceIdQ, resourceIdNum, t]);
 

@@ -50,7 +50,8 @@ export async function fireHealthCheckHealthyAlert(
     healthCheckName?: string | null,
     healthCheckTargetId?: number | null,
     extra?: Record<string, unknown>,
-    trx: Transaction | typeof db = db
+    send: boolean = true,
+    trx: Transaction | typeof db = db,
 ): Promise<void> {
     try {
         await trx.insert(statusHistory).values({
@@ -62,6 +63,10 @@ export async function fireHealthCheckHealthyAlert(
         });
 
         await handleResource(orgId, healthCheckTargetId, trx);
+
+        if (!send) {
+            return;
+        }
 
         await processAlerts({
             eventType: "health_check_healthy",
@@ -108,6 +113,7 @@ export async function fireHealthCheckUnhealthyAlert(
     healthCheckName?: string | null,
     healthCheckTargetId?: number | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
@@ -120,6 +126,10 @@ export async function fireHealthCheckUnhealthyAlert(
         });
 
         await handleResource(orgId, healthCheckTargetId, trx);
+
+        if (!send) {
+            return;
+        }
 
         await processAlerts({
             eventType: "health_check_unhealthy",
@@ -155,6 +165,7 @@ export async function fireHealthCheckUnknownAlert(
     healthCheckName?: string | null,
     healthCheckTargetId?: number | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
@@ -167,6 +178,10 @@ export async function fireHealthCheckUnknownAlert(
         });
 
         await handleResource(orgId, healthCheckTargetId, trx);
+
+        if (!send) {
+            return;
+        }
     } catch (err) {
         logger.error(
             `fireHealthCheckUnknownAlert: unexpected error for healthCheckId ${healthCheckId}`,

@@ -125,6 +125,7 @@ export async function fireSiteOfflineAlert(
                 healthCheck.name,
                 undefined,
                 undefined,
+                true,
                 trx
             );
         }

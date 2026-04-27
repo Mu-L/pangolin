@@ -6,7 +6,7 @@ import {
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
-import { fireSiteOfflineAlert } from "@server/lib/alerts";
+import { fireSiteOfflineAlert } from "#dynamic/lib/alerts";
 
 /**
  * Handles disconnecting messages from sites to show disconnected in the ui

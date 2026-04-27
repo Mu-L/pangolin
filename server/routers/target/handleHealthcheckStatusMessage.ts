@@ -1,10 +1,6 @@
 import {
     db,
-    targets,
-    resources,
-    sites,
-    targetHealthCheck,
-    statusHistory
+    targetHealthCheck
 } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
@@ -142,6 +138,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         targetCheck.name ?? undefined,
                         targetCheck.targetId,
                         undefined,
+                        true,
                         trx
                     );
                 } else if (healthStatus.status === "healthy") {
@@ -151,6 +148,7 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                         targetCheck.name ?? undefined,
                         targetCheck.targetId,
                         undefined,
+                        true,
                         trx
                     );
                 }

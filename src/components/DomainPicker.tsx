@@ -557,6 +557,7 @@ export default function DomainPicker({
                                     )}
                                 </p>
                                 <PaidFeaturesAlert
+                                    showBookADemo={false}
                                     tiers={
                                         tierMatrix[
                                             TierFeature.WildcardSubdomain

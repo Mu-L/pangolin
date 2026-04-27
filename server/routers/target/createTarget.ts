@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, TargetHealthCheck, targetHealthCheck } from "@server/db";
+import {
+    db,
+    statusHistory,
+    TargetHealthCheck,
+    targetHealthCheck
+} from "@server/db";
 import { newts, resources, sites, Target, targets } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -14,6 +19,7 @@ import { eq } from "drizzle-orm";
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
+import { fireHealthCheckHealthyAlert, fireHealthCheckUnhealthyAlert, fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
 
 const createTargetParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())
@@ -251,6 +257,36 @@ export async function createTarget(
                 hcUnhealthyThreshold: targetData.hcUnhealthyThreshold ?? null
             })
             .returning();
+
+        if (healthCheck[0].hcHealth === "unhealthy") {
+            await fireHealthCheckUnhealthyAlert(
+                healthCheck[0].orgId,
+                healthCheck[0].targetHealthCheckId,
+                healthCheck[0].name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (healthCheck[0].hcHealth === "unknown") {
+            // if the health is unknown, we want to fire an alert to notify users to enable health checks
+            await fireHealthCheckUnknownAlert(
+                healthCheck[0].orgId,
+                healthCheck[0].targetHealthCheckId,
+                healthCheck[0].name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (healthCheck[0].hcHealth === "healthy") {
+            await fireHealthCheckHealthyAlert(
+                healthCheck[0].orgId,
+                healthCheck[0].targetHealthCheckId,
+                healthCheck[0].name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        }
 
         if (site.pubKey) {
             if (site.type == "wireguard") {
