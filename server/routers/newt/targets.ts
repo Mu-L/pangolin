@@ -17,16 +17,21 @@ export async function addTargets(
         }:${target.port}`;
     });
 
-    await sendToClient(
-        newtId,
-        {
-            type: `newt/${protocol}/add`,
-            data: {
-                targets: payloadTargets
+    if (payloadTargets.length > 0) {
+        await sendToClient(
+            newtId,
+            {
+                type: `newt/${protocol}/add`,
+                data: {
+                    targets: payloadTargets
+                }
+            },
+            {
+                incrementConfigVersion: true,
+                compress: canCompress(version, "newt")
             }
-        },
-        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
-    );
+        );
+    }
 
     const healthCheckTargets = healthCheckData.map((hc) => {
         // Ensure all necessary fields are present
@@ -206,16 +211,18 @@ export async function removeTargets(
         }:${target.port}`;
     });
 
-    await sendToClient(
-        newtId,
-        {
-            type: `newt/${protocol}/remove`,
-            data: {
-                targets: payloadTargets
-            }
-        },
-        { incrementConfigVersion: true }
-    );
+    if (payloadTargets.length > 0) {
+        await sendToClient(
+            newtId,
+            {
+                type: `newt/${protocol}/remove`,
+                data: {
+                    targets: payloadTargets
+                }
+            },
+            { incrementConfigVersion: true }
+        );
+    }
 
     const healthCheckTargets = healthCheckData.map((hc) => {
         return hc.targetHealthCheckId;

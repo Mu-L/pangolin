@@ -10,12 +10,10 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { addPeer } from "../gerbil/peers";
 import { addTargets } from "../newt/targets";
-import { fireHealthCheckHealthyAlert, fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
+import { fireHealthCheckHealthyAlert, fireHealthCheckUnknownAlert, fireHealthCheckUnhealthyAlert } from "#dynamic/lib/alerts";
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
-import { fireHealthCheckUnhealthyAlert } from "@server/lib/alerts";
-
 
 const updateTargetParamsSchema = z.strictObject({
     targetId: z.string().transform(Number).pipe(z.int().positive())
@@ -168,124 +166,131 @@ export async function updateTarget(
 
         const pathMatchTypeRemoved = parsedBody.data.pathMatchType === null;
 
-        const [updatedTarget] = await db
-            .update(targets)
-            .set({
-                siteId: parsedBody.data.siteId,
-                ip: parsedBody.data.ip,
-                method: parsedBody.data.method,
-                port: parsedBody.data.port,
-                internalPort,
-                enabled: parsedBody.data.enabled,
-                path: parsedBody.data.path,
-                pathMatchType: parsedBody.data.pathMatchType,
-                priority: parsedBody.data.priority,
-                rewritePath: pathMatchTypeRemoved ? null : parsedBody.data.rewritePath,
-                rewritePathType: pathMatchTypeRemoved ? null : parsedBody.data.rewritePathType
-            })
-            .where(eq(targets.targetId, targetId))
-            .returning();
+        let updatedTarget: any;
+        let updatedHc: any;
+        await db.transaction(async (trx) => {
+             [updatedTarget] = await trx
+                .update(targets)
+                .set({
+                    siteId: parsedBody.data.siteId,
+                    ip: parsedBody.data.ip,
+                    method: parsedBody.data.method,
+                    port: parsedBody.data.port,
+                    internalPort,
+                    enabled: parsedBody.data.enabled,
+                    path: parsedBody.data.path,
+                    pathMatchType: parsedBody.data.pathMatchType,
+                    priority: parsedBody.data.priority,
+                    rewritePath: pathMatchTypeRemoved ? null : parsedBody.data.rewritePath,
+                    rewritePathType: pathMatchTypeRemoved ? null : parsedBody.data.rewritePathType
+                })
+                .where(eq(targets.targetId, targetId))
+                .returning();
 
-        const [existingHc] = await db
-            .select()
-            .from(targetHealthCheck)
-            .where(eq(targetHealthCheck.targetId, targetId))
-            .limit(1);
+            const [existingHc] = await trx
+                .select()
+                .from(targetHealthCheck)
+                .where(eq(targetHealthCheck.targetId, targetId))
+                .limit(1);
 
-        if (!existingHc) {
-            return next(
-                createHttpError(
-                    HttpCode.NOT_FOUND,
-                    `Health check for target with ID ${targetId} not found`
-                )
-            );
-        }
+            if (!existingHc) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Health check for target with ID ${targetId} not found`
+                    )
+                );
+            }
 
-        let hcHeaders = null;
-        if (parsedBody.data.hcHeaders) {
-            hcHeaders = JSON.stringify(parsedBody.data.hcHeaders);
-        }
+            let hcHeaders = null;
+            if (parsedBody.data.hcHeaders) {
+                hcHeaders = JSON.stringify(parsedBody.data.hcHeaders);
+            }
 
-        // When health check is disabled, reset hcHealth to "unknown"
-        // to prevent previously unhealthy targets from being excluded.
-        // Also when the site is not a newt, set hcHealth to "unknown".
-        // If hcEnabled is being turned on (was false, now true), set to "unhealthy"
-        // so the target must pass a health check before being considered healthy.
-        const hcEnabledTurnedOn =
-            parsedBody.data.hcEnabled === true && existingHc.hcEnabled === false;
+            // When health check is disabled, reset hcHealth to "unknown"
+            // to prevent previously unhealthy targets from being excluded.
+            // Also when the site is not a newt, set hcHealth to "unknown".
+            // If hcEnabled is being turned on (was false, now true), set to "unhealthy"
+            // so the target must pass a health check before being considered healthy.
+            const hcEnabledTurnedOn =
+                parsedBody.data.hcEnabled === true && existingHc.hcEnabled === false;
 
-        let hcHealthValue: "unknown" | "healthy" | "unhealthy" | undefined;
-        if (
-            parsedBody.data.hcEnabled === false ||
-            parsedBody.data.hcEnabled === null ||
-            site.type !== "newt"
-        ) {
-            hcHealthValue = "unknown";
-        } else if (hcEnabledTurnedOn) {
-            hcHealthValue = "unhealthy";
-        } else {
-            hcHealthValue = undefined;
-        }
+            let hcHealthValue: "unknown" | "healthy" | "unhealthy" | undefined;
+            if (
+                parsedBody.data.hcEnabled === false ||
+                parsedBody.data.hcEnabled === null ||
+                site.type !== "newt"
+            ) {
+                hcHealthValue = "unknown";
+            } else if (hcEnabledTurnedOn) {
+                hcHealthValue = "unhealthy";
+            } else {
+                hcHealthValue = undefined;
+            }
 
-        const isDisablingHc =
-            (parsedBody.data.hcEnabled === false ||
-                parsedBody.data.hcEnabled === null) &&
-            existingHc.hcEnabled === true;
+            const isDisablingHc =
+                (parsedBody.data.hcEnabled === false ||
+                    parsedBody.data.hcEnabled === null) &&
+                existingHc.hcEnabled === true;
 
-        const [updatedHc] = await db
-            .update(targetHealthCheck)
-            .set({
-                siteId: parsedBody.data.siteId,
-                hcEnabled: parsedBody.data.hcEnabled || false,
-                hcPath: parsedBody.data.hcPath,
-                hcScheme: parsedBody.data.hcScheme,
-                hcMode: parsedBody.data.hcMode,
-                hcHostname: parsedBody.data.hcHostname,
-                hcPort: parsedBody.data.hcPort,
-                hcInterval: parsedBody.data.hcInterval,
-                hcUnhealthyInterval: parsedBody.data.hcUnhealthyInterval,
-                hcTimeout: parsedBody.data.hcTimeout,
-                hcHeaders: hcHeaders,
-                hcFollowRedirects: parsedBody.data.hcFollowRedirects,
-                hcMethod: parsedBody.data.hcMethod,
-                hcStatus: parsedBody.data.hcStatus,
-                hcTlsServerName: parsedBody.data.hcTlsServerName,
-                hcHealthyThreshold: parsedBody.data.hcHealthyThreshold,
-                hcUnhealthyThreshold: parsedBody.data.hcUnhealthyThreshold,
-                hcHealth: hcHealthValue
-            })
-            .where(eq(targetHealthCheck.targetId, targetId))
-            .returning();
+            const [updatedHc] = await trx
+                .update(targetHealthCheck)
+                .set({
+                    siteId: parsedBody.data.siteId,
+                    hcEnabled: parsedBody.data.hcEnabled || false,
+                    hcPath: parsedBody.data.hcPath,
+                    hcScheme: parsedBody.data.hcScheme,
+                    hcMode: parsedBody.data.hcMode,
+                    hcHostname: parsedBody.data.hcHostname,
+                    hcPort: parsedBody.data.hcPort,
+                    hcInterval: parsedBody.data.hcInterval,
+                    hcUnhealthyInterval: parsedBody.data.hcUnhealthyInterval,
+                    hcTimeout: parsedBody.data.hcTimeout,
+                    hcHeaders: hcHeaders,
+                    hcFollowRedirects: parsedBody.data.hcFollowRedirects,
+                    hcMethod: parsedBody.data.hcMethod,
+                    hcStatus: parsedBody.data.hcStatus,
+                    hcTlsServerName: parsedBody.data.hcTlsServerName,
+                    hcHealthyThreshold: parsedBody.data.hcHealthyThreshold,
+                    hcUnhealthyThreshold: parsedBody.data.hcUnhealthyThreshold,
+                    hcHealth: hcHealthValue
+                })
+                .where(eq(targetHealthCheck.targetId, targetId))
+                .returning();
 
-        if (updatedHc.hcHealth === "unhealthy" && existingHc.hcHealth !== "unhealthy") {
-            await fireHealthCheckUnhealthyAlert(
-                updatedHc.orgId,
-                updatedHc.targetHealthCheckId,
-                updatedHc.name || "",
-                undefined,
-                undefined,
-                false // dont send the alert because we just want to create the alert, not notify users yet
-            );
-        } else if (updatedHc.hcHealth === "unknown" && existingHc.hcHealth !== "unknown") {
-            // if the health is unknown, we want to fire an alert to notify users to enable health checks
-            await fireHealthCheckUnknownAlert(
-                updatedHc.orgId,
-                updatedHc.targetHealthCheckId,
-                updatedHc.name,
-                undefined,
-                undefined,
-                false // dont send the alert because we just want to create the alert, not notify users yet
-            );
-        } else if (updatedHc.hcHealth === "healthy" && existingHc.hcHealth !== "healthy") {
-            await fireHealthCheckHealthyAlert(
-                updatedHc.orgId,
-                updatedHc.targetHealthCheckId,
-                updatedHc.name,
-                undefined,
-                undefined,
-                false // dont send the alert because we just want to create the alert, not notify users yet
-            );
-        }
+            if (updatedHc.hcHealth === "unhealthy" && existingHc.hcHealth !== "unhealthy") {
+                await fireHealthCheckUnhealthyAlert(
+                    updatedHc.orgId,
+                    updatedHc.targetHealthCheckId,
+                    updatedHc.name || "",
+                    undefined,
+                    undefined,
+                    false, // dont send the alert because we just want to create the alert, not notify users yet
+                    trx
+                );
+            } else if (updatedHc.hcHealth === "unknown" && existingHc.hcHealth !== "unknown") {
+                // if the health is unknown, we want to fire an alert to notify users to enable health checks
+                await fireHealthCheckUnknownAlert(
+                    updatedHc.orgId,
+                    updatedHc.targetHealthCheckId,
+                    updatedHc.name,
+                    undefined,
+                    undefined,
+                    false, // dont send the alert because we just want to create the alert, not notify users yet
+                    trx
+                );
+            } else if (updatedHc.hcHealth === "healthy" && existingHc.hcHealth !== "healthy") {
+                await fireHealthCheckHealthyAlert(
+                    updatedHc.orgId,
+                    updatedHc.targetHealthCheckId,
+                    updatedHc.name,
+                    undefined,
+                    undefined,
+                    false, // dont send the alert because we just want to create the alert, not notify users yet
+                    trx
+                );
+            }
+        });
 
         if (site.pubKey) {
             if (site.type == "wireguard") {
@@ -310,6 +315,7 @@ export async function updateTarget(
                 );
             }
         }
+
         return response(res, {
             data: {
                 ...updatedTarget,

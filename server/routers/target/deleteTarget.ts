@@ -2,15 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
 import { newts, resources, sites, targets } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, ne, and } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
-import { addPeer } from "../gerbil/peers";
 import { fromError } from "zod-validation-error";
 import { removeTargets } from "../newt/targets";
-import { getAllowedIps } from "./helpers";
 import { OpenAPITags, registry } from "@server/openApi";
 import { targetHealthCheck } from "@server/db/pg";
 
@@ -80,10 +78,29 @@ export async function deleteTarget(
             );
         }
 
+        // check if there are other targets on the resource
+        const otherTargets = await db
+            .select()
+            .from(targets)
+            .where(
+                and(
+                    eq(targets.resourceId, resource.resourceId),
+                    ne(targets.targetId, targetId)
+                )
+            );
+
+        if (otherTargets.length == 0) {
+            // set the resource status
+            await db
+                .update(resources)
+                .set({ health: "unknown" })
+                .where(eq(resources.resourceId, resource.resourceId));
+        }
+
         const [site] = await db
             .select()
             .from(sites)
-            .where(eq(sites.siteId, targets.siteId))
+            .where(eq(sites.siteId, deletedTarget.siteId))
             .limit(1);
 
         if (!site) {
@@ -106,7 +123,8 @@ export async function deleteTarget(
 
                 await removeTargets(
                     newt.newtId,
-                    [deletedTarget],
+                    // [deletedTarget],
+                    [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
                     [deletedHealthCheck],
                     resource.protocol,
                     newt.version

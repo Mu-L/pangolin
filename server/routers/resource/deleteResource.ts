@@ -98,7 +98,8 @@ export async function deleteResource(
 
                     await removeTargets(
                         newt.newtId,
-                        [target],
+                        // [target],
+                        [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
                         [healthCheck],
                         deletedResource.protocol,
                         newt.version
