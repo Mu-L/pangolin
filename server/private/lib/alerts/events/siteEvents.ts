@@ -112,7 +112,8 @@ export async function fireSiteOfflineAlert(
             .where(
                 and(
                     eq(targetHealthCheck.orgId, orgId),
-                    eq(targetHealthCheck.siteId, siteId)
+                    eq(targetHealthCheck.siteId, siteId),
+                    eq(targetHealthCheck.hcEnabled, true) // only effect the ones that are enabled
                 )
             )
             .returning();
@@ -126,7 +127,7 @@ export async function fireSiteOfflineAlert(
                 healthCheck.orgId,
                 healthCheck.targetHealthCheckId,
                 healthCheck.name,
-                undefined,
+                healthCheck.targetId, // for the resource if we have one
                 undefined,
                 true,
                 trx

@@ -1,7 +1,4 @@
-import {
-    db,
-    targetHealthCheck
-} from "@server/db";
+import { db, primaryDb, targetHealthCheck } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { Newt } from "@server/db";
 import { eq, and, ne } from "drizzle-orm";
@@ -10,7 +7,6 @@ import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckUnhealthyAlert
 } from "#dynamic/lib/alerts";
-
 
 interface TargetHealthStatus {
     status: string;
@@ -85,13 +81,14 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 continue;
             }
 
-            const [targetCheck] = await db
+            const [targetCheck] = await primaryDb // using the primary db here in case it has just been updated and we are getting the immediate status back and it has not made it out to the repliacs yet
                 .select({
                     targetId: targetHealthCheck.targetId,
                     orgId: targetHealthCheck.orgId,
                     targetHealthCheckId: targetHealthCheck.targetHealthCheckId,
                     name: targetHealthCheck.name,
-                    hcHealth: targetHealthCheck.hcHealth
+                    hcHealth: targetHealthCheck.hcHealth,
+                    hcEnabled: targetHealthCheck.hcEnabled
                 })
                 .from(targetHealthCheck)
                 .where(
@@ -103,10 +100,17 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                 .limit(1);
 
             if (!targetCheck) {
-                logger.warn(
+                logger.debug(
                     `Target ${targetId} not found or does not belong to site ${newt.siteId}`
                 );
                 errorCount++;
+                continue;
+            }
+
+            if (!targetCheck.hcEnabled) {
+                logger.debug(
+                    `Health check for target ${targetId} is not enabled, skipping update`
+                );
                 continue;
             }
 
@@ -128,7 +132,12 @@ export const handleHealthcheckStatusMessage: MessageHandler = async (
                             | "healthy"
                             | "unhealthy"
                     })
-                    .where(eq(targetHealthCheck.targetHealthCheckId, targetCheck.targetHealthCheckId));
+                    .where(
+                        eq(
+                            targetHealthCheck.targetHealthCheckId,
+                            targetCheck.targetHealthCheckId
+                        )
+                    );
 
                 // because we are checking above if there was a change we can fire the alert here because it changed
                 if (healthStatus.status === "unhealthy") {
