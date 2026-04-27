@@ -53,7 +53,7 @@ export async function getHealthCheckStatusHistory(
             );
         }
 
-        const entityType = "healthCheck";
+        const entityType = "health_check";
         const entityId = parsedParams.data.healthCheckId;
         const { days } = parsedQuery.data;
 
