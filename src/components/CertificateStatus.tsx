@@ -12,6 +12,7 @@ type CertificateStatusProps = {
     autoFetch?: boolean;
     showLabel?: boolean;
     className?: string;
+    disableRestartButton?: boolean;
     onRefresh?: () => void;
     polling?: boolean;
     pollingInterval?: number;
@@ -23,6 +24,7 @@ export default function CertificateStatus({
     fullDomain,
     autoFetch = true,
     showLabel = true,
+    disableRestartButton = false,
     className = "",
     onRefresh,
     polling = false,
@@ -153,7 +155,7 @@ export default function CertificateStatus({
                                 variant="ghost"
                                 className="p-0 w-3 h-auto align-middle"
                                 onClick={handleRefresh}
-                                disabled={refreshing}
+                                disabled={refreshing || disableRestartButton}
                                 title={t("restartCertificate", {
                                     defaultValue: "Restart Certificate"
                                 })}

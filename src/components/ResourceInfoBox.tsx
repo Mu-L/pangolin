@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ShieldCheck, ShieldOff, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, ShieldOff, Eye, EyeOff, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import CopyToClipboard from "@app/components/CopyToClipboard";
 import {
@@ -18,8 +18,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 type ResourceInfoBoxType = {};
 
 export default function ResourceInfoBox({}: ResourceInfoBoxType) {
-    const { resource, authInfo, updateResource } = useResourceContext();
-    const { env } = useEnvContext();
+    const { resource, authInfo } = useResourceContext();
 
     const t = useTranslations();
 
@@ -29,9 +28,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
         <Alert>
             <AlertDescription>
                 {/* 4 cols because of the certs */}
-                <InfoSections
-                    cols={resource.http ? 5 : 4}
-                >
+                <InfoSections cols={resource.http ? 6 : 5}>
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>
@@ -155,6 +152,35 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                 </InfoSectionContent>
                             </InfoSection>
                         )}
+                    <InfoSection>
+                        <InfoSectionTitle>{t("health")}</InfoSectionTitle>
+                        <InfoSectionContent>
+                            {resource.health === "healthy" && (
+                                <div className="flex items-center space-x-2">
+                                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-500" />
+                                    <span>{t("resourcesTableHealthy")}</span>
+                                </div>
+                            )}
+                            {resource.health === "degraded" && (
+                                <div className="flex items-center space-x-2">
+                                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-yellow-500" />
+                                    <span>{t("resourcesTableDegraded")}</span>
+                                </div>
+                            )}
+                            {resource.health === "unhealthy" && (
+                                <div className="flex items-center space-x-2">
+                                    <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" />
+                                    <span>{t("resourcesTableUnhealthy")}</span>
+                                </div>
+                            )}
+                            {(!resource.health || resource.health === "unknown") && (
+                                <div className="flex items-center space-x-2 text-muted-foreground">
+                                    <Clock className="w-4 h-4 flex-shrink-0" />
+                                    <span>{t("resourcesTableUnknown")}</span>
+                                </div>
+                            )}
+                        </InfoSectionContent>
+                    </InfoSection>
                     <InfoSection>
                         <InfoSectionTitle>{t("visibility")}</InfoSectionTitle>
                         <InfoSectionContent>
