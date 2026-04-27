@@ -581,20 +581,21 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                                                         "healthCheckStrategyTcp"
                                                                     )
                                                                 },
-                                                                {
-                                                                    id: "snmp",
-                                                                    title: "SNMP",
-                                                                    description: t(
-                                                                        "healthCheckStrategySnmp"
-                                                                    )
-                                                                },
-                                                                {
-                                                                    id: "icmp",
-                                                                    title: "Ping (ICMP)",
-                                                                    description: t(
-                                                                        "healthCheckStrategyIcmp"
-                                                                    )
-                                                                }
+                                                                // lets hide these for now until they are implemented
+                                                                // {
+                                                                //     id: "snmp",
+                                                                //     title: "SNMP",
+                                                                //     description: t(
+                                                                //         "healthCheckStrategySnmp"
+                                                                //     )
+                                                                // },
+                                                                // {
+                                                                //     id: "icmp",
+                                                                //     title: "Ping (ICMP)",
+                                                                //     description: t(
+                                                                //         "healthCheckStrategyIcmp"
+                                                                //     )
+                                                                // }
                                                             ]}
                                                             value={field.value}
                                                             onChange={(value) =>
