@@ -10,7 +10,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { removeTargets } from "../newt/targets";
 import { OpenAPITags, registry } from "@server/openApi";
-import { targetHealthCheck } from "@server/db/pg";
+import { targetHealthCheck } from "@server/db";
 
 const deleteTargetSchema = z.strictObject({
     targetId: z.string().transform(Number).pipe(z.int().positive())
