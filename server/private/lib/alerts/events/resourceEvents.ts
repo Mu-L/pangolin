@@ -13,7 +13,7 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
-import { db, statusHistory, Transaction } from "@server/db";
+import { db, logsDb, statusHistory, Transaction } from "@server/db";
 import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
 
 // ---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ export async function fireResourceHealthyAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "resource",
             entityId: resourceId,
             orgId: orgId,
@@ -101,7 +101,7 @@ export async function fireResourceUnhealthyAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "resource",
             entityId: resourceId,
             orgId: orgId,
@@ -162,7 +162,7 @@ export async function fireResourceDegradedAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "resource",
             entityId: resourceId,
             orgId: orgId,
@@ -223,7 +223,7 @@ export async function fireResourceUnknownAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "resource",
             entityId: resourceId,
             orgId: orgId,

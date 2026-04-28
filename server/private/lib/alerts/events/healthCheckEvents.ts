@@ -19,7 +19,8 @@ import {
     targetHealthCheck,
     targets,
     resources,
-    Transaction
+    Transaction,
+    logsDb
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
@@ -52,10 +53,10 @@ export async function fireHealthCheckHealthyAlert(
     healthCheckTargetId?: number | null,
     extra?: Record<string, unknown>,
     send: boolean = true,
-    trx: Transaction | typeof db = db,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "health_check",
             entityId: healthCheckId,
             orgId: orgId,
@@ -119,7 +120,7 @@ export async function fireHealthCheckUnhealthyAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "health_check",
             entityId: healthCheckId,
             orgId: orgId,
@@ -172,7 +173,7 @@ export async function fireHealthCheckUnknownAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "health_check",
             entityId: healthCheckId,
             orgId: orgId,
@@ -194,7 +195,12 @@ export async function fireHealthCheckUnknownAlert(
     }
 }
 
-async function handleResource(orgId: string, healthCheckTargetId?: number | null, send: boolean = true, trx: Transaction | typeof db = db) {
+async function handleResource(
+    orgId: string,
+    healthCheckTargetId?: number | null,
+    send: boolean = true,
+    trx: Transaction | typeof db = db
+) {
     if (!healthCheckTargetId) {
         return;
     }
@@ -222,7 +228,10 @@ async function handleResource(orgId: string, healthCheckTargetId?: number | null
     const otherTargets = await trx
         .select({ hcHealth: targetHealthCheck.hcHealth })
         .from(targets)
-        .innerJoin(targetHealthCheck, eq(targetHealthCheck.targetId, targets.targetId))
+        .innerJoin(
+            targetHealthCheck,
+            eq(targetHealthCheck.targetId, targets.targetId)
+        )
         .where(eq(targets.resourceId, resource.resourceId));
 
     let health = "healthy";

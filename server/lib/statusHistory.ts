@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { db, statusHistory } from "@server/db";
+import { db, logsDb, statusHistory } from "@server/db";
 import { and, eq, gte, asc } from "drizzle-orm";
 import cache from "@server/lib/cache";
 
@@ -27,7 +27,7 @@ export async function getCachedStatusHistory(
     const nowSec = Math.floor(Date.now() / 1000);
     const startSec = nowSec - days * 86400;
 
-    const events = await db
+    const events = await logsDb
         .select()
         .from(statusHistory)
         .where(
@@ -74,11 +74,11 @@ export const statusHistoryQuerySchema = z
         days: z
             .string()
             .optional()
-            .transform((v) => (v ? parseInt(v, 10) : 90)),
+            .transform((v) => (v ? parseInt(v, 10) : 90))
     })
     .pipe(
         z.object({
-            days: z.number().int().min(1).max(365),
+            days: z.number().int().min(1).max(365)
         })
     );
 
@@ -99,7 +99,14 @@ export interface StatusHistoryResponse {
 }
 
 export function computeBuckets(
-    events: { entityType: string; entityId: number; orgId: string; status: string; timestamp: number; id: number }[],
+    events: {
+        entityType: string;
+        entityId: number;
+        orgId: string;
+        status: string;
+        timestamp: number;
+        id: number;
+    }[],
     days: number
 ): { buckets: StatusHistoryDayBucket[]; totalDowntime: number } {
     const nowSec = Math.floor(Date.now() / 1000);
@@ -121,7 +128,8 @@ export function computeBuckets(
 
         const currentStatus = lastBeforeDay?.status ?? null;
 
-        const windows: { start: number; end: number | null; status: string }[] = [];
+        const windows: { start: number; end: number | null; status: string }[] =
+            [];
         let dayDowntime = 0;
         let dayDegradedTime = 0;
 
@@ -132,22 +140,21 @@ export function computeBuckets(
             if (windowStatus !== null && windowStatus !== evt.status) {
                 const windowEnd = evt.timestamp;
                 const isDown =
-                    windowStatus === "offline" ||
-                    windowStatus === "unhealthy";
+                    windowStatus === "offline" || windowStatus === "unhealthy";
                 const isDegraded = windowStatus === "degraded";
                 if (isDown) {
                     dayDowntime += windowEnd - windowStart;
                     windows.push({
                         start: windowStart,
                         end: windowEnd,
-                        status: windowStatus,
+                        status: windowStatus
                     });
                 } else if (isDegraded) {
                     dayDegradedTime += windowEnd - windowStart;
                     windows.push({
                         start: windowStart,
                         end: windowEnd,
-                        status: windowStatus,
+                        status: windowStatus
                     });
                 }
             }
@@ -159,22 +166,21 @@ export function computeBuckets(
         if (windowStatus !== null) {
             const finalEnd = Math.min(dayEndSec, nowSec);
             const isDown =
-                windowStatus === "offline" ||
-                windowStatus === "unhealthy";
+                windowStatus === "offline" || windowStatus === "unhealthy";
             const isDegraded = windowStatus === "degraded";
             if (isDown && finalEnd > windowStart) {
                 dayDowntime += finalEnd - windowStart;
                 windows.push({
                     start: windowStart,
                     end: finalEnd,
-                    status: windowStatus,
+                    status: windowStatus
                 });
             } else if (isDegraded && finalEnd > windowStart) {
                 dayDegradedTime += finalEnd - windowStart;
                 windows.push({
                     start: windowStart,
                     end: finalEnd,
-                    status: windowStatus,
+                    status: windowStatus
                 });
             }
         }
@@ -225,7 +231,7 @@ export function computeBuckets(
             uptimePercent: Math.round(uptimePct * 100) / 100,
             totalDowntimeSeconds: dayDowntime,
             downtimeWindows: windows,
-            status,
+            status
         });
     }
 

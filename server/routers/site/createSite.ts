@@ -351,7 +351,7 @@ export async function createSite(
                     })
                     .returning();
 
-                await trx.insert(statusHistory).values({
+                await logsDb.insert(statusHistory).values({
                     entityType: "site",
                     entityId: newSite.siteId,
                     orgId: orgId,

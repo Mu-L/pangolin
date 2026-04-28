@@ -13,7 +13,13 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
-import { db, sites, statusHistory, targetHealthCheck, Transaction } from "@server/db";
+import {
+    db,
+    logsDb,
+    statusHistory,
+    targetHealthCheck,
+    Transaction
+} from "@server/db";
 import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
 import { and, eq, inArray } from "drizzle-orm";
 import { fireHealthCheckUnhealthyAlert } from "./healthCheckEvents";
@@ -41,7 +47,7 @@ export async function fireSiteOnlineAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "site",
             entityId: siteId,
             orgId: orgId,
@@ -97,7 +103,7 @@ export async function fireSiteOfflineAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "site",
             entityId: siteId,
             orgId: orgId,
