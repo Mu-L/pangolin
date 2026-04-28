@@ -40,10 +40,14 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                             <InfoSection>
                                 <InfoSectionTitle>URL</InfoSectionTitle>
                                 <InfoSectionContent>
-                                    <CopyToClipboard
-                                        text={fullUrl}
-                                        isLink={true}
-                                    />
+                                    {resource.wildcard ? (
+                                        <span>{fullUrl}</span>
+                                    ) : (
+                                        <CopyToClipboard
+                                            text={fullUrl}
+                                            isLink={true}
+                                        />
+                                    )}
                                 </InfoSectionContent>
                             </InfoSection>
                             <InfoSection>
