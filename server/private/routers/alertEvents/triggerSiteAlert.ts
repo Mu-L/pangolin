@@ -14,7 +14,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { sites, statusHistory } from "@server/db";
+import { sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -82,14 +82,6 @@ export async function triggerSiteAlert(
                 )
             );
         }
-
-        await db.insert(statusHistory).values({
-            entityType: "site",
-            entityId: siteId,
-            orgId,
-            status: eventType === "site_online" ? "online" : "offline",
-            timestamp: Math.floor(Date.now() / 1000)
-        });
 
         if (eventType === "site_online") {
             await fireSiteOnlineAlert(orgId, siteId, site.name ?? undefined);

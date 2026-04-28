@@ -13,6 +13,10 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
+import { db, sites, statusHistory, targetHealthCheck, Transaction } from "@server/db";
+import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
+import { and, eq, inArray } from "drizzle-orm";
+import { fireHealthCheckUnhealthyAlert } from "./healthCheckEvents";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -33,9 +37,19 @@ export async function fireSiteOnlineAlert(
     orgId: string,
     siteId: number,
     siteName?: string,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
+        await trx.insert(statusHistory).values({
+            entityType: "site",
+            entityId: siteId,
+            orgId: orgId,
+            status: "online",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+        await invalidateStatusHistoryCache("site", siteId);
+
         await processAlerts({
             eventType: "site_online",
             orgId,
@@ -51,6 +65,7 @@ export async function fireSiteOnlineAlert(
             siteId,
             data: {
                 siteId,
+                status: "online",
                 ...(siteName != null ? { siteName } : {}),
                 ...extra
             }
@@ -78,9 +93,47 @@ export async function fireSiteOfflineAlert(
     orgId: string,
     siteId: number,
     siteName?: string,
-    extra?: Record<string, unknown>
+    extra?: Record<string, unknown>,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
+        await trx.insert(statusHistory).values({
+            entityType: "site",
+            entityId: siteId,
+            orgId: orgId,
+            status: "offline",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+        await invalidateStatusHistoryCache("site", siteId);
+
+        const unhealthyHealthChecks = await trx
+            .update(targetHealthCheck)
+            .set({ hcHealth: "unhealthy" })
+            .where(
+                and(
+                    eq(targetHealthCheck.orgId, orgId),
+                    eq(targetHealthCheck.siteId, siteId),
+                    eq(targetHealthCheck.hcEnabled, true) // only effect the ones that are enabled
+                )
+            )
+            .returning();
+
+        for (const healthCheck of unhealthyHealthChecks) {
+            logger.info(
+                `Marking health check ${healthCheck.targetHealthCheckId} unhealthy due to site ${siteId} being marked offline`
+            );
+
+            await fireHealthCheckUnhealthyAlert(
+                healthCheck.orgId,
+                healthCheck.targetHealthCheckId,
+                healthCheck.name,
+                healthCheck.targetId, // for the resource if we have one
+                undefined,
+                true,
+                trx
+            );
+        }
+
         await processAlerts({
             eventType: "site_offline",
             orgId,
@@ -96,6 +149,7 @@ export async function fireSiteOfflineAlert(
             siteId,
             data: {
                 siteId,
+                status: "offline",
                 ...(siteName != null ? { siteName } : {}),
                 ...extra
             }

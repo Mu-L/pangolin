@@ -67,21 +67,8 @@ export async function deleteSiteResource(
             // Delete the site resource
             const [removedSiteResource] = await trx
                 .delete(siteResources)
-                .where(and(eq(siteResources.siteResourceId, siteResourceId)))
+                .where(eq(siteResources.siteResourceId, siteResourceId))
                 .returning();
-
-            // not sure why this is here...
-            // const [newt] = await trx
-            //     .select()
-            //     .from(newts)
-            //     .where(eq(newts.siteId, removedSiteResource.siteId))
-            //     .limit(1);
-
-            // if (!newt) {
-            //     return next(
-            //         createHttpError(HttpCode.NOT_FOUND, "Newt not found")
-            //     );
-            // }
 
             await rebuildClientAssociationsFromSiteResource(
                 removedSiteResource,

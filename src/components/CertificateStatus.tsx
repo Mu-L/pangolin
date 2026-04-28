@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { RotateCw } from "lucide-react";
+import { Loader2, RotateCw } from "lucide-react";
 import { useCertificate } from "@app/hooks/useCertificate";
 import { useTranslations } from "next-intl";
 
@@ -78,7 +78,11 @@ export default function CertificateStatus({
                         {t("certificateStatus")}:
                     </span>
                 )}
-                <span className="text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Loader2
+                        className="h-3.5 w-3.5 shrink-0 animate-spin"
+                        aria-hidden
+                    />
                     {t("loading")}
                 </span>
             </div>
@@ -113,6 +117,9 @@ export default function CertificateStatus({
         );
     }
 
+    const isPending = cert.status === "pending";
+    const disableRestartButton = cert.domainType === "wildcard";
+
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             {showLabel && (
@@ -120,27 +127,46 @@ export default function CertificateStatus({
                     {t("certificateStatus")}:
                 </span>
             )}
-            <span className={`text-sm ${getStatusColor(cert.status)}`}>
-                <span className="inline-flex items-center">
-                    {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                    {shouldShowRefreshButton(cert.status, cert.updatedAt) && (
-                        <Button
-                            size="icon"
-                            variant="ghost"
-                            className="ml-2 p-0 h-auto align-middle"
-                            onClick={handleRefresh}
-                            disabled={refreshing}
-                            title={t("restartCertificate", {
-                                defaultValue: "Restart Certificate"
-                            })}
-                        >
-                            <RotateCw
-                                className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
-                            />
-                        </Button>
-                    )}
+            {isPending ? (
+                <Button
+                    variant="ghost"
+                    className={`h-auto p-0 text-sm ${getStatusColor(cert.status)}`}
+                    onClick={handleRefresh}
+                    disabled={refreshing || disableRestartButton}
+                    title={t("restartCertificate", {
+                        defaultValue: "Restart Certificate"
+                    })}
+                >
+                    <span className="inline-flex items-center gap-1">
+                        {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                        <RotateCw
+                            className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
+                        />
+                    </span>
+                </Button>
+            ) : (
+                <span className={`text-sm ${getStatusColor(cert.status)}`}>
+                    <span className="inline-flex items-center gap-1">
+                        {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                        {shouldShowRefreshButton(cert.status, cert.updatedAt) && (
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="p-0 w-3 h-auto align-middle"
+                                onClick={handleRefresh}
+                                disabled={refreshing || disableRestartButton}
+                                title={t("restartCertificate", {
+                                    defaultValue: "Restart Certificate"
+                                })}
+                            >
+                                <RotateCw
+                                    className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`}
+                                />
+                            </Button>
+                        )}
+                    </span>
                 </span>
-            </span>
+            )}
         </div>
     );
 }

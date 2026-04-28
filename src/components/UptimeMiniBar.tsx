@@ -10,6 +10,7 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
+import { useTranslations } from "next-intl";
 
 function formatDuration(seconds: number): string {
     if (seconds === 0) return "0s";
@@ -33,7 +34,8 @@ const barColorClass: Record<string, string> = {
     good: "bg-green-500",
     degraded: "bg-yellow-500",
     bad: "bg-red-500",
-    no_data: "bg-neutral-200 dark:bg-neutral-700"
+    no_data: "bg-neutral-200 dark:bg-neutral-700",
+    unknown: "bg-neutral-200 dark:bg-neutral-700"
 };
 
 type UptimeMiniBarProps = {
@@ -51,6 +53,7 @@ export default function UptimeMiniBar({
     healthCheckId,
     days = 30
 }: UptimeMiniBarProps) {
+    const t = useTranslations();
     const api = createApiClient(useEnvContext());
 
     const siteQuery = useQuery({
@@ -105,7 +108,7 @@ export default function UptimeMiniBar({
                 <span
                     className="inline-flex min-w-[7ch] items-center justify-end text-xs text-muted-foreground whitespace-nowrap"
                     aria-busy="true"
-                    aria-label="Loading uptime"
+                    aria-label={t("loading")}
                 >
                     <span className="h-4 w-[5.5ch] max-w-full rounded bg-muted animate-pulse" />
                 </span>
@@ -135,13 +138,13 @@ export default function UptimeMiniBar({
                                 {formatDate(day.date)}
                             </div>
                             <div className="text-xs text-primary-foreground/80">
-                                {day.status === "no_data"
-                                    ? "No data"
-                                    : `${day.uptimePercent.toFixed(1)}% uptime`}
+                                {day.status === "no_data" || day.status === "unknown"
+                                    ? t("uptimeNoData")
+                                    : `${day.uptimePercent.toFixed(1)}% ${t("uptimeSuffix")}`}
                             </div>
                             {day.totalDowntimeSeconds > 0 && (
                                 <div className="text-xs text-primary-foreground/70">
-                                    Down:{" "}
+                                    {t("uptimeMiniBarDown")}:{" "}
                                     {formatDuration(day.totalDowntimeSeconds)}
                                 </div>
                             )}
@@ -151,7 +154,7 @@ export default function UptimeMiniBar({
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {allNoData
-                    ? "No data"
+                    ? t("uptimeNoData")
                     : `${data.overallUptimePercent.toFixed(1)}%`}
             </span>
         </div>

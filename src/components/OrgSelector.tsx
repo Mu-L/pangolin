@@ -76,8 +76,8 @@ export function OrgSelector({
                     className={cn(
                         "cursor-pointer transition-colors",
                         isCollapsed
-                            ? "w-full h-16 flex items-center justify-center hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50"
-                            : "w-full px-5 py-4 hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50"
+                            ? "w-full h-16 flex items-center justify-center hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50"
+                            : "w-full px-5 py-4 hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50"
                     )}
                 >
                     {isCollapsed ? (
@@ -86,7 +86,7 @@ export function OrgSelector({
                         <div className="flex items-center justify-between w-full min-w-0">
                             <div className="flex items-center min-w-0 flex-1">
                                 <div className="flex flex-col items-start min-w-0 flex-1 gap-1">
-                                    <span className="font-bold">
+                                    <span className="font-semibold">
                                         {t("org")}
                                     </span>
                                     <span className="text-sm text-muted-foreground truncate w-full text-left">

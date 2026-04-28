@@ -26,10 +26,7 @@ export function DataTableEmptyState({
                     >
                         {Array.from({ length: PLACEHOLDER_ROW_COUNT }).map(
                             (_, i) => (
-                                <div
-                                    key={i}
-                                    className="h-10 shrink-0 border-b border-border/30"
-                                />
+                                <div key={i} className="h-10 shrink-0" />
                             )
                         )}
                     </div>

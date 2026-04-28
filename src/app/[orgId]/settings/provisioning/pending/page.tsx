@@ -69,6 +69,7 @@ export default async function PendingSitesPage(props: PendingSitesPageProps) {
         address: site.address?.split("/")[0],
         mbIn: formatSize(site.megabytesIn || 0, site.type),
         mbOut: formatSize(site.megabytesOut || 0, site.type),
+        resourceCount: Number(site.resourceCount ?? 0),
         orgId: params.orgId,
         type: site.type as any,
         online: site.online,

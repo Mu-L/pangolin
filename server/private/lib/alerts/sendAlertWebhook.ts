@@ -12,9 +12,14 @@
  */
 
 import logger from "@server/logger";
-import { AlertContext, WebhookAlertConfig } from "@server/routers/alertRule/types";
+import {
+    AlertContext,
+    WebhookAlertConfig
+} from "@server/routers/alertRule/types";
 
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
 
 /**
  * Sends a single webhook POST for an alert event.
@@ -40,6 +45,7 @@ export async function sendAlertWebhook(
     const payload = {
         event: context.eventType,
         timestamp: new Date().toISOString(),
+        status: deriveStatus(context.eventType, context.data),
         data: {
             orgId: context.orgId,
             ...context.data
@@ -49,52 +55,125 @@ export async function sendAlertWebhook(
     const body = JSON.stringify(payload);
     const headers = buildHeaders(webhookConfig);
 
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let lastError: Error | undefined;
 
-    let response: Response;
-    try {
-        response = await fetch(url, {
-            method: webhookConfig.method ?? "POST",
-            headers,
-            body,
-            signal: controller.signal
-        });
-    } catch (err: unknown) {
-        const isAbort = err instanceof Error && err.name === "AbortError";
-        if (isAbort) {
-            throw new Error(
-                `Alert webhook: request to "${url}" timed out after ${REQUEST_TIMEOUT_MS} ms`
-            );
-        }
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`Alert webhook: request to "${url}" failed – ${msg}`);
-    } finally {
-        clearTimeout(timeoutHandle);
-    }
-
-    if (!response.ok) {
-        let snippet = "";
-        try {
-            const text = await response.text();
-            snippet = text.slice(0, 300);
-        } catch {
-            // best-effort
-        }
-        throw new Error(
-            `Alert webhook: server at "${url}" returned HTTP ${response.status} ${response.statusText}` +
-                (snippet ? ` – ${snippet}` : "")
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timeoutHandle = setTimeout(
+            () => controller.abort(),
+            REQUEST_TIMEOUT_MS
         );
+
+        let response: Response;
+        try {
+            response = await fetch(url, {
+                method: webhookConfig.method ?? "POST",
+                headers,
+                body,
+                signal: controller.signal
+            });
+        } catch (err: unknown) {
+            clearTimeout(timeoutHandle);
+            const isAbort = err instanceof Error && err.name === "AbortError";
+            if (isAbort) {
+                lastError = new Error(
+                    `Alert webhook: request to "${url}" timed out after ${REQUEST_TIMEOUT_MS} ms`
+                );
+            } else {
+                const msg = err instanceof Error ? err.message : String(err);
+                lastError = new Error(
+                    `Alert webhook: request to "${url}" failed – ${msg}`
+                );
+            }
+            if (attempt < MAX_RETRIES) {
+                const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+                logger.warn(
+                    `Alert webhook: attempt ${attempt}/${MAX_RETRIES} failed – retrying in ${delay} ms. ${lastError.message}`
+                );
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+            continue;
+        } finally {
+            clearTimeout(timeoutHandle);
+        }
+
+        if (!response.ok) {
+            let snippet = "";
+            try {
+                const text = await response.text();
+                snippet = text.slice(0, 300);
+            } catch {
+                // best-effort
+            }
+            lastError = new Error(
+                `Alert webhook: server at "${url}" returned HTTP ${response.status} ${response.statusText}` +
+                    (snippet ? ` – ${snippet}` : "")
+            );
+            if (attempt < MAX_RETRIES) {
+                const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+                logger.warn(
+                    `Alert webhook: attempt ${attempt}/${MAX_RETRIES} failed – retrying in ${delay} ms. ${lastError.message}`
+                );
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+            continue;
+        }
+
+        logger.debug(
+            `Alert webhook sent successfully to "${url}" for event "${context.eventType}" (attempt ${attempt}/${MAX_RETRIES})`
+        );
+        return;
     }
 
-    logger.debug(`Alert webhook sent successfully to "${url}" for event "${context.eventType}"`);
+    throw (
+        lastError ??
+        new Error(
+            `Alert webhook: all ${MAX_RETRIES} attempts failed for "${url}"`
+        )
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Status derivation
+// ---------------------------------------------------------------------------
+
+function deriveStatus(
+    eventType: AlertContext["eventType"],
+    data: Record<string, unknown>
+): string {
+    switch (eventType) {
+        case "site_online":
+            return "online";
+        case "site_offline":
+            return "offline";
+        case "site_toggle":
+            return String(data.status ?? "unknown");
+        case "health_check_healthy":
+        case "resource_healthy":
+            return "healthy";
+        case "health_check_unhealthy":
+        case "resource_unhealthy":
+            return "unhealthy";
+        case "resource_degraded":
+            return "degraded";
+        case "health_check_toggle":
+        case "resource_toggle":
+            return String(data.status ?? "unknown");
+        default: {
+            const _exhaustive: never = eventType;
+            void _exhaustive;
+            return "unknown";
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Header construction (mirrors HttpLogDestination.buildHeaders)
 // ---------------------------------------------------------------------------
 
-function buildHeaders(webhookConfig: WebhookAlertConfig): Record<string, string> {
+function buildHeaders(
+    webhookConfig: WebhookAlertConfig
+): Record<string, string> {
     const headers: Record<string, string> = {
         "Content-Type": "application/json"
     };

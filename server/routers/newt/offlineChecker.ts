@@ -1,8 +1,10 @@
-import { db, newts, sites, targetHealthCheck, targets, statusHistory } from "@server/db";
 import {
-    hasActiveConnections,
-} from "#dynamic/routers/ws";
-import { eq, lt, isNull, and, or, ne, not } from "drizzle-orm";
+    db,
+    newts,
+    sites
+} from "@server/db";
+import { hasActiveConnections } from "#dynamic/routers/ws";
+import { eq, lt, isNull, and, or, ne, not, inArray } from "drizzle-orm";
 import logger from "@server/logger";
 import { fireSiteOfflineAlert, fireSiteOnlineAlert } from "#dynamic/lib/alerts";
 
@@ -72,48 +74,20 @@ export const startNewtOfflineChecker = (): void => {
                     `Marking site ${staleSite.siteId} offline: newt ${staleSite.newtId} has no recent ping and no active WebSocket connection`
                 );
 
-                await db
-                    .update(sites)
-                    .set({ online: false })
-                    .where(eq(sites.siteId, staleSite.siteId));
+                await db.transaction(async (trx) => {
+                    await trx
+                        .update(sites)
+                        .set({ online: false })
+                        .where(eq(sites.siteId, staleSite.siteId));
 
-                await db.insert(statusHistory).values({
-                    entityType: "site",
-                    entityId: staleSite.siteId,
-                    orgId: staleSite.orgId,
-                    status: "offline",
-                    timestamp: Math.floor(Date.now() / 1000),
-                }).execute();
-
-                const healthChecksOnSite = await db
-                    .select()
-                    .from(targetHealthCheck)
-                    .innerJoin(
-                        targets,
-                        eq(targets.targetId, targetHealthCheck.targetId)
-                    )
-                    .innerJoin(sites, eq(sites.siteId, targets.siteId))
-                    .where(eq(sites.siteId, staleSite.siteId));
-
-                for (const healthCheck of healthChecksOnSite) {
-                    logger.info(
-                        `Marking health check ${healthCheck.targetHealthCheck.targetHealthCheckId} offline due to site ${staleSite.siteId} being marked offline`
+                    await fireSiteOfflineAlert(
+                        staleSite.orgId,
+                        staleSite.siteId,
+                        staleSite.name,
+                        undefined,
+                        trx
                     );
-                    await db
-                        .update(targetHealthCheck)
-                        .set({ hcHealth: "unknown" })
-                        .where(
-                            eq(
-                                targetHealthCheck.targetHealthCheckId,
-                                healthCheck.targetHealthCheck
-                                    .targetHealthCheckId
-                            )
-                        );
-
-                    // TODO: should we be firing an alert here when the health check goes to unknown?
-                }
-
-                await fireSiteOfflineAlert(staleSite.orgId, staleSite.siteId, staleSite.name);
+                });
             }
 
             // this part only effects self hosted. Its not efficient but we dont expect people to have very many wireguard sites
@@ -150,20 +124,20 @@ export const startNewtOfflineChecker = (): void => {
                         `Marking wireguard site ${site.siteId} offline: no bandwidth update in over ${OFFLINE_THRESHOLD_BANDWIDTH_MS / 60000} minutes`
                     );
 
-                    await db
-                        .update(sites)
-                        .set({ online: false })
-                        .where(eq(sites.siteId, site.siteId));
+                    await db.transaction(async (trx) => {
+                        await trx
+                            .update(sites)
+                            .set({ online: false })
+                            .where(eq(sites.siteId, site.siteId));
 
-                    await db.insert(statusHistory).values({
-                        entityType: "site",
-                        entityId: site.siteId,
-                        orgId: site.orgId,
-                        status: "offline",
-                        timestamp: Math.floor(Date.now() / 1000),
-                    }).execute();
-
-                    await fireSiteOfflineAlert(site.orgId, site.siteId, site.name);
+                        await fireSiteOfflineAlert(
+                            site.orgId,
+                            site.siteId,
+                            site.name,
+                            undefined,
+                            trx
+                        );
+                    });
                 } else if (
                     lastBandwidthUpdate >= wireguardOfflineThreshold &&
                     !site.online
@@ -172,20 +146,20 @@ export const startNewtOfflineChecker = (): void => {
                         `Marking wireguard site ${site.siteId} online: recent bandwidth update`
                     );
 
-                    await db
-                        .update(sites)
-                        .set({ online: true })
-                        .where(eq(sites.siteId, site.siteId));
+                    await db.transaction(async (trx) => {
+                        await trx
+                            .update(sites)
+                            .set({ online: true })
+                            .where(eq(sites.siteId, site.siteId));
 
-                    await db.insert(statusHistory).values({
-                        entityType: "site",
-                        entityId: site.siteId,
-                        orgId: site.orgId,
-                        status: "online",
-                        timestamp: Math.floor(Date.now() / 1000),
-                    }).execute();
-
-                    await fireSiteOnlineAlert(site.orgId, site.siteId, site.name);
+                        await fireSiteOnlineAlert(
+                            site.orgId,
+                            site.siteId,
+                            site.name,
+                            undefined,
+                            trx
+                        );
+                    });
                 }
             }
         } catch (error) {

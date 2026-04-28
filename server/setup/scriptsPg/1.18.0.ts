@@ -67,11 +67,12 @@ export default async function migration() {
             FROM "siteResources" sr
             WHERE sr."siteId" IS NOT NULL`
     );
-    const existingSiteResourcesForNetwork = siteResourcesForNetworkQuery.rows as {
-        siteResourceId: number;
-        orgId: string;
-        siteId: number;
-    }[];
+    const existingSiteResourcesForNetwork =
+        siteResourcesForNetworkQuery.rows as {
+            siteResourceId: number;
+            orgId: string;
+            siteId: number;
+        }[];
 
     console.log(
         `Found ${existingSiteResourcesForNetwork.length} existing siteResource(s) to migrate to networks`
@@ -346,6 +347,14 @@ export default async function migration() {
         ALTER TABLE "siteResources" DROP COLUMN "protocol";
         `);
 
+        await db.execute(sql`
+            ALTER TABLE "resources" ADD "health" varchar DEFAULT 'unknown';
+        `);
+
+        await db.execute(sql`
+        ALTER TABLE "resources" ADD "wildcard" boolean DEFAULT false NOT NULL;
+        `);
+
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
     } catch (e) {
@@ -438,10 +447,7 @@ export default async function migration() {
                 `Migrated ${existingHealthChecks.length} targetHealthCheck row(s) with corrected IDs`
             );
         } catch (e) {
-            console.error(
-                "Error while migrating targetHealthCheck rows:",
-                e
-            );
+            console.error("Error while migrating targetHealthCheck rows:", e);
             throw e;
         }
     }
@@ -483,6 +489,91 @@ export default async function migration() {
             );
             throw e;
         }
+    }
+
+    // Seed statusHistory for all existing sites
+    try {
+        const sitesQuery = await db.execute(
+            sql`SELECT "siteId", "orgId", "online" FROM "sites"`
+        );
+        const allSites = sitesQuery.rows as {
+            siteId: number;
+            orgId: string;
+            online: boolean;
+        }[];
+
+        const now = Math.floor(Date.now() / 1000);
+
+        for (const site of allSites) {
+            await db.execute(sql`
+                INSERT INTO "statusHistory" ("entityType", "entityId", "orgId", "status", "timestamp")
+                VALUES ('site', ${site.siteId}, ${site.orgId}, ${site.online ? "online" : "offline"}, ${now})
+            `);
+        }
+
+        console.log(`Seeded statusHistory for ${allSites.length} site(s)`);
+    } catch (e) {
+        console.error("Error while seeding statusHistory for sites:", e);
+        throw e;
+    }
+
+    // Seed statusHistory for all existing resources
+    try {
+        const resourcesQuery = await db.execute(
+            sql`SELECT "resourceId", "orgId", "health" FROM "resources"`
+        );
+        const allResources = resourcesQuery.rows as {
+            resourceId: number;
+            orgId: string;
+            health: string | null;
+        }[];
+
+        const now = Math.floor(Date.now() / 1000);
+
+        for (const resource of allResources) {
+            await db.execute(sql`
+                INSERT INTO "statusHistory" ("entityType", "entityId", "orgId", "status", "timestamp")
+                VALUES ('resource', ${resource.resourceId}, ${resource.orgId}, ${resource.health ?? "unknown"}, ${now})
+            `);
+        }
+
+        console.log(
+            `Seeded statusHistory for ${allResources.length} resource(s)`
+        );
+    } catch (e) {
+        console.error("Error while seeding statusHistory for resources:", e);
+        throw e;
+    }
+
+    // Seed statusHistory for all existing health checks
+    try {
+        const healthChecksQuery = await db.execute(
+            sql`SELECT "targetHealthCheckId", "orgId", "hcHealth" FROM "targetHealthCheck"`
+        );
+        const allHealthChecks = healthChecksQuery.rows as {
+            targetHealthCheckId: number;
+            orgId: string;
+            hcHealth: string | null;
+        }[];
+
+        const now = Math.floor(Date.now() / 1000);
+
+        for (const hc of allHealthChecks) {
+            await db.execute(sql`
+                INSERT INTO "statusHistory" ("entityType", "entityId", "orgId", "status", "timestamp")
+                VALUES ('health_check', ${hc.targetHealthCheckId}, ${hc.orgId}, ${hc.hcHealth ?? "unknown"}, ${now})
+            `);
+        }
+
+        console.log(
+            `Seeded statusHistory for ${allHealthChecks.length} health check(s)`
+        );
+    } catch (e) {
+        console.error(
+            "Error while seeding statusHistory for health checks:",
+            e
+        );
+        throw e;
     }
 
     console.log(`${version} migration complete`);

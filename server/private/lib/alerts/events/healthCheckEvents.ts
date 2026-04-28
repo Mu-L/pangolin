@@ -13,6 +13,22 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
+import {
+    db,
+    statusHistory,
+    targetHealthCheck,
+    targets,
+    resources,
+    Transaction
+} from "@server/db";
+import { eq } from "drizzle-orm";
+import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
+import {
+    fireResourceDegradedAlert,
+    fireResourceHealthyAlert,
+    fireResourceUnhealthyAlert,
+    fireResourceUnknownAlert
+} from "./resourceEvents";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -33,9 +49,27 @@ export async function fireHealthCheckHealthyAlert(
     orgId: string,
     healthCheckId: number,
     healthCheckName?: string | null,
-    extra?: Record<string, unknown>
+    healthCheckTargetId?: number | null,
+    extra?: Record<string, unknown>,
+    send: boolean = true,
+    trx: Transaction | typeof db = db,
 ): Promise<void> {
     try {
+        await trx.insert(statusHistory).values({
+            entityType: "health_check",
+            entityId: healthCheckId,
+            orgId: orgId,
+            status: "healthy",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+        await invalidateStatusHistoryCache("health_check", healthCheckId);
+
+        await handleResource(orgId, healthCheckTargetId, send, trx);
+
+        if (!send) {
+            return;
+        }
+
         await processAlerts({
             eventType: "health_check_healthy",
             orgId,
@@ -51,6 +85,7 @@ export async function fireHealthCheckHealthyAlert(
             healthCheckId,
             data: {
                 healthCheckId,
+                status: "healthy",
                 ...(healthCheckName != null ? { healthCheckName } : {}),
                 ...extra
             }
@@ -78,9 +113,27 @@ export async function fireHealthCheckUnhealthyAlert(
     orgId: string,
     healthCheckId: number,
     healthCheckName?: string | null,
-    extra?: Record<string, unknown>
+    healthCheckTargetId?: number | null,
+    extra?: Record<string, unknown>,
+    send: boolean = true,
+    trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
+        await trx.insert(statusHistory).values({
+            entityType: "health_check",
+            entityId: healthCheckId,
+            orgId: orgId,
+            status: "unhealthy",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+        await invalidateStatusHistoryCache("health_check", healthCheckId);
+
+        await handleResource(orgId, healthCheckTargetId, send, trx);
+
+        if (!send) {
+            return;
+        }
+
         await processAlerts({
             eventType: "health_check_unhealthy",
             orgId,
@@ -96,6 +149,7 @@ export async function fireHealthCheckUnhealthyAlert(
             healthCheckId,
             data: {
                 healthCheckId,
+                status: "unhealthy",
                 ...(healthCheckName != null ? { healthCheckName } : {}),
                 ...extra
             }
@@ -105,5 +159,139 @@ export async function fireHealthCheckUnhealthyAlert(
             `fireHealthCheckUnhealthyAlert: unexpected error for healthCheckId ${healthCheckId}`,
             err
         );
+    }
+}
+
+export async function fireHealthCheckUnknownAlert(
+    orgId: string,
+    healthCheckId: number,
+    healthCheckName?: string | null,
+    healthCheckTargetId?: number | null,
+    extra?: Record<string, unknown>,
+    send: boolean = true,
+    trx: Transaction | typeof db = db
+): Promise<void> {
+    try {
+        await trx.insert(statusHistory).values({
+            entityType: "health_check",
+            entityId: healthCheckId,
+            orgId: orgId,
+            status: "unknown",
+            timestamp: Math.floor(Date.now() / 1000)
+        });
+        await invalidateStatusHistoryCache("health_check", healthCheckId);
+
+        await handleResource(orgId, healthCheckTargetId, send, trx);
+
+        if (!send) {
+            return;
+        }
+    } catch (err) {
+        logger.error(
+            `fireHealthCheckUnknownAlert: unexpected error for healthCheckId ${healthCheckId}`,
+            err
+        );
+    }
+}
+
+async function handleResource(orgId: string, healthCheckTargetId?: number | null, send: boolean = true, trx: Transaction | typeof db = db) {
+    if (!healthCheckTargetId) {
+        return;
+    }
+    // we have targets lets get them
+    const [target] = await trx
+        .select()
+        .from(targets)
+        .where(eq(targets.targetId, healthCheckTargetId))
+        .limit(1);
+
+    if (!target) {
+        return;
+    }
+
+    const [resource] = await trx
+        .select()
+        .from(resources)
+        .where(eq(resources.resourceId, target.resourceId))
+        .limit(1);
+
+    if (!resource) {
+        return;
+    }
+
+    const otherTargets = await trx
+        .select({ hcHealth: targetHealthCheck.hcHealth })
+        .from(targets)
+        .innerJoin(targetHealthCheck, eq(targetHealthCheck.targetId, targets.targetId))
+        .where(eq(targets.resourceId, resource.resourceId));
+
+    let health = "healthy";
+    const allUnknown = otherTargets.every((t) => t.hcHealth === "unknown");
+    const allHealthy = otherTargets.every((t) => t.hcHealth === "healthy");
+    const allUnhealthy = otherTargets.every((t) => t.hcHealth === "unhealthy");
+
+    if (allUnknown) {
+        logger.debug(
+            `Marking resource ${resource.resourceId} as unknown because all health checks are disabled`
+        );
+        health = "unknown";
+    } else if (allHealthy) {
+        health = "healthy";
+    } else if (allUnhealthy) {
+        logger.debug(
+            `Marking resource ${resource.resourceId} as unhealthy because all targets are unhealthy`
+        );
+        health = "unhealthy";
+    } else {
+        logger.debug(
+            `Marking resource ${resource.resourceId} as degraded because some targets are unhealthy`
+        );
+        health = "degraded";
+    }
+
+    if (health != resource.health) {
+        // it changed
+        await trx
+            .update(resources)
+            .set({ health })
+            .where(eq(resources.resourceId, resource.resourceId));
+
+        if (health === "unknown") {
+            await fireResourceUnknownAlert(
+                orgId,
+                resource.resourceId,
+                resource.name,
+                undefined,
+                send,
+                trx
+            );
+        } else if (health === "unhealthy") {
+            await fireResourceUnhealthyAlert(
+                orgId,
+                resource.resourceId,
+                resource.name,
+                undefined,
+                send,
+                trx
+            );
+        } else if (health === "healthy") {
+            await fireResourceHealthyAlert(
+                orgId,
+                resource.resourceId,
+                resource.name,
+                undefined,
+                send,
+                trx
+            );
+        } else if (health === "degraded") {
+            await fireResourceDegradedAlert(
+                orgId,
+                resource.resourceId,
+                resource.name,
+                undefined,
+                send,
+                trx
+            );
+        }
     }
 }

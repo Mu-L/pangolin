@@ -10,6 +10,7 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
+import { useTranslations } from "next-intl";
 
 function formatDuration(seconds: number): string {
     if (seconds === 0) return "0s";
@@ -41,7 +42,8 @@ const barColorClass: Record<string, string> = {
     good: "bg-green-500",
     degraded: "bg-yellow-500",
     bad: "bg-red-500",
-    no_data: "bg-neutral-200 dark:bg-neutral-700"
+    no_data: "bg-neutral-200 dark:bg-neutral-700",
+    unknown: "bg-neutral-200 dark:bg-neutral-700"
 };
 
 type UptimeBarProps = {
@@ -63,6 +65,7 @@ export default function UptimeBar({
     title,
     className
 }: UptimeBarProps) {
+    const t = useTranslations();
     const api = createApiClient(useEnvContext());
 
     const siteQuery = useQuery({
@@ -104,7 +107,7 @@ export default function UptimeBar({
                     <div
                         className="flex items-center gap-4 text-sm ml-auto"
                         aria-busy="true"
-                        aria-label="Loading uptime summary"
+                        aria-label={t("loading")}
                     >
                         <span className="h-4 w-[4.5rem] shrink-0 rounded-md bg-muted animate-pulse" />
                         <span className="h-4 w-[7rem] shrink-0 rounded-md bg-muted animate-pulse" />
@@ -122,8 +125,8 @@ export default function UptimeBar({
                     ))}
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{days} days ago</span>
-                    <span>Today</span>
+                    <span>{t("uptimeDaysAgo", { count: days })}</span>
+                    <span>{t("uptimeToday")}</span>
                 </div>
             </div>
         );
@@ -145,7 +148,7 @@ export default function UptimeBar({
                                 <span className="font-semibold text-foreground">
                                     {data.overallUptimePercent.toFixed(2)}%
                                 </span>{" "}
-                                uptime
+                                {t("uptimeSuffix")}
                             </span>
                             {data.totalDowntimeSeconds > 0 && (
                                 <span className="text-muted-foreground">
@@ -154,14 +157,14 @@ export default function UptimeBar({
                                             data.totalDowntimeSeconds
                                         )}
                                     </span>{" "}
-                                    downtime
+                                    {t("uptimeDowntimeSuffix")}
                                 </span>
                             )}
                         </>
                     )}
                     {allNoData && (
                         <span className="text-muted-foreground text-xs">
-                            No data available
+                            {t("uptimeNoDataAvailable")}
                         </span>
                     )}
                 </div>
@@ -186,9 +189,9 @@ export default function UptimeBar({
                             <div className="font-semibold text-xs">
                                 {formatDate(day.date)}
                             </div>
-                            {day.status !== "no_data" && (
+                            {day.status !== "no_data" && day.status !== "unknown" && (
                                 <div className="text-xs text-primary-foreground/80">
-                                    Uptime:{" "}
+                                    {t("uptimeTooltipUptimeLabel")}:{" "}
                                     <span className="font-medium text-primary-foreground">
                                         {day.uptimePercent.toFixed(1)}%
                                     </span>
@@ -196,7 +199,7 @@ export default function UptimeBar({
                             )}
                             {day.totalDowntimeSeconds > 0 && (
                                 <div className="text-xs text-primary-foreground/80">
-                                    Downtime:{" "}
+                                    {t("uptimeTooltipDowntimeLabel")}:{" "}
                                     <span className="font-medium text-primary-foreground">
                                         {formatDuration(
                                             day.totalDowntimeSeconds
@@ -214,7 +217,7 @@ export default function UptimeBar({
                                             {formatTime(w.start)}
                                             {w.end
                                                 ? ` – ${formatTime(w.end)}`
-                                                : " – ongoing"}{" "}
+                                                : ` – ${t("uptimeOngoing")}`}{" "}
                                             <span className="capitalize">
                                                 ({w.status})
                                             </span>
@@ -222,9 +225,9 @@ export default function UptimeBar({
                                     ))}
                                 </div>
                             )}
-                            {day.status === "no_data" && (
+                            {(day.status === "no_data" || day.status === "unknown") && (
                                 <div className="text-xs text-primary-foreground/60">
-                                    No monitoring data
+                                    {t("uptimeNoMonitoringData")}
                                 </div>
                             )}
                         </TooltipContent>
@@ -234,8 +237,8 @@ export default function UptimeBar({
 
             {/* Date labels */}
             <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{days} days ago</span>
-                <span>Today</span>
+                <span>{t("uptimeDaysAgo", { count: days })}</span>
+                <span>{t("uptimeToday")}</span>
             </div>
         </div>
     );

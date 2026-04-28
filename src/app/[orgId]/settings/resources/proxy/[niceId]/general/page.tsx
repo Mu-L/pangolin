@@ -29,6 +29,7 @@ import { Label } from "@app/components/ui/label";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import { AxiosResponse } from "axios";
 import { AlertCircle } from "lucide-react";
@@ -161,6 +162,7 @@ function MaintenanceSectionForm({
             </SettingsSectionHeader>
 
             <SettingsSectionBody>
+                <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
                 <SettingsSectionForm>
                     <Form {...maintenanceForm}>
                         <form
@@ -168,9 +170,6 @@ function MaintenanceSectionForm({
                             className="space-y-4"
                             id="maintenance-settings-form"
                         >
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.maintencePage}
-                            />
                             <FormField
                                 control={maintenanceForm.control}
                                 name="maintenanceModeEnabled"
@@ -508,7 +507,7 @@ export default function GeneralForm() {
                     name: data.name,
                     niceId: data.niceId,
                     subdomain: data.subdomain
-                        ? toASCII(data.subdomain)
+                        ? toASCII(finalizeSubdomainSanitize(data.subdomain, true))
                         : undefined,
                     domainId: data.domainId,
                     proxyPort: data.proxyPort
@@ -672,6 +671,7 @@ export default function GeneralForm() {
                                         <div className="space-y-4">
                                             <div id="resource-domain-picker">
                                                 <DomainPicker
+                                                    allowWildcard={true}
                                                     key={resource.resourceId}
                                                     orgId={orgId as string}
                                                     cols={2}

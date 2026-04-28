@@ -18,6 +18,7 @@ export default async function MaintenanceScreen() {
 
     let title = t("privateMaintenanceScreenTitle");
     let message = t("privateMaintenanceScreenMessage");
+    let steps = t("privateMaintenanceScreenSteps");
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
@@ -25,7 +26,16 @@ export default async function MaintenanceScreen() {
                 <CardHeader>
                     <CardTitle>{title}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">{message}</CardContent>
+                <CardContent className="space-y-4">
+                    <p>{message}</p>
+                    <p className="text-sm text-muted-foreground">{steps}</p>
+                    <a
+                        href="https://docs.pangolin.net/manage/dns-cache"
+                        className="text-sm text-primary hover:underline"
+                    >
+                        {t("learnMore")}
+                    </a>
+                </CardContent>
             </Card>
         </div>
     );

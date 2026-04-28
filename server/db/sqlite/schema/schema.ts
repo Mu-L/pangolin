@@ -178,7 +178,9 @@ export const resources = sqliteTable("resources", {
     maintenanceTitle: text("maintenanceTitle"),
     maintenanceMessage: text("maintenanceMessage"),
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
-    postAuthPath: text("postAuthPath")
+    postAuthPath: text("postAuthPath"),
+    health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
+    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false)
 });
 
 export const targets = sqliteTable("targets", {

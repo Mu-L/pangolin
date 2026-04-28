@@ -84,7 +84,7 @@ const CredenzaContent = ({ className, children, ...props }: CredenzaProps) => {
     return (
         <CredenzaContent
             className={cn(
-                "overflow-y-auto max-h-[100dvh] md:max-h-[calc(100vh-clamp(3rem,24vh,400px))] md:top-[clamp(1.5rem,12vh,200px)] md:translate-y-0",
+                "flex min-h-0 max-h-[100dvh] flex-col overflow-hidden md:top-[clamp(1.5rem,12vh,200px)] md:max-h-[calc(100vh-clamp(3rem,24vh,400px))] md:translate-y-0",
                 className
             )}
             {...props}
@@ -122,7 +122,10 @@ const CredenzaHeader = ({ className, children, ...props }: CredenzaProps) => {
     const CredenzaHeader = isDesktop ? DialogHeader : SheetHeader;
 
     return (
-        <CredenzaHeader className={cn("-mx-6 px-6", className)} {...props}>
+        <CredenzaHeader
+            className={cn("shrink-0 -mx-6 px-6", className)}
+            {...props}
+        >
             {children}
         </CredenzaHeader>
     );
@@ -151,7 +154,7 @@ const CredenzaBody = ({ className, children, ...props }: CredenzaProps) => {
     return (
         <div
             className={cn(
-                "px-0 mb-4 space-y-4 overflow-x-hidden min-w-0",
+                "min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-0",
                 className
             )}
             {...props}
@@ -169,7 +172,7 @@ const CredenzaFooter = ({ className, children, ...props }: CredenzaProps) => {
     return (
         <CredenzaFooter
             className={cn(
-                "mt-8 md:mt-0 -mx-6 md:-mb-4 px-6 py-4 border-t border-border gap-2 md:gap-0",
+                "mt-8 shrink-0 border-t border-border py-4 -mx-6 gap-2 px-6 bg-card md:mt-0 md:-mb-4 md:gap-0",
                 className
             )}
             {...props}

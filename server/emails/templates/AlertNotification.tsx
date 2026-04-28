@@ -23,6 +23,7 @@ export type AlertEventType =
     | "health_check_toggle"
     | "resource_healthy"
     | "resource_unhealthy"
+    | "resource_degraded"
     | "resource_toggle";
 
 export type AlertNotificationProps = {
@@ -36,8 +37,8 @@ function getEventMeta(eventType: AlertEventType): {
     heading: string;
     previewText: string;
     summary: string;
-    statusLabel: string;
-    statusColor: string;
+    statusLabel: string | null;
+    statusColor: string | null;
 } {
     switch (eventType) {
         case "site_online":
@@ -63,8 +64,8 @@ function getEventMeta(eventType: AlertEventType): {
                 heading: "Site Status Changed",
                 previewText: "A site in your organization has changed status.",
                 summary: "A site in your organization has changed status.",
-                statusLabel: "Status Changed",
-                statusColor: "#f59e0b"
+                statusLabel: null,
+                statusColor: null
             };
         case "health_check_healthy":
             return {
@@ -93,8 +94,8 @@ function getEventMeta(eventType: AlertEventType): {
                     "A health check in your organization has changed status.",
                 summary:
                     "A health check in your organization has changed status.",
-                statusLabel: "Status Changed",
-                statusColor: "#f59e0b"
+                statusLabel: null,
+                statusColor: null
             };
         case "resource_healthy":
             return {
@@ -114,14 +115,23 @@ function getEventMeta(eventType: AlertEventType): {
                 statusLabel: "Unhealthy",
                 statusColor: "#dc2626"
             };
+        case "resource_degraded":
+            return {
+                heading: "Resource Degraded",
+                previewText: "A resource in your organization is degraded.",
+                summary:
+                    "A resource in your organization is currently degraded.",
+                statusLabel: "Degraded",
+                statusColor: "#dc2626"
+            };
         case "resource_toggle":
             return {
                 heading: "Resource Status Changed",
                 previewText:
                     "A resource in your organization has changed status.",
                 summary: "A resource in your organization has changed status.",
-                statusLabel: "Status Changed",
-                statusColor: "#f59e0b"
+                statusLabel: null,
+                statusColor: null
             };
         default:
             return {
@@ -135,11 +145,31 @@ function getEventMeta(eventType: AlertEventType): {
     }
 }
 
+function resolveToggleStatus(status: unknown): {
+    label: string;
+    color: string;
+} {
+    switch (String(status).toLowerCase()) {
+        case "online":
+            return { label: "Online", color: "#16a34a" };
+        case "offline":
+            return { label: "Offline", color: "#dc2626" };
+        case "healthy":
+            return { label: "Healthy", color: "#16a34a" };
+        case "unhealthy":
+            return { label: "Unhealthy", color: "#dc2626" };
+        case "degraded":
+            return { label: "Degraded", color: "#dc2626" };
+        default:
+            return { label: String(status ?? "Unknown"), color: "#f59e0b" };
+    }
+}
+
 function formatDataItems(
     data: Record<string, unknown>
 ): { label: string; value: React.ReactNode }[] {
     return Object.entries(data)
-        .filter(([key]) => key !== "orgId")
+        .filter(([key]) => key !== "orgId" && key !== "status")
         .map(([key, value]) => ({
             label: key
                 .replace(/([A-Z])/g, " $1")
@@ -154,16 +184,36 @@ export const AlertNotification = (props: AlertNotificationProps) => {
     const meta = getEventMeta(eventType);
     const dataItems = formatDataItems(data);
 
+    const isToggle =
+        eventType === "site_toggle" ||
+        eventType === "health_check_toggle" ||
+        eventType === "resource_toggle";
+
+    const resolvedStatus = isToggle
+        ? resolveToggleStatus(data.status)
+        : meta.statusLabel != null
+          ? { label: meta.statusLabel, color: meta.statusColor! }
+          : null;
+
     const allItems: { label: string; value: React.ReactNode }[] = [
         { label: "Organization", value: orgId },
-        {
-            label: "Status",
-            value: (
-                <span style={{ color: meta.statusColor, fontWeight: 600 }}>
-                    {meta.statusLabel}
-                </span>
-            )
-        },
+        ...(resolvedStatus != null
+            ? [
+                  {
+                      label: "Status",
+                      value: (
+                          <span
+                              style={{
+                                  color: resolvedStatus.color,
+                                  fontWeight: 600
+                              }}
+                          >
+                              {resolvedStatus.label}
+                          </span>
+                      )
+                  }
+              ]
+            : []),
         { label: "Time", value: new Date().toUTCString() },
         ...dataItems
     ];

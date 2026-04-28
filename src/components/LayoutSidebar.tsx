@@ -165,7 +165,7 @@ export function LayoutSidebar({
                             <Link
                                 href="/admin"
                                 className={cn(
-                                    "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50 rounded-md",
+                                    "flex items-center transition-colors text-muted-foreground hover:text-foreground text-sm w-full hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50 rounded-md",
                                     isSidebarCollapsed
                                         ? "px-2 py-2 justify-center"
                                         : "px-3 py-1.5"
@@ -216,7 +216,7 @@ export function LayoutSidebar({
                                         setHasManualToggle(true);
                                         setSidebarStateCookie(false);
                                     }}
-                                    className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 dark:hover:bg-sidebar-accent/50 transition-colors"
+                                    className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/50 transition-colors"
                                     aria-label={t("sidebarExpand")}
                                 >
                                     <PanelRightOpen className="h-4 w-4" />

@@ -50,7 +50,7 @@ interface AcmeJson {
     };
 }
 
-async function pushCertUpdateToAffectedNewts(
+export async function pushCertUpdateToAffectedNewts(
     domain: string,
     domainId: string | null,
     oldCertPem: string | null,
@@ -280,6 +280,7 @@ async function syncAcmeCerts(
 
     for (const cert of resolverData.Certificates) {
         const domain = cert.domain?.main;
+        const wildcard = domain.startsWith("*.");
 
         if (!domain) {
             logger.debug(`acmeCertSync: skipping cert with missing domain`);
@@ -309,7 +310,11 @@ async function syncAcmeCerts(
         const existing = await db
             .select()
             .from(certificates)
-            .where(eq(certificates.domain, domain))
+            .where(
+                and(
+                    eq(certificates.domain, domain)
+                )
+            )
             .limit(1);
 
         let oldCertPem: string | null = null;
@@ -364,7 +369,6 @@ async function syncAcmeCerts(
             }
         }
 
-        const wildcard = domain.startsWith("*.");
         const encryptedCert = encrypt(
             certPem,
             config.getRawConfig().server.secret!
@@ -387,6 +391,9 @@ async function syncAcmeCerts(
         }
 
         if (existing.length > 0) {
+            logger.debug(
+                `acmeCertSync: updating existing certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+            );
             await db
                 .update(certificates)
                 .set({
@@ -411,6 +418,9 @@ async function syncAcmeCerts(
                 oldKeyPem
             );
         } else {
+            logger.debug(
+                `acmeCertSync: inserting new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+            );
             await db.insert(certificates).values({
                 domain,
                 domainId,

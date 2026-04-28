@@ -77,11 +77,11 @@ function VerticalRuleStep({
                 className="flex flex-col items-center gap-0 shrink-0 w-8"
                 aria-hidden
             >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-border bg-background text-sm font-semibold text-muted-foreground">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-sm text-muted-foreground">
                     {stepNumber}
                 </div>
                 {!isLast && (
-                    <div className="w-px flex-1 min-h-8 my-1 border-l-2 border-dashed border-border" />
+                    <div className="w-px flex-1 min-h-8 my-1 border-l border-dashed border-border" />
                 )}
             </div>
             <div
@@ -174,15 +174,11 @@ export default function AlertRuleGraphEditor({
                                 <CardContent className="p-4 sm:p-5 space-y-4">
                                     <fieldset
                                         disabled={disabled}
-                                        className={
-                                            disabled
-                                                ? "opacity-50 pointer-events-none"
-                                                : "space-y-4"
-                                        }
+                                        className={`space-y-4${disabled ? " opacity-50 pointer-events-none" : ""}`}
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
                                             {isNew && (
-                                                <Badge variant="secondary" >
+                                                <Badge variant="secondary">
                                                     {t("alertingDraftBadge")}
                                                 </Badge>
                                             )}
@@ -213,7 +209,9 @@ export default function AlertRuleGraphEditor({
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
-                                                        {t("alertingRuleCooldown")}
+                                                        {t(
+                                                            "alertingRuleCooldown"
+                                                        )}
                                                     </FormLabel>
                                                     <FormControl>
                                                         <Input
@@ -233,7 +231,9 @@ export default function AlertRuleGraphEditor({
                                                         />
                                                     </FormControl>
                                                     <FormDescription>
-                                                        {t("alertingRuleCooldownDescription")}
+                                                        {t(
+                                                            "alertingRuleCooldownDescription"
+                                                        )}
                                                     </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>

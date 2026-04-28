@@ -33,7 +33,11 @@ import { encrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import { CreateAlertRuleResponse } from "@server/routers/alertRule/types";
 
-export const SITE_EVENT_TYPES = ["site_online", "site_offline", "site_toggle"] as const;
+export const SITE_EVENT_TYPES = [
+    "site_online",
+    "site_offline",
+    "site_toggle"
+] as const;
 export const HC_EVENT_TYPES = [
     "health_check_healthy",
     "health_check_unhealthy",
@@ -42,6 +46,7 @@ export const HC_EVENT_TYPES = [
 export const RESOURCE_EVENT_TYPES = [
     "resource_healthy",
     "resource_unhealthy",
+    "resource_degraded",
     "resource_toggle"
 ] as const;
 
@@ -92,19 +97,24 @@ const bodySchema = z
         const isHcEvent = (HC_EVENT_TYPES as readonly string[]).includes(
             val.eventType
         );
-        const isResourceEvent = (RESOURCE_EVENT_TYPES as readonly string[]).includes(
-            val.eventType
-        );
+        const isResourceEvent = (
+            RESOURCE_EVENT_TYPES as readonly string[]
+        ).includes(val.eventType);
 
         if (isSiteEvent && !val.allSites && val.siteIds.length === 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "At least one siteId is required for site event types when allSites is false",
+                message:
+                    "At least one siteId is required for site event types when allSites is false",
                 path: ["siteIds"]
             });
         }
 
-        if (isHcEvent && !val.allHealthChecks && val.healthCheckIds.length === 0) {
+        if (
+            isHcEvent &&
+            !val.allHealthChecks &&
+            val.healthCheckIds.length === 0
+        ) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message:
@@ -129,10 +139,15 @@ const bodySchema = z
             });
         }
 
-        if (isResourceEvent && !val.allResources && val.resourceIds.length === 0) {
+        if (
+            isResourceEvent &&
+            !val.allResources &&
+            val.resourceIds.length === 0
+        ) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "At least one resourceId is required for resource event types when allResources is false",
+                message:
+                    "At least one resourceId is required for resource event types when allResources is false",
                 path: ["resourceIds"]
             });
         }
@@ -148,7 +163,8 @@ const bodySchema = z
         if (isResourceEvent && val.healthCheckIds.length > 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "healthCheckIds must not be set for resource event types",
+                message:
+                    "healthCheckIds must not be set for resource event types",
                 path: ["healthCheckIds"]
             });
         }
@@ -164,7 +180,8 @@ const bodySchema = z
         if (isHcEvent && val.resourceIds.length > 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "resourceIds must not be set for health check event types",
+                message:
+                    "resourceIds must not be set for health check event types",
                 path: ["resourceIds"]
             });
         }
@@ -284,9 +301,7 @@ export async function createAlertRule(
         // Create the email action pivot row and recipients if any recipients
         // were supplied (userIds, roleIds, or raw emails).
         const hasRecipients =
-            userIds.length > 0 ||
-            roleIds.length > 0 ||
-            emails.length > 0;
+            userIds.length > 0 || roleIds.length > 0 || emails.length > 0;
 
         if (hasRecipients) {
             const [emailActionRow] = await db

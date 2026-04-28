@@ -5,6 +5,9 @@ import {
     orgs,
     remoteExitNodes,
     roleSites,
+    siteNetworks,
+    siteResources,
+    targets,
     sites,
     userSites
 } from "@server/db";
@@ -199,6 +202,18 @@ function querySitesBase() {
             exitNodeName: exitNodes.name,
             exitNodeEndpoint: exitNodes.endpoint,
             remoteExitNodeId: remoteExitNodes.remoteExitNodeId,
+            resourceCount: sql<number>`(
+                SELECT COUNT(DISTINCT ${targets.resourceId})
+                FROM ${targets}
+                WHERE ${targets.siteId} = ${sites.siteId}
+            ) + (
+                SELECT COUNT(DISTINCT ${siteResources.siteResourceId})
+                FROM ${siteResources}
+                INNER JOIN ${siteNetworks}
+                    ON ${siteResources.networkId} = ${siteNetworks.networkId}
+                WHERE ${siteNetworks.siteId} = ${sites.siteId}
+                    AND ${siteResources.orgId} = ${sites.orgId}
+            )`,
             status: sites.status
         })
         .from(sites)
@@ -319,7 +334,6 @@ export async function listSites(
         if (typeof status !== "undefined") {
             conditions.push(eq(sites.status, status));
         }
-
         const baseQuery = querySitesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery

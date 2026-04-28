@@ -368,8 +368,8 @@ export async function signSshKey(
         const parsedSudoCommands: string[] = [];
         const parsedGroupsSet = new Set<string>();
         let homedir: boolean | null = null;
-        const sudoModeOrder = { none: 0, commands: 1, all: 2 };
-        let sudoMode: "none" | "commands" | "all" = "none";
+        const sudoModeOrder = { none: 0, commands: 1, full: 2 };
+        let sudoMode: "none" | "commands" | "full" = "none";
         for (const roleRow of roleRows) {
             try {
                 const cmds = JSON.parse(roleRow?.sshSudoCommands ?? "[]");
@@ -386,7 +386,7 @@ export async function signSshKey(
             if (roleRow?.sshCreateHomeDir === true) homedir = true;
             const m = roleRow?.sshSudoMode ?? "none";
             if (sudoModeOrder[m as keyof typeof sudoModeOrder] > sudoModeOrder[sudoMode]) {
-                sudoMode = m as "none" | "commands" | "all";
+                sudoMode = m as "none" | "commands" | "full";
             }
         }
         const parsedGroups = Array.from(parsedGroupsSet);

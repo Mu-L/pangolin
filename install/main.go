@@ -259,7 +259,7 @@ func main() {
 				}
 
 				config.DoCrowdsecInstall = true
-				err := installCrowdsec(config)
+				err := installCrowdsec(config, installDir)
 				if err != nil {
 					fmt.Printf("Error installing CrowdSec: %v\n", err)
 					return

@@ -40,9 +40,12 @@ async function query(domainId: string, domain: string) {
         throw new Error(`Domain with ID ${domainId} not found`);
     }
 
+    const domainType = domainRecord.type;
+
     let existing: any[] = [];
-    if (domainRecord.type == "ns") {
+    if (domainRecord.type == "ns" || domainRecord.type == "wildcard") {
         const domainLevelDown = domain.split(".").slice(1).join(".");
+        const wildcardPrefixed = `*.${domainLevelDown}`;
 
         existing = await db
             .select({
@@ -61,10 +64,15 @@ async function query(domainId: string, domain: string) {
             .where(
                 and(
                     eq(certificates.domainId, domainId),
-                    eq(certificates.wildcard, true), // only NS domains can have wildcard certs
                     or(
                         eq(certificates.domain, domain),
-                        eq(certificates.domain, domainLevelDown)
+                        and(
+                            eq(certificates.wildcard, true),
+                            or(
+                                eq(certificates.domain, domainLevelDown),
+                                eq(certificates.domain, wildcardPrefixed)
+                            )
+                        )
                     )
                 )
             );
@@ -92,7 +100,7 @@ async function query(domainId: string, domain: string) {
             );
     }
 
-    return existing.length > 0 ? existing[0] : null;
+    return existing.length > 0 ? { ...existing[0], domainType } : null;
 }
 
 registry.registerPath({

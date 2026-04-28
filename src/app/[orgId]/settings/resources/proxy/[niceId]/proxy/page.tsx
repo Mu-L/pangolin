@@ -62,6 +62,7 @@ import { formatAxiosError } from "@app/lib/api/formatAxiosError";
 import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { build } from "@server/build";
 import { tlsNameSchema } from "@server/lib/schemas";
 import { type GetResourceResponse } from "@server/routers/resource";
 import type { ListSitesResponse } from "@server/routers/site";
@@ -953,6 +954,18 @@ function ProxyResourceTargetsForm({
                             </Button>
                         </div>
                     )}
+                    {build === "saas" &&
+                        targets.length > 1 &&
+                        new Set(targets.map((t) => t.siteId)).size > 1 && (
+                            <p className="text-sm text-muted-foreground mt-3 flex items-start gap-1.5">
+                                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <span>
+                                    Round robin routing will not work between
+                                    sites that are not connected to the same
+                                    node, but failover will work.
+                                </span>
+                            </p>
+                        )}
                 </SettingsSectionBody>
 
                 <form className="self-end mt-4" action={formAction}>

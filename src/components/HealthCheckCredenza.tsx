@@ -46,6 +46,7 @@ import { SitesSelector } from "@app/components/site-selector";
 import type { Selectedsite } from "@app/components/site-selector";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import { cn } from "@app/lib/cn";
+import { SwitchInput } from "@app/components/SwitchInput";
 
 export type HealthCheckConfig = {
     hcEnabled: boolean;
@@ -118,7 +119,7 @@ const DEFAULT_VALUES = {
     name: "",
     hcEnabled: true,
     hcMode: "http",
-    hcScheme: "https",
+    hcScheme: "http",
     hcMethod: "GET",
     hcHostname: "",
     hcPort: "",
@@ -270,7 +271,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                     name: initialValues.name,
                     hcEnabled: initialValues.hcEnabled,
                     hcMode: initialValues.hcMode ?? "http",
-                    hcScheme: initialValues.hcScheme ?? "https",
+                    hcScheme: initialValues.hcScheme ?? "http",
                     hcMethod: initialValues.hcMethod ?? "GET",
                     hcHostname: initialValues.hcHostname ?? "",
                     hcPort: initialValues.hcPort
@@ -407,7 +408,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
               })
             : t("standaloneHcDescription");
 
-    const showFields = mode === "submit" || watchedEnabled;
+    const disableTabInputs = mode === "autoSave" && !watchedEnabled;
     const isSnmpOrIcmp = watchedMode === "snmp" || watchedMode === "icmp";
     const isTcp = watchedMode === "tcp";
 
@@ -491,6 +492,40 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                 </div>
                             )}
 
+                            {mode === "autoSave" && (
+                                <div className="mt-5">
+                                    <FormField
+                                        control={form.control}
+                                        name="hcEnabled"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <SwitchInput
+                                                        id="hcEnabled"
+                                                        label={t(
+                                                            "enableHealthChecks"
+                                                        )}
+                                                        description={t(
+                                                            "healthCheckDisabledStateDescription"
+                                                        )}
+                                                        checked={field.value}
+                                                        onCheckedChange={(
+                                                            value
+                                                        ) =>
+                                                            handleChange(
+                                                                "hcEnabled",
+                                                                value,
+                                                                field.onChange
+                                                            )
+                                                        }
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            )}
+
                             <div className="mt-5">
                                 <HorizontalTabs
                                     clientSide
@@ -513,121 +548,86 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                     ]}
                                 >
                                     {/* ── Strategy tab ──────────────────────── */}
-                                    <div className="space-y-4 mt-4 p-1">
-                                        {/* Enable toggle (autoSave mode only) */}
-                                        {mode === "autoSave" && (
-                                            <FormField
-                                                control={form.control}
-                                                name="hcEnabled"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                        <div>
-                                                            <FormLabel>
-                                                                {t(
-                                                                    "enableHealthChecks"
-                                                                )}
-                                                            </FormLabel>
-                                                        </div>
-                                                        <FormControl>
-                                                            <Switch
-                                                                checked={
-                                                                    field.value
-                                                                }
-                                                                onCheckedChange={(
-                                                                    value
-                                                                ) =>
-                                                                    handleChange(
-                                                                        "hcEnabled",
-                                                                        value,
-                                                                        field.onChange
-                                                                    )
-                                                                }
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        )}
-
+                                    <div className="mt-4 p-1">
+                                        <fieldset
+                                            disabled={disableTabInputs}
+                                            className={cn(
+                                                "space-y-4",
+                                                disableTabInputs &&
+                                                    "pointer-events-none opacity-60"
+                                            )}
+                                        >
                                         {/* Strategy picker */}
-                                        {showFields && (
-                                            <FormField
-                                                control={form.control}
-                                                name="hcMode"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            <StrategySelect
-                                                                cols={2}
-                                                                options={[
-                                                                    {
-                                                                        id: "http",
-                                                                        title: "HTTP",
-                                                                        description:
-                                                                            t(
-                                                                                "healthCheckStrategyHttp"
-                                                                            )
-                                                                    },
-                                                                    {
-                                                                        id: "tcp",
-                                                                        title: "TCP",
-                                                                        description:
-                                                                            t(
-                                                                                "healthCheckStrategyTcp"
-                                                                            )
-                                                                    },
-                                                                    {
-                                                                        id: "snmp",
-                                                                        title: "SNMP",
-                                                                        description:
-                                                                            t(
-                                                                                "healthCheckStrategySnmp"
-                                                                            )
-                                                                    },
-                                                                    {
-                                                                        id: "icmp",
-                                                                        title: "Ping (ICMP)",
-                                                                        description:
-                                                                            t(
-                                                                                "healthCheckStrategyIcmp"
-                                                                            )
-                                                                    }
-                                                                ]}
-                                                                value={
-                                                                    field.value
-                                                                }
-                                                                onChange={(
-                                                                    value
-                                                                ) =>
-                                                                    handleChange(
-                                                                        "hcMode",
-                                                                        value,
-                                                                        field.onChange
+                                        <FormField
+                                            control={form.control}
+                                            name="hcMode"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <StrategySelect
+                                                            cols={2}
+                                                            options={[
+                                                                {
+                                                                    id: "http",
+                                                                    title: "HTTP",
+                                                                    description: t(
+                                                                        "healthCheckStrategyHttp"
                                                                     )
-                                                                }
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        )}
+                                                                },
+                                                                {
+                                                                    id: "tcp",
+                                                                    title: "TCP",
+                                                                    description: t(
+                                                                        "healthCheckStrategyTcp"
+                                                                    )
+                                                                },
+                                                                // lets hide these for now until they are implemented
+                                                                // {
+                                                                //     id: "snmp",
+                                                                //     title: "SNMP",
+                                                                //     description: t(
+                                                                //         "healthCheckStrategySnmp"
+                                                                //     )
+                                                                // },
+                                                                // {
+                                                                //     id: "icmp",
+                                                                //     title: "Ping (ICMP)",
+                                                                //     description: t(
+                                                                //         "healthCheckStrategyIcmp"
+                                                                //     )
+                                                                // }
+                                                            ]}
+                                                            value={field.value}
+                                                            onChange={(value) =>
+                                                                handleChange(
+                                                                    "hcMode",
+                                                                    value,
+                                                                    field.onChange
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        </fieldset>
                                     </div>
 
                                     {/* ── Connection tab ────────────────────── */}
-                                    <div className="space-y-4 mt-4 p-1">
-                                        {!showFields && (
-                                            <p className="text-sm text-muted-foreground">
-                                                {t("enableHealthChecks")}
-                                            </p>
-                                        )}
-
+                                    <div className="mt-4 p-1">
+                                        <fieldset
+                                            disabled={disableTabInputs}
+                                            className={cn(
+                                                "space-y-4",
+                                                disableTabInputs &&
+                                                    "pointer-events-none opacity-60"
+                                            )}
+                                        >
                                         {/* Contact-sales banner for SNMP / ICMP */}
-                                        {showFields && isSnmpOrIcmp && (
-                                            <ContactSalesBanner />
-                                        )}
+                                        {isSnmpOrIcmp && <ContactSalesBanner />}
 
-                                        {showFields && !isSnmpOrIcmp && (
+                                        {!isSnmpOrIcmp && (
                                             <>
                                                 {/* Scheme / Hostname / Port */}
                                                 {isTcp ? (
@@ -1021,22 +1021,23 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                                 )}
                                             </>
                                         )}
+                                        </fieldset>
                                     </div>
 
                                     {/* ── Advanced tab ──────────────────────── */}
-                                    <div className="space-y-4 mt-4 p-1">
-                                        {!showFields && (
-                                            <p className="text-sm text-muted-foreground">
-                                                {t("enableHealthChecks")}
-                                            </p>
-                                        )}
-
+                                    <div className="mt-4 p-1">
+                                        <fieldset
+                                            disabled={disableTabInputs}
+                                            className={cn(
+                                                "space-y-4",
+                                                disableTabInputs &&
+                                                    "pointer-events-none opacity-60"
+                                            )}
+                                        >
                                         {/* Contact-sales banner for SNMP / ICMP */}
-                                        {showFields && isSnmpOrIcmp && (
-                                            <ContactSalesBanner />
-                                        )}
+                                        {isSnmpOrIcmp && <ContactSalesBanner />}
 
-                                        {showFields && !isSnmpOrIcmp && (
+                                        {!isSnmpOrIcmp && (
                                             <>
                                                 {/* Healthy interval + threshold */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1350,6 +1351,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                                 )}
                                             </>
                                         )}
+                                        </fieldset>
                                     </div>
                                 </HorizontalTabs>
                             </div>

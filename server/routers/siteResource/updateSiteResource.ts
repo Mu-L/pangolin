@@ -730,8 +730,10 @@ export async function handleMessagingForUpdatedSiteResource(
             updatedSiteResource.destinationPort;
     const aliasChanged =
         existingSiteResource &&
-        (existingSiteResource.alias !== updatedSiteResource.alias ||
-            existingSiteResource.fullDomain !== updatedSiteResource.fullDomain); // because the full domain gets sent down to the stuff as an alias
+        existingSiteResource.alias !== updatedSiteResource.alias;
+    const fullDomainChanged =
+        existingSiteResource &&
+        existingSiteResource.fullDomain !== updatedSiteResource.fullDomain;
     const portRangesChanged =
         existingSiteResource &&
         (existingSiteResource.tcpPortRangeString !==
@@ -746,6 +748,7 @@ export async function handleMessagingForUpdatedSiteResource(
     if (
         destinationChanged ||
         aliasChanged ||
+        fullDomainChanged ||
         portRangesChanged ||
         destinationPortChanged
     ) {
@@ -766,6 +769,7 @@ export async function handleMessagingForUpdatedSiteResource(
             if (
                 destinationChanged ||
                 portRangesChanged ||
+                fullDomainChanged || // if the domain changes we need to update the certs and stuff
                 destinationPortChanged
             ) {
                 const oldTargets = await generateSubnetProxyTargetV2(
@@ -844,7 +848,7 @@ export async function handleMessagingForUpdatedSiteResource(
                                   ])
                               }
                             : undefined,
-                        aliasChanged
+                        aliasChanged || fullDomainChanged // the full domain is sent down as an alias
                             ? {
                                   oldAliases: generateAliasConfig([
                                       existingSiteResource

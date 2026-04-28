@@ -30,10 +30,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
-import {
-    RadioGroup,
-    RadioGroupItem
-} from "@app/components/ui/radio-group";
+import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import { Label } from "@app/components/ui/label";
 import { StrategySelect } from "@app/components/StrategySelect";
 import { TagInput, type Tag } from "@app/components/tags/tag-input";
@@ -58,7 +55,6 @@ export function AddActionPanel({
     onAdd: (type: AlertRuleFormAction["type"]) => void;
 }) {
     const t = useTranslations();
-
 
     const EXTERNAL_INTEGRATIONS = [
         {
@@ -247,9 +243,7 @@ function HealthCheckMultiSelect({
     const shown = useMemo(() => {
         const query = debounced.trim().toLowerCase();
         const base = query
-            ? healthChecks.filter((hc) =>
-                  hc.name.toLowerCase().includes(query)
-              )
+            ? healthChecks.filter((hc) => hc.name.toLowerCase().includes(query))
             : healthChecks;
         // Always keep already-selected items visible even if they fall outside the search
         if (query && value.length > 0) {
@@ -323,9 +317,7 @@ function HealthCheckMultiSelect({
                                         aria-hidden
                                         tabIndex={-1}
                                     />
-                                    <span className="truncate">
-                                        {hc.name}
-                                    </span>
+                                    <span className="truncate">{hc.name}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
@@ -510,8 +502,12 @@ function NotifyActionFields({
         number | null
     >(null);
 
-    const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery(orgQueries.users({ orgId }));
-    const { data: orgRoles = [], isLoading: isLoadingRoles } = useQuery(orgQueries.roles({ orgId }));
+    const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery(
+        orgQueries.users({ orgId })
+    );
+    const { data: orgRoles = [], isLoading: isLoadingRoles } = useQuery(
+        orgQueries.roles({ orgId })
+    );
 
     const allUsers = useMemo(
         () =>
@@ -527,10 +523,7 @@ function NotifyActionFields({
     );
 
     const allRoles = useMemo(
-        () =>
-            orgRoles
-                .map((r) => ({ id: String(r.roleId), text: r.name }))
-                .filter((r) => r.text !== "Admin"),
+        () => orgRoles.map((r) => ({ id: String(r.roleId), text: r.name })),
         [orgRoles]
     );
 
@@ -578,9 +571,18 @@ function NotifyActionFields({
         hasResolvedTagsRef.current = true;
     }, [isLoadingUsers, isLoadingRoles, allUsers, allRoles]);
 
-    const userTags = (useWatch({ control, name: `actions.${index}.userTags` }) ?? []) as Tag[];
-    const roleTags = (useWatch({ control, name: `actions.${index}.roleTags` }) ?? []) as Tag[];
-    const emailTags = (useWatch({ control, name: `actions.${index}.emailTags` }) ?? []) as Tag[];
+    const userTags = (useWatch({
+        control,
+        name: `actions.${index}.userTags`
+    }) ?? []) as Tag[];
+    const roleTags = (useWatch({
+        control,
+        name: `actions.${index}.roleTags`
+    }) ?? []) as Tag[];
+    const emailTags = (useWatch({
+        control,
+        name: `actions.${index}.emailTags`
+    }) ?? []) as Tag[];
 
     return (
         <div className="space-y-3 pt-1">
@@ -714,7 +716,7 @@ function WebhookActionFields({
                 name={`actions.${index}.url`}
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>URL</FormLabel>
+                        <FormLabel>{t("webhookUrlLabel")}</FormLabel>
                         <FormControl>
                             <Input
                                 {...field}
@@ -788,7 +790,9 @@ function WebhookActionFields({
                                                 {t("httpDestAuthNoneTitle")}
                                             </Label>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                {t("httpDestAuthNoneDescription")}
+                                                {t(
+                                                    "httpDestAuthNoneDescription"
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -806,10 +810,14 @@ function WebhookActionFields({
                                                     htmlFor={`auth-bearer-${index}`}
                                                     className="cursor-pointer font-medium"
                                                 >
-                                                    {t("httpDestAuthBearerTitle")}
+                                                    {t(
+                                                        "httpDestAuthBearerTitle"
+                                                    )}
                                                 </Label>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {t("httpDestAuthBearerDescription")}
+                                                    {t(
+                                                        "httpDestAuthBearerDescription"
+                                                    )}
                                                 </p>
                                             </div>
                                             {field.value === "bearer" && (
@@ -821,7 +829,9 @@ function WebhookActionFields({
                                                             <FormControl>
                                                                 <Input
                                                                     {...f}
-                                                                    placeholder={t("httpDestAuthBearerPlaceholder")}
+                                                                    placeholder={t(
+                                                                        "httpDestAuthBearerPlaceholder"
+                                                                    )}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -845,10 +855,14 @@ function WebhookActionFields({
                                                     htmlFor={`auth-basic-${index}`}
                                                     className="cursor-pointer font-medium"
                                                 >
-                                                    {t("httpDestAuthBasicTitle")}
+                                                    {t(
+                                                        "httpDestAuthBasicTitle"
+                                                    )}
                                                 </Label>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {t("httpDestAuthBasicDescription")}
+                                                    {t(
+                                                        "httpDestAuthBasicDescription"
+                                                    )}
                                                 </p>
                                             </div>
                                             {field.value === "basic" && (
@@ -860,7 +874,9 @@ function WebhookActionFields({
                                                             <FormControl>
                                                                 <Input
                                                                     {...f}
-                                                                    placeholder={t("httpDestAuthBasicPlaceholder")}
+                                                                    placeholder={t(
+                                                                        "httpDestAuthBasicPlaceholder"
+                                                                    )}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -884,10 +900,14 @@ function WebhookActionFields({
                                                     htmlFor={`auth-custom-${index}`}
                                                     className="cursor-pointer font-medium"
                                                 >
-                                                    {t("httpDestAuthCustomTitle")}
+                                                    {t(
+                                                        "httpDestAuthCustomTitle"
+                                                    )}
                                                 </Label>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {t("httpDestAuthCustomDescription")}
+                                                    {t(
+                                                        "httpDestAuthCustomDescription"
+                                                    )}
                                                 </p>
                                             </div>
                                             {field.value === "custom" && (
@@ -895,12 +915,16 @@ function WebhookActionFields({
                                                     <FormField
                                                         control={control}
                                                         name={`actions.${index}.customHeaderName`}
-                                                        render={({ field: f }) => (
+                                                        render={({
+                                                            field: f
+                                                        }) => (
                                                             <FormItem className="flex-1">
                                                                 <FormControl>
                                                                     <Input
                                                                         {...f}
-                                                                        placeholder={t("httpDestAuthCustomHeaderNamePlaceholder")}
+                                                                        placeholder={t(
+                                                                            "httpDestAuthCustomHeaderNamePlaceholder"
+                                                                        )}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
@@ -910,12 +934,16 @@ function WebhookActionFields({
                                                     <FormField
                                                         control={control}
                                                         name={`actions.${index}.customHeaderValue`}
-                                                        render={({ field: f }) => (
+                                                        render={({
+                                                            field: f
+                                                        }) => (
                                                             <FormItem className="flex-1">
                                                                 <FormControl>
                                                                     <Input
                                                                         {...f}
-                                                                        placeholder={t("httpDestAuthCustomHeaderValuePlaceholder")}
+                                                                        placeholder={t(
+                                                                            "httpDestAuthCustomHeaderValuePlaceholder"
+                                                                        )}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
@@ -949,7 +977,7 @@ function WebhookHeadersField({
 }) {
     const t = useTranslations();
     const headers =
-        (useWatch({ control, name: `actions.${index}.headers` as const }) ?? []);
+        useWatch({ control, name: `actions.${index}.headers` as const }) ?? [];
     return (
         <div className="space-y-2">
             <FormLabel>{t("alertingWebhookHeaders")}</FormLabel>
@@ -961,7 +989,12 @@ function WebhookHeadersField({
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormControl>
-                                    <Input {...field} placeholder="Key" />
+                                    <Input
+                                        {...field}
+                                        placeholder={t(
+                                            "webhookHeaderKeyPlaceholder"
+                                        )}
+                                    />
                                 </FormControl>
                             </FormItem>
                         )}
@@ -972,7 +1005,12 @@ function WebhookHeadersField({
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormControl>
-                                    <Input {...field} placeholder="Value" />
+                                    <Input
+                                        {...field}
+                                        placeholder={t(
+                                            "webhookHeaderValuePlaceholder"
+                                        )}
+                                    />
                                 </FormControl>
                             </FormItem>
                         )}
@@ -984,9 +1022,8 @@ function WebhookHeadersField({
                         className="shrink-0"
                         onClick={() => {
                             const cur =
-                                form.getValues(
-                                    `actions.${index}.headers`
-                                ) ?? [];
+                                form.getValues(`actions.${index}.headers`) ??
+                                [];
                             form.setValue(
                                 `actions.${index}.headers`,
                                 cur.filter((__, i) => i !== hi),
@@ -1005,10 +1042,11 @@ function WebhookHeadersField({
                 onClick={() => {
                     const cur =
                         form.getValues(`actions.${index}.headers`) ?? [];
-                    form.setValue(`actions.${index}.headers`, [
-                        ...cur,
-                        { key: "", value: "" }
-                    ], { shouldDirty: true });
+                    form.setValue(
+                        `actions.${index}.headers`,
+                        [...cur, { key: "", value: "" }],
+                        { shouldDirty: true }
+                    );
                 }}
             >
                 <Plus className="h-4 w-4 mr-1" />
@@ -1109,24 +1147,21 @@ export function AlertRuleSourceFields({
                                     if (
                                         curTrigger !== "resource_healthy" &&
                                         curTrigger !== "resource_unhealthy" &&
+                                        curTrigger !== "resource_degraded" &&
                                         curTrigger !== "resource_toggle"
                                     ) {
-                                        setValue(
-                                            "trigger",
-                                            "resource_toggle",
-                                            { shouldValidate: true }
-                                        );
+                                        setValue("trigger", "resource_toggle", {
+                                            shouldValidate: true
+                                        });
                                     }
                                 } else if (
                                     curTrigger !== "health_check_healthy" &&
                                     curTrigger !== "health_check_unhealthy" &&
                                     curTrigger !== "health_check_toggle"
                                 ) {
-                                    setValue(
-                                        "trigger",
-                                        "health_check_toggle",
-                                        { shouldValidate: true }
-                                    );
+                                    setValue("trigger", "health_check_toggle", {
+                                        shouldValidate: true
+                                    });
                                 }
                             }}
                         >
@@ -1332,6 +1367,9 @@ export function AlertRuleTriggerFields({
                                     </SelectItem>
                                     <SelectItem value="resource_unhealthy">
                                         {t("alertingTriggerResourceUnhealthy")}
+                                    </SelectItem>
+                                    <SelectItem value="resource_degraded">
+                                        {t("alertingTriggerResourceDegraded")}
                                     </SelectItem>
                                 </>
                             ) : (

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, statusHistory } from "@server/db";
 import {
     siteProvisioningKeys,
     siteProvisioningKeyOrg,
@@ -222,6 +222,14 @@ export async function registerNewt(
                     status: keyRecord.approveNewSites ? "approved" : "pending",
                 })
                 .returning();
+
+            await trx.insert(statusHistory).values({
+                entityType: "site",
+                entityId: newSite.siteId,
+                orgId: orgId,
+                status: "offline",
+                timestamp: Math.floor(Date.now() / 1000)
+            });
 
             newSiteId = newSite.siteId;
 
