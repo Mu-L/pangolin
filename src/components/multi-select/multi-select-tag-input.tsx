@@ -1,17 +1,16 @@
+import { buttonVariants } from "@app/components/ui/button";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
-import { Button, buttonVariants } from "@app/components/ui/button";
 import { cn } from "@app/lib/cn";
 import { ChevronDownIcon, XIcon } from "lucide-react";
 import {
-    type TagValue,
     type MultiSelectTagsProps,
+    type TagValue,
     MultiSelectContent
 } from "./multi-select-content";
-import { useState } from "react";
 
 export interface MultiSelectInputProps<
     T extends TagValue
@@ -36,7 +35,8 @@ export function MultiSelectTagInput<T extends TagValue>({
                         }),
                         "justify-between w-full inline-flex",
                         "text-muted-foreground pl-1.5 cursor-text",
-                        "hover:bg-transparent hover:text-muted-foreground"
+                        "hover:bg-transparent hover:text-muted-foreground",
+                        props.disabled && "pointer-events-none opacity-50"
                     )}
                 >
                     <span
@@ -57,6 +57,7 @@ export function MultiSelectTagInput<T extends TagValue>({
                                 {option.text}
                                 <button
                                     className="p-0.5 flex-none cursor-pointer"
+                                    type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         let newValues = [];

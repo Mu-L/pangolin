@@ -26,8 +26,7 @@ export function UsersSelector({
 
     const [debouncedValue] = useDebounce(userSearchQuery, 150);
 
-    // TODO: switch back to 7 items
-    const perPage = 1;
+    const perPage = 7;
 
     const { data: users = [] } = useQuery(
         orgQueries.users({ orgId, perPage, query: debouncedValue })
