@@ -1432,7 +1432,7 @@
     "alertingTriggerHcToggle": "Gesundheits-Check-Status ändern",
     "alertingTriggerResourceHealthy": "Ressource gesund",
     "alertingTriggerResourceUnhealthy": "Ressource ungesund",
-    "alertingTriggerResourceDegraded": "Resource degraded",
+    "alertingTriggerResourceDegraded": "Ressource verschlechtert",
     "alertingSearchHealthChecks": "Gesundheits-Checks suchen…",
     "alertingHealthChecksEmpty": "Keine Gesundheits-Checks verfügbar.",
     "alertingTriggerResourceToggle": "Ressourcenstatus ändern",
