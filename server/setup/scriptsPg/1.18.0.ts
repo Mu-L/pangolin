@@ -347,7 +347,7 @@ export default async function migration() {
         `);
 
         await db.execute(sql`
-        ALTER TABLE "resources" ADD "health" varchar;
+            ALTER TABLE "resources" ADD "health" varchar DEFAULT 'unknown';
         `);
 
         await db.execute(sql`

@@ -332,7 +332,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-                ALTER TABLE 'resources' ADD 'health' text;
+                ALTER TABLE 'resources' ADD 'health' text DEFAULT 'unknown';
             `
             ).run();
             db.prepare(

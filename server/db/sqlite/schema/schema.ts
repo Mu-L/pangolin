@@ -179,7 +179,7 @@ export const resources = sqliteTable("resources", {
     maintenanceMessage: text("maintenanceMessage"),
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
-    health: text("health"), // "healthy", "unhealthy"
+    health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
     wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false)
 });
 
