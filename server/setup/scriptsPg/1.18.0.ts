@@ -1,6 +1,5 @@
 import { db } from "@server/db/pg/driver";
 import { sql } from "drizzle-orm";
-import { SiJfrog } from "react-icons/si";
 
 const version = "1.18.0";
 
