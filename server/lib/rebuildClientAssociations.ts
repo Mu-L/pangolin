@@ -180,36 +180,41 @@ export async function rebuildClientAssociationsFromSiteResource(
 
     /////////// process the client-siteResource associations ///////////
 
-    // get all of the clients associated with other resources in the same network,
-    // joined through siteNetworks so we know which siteId each client belongs to
-    const allUpdatedClientsFromOtherResourcesOnThisSite = siteResource.networkId
-        ? await trx
-              .select({
-                  clientId: clientSiteResourcesAssociationsCache.clientId,
-                  siteId: siteNetworks.siteId
-              })
-              .from(clientSiteResourcesAssociationsCache)
-              .innerJoin(
-                  siteResources,
-                  eq(
-                      clientSiteResourcesAssociationsCache.siteResourceId,
-                      siteResources.siteResourceId
-                  )
-              )
-              .innerJoin(
-                  siteNetworks,
-                  eq(siteNetworks.networkId, siteResources.networkId)
-              )
-              .where(
-                  and(
-                      eq(siteResources.networkId, siteResource.networkId),
-                      ne(
-                          siteResources.siteResourceId,
-                          siteResource.siteResourceId
+    // get all of the clients associated with other site resources that share
+    // any of the same sites as this site resource (via siteNetworks). We can't
+    // simply filter by networkId since each site resource has its own network;
+    // two site resources serving the same site typically belong to different
+    // networks that both happen to include the site through siteNetworks.
+    const sitesListSiteIds = sitesList.map((s) => s.siteId);
+    const allUpdatedClientsFromOtherResourcesOnThisSite =
+        sitesListSiteIds.length > 0
+            ? await trx
+                  .select({
+                      clientId: clientSiteResourcesAssociationsCache.clientId,
+                      siteId: siteNetworks.siteId
+                  })
+                  .from(clientSiteResourcesAssociationsCache)
+                  .innerJoin(
+                      siteResources,
+                      eq(
+                          clientSiteResourcesAssociationsCache.siteResourceId,
+                          siteResources.siteResourceId
                       )
                   )
-              )
-        : [];
+                  .innerJoin(
+                      siteNetworks,
+                      eq(siteNetworks.networkId, siteResources.networkId)
+                  )
+                  .where(
+                      and(
+                          inArray(siteNetworks.siteId, sitesListSiteIds),
+                          ne(
+                              siteResources.siteResourceId,
+                              siteResource.siteResourceId
+                          )
+                      )
+                  )
+            : [];
 
     // Build a per-site map so the loop below can check by siteId rather than
     // across the entire network.
