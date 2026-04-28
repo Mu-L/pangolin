@@ -340,7 +340,6 @@ export default async function migration() {
                 ALTER TABLE 'resources' ADD 'wildcard' integer DEFAULT false NOT NULL;
             `
             ).run();
-
         })();
 
         db.pragma("foreign_keys = ON");
@@ -364,7 +363,11 @@ export default async function migration() {
                     const result = insertNetwork.run("resource", sr.orgId);
                     const networkId = result.lastInsertRowid as number;
                     insertSiteNetwork.run(sr.siteId, networkId);
-                    updateSiteResource.run(networkId, networkId, sr.siteResourceId);
+                    updateSiteResource.run(
+                        networkId,
+                        networkId,
+                        sr.siteResourceId
+                    );
                 }
             });
 
@@ -454,6 +457,87 @@ export default async function migration() {
         }
 
         console.log(`Migrated database`);
+
+        // Seed statusHistory for all existing sites
+        const allSites = db
+            .prepare(`SELECT "siteId", "orgId", "online" FROM 'sites'`)
+            .all() as { siteId: number; orgId: string; online: number }[];
+
+        const insertSiteHistory = db.prepare(
+            `INSERT INTO 'statusHistory' ("entityType", "entityId", "orgId", "status", "timestamp") VALUES (?, ?, ?, ?, ?)`
+        );
+        const now = Math.floor(Date.now() / 1000);
+        const seedSites = db.transaction(() => {
+            for (const site of allSites) {
+                insertSiteHistory.run(
+                    "site",
+                    site.siteId,
+                    site.orgId,
+                    site.online ? "online" : "offline",
+                    now
+                );
+            }
+        });
+        seedSites();
+        console.log(`Seeded statusHistory for ${allSites.length} site(s)`);
+
+        // Seed statusHistory for all existing resources
+        const allResources = db
+            .prepare(`SELECT "resourceId", "orgId", "health" FROM 'resources'`)
+            .all() as {
+            resourceId: number;
+            orgId: string;
+            health: string | null;
+        }[];
+
+        const insertResourceHistory = db.prepare(
+            `INSERT INTO 'statusHistory' ("entityType", "entityId", "orgId", "status", "timestamp") VALUES (?, ?, ?, ?, ?)`
+        );
+        const seedResources = db.transaction(() => {
+            for (const resource of allResources) {
+                insertResourceHistory.run(
+                    "resource",
+                    resource.resourceId,
+                    resource.orgId,
+                    resource.health ?? "unknown",
+                    now
+                );
+            }
+        });
+        seedResources();
+        console.log(
+            `Seeded statusHistory for ${allResources.length} resource(s)`
+        );
+
+        // Seed statusHistory for all existing health checks
+        const allHealthChecks = db
+            .prepare(
+                `SELECT "targetHealthCheckId", "orgId", "hcHealth" FROM 'targetHealthCheck'`
+            )
+            .all() as {
+            targetHealthCheckId: number;
+            orgId: string;
+            hcHealth: string | null;
+        }[];
+
+        const insertHealthCheckHistory = db.prepare(
+            `INSERT INTO 'statusHistory' ("entityType", "entityId", "orgId", "status", "timestamp") VALUES (?, ?, ?, ?, ?)`
+        );
+        const seedHealthChecks = db.transaction(() => {
+            for (const hc of allHealthChecks) {
+                insertHealthCheckHistory.run(
+                    "health_check",
+                    hc.targetHealthCheckId,
+                    hc.orgId,
+                    hc.hcHealth ?? "unknown",
+                    now
+                );
+            }
+        });
+        seedHealthChecks();
+        console.log(
+            `Seeded statusHistory for ${allHealthChecks.length} health check(s)`
+        );
     } catch (e) {
         console.log("Failed to migrate db:", e);
         throw e;
