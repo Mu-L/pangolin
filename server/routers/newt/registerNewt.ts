@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, statusHistory } from "@server/db";
+import { db, logsDb, statusHistory } from "@server/db";
 import {
     siteProvisioningKeys,
     siteProvisioningKeyOrg,

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { clients, db, exitNodes, statusHistory } from "@server/db";
+import { clients, db, exitNodes, logsDb, statusHistory } from "@server/db";
 import { roles, userSites, sites, roleSites, Site, orgs } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
