@@ -50,7 +50,7 @@ interface AcmeJson {
     };
 }
 
-async function pushCertUpdateToAffectedNewts(
+export async function pushCertUpdateToAffectedNewts(
     domain: string,
     domainId: string | null,
     oldCertPem: string | null,
