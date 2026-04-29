@@ -405,7 +405,8 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
                     existing[0].certFile,
                     config.getRawConfig().server.secret!
                 );
-                if (storedCertPem === certPem) {
+                const wildcardUnchanged = existing[0].wildcard === wildcard;
+                if (storedCertPem === certPem && wildcardUnchanged) {
                     // logger.debug(
                         // `acmeCertSync: cert for ${domain} is unchanged, skipping`
                     // );
