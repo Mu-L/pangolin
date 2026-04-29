@@ -545,6 +545,72 @@ export default async function migration() {
         throw e;
     }
 
+    // Recompute resource health by aggregating across the resource's targets'
+    // target health checks, then update the resources.health column to match.
+    try {
+        const resourceTargetHealthQuery = await db.execute(
+            sql`SELECT
+                    r."resourceId" AS "resourceId",
+                    thc."hcHealth" AS "hcHealth"
+                FROM "resources" r
+                LEFT JOIN "targets" t ON t."resourceId" = r."resourceId"
+                LEFT JOIN "targetHealthCheck" thc ON thc."targetId" = t."targetId"`
+        );
+        const resourceTargetHealthRows =
+            resourceTargetHealthQuery.rows as {
+                resourceId: number;
+                hcHealth: string | null;
+            }[];
+
+        const resourceHealthMap = new Map<
+            number,
+            { hasHealthy: boolean; hasUnhealthy: boolean; hasUnknown: boolean }
+        >();
+        for (const row of resourceTargetHealthRows) {
+            const entry = resourceHealthMap.get(row.resourceId) ?? {
+                hasHealthy: false,
+                hasUnhealthy: false,
+                hasUnknown: false
+            };
+            const status = row.hcHealth ?? "unknown";
+            if (status === "healthy") entry.hasHealthy = true;
+            else if (status === "unhealthy") entry.hasUnhealthy = true;
+            else entry.hasUnknown = true;
+            resourceHealthMap.set(row.resourceId, entry);
+        }
+
+        let updatedResourceCount = 0;
+        for (const [resourceId, flags] of resourceHealthMap.entries()) {
+            let aggregated: "healthy" | "unhealthy" | "degraded" | "unknown";
+            if (flags.hasHealthy && flags.hasUnhealthy) {
+                aggregated = "degraded";
+            } else if (flags.hasHealthy) {
+                aggregated = "healthy";
+            } else if (flags.hasUnhealthy) {
+                aggregated = "unhealthy";
+            } else {
+                aggregated = "unknown";
+            }
+
+            await db.execute(sql`
+                UPDATE "resources"
+                SET "health" = ${aggregated}
+                WHERE "resourceId" = ${resourceId}
+            `);
+            updatedResourceCount++;
+        }
+
+        console.log(
+            `Recomputed health for ${updatedResourceCount} resource(s) based on target health checks`
+        );
+    } catch (e) {
+        console.error(
+            "Error while recomputing resource health from target health checks:",
+            e
+        );
+        throw e;
+    }
+
     // Seed statusHistory for all existing health checks
     try {
         const healthChecksQuery = await db.execute(
