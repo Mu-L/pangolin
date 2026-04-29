@@ -23,7 +23,7 @@ import { TanstackQueryProvider } from "@app/components/TanstackQueryProvider";
 import { TailwindIndicator } from "@app/components/TailwindIndicator";
 import { ViewportHeightFix } from "@app/components/ViewportHeightFix";
 import StoreInternalRedirect from "@app/components/StoreInternalRedirect";
-import { Inter, Mona_Sans } from "next/font/google";
+import localFont from "next/font/local";
 
 export const metadata: Metadata = {
     title: `Dashboard - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
@@ -32,12 +32,30 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const inter = Inter({
-    subsets: ["latin"]
-});
-
-const monaSans = Mona_Sans({
-    subsets: ["latin"]
+const monaSans = localFont({
+    src: [
+        {
+            path: "../fonts/mona-sans/MonaSans-Regular.woff2",
+            weight: "400",
+            style: "normal"
+        },
+        {
+            path: "../fonts/mona-sans/MonaSans-Medium.woff2",
+            weight: "500",
+            style: "normal"
+        },
+        {
+            path: "../fonts/mona-sans/MonaSans-SemiBold.woff2",
+            weight: "600",
+            style: "normal"
+        },
+        {
+            path: "../fonts/mona-sans/MonaSans-Bold.woff2",
+            weight: "700",
+            style: "normal"
+        }
+    ],
+    display: "swap"
 });
 
 const fontClassName = monaSans.className;
