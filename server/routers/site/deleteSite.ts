@@ -87,15 +87,10 @@ export async function deleteSite(
                         )
                     );
                 for (const siteResource of updatedSiteResources) {
-                    rebuildClientAssociationsFromSiteResource(
+                    await rebuildClientAssociationsFromSiteResource(
                         siteResource,
                         trx
-                    ).catch((error) => {
-                        logger.error(
-                            "Failed to rebuild client associations from site resource:",
-                            error
-                        );
-                    });
+                    );
                 }
 
                 // get the newt on the site by querying the newt table for siteId
