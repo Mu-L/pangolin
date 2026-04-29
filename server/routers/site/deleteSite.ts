@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, Site, siteNetworks, siteResources } from "@server/db";
 import { newts, newtSessions, sites } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -77,17 +77,25 @@ export async function deleteSite(
                     .where(eq(siteNetworks.siteId, siteId));
 
                 // loop through them
-                for (const network of await networks) {
-                    const [siteResource] = await trx
-                        .select()
-                        .from(siteResources)
-                        .where(eq(siteResources.networkId, network.networkId));
-                    if (siteResource) {
-                        await rebuildClientAssociationsFromSiteResource(
-                            siteResource,
-                            trx
+                const updatedSiteResources = await trx
+                    .select()
+                    .from(siteResources)
+                    .where(
+                        inArray(
+                            siteResources.networkId,
+                            networks.map((n) => n.networkId)
+                        )
+                    );
+                for (const siteResource of updatedSiteResources) {
+                    rebuildClientAssociationsFromSiteResource(
+                        siteResource,
+                        trx
+                    ).catch((error) => {
+                        logger.error(
+                            "Failed to rebuild client associations from site resource:",
+                            error
                         );
-                    }
+                    });
                 }
 
                 // get the newt on the site by querying the newt table for siteId

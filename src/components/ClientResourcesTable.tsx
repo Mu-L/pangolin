@@ -37,11 +37,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Selectedsite, SitesSelector } from "@app/components/site-selector";
 import { useEffect, useMemo, useState, useTransition } from "react";
-
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
-import { orgQueries } from "@app/lib/queries";
-import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
@@ -206,7 +203,11 @@ export default function ClientResourcesTable({
         const { siteNames, siteNiceIds, orgId } = resourceRow;
 
         if (!siteNames || siteNames.length === 0) {
-            return <span>-</span>;
+            return (
+                <span className="text-muted-foreground">
+                    {t("noSites", { defaultValue: "No sites" })}
+                </span>
+            );
         }
 
         if (siteNames.length === 1) {
