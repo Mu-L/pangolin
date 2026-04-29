@@ -9,12 +9,13 @@ import {
 } from "../ui/command";
 import { cn } from "@app/lib/cn";
 import { CheckIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export type TagValue = { text: string; id: string };
 
 export type MultiSelectTagsProps<T extends TagValue> = {
-    emptyPlaceholder: string;
-    searchPlaceholder: string;
+    emptyPlaceholder?: string;
+    searchPlaceholder?: string;
     searchQuery?: string;
     options: Array<T>;
     value: Array<T>;
@@ -33,16 +34,19 @@ export function MultiSelectContent<T extends TagValue>({
     onSearch,
     onChange
 }: MultiSelectTagsProps<T>) {
+    const t = useTranslations();
     const selectedValues = new Set(value.map((v) => v.id));
     return (
         <Command shouldFilter={false}>
             <CommandInput
-                placeholder={searchPlaceholder}
+                placeholder={searchPlaceholder ?? t("search")}
                 value={searchQuery}
                 onValueChange={onSearch}
             />
             <CommandList>
-                <CommandEmpty>{emptyPlaceholder}</CommandEmpty>
+                <CommandEmpty className="text-muted-foreground">
+                    {emptyPlaceholder ?? t("noResults")}
+                </CommandEmpty>
                 <CommandGroup>
                     {options.map((option) => (
                         <CommandItem

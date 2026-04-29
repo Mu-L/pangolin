@@ -12,32 +12,36 @@ export type RolesSelectorProps = {
     orgId: string;
     selectedRoles?: SelectedRole[];
     onSelectRoles: (roles: SelectedRole[]) => void;
-    disabled?: boolean 
+    disabled?: boolean;
+    restrictAdminRole?: boolean;
 };
 
 export function RolesSelector({
     orgId,
     selectedRoles = [],
     onSelectRoles,
-    disabled
+    disabled,
+    restrictAdminRole
 }: RolesSelectorProps) {
     const t = useTranslations();
     const [roleSearchQuery, setRoleSearchQuery] = useState("");
 
     const [debouncedValue] = useDebounce(roleSearchQuery, 150);
 
-    const perPage = 7;
-
     const { data: roles = [] } = useQuery(
-        orgQueries.roles({ orgId, perPage, query: debouncedValue })
+        orgQueries.roles({ orgId, perPage: 7, query: debouncedValue })
     );
 
     // always include the selected roles in the list (if the user isn't searching)
     const rolesShown = useMemo(() => {
-        const allRoles: Array<SelectedRole> = roles.map((r) => ({
-            id: r.roleId.toString(),
-            text: r.name
-        }));
+        let allRoles: Array<SelectedRole & { isAdmin?: boolean }> = roles.map(
+            (r) => ({
+                id: r.roleId.toString(),
+                text: r.name,
+                isAdmin: Boolean(r.isAdmin)
+            })
+        );
+
         if (debouncedValue.trim().length === 0) {
             for (const role of selectedRoles) {
                 if (!allRoles.find((r) => r.id === role.id)) {
@@ -45,14 +49,17 @@ export function RolesSelector({
                 }
             }
         }
+
+        if (restrictAdminRole) {
+            allRoles = allRoles.filter((role) => !role.isAdmin);
+        }
+
         return allRoles;
-    }, [roles, selectedRoles, debouncedValue]);
+    }, [roles, selectedRoles, debouncedValue, restrictAdminRole]);
 
     return (
         <MultiSelectTagInput
-            buttonText={t("selectRole")}
-            searchPlaceholder={t("search")}
-            emptyPlaceholder={t("roles")}
+            buttonText={t("alertingSelectRoles")}
             searchQuery={roleSearchQuery}
             onSearch={setRoleSearchQuery}
             options={rolesShown}

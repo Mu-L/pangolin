@@ -25,7 +25,14 @@ export function MultiSelectTagInput<T extends TagValue>({
     const selectedValues = new Set(props.value.map((v) => v.id));
 
     return (
-        <Popover>
+        <Popover
+            onOpenChange={(open) => {
+                if (!open) {
+                    // clear input when popover is closed
+                    props.onSearch("");
+                }
+            }}
+        >
             <PopoverTrigger asChild>
                 <div
                     role="combobox"

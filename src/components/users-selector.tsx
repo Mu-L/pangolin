@@ -26,10 +26,8 @@ export function UsersSelector({
 
     const [debouncedValue] = useDebounce(userSearchQuery, 150);
 
-    const perPage = 7;
-
     const { data: users = [] } = useQuery(
-        orgQueries.users({ orgId, perPage, query: debouncedValue })
+        orgQueries.users({ orgId, perPage: 7, query: debouncedValue })
     );
 
     // always include the selected users in the list (if the user isn't searching)
@@ -50,9 +48,7 @@ export function UsersSelector({
 
     return (
         <MultiSelectTagInput
-            buttonText={t("accessUserSelect")}
-            searchPlaceholder={t("search")}
-            emptyPlaceholder={t("userNotFoundWithUsername")}
+            buttonText={t("alertingSelectUsers")}
             searchQuery={userSearchQuery}
             onSearch={setUserSearchQuery}
             options={usersShown}
