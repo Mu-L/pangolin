@@ -182,13 +182,6 @@ export default function ResourceAuthenticationPage() {
         return [];
     }, [orgIdps]);
 
-    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
-        number | null
-    >(null);
-
     const [ssoEnabled, setSsoEnabled] = useState(resource.sso ?? false);
 
     useEffect(() => {

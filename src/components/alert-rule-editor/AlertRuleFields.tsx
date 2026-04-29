@@ -1,5 +1,8 @@
 "use client";
 
+import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
+import { StrategySelect } from "@app/components/StrategySelect";
+import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { Button } from "@app/components/ui/button";
 import { Checkbox } from "@app/components/ui/checkbox";
 import {
@@ -18,11 +21,13 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { Label } from "@app/components/ui/label";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import {
     Select,
     SelectContent,
@@ -30,19 +35,14 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
-import { Label } from "@app/components/ui/label";
-import { StrategySelect } from "@app/components/StrategySelect";
-import { TagInput, type Tag } from "@app/components/tags/tag-input";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
     type AlertRuleFormAction,
     type AlertRuleFormValues
 } from "@app/lib/alertRuleForm";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
-import { Bell, Globe, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { Bell, ChevronsUpDown, Globe, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
@@ -497,12 +497,6 @@ function NotifyActionFields({
     const t = useTranslations();
 
     const [emailActiveIdx, setEmailActiveIdx] = useState<number | null>(null);
-    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
-        number | null
-    >(null);
 
     const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery(
         orgQueries.users({ orgId })
@@ -573,14 +567,6 @@ function NotifyActionFields({
         hasResolvedTagsRef.current = true;
     }, [isLoadingUsers, isLoadingRoles, allUsers, allRoles]);
 
-    const userTags = (useWatch({
-        control,
-        name: `actions.${index}.userTags`
-    }) ?? []) as Tag[];
-    const roleTags = (useWatch({
-        control,
-        name: `actions.${index}.roleTags`
-    }) ?? []) as Tag[];
     const emailTags = (useWatch({
         control,
         name: `actions.${index}.emailTags`
