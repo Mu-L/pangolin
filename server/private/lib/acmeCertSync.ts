@@ -392,9 +392,9 @@ async function syncAcmeCerts(
                     config.getRawConfig().server.secret!
                 );
                 if (storedCertPem === certPem) {
-                    logger.debug(
-                        `acmeCertSync: cert for ${domain} is unchanged, skipping`
-                    );
+                    // logger.debug(
+                        // `acmeCertSync: cert for ${domain} is unchanged, skipping`
+                    // );
                     continue;
                 }
                 // Cert has changed; capture old values so we can send a correct
