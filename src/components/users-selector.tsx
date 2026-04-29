@@ -8,7 +8,11 @@ import { useDebounce } from "use-debounce";
 import { useTranslations } from "next-intl";
 import { MultiSelectTagInput } from "./multi-select/multi-select-tag-input";
 
-export type SelectedUser = { id: string; text: string };
+export type SelectedUser = {
+    id: string;
+    text: string;
+    ipdName?: string | null;
+};
 
 export type UsersSelectorProps = {
     orgId: string;
