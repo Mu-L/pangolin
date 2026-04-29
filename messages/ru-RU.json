@@ -1597,6 +1597,7 @@
     "createAdminAccount": "Создать учётную запись администратора",
     "setupErrorCreateAdmin": "Произошла ошибка при создании учётной записи администратора сервера.",
     "certificateStatus": "Сертификат",
+    "certificateStatusAutoRefreshHint": "Статус обновляется автоматически.",
     "loading": "Загрузка",
     "loadingAnalytics": "Загрузка аналитики",
     "restart": "Перезагрузка",
