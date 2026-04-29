@@ -1597,6 +1597,7 @@
     "createAdminAccount": "Opprett administratorkonto",
     "setupErrorCreateAdmin": "En feil oppstod under opprettelsen av serveradministratorkontoen.",
     "certificateStatus": "Sertifikat",
+    "certificateStatusAutoRefreshHint": "Status oppdateres automatisk.",
     "loading": "Laster inn",
     "loadingAnalytics": "Laster inn analyser",
     "restart": "Start på nytt",
