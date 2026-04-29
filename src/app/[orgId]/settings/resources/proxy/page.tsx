@@ -120,6 +120,7 @@ export default async function ProxyResourcesPage(
                   : "not_protected",
             enabled: resource.enabled,
             domainId: resource.domainId || undefined,
+            fullDomain: resource.fullDomain ?? null,
             ssl: resource.ssl,
             targets: resource.targets?.map((target) => ({
                 targetId: target.targetId,

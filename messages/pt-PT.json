@@ -1597,6 +1597,7 @@
     "createAdminAccount": "Criar Conta de Administrador",
     "setupErrorCreateAdmin": "Ocorreu um erro ao criar a conta de administrador do servidor.",
     "certificateStatus": "Certificado",
+    "certificateStatusAutoRefreshHint": "Status atualiza automaticamente.",
     "loading": "Carregando",
     "loadingAnalytics": "Carregando Analytics",
     "restart": "Reiniciar",

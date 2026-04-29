@@ -255,7 +255,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
+                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", COALESCE("tcpPortRangeString", '*'), COALESCE("udpPortRangeString", '*'), COALESCE("disableIcmp", 0), "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
             `
             ).run();
             db.prepare(
@@ -507,6 +507,70 @@ export default async function migration() {
         seedResources();
         console.log(
             `Seeded statusHistory for ${allResources.length} resource(s)`
+        );
+
+        // Recompute resource health by aggregating across the resource's
+        // targets' target health checks, then update resources.health.
+        const resourceTargetHealthRows = db
+            .prepare(
+                `SELECT
+                    r."resourceId" AS "resourceId",
+                    thc."hcHealth" AS "hcHealth"
+                 FROM 'resources' r
+                 LEFT JOIN 'targets' t ON t."resourceId" = r."resourceId"
+                 LEFT JOIN 'targetHealthCheck' thc ON thc."targetId" = t."targetId"`
+            )
+            .all() as {
+            resourceId: number;
+            hcHealth: string | null;
+        }[];
+
+        const resourceHealthMap = new Map<
+            number,
+            {
+                hasHealthy: boolean;
+                hasUnhealthy: boolean;
+                hasUnknown: boolean;
+            }
+        >();
+        for (const row of resourceTargetHealthRows) {
+            const entry = resourceHealthMap.get(row.resourceId) ?? {
+                hasHealthy: false,
+                hasUnhealthy: false,
+                hasUnknown: false
+            };
+            const status = row.hcHealth ?? "unknown";
+            if (status === "healthy") entry.hasHealthy = true;
+            else if (status === "unhealthy") entry.hasUnhealthy = true;
+            else entry.hasUnknown = true;
+            resourceHealthMap.set(row.resourceId, entry);
+        }
+
+        const updateResourceHealth = db.prepare(
+            `UPDATE 'resources' SET "health" = ? WHERE "resourceId" = ?`
+        );
+        const recomputeResourceHealth = db.transaction(() => {
+            for (const [resourceId, flags] of resourceHealthMap.entries()) {
+                let aggregated:
+                    | "healthy"
+                    | "unhealthy"
+                    | "degraded"
+                    | "unknown";
+                if (flags.hasHealthy && flags.hasUnhealthy) {
+                    aggregated = "degraded";
+                } else if (flags.hasHealthy) {
+                    aggregated = "healthy";
+                } else if (flags.hasUnhealthy) {
+                    aggregated = "unhealthy";
+                } else {
+                    aggregated = "unknown";
+                }
+                updateResourceHealth.run(aggregated, resourceId);
+            }
+        });
+        recomputeResourceHealth();
+        console.log(
+            `Recomputed health for ${resourceHealthMap.size} resource(s) based on target health checks`
         );
 
         // Seed statusHistory for all existing health checks

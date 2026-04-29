@@ -152,7 +152,7 @@ export type ResourceWithTargets = {
         siteId: number;
         siteName: string;
         siteNiceId: string;
-        online: boolean;
+        online?: boolean; // undefined for local sites
     }>;
 };
 
@@ -383,12 +383,8 @@ export async function listResources(
                 .select({ resourceId: targets.resourceId })
                 .from(targets)
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
-                .where(
-                    and(eq(sites.orgId, orgId), eq(sites.siteId, siteId))
-                );
-            conditions.push(
-                inArray(resources.resourceId, resourcesWithSite)
-            );
+                .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
+            conditions.push(inArray(resources.resourceId, resourcesWithSite));
         }
 
         const baseQuery = queryResourcesBase().where(and(...conditions));
@@ -426,7 +422,8 @@ export async function listResources(
                           hcEnabled: targetHealthCheck.hcEnabled,
                           siteName: sites.name,
                           siteNiceId: sites.niceId,
-                          siteOnline: sites.online
+                          siteOnline: sites.online,
+                          siteType: sites.type
                       })
                       .from(targets)
                       .where(inArray(targets.resourceId, resourceIdList))
@@ -481,18 +478,19 @@ export async function listResources(
                     siteId: number;
                     siteName: string;
                     siteNiceId: string;
-                    online: boolean;
+                    online?: boolean;
                 }
             >();
             for (const t of raw) {
                 if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
                     continue;
                 }
+                const isLocal = t.siteType === "local";
                 siteById.set(t.siteId, {
                     siteId: t.siteId,
                     siteName: t.siteName ?? "",
                     siteNiceId: t.siteNiceId ?? "",
-                    online: Boolean(t.siteOnline)
+                    online: isLocal ? undefined : Boolean(t.siteOnline)
                 });
             }
             entry.sites = Array.from(siteById.values());

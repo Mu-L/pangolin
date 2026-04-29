@@ -46,7 +46,7 @@ const createSiteResourceSchema = z
         mode: z.enum(["host", "cidr", "http"]),
         ssl: z.boolean().optional(), // only used for http mode
         scheme: z.enum(["http", "https"]).optional(),
-        siteIds: z.array(z.int()),
+        siteIds: z.array(z.int()).optional(),
         siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
         // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
@@ -133,6 +133,17 @@ const createSiteResourceSchema = z
             message:
                 "HTTP mode requires scheme (http or https) and a valid destination port"
         }
+    )
+    .refine(
+        (data) => {
+            return (
+                (data.siteIds !== undefined && data.siteIds.length > 0) ||
+                data.siteId !== undefined
+            );
+        },
+        {
+            message: "At least one of siteIds or siteId must be provided"
+        }
     );
 
 export type CreateSiteResourceBody = z.infer<typeof createSiteResourceSchema>;
@@ -188,7 +199,7 @@ export async function createSiteResource(
         const {
             name,
             niceId,
-            siteIds: siteIdsInput,
+            siteIds: siteIdsInput = [],
             siteId,
             mode,
             scheme,

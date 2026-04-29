@@ -1597,6 +1597,7 @@
     "createAdminAccount": "Maak een beheeraccount aan",
     "setupErrorCreateAdmin": "Er is een fout opgetreden bij het maken van het serverbeheerdersaccount.",
     "certificateStatus": "Certificaat",
+    "certificateStatusAutoRefreshHint": "Status ververst automatisch.",
     "loading": "Bezig met laden",
     "loadingAnalytics": "Laden van Analytics",
     "restart": "Herstarten",

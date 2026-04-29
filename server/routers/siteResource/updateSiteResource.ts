@@ -43,7 +43,7 @@ const updateSiteResourceParamsSchema = z.strictObject({
 const updateSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
-        siteIds: z.array(z.int()),
+        siteIds: z.array(z.int()).optional(),
         siteId: z.int().positive().optional(),
         // niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
         niceId: z
@@ -143,6 +143,17 @@ const updateSiteResourceSchema = z
             message:
                 "HTTP mode requires scheme (http or https) and a valid destination port"
         }
+    )
+    .refine(
+        (data) => {
+            return (
+                (data.siteIds !== undefined && data.siteIds.length > 0) ||
+                data.siteId !== undefined
+            );
+        },
+        {
+            message: "At least one of siteIds or siteId must be provided"
+        }
     );
 
 export type UpdateSiteResourceBody = z.infer<typeof updateSiteResourceSchema>;
@@ -197,7 +208,7 @@ export async function updateSiteResource(
         const { siteResourceId } = parsedParams.data;
         const {
             name,
-            siteIds: siteIdsInput, // because it can change
+            siteIds: siteIdsInput = [], // because it can change
             siteId,
             niceId,
             mode,

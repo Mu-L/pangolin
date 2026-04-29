@@ -1,7 +1,15 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ShieldCheck, ShieldOff, Eye, EyeOff, CheckCircle2, XCircle, Clock } from "lucide-react";
+import {
+    ShieldCheck,
+    ShieldOff,
+    Eye,
+    EyeOff,
+    CheckCircle2,
+    XCircle,
+    Clock
+} from "lucide-react";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import CopyToClipboard from "@app/components/CopyToClipboard";
 import {
@@ -13,7 +21,7 @@ import {
 import { useTranslations } from "next-intl";
 import CertificateStatus from "@app/components/CertificateStatus";
 import { toUnicode } from "punycode";
-import { useEnvContext } from "@app/hooks/useEnvContext";
+import { build } from "@server/build";
 
 type ResourceInfoBoxType = {};
 
@@ -28,7 +36,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
         <Alert>
             <AlertDescription>
                 {/* 4 cols because of the certs */}
-                <InfoSections cols={resource.http ? 6 : 5}>
+                <InfoSections cols={resource.http && build != "oss" ? 6 : 5}>
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>
@@ -61,12 +69,12 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     authInfo.whitelist ||
                                     authInfo.headerAuth ? (
                                         <div className="flex items-start space-x-2">
-                                            <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0 text-green-500" />
+                                            <ShieldCheck className="w-4 h-4 flex-shrink-0 text-green-500" />
                                             <span>{t("protected")}</span>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center space-x-2 text-yellow-500">
-                                            <ShieldOff className="w-4 h-4 flex-shrink-0" />
+                                        <div className="flex items-center space-x-2">
+                                            <ShieldOff className="w-4 h-4 flex-shrink-0 text-yellow-500" />
                                             <span>{t("notProtected")}</span>
                                         </div>
                                     )}
@@ -137,7 +145,8 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                     {/* Certificate Status Column */}
                     {resource.http &&
                         resource.domainId &&
-                        resource.fullDomain && (
+                        resource.fullDomain &&
+                        build != "oss" && (
                             <InfoSection>
                                 <InfoSectionTitle>
                                     {t("certificateStatus", {
@@ -177,8 +186,9 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     <span>{t("resourcesTableUnhealthy")}</span>
                                 </div>
                             )}
-                            {(!resource.health || resource.health === "unknown") && (
-                                <div className="flex items-center space-x-2 text-muted-foreground">
+                            {(!resource.health ||
+                                resource.health === "unknown") && (
+                                <div className="flex items-center space-x-2">
                                     <Clock className="w-4 h-4 flex-shrink-0" />
                                     <span>{t("resourcesTableUnknown")}</span>
                                 </div>

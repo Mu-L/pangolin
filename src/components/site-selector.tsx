@@ -124,11 +124,13 @@ export function SitesSelector({
                                 <span className="min-w-0 flex-1 truncate">
                                     {site.name}
                                 </span>
-                                <SiteOnlineStatus
-                                    type={site.type}
-                                    online={site.online}
-                                    t={t}
-                                />
+                                {site.online != null && (
+                                    <SiteOnlineStatus
+                                        type={site.type}
+                                        online={site.online}
+                                        t={t}
+                                    />
+                                )}
                             </div>
                         </CommandItem>
                     ))}

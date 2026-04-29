@@ -485,6 +485,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
                                                     onSelectSite={(site) => {
                                                         setSelectedSite(site);
                                                     }}
+                                                    filterTypes={["newt"]}
                                                 />
                                             </PopoverContent>
                                         </Popover>

@@ -51,6 +51,7 @@ import {
     ResourceSitesStatusCell,
     type ResourceSiteRow
 } from "@app/components/ResourceSitesStatusCell";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -440,13 +441,33 @@ export default function ClientResourcesTable({
                     );
                 }
                 if (resourceRow.mode === "http") {
-                    const url = `${resourceRow.ssl ? "https" : "http"}://${resourceRow.fullDomain}`;
+                    const domainId = resourceRow.domainId;
+                    const fullDomain = resourceRow.fullDomain;
+                    const url = `${resourceRow.ssl ? "https" : "http"}://${fullDomain}`;
+                    const did =
+                        resourceRow.ssl &&
+                        domainId != null &&
+                        domainId !== "" &&
+                        fullDomain != null &&
+                        fullDomain !== "";
+
                     return (
-                        <CopyToClipboard
-                            text={url}
-                            isLink={isSafeUrlForLink(url)}
-                            displayText={url}
-                        />
+                        <div className="flex items-center gap-2 min-w-0">
+                            {did ? (
+                                <ResourceAccessCertIndicator
+                                    orgId={resourceRow.orgId}
+                                    domainId={domainId}
+                                    fullDomain={fullDomain}
+                                />
+                            ) : null}
+                            <div className="">
+                                <CopyToClipboard
+                                    text={url}
+                                    isLink={isSafeUrlForLink(url)}
+                                    displayText={url}
+                                />
+                            </div>
+                        </div>
                     );
                 }
                 return <span>-</span>;
