@@ -64,7 +64,7 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.SIEM]: ["enterprise"],
     [TierFeature.HTTPPrivateResources]: ["tier3", "enterprise"],
     [TierFeature.DomainNamespaces]: ["tier1", "tier2", "tier3", "enterprise"],
-    [TierFeature.StandaloneHealthChecks]: ["tier2", "tier3", "enterprise"],
-    [TierFeature.AlertingRules]: ["tier2", "tier3", "enterprise"],
+    [TierFeature.StandaloneHealthChecks]: ["tier3", "enterprise"],
+    [TierFeature.AlertingRules]: ["tier3", "enterprise"],
     [TierFeature.WildcardSubdomain]: ["tier1", "tier2", "tier3", "enterprise"]
 };
