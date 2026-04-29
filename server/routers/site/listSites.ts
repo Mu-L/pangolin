@@ -31,7 +31,9 @@ let staleNewtVersion: string | null = null;
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
-        const cachedVersion = await cache.get<string>("cache:latestNewtVersion");
+        const cachedVersion = await cache.get<string>(
+            "cache:latestNewtVersion"
+        );
         if (cachedVersion) {
             return cachedVersion;
         }
@@ -226,7 +228,10 @@ function querySitesBase() {
         );
 }
 
-type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySitesBase>>[0] & {
+type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
+
+type SiteWithUpdateAvailable = Omit<SiteRowBase, "online"> & {
+    online?: SiteRowBase["online"]; // undefined for local sites
     newtUpdateAvailable?: boolean;
 };
 
@@ -338,7 +343,9 @@ export async function listSites(
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase().where(and(...conditions)).as("filtered_sites")
+            querySitesBase()
+                .where(and(...conditions))
+                .as("filtered_sites")
         );
 
         const siteListQuery = baseQuery
@@ -397,9 +404,13 @@ export async function listSites(
             );
         }
 
+        const sitesPayload = sitesWithUpdates.map((site) =>
+            site.type === "local" ? { ...site, online: undefined } : site
+        );
+
         return response<ListSitesResponse>(res, {
             data: {
-                sites: sitesWithUpdates,
+                sites: sitesPayload,
                 pagination: {
                     total: totalCount,
                     pageSize,

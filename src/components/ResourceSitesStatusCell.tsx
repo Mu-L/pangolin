@@ -16,10 +16,10 @@ export type ResourceSiteRow = {
     siteId: number;
     siteName: string;
     siteNiceId: string;
-    online: boolean;
+    online?: boolean | null;
 };
 
-type AggregateSitesStatus = "allOnline" | "partial" | "allOffline";
+type AggregateSitesStatus = "allOnline" | "partial" | "allOffline" | "unknown";
 
 function aggregateSitesStatus(
     resourceSites: ResourceSiteRow[]
@@ -27,8 +27,17 @@ function aggregateSitesStatus(
     if (resourceSites.length === 0) {
         return "allOffline";
     }
-    const onlineCount = resourceSites.filter((rs) => rs.online).length;
-    if (onlineCount === resourceSites.length) return "allOnline";
+
+    const knownStatuses = resourceSites
+        .map((rs) => rs.online)
+        .filter((status): status is boolean => typeof status === "boolean");
+
+    if (knownStatuses.length === 0) {
+        return "unknown";
+    }
+
+    const onlineCount = knownStatuses.filter(Boolean).length;
+    if (onlineCount === knownStatuses.length) return "allOnline";
     if (onlineCount > 0) return "partial";
     return "allOffline";
 }
@@ -40,8 +49,10 @@ function aggregateStatusDotClass(status: AggregateSitesStatus): string {
         case "partial":
             return "bg-yellow-500";
         case "allOffline":
-        default:
             return "bg-neutral-500";
+        case "unknown":
+        default:
+            return "bg-transparent";
     }
 }
 
@@ -84,6 +95,7 @@ export function ResourceSitesStatusCell({
             <DropdownMenuContent align="start" className="min-w-56">
                 {resourceSites.map((site) => {
                     const isOnline = site.online;
+                    const hasKnownStatus = typeof isOnline === "boolean";
                     return (
                         <DropdownMenuItem key={site.siteId} asChild>
                             <Link
@@ -94,7 +106,9 @@ export function ResourceSitesStatusCell({
                                     <div
                                         className={cn(
                                             "h-2 w-2 shrink-0 rounded-full",
-                                            isOnline
+                                            !hasKnownStatus
+                                                ? "bg-transparent"
+                                                : isOnline
                                                 ? "bg-green-500"
                                                 : "bg-neutral-500"
                                         )}
@@ -106,12 +120,16 @@ export function ResourceSitesStatusCell({
                                 <span
                                     className={cn(
                                         "shrink-0 capitalize",
-                                        isOnline
+                                        hasKnownStatus && isOnline
                                             ? "text-green-600"
                                             : "text-muted-foreground"
                                     )}
                                 >
-                                    {isOnline ? t("online") : t("offline")}
+                                    {!hasKnownStatus
+                                        ? t("resourcesTableUnknown")
+                                        : isOnline
+                                        ? t("online")
+                                        : t("offline")}
                                 </span>
                             </Link>
                         </DropdownMenuItem>

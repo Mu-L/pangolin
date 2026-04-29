@@ -60,7 +60,7 @@ export type SiteRow = {
     type: "newt" | "wireguard" | "local";
     newtVersion?: string;
     newtUpdateAvailable?: boolean;
-    online: boolean;
+    online?: boolean | null;
     address?: string;
     exitNodeName?: string;
     exitNodeEndpoint?: string;
