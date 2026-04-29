@@ -188,7 +188,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                             )}
                             {(!resource.health ||
                                 resource.health === "unknown") && (
-                                <div className="flex items-center space-x-2 text-muted-foreground">
+                                <div className="flex items-center space-x-2">
                                     <Clock className="w-4 h-4 flex-shrink-0" />
                                     <span>{t("resourcesTableUnknown")}</span>
                                 </div>
