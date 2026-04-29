@@ -453,6 +453,13 @@ export default function ClientResourcesTable({
 
                     return (
                         <div className="flex items-center gap-2 min-w-0">
+                            <div className="">
+                                <CopyToClipboard
+                                    text={url}
+                                    isLink={isSafeUrlForLink(url)}
+                                    displayText={url}
+                                />
+                            </div>
                             {did ? (
                                 <PrivateResourceCertAccessIndicator
                                     orgId={resourceRow.orgId}
@@ -460,13 +467,6 @@ export default function ClientResourcesTable({
                                     fullDomain={fullDomain}
                                 />
                             ) : null}
-                            <div className="min-w-0 flex-1">
-                                <CopyToClipboard
-                                    text={url}
-                                    isLink={isSafeUrlForLink(url)}
-                                    displayText={url}
-                                />
-                            </div>
                         </div>
                     );
                 }

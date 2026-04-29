@@ -52,7 +52,7 @@ function aggregateStatusDotClass(status: AggregateSitesStatus): string {
             return "bg-neutral-500";
         case "unknown":
         default:
-            return "bg-transparent";
+            return "border border-muted-foreground/50 bg-transparent";
     }
 }
 
@@ -107,10 +107,10 @@ export function ResourceSitesStatusCell({
                                         className={cn(
                                             "h-2 w-2 shrink-0 rounded-full",
                                             !hasKnownStatus
-                                                ? "bg-transparent"
+                                                ? "border border-muted-foreground/50 bg-transparent"
                                                 : isOnline
-                                                ? "bg-green-500"
-                                                : "bg-neutral-500"
+                                                  ? "bg-green-500"
+                                                  : "bg-neutral-500"
                                         )}
                                     />
                                     <span className="truncate">
