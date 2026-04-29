@@ -1597,6 +1597,7 @@
     "createAdminAccount": "创建管理员帐户",
     "setupErrorCreateAdmin": "创建服务器管理员账户时发生错误。",
     "certificateStatus": "证书",
+    "certificateStatusAutoRefreshHint": "状态自动刷新。",
     "loading": "加载中",
     "loadingAnalytics": "加载分析",
     "restart": "重启",
