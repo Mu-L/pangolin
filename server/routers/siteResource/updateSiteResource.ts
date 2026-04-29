@@ -440,9 +440,12 @@ export async function updateSiteResource(
                         destinationPort,
                         enabled,
                         alias: alias ? alias.trim() : null,
-                        tcpPortRangeString,
-                        udpPortRangeString,
-                        disableIcmp,
+                        tcpPortRangeString:
+                            mode == "http" ? "443,80" : tcpPortRangeString,
+                        udpPortRangeString:
+                            mode == "http" ? "" : udpPortRangeString,
+                        disableIcmp:
+                            disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
                         domainId,
                         subdomain: finalSubdomain,
                         fullDomain,

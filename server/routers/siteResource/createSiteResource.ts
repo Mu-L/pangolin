@@ -389,9 +389,10 @@ export async function createSiteResource(
                 enabled,
                 alias: alias ? alias.trim() : null,
                 aliasAddress,
-                tcpPortRangeString,
-                udpPortRangeString,
-                disableIcmp,
+                tcpPortRangeString:
+                    mode == "http" ? "443,80" : tcpPortRangeString,
+                udpPortRangeString: mode == "http" ? "" : udpPortRangeString,
+                disableIcmp: disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
                 domainId,
                 subdomain: finalSubdomain,
                 fullDomain
@@ -496,7 +497,13 @@ export async function createSiteResource(
             `Created site resource ${newSiteResource.siteResourceId} for org ${orgId}`
         );
 
-        if (ssl && mode === "http" && domainId && fullDomain && build != "oss") {
+        if (
+            ssl &&
+            mode === "http" &&
+            domainId &&
+            fullDomain &&
+            build != "oss"
+        ) {
             await createCertificate(domainId, fullDomain, db);
         }
 
