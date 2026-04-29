@@ -250,6 +250,30 @@ function extractFirstCert(pemBundle: string): string | null {
     return match ? match[0] : null;
 }
 
+/**
+ * Determine whether an ACME cert entry represents a wildcard cert by checking
+ * both the primary domain (`main`) and the SANs. Some ACME clients (notably
+ * Traefik) store the bare apex in `main` and only put the wildcard form in
+ * `sans` (e.g. main="access.example.com", sans=["*.access.example.com"]).
+ */
+function detectWildcard(
+    main: string,
+    sans: string[] | undefined
+): { wildcard: boolean; wildcardSan: string | null } {
+    if (main.startsWith("*.")) {
+        return { wildcard: true, wildcardSan: null };
+    }
+    if (Array.isArray(sans)) {
+        for (const san of sans) {
+            if (typeof san !== "string") continue;
+            if (san === `*.${main}` || san.startsWith("*.")) {
+                return { wildcard: true, wildcardSan: san };
+            }
+        }
+    }
+    return { wildcard: false, wildcardSan: null };
+}
+
 async function syncAcmeCerts(
     acmeJsonPath: string,
     resolver: string
@@ -279,13 +303,14 @@ async function syncAcmeCerts(
     }
 
     for (const cert of resolverData.Certificates) {
-        const domain = cert.domain?.main;
-        const wildcard = domain.startsWith("*.");
+        const domain = cert?.domain?.main;
 
-        if (!domain) {
+        if (!domain || typeof domain !== "string") {
             logger.debug(`acmeCertSync: skipping cert with missing domain`);
             continue;
         }
+
+        const { wildcard } = detectWildcard(domain, cert.domain?.sans);
 
         if (!cert.certificate || !cert.key) {
             logger.debug(
@@ -294,14 +319,54 @@ async function syncAcmeCerts(
             continue;
         }
 
-        const certPem = Buffer.from(cert.certificate, "base64").toString(
-            "utf8"
-        );
-        const keyPem = Buffer.from(cert.key, "base64").toString("utf8");
+        let certPem: string;
+        let keyPem: string;
+        try {
+            certPem = Buffer.from(cert.certificate, "base64").toString("utf8");
+            keyPem = Buffer.from(cert.key, "base64").toString("utf8");
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: skipping cert for ${domain} - failed to base64-decode cert/key: ${err}`
+            );
+            continue;
+        }
 
         if (!certPem.trim() || !keyPem.trim()) {
             logger.debug(
                 `acmeCertSync: skipping cert for ${domain} - blank PEM after base64 decode`
+            );
+            continue;
+        }
+
+        // Validate that the decoded data actually parses as a real X.509 cert
+        // before we touch the database. This prevents importing partially-written
+        // or corrupted entries from acme.json.
+        const firstCertPemForValidation = extractFirstCert(certPem);
+        if (!firstCertPemForValidation) {
+            logger.debug(
+                `acmeCertSync: skipping cert for ${domain} - no PEM certificate block found`
+            );
+            continue;
+        }
+
+        let validatedX509: crypto.X509Certificate;
+        try {
+            validatedX509 = new crypto.X509Certificate(
+                firstCertPemForValidation
+            );
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: skipping cert for ${domain} - invalid X.509 certificate: ${err}`
+            );
+            continue;
+        }
+
+        // Sanity-check the private key parses too
+        try {
+            crypto.createPrivateKey(keyPem);
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: skipping cert for ${domain} - invalid private key: ${err}`
             );
             continue;
         }
@@ -355,18 +420,16 @@ async function syncAcmeCerts(
             }
         }
 
-        // Parse cert expiry from the first cert in the PEM bundle
+        // Parse cert expiry from the validated X.509 certificate
         let expiresAt: number | null = null;
-        const firstCertPem = extractFirstCert(certPem);
-        if (firstCertPem) {
-            try {
-                const x509 = new crypto.X509Certificate(firstCertPem);
-                expiresAt = Math.floor(new Date(x509.validTo).getTime() / 1000);
-            } catch (err) {
-                logger.debug(
-                    `acmeCertSync: could not parse cert expiry for ${domain}: ${err}`
-                );
-            }
+        try {
+            expiresAt = Math.floor(
+                new Date(validatedX509.validTo).getTime() / 1000
+            );
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: could not parse cert expiry for ${domain}: ${err}`
+            );
         }
 
         const encryptedCert = encrypt(
