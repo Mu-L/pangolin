@@ -138,7 +138,8 @@ export default function CertificateStatus({
                     })}
                 >
                     <span className="inline-flex items-center gap-1">
-                        {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                        {cert.status.charAt(0).toUpperCase() +
+                            cert.status.slice(1)}
                         <RotateCw
                             className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
                         />
@@ -147,8 +148,12 @@ export default function CertificateStatus({
             ) : (
                 <span className={`text-sm ${getStatusColor(cert.status)}`}>
                     <span className="inline-flex items-center gap-1">
-                        {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                        {shouldShowRefreshButton(cert.status, cert.updatedAt) && (
+                        {cert.status.charAt(0).toUpperCase() +
+                            cert.status.slice(1)}
+                        {shouldShowRefreshButton(
+                            cert.status,
+                            cert.updatedAt
+                        ) && (
                             <Button
                                 size="icon"
                                 variant="ghost"
