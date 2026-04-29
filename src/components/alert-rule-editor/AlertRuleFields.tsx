@@ -48,6 +48,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
+import { RolesSelector } from "../roles-selector";
+import { UsersSelector } from "../users-selector";
 
 export function AddActionPanel({
     onAdd
@@ -593,29 +595,16 @@ function NotifyActionFields({
                     <FormItem className="flex flex-col items-start">
                         <FormLabel>{t("alertingNotifyUsers")}</FormLabel>
                         <FormControl>
-                            <TagInput
-                                {...field}
-                                activeTagIndex={activeUsersTagIndex}
-                                setActiveTagIndex={setActiveUsersTagIndex}
-                                placeholder={t("alertingSelectUsers")}
-                                size="sm"
-                                tags={userTags}
-                                setTags={(newTags) => {
-                                    const next =
-                                        typeof newTags === "function"
-                                            ? newTags(userTags)
-                                            : newTags;
+                            <UsersSelector
+                                selectedUsers={field.value ?? []}
+                                orgId={orgId}
+                                onSelectUsers={(newUsers) => {
                                     form.setValue(
                                         `actions.${index}.userTags`,
-                                        next as Tag[],
+                                        newUsers as [Tag, ...Tag[]],
                                         { shouldDirty: true }
                                     );
                                 }}
-                                enableAutocomplete={true}
-                                autocompleteOptions={allUsers}
-                                allowDuplicates={false}
-                                restrictTagsToAutocompleteOptions={true}
-                                sortTags={true}
                             />
                         </FormControl>
                         <FormMessage />
@@ -629,29 +618,17 @@ function NotifyActionFields({
                     <FormItem className="flex flex-col items-start">
                         <FormLabel>{t("alertingNotifyRoles")}</FormLabel>
                         <FormControl>
-                            <TagInput
-                                {...field}
-                                activeTagIndex={activeRolesTagIndex}
-                                setActiveTagIndex={setActiveRolesTagIndex}
-                                placeholder={t("alertingSelectRoles")}
-                                size="sm"
-                                tags={roleTags}
-                                setTags={(newTags) => {
-                                    const next =
-                                        typeof newTags === "function"
-                                            ? newTags(roleTags)
-                                            : newTags;
+                            <RolesSelector
+                                selectedRoles={field.value ?? []}
+                                restrictAdminRole
+                                orgId={orgId}
+                                onSelectRoles={(newUsers) => {
                                     form.setValue(
                                         `actions.${index}.roleTags`,
-                                        next as Tag[],
+                                        newUsers as [Tag, ...Tag[]],
                                         { shouldDirty: true }
                                     );
                                 }}
-                                enableAutocomplete={true}
-                                autocompleteOptions={allRoles}
-                                allowDuplicates={false}
-                                restrictTagsToAutocompleteOptions={true}
-                                sortTags={true}
                             />
                         </FormControl>
                         <FormMessage />
