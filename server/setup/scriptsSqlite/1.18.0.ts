@@ -255,7 +255,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
+                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", COALESCE("tcpPortRangeString", '*'), COALESCE("udpPortRangeString", '*'), COALESCE("disableIcmp", 0), "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
             `
             ).run();
             db.prepare(
