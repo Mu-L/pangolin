@@ -1597,6 +1597,7 @@
     "createAdminAccount": "Създаване на админ акаунт",
     "setupErrorCreateAdmin": "Възникна грешка при създаване на админ акаунт.",
     "certificateStatus": "Сертификат",
+    "certificateStatusAutoRefreshHint": "Състоянието се опреснява автоматично.",
     "loading": "Зареждане",
     "loadingAnalytics": "Зареждане на анализи",
     "restart": "Рестарт",
