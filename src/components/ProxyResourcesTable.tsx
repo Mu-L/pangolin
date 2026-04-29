@@ -65,6 +65,7 @@ import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
 import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
+import { build } from "@server/build";
 
 export type TargetHealth = {
     targetId: number;
@@ -554,6 +555,7 @@ export default function ProxyResourcesTable({
                 const domainId = resourceRow.domainId;
                 const certHostname = resourceRow.fullDomain;
                 const showHttpsCertIndicator =
+                    build !== "oss" &&
                     resourceRow.ssl &&
                     certHostname != null &&
                     certHostname !== "";

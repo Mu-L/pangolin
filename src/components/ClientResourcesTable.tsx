@@ -52,6 +52,7 @@ import {
     type ResourceSiteRow
 } from "@app/components/ResourceSitesStatusCell";
 import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
+import { build } from "@server/build";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -445,6 +446,7 @@ export default function ClientResourcesTable({
                     const fullDomain = resourceRow.fullDomain;
                     const url = `${resourceRow.ssl ? "https" : "http"}://${fullDomain}`;
                     const did =
+                        build !== "oss" &&
                         resourceRow.ssl &&
                         domainId != null &&
                         domainId !== "" &&
