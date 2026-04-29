@@ -20,7 +20,7 @@ type UseCertificateReturn = {
     certLoading: boolean;
     certError: string | null;
     refreshing: boolean;
-    fetchCert: () => Promise<void>;
+    fetchCert: (showLoading?: boolean) => Promise<void>;
     refreshCert: () => Promise<void>;
     clearCert: () => void;
 };
@@ -102,15 +102,33 @@ export function useCertificate({
         }
     }, [autoFetch, orgId, domainId, fullDomain, fetchCert]);
 
-    // Polling effect
     useEffect(() => {
         if (!polling || !orgId || !domainId || !fullDomain) return;
 
-        const interval = setInterval(() => {
-            fetchCert(false); // Don't show loading for polling
-        }, pollingInterval);
+        const POLL_JITTER_MS = 1000;
+        let cancelled = false;
+        let timeoutId: ReturnType<typeof setTimeout>;
 
-        return () => clearInterval(interval);
+        const scheduleNext = () => {
+            const jitter = (Math.random() * 2 - 1) * POLL_JITTER_MS;
+            const delayMs = Math.max(
+                1000,
+                Math.round(pollingInterval + jitter)
+            );
+
+            timeoutId = setTimeout(() => {
+                if (cancelled) return;
+                void fetchCert(false);
+                scheduleNext();
+            }, delayMs);
+        };
+
+        scheduleNext();
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeoutId);
+        };
     }, [polling, orgId, domainId, fullDomain, pollingInterval, fetchCert]);
 
     return {

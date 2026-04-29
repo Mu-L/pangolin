@@ -64,6 +64,7 @@ import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 
 export type TargetHealth = {
     targetId: number;
@@ -86,6 +87,8 @@ export type ResourceRow = {
     proxyPort: number | null;
     enabled: boolean;
     domainId?: string;
+    /** Hostname for certificate API (without scheme); distinct from `domain` URL shown in Access column */
+    fullDomain?: string | null;
     ssl: boolean;
     targetHost?: string;
     targetPort?: number;
@@ -266,7 +269,7 @@ export default function ProxyResourcesTable({
                         <StatusIcon status={overallStatus} />
                         <span className="text-sm">
                             {overallStatus === "healthy" &&
-                                    t("resourcesTableHealthy")}
+                                t("resourcesTableHealthy")}
                             {overallStatus === "degraded" &&
                                 t("resourcesTableDegraded")}
                             {overallStatus === "unhealthy" &&
@@ -488,7 +491,12 @@ export default function ProxyResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return <TargetStatusCell targets={resourceRow.targets} healthStatus={resourceRow.health} />;
+                return (
+                    <TargetStatusCell
+                        targets={resourceRow.targets}
+                        healthStatus={resourceRow.health}
+                    />
+                );
             },
             sortingFn: (rowA, rowB) => {
                 const statusA = rowA.original.health;
@@ -520,24 +528,51 @@ export default function ProxyResourcesTable({
             header: () => <span className="p-3">{t("access")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return (
-                    <div className="flex items-center space-x-2">
-                        {!resourceRow.http ? (
+
+                if (!resourceRow.http) {
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
                             <CopyToClipboard
                                 text={resourceRow.proxyPort?.toString() || ""}
                                 isLink={false}
                             />
-                        ) : !resourceRow.domainId ? (
+                        </div>
+                    );
+                }
+
+                if (!resourceRow.domainId) {
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
                             <InfoPopup
                                 info={t("domainNotFoundDescription")}
                                 text={t("domainNotFound")}
                             />
-                        ) : (
+                        </div>
+                    );
+                }
+
+                const domainId = resourceRow.domainId;
+                const certHostname = resourceRow.fullDomain;
+                const showHttpsCertIndicator =
+                    resourceRow.ssl &&
+                    certHostname != null &&
+                    certHostname !== "";
+
+                return (
+                    <div className="flex items-center gap-2 min-w-0">
+                        {showHttpsCertIndicator ? (
+                            <ResourceAccessCertIndicator
+                                orgId={resourceRow.orgId}
+                                domainId={domainId}
+                                fullDomain={certHostname}
+                            />
+                        ) : null}
+                        <div className="">
                             <CopyToClipboard
                                 text={resourceRow.domain}
                                 isLink={true}
                             />
-                        )}
+                        </div>
                     </div>
                 );
             }

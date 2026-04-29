@@ -1,6 +1,6 @@
 "use client";
 
-import CertificateStatus from "@app/components/CertificateStatus";
+import { CertificateStatusContent } from "@app/components/CertificateStatus";
 import {
     Popover,
     PopoverAnchor,
@@ -8,11 +8,17 @@ import {
 } from "@app/components/ui/popover";
 import { useCertificate } from "@app/hooks/useCertificate";
 import { cn } from "@app/lib/cn";
-import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { FileBadge } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+    type ReactNode
+} from "react";
 
-type PrivateResourceCertAccessIndicatorProps = {
+type ResourceAccessCertIndicatorProps = {
     orgId: string;
     domainId: string;
     fullDomain: string;
@@ -33,36 +39,31 @@ function getStatusColor(status: string) {
     }
 }
 
-function getStatusIcon(status: string) {
-    switch (status) {
-        case "valid":
-            return CheckCircle2;
-        case "pending":
-        case "requested":
-            return Clock;
-        case "expired":
-        case "failed":
-            return XCircle;
-        default:
-            return Clock;
-    }
-}
-
-export function PrivateResourceCertAccessIndicator({
+/** Compact cert icon + hover popover with full certificate status (shared by proxy and client resource tables). */
+export function ResourceAccessCertIndicator({
     orgId,
     domainId,
     fullDomain
-}: PrivateResourceCertAccessIndicatorProps) {
+}: ResourceAccessCertIndicatorProps) {
     const t = useTranslations();
     const [open, setOpen] = useState(false);
     const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const { cert, certLoading, certError } = useCertificate({
+    const certificate = useCertificate({
         orgId,
         domainId,
         fullDomain,
-        autoFetch: true
+        autoFetch: true,
+        polling: open,
+        pollingInterval: 5000
     });
+
+    const { cert, certLoading, certError, refreshing, fetchCert } = certificate;
+
+    useEffect(() => {
+        if (!open) return;
+        void fetchCert(false);
+    }, [open, fetchCert]);
 
     const clearCloseTimer = useCallback(() => {
         if (closeTimerRef.current != null) {
@@ -85,24 +86,46 @@ export function PrivateResourceCertAccessIndicator({
         return () => clearCloseTimer();
     }, [clearCloseTimer]);
 
+    let triggerBody: ReactNode;
     if (certLoading) {
-        return (
+        triggerBody = (
             <div
-                className="h-4 w-4 shrink-0 rounded-[2px] bg-muted animate-pulse"
+                className={cn(
+                    "h-4 w-4 shrink-0 rounded-[2px] animate-pulse",
+                    "bg-neutral-200 dark:bg-neutral-700"
+                )}
                 aria-busy="true"
                 aria-label={t("loading")}
             />
         );
-    }
-
-    let TriggerIcon = Clock;
-    let triggerIconClass = "text-muted-foreground";
-    if (certError) {
-        TriggerIcon = XCircle;
-        triggerIconClass = "text-red-500";
+    } else if (refreshing) {
+        triggerBody = (
+            <FileBadge
+                className={cn(
+                    "h-4 w-4 shrink-0 animate-spin",
+                    cert ? getStatusColor(cert.status) : "text-muted-foreground"
+                )}
+                aria-hidden
+            />
+        );
+    } else if (certError) {
+        triggerBody = (
+            <FileBadge className="h-4 w-4 shrink-0 text-red-500" aria-hidden />
+        );
     } else if (cert) {
-        TriggerIcon = getStatusIcon(cert.status);
-        triggerIconClass = getStatusColor(cert.status);
+        triggerBody = (
+            <FileBadge
+                className={cn("h-4 w-4", getStatusColor(cert.status))}
+                aria-hidden
+            />
+        );
+    } else {
+        triggerBody = (
+            <FileBadge
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                aria-hidden
+            />
+        );
     }
 
     return (
@@ -125,10 +148,7 @@ export function PrivateResourceCertAccessIndicator({
                     aria-haspopup="dialog"
                     aria-label={t("certificateStatus")}
                 >
-                    <TriggerIcon
-                        className={cn("h-4 w-4", triggerIconClass)}
-                        aria-hidden
-                    />
+                    {triggerBody}
                 </button>
             </PopoverAnchor>
             <PopoverContent
@@ -140,13 +160,19 @@ export function PrivateResourceCertAccessIndicator({
                 onMouseLeave={scheduleClose}
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
-                <CertificateStatus
-                    orgId={orgId}
-                    domainId={domainId}
-                    fullDomain={fullDomain}
-                    autoFetch
-                    showLabel
-                />
+                <div className="space-y-3">
+                    <CertificateStatusContent
+                        cert={certificate.cert}
+                        certLoading={certificate.certLoading}
+                        certError={certificate.certError}
+                        refreshing={certificate.refreshing}
+                        refreshCert={certificate.refreshCert}
+                        showLabel
+                    />
+                    <p className="text-sm text-muted-foreground">
+                        {t("certificateStatusAutoRefreshHint")}
+                    </p>
+                </div>
             </PopoverContent>
         </Popover>
     );

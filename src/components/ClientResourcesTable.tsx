@@ -51,7 +51,7 @@ import {
     ResourceSitesStatusCell,
     type ResourceSiteRow
 } from "@app/components/ResourceSitesStatusCell";
-import { PrivateResourceCertAccessIndicator } from "@app/components/PrivateResourceCertAccessIndicator";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -453,6 +453,13 @@ export default function ClientResourcesTable({
 
                     return (
                         <div className="flex items-center gap-2 min-w-0">
+                            {did ? (
+                                <ResourceAccessCertIndicator
+                                    orgId={resourceRow.orgId}
+                                    domainId={domainId}
+                                    fullDomain={fullDomain}
+                                />
+                            ) : null}
                             <div className="">
                                 <CopyToClipboard
                                     text={url}
@@ -460,13 +467,6 @@ export default function ClientResourcesTable({
                                     displayText={url}
                                 />
                             </div>
-                            {did ? (
-                                <PrivateResourceCertAccessIndicator
-                                    orgId={resourceRow.orgId}
-                                    domainId={domainId}
-                                    fullDomain={fullDomain}
-                                />
-                            ) : null}
                         </div>
                     );
                 }

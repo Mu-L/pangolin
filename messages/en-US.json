@@ -1597,6 +1597,7 @@
     "createAdminAccount": "Create Admin Account",
     "setupErrorCreateAdmin": "An error occurred while creating the server admin account.",
     "certificateStatus": "Certificate",
+    "certificateStatusAutoRefreshHint": "Status refreshes automatically.",
     "loading": "Loading",
     "loadingAnalytics": "Loading Analytics",
     "restart": "Restart",
