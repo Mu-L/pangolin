@@ -125,12 +125,12 @@ export async function updateClientResources(
 
         const existingSiteIds = existingResource?.networkId
             ? await trx
-                  .select({ siteId: sites.siteId })
+                  .select({ siteId: siteNetworks.siteId })
                   .from(siteNetworks)
                   .where(eq(siteNetworks.networkId, existingResource.networkId))
             : [];
 
-        let allSites: { siteId: number }[] = [];
+        const allSites: { siteId: number }[] = [];
         if (resourceData.site) {
             let siteSingle;
             const resourceSiteId = resourceData.site;
