@@ -102,7 +102,6 @@ export const privateConfigSchema = z.object({
                 .string()
                 .optional()
                 .default("config/letsencrypt/acme.json"),
-            resolver: z.string().optional().default("letsencrypt"),
             sync_interval_ms: z.number().optional().default(5000)
         })
         .optional(),

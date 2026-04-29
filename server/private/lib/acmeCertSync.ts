@@ -274,10 +274,7 @@ function detectWildcard(
     return { wildcard: false, wildcardSan: null };
 }
 
-async function syncAcmeCerts(
-    acmeJsonPath: string,
-    resolver: string
-): Promise<void> {
+async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
     let raw: string;
     try {
         raw = fs.readFileSync(acmeJsonPath, "utf8");
@@ -294,15 +291,32 @@ async function syncAcmeCerts(
         return;
     }
 
-    const resolverData = acmeJson[resolver];
-    if (!resolverData || !Array.isArray(resolverData.Certificates)) {
-        logger.debug(
-            `acmeCertSync: no certificates found for resolver "${resolver}"`
-        );
+    const resolvers = Object.keys(acmeJson || {});
+    if (resolvers.length === 0) {
+        logger.debug(`acmeCertSync: no resolvers found in acme.json`);
         return;
     }
 
-    for (const cert of resolverData.Certificates) {
+    // Collect certificates from every resolver. If the same domain appears in
+    // multiple resolvers, the last one wins (resolvers iterated in object order).
+    const allCerts: AcmeCert[] = [];
+    for (const resolver of resolvers) {
+        const resolverData = acmeJson[resolver];
+        if (!resolverData || !Array.isArray(resolverData.Certificates)) {
+            logger.debug(
+                `acmeCertSync: no certificates found for resolver "${resolver}"`
+            );
+            continue;
+        }
+        logger.debug(
+            `acmeCertSync: found ${resolverData.Certificates.length} certificate(s) for resolver "${resolver}"`
+        );
+        for (const cert of resolverData.Certificates) {
+            allCerts.push(cert);
+        }
+    }
+
+    for (const cert of allCerts) {
         const domain = cert?.domain?.main;
 
         if (!domain || typeof domain !== "string") {
@@ -531,20 +545,19 @@ export function initAcmeCertSync(): void {
     const acmeJsonPath =
         privateConfigData.acme?.acme_json_path ??
         "config/letsencrypt/acme.json";
-    const resolver = privateConfigData.acme?.resolver ?? "letsencrypt";
     const intervalMs = privateConfigData.acme?.sync_interval_ms ?? 5000;
 
     logger.debug(
-        `acmeCertSync: starting ACME cert sync from "${acmeJsonPath}" using resolver "${resolver}" every ${intervalMs}ms`
+        `acmeCertSync: starting ACME cert sync from "${acmeJsonPath}" across all resolvers every ${intervalMs}ms`
     );
 
     // Run immediately on init, then on the configured interval
-    syncAcmeCerts(acmeJsonPath, resolver).catch((err) => {
+    syncAcmeCerts(acmeJsonPath).catch((err) => {
         logger.error(`acmeCertSync: error during initial sync: ${err}`);
     });
 
     setInterval(() => {
-        syncAcmeCerts(acmeJsonPath, resolver).catch((err) => {
+        syncAcmeCerts(acmeJsonPath).catch((err) => {
             logger.error(`acmeCertSync: error during sync: ${err}`);
         });
     }, intervalMs);
