@@ -277,37 +277,37 @@ export async function getTraefikConfig(
         });
     });
 
-    // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge
-    const siteResourcesWithFullDomain = await db
-        .select({
-            siteResourceId: siteResources.siteResourceId,
-            fullDomain: siteResources.fullDomain,
-            mode: siteResources.mode
-        })
-        .from(siteResources)
-        .innerJoin(
-            siteNetworks,
-            eq(siteResources.networkId, siteNetworks.networkId)
-        )
-        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
-        .where(
-            and(
-                eq(siteResources.enabled, true),
-                isNotNull(siteResources.fullDomain),
-                eq(siteResources.mode, "http"),
-                eq(siteResources.ssl, true),
-                or(
-                    eq(sites.exitNodeId, exitNodeId),
-                    and(
-                        isNull(sites.exitNodeId),
-                        sql`(${siteTypes.includes("local") ? 1 : 0} = 1)`,
-                        eq(sites.type, "local"),
-                        sql`(${build != "saas" ? 1 : 0} = 1)`
-                    )
-                ),
-                inArray(sites.type, siteTypes)
+    let siteResourcesWithFullDomain: {
+        siteResourceId: number;
+        fullDomain: string | null;
+        mode: "http" | "host" | "cidr";
+    }[] = [];
+    if (build == "enterprise") {
+        // we dont want to do this on the cloud
+        // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge
+        siteResourcesWithFullDomain = await db
+            .select({
+                siteResourceId: siteResources.siteResourceId,
+                fullDomain: siteResources.fullDomain,
+                mode: siteResources.mode
+            })
+            .from(siteResources)
+            .innerJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
             )
-        );
+            .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+            .where(
+                and(
+                    eq(siteResources.enabled, true),
+                    isNotNull(siteResources.fullDomain),
+                    eq(siteResources.mode, "http"),
+                    eq(siteResources.ssl, true),
+                    eq(sites.exitNodeId, exitNodeId),
+                    inArray(sites.type, siteTypes)
+                )
+            );
+    }
 
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
