@@ -44,6 +44,7 @@ const updateSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255).optional(),
         siteIds: z.array(z.int()),
+        siteId: z.int().positive().optional(),
         // niceId: z.string().min(1).max(255).regex(/^[a-zA-Z0-9-]+$/, "niceId can only contain letters, numbers, and dashes").optional(),
         niceId: z
             .string()
@@ -196,7 +197,8 @@ export async function updateSiteResource(
         const { siteResourceId } = parsedParams.data;
         const {
             name,
-            siteIds, // because it can change
+            siteIds: siteIdsInput, // because it can change
+            siteId,
             niceId,
             mode,
             scheme,
@@ -216,6 +218,12 @@ export async function updateSiteResource(
             domainId,
             subdomain
         } = parsedBody.data;
+
+        // Backward compatibility: merge deprecated siteId into siteIds array
+        const siteIds = [...siteIdsInput];
+        if (siteId !== undefined && !siteIds.includes(siteId)) {
+            siteIds.push(siteId);
+        }
 
         // Check if site resource exists
         const [existingSiteResource] = await db

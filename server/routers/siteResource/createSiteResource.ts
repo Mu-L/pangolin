@@ -47,6 +47,7 @@ const createSiteResourceSchema = z
         ssl: z.boolean().optional(), // only used for http mode
         scheme: z.enum(["http", "https"]).optional(),
         siteIds: z.array(z.int()),
+        siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
         // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1),
@@ -187,7 +188,8 @@ export async function createSiteResource(
         const {
             name,
             niceId,
-            siteIds,
+            siteIds: siteIdsInput,
+            siteId,
             mode,
             scheme,
             // proxyPort,
@@ -207,6 +209,12 @@ export async function createSiteResource(
             domainId,
             subdomain
         } = parsedBody.data;
+
+        // Backward compatibility: merge deprecated siteId into siteIds array
+        const siteIds = [...siteIdsInput];
+        if (siteId !== undefined && !siteIds.includes(siteId)) {
+            siteIds.push(siteId);
+        }
 
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
