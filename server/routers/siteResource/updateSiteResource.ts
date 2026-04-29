@@ -737,6 +737,9 @@ export async function handleMessagingForUpdatedSiteResource(
     const fullDomainChanged =
         existingSiteResource &&
         existingSiteResource.fullDomain !== updatedSiteResource.fullDomain;
+    const sslChanged =
+        existingSiteResource &&
+        existingSiteResource.ssl !== updatedSiteResource.ssl;
     const portRangesChanged =
         existingSiteResource &&
         (existingSiteResource.tcpPortRangeString !==
@@ -752,6 +755,7 @@ export async function handleMessagingForUpdatedSiteResource(
         destinationChanged ||
         aliasChanged ||
         fullDomainChanged ||
+        sslChanged ||
         portRangesChanged ||
         destinationPortChanged
     ) {
@@ -768,9 +772,10 @@ export async function handleMessagingForUpdatedSiteResource(
                 );
             }
 
-            // Only update targets on newt if destination changed
+            // Only update targets on newt if these items change
             if (
                 destinationChanged ||
+                sslChanged || // we need to push a new cert if the ssl changed
                 portRangesChanged ||
                 fullDomainChanged || // if the domain changes we need to update the certs and stuff
                 destinationPortChanged
