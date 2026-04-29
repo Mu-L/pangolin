@@ -35,6 +35,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import ClientDownloadBanner from "./ClientDownloadBanner";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import IdpTypeBadge from "./IdpTypeBadge";
 import { Badge } from "./ui/badge";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 
@@ -52,6 +53,9 @@ export type ClientRow = {
     userId: string | null;
     username: string | null;
     userEmail: string | null;
+    userType: string | null;
+    idpName: string | null;
+    idpVariant: string | null;
     niceId: string;
     agent: string | null;
     approvalState: "approved" | "pending" | "denied" | null;
@@ -370,17 +374,30 @@ export default function UserDevicesTable({
                 cell: ({ row }) => {
                     const r = row.original;
                     return r.userId ? (
-                        <Link
-                            href={`/${r.orgId}/settings/access/users/${r.userId}`}
-                        >
-                            <Button variant="outline" size="sm">
-                                {getUserDisplayName({
-                                    email: r.userEmail,
-                                    username: r.username
-                                }) || r.userId}
-                                <ArrowUpRight className="ml-2 h-3 w-3" />
-                            </Button>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            <Link
+                                href={`/${r.orgId}/settings/access/users/${r.userId}`}
+                            >
+                                <Button variant="outline" size="sm">
+                                    {getUserDisplayName({
+                                        email: r.userEmail,
+                                        username: r.username
+                                    }) || r.userId}
+                                    <ArrowUpRight className="ml-2 h-3 w-3" />
+                                </Button>
+                            </Link>
+                            {(r.userType ?? "internal") !== "internal" && (
+                                <IdpTypeBadge
+                                    type={r.userType ?? "oidc"}
+                                    name={
+                                        r.idpName?.trim()
+                                            ? r.idpName
+                                            : t("idpNameInternal")
+                                    }
+                                    variant={r.idpVariant ?? undefined}
+                                />
+                            )}
+                        </div>
                     ) : (
                         "-"
                     );
