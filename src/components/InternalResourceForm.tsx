@@ -1154,8 +1154,8 @@ export function InternalResourceForm({
                                             resource.fullDomain &&
                                         build != "oss" &&
                                         form.watch("ssl") && (
-                                            <div className="flex items-center gap-1 pt-1">
-                                                <span className="text-sm font-medium text-muted-foreground">
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <span className="text-sm font-medium">
                                                     {t("certificateStatus")}:
                                                 </span>
                                                 <CertificateStatus

@@ -69,12 +69,12 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     authInfo.whitelist ||
                                     authInfo.headerAuth ? (
                                         <div className="flex items-start space-x-2">
-                                            <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0 text-green-500" />
+                                            <ShieldCheck className="w-4 h-4 flex-shrink-0 text-green-500" />
                                             <span>{t("protected")}</span>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center space-x-2 text-yellow-500">
-                                            <ShieldOff className="w-4 h-4 flex-shrink-0" />
+                                        <div className="flex items-center space-x-2">
+                                            <ShieldOff className="w-4 h-4 flex-shrink-0 text-yellow-500" />
                                             <span>{t("notProtected")}</span>
                                         </div>
                                     )}

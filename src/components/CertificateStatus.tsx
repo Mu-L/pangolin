@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Loader2, RotateCw } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, RotateCw, XCircle } from "lucide-react";
 import { useCertificate } from "@app/hooks/useCertificate";
 import { useTranslations } from "next-intl";
 
@@ -59,6 +59,21 @@ export default function CertificateStatus({
         }
     };
 
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case "valid":
+                return CheckCircle2;
+            case "pending":
+            case "requested":
+                return Clock;
+            case "expired":
+            case "failed":
+                return XCircle;
+            default:
+                return Clock;
+        }
+    };
+
     const shouldShowRefreshButton = (status: string, updatedAt: number) => {
         return (
             status === "failed" ||
@@ -78,9 +93,9 @@ export default function CertificateStatus({
                         {t("certificateStatus")}:
                     </span>
                 )}
-                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-sm">
                     <Loader2
-                        className="h-3.5 w-3.5 shrink-0 animate-spin"
+                        className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground"
                         aria-hidden
                     />
                     {t("loading")}
@@ -97,7 +112,10 @@ export default function CertificateStatus({
                         {t("certificateStatus")}:
                     </span>
                 )}
-                <span className="text-sm text-red-500">{certError}</span>
+                <span className="inline-flex items-center gap-1.5 text-sm">
+                    <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                    {certError}
+                </span>
             </div>
         );
     }
@@ -110,7 +128,8 @@ export default function CertificateStatus({
                         {t("certificateStatus")}:
                     </span>
                 )}
-                <span className="text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-sm">
+                    <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
                     {t("none", { defaultValue: "None" })}
                 </span>
             </div>
@@ -119,6 +138,7 @@ export default function CertificateStatus({
 
     const isPending = cert.status === "pending";
     const disableRestartButton = cert.domainType === "wildcard";
+    const StatusIcon = getStatusIcon(cert.status);
 
     return (
         <div className={`flex items-center gap-2 ${className}`}>
@@ -127,17 +147,20 @@ export default function CertificateStatus({
                     {t("certificateStatus")}:
                 </span>
             )}
-            {isPending ? (
+            {isPending && !disableRestartButton ? (
                 <Button
                     variant="ghost"
-                    className={`h-auto p-0 text-sm ${getStatusColor(cert.status)}`}
+                    className="h-auto p-0 text-sm font-normal"
                     onClick={handleRefresh}
-                    disabled={refreshing || disableRestartButton}
+                    disabled={refreshing}
                     title={t("restartCertificate", {
                         defaultValue: "Restart Certificate"
                     })}
                 >
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-2">
+                        <StatusIcon
+                            className={`h-4 w-4 shrink-0 ${getStatusColor(cert.status)}`}
+                        />
                         {cert.status.charAt(0).toUpperCase() +
                             cert.status.slice(1)}
                         <RotateCw
@@ -146,20 +169,21 @@ export default function CertificateStatus({
                     </span>
                 </Button>
             ) : (
-                <span className={`text-sm ${getStatusColor(cert.status)}`}>
-                    <span className="inline-flex items-center gap-1">
+                <span className="text-sm">
+                    <span className="inline-flex items-center gap-2">
+                        <StatusIcon
+                            className={`h-4 w-4 shrink-0 ${getStatusColor(cert.status)}`}
+                        />
                         {cert.status.charAt(0).toUpperCase() +
                             cert.status.slice(1)}
-                        {shouldShowRefreshButton(
-                            cert.status,
-                            cert.updatedAt
-                        ) && (
+                        {shouldShowRefreshButton(cert.status, cert.updatedAt) &&
+                        !disableRestartButton ? (
                             <Button
                                 size="icon"
                                 variant="ghost"
                                 className="p-0 w-3 h-auto align-middle"
                                 onClick={handleRefresh}
-                                disabled={refreshing || disableRestartButton}
+                                disabled={refreshing}
                                 title={t("restartCertificate", {
                                     defaultValue: "Restart Certificate"
                                 })}
@@ -168,7 +192,7 @@ export default function CertificateStatus({
                                     className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`}
                                 />
                             </Button>
-                        )}
+                        ) : null}
                     </span>
                 </span>
             )}
