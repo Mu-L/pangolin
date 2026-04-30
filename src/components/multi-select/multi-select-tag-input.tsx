@@ -56,7 +56,7 @@ export function MultiSelectTagInput<T extends TagValue>({
                             <span
                                 key={option.id}
                                 className={cn(
-                                    "bg-muted-foreground/20 font-normal text-foreground rounded-sm",
+                                    "bg-muted-foreground/10 font-normal text-foreground rounded-sm",
                                     "py-1 pl-1.5 pr-0.5 text-xs inline-flex items-center gap-0.5"
                                 )}
                                 onClick={(e) => e.stopPropagation()}
