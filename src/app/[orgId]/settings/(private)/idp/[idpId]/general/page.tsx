@@ -212,6 +212,11 @@ export default function GeneralPage() {
                     const detectedRoleMappingConfig =
                         detectRoleMappingConfig(roleMapping);
 
+                    console.log({
+                        detectedRoleMappingConfig,
+                        roleMapping
+                    });
+
                     // Extract tenant ID from Azure URLs if present
                     let tenantId = "";
                     if (idpVariant === "azure" && data.idpOidcConfig?.authUrl) {

@@ -14,6 +14,8 @@ export type RolesSelectorProps = {
     onSelectRoles: (roles: SelectedRole[]) => void;
     disabled?: boolean;
     restrictAdminRole?: boolean;
+    mapRolesByName?: boolean;
+    buttonText?: string;
 };
 
 export function RolesSelector({
@@ -21,7 +23,9 @@ export function RolesSelector({
     selectedRoles = [],
     onSelectRoles,
     disabled,
-    restrictAdminRole
+    restrictAdminRole,
+    mapRolesByName,
+    buttonText
 }: RolesSelectorProps) {
     const t = useTranslations();
     const [roleSearchQuery, setRoleSearchQuery] = useState("");
@@ -36,7 +40,7 @@ export function RolesSelector({
     const rolesShown = useMemo(() => {
         let allRoles: Array<SelectedRole & { isAdmin?: boolean }> = roles.map(
             (r) => ({
-                id: r.roleId.toString(),
+                id: mapRolesByName ? r.name : r.roleId.toString(),
                 text: r.name,
                 isAdmin: Boolean(r.isAdmin)
             })
@@ -55,11 +59,17 @@ export function RolesSelector({
         }
 
         return allRoles;
-    }, [roles, selectedRoles, debouncedValue, restrictAdminRole]);
+    }, [
+        roles,
+        selectedRoles,
+        debouncedValue,
+        restrictAdminRole,
+        mapRolesByName
+    ]);
 
     return (
         <MultiSelectTagInput
-            buttonText={t("alertingSelectRoles")}
+            buttonText={buttonText ?? t("alertingSelectRoles")}
             searchQuery={roleSearchQuery}
             onSearch={setRoleSearchQuery}
             options={rolesShown}
