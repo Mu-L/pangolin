@@ -17,7 +17,6 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
 import { RolesSelector } from "./roles-selector";
-import { useOrgContext } from "@app/hooks/useOrgContext";
 import { useParams } from "next/navigation";
 
 export type RoleMappingRoleOption = {
