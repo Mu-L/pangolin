@@ -21,6 +21,9 @@ import {
     targetHealthCheck,
     users
 } from "./schema";
+import { serial, varchar } from "drizzle-orm/mysql-core";
+import { pgTable } from "drizzle-orm/pg-core";
+import { bigint } from "zod";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -569,6 +572,19 @@ export const alertWebhookActions = sqliteTable("alertWebhookActions", {
     lastSentAt: integer("lastSentAt")
 });
 
+export const trialNotifications = sqliteTable("trialNotifications", {
+    notificationId: integer("notificationId").primaryKey({
+        autoIncrement: true
+    }),
+    subscriptionId: text("subscriptionId")
+        .notNull()
+        .references(() => subscriptions.subscriptionId, {
+            onDelete: "cascade"
+        }),
+    notificationType: text("notificationType").notNull(), // trial_ending_5d, trial_ending_24h, trial_ended
+    sentAt: integer("sentAt").notNull()
+});
+
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -601,3 +617,10 @@ export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
 export type AlertResources = InferSelectModel<typeof alertResources>;
+export type AlertHealthChecks = InferSelectModel<typeof alertHealthChecks>;
+export type AlertSites = InferSelectModel<typeof alertSites>;
+export type AlertRule = InferSelectModel<typeof alertRules>;
+export type AlertEmailAction = InferSelectModel<typeof alertEmailActions>;
+export type AlertEmailRecipient = InferSelectModel<typeof alertEmailRecipients>;
+export type AlertWebhookAction = InferSelectModel<typeof alertWebhookActions>;
+export type TrialNotification = InferSelectModel<typeof trialNotifications>;
