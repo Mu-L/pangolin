@@ -700,7 +700,6 @@ export async function generateSubnetProxyTargetV2(
         targets.push({
             sourcePrefixes: [],
             destPrefix: `${siteResource.aliasAddress}/32`,
-            rewriteTo: destination,
             portRange,
             disableIcmp,
             resourceId: siteResource.siteResourceId,

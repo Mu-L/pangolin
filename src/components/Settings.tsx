@@ -38,7 +38,7 @@ export function SettingsSectionTitle({
     children: React.ReactNode;
 }) {
     return (
-        <h2 className="text-1xl font-bold tracking-tight flex items-center gap-2">
+        <h2 className="text-1xl font-semibold tracking-tight flex items-center gap-2">
             {children}
         </h2>
     );

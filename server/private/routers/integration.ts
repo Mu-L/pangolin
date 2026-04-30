@@ -15,6 +15,7 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as org from "#private/routers/org";
 import * as logs from "#private/routers/auditLogs";
 import * as alertEvents from "#private/routers/alertEvents";
+import * as certificates from "#private/routers/certificates";
 
 import {
     verifyApiKeyHasAction,
@@ -37,46 +38,48 @@ import {
 } from "@server/routers/integration";
 import { logActionAudit } from "#private/middlewares";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { build } from "@server/build";
 
 export const unauthenticated = ua;
 export const authenticated = a;
 
-authenticated.post(
-    "/org/:orgId/site/:siteId/trigger-alert",
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.triggerSiteAlert),
-    alertEvents.triggerSiteAlert
-);
+if (build == "saas") {
+    authenticated.post(
+        "/org/:orgId/site/:siteId/trigger-alert",
+        verifyApiKeyIsRoot,
+        alertEvents.triggerSiteAlert
+    );
 
-authenticated.post(
-    "/org/:orgId/resource/:resourceId/trigger-alert",
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.triggerResourceAlert),
-    alertEvents.triggerResourceAlert
-);
+    authenticated.post(
+        "/org/:orgId/resource/:resourceId/trigger-alert",
+        verifyApiKeyIsRoot,
+        alertEvents.triggerResourceAlert
+    );
 
-authenticated.post(
-    "/org/:orgId/health-check/:healthCheckId/trigger-alert",
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.triggerHealthCheckAlert),
-    alertEvents.triggerHealthCheckAlert
-);
+    authenticated.post(
+        "/org/:orgId/health-check/:healthCheckId/trigger-alert",
+        verifyApiKeyIsRoot,
+        alertEvents.triggerHealthCheckAlert
+    );
 
-authenticated.post(
-    `/org/:orgId/send-usage-notification`,
-    verifyApiKeyIsRoot, // We are the only ones who can use root key so its fine
-    verifyApiKeyHasAction(ActionsEnum.sendUsageNotification),
-    logActionAudit(ActionsEnum.sendUsageNotification),
-    org.sendUsageNotification
-);
+    authenticated.post(
+        "/cert/sync-to-newts",
+        verifyApiKeyIsRoot,
+        certificates.syncCertToNewts
+    );
 
-authenticated.post(
-    `/org/:orgId/send-trial-notification`,
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.sendTrialNotification),
-    logActionAudit(ActionsEnum.sendTrialNotification),
-    org.sendTrialNotification
-);
+    authenticated.post(
+        `/org/:orgId/send-usage-notification`,
+        verifyApiKeyIsRoot, // We are the only ones who can use root key so its fine
+        org.sendUsageNotification
+    );
+
+    authenticated.post(
+        `/org/:orgId/send-trial-notification`,
+        verifyApiKeyIsRoot,
+        org.sendTrialNotification
+    );
+}
 
 authenticated.delete(
     "/idp/:idpId",

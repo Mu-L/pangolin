@@ -8,9 +8,7 @@ export function useSubscriptionStatusContext() {
     }
     const context = useContext(SubscriptionStatusContext);
     if (context === undefined) {
-        throw new Error(
-            "useSubscriptionStatusContext must be used within an SubscriptionStatusProvider"
-        );
+        return null;
     }
     return context;
 }

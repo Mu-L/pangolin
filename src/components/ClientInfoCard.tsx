@@ -8,6 +8,7 @@ import {
     InfoSections,
     InfoSectionTitle
 } from "@app/components/InfoSection";
+import IdpTypeBadge from "@app/components/IdpTypeBadge";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { useTranslations } from "next-intl";
 
@@ -36,7 +37,24 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
                             {userDisplayName ? t("user") : t("identifier")}
                         </InfoSectionTitle>
                         <InfoSectionContent>
-                            {userDisplayName || client.niceId}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span>{userDisplayName || client.niceId}</span>
+                                {userDisplayName &&
+                                    (client.userType ?? "internal") !==
+                                        "internal" && (
+                                        <IdpTypeBadge
+                                            type={client.userType ?? "oidc"}
+                                            name={
+                                                client.idpName?.trim()
+                                                    ? client.idpName
+                                                    : t("idpNameInternal")
+                                            }
+                                            variant={
+                                                client.idpVariant ?? undefined
+                                            }
+                                        />
+                                    )}
+                            </div>
                         </InfoSectionContent>
                     </InfoSection>
                     <InfoSection>

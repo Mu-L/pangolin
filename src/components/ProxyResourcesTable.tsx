@@ -2,6 +2,11 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
+import {
+    ResourceSitesStatusCell,
+    type ResourceSiteRow
+} from "@app/components/ResourceSitesStatusCell";
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
@@ -11,15 +16,22 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import type { PaginationState } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
 import { AxiosResponse } from "axios";
 import {
     ArrowDown01Icon,
@@ -29,6 +41,7 @@ import {
     ChevronDown,
     ChevronsUpDownIcon,
     Clock,
+    Funnel,
     MoreHorizontal,
     ShieldCheck,
     ShieldOff,
@@ -39,6 +52,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
     useEffect,
+    useMemo,
     useOptimistic,
     useRef,
     useState,
@@ -49,14 +63,9 @@ import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
-import type { StatusHistoryResponse } from "@server/lib/statusHistory";
 import UptimeMiniBar from "./UptimeMiniBar";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
+import { build } from "@server/build";
 
 export type TargetHealth = {
     targetId: number;
@@ -79,58 +88,31 @@ export type ResourceRow = {
     proxyPort: number | null;
     enabled: boolean;
     domainId?: string;
+    /** Hostname for certificate API (without scheme); distinct from `domain` URL shown in Access column */
+    fullDomain?: string | null;
     ssl: boolean;
     targetHost?: string;
     targetPort?: number;
     targets?: TargetHealth[];
+    health?: "healthy" | "degraded" | "unhealthy" | "unknown";
+    sites: ResourceSiteRow[];
 };
-
-function getOverallHealthStatus(
-    targets?: TargetHealth[]
-): "online" | "degraded" | "offline" | "unknown" {
-    if (!targets || targets.length === 0) {
-        return "unknown";
-    }
-
-    const monitoredTargets = targets.filter(
-        (t) => t.enabled && t.healthStatus && t.healthStatus !== "unknown"
-    );
-
-    if (monitoredTargets.length === 0) {
-        return "unknown";
-    }
-
-    const healthyCount = monitoredTargets.filter(
-        (t) => t.healthStatus === "healthy"
-    ).length;
-    const unhealthyCount = monitoredTargets.filter(
-        (t) => t.healthStatus === "unhealthy"
-    ).length;
-
-    if (healthyCount === monitoredTargets.length) {
-        return "online";
-    } else if (unhealthyCount === monitoredTargets.length) {
-        return "offline";
-    } else {
-        return "degraded";
-    }
-}
 
 function StatusIcon({
     status,
     className = ""
 }: {
-    status: "online" | "degraded" | "offline" | "unknown";
+    status: string | undefined | null;
     className?: string;
 }) {
     const iconClass = `h-4 w-4 ${className}`;
 
     switch (status) {
-        case "online":
+        case "healthy":
             return <CheckCircle2 className={`${iconClass} text-green-500`} />;
         case "degraded":
             return <CheckCircle2 className={`${iconClass} text-yellow-500`} />;
-        case "offline":
+        case "unhealthy":
             return <XCircle className={`${iconClass} text-destructive`} />;
         case "unknown":
             return <Clock className={`${iconClass} text-muted-foreground`} />;
@@ -144,13 +126,15 @@ type ProxyResourcesTableProps = {
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
+    initialFilterSite?: Selectedsite | null;
 };
 
 export default function ProxyResourcesTable({
     resources,
     orgId,
     pagination,
-    rowCount
+    rowCount,
+    initialFilterSite = null
 }: ProxyResourcesTableProps) {
     const router = useRouter();
     const {
@@ -170,13 +154,30 @@ export default function ProxyResourcesTable({
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
+
+    const siteIdQ = searchParams.get("siteId");
+    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+    const selectedSite: Selectedsite | null = useMemo(() => {
+        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
+            return null;
+        }
+        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
+            return initialFilterSite;
+        }
+        return {
+            siteId: siteIdNum,
+            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
+            type: "newt"
+        };
+    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             router.refresh();
-        }, 10_000);
+        }, 30_000);
         return () => clearInterval(interval);
-    }, []);
+    }, [router]);
 
     const refreshData = () => {
         startTransition(() => {
@@ -231,12 +232,18 @@ export default function ProxyResourcesTable({
         }
     }
 
-    function TargetStatusCell({ targets }: { targets?: TargetHealth[] }) {
-        const overallStatus = getOverallHealthStatus(targets);
+    function TargetStatusCell({
+        targets,
+        healthStatus
+    }: {
+        targets?: TargetHealth[];
+        healthStatus?: string;
+    }) {
+        const overallStatus = healthStatus;
 
         if (!targets || targets.length === 0) {
             return (
-                <div id="LOOK_FOR_ME" className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                     <StatusIcon status="unknown" />
                     <span className="text-sm">
                         {t("resourcesTableNoTargets")}
@@ -262,12 +269,12 @@ export default function ProxyResourcesTable({
                     >
                         <StatusIcon status={overallStatus} />
                         <span className="text-sm">
-                            {overallStatus === "online" &&
+                            {overallStatus === "healthy" &&
                                 t("resourcesTableHealthy")}
                             {overallStatus === "degraded" &&
                                 t("resourcesTableDegraded")}
-                            {overallStatus === "offline" &&
-                                t("resourcesTableOffline")}
+                            {overallStatus === "unhealthy" &&
+                                t("resourcesTableUnhealthy")}
                             {overallStatus === "unknown" &&
                                 t("resourcesTableUnknown")}
                         </span>
@@ -376,6 +383,66 @@ export default function ProxyResourcesTable({
             }
         },
         {
+            id: "sites",
+            accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
+            friendlyName: t("sites"),
+            header: () => (
+                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedSite && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("sites")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedSite && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedSite.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className={dataTableFilterPopoverContentClassName}
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearSiteFilter}
+                            >
+                                {t("standaloneHcFilterAnySite")}
+                            </Button>
+                        </div>
+                        <SitesSelector
+                            orgId={orgId}
+                            selectedSite={selectedSite}
+                            onSelectSite={onPickSite}
+                        />
+                    </PopoverContent>
+                </Popover>
+            ),
+            cell: ({ row }) => (
+                <ResourceSitesStatusCell
+                    orgId={row.original.orgId}
+                    resourceSites={row.original.sites}
+                />
+            )
+        },
+        {
             accessorKey: "protocol",
             friendlyName: t("protocol"),
             enableHiding: true,
@@ -396,7 +463,7 @@ export default function ProxyResourcesTable({
         {
             id: "status",
             accessorKey: "status",
-            friendlyName: t("status"),
+            friendlyName: t("health"),
             header: () => (
                 <ColumnFilterButton
                     options={[
@@ -405,10 +472,9 @@ export default function ProxyResourcesTable({
                             value: "degraded",
                             label: t("resourcesTableDegraded")
                         },
-                        { value: "offline", label: t("resourcesTableOffline") },
                         {
-                            value: "no_targets",
-                            label: t("resourcesTableNoTargets")
+                            value: "unhealthy",
+                            label: t("resourcesTableUnhealthy")
                         },
                         { value: "unknown", label: t("resourcesTableUnknown") }
                     ]}
@@ -420,21 +486,29 @@ export default function ProxyResourcesTable({
                     }
                     searchPlaceholder={t("searchPlaceholder")}
                     emptyMessage={t("emptySearchOptions")}
-                    label={t("status")}
+                    label={t("health")}
                     className="p-3"
                 />
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return <TargetStatusCell targets={resourceRow.targets} />;
+                return (
+                    <TargetStatusCell
+                        targets={resourceRow.targets}
+                        healthStatus={resourceRow.health}
+                    />
+                );
             },
             sortingFn: (rowA, rowB) => {
-                const statusA = getOverallHealthStatus(rowA.original.targets);
-                const statusB = getOverallHealthStatus(rowB.original.targets);
+                const statusA = rowA.original.health;
+                const statusB = rowB.original.health;
+                if (!statusA && !statusB) return 0;
+                if (!statusA) return 1;
+                if (!statusB) return -1;
                 const statusOrder = {
-                    online: 3,
+                    healthy: 3,
                     degraded: 2,
-                    offline: 1,
+                    unhealthy: 1,
                     unknown: 0
                 };
                 return statusOrder[statusA] - statusOrder[statusB];
@@ -446,9 +520,7 @@ export default function ProxyResourcesTable({
             header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return (
-                    <UptimeMiniBar resourceId={resourceRow.id} days={30} />
-                );
+                return <UptimeMiniBar resourceId={resourceRow.id} days={30} />;
             }
         },
         {
@@ -457,24 +529,52 @@ export default function ProxyResourcesTable({
             header: () => <span className="p-3">{t("access")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return (
-                    <div className="flex items-center space-x-2">
-                        {!resourceRow.http ? (
+
+                if (!resourceRow.http) {
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
                             <CopyToClipboard
                                 text={resourceRow.proxyPort?.toString() || ""}
                                 isLink={false}
                             />
-                        ) : !resourceRow.domainId ? (
+                        </div>
+                    );
+                }
+
+                if (!resourceRow.domainId) {
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
                             <InfoPopup
                                 info={t("domainNotFoundDescription")}
                                 text={t("domainNotFound")}
                             />
-                        ) : (
+                        </div>
+                    );
+                }
+
+                const domainId = resourceRow.domainId;
+                const certHostname = resourceRow.fullDomain;
+                const showHttpsCertIndicator =
+                    build !== "oss" &&
+                    resourceRow.ssl &&
+                    certHostname != null &&
+                    certHostname !== "";
+
+                return (
+                    <div className="flex items-center gap-2 min-w-0">
+                        {showHttpsCertIndicator ? (
+                            <ResourceAccessCertIndicator
+                                orgId={resourceRow.orgId}
+                                domainId={domainId}
+                                fullDomain={certHostname}
+                            />
+                        ) : null}
+                        <div className="">
                             <CopyToClipboard
                                 text={resourceRow.domain}
                                 isLink={true}
                             />
-                        )}
+                        </div>
                     </div>
                 );
             }
@@ -619,6 +719,16 @@ export default function ProxyResourcesTable({
             searchParams
         });
     }
+
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
+
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);

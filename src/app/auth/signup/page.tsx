@@ -65,7 +65,7 @@ export default async function Page(props: {
                 <div className="border rounded-md p-3 mb-4 bg-card">
                     <div className="flex flex-col items-center">
                         <Mail className="w-12 h-12 mb-4 text-primary" />
-                        <h2 className="text-2xl font-bold mb-2 text-center">
+                        <h2 className="text-2xl font-semibold mb-2 text-center">
                             {t("inviteAlready")}
                         </h2>
                         <p className="text-center">

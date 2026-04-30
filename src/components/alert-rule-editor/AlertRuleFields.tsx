@@ -1110,6 +1110,7 @@ export function AlertRuleSourceFields({
                                     if (
                                         curTrigger !== "resource_healthy" &&
                                         curTrigger !== "resource_unhealthy" &&
+                                        curTrigger !== "resource_degraded" &&
                                         curTrigger !== "resource_toggle"
                                     ) {
                                         setValue("trigger", "resource_toggle", {
@@ -1329,6 +1330,9 @@ export function AlertRuleTriggerFields({
                                     </SelectItem>
                                     <SelectItem value="resource_unhealthy">
                                         {t("alertingTriggerResourceUnhealthy")}
+                                    </SelectItem>
+                                    <SelectItem value="resource_degraded">
+                                        {t("alertingTriggerResourceDegraded")}
                                     </SelectItem>
                                 </>
                             ) : (

@@ -1,10 +1,7 @@
 import {
     db,
     newts,
-    sites,
-    targetHealthCheck,
-    targets,
-    statusHistory
+    sites
 } from "@server/db";
 import { hasActiveConnections } from "#dynamic/routers/ws";
 import { eq, lt, isNull, and, or, ne, not, inArray } from "drizzle-orm";

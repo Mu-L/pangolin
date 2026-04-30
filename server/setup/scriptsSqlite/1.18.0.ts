@@ -255,7 +255,7 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
-                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
+                INSERT INTO '__new_siteResources'("siteResourceId", "orgId", "networkId", "defaultNetworkId", "niceId", "name", "ssl", "mode", "scheme", "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", "tcpPortRangeString", "udpPortRangeString", "disableIcmp", "authDaemonPort", "authDaemonMode", "domainId", "subdomain", "fullDomain") SELECT "siteResourceId", "orgId", NULL, NULL, "niceId", "name", 0, "mode", NULL, "proxyPort", "destinationPort", "destination", "enabled", "alias", "aliasAddress", COALESCE("tcpPortRangeString", '*'), COALESCE("udpPortRangeString", '*'), COALESCE("disableIcmp", 0), "authDaemonPort", "authDaemonMode", NULL, NULL, NULL FROM 'siteResources';
             `
             ).run();
             db.prepare(
@@ -330,6 +330,16 @@ export default async function migration() {
                 ALTER TABLE 'sites' ADD 'networkId' integer REFERENCES networks(networkId);
             `
             ).run();
+            db.prepare(
+                `
+                ALTER TABLE 'resources' ADD 'health' text DEFAULT 'unknown';
+            `
+            ).run();
+            db.prepare(
+                `
+                ALTER TABLE 'resources' ADD 'wildcard' integer DEFAULT false NOT NULL;
+            `
+            ).run();
         })();
 
         db.pragma("foreign_keys = ON");
@@ -353,7 +363,11 @@ export default async function migration() {
                     const result = insertNetwork.run("resource", sr.orgId);
                     const networkId = result.lastInsertRowid as number;
                     insertSiteNetwork.run(sr.siteId, networkId);
-                    updateSiteResource.run(networkId, networkId, sr.siteResourceId);
+                    updateSiteResource.run(
+                        networkId,
+                        networkId,
+                        sr.siteResourceId
+                    );
                 }
             });
 
@@ -443,6 +457,151 @@ export default async function migration() {
         }
 
         console.log(`Migrated database`);
+
+        // Seed statusHistory for all existing sites
+        const allSites = db
+            .prepare(`SELECT "siteId", "orgId", "online" FROM 'sites'`)
+            .all() as { siteId: number; orgId: string; online: number }[];
+
+        const insertSiteHistory = db.prepare(
+            `INSERT INTO 'statusHistory' ("entityType", "entityId", "orgId", "status", "timestamp") VALUES (?, ?, ?, ?, ?)`
+        );
+        const now = Math.floor(Date.now() / 1000);
+        const seedSites = db.transaction(() => {
+            for (const site of allSites) {
+                insertSiteHistory.run(
+                    "site",
+                    site.siteId,
+                    site.orgId,
+                    site.online ? "online" : "offline",
+                    now
+                );
+            }
+        });
+        seedSites();
+        console.log(`Seeded statusHistory for ${allSites.length} site(s)`);
+
+        // Seed statusHistory for all existing resources
+        const allResources = db
+            .prepare(`SELECT "resourceId", "orgId", "health" FROM 'resources'`)
+            .all() as {
+            resourceId: number;
+            orgId: string;
+            health: string | null;
+        }[];
+
+        const insertResourceHistory = db.prepare(
+            `INSERT INTO 'statusHistory' ("entityType", "entityId", "orgId", "status", "timestamp") VALUES (?, ?, ?, ?, ?)`
+        );
+        const seedResources = db.transaction(() => {
+            for (const resource of allResources) {
+                insertResourceHistory.run(
+                    "resource",
+                    resource.resourceId,
+                    resource.orgId,
+                    resource.health ?? "unknown",
+                    now
+                );
+            }
+        });
+        seedResources();
+        console.log(
+            `Seeded statusHistory for ${allResources.length} resource(s)`
+        );
+
+        // Recompute resource health by aggregating across the resource's
+        // targets' target health checks, then update resources.health.
+        const resourceTargetHealthRows = db
+            .prepare(
+                `SELECT
+                    r."resourceId" AS "resourceId",
+                    thc."hcHealth" AS "hcHealth"
+                 FROM 'resources' r
+                 LEFT JOIN 'targets' t ON t."resourceId" = r."resourceId"
+                 LEFT JOIN 'targetHealthCheck' thc ON thc."targetId" = t."targetId"`
+            )
+            .all() as {
+            resourceId: number;
+            hcHealth: string | null;
+        }[];
+
+        const resourceHealthMap = new Map<
+            number,
+            {
+                hasHealthy: boolean;
+                hasUnhealthy: boolean;
+                hasUnknown: boolean;
+            }
+        >();
+        for (const row of resourceTargetHealthRows) {
+            const entry = resourceHealthMap.get(row.resourceId) ?? {
+                hasHealthy: false,
+                hasUnhealthy: false,
+                hasUnknown: false
+            };
+            const status = row.hcHealth ?? "unknown";
+            if (status === "healthy") entry.hasHealthy = true;
+            else if (status === "unhealthy") entry.hasUnhealthy = true;
+            else entry.hasUnknown = true;
+            resourceHealthMap.set(row.resourceId, entry);
+        }
+
+        const updateResourceHealth = db.prepare(
+            `UPDATE 'resources' SET "health" = ? WHERE "resourceId" = ?`
+        );
+        const recomputeResourceHealth = db.transaction(() => {
+            for (const [resourceId, flags] of resourceHealthMap.entries()) {
+                let aggregated:
+                    | "healthy"
+                    | "unhealthy"
+                    | "degraded"
+                    | "unknown";
+                if (flags.hasHealthy && flags.hasUnhealthy) {
+                    aggregated = "degraded";
+                } else if (flags.hasHealthy) {
+                    aggregated = "healthy";
+                } else if (flags.hasUnhealthy) {
+                    aggregated = "unhealthy";
+                } else {
+                    aggregated = "unknown";
+                }
+                updateResourceHealth.run(aggregated, resourceId);
+            }
+        });
+        recomputeResourceHealth();
+        console.log(
+            `Recomputed health for ${resourceHealthMap.size} resource(s) based on target health checks`
+        );
+
+        // Seed statusHistory for all existing health checks
+        const allHealthChecks = db
+            .prepare(
+                `SELECT "targetHealthCheckId", "orgId", "hcHealth" FROM 'targetHealthCheck'`
+            )
+            .all() as {
+            targetHealthCheckId: number;
+            orgId: string;
+            hcHealth: string | null;
+        }[];
+
+        const insertHealthCheckHistory = db.prepare(
+            `INSERT INTO 'statusHistory' ("entityType", "entityId", "orgId", "status", "timestamp") VALUES (?, ?, ?, ?, ?)`
+        );
+        const seedHealthChecks = db.transaction(() => {
+            for (const hc of allHealthChecks) {
+                insertHealthCheckHistory.run(
+                    "health_check",
+                    hc.targetHealthCheckId,
+                    hc.orgId,
+                    hc.hcHealth ?? "unknown",
+                    now
+                );
+            }
+        });
+        seedHealthChecks();
+        console.log(
+            `Seeded statusHistory for ${allHealthChecks.length} health check(s)`
+        );
     } catch (e) {
         console.log("Failed to migrate db:", e);
         throw e;

@@ -484,6 +484,7 @@ export const alertRules = pgTable("alertRules", {
             | "health_check_toggle"
             | "resource_healthy"
             | "resource_unhealthy"
+            | "resource_degraded"
             | "resource_toggle"
         >()
         .notNull(),
@@ -565,6 +566,17 @@ export const alertWebhookActions = pgTable("alertWebhookActions", {
     lastSentAt: bigint("lastSentAt", { mode: "number" }) // nullable
 });
 
+export const trialNotifications = pgTable("trialNotifications", {
+    notificationId: serial("notificationId").primaryKey(),
+    subscriptionId: varchar("subscriptionId", { length: 255 })
+        .notNull()
+        .references(() => subscriptions.subscriptionId, {
+            onDelete: "cascade"
+        }),
+    notificationType: varchar("notificationType", { length: 50 }).notNull(), // trial_ending_5d, trial_ending_24h, trial_ended
+    sentAt: bigint("sentAt", { mode: "number" }).notNull()
+});
+
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -603,3 +615,12 @@ export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
 export type AlertResources = InferSelectModel<typeof alertResources>;
+export type AlertHealthChecks = InferSelectModel<typeof alertHealthChecks>;
+export type AlertSites = InferSelectModel<typeof alertSites>;
+export type AlertRules = InferSelectModel<typeof alertRules>;
+export type AlertEmailActions = InferSelectModel<typeof alertEmailActions>;
+export type AlertEmailRecipients = InferSelectModel<
+    typeof alertEmailRecipients
+>;
+export type AlertWebhookActions = InferSelectModel<typeof alertWebhookActions>;
+export type TrialNotification = InferSelectModel<typeof trialNotifications>;

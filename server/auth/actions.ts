@@ -122,8 +122,6 @@ export enum ActionsEnum {
     createOrgDomain = "createOrgDomain",
     deleteOrgDomain = "deleteOrgDomain",
     restartOrgDomain = "restartOrgDomain",
-    sendUsageNotification = "sendUsageNotification",
-    sendTrialNotification = "sendTrialNotification",
     createRemoteExitNode = "createRemoteExitNode",
     updateRemoteExitNode = "updateRemoteExitNode",
     getRemoteExitNode = "getRemoteExitNode",
@@ -154,10 +152,7 @@ export enum ActionsEnum {
     createHealthCheck = "createHealthCheck",
     updateHealthCheck = "updateHealthCheck",
     deleteHealthCheck = "deleteHealthCheck",
-    listHealthChecks = "listHealthChecks",
-    triggerSiteAlert = "triggerSiteAlert",
-    triggerResourceAlert = "triggerResourceAlert",
-    triggerHealthCheckAlert = "triggerHealthCheckAlert"
+    listHealthChecks = "listHealthChecks"
 }
 
 export async function checkUserActionPermission(

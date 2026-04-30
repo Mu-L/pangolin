@@ -105,15 +105,20 @@ const listResourcesSchema = z.object({
                 "Filter resources based on authentication state. `protected` means the resource has at least one auth mechanism (password, pincode, header auth, SSO, or email whitelist). `not_protected` means the resource has no auth mechanisms. `none` means the resource is not protected by HTTP (i.e. it has no auth mechanisms and http is false)."
         }),
     healthStatus: z
-        .enum(["no_targets", "healthy", "degraded", "offline", "unknown"])
+        .enum(["healthy", "degraded", "unhealthy", "unknown"])
         .optional()
         .catch(undefined)
         .openapi({
             type: "string",
-            enum: ["no_targets", "healthy", "degraded", "offline", "unknown"],
+            enum: ["healthy", "degraded", "offline", "unknown"],
             description:
-                "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status. `no_targets` means the resource has no targets."
-        })
+                "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status."
+        }),
+    siteId: z.coerce.number<string>().int().positive().optional().openapi({
+        type: "integer",
+        description:
+            "When set, only resources that have at least one target on this site are returned"
+    })
 });
 
 // grouped by resource with targets[])
@@ -133,6 +138,8 @@ export type ResourceWithTargets = {
     domainId: string | null;
     niceId: string;
     headerAuthId: number | null;
+    wildcard: boolean;
+    health: string | null;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -141,28 +148,13 @@ export type ResourceWithTargets = {
         healthStatus: "healthy" | "unhealthy" | "unknown" | null;
         siteName: string | null;
     }>;
+    sites: Array<{
+        siteId: number;
+        siteName: string;
+        siteNiceId: string;
+        online?: boolean; // undefined for local sites
+    }>;
 };
-
-// Aggregate filters
-const total_targets = count(targets.targetId);
-const healthy_targets = sql<number>`SUM(
-                    CASE
-                    WHEN ${targetHealthCheck.hcHealth} = 'healthy' THEN 1
-                    ELSE 0
-                    END
-                ) `;
-const unknown_targets = sql<number>`SUM(
-                    CASE
-                    WHEN ${targetHealthCheck.hcHealth} = 'unknown' THEN 1
-                    ELSE 0
-                    END
-                ) `;
-const unhealthy_targets = sql<number>`SUM(
-                    CASE
-                    WHEN ${targetHealthCheck.hcHealth} = 'unhealthy' THEN 1
-                    ELSE 0
-                    END
-                ) `;
 
 function queryResourcesBase() {
     return db
@@ -181,9 +173,11 @@ function queryResourcesBase() {
             enabled: resources.enabled,
             domainId: resources.domainId,
             niceId: resources.niceId,
+            wildcard: resources.wildcard,
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
+                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
+            health: resources.health
         })
         .from(resources)
         .leftJoin(
@@ -260,7 +254,8 @@ export async function listResources(
             query,
             healthStatus,
             sort_by,
-            order
+            order,
+            siteId
         } = parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
@@ -380,44 +375,19 @@ export async function listResources(
             }
         }
 
-        let aggregateFilters: SQL<any> | undefined = sql`1 = 1`;
-
         if (typeof healthStatus !== "undefined") {
-            switch (healthStatus) {
-                case "healthy":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${healthy_targets} = ${total_targets}`
-                    );
-                    break;
-                case "degraded":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${unhealthy_targets} > 0`
-                    );
-                    break;
-                case "no_targets":
-                    aggregateFilters = sql`${total_targets} = 0`;
-                    break;
-                case "offline":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${healthy_targets} = 0`,
-                        sql`${unhealthy_targets} = ${total_targets}`
-                    );
-                    break;
-                case "unknown":
-                    aggregateFilters = and(
-                        sql`${total_targets} > 0`,
-                        sql`${unknown_targets} = ${total_targets}`
-                    );
-                    break;
-            }
+            conditions.push(eq(resources.health, healthStatus));
+        }
+        if (siteId != null) {
+            const resourcesWithSite = db
+                .select({ resourceId: targets.resourceId })
+                .from(targets)
+                .innerJoin(sites, eq(targets.siteId, sites.siteId))
+                .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
+            conditions.push(inArray(resources.resourceId, resourcesWithSite));
         }
 
-        const baseQuery = queryResourcesBase()
-            .where(and(...conditions))
-            .having(aggregateFilters);
+        const baseQuery = queryResourcesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(baseQuery.as("filtered_resources"));
@@ -444,12 +414,16 @@ export async function listResources(
                       .select({
                           targetId: targets.targetId,
                           resourceId: targets.resourceId,
+                          siteId: targets.siteId,
                           ip: targets.ip,
                           port: targets.port,
                           enabled: targets.enabled,
                           healthStatus: targetHealthCheck.hcHealth,
                           hcEnabled: targetHealthCheck.hcEnabled,
-                          siteName: sites.name
+                          siteName: sites.name,
+                          siteNiceId: sites.niceId,
+                          siteOnline: sites.online,
+                          siteType: sites.type
                       })
                       .from(targets)
                       .where(inArray(targets.resourceId, resourceIdList))
@@ -478,10 +452,13 @@ export async function listResources(
                     http: row.http,
                     protocol: row.protocol,
                     proxyPort: row.proxyPort,
+                    wildcard: row.wildcard,
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,
-                    targets: []
+                    health: row.health ?? null,
+                    targets: [],
+                    sites: []
                 };
                 map.set(row.resourceId, entry);
             }
@@ -489,6 +466,34 @@ export async function listResources(
             entry.targets = allResourceTargets.filter(
                 (t) => t.resourceId === entry.resourceId
             );
+        }
+
+        for (const entry of map.values()) {
+            const raw = allResourceTargets.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
+            const siteById = new Map<
+                number,
+                {
+                    siteId: number;
+                    siteName: string;
+                    siteNiceId: string;
+                    online?: boolean;
+                }
+            >();
+            for (const t of raw) {
+                if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
+                    continue;
+                }
+                const isLocal = t.siteType === "local";
+                siteById.set(t.siteId, {
+                    siteId: t.siteId,
+                    siteName: t.siteName ?? "",
+                    siteNiceId: t.siteNiceId ?? "",
+                    online: isLocal ? undefined : Boolean(t.siteOnline)
+                });
+            }
+            entry.sites = Array.from(siteById.values());
         }
 
         const resourcesList: ResourceWithTargets[] = Array.from(map.values());

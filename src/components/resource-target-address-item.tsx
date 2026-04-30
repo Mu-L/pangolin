@@ -104,7 +104,7 @@ export function ResourceTargetAddressItem({
                             role="combobox"
                             className={cn(
                                 "w-45 justify-between text-sm border-r pr-4 rounded-none h-8 hover:bg-transparent",
-                                "rounded-l-md rounded-r-xs",
+                                "",
                                 !proxyTarget.siteId && "text-muted-foreground"
                             )}
                         >
@@ -142,7 +142,7 @@ export function ResourceTargetAddressItem({
                             })
                         }
                     >
-                        <SelectTrigger className="h-8 px-2 w-17.5 border-none bg-transparent shadow-none data-[state=open]:bg-transparent rounded-xs">
+                        <SelectTrigger className="h-8 px-2 w-17.5 border-none bg-transparent shadow-none data-[state=open]:bg-transparent rounded-none">
                             {proxyTarget.method || "http"}
                         </SelectTrigger>
                         <SelectContent>

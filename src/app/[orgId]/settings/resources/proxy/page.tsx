@@ -7,7 +7,8 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import OrgProvider from "@app/providers/OrgProvider";
 import type { GetOrgResponse } from "@server/routers/org";
 import type { ListResourcesResponse } from "@server/routers/resource";
-import type { ListAllSiteResourcesByOrgResponse } from "@server/routers/siteResource";
+import { GetSiteResponse } from "@server/routers/site/getSite";
+import type ResponseT from "@server/types/Response";
 import type { AxiosResponse } from "axios";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
@@ -22,6 +23,13 @@ export const metadata: Metadata = {
 export interface ProxyResourcesPageProps {
     params: Promise<{ orgId: string }>;
     searchParams: Promise<Record<string, string>>;
+}
+
+function parsePositiveInt(s: string | undefined): number | undefined {
+    if (!s) return undefined;
+    const n = Number(s);
+    if (!Number.isInteger(n) || n <= 0) return undefined;
+    return n;
 }
 
 export default async function ProxyResourcesPage(
@@ -47,13 +55,31 @@ export default async function ProxyResourcesPage(
         pagination = responseData.pagination;
     } catch (e) {}
 
-    let siteResources: ListAllSiteResourcesByOrgResponse["siteResources"] = [];
-    try {
-        const res = await internal.get<
-            AxiosResponse<ListAllSiteResourcesByOrgResponse>
-        >(`/org/${params.orgId}/site-resources`, await authCookieHeader());
-        siteResources = res.data.data.siteResources;
-    } catch (e) {}
+    const siteIdParam = parsePositiveInt(searchParams.get("siteId") ?? undefined);
+
+    let initialFilterSite: {
+        siteId: number;
+        name: string;
+        type: string;
+    } | null = null;
+    if (siteIdParam) {
+        try {
+            const siteRes = await internal.get(
+                `/site/${siteIdParam}`,
+                await authCookieHeader()
+            );
+            const s = (siteRes.data as ResponseT<GetSiteResponse>).data;
+            if (s && s.orgId === params.orgId) {
+                initialFilterSite = {
+                    siteId: s.siteId,
+                    name: s.name,
+                    type: s.type
+                };
+            }
+        } catch {
+            // leave null
+        }
+    }
 
     let org = null;
     try {
@@ -94,6 +120,7 @@ export default async function ProxyResourcesPage(
                   : "not_protected",
             enabled: resource.enabled,
             domainId: resource.domainId || undefined,
+            fullDomain: resource.fullDomain ?? null,
             ssl: resource.ssl,
             targets: resource.targets?.map((target) => ({
                 targetId: target.targetId,
@@ -102,7 +129,9 @@ export default async function ProxyResourcesPage(
                 enabled: target.enabled,
                 healthStatus: target.healthStatus,
                 siteName: target.siteName
-            }))
+            })),
+            sites: resource.sites ?? [],
+            health: (resource.health as ResourceRow["health"]) ?? undefined
         };
     });
     return (
@@ -123,6 +152,7 @@ export default async function ProxyResourcesPage(
                         pageIndex: pagination.page - 1,
                         pageSize: pagination.pageSize
                     }}
+                    initialFilterSite={initialFilterSite}
                 />
             </OrgProvider>
         </>

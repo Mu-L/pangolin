@@ -2,16 +2,15 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
 import { newts, resources, sites, targets } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, ne, and } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import logger from "@server/logger";
-import { addPeer } from "../gerbil/peers";
 import { fromError } from "zod-validation-error";
 import { removeTargets } from "../newt/targets";
-import { getAllowedIps } from "./helpers";
 import { OpenAPITags, registry } from "@server/openApi";
+import { targetHealthCheck } from "@server/db";
 
 const deleteTargetSchema = z.strictObject({
     targetId: z.string().transform(Number).pipe(z.int().positive())
@@ -46,6 +45,11 @@ export async function deleteTarget(
 
         const { targetId } = parsedParams.data;
 
+        const [deletedHealthCheck] = await db
+            .delete(targetHealthCheck)
+            .where(eq(targetHealthCheck.targetId, targetId))
+            .returning();
+
         const [deletedTarget] = await db
             .delete(targets)
             .where(eq(targets.targetId, targetId))
@@ -74,38 +78,59 @@ export async function deleteTarget(
             );
         }
 
-        // const [site] = await db
-        //     .select()
-        //     .from(sites)
-        //     .where(eq(sites.siteId, resource.siteId!))
-        //     .limit(1);
-        //
-        // if (!site) {
-        //     return next(
-        //         createHttpError(
-        //             HttpCode.NOT_FOUND,
-        //             `Site with ID ${resource.siteId} not found`
-        //         )
-        //     );
-        // }
-        //
-        // if (site.pubKey) {
-        //     if (site.type == "wireguard") {
-        //         await addPeer(site.exitNodeId!, {
-        //             publicKey: site.pubKey,
-        //             allowedIps: await getAllowedIps(site.siteId)
-        //         });
-        //     } else if (site.type == "newt") {
-        //         // get the newt on the site by querying the newt table for siteId
-        //         const [newt] = await db
-        //             .select()
-        //             .from(newts)
-        //             .where(eq(newts.siteId, site.siteId))
-        //             .limit(1);
-        //
-        //         removeTargets(newt.newtId, [deletedTarget], resource.protocol, resource.proxyPort);
-        //     }
-        // }
+        // check if there are other targets on the resource
+        const otherTargets = await db
+            .select()
+            .from(targets)
+            .where(
+                and(
+                    eq(targets.resourceId, resource.resourceId),
+                    ne(targets.targetId, targetId)
+                )
+            );
+
+        if (otherTargets.length == 0) {
+            // set the resource status
+            await db
+                .update(resources)
+                .set({ health: "unknown" })
+                .where(eq(resources.resourceId, resource.resourceId));
+        }
+
+        const [site] = await db
+            .select()
+            .from(sites)
+            .where(eq(sites.siteId, deletedTarget.siteId))
+            .limit(1);
+
+        if (!site) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Site with ID ${targets.siteId} not found`
+                )
+            );
+        }
+
+        if (site.pubKey) {
+            if (site.type == "newt") {
+                // get the newt on the site by querying the newt table for siteId
+                const [newt] = await db
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, site.siteId))
+                    .limit(1);
+
+                await removeTargets(
+                    newt.newtId,
+                    // [deletedTarget],
+                    [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
+                    [deletedHealthCheck],
+                    resource.protocol,
+                    newt.version
+                );
+            }
+        }
 
         return response(res, {
             data: null,

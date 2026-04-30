@@ -151,6 +151,7 @@ export default async function AlertingHealthChecksPage(
         fullDomain: string | null;
         niceId: string;
         ssl: boolean;
+        wildcard: boolean;
     } | null = null;
     if (resourceIdParam) {
         try {
@@ -165,7 +166,8 @@ export default async function AlertingHealthChecksPage(
                     resourceId: r.resourceId,
                     fullDomain: r.fullDomain,
                     niceId: r.niceId,
-                    ssl: r.ssl
+                    ssl: r.ssl,
+                    wildcard: r.wildcard
                 };
             }
         } catch {

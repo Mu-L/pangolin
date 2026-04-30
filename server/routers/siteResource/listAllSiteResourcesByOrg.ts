@@ -4,7 +4,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
 import type { PaginatedResponse } from "@server/types/Pagination";
-import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -68,6 +68,16 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
             enum: ["asc", "desc"],
             default: "asc",
             description: "Sort order"
+        }),
+    siteId: z.coerce
+        .number<string>()
+        .int()
+        .positive()
+        .optional()
+        .openapi({
+            type: "integer",
+            description:
+                "When set, only site resources associated with this site (via network) are returned"
         })
 });
 
@@ -88,9 +98,11 @@ export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
  */
 function aggCol<T>(column: any) {
     if (DB_TYPE === "sqlite") {
+        // json_group_array will include NULLs for left-joined missing rows;
+        // we filter them out in transformSiteResourceRow keeping arrays aligned.
         return sql<T>`json_group_array(${column})`;
     }
-    return sql<T>`array_agg(${column})`;
+    return sql<T>`COALESCE(array_agg(${column}) FILTER (WHERE ${sites.siteId} IS NOT NULL), '{}')`;
 }
 
 /**
@@ -102,16 +114,36 @@ function transformSiteResourceRow(row: any) {
     if (DB_TYPE !== "sqlite") {
         return row;
     }
+    const siteIdsRaw = JSON.parse(row.siteIds) as (number | null)[];
+    const siteNamesRaw = JSON.parse(row.siteNames) as (string | null)[];
+    const siteNiceIdsRaw = JSON.parse(row.siteNiceIds) as (string | null)[];
+    const siteAddressesRaw = JSON.parse(row.siteAddresses) as (string | null)[];
+    const siteOnlinesRaw = JSON.parse(row.siteOnlines) as (0 | 1 | null)[];
+
+    // When a site resource has no associated sites (left join produced no
+    // matches), the aggregated arrays will contain a single NULL entry. Strip
+    // those out, keeping the parallel arrays aligned by siteId presence.
+    const siteIds: number[] = [];
+    const siteNames: string[] = [];
+    const siteNiceIds: string[] = [];
+    const siteAddresses: (string | null)[] = [];
+    const siteOnlines: boolean[] = [];
+    for (let i = 0; i < siteIdsRaw.length; i++) {
+        if (siteIdsRaw[i] == null) continue;
+        siteIds.push(siteIdsRaw[i] as number);
+        siteNames.push((siteNamesRaw[i] ?? "") as string);
+        siteNiceIds.push((siteNiceIdsRaw[i] ?? "") as string);
+        siteAddresses.push(siteAddressesRaw[i] ?? null);
+        siteOnlines.push(siteOnlinesRaw[i] === 1);
+    }
+
     return {
         ...row,
-        siteNames: JSON.parse(row.siteNames) as string[],
-        siteNiceIds: JSON.parse(row.siteNiceIds) as string[],
-        siteIds: JSON.parse(row.siteIds) as number[],
-        siteAddresses: JSON.parse(row.siteAddresses) as (string | null)[],
-        // SQLite stores booleans as 0/1 integers
-        siteOnlines: (JSON.parse(row.siteOnlines) as (0 | 1)[]).map(
-            (v) => v === 1
-        ) as boolean[]
+        siteNames,
+        siteNiceIds,
+        siteIds,
+        siteAddresses,
+        siteOnlines
     };
 }
 
@@ -148,11 +180,11 @@ function querySiteResourcesBase() {
             siteOnlines: aggCol<boolean[]>(sites.online)
         })
         .from(siteResources)
-        .innerJoin(
+        .leftJoin(
             siteNetworks,
             eq(siteResources.networkId, siteNetworks.networkId)
         )
-        .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+        .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId))
         .groupBy(siteResources.siteResourceId);
 }
 
@@ -199,10 +231,33 @@ export async function listAllSiteResourcesByOrg(
         }
 
         const { orgId } = parsedParams.data;
-        const { page, pageSize, query, mode, sort_by, order } =
+        const { page, pageSize, query, mode, sort_by, order, siteId } =
             parsedQuery.data;
 
         const conditions = [and(eq(siteResources.orgId, orgId))];
+
+        if (siteId != null) {
+            // Keep inner joins here: filtering by a specific site implies the
+            // resource must have at least one matching site.
+            const resourcesForSite = db
+                .select({ id: siteResources.siteResourceId })
+                .from(siteResources)
+                .innerJoin(
+                    siteNetworks,
+                    eq(siteResources.networkId, siteNetworks.networkId)
+                )
+                .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+                .where(
+                    and(
+                        eq(siteResources.orgId, orgId),
+                        eq(sites.orgId, orgId),
+                        eq(sites.siteId, siteId)
+                    )
+                );
+            conditions.push(
+                inArray(siteResources.siteResourceId, resourcesForSite)
+            );
+        }
         if (query) {
             conditions.push(
                 or(

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { portRangeStringSchema } from "@server/lib/ip";
 import { MaintenanceSchema } from "#dynamic/lib/blueprints/MaintenanceSchema";
 import { isValidRegionId } from "@server/db/regions";
+import { wildcardSubdomainSchema } from "@server/lib/schemas";
 
 export const SiteSchema = z.object({
     name: z.string().min(1).max(100),
@@ -318,6 +319,34 @@ export const ResourceSchema = z
             path: ["rules"],
             message:
                 "Rules have conflicting or invalid priorities (must be unique, including auto-assigned ones)"
+        }
+    )
+    .refine(
+        (resource) => {
+            const fullDomain = resource["full-domain"];
+            if (!fullDomain || !fullDomain.includes("*")) return true;
+
+            // A wildcard full-domain must be of the form *.labels.basedomain
+            // Extract the leftmost label(s) before the first non-wildcard segment.
+            // e.g. "*.level1.example.com" → subdomain candidate is "*.level1"
+            // We do this by finding the base domain: everything after the first
+            // real (non-wildcard) dot-separated segment pair.
+            //
+            // Simple rule: split on ".", first token must be "*", rest must be
+            // valid hostname labels, and there must be at least 2 remaining labels
+            // (so the full domain has a real base domain).
+            const parts = fullDomain.split(".");
+            if (parts[0] !== "*") return false; // * must be the very first label
+            if (parts.includes("*", 1)) return false; // no further wildcards
+            if (parts.length < 3) return false; // need at least *.label.tld
+
+            const labelRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
+            return parts.slice(1).every((label) => labelRegex.test(label));
+        },
+        {
+            path: ["full-domain"],
+            message:
+                'Wildcard full-domain must have "*" as the leftmost label only, followed by at least two valid hostname labels (e.g. "*.example.com" or "*.level1.example.com"). Patterns like "*example.com" or "level2.*.example.com" are not supported.'
         }
     );
 

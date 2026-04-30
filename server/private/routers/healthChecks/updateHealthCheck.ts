@@ -22,6 +22,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, isNull } from "drizzle-orm";
 import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
+import { fireHealthCheckUnhealthyAlert, fireHealthCheckUnknownAlert, fireHealthCheckHealthyAlert } from "#private/lib/alerts";
 
 const paramsSchema = z
     .object({
@@ -166,6 +167,17 @@ export async function updateHealthCheck(
 
         const updateData: Record<string, unknown> = {};
 
+        const [existingHealthCheck] = await db
+            .select()
+            .from(targetHealthCheck)
+            .where(
+                and(
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
+                    eq(targetHealthCheck.orgId, orgId)
+                )
+            )
+            .limit(1);
+
         if (name !== undefined) updateData.name = name;
         if (siteId !== undefined) updateData.siteId = siteId;
         if (hcEnabled !== undefined) updateData.hcEnabled = hcEnabled;
@@ -190,6 +202,26 @@ export async function updateHealthCheck(
         if (hcUnhealthyThreshold !== undefined)
             updateData.hcUnhealthyThreshold = hcUnhealthyThreshold;
 
+        const hcEnabledTurnedOn =
+            parsedBody.data.hcEnabled === true &&
+            existingHealthCheck.hcEnabled === false;
+
+        let hcHealthValue: "unknown" | "healthy" | "unhealthy" | undefined;
+        if (
+            parsedBody.data.hcEnabled === false ||
+            parsedBody.data.hcEnabled === null
+        ) {
+            hcHealthValue = "unknown";
+        } else if (hcEnabledTurnedOn) {
+            hcHealthValue = "unhealthy";
+        } else {
+            hcHealthValue = undefined;
+        }
+
+        if (hcHealthValue) {
+            updateData.hcHealth = hcHealthValue;
+        }
+
         const [updated] = await db
             .update(targetHealthCheck)
             .set(updateData)
@@ -201,6 +233,37 @@ export async function updateHealthCheck(
                 )
             )
             .returning();
+
+        if (updated.hcHealth === "unhealthy" && existingHealthCheck.hcHealth !== "unhealthy") {
+            await fireHealthCheckUnhealthyAlert(
+                updated.orgId,
+                updated.targetHealthCheckId,
+                updated.name || "",
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (updated.hcHealth === "unknown" && existingHealthCheck.hcHealth !== "unknown") {
+            // if the health is unknown, we want to fire an alert to notify users to enable health checks
+            await fireHealthCheckUnknownAlert(
+                updated.orgId,
+                updated.targetHealthCheckId,
+                updated.name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        } else if (updated.hcHealth === "healthy" && existingHealthCheck.hcHealth !== "healthy") {
+            await fireHealthCheckHealthyAlert(
+                updated.orgId,
+                updated.targetHealthCheckId,
+                updated.name,
+                undefined,
+                undefined,
+                false // dont send the alert because we just want to create the alert, not notify users yet
+            );
+        }
+
 
         // Push updated health check to newt if the site is a newt site
         const [newt] = await db

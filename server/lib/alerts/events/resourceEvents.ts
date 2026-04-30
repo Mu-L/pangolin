@@ -3,6 +3,7 @@ export async function fireResourceHealthyAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx?: unknown
 ): Promise<void> {}
 
@@ -11,6 +12,7 @@ export async function fireResourceUnhealthyAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx?: unknown
 ): Promise<void> {}
 
@@ -19,5 +21,6 @@ export async function fireResourceToggleAlert(
     resourceId: number,
     resourceName?: string | null,
     extra?: Record<string, unknown>,
+    send: boolean = true,
     trx?: unknown
 ): Promise<void> {}

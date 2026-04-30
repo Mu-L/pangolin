@@ -293,7 +293,7 @@ export async function applyBlueprint({
                 orgId,
                 name:
                     name ??
-                    `${faker.word.adjective()} ${faker.word.adjective()} ${faker.word.noun()}`,
+                    `${faker.word.adjective()}-${faker.word.adjective()}-${faker.word.noun()}`,
                 contents: stringifyYaml(configData),
                 createdAt: Math.floor(Date.now() / 1000),
                 succeeded: blueprintSucceeded,

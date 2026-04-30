@@ -88,6 +88,8 @@ function buildSubject(context: AlertContext): string {
             return "[Alert] Resource Healthy";
         case "resource_unhealthy":
             return "[Alert] Resource Unhealthy";
+        case "resource_degraded":
+            return "[Alert] Resource Degraded";
         case "resource_toggle":
             return "[Alert] Resource Status Changed";
         default: {

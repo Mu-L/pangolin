@@ -17,47 +17,34 @@ export async function addTargets(
         }:${target.port}`;
     });
 
-    await sendToClient(
-        newtId,
-        {
-            type: `newt/${protocol}/add`,
-            data: {
-                targets: payloadTargets
+    if (payloadTargets.length > 0) {
+        await sendToClient(
+            newtId,
+            {
+                type: `newt/${protocol}/add`,
+                data: {
+                    targets: payloadTargets
+                }
+            },
+            {
+                incrementConfigVersion: true,
+                compress: canCompress(version, "newt")
             }
-        },
-        { incrementConfigVersion: true, compress: canCompress(version, "newt") }
-    );
+        );
+    }
 
-    // Create a map for quick lookup
-    const healthCheckMap = new Map<number, TargetHealthCheck>();
-    healthCheckData.forEach((hc) => {
-        if (hc.targetId !== null) {
-            healthCheckMap.set(hc.targetId, hc);
-        }
-    });
-
-    const healthCheckTargets = targets.map((target) => {
-        const hc = healthCheckMap.get(target.targetId);
-
-        // If no health check data found, skip this target
-        if (!hc) {
-            logger.warn(
-                `No health check configuration found for target ${target.targetId}`
-            );
-            return null;
-        }
-
+    const healthCheckTargets = healthCheckData.map((hc) => {
         // Ensure all necessary fields are present
         const isTCP = hc.hcMode?.toLowerCase() === "tcp";
         if (!hc.hcHostname || !hc.hcPort || !hc.hcInterval) {
             logger.debug(
-                `Skipping target ${target.targetId} due to missing health check fields`
+                `Skipping hc ${hc.targetHealthCheckId} due to missing health check fields`
             );
             return null;
         }
         if (!isTCP && (!hc.hcPath || !hc.hcMethod)) {
             logger.debug(
-                `Skipping target ${target.targetId} due to missing HTTP health check fields`
+                `Skipping hc ${hc.targetHealthCheckId} due to missing HTTP health check fields`
             );
             return null;
         }
@@ -105,7 +92,7 @@ export async function addTargets(
 
     // Filter out any null values from health check targets
     const validHealthCheckTargets = healthCheckTargets.filter(
-        (target) => target !== null
+        (hc) => hc !== null
     );
 
     await sendToClient(
@@ -213,6 +200,7 @@ export async function removeStandaloneHealthCheck(
 export async function removeTargets(
     newtId: string,
     targets: Target[],
+    healthCheckData: TargetHealthCheck[],
     protocol: string,
     version?: string | null
 ) {
@@ -223,19 +211,21 @@ export async function removeTargets(
         }:${target.port}`;
     });
 
-    await sendToClient(
-        newtId,
-        {
-            type: `newt/${protocol}/remove`,
-            data: {
-                targets: payloadTargets
-            }
-        },
-        { incrementConfigVersion: true }
-    );
+    if (payloadTargets.length > 0) {
+        await sendToClient(
+            newtId,
+            {
+                type: `newt/${protocol}/remove`,
+                data: {
+                    targets: payloadTargets
+                }
+            },
+            { incrementConfigVersion: true }
+        );
+    }
 
-    const healthCheckTargets = targets.map((target) => {
-        return target.targetId;
+    const healthCheckTargets = healthCheckData.map((hc) => {
+        return hc.targetHealthCheckId;
     });
 
     await sendToClient(

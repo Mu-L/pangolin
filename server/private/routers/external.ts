@@ -165,7 +165,6 @@ authenticated.get(
 
 authenticated.get(
     "/org/:orgId/certificate/:domainId/:domain",
-    verifyValidLicense,
     verifyOrgAccess,
     verifyCertificateAccess,
     verifyUserHasAction(ActionsEnum.getCertificate),

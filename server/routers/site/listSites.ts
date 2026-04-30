@@ -5,6 +5,9 @@ import {
     orgs,
     remoteExitNodes,
     roleSites,
+    siteNetworks,
+    siteResources,
+    targets,
     sites,
     userSites
 } from "@server/db";
@@ -28,7 +31,9 @@ let staleNewtVersion: string | null = null;
 
 async function getLatestNewtVersion(): Promise<string | null> {
     try {
-        const cachedVersion = await cache.get<string>("cache:latestNewtVersion");
+        const cachedVersion = await cache.get<string>(
+            "cache:latestNewtVersion"
+        );
         if (cachedVersion) {
             return cachedVersion;
         }
@@ -199,6 +204,18 @@ function querySitesBase() {
             exitNodeName: exitNodes.name,
             exitNodeEndpoint: exitNodes.endpoint,
             remoteExitNodeId: remoteExitNodes.remoteExitNodeId,
+            resourceCount: sql<number>`(
+                SELECT COUNT(DISTINCT ${targets.resourceId})
+                FROM ${targets}
+                WHERE ${targets.siteId} = ${sites.siteId}
+            ) + (
+                SELECT COUNT(DISTINCT ${siteResources.siteResourceId})
+                FROM ${siteResources}
+                INNER JOIN ${siteNetworks}
+                    ON ${siteResources.networkId} = ${siteNetworks.networkId}
+                WHERE ${siteNetworks.siteId} = ${sites.siteId}
+                    AND ${siteResources.orgId} = ${sites.orgId}
+            )`,
             status: sites.status
         })
         .from(sites)
@@ -211,7 +228,10 @@ function querySitesBase() {
         );
 }
 
-type SiteWithUpdateAvailable = Awaited<ReturnType<typeof querySitesBase>>[0] & {
+type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
+
+type SiteWithUpdateAvailable = Omit<SiteRowBase, "online"> & {
+    online?: SiteRowBase["online"]; // undefined for local sites
     newtUpdateAvailable?: boolean;
 };
 
@@ -319,12 +339,13 @@ export async function listSites(
         if (typeof status !== "undefined") {
             conditions.push(eq(sites.status, status));
         }
-
         const baseQuery = querySitesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase().where(and(...conditions)).as("filtered_sites")
+            querySitesBase()
+                .where(and(...conditions))
+                .as("filtered_sites")
         );
 
         const siteListQuery = baseQuery
@@ -383,9 +404,13 @@ export async function listSites(
             );
         }
 
+        const sitesPayload = sitesWithUpdates.map((site) =>
+            site.type === "local" ? { ...site, online: undefined } : site
+        );
+
         return response<ListSitesResponse>(res, {
             data: {
-                sites: sitesWithUpdates,
+                sites: sitesPayload,
                 pagination: {
                     total: totalCount,
                     pageSize,

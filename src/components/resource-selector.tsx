@@ -17,19 +17,21 @@ import { useDebounce } from "use-debounce";
 
 export type SelectedResource = Pick<
     ListResourcesResponse["resources"][number],
-    "name" | "resourceId" | "fullDomain" | "niceId" | "ssl"
+    "name" | "resourceId" | "fullDomain" | "niceId" | "ssl" | "wildcard"
 >;
 
 export type ResourceSelectorProps = {
     orgId: string;
     selectedResource?: SelectedResource | null;
     onSelectResource: (resource: SelectedResource) => void;
+    excludeWildcard?: boolean;
 };
 
 export function ResourceSelector({
     orgId,
     selectedResource,
-    onSelectResource
+    onSelectResource,
+    excludeWildcard = false
 }: ResourceSelectorProps) {
     const t = useTranslations();
     const [resourceSearchQuery, setResourceSearchQuery] = useState("");
@@ -46,10 +48,13 @@ export function ResourceSelector({
 
     // always include the selected resource in the list of resources shown
     const resourcesShown = useMemo(() => {
-        const allResources: Array<SelectedResource> = [...resources];
+        const allResources: Array<SelectedResource> = excludeWildcard
+            ? resources.filter((r) => !r.wildcard)
+            : [...resources];
         if (
             debouncedSearchQuery.trim().length === 0 &&
             selectedResource &&
+            !(excludeWildcard && selectedResource.wildcard) &&
             !allResources.find(
                 (resource) =>
                     resource.resourceId === selectedResource?.resourceId
@@ -58,7 +63,7 @@ export function ResourceSelector({
             allResources.unshift(selectedResource);
         }
         return allResources;
-    }, [debouncedSearchQuery, resources, selectedResource]);
+    }, [debouncedSearchQuery, resources, selectedResource, excludeWildcard]);
 
     return (
         <Command shouldFilter={false}>

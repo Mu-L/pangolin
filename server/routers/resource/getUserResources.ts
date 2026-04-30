@@ -86,7 +86,12 @@ export async function getUserResources(
                       .where(inArray(roleSiteResources.roleId, userRoleIds))
                 : Promise.resolve([]);
 
-        const [directResources, roleResourceResults, directSiteResourceResults, roleSiteResourceResults] = await Promise.all([
+        const [
+            directResources,
+            roleResourceResults,
+            directSiteResourceResults,
+            roleSiteResourceResults
+        ] = await Promise.all([
             directResourcesQuery,
             roleResourcesQuery,
             directSiteResourcesQuery,
@@ -118,24 +123,24 @@ export async function getUserResources(
         }> = [];
         if (accessibleResourceIds.length > 0) {
             resourcesData = await db
-            .select({
-                resourceId: resources.resourceId,
-                name: resources.name,
-                fullDomain: resources.fullDomain,
-                ssl: resources.ssl,
-                enabled: resources.enabled,
-                sso: resources.sso,
-                protocol: resources.protocol,
-                emailWhitelistEnabled: resources.emailWhitelistEnabled
-            })
-            .from(resources)
-            .where(
-                and(
-                    inArray(resources.resourceId, accessibleResourceIds),
-                    eq(resources.orgId, orgId),
-                    eq(resources.enabled, true)
-                )
-            );
+                .select({
+                    resourceId: resources.resourceId,
+                    name: resources.name,
+                    fullDomain: resources.fullDomain,
+                    ssl: resources.ssl,
+                    enabled: resources.enabled,
+                    sso: resources.sso,
+                    protocol: resources.protocol,
+                    emailWhitelistEnabled: resources.emailWhitelistEnabled
+                })
+                .from(resources)
+                .where(
+                    and(
+                        inArray(resources.resourceId, accessibleResourceIds),
+                        eq(resources.orgId, orgId),
+                        eq(resources.enabled, true)
+                    )
+                );
         }
 
         // Get site resource details for accessible site resources
@@ -166,7 +171,10 @@ export async function getUserResources(
                 .from(siteResources)
                 .where(
                     and(
-                        inArray(siteResources.siteResourceId, accessibleSiteResourceIds),
+                        inArray(
+                            siteResources.siteResourceId,
+                            accessibleSiteResourceIds
+                        ),
                         eq(siteResources.orgId, orgId),
                         eq(siteResources.enabled, true)
                     )
@@ -246,7 +254,7 @@ export async function getUserResources(
                 enabled: siteResource.enabled,
                 alias: siteResource.alias,
                 aliasAddress: siteResource.aliasAddress,
-                type: 'site' as const
+                type: "site" as const
             };
         });
 

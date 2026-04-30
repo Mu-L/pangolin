@@ -3,6 +3,8 @@ import {
     clients,
     currentFingerprint,
     db,
+    idp,
+    idpOidcConfig,
     olms,
     orgs,
     roleClients,
@@ -165,6 +167,9 @@ function queryUserDevicesBase() {
             userId: clients.userId,
             username: users.username,
             userEmail: users.email,
+            userType: users.type,
+            idpName: idp.name,
+            idpVariant: idpOidcConfig.variant,
             niceId: clients.niceId,
             agent: olms.agent,
             approvalState: clients.approvalState,
@@ -184,6 +189,8 @@ function queryUserDevicesBase() {
         .leftJoin(orgs, eq(clients.orgId, orgs.orgId))
         .leftJoin(olms, eq(clients.clientId, olms.clientId))
         .leftJoin(users, eq(clients.userId, users.userId))
+        .leftJoin(idp, eq(users.idpId, idp.idpId))
+        .leftJoin(idpOidcConfig, eq(idpOidcConfig.idpId, idp.idpId))
         .leftJoin(currentFingerprint, eq(olms.olmId, currentFingerprint.olmId));
 }
 

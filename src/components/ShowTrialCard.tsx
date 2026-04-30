@@ -14,7 +14,7 @@ import {
 } from "@app/components/ui/tooltip";
 import { useTranslations } from "next-intl";
 
-const TRIAL_DURATION_DAYS = 14;
+const TRIAL_DURATION_DAYS = 10;
 
 export default function ShowTrialCard({
     isCollapsed

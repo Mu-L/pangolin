@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { clients, db, exitNodes } from "@server/db";
+import { clients, db, exitNodes, logsDb, statusHistory } from "@server/db";
 import { roles, userSites, sites, roleSites, Site, orgs } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -321,12 +321,7 @@ export async function createSite(
             const existingSite = await db
                 .select()
                 .from(sites)
-                .where(
-                    and(
-                        eq(sites.niceId, niceId),
-                        eq(sites.orgId, orgId)
-                    )
-                )
+                .where(and(eq(sites.niceId, niceId), eq(sites.orgId, orgId)))
                 .limit(1);
 
             if (existingSite.length > 0) {
@@ -344,7 +339,8 @@ export async function createSite(
             if (type == "newt") {
                 [newSite] = await trx
                     .insert(sites)
-                    .values({ // NOTE: NO SUBNET OR EXIT NODE ID PASSED IN HERE BECAUSE ITS NOW CHOSEN ON CONNECT
+                    .values({
+                        // NOTE: NO SUBNET OR EXIT NODE ID PASSED IN HERE BECAUSE ITS NOW CHOSEN ON CONNECT
                         orgId,
                         name,
                         niceId: updatedNiceId!,
@@ -354,6 +350,14 @@ export async function createSite(
                         status: "approved"
                     })
                     .returning();
+
+                await logsDb.insert(statusHistory).values({
+                    entityType: "site",
+                    entityId: newSite.siteId,
+                    orgId: orgId,
+                    status: "offline",
+                    timestamp: Math.floor(Date.now() / 1000)
+                });
             } else if (type == "wireguard") {
                 // we are creating a site with an exit node (tunneled)
                 if (!subnet) {

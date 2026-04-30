@@ -118,6 +118,8 @@ function triggerLabel(rule: AlertRuleRow, t: (k: string) => string) {
             return t("alertingTriggerResourceHealthy");
         case "resource_unhealthy":
             return t("alertingTriggerResourceUnhealthy");
+        case "resource_degraded":
+            return t("alertingTriggerResourceDegraded");
         case "resource_toggle":
             return t("alertingTriggerResourceToggle");
         default:

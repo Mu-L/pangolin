@@ -46,7 +46,8 @@ const createSiteResourceSchema = z
         mode: z.enum(["host", "cidr", "http"]),
         ssl: z.boolean().optional(), // only used for http mode
         scheme: z.enum(["http", "https"]).optional(),
-        siteIds: z.array(z.int()),
+        siteIds: z.array(z.int()).optional(),
+        siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
         // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1),
@@ -132,6 +133,17 @@ const createSiteResourceSchema = z
             message:
                 "HTTP mode requires scheme (http or https) and a valid destination port"
         }
+    )
+    .refine(
+        (data) => {
+            return (
+                (data.siteIds !== undefined && data.siteIds.length > 0) ||
+                data.siteId !== undefined
+            );
+        },
+        {
+            message: "At least one of siteIds or siteId must be provided"
+        }
     );
 
 export type CreateSiteResourceBody = z.infer<typeof createSiteResourceSchema>;
@@ -187,7 +199,8 @@ export async function createSiteResource(
         const {
             name,
             niceId,
-            siteIds,
+            siteIds: siteIdsInput = [],
+            siteId,
             mode,
             scheme,
             // proxyPort,
@@ -207,6 +220,12 @@ export async function createSiteResource(
             domainId,
             subdomain
         } = parsedBody.data;
+
+        // Backward compatibility: merge deprecated siteId into siteIds array
+        const siteIds = [...siteIdsInput];
+        if (siteId !== undefined && !siteIds.includes(siteId)) {
+            siteIds.push(siteId);
+        }
 
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
@@ -389,9 +408,10 @@ export async function createSiteResource(
                 enabled,
                 alias: alias ? alias.trim() : null,
                 aliasAddress,
-                tcpPortRangeString,
-                udpPortRangeString,
-                disableIcmp,
+                tcpPortRangeString:
+                    mode == "http" ? "443,80" : tcpPortRangeString,
+                udpPortRangeString: mode == "http" ? "" : udpPortRangeString,
+                disableIcmp: disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
                 domainId,
                 subdomain: finalSubdomain,
                 fullDomain
@@ -496,7 +516,13 @@ export async function createSiteResource(
             `Created site resource ${newSiteResource.siteResourceId} for org ${orgId}`
         );
 
-        if (ssl && mode === "http" && domainId && fullDomain && build != "oss") {
+        if (
+            ssl &&
+            mode === "http" &&
+            domainId &&
+            fullDomain &&
+            build != "oss"
+        ) {
             await createCertificate(domainId, fullDomain, db);
         }
 

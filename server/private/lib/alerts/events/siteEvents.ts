@@ -13,7 +13,14 @@
 
 import logger from "@server/logger";
 import { processAlerts } from "../processAlerts";
-import { db, sites, statusHistory, targetHealthCheck, Transaction } from "@server/db";
+import {
+    db,
+    logsDb,
+    statusHistory,
+    targetHealthCheck,
+    Transaction
+} from "@server/db";
+import { invalidateStatusHistoryCache } from "@server/lib/statusHistory";
 import { and, eq, inArray } from "drizzle-orm";
 import { fireHealthCheckUnhealthyAlert } from "./healthCheckEvents";
 
@@ -40,13 +47,14 @@ export async function fireSiteOnlineAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "site",
             entityId: siteId,
             orgId: orgId,
             status: "online",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("site", siteId);
 
         await processAlerts({
             eventType: "site_online",
@@ -95,13 +103,14 @@ export async function fireSiteOfflineAlert(
     trx: Transaction | typeof db = db
 ): Promise<void> {
     try {
-        await trx.insert(statusHistory).values({
+        await logsDb.insert(statusHistory).values({
             entityType: "site",
             entityId: siteId,
             orgId: orgId,
             status: "offline",
             timestamp: Math.floor(Date.now() / 1000)
         });
+        await invalidateStatusHistoryCache("site", siteId);
 
         const unhealthyHealthChecks = await trx
             .update(targetHealthCheck)
@@ -109,7 +118,8 @@ export async function fireSiteOfflineAlert(
             .where(
                 and(
                     eq(targetHealthCheck.orgId, orgId),
-                    eq(targetHealthCheck.siteId, siteId)
+                    eq(targetHealthCheck.siteId, siteId),
+                    eq(targetHealthCheck.hcEnabled, true) // only effect the ones that are enabled
                 )
             )
             .returning();
@@ -123,8 +133,9 @@ export async function fireSiteOfflineAlert(
                 healthCheck.orgId,
                 healthCheck.targetHealthCheckId,
                 healthCheck.name,
+                healthCheck.targetId, // for the resource if we have one
                 undefined,
-                undefined,
+                true,
                 trx
             );
         }

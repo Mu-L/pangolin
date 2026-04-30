@@ -112,10 +112,7 @@ export async function listSiteResources(
         const siteResourcesList = await db
             .select()
             .from(siteNetworks)
-            .innerJoin(
-                networks,
-                eq(siteNetworks.networkId, networks.networkId)
-            )
+            .innerJoin(networks, eq(siteNetworks.networkId, networks.networkId))
             .innerJoin(
                 siteResources,
                 eq(siteResources.networkId, networks.networkId)
@@ -135,7 +132,6 @@ export async function listSiteResources(
             )
             .limit(limit)
             .offset(offset);
-
 
         return response(res, {
             data: { siteResources: siteResourcesList },

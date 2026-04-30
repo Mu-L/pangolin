@@ -125,12 +125,12 @@ export async function updateClientResources(
 
         const existingSiteIds = existingResource?.networkId
             ? await trx
-                  .select({ siteId: sites.siteId })
+                  .select({ siteId: siteNetworks.siteId })
                   .from(siteNetworks)
                   .where(eq(siteNetworks.networkId, existingResource.networkId))
             : [];
 
-        let allSites: { siteId: number }[] = [];
+        const allSites: { siteId: number }[] = [];
         if (resourceData.site) {
             let siteSingle;
             const resourceSiteId = resourceData.site;
@@ -215,9 +215,17 @@ export async function updateClientResources(
                     enabled: true, // hardcoded for now
                     // enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
-                    disableIcmp: resourceData["disable-icmp"],
-                    tcpPortRangeString: resourceData["tcp-ports"],
-                    udpPortRangeString: resourceData["udp-ports"],
+                    disableIcmp:
+                        resourceData["disable-icmp"] ||
+                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                    tcpPortRangeString:
+                        resourceData.mode == "http"
+                            ? "443,80"
+                            : resourceData["tcp-ports"],
+                    udpPortRangeString:
+                        resourceData.mode == "http"
+                            ? ""
+                            : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
                     subdomain: domainInfo ? domainInfo.subdomain : null,
                     domainId: domainInfo ? domainInfo.domainId : null
@@ -397,9 +405,17 @@ export async function updateClientResources(
                     // enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
                     aliasAddress: aliasAddress,
-                    disableIcmp: resourceData["disable-icmp"],
-                    tcpPortRangeString: resourceData["tcp-ports"],
-                    udpPortRangeString: resourceData["udp-ports"],
+                    disableIcmp:
+                        resourceData["disable-icmp"] ||
+                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                    tcpPortRangeString:
+                        resourceData.mode == "http"
+                            ? "443,80"
+                            : resourceData["tcp-ports"],
+                    udpPortRangeString:
+                        resourceData.mode == "http"
+                            ? ""
+                            : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
                     subdomain: domainInfo ? domainInfo.subdomain : null,
                     domainId: domainInfo ? domainInfo.domainId : null
