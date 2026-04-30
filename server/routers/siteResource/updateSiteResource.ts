@@ -431,9 +431,6 @@ export async function updateSiteResource(
                     })
                     .returning();
 
-                // wait some time to allow for messages to be handled
-                await new Promise((resolve) => setTimeout(resolve, 750));
-
                 const sshPamSet =
                     isLicensedSshPam &&
                     (authDaemonPort !== undefined ||
@@ -556,11 +553,6 @@ export async function updateSiteResource(
                         }))
                     );
                 }
-
-                await rebuildClientAssociationsFromSiteResource(
-                    updatedSiteResource,
-                    trx
-                );
             } else {
                 // Update the site resource
                 const sshPamSet =
@@ -690,7 +682,24 @@ export async function updateSiteResource(
                 }
 
                 logger.info(`Updated site resource ${siteResourceId}`);
+            }
+        });
 
+        // Background: wait for removal messages to propagate, then rebuild
+        // associations for the re-created resource. Own transaction ensures
+        // execution on the primary against fully committed state.
+        (async () => {
+            await db.transaction(async (trx) => {
+                if (!updatedSiteResource) {
+                    throw new Error("No updated resource found after update");
+                }
+                if (sitesChanged) {
+                    await new Promise((resolve) => setTimeout(resolve, 750));
+                    await rebuildClientAssociationsFromSiteResource(
+                        updatedSiteResource,
+                        trx
+                    );
+                }
                 await handleMessagingForUpdatedSiteResource(
                     existingSiteResource,
                     updatedSiteResource,
@@ -700,7 +709,12 @@ export async function updateSiteResource(
                     })),
                     trx
                 );
-            }
+            });
+        })().catch((err) => {
+            logger.error(
+                `Error rebuilding client associations for site resource ${updatedSiteResource?.siteResourceId}:`,
+                err
+            );
         });
 
         return response(res, {
