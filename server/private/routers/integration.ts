@@ -67,23 +67,19 @@ if (build == "saas") {
         verifyApiKeyIsRoot,
         certificates.syncCertToNewts
     );
+
+    authenticated.post(
+        `/org/:orgId/send-usage-notification`,
+        verifyApiKeyIsRoot, // We are the only ones who can use root key so its fine
+        org.sendUsageNotification
+    );
+
+    authenticated.post(
+        `/org/:orgId/send-trial-notification`,
+        verifyApiKeyIsRoot,
+        org.sendTrialNotification
+    );
 }
-
-authenticated.post(
-    `/org/:orgId/send-usage-notification`,
-    verifyApiKeyIsRoot, // We are the only ones who can use root key so its fine
-    verifyApiKeyHasAction(ActionsEnum.sendUsageNotification),
-    logActionAudit(ActionsEnum.sendUsageNotification),
-    org.sendUsageNotification
-);
-
-authenticated.post(
-    `/org/:orgId/send-trial-notification`,
-    verifyApiKeyIsRoot,
-    verifyApiKeyHasAction(ActionsEnum.sendTrialNotification),
-    logActionAudit(ActionsEnum.sendTrialNotification),
-    org.sendTrialNotification
-);
 
 authenticated.delete(
     "/idp/:idpId",

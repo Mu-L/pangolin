@@ -30,8 +30,10 @@ import {
     userOrgRoles,
     siteProvisioningKeyOrg,
     siteProvisioningKeys,
+    alertRules,
+    targetHealthCheck
 } from "@server/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 /**
  * Get the maximum allowed retention days for a given tier
@@ -318,6 +320,14 @@ async function disableFeature(
                 await disableSiteProvisioningKeys(orgId);
                 break;
 
+            case TierFeature.AlertingRules:
+                await disableAlertingRules(orgId);
+                break;
+
+            case TierFeature.StandaloneHealthChecks:
+                await disableStandaloneHealthChecks(orgId);
+                break;
+
             default:
                 logger.warn(
                     `Unknown feature ${feature} for org ${orgId}, skipping`
@@ -360,8 +370,7 @@ async function disableFullRbac(orgId: string): Promise<void> {
 async function disableSiteProvisioningKeys(orgId: string): Promise<void> {
     const rows = await db
         .select({
-            siteProvisioningKeyId:
-                siteProvisioningKeyOrg.siteProvisioningKeyId
+            siteProvisioningKeyId: siteProvisioningKeyOrg.siteProvisioningKeyId
         })
         .from(siteProvisioningKeyOrg)
         .where(eq(siteProvisioningKeyOrg.orgId, orgId));
@@ -523,6 +532,29 @@ async function disablePasswordExpirationPolicies(orgId: string): Promise<void> {
         .where(eq(orgs.orgId, orgId));
 
     logger.info(`Disabled password expiration policies for org ${orgId}`);
+}
+
+async function disableAlertingRules(orgId: string): Promise<void> {
+    await db
+        .update(alertRules)
+        .set({ enabled: false })
+        .where(eq(alertRules.orgId, orgId));
+
+    logger.info(`Disabled all alert rules for org ${orgId}`);
+}
+
+async function disableStandaloneHealthChecks(orgId: string): Promise<void> {
+    await db
+        .update(targetHealthCheck)
+        .set({ hcEnabled: false })
+        .where(
+            and(
+                eq(targetHealthCheck.orgId, orgId),
+                isNull(targetHealthCheck.targetId)
+            )
+        );
+
+    logger.info(`Disabled standalone health checks for org ${orgId}`);
 }
 
 async function disableAutoProvisioning(orgId: string): Promise<void> {
