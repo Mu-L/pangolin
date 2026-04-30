@@ -174,6 +174,19 @@ export async function handleSubscriptionCreated(
                     // TODO: update user in Sendy
                 }
             }
+
+            // delete the trial subscrition if we have one
+            await db
+                .delete(subscriptions)
+                .where(
+                    and(
+                        eq(
+                            subscriptions.customerId,
+                            subscription.customer as string
+                        ),
+                        eq(subscriptions.trial, true)
+                    )
+                );
         } else if (type === "license") {
             logger.debug(
                 `License subscription created for org ${customer.orgId}, no lifecycle handling needed.`
