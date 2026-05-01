@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Sikkerhetsnøkkel",
+    "newtVersion": "Version",
     "architecture": "Arkitektur",
     "sites": "Områder",
     "siteWgAnyClients": "Bruk hvilken som helst WireGuard klient til å koble til. Du må adressere interne ressurser ved hjelp av peer IP.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Jokertegnsubdomener er ikke tillatt.",
     "domainPickerWildcardCertWarning": "Jokertegnressurser kan kreve ekstra konfigurasjon for å fungere skikkelig.",
     "domainPickerWildcardCertWarningLink": "Lær mer",
-    "health": "Helse"
+    "health": "Helse",
+    "domainPendingErrorTitle": "Verification Issue"
 }
