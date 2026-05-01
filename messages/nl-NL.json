@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Geheim",
+    "newtVersion": "Version",
     "architecture": "Architectuur",
     "sites": "Sites",
     "siteWgAnyClients": "Gebruik een willekeurige WireGuard client om verbinding te maken. Je zult interne bronnen moeten aanspreken met behulp van de peer IP.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Wildcard-subdomeinen zijn niet toegestaan.",
     "domainPickerWildcardCertWarning": "Wildcard-bronnen hebben mogelijk extra configuratie nodig om correct te werken.",
     "domainPickerWildcardCertWarningLink": "Meer informatie",
-    "health": "Gezondheid"
+    "health": "Gezondheid",
+    "domainPendingErrorTitle": "Verification Issue"
 }
