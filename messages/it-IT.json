@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Segreto",
+    "newtVersion": "Version",
     "architecture": "Architettura",
     "sites": "Siti",
     "siteWgAnyClients": "Usa qualsiasi client WireGuard per connetterti. Dovrai indirizzare le risorse interne utilizzando l'IP del peer.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "I sottodomini wildcard non sono permessi.",
     "domainPickerWildcardCertWarning": "Le risorse wildcard potrebbero richiedere configurazioni aggiuntive per funzionare correttamente.",
     "domainPickerWildcardCertWarningLink": "Scopri di più",
-    "health": "Salute"
+    "health": "Salute",
+    "domainPendingErrorTitle": "Verification Issue"
 }
