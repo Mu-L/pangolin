@@ -3202,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Wildcard subdomains are not allowed.",
     "domainPickerWildcardCertWarning": "Wildcard resources may require additional configuration to work properly.",
     "domainPickerWildcardCertWarningLink": "Learn more",
-    "health": "Health"
+    "health": "Health",
+    "domainPendingErrorTitle": "Verification Issue"
 }
