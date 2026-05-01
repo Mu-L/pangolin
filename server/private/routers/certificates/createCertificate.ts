@@ -79,7 +79,7 @@ export async function createCertificate(
 
     let domainToWrite = domain;
     if (
-        domainRecord.type == "wildcard" &&
+        domainRecord.type == "wildcard" && // this is to fix the wildcard certs for traefik in self hosted NOT ON THE CLOUD
         domainRecord.preferWildcardCert &&
         !domain.startsWith("*.")
     ) {
@@ -88,6 +88,16 @@ export async function createCertificate(
         if (parts.length > 2) {
             domainToWrite = parts.slice(1).join(".");
             domainToWrite = `*.${domainToWrite}`;
+        }
+    } else if (domainRecord.type == "ns") {
+        // first if we have a * in the domain for this case we dont want to include it because it will mess with the cert generator so remove it
+        if (domain.startsWith("*.")) {
+            domain = domain.slice(2);
+        }
+
+        const parts = domain.split(".");
+        if (parts.length > 2) {
+            domainToWrite = parts.slice(1).join(".");
         }
     }
 
