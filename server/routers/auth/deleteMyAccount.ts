@@ -104,8 +104,9 @@ export async function deleteMyAccount(
                 (r) => r.isBillingOrg && r.isOwner
             )?.orgId;
             if (primaryOrgId) {
-                const { tier, active } = await getOrgTierData(primaryOrgId);
-                if (active && tier) {
+                const { tier, active, isTrial } =
+                    await getOrgTierData(primaryOrgId);
+                if (active && tier && !isTrial) {
                     return next(
                         createHttpError(
                             HttpCode.BAD_REQUEST,
