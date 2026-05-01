@@ -12,6 +12,7 @@
  */
 
 import fs from "fs";
+import path from "path";
 import crypto from "crypto";
 import {
     certificates,
@@ -484,12 +485,34 @@ async function syncAcmeCertsFromHttp(endpoint: string): Promise<void> {
     }
 }
 
+function findAcmeJsonFiles(dirPath: string): string[] {
+    const results: string[] = [];
+    let entries: fs.Dirent[];
+    try {
+        entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    } catch (err) {
+        logger.warn(
+            `acmeCertSync: could not read directory "${dirPath}": ${err}`
+        );
+        return results;
+    }
+    for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            results.push(...findAcmeJsonFiles(fullPath));
+        } else if (entry.isFile() && entry.name === "acme.json") {
+            results.push(fullPath);
+        }
+    }
+    return results;
+}
+
 async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
     let raw: string;
     try {
         raw = fs.readFileSync(acmeJsonPath, "utf8");
     } catch (err) {
-        logger.debug(`acmeCertSync: could not read ${acmeJsonPath}: ${err}`);
+        logger.warn(`acmeCertSync: could not read "${acmeJsonPath}": ${err}`);
         return;
     }
 
@@ -497,7 +520,9 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
     try {
         acmeJson = JSON.parse(raw);
     } catch (err) {
-        logger.debug(`acmeCertSync: could not parse acme.json: ${err}`);
+        logger.warn(
+            `acmeCertSync: could not parse "${acmeJsonPath}" as JSON: ${err}`
+        );
         return;
     }
 
@@ -771,9 +796,39 @@ export function initAcmeCertSync(): void {
             });
         } else {
             // only run the file-based sync if the HTTP endpoint is not configured, to avoid doubling up
-            syncAcmeCerts(acmeJsonPath).catch((err) => {
-                logger.error(`acmeCertSync: error during sync: ${err}`);
-            });
+            let stat: fs.Stats | null = null;
+            try {
+                stat = fs.statSync(acmeJsonPath);
+            } catch (err) {
+                logger.warn(
+                    `acmeCertSync: cannot stat path "${acmeJsonPath}": ${err}`
+                );
+                return;
+            }
+
+            if (stat.isDirectory()) {
+                const files = findAcmeJsonFiles(acmeJsonPath);
+                if (files.length === 0) {
+                    logger.debug(
+                        `acmeCertSync: no acme.json files found in directory "${acmeJsonPath}"`
+                    );
+                    return;
+                }
+                logger.debug(
+                    `acmeCertSync: found ${files.length} acme.json file(s) in directory "${acmeJsonPath}"`
+                );
+                for (const file of files) {
+                    syncAcmeCerts(file).catch((err) => {
+                        logger.error(
+                            `acmeCertSync: error during sync of "${file}": ${err}`
+                        );
+                    });
+                }
+            } else {
+                syncAcmeCerts(acmeJsonPath).catch((err) => {
+                    logger.error(`acmeCertSync: error during sync: ${err}`);
+                });
+            }
         }
     };
 
