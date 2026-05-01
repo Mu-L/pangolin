@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Secret",
+    "newtVersion": "Version",
     "architecture": "Architecture",
     "sites": "Sites",
     "siteWgAnyClients": "Use any WireGuard client to connect. You will have to address internal resources using the peer IP.",
