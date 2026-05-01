@@ -113,10 +113,10 @@ export function ResourceTargetAddressItem({
                                     ? selectedSite?.name
                                     : t("siteSelect")}
                             </span>
-                            <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
+                            <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="p-0 w-45">
+                    <PopoverContent className="p-0">
                         <SitesSelector
                             orgId={orgId}
                             selectedSite={selectedSite}
@@ -225,7 +225,6 @@ export function ResourceTargetAddressItem({
                         }
                     }}
                 />
-
             </div>
         </div>
     );
