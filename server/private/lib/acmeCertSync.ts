@@ -274,6 +274,216 @@ function detectWildcard(
     return { wildcard: false, wildcardSan: null };
 }
 
+interface HttpCert {
+    wildcard: boolean;
+    altName: string;
+    certName: string;
+    commonName: string;
+    certFile: string;
+    keyFile: string;
+}
+
+async function syncAcmeCertsFromHttp(endpoint: string): Promise<void> {
+    let response: Response;
+    try {
+        response = await fetch(endpoint);
+    } catch (err) {
+        logger.debug(
+            `acmeCertSync: could not reach HTTP endpoint ${endpoint}: ${err}`
+        );
+        return;
+    }
+
+    if (!response.ok) {
+        logger.debug(
+            `acmeCertSync: HTTP endpoint returned status ${response.status}`
+        );
+        return;
+    }
+
+    let httpCerts: HttpCert[];
+    try {
+        httpCerts = await response.json();
+    } catch (err) {
+        logger.debug(
+            `acmeCertSync: could not parse JSON from HTTP endpoint: ${err}`
+        );
+        return;
+    }
+
+    if (!Array.isArray(httpCerts) || httpCerts.length === 0) {
+        logger.debug(
+            `acmeCertSync: no certificates returned from HTTP endpoint`
+        );
+        return;
+    }
+
+    for (const cert of httpCerts) {
+        const domain = cert?.certName;
+
+        if (!domain || typeof domain !== "string") {
+            logger.debug(
+                `acmeCertSync: skipping HTTP cert with missing certName`
+            );
+            continue;
+        }
+
+        const certPem = cert.certFile;
+        const keyPem = cert.keyFile;
+
+        if (!certPem?.trim() || !keyPem?.trim()) {
+            logger.debug(
+                `acmeCertSync: skipping HTTP cert for ${domain} - empty certFile or keyFile`
+            );
+            continue;
+        }
+
+        const firstCertPemForValidation = extractFirstCert(certPem);
+        if (!firstCertPemForValidation) {
+            logger.debug(
+                `acmeCertSync: skipping HTTP cert for ${domain} - no PEM certificate block found`
+            );
+            continue;
+        }
+
+        let validatedX509: crypto.X509Certificate;
+        try {
+            validatedX509 = new crypto.X509Certificate(
+                firstCertPemForValidation
+            );
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: skipping HTTP cert for ${domain} - invalid X.509 certificate: ${err}`
+            );
+            continue;
+        }
+
+        try {
+            crypto.createPrivateKey(keyPem);
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: skipping HTTP cert for ${domain} - invalid private key: ${err}`
+            );
+            continue;
+        }
+
+        const wildcard = cert.wildcard ?? false;
+
+        const existing = await db
+            .select()
+            .from(certificates)
+            .where(eq(certificates.domain, domain))
+            .limit(1);
+
+        let oldCertPem: string | null = null;
+        let oldKeyPem: string | null = null;
+
+        if (existing.length > 0 && existing[0].certFile) {
+            try {
+                const storedCertPem = decrypt(
+                    existing[0].certFile,
+                    config.getRawConfig().server.secret!
+                );
+                const wildcardUnchanged = existing[0].wildcard === wildcard;
+                if (storedCertPem === certPem && wildcardUnchanged) {
+                    continue;
+                }
+                oldCertPem = storedCertPem;
+                if (existing[0].keyFile) {
+                    try {
+                        oldKeyPem = decrypt(
+                            existing[0].keyFile,
+                            config.getRawConfig().server.secret!
+                        );
+                    } catch (keyErr) {
+                        logger.debug(
+                            `acmeCertSync: could not decrypt stored key for ${domain}: ${keyErr}`
+                        );
+                    }
+                }
+            } catch (err) {
+                logger.debug(
+                    `acmeCertSync: could not decrypt stored cert for ${domain}, will update: ${err}`
+                );
+            }
+        }
+
+        let expiresAt: number | null = null;
+        try {
+            expiresAt = Math.floor(
+                new Date(validatedX509.validTo).getTime() / 1000
+            );
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: could not parse cert expiry for ${domain}: ${err}`
+            );
+        }
+
+        const encryptedCert = encrypt(
+            certPem,
+            config.getRawConfig().server.secret!
+        );
+        const encryptedKey = encrypt(
+            keyPem,
+            config.getRawConfig().server.secret!
+        );
+        const now = Math.floor(Date.now() / 1000);
+
+        const domainId = await findDomainId(domain);
+        if (domainId) {
+            logger.debug(
+                `acmeCertSync: resolved domainId "${domainId}" for HTTP cert domain "${domain}"`
+            );
+        } else {
+            logger.debug(
+                `acmeCertSync: no matching domain record found for HTTP cert domain "${domain}"`
+            );
+        }
+
+        if (existing.length > 0) {
+            logger.debug(
+                `acmeCertSync: updating existing certificate (HTTP) for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+            );
+            await db
+                .update(certificates)
+                .set({
+                    certFile: encryptedCert,
+                    keyFile: encryptedKey,
+                    status: "valid",
+                    expiresAt,
+                    updatedAt: now,
+                    wildcard,
+                    ...(domainId !== null && { domainId })
+                })
+                .where(eq(certificates.domain, domain));
+
+            await pushCertUpdateToAffectedNewts(
+                domain,
+                domainId,
+                oldCertPem,
+                oldKeyPem
+            );
+        } else {
+            logger.debug(
+                `acmeCertSync: inserting new certificate (HTTP) for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+            );
+            await db.insert(certificates).values({
+                domain,
+                domainId,
+                certFile: encryptedCert,
+                keyFile: encryptedKey,
+                status: "valid",
+                expiresAt,
+                createdAt: now,
+                updatedAt: now,
+                wildcard
+            });
+
+            await pushCertUpdateToAffectedNewts(domain, domainId, null, null);
+        }
+    }
+}
+
 async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
     let raw: string;
     try {
@@ -389,11 +599,7 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
         const existing = await db
             .select()
             .from(certificates)
-            .where(
-                and(
-                    eq(certificates.domain, domain)
-                )
-            )
+            .where(and(eq(certificates.domain, domain)))
             .limit(1);
 
         let oldCertPem: string | null = null;
@@ -408,7 +614,7 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
                 const wildcardUnchanged = existing[0].wildcard === wildcard;
                 if (storedCertPem === certPem && wildcardUnchanged) {
                     // logger.debug(
-                        // `acmeCertSync: cert for ${domain} is unchanged, skipping`
+                    // `acmeCertSync: cert for ${domain} is unchanged, skipping`
                     // );
                     continue;
                 }
@@ -547,19 +753,32 @@ export function initAcmeCertSync(): void {
         privateConfigData.acme?.acme_json_path ??
         "config/letsencrypt/acme.json";
     const intervalMs = privateConfigData.acme?.sync_interval_ms ?? 5000;
+    const httpEndpoint = privateConfigData.acme?.acme_http_endpoint;
 
     logger.debug(
         `acmeCertSync: starting ACME cert sync from "${acmeJsonPath}" across all resolvers every ${intervalMs}ms`
     );
+    if (httpEndpoint) {
+        logger.debug(
+            `acmeCertSync: also syncing from HTTP endpoint "${httpEndpoint}" every ${intervalMs}ms`
+        );
+    }
+
+    const runSync = () => {
+        if (httpEndpoint) {
+            syncAcmeCertsFromHttp(httpEndpoint).catch((err) => {
+                logger.error(`acmeCertSync: error during HTTP sync: ${err}`);
+            });
+        } else {
+            // only run the file-based sync if the HTTP endpoint is not configured, to avoid doubling up
+            syncAcmeCerts(acmeJsonPath).catch((err) => {
+                logger.error(`acmeCertSync: error during sync: ${err}`);
+            });
+        }
+    };
 
     // Run immediately on init, then on the configured interval
-    syncAcmeCerts(acmeJsonPath).catch((err) => {
-        logger.error(`acmeCertSync: error during initial sync: ${err}`);
-    });
+    runSync();
 
-    setInterval(() => {
-        syncAcmeCerts(acmeJsonPath).catch((err) => {
-            logger.error(`acmeCertSync: error during sync: ${err}`);
-        });
-    }, intervalMs);
+    setInterval(runSync, intervalMs);
 }
