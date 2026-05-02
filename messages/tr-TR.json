@@ -1667,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Yayın Notlarını Görüntüle",
     "newtUpdateAvailable": "Güncelleme Mevcut",
     "newtUpdateAvailableInfo": "Newt'in yeni bir versiyonu mevcut. En iyi deneyim için lütfen en son sürüme güncelleyin.",
+    "pangolinNodeUpdateAvailableInfo": "A new version of Pangolin Node is available. Please update to the latest version for the best experience.",
     "domainPickerEnterDomain": "Alan Adı",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Mevcut seçenekleri görmek için kaynağın tam etki alanını girin.",
