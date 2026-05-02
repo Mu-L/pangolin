@@ -763,7 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Tajný klíč",
-    "newtVersion": "Version",
+    "newtVersion": "Verze",
     "architecture": "Architektura",
     "sites": "Stránky",
     "siteWgAnyClients": "K připojení použijte jakéhokoli klienta WireGuard. Budete muset řešit interní zdroje pomocí klientské IP adresy.",
@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "Zástupné zdroje mohou vyžadovat dodatečnou konfiguraci pro správnou funkci.",
     "domainPickerWildcardCertWarningLink": "Zjistit více",
     "health": "Zdraví",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "Problém s ověřením"
 }
