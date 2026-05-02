@@ -763,7 +763,7 @@
     "newtEndpoint": "엔드포인트",
     "newtId": "ID",
     "newtSecretKey": "비밀",
-    "newtVersion": "Version",
+    "newtVersion": "버전",
     "architecture": "아키텍처",
     "sites": "사이트",
     "siteWgAnyClients": "WireGuard 클라이언트를 사용하여 연결하십시오. 피어 IP를 사용하여 내부 리소스에 접근해야 합니다.",
@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "와일드카드 리소스는 올바르게 작동하려면 추가 구성이 필요할 수 있습니다.",
     "domainPickerWildcardCertWarningLink": "자세히 알아보기",
     "health": "건강",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "확인 문제"
 }
