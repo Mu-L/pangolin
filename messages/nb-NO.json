@@ -2355,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Velg din identitet leverandør for å fortsette",
     "orgAuthNoIdpConfigured": "Denne organisasjonen har ikke noen identitetstjeneste konfigurert. Du kan i stedet logge inn med Pangolin identiteten din.",
     "orgAuthSignInWithPangolin": "Logg inn med Pangolin",
-    "orgAuthSignInToOrg": "Logg inn på en organisasjon",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "Organisasjonsinnlogging",
     "orgAuthSelectOrgDescription": "Skriv inn organisasjons-ID-en din for å fortsette",
     "orgAuthOrgIdPlaceholder": "din-organisasjon",
