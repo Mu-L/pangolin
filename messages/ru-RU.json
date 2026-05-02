@@ -763,7 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Секретный ключ",
-    "newtVersion": "Version",
+    "newtVersion": "Версия",
     "architecture": "Архитектура",
     "sites": "Сайты",
     "siteWgAnyClients": "Для подключения используйте любой клиент WireGuard. Вы должны будете адресовать внутренние ресурсы, используя IP адрес пира.",
@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "Wildcard ресурсы могут потребовать дополнительной настройки для правильной работы.",
     "domainPickerWildcardCertWarningLink": "Узнать больше",
     "health": "Состояние",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "Проблема с подтверждением"
 }
