@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Chave Secreta",
+    "newtVersion": "Versão",
     "architecture": "Arquitetura",
     "sites": "sites",
     "siteWgAnyClients": "Use qualquer cliente do WireGuard para se conectar. Você terá que endereçar recursos internos usando o IP de pares.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Subdomínios curinga não são permitidos.",
     "domainPickerWildcardCertWarning": "Recursos curinga podem exigir configurações adicionais para funcionarem corretamente.",
     "domainPickerWildcardCertWarningLink": "Saiba mais",
-    "health": "Saúde"
+    "health": "Saúde",
+    "domainPendingErrorTitle": "Problema de Verificação"
 }

@@ -763,6 +763,7 @@
     "newtEndpoint": "Крайна точка",
     "newtId": "Идентификационен номер",
     "newtSecretKey": "Секретен ключ",
+    "newtVersion": "Версия",
     "architecture": "Архитектура",
     "sites": "Сайтове",
     "siteWgAnyClients": "Използвайте клиент на WireGuard, за да се свържете. Ще трябва да използвате вътрешните ресурси чрез IP адреса на връстника.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Уайлдкард подсайтове не са позволени.",
     "domainPickerWildcardCertWarning": "Ресурсите с уайлдкард може да изискват допълнителна конфигурация за правилна работа.",
     "domainPickerWildcardCertWarningLink": "Научете повече",
-    "health": "Здраве"
+    "health": "Здраве",
+    "domainPendingErrorTitle": "Проблем при проверка"
 }

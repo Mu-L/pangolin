@@ -763,6 +763,7 @@
     "newtEndpoint": "Uç Nokta",
     "newtId": "Kimlik",
     "newtSecretKey": "Gizli",
+    "newtVersion": "Sürüm",
     "architecture": "Mimari",
     "sites": "Siteler",
     "siteWgAnyClients": "Herhangi bir WireGuard istemcisi kullanarak bağlanın. Dahili kaynaklara eş IP adresini kullanarak erişmeniz gerekecek.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Genel alt alanlara izin verilmiyor.",
     "domainPickerWildcardCertWarning": "Genel kaynaklar düzgün çalışmak için ek yapılandırma gerektirebilir.",
     "domainPickerWildcardCertWarningLink": "Daha fazla bilgi",
-    "health": "Sağlık"
+    "health": "Sağlık",
+    "domainPendingErrorTitle": "Doğrulama Sorunu"
 }
