@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "Wildcard-Ressourcen erfordern möglicherweise zusätzliche Konfigurationen, um ordnungsgemäß zu funktionieren.",
     "domainPickerWildcardCertWarningLink": "Mehr erfahren",
     "health": "Gesundheit",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "Verifizierungsproblem"
 }
