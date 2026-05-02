@@ -13,6 +13,36 @@ bootstrapVolume();
 
 function createDb() {
     const sqlite = new Database(location);
+
+    // Enable WAL mode for dramatically better concurrent read/write
+    // performance. Without this, readers block writers and vice versa,
+    // causing severe contention when multiple subsystems (verifySession,
+    // TraefikConfigManager, audit log flushes, ping flushes) all share
+    // this single connection. WAL mode allows concurrent readers with a
+    // single writer, which is the typical access pattern.
+    sqlite.pragma("journal_mode = WAL");
+
+    // Wait up to 5 seconds when the database is locked instead of
+    // failing immediately with SQLITE_BUSY. This prevents transient
+    // write failures from causing audit log buffer re-queues and retry
+    // loops that accumulate memory.
+    sqlite.pragma("busy_timeout = 5000");
+
+    // NORMAL synchronous mode is safe with WAL and significantly reduces
+    // the time each write holds the database lock.
+    sqlite.pragma("synchronous = NORMAL");
+
+    // Increase the page cache to 64 MB (negative value = KB). The
+    // default (2 MB) causes frequent I/O round-trips on the large JOIN
+    // queries used by TraefikConfigManager, which block the event loop
+    // for longer than necessary.
+    sqlite.pragma("cache_size = -65536");
+
+    // Enable memory-mapped I/O for reads (256 MB). This allows the OS
+    // to serve read queries from the page cache without going through
+    // SQLite's own cache, reducing event-loop blocking time.
+    sqlite.pragma("mmap_size = 268435456");
+
     return DrizzleSqlite(sqlite, {
         schema
     });

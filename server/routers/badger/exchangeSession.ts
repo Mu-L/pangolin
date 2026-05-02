@@ -41,7 +41,7 @@ export async function exchangeSession(
     res: Response,
     next: NextFunction
 ): Promise<any> {
-    logger.debug("Exchange session: Badger sent", req.body);
+    logger.debug("Exchange session: Badger request received");
 
     const parsedBody = exchangeSessionBodySchema.safeParse(req.body);
 

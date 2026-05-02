@@ -80,6 +80,10 @@ const removeClient = async (
     const updatedClients = existingClients.filter((client) => client !== ws);
     if (updatedClients.length === 0) {
         connectedClients.delete(mapKey);
+        // Clean up config version tracking to prevent unbounded memory
+        // growth. Without this, every unique clientId that ever connects
+        // leaves a permanent entry in clientConfigVersions.
+        clientConfigVersions.delete(clientId);
 
         logger.info(
             `All connections removed for ${clientType.toUpperCase()} ID: ${clientId}`
@@ -506,6 +510,12 @@ const disconnectClient = async (clientId: string): Promise<boolean> => {
             client.close(1000, "Disconnected by server");
         }
     });
+
+    // Eagerly clean up tracking maps. The close event handlers will also
+    // call removeClient, but if the socket is already in CLOSING state
+    // the close event may never fire, leaving zombie entries.
+    connectedClients.delete(mapKey);
+    clientConfigVersions.delete(clientId);
 
     return true;
 };

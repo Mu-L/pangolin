@@ -80,7 +80,7 @@ export async function verifyResourceSession(
     res: Response,
     next: NextFunction
 ): Promise<any> {
-    logger.debug("Verify session: Badger sent", req.body); // remove when done testing
+    logger.debug("Verify session: Badger request received");
 
     const parsedBody = verifyResourceSessionSchema.safeParse(req.body);
 
