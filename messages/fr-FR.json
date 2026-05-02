@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "Les ressources Joker peuvent nécessiter une configuration supplémentaire pour fonctionner correctement.",
     "domainPickerWildcardCertWarningLink": "En savoir plus",
     "health": "Santé",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "Problème de vérification"
 }
