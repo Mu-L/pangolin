@@ -2355,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Wybierz swojego dostawcę tożsamości, aby kontynuować",
     "orgAuthNoIdpConfigured": "Ta organizacja nie ma skonfigurowanych żadnych dostawców tożsamości. Zamiast tego możesz zalogować się za pomocą swojej tożsamości Pangolin.",
     "orgAuthSignInWithPangolin": "Zaloguj się używając Pangolin",
-    "orgAuthSignInToOrg": "Zaloguj się do organizacji",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "Logowanie do organizacji",
     "orgAuthSelectOrgDescription": "Wprowadź identyfikator organizacji, aby kontynuować",
     "orgAuthOrgIdPlaceholder": "twoja-organizacja",
