@@ -2355,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Изберете своя доставчик на идентичност, за да продължите",
     "orgAuthNoIdpConfigured": "Тази организация няма конфигурирани доставчици на идентичност. Можете да влезете с вашата Pangolin идентичност.",
     "orgAuthSignInWithPangolin": "Впишете се с Pangolin",
-    "orgAuthSignInToOrg": "Влезте в организация",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "Вход в организация.",
     "orgAuthSelectOrgDescription": "Въведете идентификатора на вашата организация, за да продължите.",
     "orgAuthOrgIdPlaceholder": "вашата-организация",
