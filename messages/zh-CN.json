@@ -1667,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "查看发布说明",
     "newtUpdateAvailable": "更新可用",
     "newtUpdateAvailableInfo": "新版本的 Newt 已可用。请更新到最新版本以获得最佳体验。",
+    "pangolinNodeUpdateAvailableInfo": "A new version of Pangolin Node is available. Please update to the latest version for the best experience.",
     "domainPickerEnterDomain": "域名",
     "domainPickerPlaceholder": "example.com",
     "domainPickerDescription": "输入资源的完整域名以查看可用选项。",
