@@ -763,7 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Secreto",
-    "newtVersion": "Version",
+    "newtVersion": "Versión",
     "architecture": "Arquitectura",
     "sites": "Sitios",
     "siteWgAnyClients": "Usa cualquier cliente de Wirex para conectarte. Tendrás que dirigirte a los recursos internos usando la IP de compañeros.",
@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "Los recursos comodín pueden requerir configuración adicional para funcionar correctamente.",
     "domainPickerWildcardCertWarningLink": "Más información",
     "health": "Salud",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "Problema de verificación"
 }
