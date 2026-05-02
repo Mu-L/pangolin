@@ -2355,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Choisissez votre fournisseur d'identité pour continuer",
     "orgAuthNoIdpConfigured": "Cette organisation n'a aucun fournisseur d'identité configuré. Vous pouvez vous connecter avec votre identité Pangolin à la place.",
     "orgAuthSignInWithPangolin": "Se connecter avec Pangolin",
-    "orgAuthSignInToOrg": "Se connecter à une organisation",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "Connexion à l'organisation",
     "orgAuthSelectOrgDescription": "Entrez votre identifiant d'organisation pour continuer",
     "orgAuthOrgIdPlaceholder": "votre-organisation",
