@@ -1667,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Visualizza Note Di Rilascio",
     "newtUpdateAvailable": "Aggiornamento Disponibile",
     "newtUpdateAvailableInfo": "È disponibile una nuova versione di Newt. Si prega di aggiornare all'ultima versione per la migliore esperienza.",
+    "pangolinNodeUpdateAvailableInfo": "A new version of Pangolin Node is available. Please update to the latest version for the best experience.",
     "domainPickerEnterDomain": "Dominio",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Inserisci il dominio completo della risorsa per vedere le opzioni disponibili.",
