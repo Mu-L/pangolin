@@ -763,7 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "密钥",
-    "newtVersion": "Version",
+    "newtVersion": "版本",
     "architecture": "架构",
     "sites": "站点",
     "siteWgAnyClients": "使用任何 WireGuard 客户端连接。您必须使用对等IP解决内部资源问题。",
@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "通配符资源可能需要额外配置才能正常工作。",
     "domainPickerWildcardCertWarningLink": "了解更多",
     "health": "健康",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "验证问题"
 }
