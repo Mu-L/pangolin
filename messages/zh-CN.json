@@ -2355,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "选择您的身份提供商以继续",
     "orgAuthNoIdpConfigured": "此机构没有配置任何身份提供者。您可以使用您的 Pangolin 身份登录。",
     "orgAuthSignInWithPangolin": "使用 Pangolin 登录",
-    "orgAuthSignInToOrg": "登录到组织",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "组织登录",
     "orgAuthSelectOrgDescription": "输入您的组织ID以继续",
     "orgAuthOrgIdPlaceholder": "您的组织",
