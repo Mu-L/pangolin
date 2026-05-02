@@ -1667,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Преглед на бележките за изданието",
     "newtUpdateAvailable": "Ново обновление",
     "newtUpdateAvailableInfo": "Нова версия на Newt е налична. Моля, обновете до последната версия за най-добро изживяване.",
+    "pangolinNodeUpdateAvailableInfo": "A new version of Pangolin Node is available. Please update to the latest version for the best experience.",
     "domainPickerEnterDomain": "Домейн",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Въведете пълния домейн на ресурса, за да видите наличните опции.",
