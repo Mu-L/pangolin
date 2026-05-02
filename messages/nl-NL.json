@@ -2355,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Kies uw identiteitsprovider om door te gaan",
     "orgAuthNoIdpConfigured": "Deze organisatie heeft geen identiteitsproviders geconfigureerd. Je kunt in plaats daarvan inloggen met je Pangolin-identiteit.",
     "orgAuthSignInWithPangolin": "Log in met Pangolin",
-    "orgAuthSignInToOrg": "Log in bij een organisatie",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "Organisatie Inloggen",
     "orgAuthSelectOrgDescription": "Voer je organisatie-ID in om verder te gaan",
     "orgAuthOrgIdPlaceholder": "jouw-organisatie",
