@@ -763,7 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Sekret",
-    "newtVersion": "Version",
+    "newtVersion": "Wersja",
     "architecture": "Architektura",
     "sites": "Witryny",
     "siteWgAnyClients": "Użyj dowolnego klienta WireGuard, aby się połączyć. Będziesz musiał przekierować wewnętrzne zasoby za pomocą adresu IP.",
@@ -3203,5 +3203,5 @@
     "domainPickerWildcardCertWarning": "Uniwersalne zasoby mogą wymagać dodatkowej konfiguracji, aby działać poprawnie.",
     "domainPickerWildcardCertWarningLink": "Dowiedz się więcej",
     "health": "Zdrowie",
-    "domainPendingErrorTitle": "Verification Issue"
+    "domainPendingErrorTitle": "Problem z weryfikacją"
 }
