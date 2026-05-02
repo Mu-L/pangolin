@@ -1,5 +1,6 @@
 import { drizzle as DrizzleSqlite } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
+import type BetterSqlite3 from "better-sqlite3";
 import * as schema from "./schema/schema";
 import path from "path";
 import fs from "fs";
@@ -10,6 +11,46 @@ export const location = path.join(APP_PATH, "db", "db.sqlite");
 export const exists = checkFileExists(location);
 
 bootstrapVolume();
+
+/**
+ * Wrap a better-sqlite3 Statement so that the native sqlite3_stmt handle
+ * is released immediately after the first execution instead of waiting
+ * for V8 garbage collection.
+ *
+ * Background: drizzle-orm creates a **new** native prepared statement for
+ * every query execution (`session.prepareQuery` → `this.client.prepare`).
+ * Each native `sqlite3_stmt` consumes 8-32 KB of off-heap memory and is
+ * only freed when V8's GC collects the JS wrapper.  Under sustained load
+ * (e.g. Uptime Kuma polling verify-session), statement creation outpaces
+ * GC, causing steady native memory growth — the root cause of #2120.
+ *
+ * By calling `stmt.finalize()` right after `.all()` / `.get()` / `.run()`
+ * returns, the native memory is freed deterministically.  This is safe
+ * because drizzle's one-time queries only invoke each statement once.
+ */
+function autoFinalizeStatement(stmt: BetterSqlite3.Statement): BetterSqlite3.Statement {
+    const wrapExec = <T extends (...args: any[]) => any>(fn: T): T => {
+        return function (this: any, ...args: any[]) {
+            try {
+                return fn.apply(this, args);
+            } finally {
+                try {
+                    // finalize() exists on the native Statement at runtime but
+                    // is missing from @types/better-sqlite3.
+                    (stmt as any).finalize();
+                } catch {
+                    // Already finalized — harmless
+                }
+            }
+        } as unknown as T;
+    };
+
+    stmt.run = wrapExec(stmt.run);
+    stmt.get = wrapExec(stmt.get);
+    stmt.all = wrapExec(stmt.all);
+
+    return stmt;
+}
 
 function createDb() {
     const sqlite = new Database(location);
@@ -42,6 +83,15 @@ function createDb() {
     // to serve read queries from the page cache without going through
     // SQLite's own cache, reducing event-loop blocking time.
     sqlite.pragma("mmap_size = 268435456");
+
+    // Intercept prepare() so every statement produced by drizzle-orm is
+    // automatically finalized after its first (and only) execution.
+    // This prevents the native sqlite3_stmt objects from accumulating
+    // until the next GC cycle.
+    const originalPrepare = sqlite.prepare.bind(sqlite);
+    (sqlite as any).prepare = function autoFinalizePrepare(source: string) {
+        return autoFinalizeStatement(originalPrepare(source));
+    };
 
     return DrizzleSqlite(sqlite, {
         schema
