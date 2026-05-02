@@ -34,7 +34,7 @@ import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { fireHealthCheckUnknownAlert } from "#dynamic/lib/alerts";
+import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
 
 export type ProxyResourcesResults = {
@@ -165,7 +165,8 @@ export async function updateProxyResources(
                     hcStatus: healthcheckData?.status,
                     hcHealth: "unknown",
                     hcHealthyThreshold: healthcheckData?.["healthy-threshold"],
-                    hcUnhealthyThreshold: healthcheckData?.["unhealthy-threshold"]
+                    hcUnhealthyThreshold:
+                        healthcheckData?.["unhealthy-threshold"]
                 })
                 .returning();
 
@@ -544,8 +545,10 @@ export async function updateProxyResources(
                                 healthcheckData?.["follow-redirects"],
                             hcMethod: healthcheckData?.method,
                             hcStatus: healthcheckData?.status,
-                            hcHealthyThreshold: healthcheckData?.["healthy-threshold"],
-                            hcUnhealthyThreshold: healthcheckData?.["unhealthy-threshold"]
+                            hcHealthyThreshold:
+                                healthcheckData?.["healthy-threshold"],
+                            hcUnhealthyThreshold:
+                                healthcheckData?.["unhealthy-threshold"]
                         })
                         .where(
                             eq(
@@ -1120,8 +1123,10 @@ function checkIfHealthcheckChanged(
         JSON.stringify(incoming.hcHeaders)
     )
         return true;
-    if (existing.hcHealthyThreshold !== incoming.hcHealthyThreshold) return true;
-    if (existing.hcUnhealthyThreshold !== incoming.hcUnhealthyThreshold) return true;
+    if (existing.hcHealthyThreshold !== incoming.hcHealthyThreshold)
+        return true;
+    if (existing.hcUnhealthyThreshold !== incoming.hcUnhealthyThreshold)
+        return true;
 
     return false;
 }
@@ -1184,7 +1189,11 @@ async function getDomainId(
     orgId: string,
     fullDomain: string,
     trx: Transaction
-): Promise<{ subdomain: string | null; domainId: string; wildcard: boolean } | null> {
+): Promise<{
+    subdomain: string | null;
+    domainId: string;
+    wildcard: boolean;
+} | null> {
     const isWildcardFullDomain = fullDomain.startsWith("*.");
 
     const possibleDomains = await trx
