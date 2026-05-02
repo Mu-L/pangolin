@@ -368,7 +368,9 @@ export default function AlertRuleGraphEditor({
                                                             customHeaderName:
                                                                 "",
                                                             customHeaderValue:
-                                                                ""
+                                                                "",
+                                                            useBodyTemplate: false,
+                                                            bodyTemplate: ""
                                                         });
                                                     }
                                                 }}

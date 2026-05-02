@@ -12,12 +12,15 @@ import {
 } from "@app/components/ui/command";
 import {
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { Switch } from "@app/components/ui/switch";
+import { Textarea } from "@app/components/ui/textarea";
 import {
     Popover,
     PopoverContent,
@@ -962,6 +965,69 @@ function WebhookActionFields({
                 />
             </div>
             <WebhookHeadersField index={index} control={control} form={form} />
+            {/* Body Template */}
+            <div className="space-y-3">
+                <div>
+                    <label className="font-medium text-sm block">
+                        {t("httpDestBodyTemplateTitle")}
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("httpDestBodyTemplateDescription")}
+                    </p>
+                </div>
+                <FormField
+                    control={control}
+                    name={`actions.${index}.useBodyTemplate`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <div className="flex items-center gap-3">
+                                <FormControl>
+                                    <Switch
+                                        id={`body-template-${index}`}
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <Label
+                                    htmlFor={`body-template-${index}`}
+                                    className="cursor-pointer"
+                                >
+                                    {t("httpDestEnableBodyTemplate")}
+                                </Label>
+                            </div>
+                        </FormItem>
+                    )}
+                />
+                {useWatch({
+                    control,
+                    name: `actions.${index}.useBodyTemplate`
+                }) && (
+                    <FormField
+                        control={control}
+                        name={`actions.${index}.bodyTemplate`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>
+                                    {t("httpDestBodyTemplateLabel")}
+                                </FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        {...field}
+                                        placeholder={
+                                            '{{\n  "event": "{{event}}",\n  "timestamp": "{{timestamp}}",\n  "status": "{{status}}",\n  "data": {{data}}\n}}'
+                                        }
+                                        className="font-mono text-xs min-h-45 resize-y"
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    {t("httpDestBodyTemplateHint")}
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+            </div>
         </div>
     );
 }

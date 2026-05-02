@@ -45,6 +45,10 @@ export interface WebhookAlertConfig {
     headers?: Array<{ key: string; value: string }>;
     /** HTTP method (default POST) */
     method?: string;
+    /** Whether to use a custom body template */
+    useBodyTemplate?: boolean;
+    /** Mustache-style body template with {{event}}, {{timestamp}}, {{status}}, {{data}} placeholders */
+    bodyTemplate?: string;
 }
 
 // ---------------------------------------------------------------------------
