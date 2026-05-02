@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Secrète",
+    "newtVersion": "Version",
     "architecture": "Architecture",
     "sites": "Nœuds",
     "siteWgAnyClients": "Utilisez n'importe quel client WireGuard pour vous connecter. Vous devrez adresser des ressources internes en utilisant l'adresse IP du pair.",
@@ -3201,5 +3202,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Les sous-domaines Joker ne sont pas autorisés.",
     "domainPickerWildcardCertWarning": "Les ressources Joker peuvent nécessiter une configuration supplémentaire pour fonctionner correctement.",
     "domainPickerWildcardCertWarningLink": "En savoir plus",
-    "health": "Santé"
+    "health": "Santé",
+    "domainPendingErrorTitle": "Problème de vérification"
 }
