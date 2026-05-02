@@ -84,14 +84,14 @@ async function flushAuditLogs() {
         logger.debug(`Flushed ${logsToWrite.length} audit logs to database`);
     } catch (error) {
         logger.error("Error flushing audit logs:", error);
-        // On transaction error, drop the logs rather than re-queuing them.
-        // The previous re-queue approach created a positive feedback loop:
-        // failed flush → re-queue → larger next flush → longer DB lock →
-        // higher chance of next failure → repeat. This caused unbounded
-        // memory growth on SQLite where write contention is common.
-        // Audit logs are best-effort telemetry — losing a batch on error
-        // is acceptable; leaking memory until the process crashes is not.
-        logger.warn(`Dropped ${logsToWrite.length} audit logs after flush failure`);
+        // On transaction error, put logs back at the front of the buffer to retry
+        // but only if buffer isn't too large
+        if (auditLogBuffer.length < MAX_BUFFER_SIZE - logsToWrite.length) {
+            auditLogBuffer.unshift(...logsToWrite);
+            logger.info(`Re-queued ${logsToWrite.length} audit logs for retry`);
+        } else {
+            logger.error(`Buffer full, dropped ${logsToWrite.length} audit logs`);
+        }
     } finally {
         isFlushInProgress = false;
         // If buffer filled up while we were flushing, flush again

@@ -3,11 +3,9 @@ import { flushConnectionLogToDb } from "#dynamic/routers/newt";
 import { flushSiteBandwidthToDb } from "@server/routers/gerbil/receiveBandwidth";
 import { stopPingAccumulator } from "@server/routers/newt/pingAccumulator";
 import { cleanup as wsCleanup } from "#dynamic/routers/ws";
-import { shutdownAuditLogger } from "@server/routers/badger/logRequestAudit";
 
 async function cleanup() {
     await stopPingAccumulator();
-    await shutdownAuditLogger();
     await flushBandwidthToDb();
     await flushConnectionLogToDb();
     await flushSiteBandwidthToDb();

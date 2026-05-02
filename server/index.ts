@@ -24,29 +24,6 @@ import license from "#dynamic/license/license";
 import { initLogCleanupInterval } from "@server/lib/cleanupLogs";
 import { initAcmeCertSync } from "#dynamic/lib/acmeCertSync";
 import { fetchServerIp } from "@server/lib/serverIpService";
-import logger from "@server/logger";
-
-/**
- * Periodic memory usage logging for monitoring and leak detection.
- * Logs heap usage, external (native) memory, and RSS every 60 seconds.
- * This is lightweight (single process.memoryUsage() call) and provides
- * the data needed to detect slow memory growth over hours/days.
- */
-function startMemoryMonitor(): void {
-    const INTERVAL_MS = 60_000; // every 60 seconds
-    const timer = setInterval(() => {
-        const mem = process.memoryUsage();
-        logger.info(
-            `Memory usage - ` +
-            `heapUsed: ${(mem.heapUsed / 1024 / 1024).toFixed(1)}MB, ` +
-            `heapTotal: ${(mem.heapTotal / 1024 / 1024).toFixed(1)}MB, ` +
-            `rss: ${(mem.rss / 1024 / 1024).toFixed(1)}MB, ` +
-            `external: ${(mem.external / 1024 / 1024).toFixed(1)}MB, ` +
-            `arrayBuffers: ${(mem.arrayBuffers / 1024 / 1024).toFixed(1)}MB`
-        );
-    }, INTERVAL_MS);
-    timer.unref();
-}
 
 async function startServers() {
     await setHostMeta();
@@ -64,9 +41,6 @@ async function startServers() {
 
     initLogCleanupInterval();
     initAcmeCertSync();
-
-    // Start memory monitoring for leak detection
-    startMemoryMonitor();
 
     // Start all servers
     const apiServer = createApiServer();
