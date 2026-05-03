@@ -1,5 +1,5 @@
 import logger from "@server/logger";
-import { processAlerts } from "@server/lib/alerts";
+import { processAlerts } from "#dynamic/lib/alerts";
 import {
     db,
     statusHistory,

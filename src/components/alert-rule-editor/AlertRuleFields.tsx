@@ -1014,7 +1014,7 @@ function WebhookActionFields({
                                     <Textarea
                                         {...field}
                                         placeholder={
-                                            '{{\n  "event": "{{event}}",\n  "timestamp": "{{timestamp}}",\n  "status": "{{status}}",\n  "data": {{data}}\n}}'
+                                            '{\n  "event": "{{event}}",\n  "timestamp": "{{timestamp}}",\n  "status": "{{status}}",\n  "data": {{data}}\n}'
                                         }
                                         className="font-mono text-xs min-h-45 resize-y"
                                     />
