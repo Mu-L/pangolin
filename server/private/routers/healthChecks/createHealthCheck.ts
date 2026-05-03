@@ -22,7 +22,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
-import { fireHealthCheckUnhealthyAlert } from "#private/lib/alerts";
+import { fireHealthCheckUnhealthyAlert } from "@server/lib/alerts";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()

@@ -1,12 +1,8 @@
-import {
-    db,
-    newts,
-    sites
-} from "@server/db";
+import { db, newts, sites } from "@server/db";
 import { hasActiveConnections } from "#dynamic/routers/ws";
 import { eq, lt, isNull, and, or, ne, not, inArray } from "drizzle-orm";
 import logger from "@server/logger";
-import { fireSiteOfflineAlert, fireSiteOnlineAlert } from "#dynamic/lib/alerts";
+import { fireSiteOfflineAlert, fireSiteOnlineAlert } from "@server/lib/alerts";
 
 // Track if the offline checker interval is running
 let offlineCheckerInterval: NodeJS.Timeout | null = null;

@@ -25,7 +25,7 @@ import {
     fireResourceHealthyAlert,
     fireResourceUnhealthyAlert,
     fireResourceDegradedAlert
-} from "#private/lib/alerts/events/resourceEvents";
+} from "@server/lib/alerts";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty(),

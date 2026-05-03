@@ -6,7 +6,7 @@ import logger from "@server/logger";
 import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckUnhealthyAlert
-} from "#dynamic/lib/alerts";
+} from "@server/lib/alerts";
 
 interface TargetHealthStatus {
     status: string;

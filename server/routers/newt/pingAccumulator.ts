@@ -2,7 +2,7 @@ import { db } from "@server/db";
 import { sites, clients, olms } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import logger from "@server/logger";
-import { fireSiteOnlineAlert } from "#dynamic/lib/alerts";
+import { fireSiteOnlineAlert } from "@server/lib/alerts";
 
 /**
  * Ping Accumulator
@@ -127,7 +127,11 @@ async function flushSitePingsToDb(): Promise<void> {
                             eq(sites.online, false)
                         )
                     )
-                    .returning({ siteId: sites.siteId, orgId: sites.orgId, name: sites.name });
+                    .returning({
+                        siteId: sites.siteId,
+                        orgId: sites.orgId,
+                        name: sites.name
+                    });
 
                 // Update lastPing for sites that were already online.
                 // After the update above, the newly-online sites now have
@@ -148,7 +152,13 @@ async function flushSitePingsToDb(): Promise<void> {
 
             for (const site of newlyOnlineSites) {
                 await db.transaction(async (trx) => {
-                    await fireSiteOnlineAlert(site.orgId, site.siteId, site.name, undefined, trx);
+                    await fireSiteOnlineAlert(
+                        site.orgId,
+                        site.siteId,
+                        site.name,
+                        undefined,
+                        trx
+                    );
                 });
             }
         } catch (error) {

@@ -45,6 +45,7 @@ export default async function RemoteExitNodesPage(
                 type: node.type,
                 dateCreated: node.dateCreated,
                 version: node.version || undefined,
+                updateAvailable: node.updateAvailable,
                 orgId: params.orgId
             };
         }

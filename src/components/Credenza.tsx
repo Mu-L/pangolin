@@ -145,21 +145,19 @@ const CredenzaTitle = ({ className, children, ...props }: CredenzaProps) => {
 };
 
 const CredenzaBody = ({ className, children, ...props }: CredenzaProps) => {
-    // return (
-    //     <div className={cn("px-4 md:px-0 mb-4", className)} {...props}>
-    //         {children}
-    //     </div>
-    // );
-
     return (
         <div
             className={cn(
-                "min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-0",
+                "relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-0",
                 className
             )}
             {...props}
         >
-            {children}
+            <div className="space-y-4">{children}</div>
+            <div
+                className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-t from-card to-transparent"
+                aria-hidden
+            />
         </div>
     );
 };
@@ -172,7 +170,7 @@ const CredenzaFooter = ({ className, children, ...props }: CredenzaProps) => {
     return (
         <CredenzaFooter
             className={cn(
-                "mt-8 shrink-0 border-t border-border py-4 -mx-6 gap-2 px-6 bg-card md:mt-0 md:-mb-4 md:gap-0",
+                "-mt-4 shrink-0 border-t border-border py-4 -mx-6 gap-2 px-6 bg-card md:-mb-4 md:gap-0",
                 className
             )}
             {...props}

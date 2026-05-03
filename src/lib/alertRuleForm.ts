@@ -45,6 +45,8 @@ export type AlertRuleFormAction =
           basicCredentials: string;
           customHeaderName: string;
           customHeaderValue: string;
+          useBodyTemplate: boolean;
+          bodyTemplate: string;
       };
 
 export type AlertRuleFormValues = {
@@ -130,6 +132,8 @@ export type AlertRuleApiResponse = {
             customHeaderValue?: string;
             headers?: { key: string; value: string }[];
             method?: string;
+            useBodyTemplate?: boolean;
+            bodyTemplate?: string;
         } | null;
     }[];
 };
@@ -187,7 +191,9 @@ export function buildFormSchema(t: (k: string) => string) {
                         bearerToken: z.string(),
                         basicCredentials: z.string(),
                         customHeaderName: z.string(),
-                        customHeaderValue: z.string()
+                        customHeaderValue: z.string(),
+                        useBodyTemplate: z.boolean().default(false),
+                        bodyTemplate: z.string().default("")
                     })
                 ])
             )
@@ -415,7 +421,9 @@ export function apiResponseToFormValues(
             bearerToken: cfg?.bearerToken ?? "",
             basicCredentials: cfg?.basicCredentials ?? "",
             customHeaderName: cfg?.customHeaderName ?? "",
-            customHeaderValue: cfg?.customHeaderValue ?? ""
+            customHeaderValue: cfg?.customHeaderValue ?? "",
+            useBodyTemplate: cfg?.useBodyTemplate ?? false,
+            bodyTemplate: cfg?.bodyTemplate ?? ""
         });
     }
 
@@ -479,7 +487,11 @@ export function formValuesToApiPayload(
                     customHeaderName: action.customHeaderName || undefined,
                     customHeaderValue: action.customHeaderValue || undefined,
                     headers: action.headers.filter((h) => h.key.trim()),
-                    method: action.method
+                    method: action.method,
+                    useBodyTemplate: action.useBodyTemplate || undefined,
+                    bodyTemplate: action.useBodyTemplate
+                        ? action.bodyTemplate || undefined
+                        : undefined
                 })
             });
         }
