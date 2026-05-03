@@ -44,7 +44,7 @@ function getLimitSetForSubscriptionType(
 export async function handleSubscriptionLifesycle(
     orgId: string,
     status: string,
-    subType: SubscriptionType | null
+    subType: SubscriptionType | null = null
 ) {
     switch (status) {
         case "active":

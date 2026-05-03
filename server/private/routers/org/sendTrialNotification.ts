@@ -24,13 +24,18 @@ import { fromError } from "zod-validation-error";
 import { sendEmail } from "@server/emails";
 import NotifyTrialExpiring from "@server/emails/templates/NotifyTrialExpiring";
 import config from "@server/lib/config";
+import { handleSubscriptionLifesycle } from "../billing/subscriptionLifecycle";
 
 const sendTrialNotificationParamsSchema = z.object({
     orgId: z.string()
 });
 
 const sendTrialNotificationBodySchema = z.object({
-    notificationType: z.enum(["trial_ending_5d", "trial_ending_24h", "trial_ended"]),
+    notificationType: z.enum([
+        "trial_ending_5d",
+        "trial_ending_24h",
+        "trial_ended"
+    ]),
     orgName: z.string(),
     trialEndsAt: z.number(),
     billingLink: z.string().optional()
@@ -69,9 +74,7 @@ async function getOrgAdmins(orgId: string) {
             )
         );
 
-    const byUserId = new Map(
-        admins.map((a) => [a.userId, a])
-    );
+    const byUserId = new Map(admins.map((a) => [a.userId, a]));
     const orgAdmins = Array.from(byUserId.values()).filter(
         (admin) => admin.email && admin.email.length > 0
     );
@@ -108,8 +111,12 @@ export async function sendTrialNotification(
         }
 
         const { orgId } = parsedParams.data;
-        const { notificationType, orgName, trialEndsAt, billingLink: bodyBillingLink } =
-            parsedBody.data;
+        const {
+            notificationType,
+            orgName,
+            trialEndsAt,
+            billingLink: bodyBillingLink
+        } = parsedBody.data;
 
         // Verify organization exists
         const org = await db
@@ -146,13 +153,17 @@ export async function sendTrialNotification(
             bodyBillingLink ??
             `${config.getRawConfig().app.dashboard_url}/${orgId}/settings/billing`;
 
-        const trialEndsAtFormatted = new Date(trialEndsAt * 1000).toLocaleDateString(
-            "en-US",
-            { year: "numeric", month: "long", day: "numeric" }
-        );
+        const trialEndsAtFormatted = new Date(
+            trialEndsAt * 1000
+        ).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+        });
 
         let daysRemaining: number | null;
         let subject: string;
+        let resetLimits = false;
 
         if (notificationType === "trial_ending_5d") {
             daysRemaining = 5;
@@ -163,6 +174,7 @@ export async function sendTrialNotification(
         } else {
             daysRemaining = null;
             subject = "Your trial has ended";
+            resetLimits = true;
         }
 
         let emailsSent = 0;
@@ -199,6 +211,14 @@ export async function sendTrialNotification(
                 );
                 // Continue with other admins even if one fails
             }
+        }
+
+        if (resetLimits) {
+            // this will only fire if they have not upgraded yet because when upgrading we delete the trial
+            await handleSubscriptionLifesycle(orgId, "cancled");
+            logger.debug(
+                `Trial ended for org ${orgId}, limits reset to free tier`
+            );
         }
 
         return response<SendTrialNotificationResponse>(res, {
