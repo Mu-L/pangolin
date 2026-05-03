@@ -1,5 +1,7 @@
 "use client";
 
+import UptimeAlertSection from "@app/components/UptimeAlertSection";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -111,6 +113,13 @@ export default function GeneralPage() {
 
     return (
         <SettingsContainer>
+            {site?.siteId && site?.orgId && site.type != "local" && (
+                <UptimeAlertSection
+                    orgId={site.orgId}
+                    siteId={site.siteId}
+                    startingName={site.name}
+                />
+            )}
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>

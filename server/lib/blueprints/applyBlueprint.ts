@@ -121,8 +121,8 @@ export async function applyBlueprint({
             for (const result of clientResourcesResults) {
                 if (
                     result.oldSiteResource &&
-                    result.oldSiteResource.siteId !=
-                        result.newSiteResource.siteId
+                    JSON.stringify(result.newSites?.sort()) !==
+                        JSON.stringify(result.oldSites?.sort())
                 ) {
                     // query existing associations
                     const existingRoleIds = await trx
@@ -222,38 +222,46 @@ export async function applyBlueprint({
                         trx
                     );
                 } else {
-                    const [newSite] = await trx
-                        .select()
-                        .from(sites)
-                        .innerJoin(newts, eq(sites.siteId, newts.siteId))
-                        .where(
-                            and(
-                                eq(sites.siteId, result.newSiteResource.siteId),
-                                eq(sites.orgId, orgId),
-                                eq(sites.type, "newt"),
-                                isNotNull(sites.pubKey)
+                    let good = true;
+                    for (const newSite of result.newSites) {
+                        const [site] = await trx
+                            .select()
+                            .from(sites)
+                            .innerJoin(newts, eq(sites.siteId, newts.siteId))
+                            .where(
+                                and(
+                                    eq(sites.siteId, newSite.siteId),
+                                    eq(sites.orgId, orgId),
+                                    eq(sites.type, "newt"),
+                                    isNotNull(sites.pubKey)
+                                )
                             )
-                        )
-                        .limit(1);
+                            .limit(1);
 
-                    if (!newSite) {
+                        if (!site) {
+                            logger.debug(
+                                `No newt sites found for client resource ${result.newSiteResource.siteResourceId}, skipping target update`
+                            );
+                            good = false;
+                            break;
+                        }
+
                         logger.debug(
-                            `No newt site found for client resource ${result.newSiteResource.siteResourceId}, skipping target update`
+                            `Updating client resource ${result.newSiteResource.siteResourceId} on site ${newSite.siteId}`
                         );
-                        continue;
                     }
 
-                    logger.debug(
-                        `Updating client resource ${result.newSiteResource.siteResourceId} on site ${newSite.sites.siteId}`
-                    );
+                    if (!good) {
+                        continue;
+                    }
 
                     await handleMessagingForUpdatedSiteResource(
                         result.oldSiteResource,
                         result.newSiteResource,
-                        {
-                            siteId: newSite.sites.siteId,
-                            orgId: newSite.sites.orgId
-                        },
+                        result.newSites.map((site) => ({
+                            siteId: site.siteId,
+                            orgId: result.newSiteResource.orgId
+                        })),
                         trx
                     );
                 }
@@ -285,7 +293,7 @@ export async function applyBlueprint({
                 orgId,
                 name:
                     name ??
-                    `${faker.word.adjective()} ${faker.word.adjective()} ${faker.word.noun()}`,
+                    `${faker.word.adjective()}-${faker.word.adjective()}-${faker.word.noun()}`,
                 contents: stringifyYaml(configData),
                 createdAt: Math.floor(Date.now() / 1000),
                 succeeded: blueprintSucceeded,

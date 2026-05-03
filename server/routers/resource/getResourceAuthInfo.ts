@@ -32,6 +32,8 @@ export type GetResourceAuthInfoResponse = {
     sso: boolean;
     blockAccess: boolean;
     url: string;
+    wildcard: boolean;
+    fullDomain: string | null;
     whitelist: boolean;
     skipToIdpId: number | null;
     orgId: string;
@@ -130,7 +132,9 @@ export async function getResourceAuthInfo(
         const headerAuthExtendedCompatibility =
             result?.resourceHeaderAuthExtendedCompatibility;
 
-        const url = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;
+        const url = resource.fullDomain
+            ? `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
+            : null;
 
         return response<GetResourceAuthInfoResponse>(res, {
             data: {
@@ -145,7 +149,9 @@ export async function getResourceAuthInfo(
                     headerAuthExtendedCompatibility !== null,
                 sso: resource.sso,
                 blockAccess: resource.blockAccess,
-                url,
+                url: url ?? "",
+                wildcard: resource.wildcard ?? false,
+                fullDomain: resource.fullDomain,
                 whitelist: resource.emailWhitelistEnabled,
                 skipToIdpId: resource.skipToIdpId,
                 orgId: resource.orgId,

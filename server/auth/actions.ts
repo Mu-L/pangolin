@@ -122,7 +122,6 @@ export enum ActionsEnum {
     createOrgDomain = "createOrgDomain",
     deleteOrgDomain = "deleteOrgDomain",
     restartOrgDomain = "restartOrgDomain",
-    sendUsageNotification = "sendUsageNotification",
     createRemoteExitNode = "createRemoteExitNode",
     updateRemoteExitNode = "updateRemoteExitNode",
     getRemoteExitNode = "getRemoteExitNode",
@@ -144,7 +143,16 @@ export enum ActionsEnum {
     createEventStreamingDestination = "createEventStreamingDestination",
     updateEventStreamingDestination = "updateEventStreamingDestination",
     deleteEventStreamingDestination = "deleteEventStreamingDestination",
-    listEventStreamingDestinations = "listEventStreamingDestinations"
+    listEventStreamingDestinations = "listEventStreamingDestinations",
+    createAlertRule = "createAlertRule",
+    updateAlertRule = "updateAlertRule",
+    deleteAlertRule = "deleteAlertRule",
+    listAlertRules = "listAlertRules",
+    getAlertRule = "getAlertRule",
+    createHealthCheck = "createHealthCheck",
+    updateHealthCheck = "updateHealthCheck",
+    deleteHealthCheck = "deleteHealthCheck",
+    listHealthChecks = "listHealthChecks"
 }
 
 export async function checkUserActionPermission(

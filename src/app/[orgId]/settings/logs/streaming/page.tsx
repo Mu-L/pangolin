@@ -38,6 +38,8 @@ import {
     HttpDestinationCredenza,
     parseHttpConfig
 } from "@app/components/HttpDestinationCredenza";
+import { S3DestinationCredenza } from "@app/components/S3DestinationCredenza";
+import { DatadogDestinationCredenza } from "@app/components/DatadogDestinationCredenza";
 import { useTranslations } from "next-intl";
 
 // ── Re-export Destination so the rest of the file can use it ──────────────────
@@ -203,7 +205,6 @@ function DestinationTypePicker({
             id: "s3",
             title: t("streamingS3Title"),
             description: t("streamingS3Description"),
-            disabled: true,
             icon: (
                 <Image
                     src="/third-party/s3.png"
@@ -218,7 +219,6 @@ function DestinationTypePicker({
             id: "datadog",
             title: t("streamingDatadogTitle"),
             description: t("streamingDatadogDescription"),
-            disabled: true,
             icon: (
                 <Image
                     src="/third-party/dd.png"
@@ -255,7 +255,7 @@ function DestinationTypePicker({
                         <StrategySelect
                             options={destinationTypeOptions}
                             value={selected}
-                            onChange={setSelected}
+                            onChange={(type) => setSelected(type)}
                             cols={1}
                         />
                     </div>
@@ -291,6 +291,7 @@ export default function StreamingDestinationsPage() {
     const [typePickerOpen, setTypePickerOpen] = useState(false);
     const [editingDestination, setEditingDestination] =
         useState<Destination | null>(null);
+    const [pickedType, setPickedType] = useState<DestinationType>("http");
     const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
     // Delete state
@@ -392,7 +393,8 @@ export default function StreamingDestinationsPage() {
         setTypePickerOpen(true);
     };
 
-    const handleTypePicked = (_type: DestinationType) => {
+    const handleTypePicked = (type: DestinationType) => {
+        setPickedType(type);
         setTypePickerOpen(false);
         setEditingDestination(null);
         setModalOpen(true);
@@ -400,6 +402,7 @@ export default function StreamingDestinationsPage() {
 
     const openEdit = (destination: Destination) => {
         setEditingDestination(destination);
+        setPickedType((destination.type as DestinationType) ?? "http");
         setModalOpen(true);
     };
 
@@ -434,7 +437,7 @@ export default function StreamingDestinationsPage() {
                             disabled={!isEnterprise}
                         />
                     ))}
-                    {/* Add card is always clickable — paywall is enforced inside the picker */}
+                    {/* Add card is always clickable - paywall is enforced inside the picker */}
                     <AddDestinationCard onClick={openCreate} />
                 </div>
             )}
@@ -446,13 +449,33 @@ export default function StreamingDestinationsPage() {
                 isPaywalled={!isEnterprise}
             />
 
-            <HttpDestinationCredenza
-                open={modalOpen}
-                onOpenChange={setModalOpen}
-                editing={editingDestination}
-                orgId={orgId}
-                onSaved={loadDestinations}
-            />
+            {pickedType === "http" && (
+                <HttpDestinationCredenza
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    editing={editingDestination}
+                    orgId={orgId}
+                    onSaved={loadDestinations}
+                />
+            )}
+            {pickedType === "s3" && (
+                <S3DestinationCredenza
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    editing={editingDestination}
+                    orgId={orgId}
+                    onSaved={loadDestinations}
+                />
+            )}
+            {pickedType === "datadog" && (
+                <DatadogDestinationCredenza
+                    open={modalOpen}
+                    onOpenChange={setModalOpen}
+                    editing={editingDestination}
+                    orgId={orgId}
+                    onSaved={loadDestinations}
+                />
+            )}
 
             {deleteTarget && (
                 <ConfirmDeleteDialog

@@ -1,24 +1,104 @@
 import {
     clients,
     clientSiteResources,
+    domains,
+    orgDomains,
     roles,
     roleSiteResources,
+    Site,
     SiteResource,
+    siteNetworks,
     siteResources,
     Transaction,
     userOrgs,
     users,
-    userSiteResources
+    userSiteResources,
+    networks
 } from "@server/db";
 import { sites } from "@server/db";
-import { eq, and, ne, inArray, or } from "drizzle-orm";
+import { eq, and, ne, inArray, or, isNotNull } from "drizzle-orm";
 import { Config } from "./types";
 import logger from "@server/logger";
 import { getNextAvailableAliasAddress } from "../ip";
+import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+
+async function getDomainForSiteResource(
+    siteResourceId: number | undefined,
+    fullDomain: string,
+    orgId: string,
+    trx: Transaction
+): Promise<{ subdomain: string | null; domainId: string }> {
+    const [fullDomainExists] = await trx
+        .select({ siteResourceId: siteResources.siteResourceId })
+        .from(siteResources)
+        .where(
+            and(
+                eq(siteResources.fullDomain, fullDomain),
+                eq(siteResources.orgId, orgId),
+                siteResourceId
+                    ? ne(siteResources.siteResourceId, siteResourceId)
+                    : isNotNull(siteResources.siteResourceId)
+            )
+        )
+        .limit(1);
+
+    if (fullDomainExists) {
+        throw new Error(
+            `Site resource already exists with domain: ${fullDomain} in org ${orgId}`
+        );
+    }
+
+    const possibleDomains = await trx
+        .select()
+        .from(domains)
+        .innerJoin(orgDomains, eq(domains.domainId, orgDomains.domainId))
+        .where(and(eq(orgDomains.orgId, orgId), eq(domains.verified, true)))
+        .execute();
+
+    if (possibleDomains.length === 0) {
+        throw new Error(
+            `Domain not found for full-domain: ${fullDomain} in org ${orgId}`
+        );
+    }
+
+    const validDomains = possibleDomains.filter((domain) => {
+        if (domain.domains.type == "ns" || domain.domains.type == "wildcard") {
+            return (
+                fullDomain === domain.domains.baseDomain ||
+                fullDomain.endsWith(`.${domain.domains.baseDomain}`)
+            );
+        } else if (domain.domains.type == "cname") {
+            return fullDomain === domain.domains.baseDomain;
+        }
+    });
+
+    if (validDomains.length === 0) {
+        throw new Error(
+            `Domain not found for full-domain: ${fullDomain} in org ${orgId}`
+        );
+    }
+
+    const domainSelection = validDomains[0].domains;
+    const baseDomain = domainSelection.baseDomain;
+
+    let subdomain: string | null = null;
+    if (fullDomain !== baseDomain) {
+        subdomain = fullDomain.replace(`.${baseDomain}`, "");
+    }
+
+    await createCertificate(domainSelection.domainId, fullDomain, trx);
+
+    return {
+        subdomain,
+        domainId: domainSelection.domainId
+    };
+}
 
 export type ClientResourcesResults = {
     newSiteResource: SiteResource;
     oldSiteResource?: SiteResource;
+    newSites: { siteId: number }[];
+    oldSites: { siteId: number }[];
 }[];
 
 export async function updateClientResources(
@@ -43,53 +123,109 @@ export async function updateClientResources(
             )
             .limit(1);
 
-        const resourceSiteId = resourceData.site;
-        let site;
+        const existingSiteIds = existingResource?.networkId
+            ? await trx
+                  .select({ siteId: siteNetworks.siteId })
+                  .from(siteNetworks)
+                  .where(eq(siteNetworks.networkId, existingResource.networkId))
+            : [];
 
-        if (resourceSiteId) {
+        const allSites: { siteId: number }[] = [];
+
+        if (resourceData.site) {
             // Look up site by niceId
-            [site] = await trx
+            const [siteSingle] = await trx
                 .select({ siteId: sites.siteId })
                 .from(sites)
                 .where(
                     and(
-                        eq(sites.niceId, resourceSiteId),
+                        eq(sites.niceId, resourceData.site),
                         eq(sites.orgId, orgId)
                     )
                 )
                 .limit(1);
-        } else if (siteId) {
+            if (siteSingle) {
+                allSites.push(siteSingle);
+            }
+        }
+
+        if (resourceData.sites) {
+            for (const siteNiceId of resourceData.sites) {
+                const [site] = await trx
+                    .select({ siteId: sites.siteId })
+                    .from(sites)
+                    .where(
+                        and(
+                            eq(sites.niceId, siteNiceId),
+                            eq(sites.orgId, orgId)
+                        )
+                    )
+                    .limit(1);
+                if (site) {
+                    allSites.push(site);
+                }
+            }
+        }
+
+        if (siteId && allSites.length === 0) {
+            // only add if there are not provided sites
             // Use the provided siteId directly, but verify it belongs to the org
-            [site] = await trx
+            const [siteSingle] = await trx
                 .select({ siteId: sites.siteId })
                 .from(sites)
                 .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
                 .limit(1);
-        } else {
-            throw new Error(`Target site is required`);
+            if (siteSingle) {
+                allSites.push(siteSingle);
+            }
         }
 
-        if (!site) {
+        if (allSites.length === 0) {
             throw new Error(
-                `Site not found: ${resourceSiteId} in org ${orgId}`
+                `No valid sites found for private private resource ${resourceNiceId} in org ${orgId}`
             );
         }
 
         if (existingResource) {
+            let domainInfo:
+                | { subdomain: string | null; domainId: string }
+                | undefined;
+            if (resourceData["full-domain"] && resourceData.mode === "http") {
+                domainInfo = await getDomainForSiteResource(
+                    existingResource.siteResourceId,
+                    resourceData["full-domain"],
+                    orgId,
+                    trx
+                );
+            }
+
             // Update existing resource
             const [updatedResource] = await trx
                 .update(siteResources)
                 .set({
                     name: resourceData.name || resourceNiceId,
-                    siteId: site.siteId,
                     mode: resourceData.mode,
+                    ssl: resourceData.ssl,
+                    scheme: resourceData.scheme,
                     destination: resourceData.destination,
+                    destinationPort: resourceData["destination-port"],
                     enabled: true, // hardcoded for now
                     // enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
-                    disableIcmp: resourceData["disable-icmp"],
-                    tcpPortRangeString: resourceData["tcp-ports"],
-                    udpPortRangeString: resourceData["udp-ports"]
+                    disableIcmp:
+                        resourceData["disable-icmp"] ||
+                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                    tcpPortRangeString:
+                        resourceData.mode == "http"
+                            ? "443,80"
+                            : resourceData["tcp-ports"],
+                    udpPortRangeString:
+                        resourceData.mode == "http"
+                            ? ""
+                            : resourceData["udp-ports"],
+                    fullDomain: resourceData["full-domain"] || null,
+                    subdomain: domainInfo ? domainInfo.subdomain : null,
+                    domainId: domainInfo ? domainInfo.domainId : null
                 })
                 .where(
                     eq(
@@ -100,7 +236,21 @@ export async function updateClientResources(
                 .returning();
 
             const siteResourceId = existingResource.siteResourceId;
-            const orgId = existingResource.orgId;
+
+            if (updatedResource.networkId) {
+                await trx
+                    .delete(siteNetworks)
+                    .where(
+                        eq(siteNetworks.networkId, updatedResource.networkId)
+                    );
+
+                for (const site of allSites) {
+                    await trx.insert(siteNetworks).values({
+                        siteId: site.siteId,
+                        networkId: updatedResource.networkId
+                    });
+                }
+            }
 
             await trx
                 .delete(clientSiteResources)
@@ -204,36 +354,79 @@ export async function updateClientResources(
 
             results.push({
                 newSiteResource: updatedResource,
-                oldSiteResource: existingResource
+                oldSiteResource: existingResource,
+                newSites: allSites,
+                oldSites: existingSiteIds
             });
         } else {
             let aliasAddress: string | null = null;
-            if (resourceData.mode == "host") {
-                // we can only have an alias on a host
+            if (resourceData.mode === "host" || resourceData.mode === "http") {
                 aliasAddress = await getNextAvailableAliasAddress(orgId);
             }
+
+            let domainInfo:
+                | { subdomain: string | null; domainId: string }
+                | undefined;
+            if (resourceData["full-domain"] && resourceData.mode === "http") {
+                domainInfo = await getDomainForSiteResource(
+                    undefined,
+                    resourceData["full-domain"],
+                    orgId,
+                    trx
+                );
+            }
+
+            const [network] = await trx
+                .insert(networks)
+                .values({
+                    scope: "resource",
+                    orgId: orgId
+                })
+                .returning();
 
             // Create new resource
             const [newResource] = await trx
                 .insert(siteResources)
                 .values({
                     orgId: orgId,
-                    siteId: site.siteId,
                     niceId: resourceNiceId,
+                    networkId: network.networkId,
+                    defaultNetworkId: network.networkId,
                     name: resourceData.name || resourceNiceId,
                     mode: resourceData.mode,
+                    ssl: resourceData.ssl,
+                    scheme: resourceData.scheme,
                     destination: resourceData.destination,
+                    destinationPort: resourceData["destination-port"],
                     enabled: true, // hardcoded for now
                     // enabled: resourceData.enabled ?? true,
                     alias: resourceData.alias || null,
                     aliasAddress: aliasAddress,
-                    disableIcmp: resourceData["disable-icmp"],
-                    tcpPortRangeString: resourceData["tcp-ports"],
-                    udpPortRangeString: resourceData["udp-ports"]
+                    disableIcmp:
+                        resourceData["disable-icmp"] ||
+                        (resourceData.mode == "http" ? true : false), // default to true for http resources, otherwise false
+                    tcpPortRangeString:
+                        resourceData.mode == "http"
+                            ? "443,80"
+                            : resourceData["tcp-ports"],
+                    udpPortRangeString:
+                        resourceData.mode == "http"
+                            ? ""
+                            : resourceData["udp-ports"],
+                    fullDomain: resourceData["full-domain"] || null,
+                    subdomain: domainInfo ? domainInfo.subdomain : null,
+                    domainId: domainInfo ? domainInfo.domainId : null
                 })
                 .returning();
 
             const siteResourceId = newResource.siteResourceId;
+
+            for (const site of allSites) {
+                await trx.insert(siteNetworks).values({
+                    siteId: site.siteId,
+                    networkId: network.networkId
+                });
+            }
 
             const [adminRole] = await trx
                 .select()
@@ -324,7 +517,11 @@ export async function updateClientResources(
                 `Created new client resource ${newResource.name} (${newResource.siteResourceId}) for org ${orgId}`
             );
 
-            results.push({ newSiteResource: newResource });
+            results.push({
+                newSiteResource: newResource,
+                newSites: allSites,
+                oldSites: existingSiteIds
+            });
         }
     }
 

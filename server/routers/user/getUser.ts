@@ -21,7 +21,8 @@ async function queryUser(userId: string) {
             serverAdmin: users.serverAdmin,
             idpName: idp.name,
             idpId: users.idpId,
-            locale: users.locale
+            locale: users.locale,
+            dateCreated: users.dateCreated
         })
         .from(users)
         .leftJoin(idp, eq(users.idpId, idp.idpId))

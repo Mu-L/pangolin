@@ -1,12 +1,17 @@
 import { build } from "@server/build";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { ListClientsResponse } from "@server/routers/client";
-import type { ListDomainsResponse } from "@server/routers/domain";
+import type {
+    ListDomainsResponse,
+    GetDNSRecordsResponse
+} from "@server/routers/domain";
+import type { GetDomainResponse } from "@server/routers/domain/getDomain";
 import type {
     GetResourceWhitelistResponse,
     ListResourceNamesResponse,
     ListResourcesResponse
 } from "@server/routers/resource";
+import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -26,7 +31,8 @@ import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
-import { wait } from "./wait";
+import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
+import { StatusHistoryResponse } from "@server/lib/statusHistory";
 
 export type ProductUpdate = {
     link: string | null;
@@ -155,7 +161,8 @@ export const orgQueries = {
             queryKey: ["ORG", orgId, "SITES", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
                 const sp = new URLSearchParams({
-                    pageSize: perPage.toString()
+                    pageSize: perPage.toString(),
+                    status: "approved"
                 });
 
                 if (query?.trim()) {
@@ -228,6 +235,278 @@ export const orgQueries = {
                 >(`/org/${orgId}/resources?${sp.toString()}`, { signal });
 
                 return res.data.data.resources;
+            }
+        }),
+
+    healthChecks: ({
+        orgId,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "HEALTH_CHECKS", { perPage }] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    limit: perPage.toString(),
+                    offset: "0"
+                });
+                const res = await meta!.api.get<
+                    AxiosResponse<ListHealthChecksResponse>
+                >(`/org/${orgId}/health-checks?${sp.toString()}`, { signal });
+                return res.data.data.healthChecks;
+            }
+        }),
+
+    alertRules: ({
+        orgId,
+        limit = 20,
+        offset = 0,
+        query,
+        siteId,
+        resourceId,
+        healthCheckId,
+        sortBy,
+        order,
+        enabled
+    }: {
+        orgId: string;
+        limit?: number;
+        offset?: number;
+        query?: string;
+        siteId?: number;
+        resourceId?: number;
+        healthCheckId?: number;
+        sortBy?: string;
+        order?: string;
+        enabled?: string;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "ALERT_RULES",
+                {
+                    limit,
+                    offset,
+                    query,
+                    siteId,
+                    resourceId,
+                    healthCheckId,
+                    sortBy,
+                    order,
+                    enabled
+                }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                sp.set("limit", String(limit));
+                sp.set("offset", String(offset));
+                if (query) sp.set("query", query);
+                if (siteId != null) sp.set("siteId", String(siteId));
+                if (resourceId != null)
+                    sp.set("resourceId", String(resourceId));
+                if (healthCheckId != null)
+                    sp.set("healthCheckId", String(healthCheckId));
+                if (sortBy) {
+                    sp.set("sort_by", sortBy);
+                    if (order) sp.set("order", order);
+                }
+                if (enabled) sp.set("enabled", enabled);
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAlertRulesResponse>
+                >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
+                return {
+                    alertRules: res.data.data.alertRules,
+                    pagination: res.data.data.pagination
+                };
+            }
+        }),
+
+    alertRulesForSource: ({
+        orgId,
+        siteId,
+        resourceId,
+        healthCheckId
+    }: {
+        orgId: string;
+        siteId?: number;
+        resourceId?: number;
+        healthCheckId?: number;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "ALERT_RULES",
+                { siteId, resourceId, healthCheckId }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                if (siteId != null && siteId !== undefined)
+                    sp.set("siteId", String(siteId));
+                if (resourceId != null && resourceId !== undefined)
+                    sp.set("resourceId", String(resourceId));
+                if (healthCheckId != null && healthCheckId !== undefined)
+                    sp.set("healthCheckId", String(healthCheckId));
+                const res = await meta!.api.get<
+                    AxiosResponse<ListAlertRulesResponse>
+                >(`/org/${orgId}/alert-rules?${sp.toString()}`, { signal });
+                return res.data.data.alertRules;
+            }
+        }),
+
+    standaloneHealthChecks: ({
+        orgId,
+        limit = 20,
+        offset = 0,
+        query,
+        hcMode,
+        siteId,
+        resourceId,
+        hcHealth,
+        hcEnabled
+    }: {
+        orgId: string;
+        limit?: number;
+        offset?: number;
+        query?: string;
+        hcMode?: "http" | "tcp" | "snmp" | "ping";
+        siteId?: number;
+        resourceId?: number;
+        hcHealth?: "healthy" | "unhealthy" | "unknown";
+        hcEnabled?: "true" | "false";
+    }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "STANDALONE_HEALTH_CHECKS",
+                {
+                    limit,
+                    offset,
+                    query,
+                    hcMode,
+                    siteId,
+                    resourceId,
+                    hcHealth,
+                    hcEnabled
+                }
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams();
+                sp.set("limit", String(limit));
+                sp.set("offset", String(offset));
+                if (query) sp.set("query", query);
+                if (hcMode) sp.set("hcMode", hcMode);
+                if (siteId != null) sp.set("siteId", String(siteId));
+                if (resourceId != null)
+                    sp.set("resourceId", String(resourceId));
+                if (hcHealth) sp.set("hcHealth", hcHealth);
+                if (hcEnabled) sp.set("hcEnabled", hcEnabled);
+                const res = await meta!.api.get<
+                    AxiosResponse<{
+                        healthChecks: {
+                            targetHealthCheckId: number;
+                            name: string;
+                            siteId: number | null;
+                            siteName: string | null;
+                            siteNiceId: string | null;
+                            hcEnabled: boolean;
+                            hcHealth: "unknown" | "healthy" | "unhealthy";
+                            hcMode: string | null;
+                            hcHostname: string | null;
+                            hcPort: number | null;
+                            hcPath: string | null;
+                            hcScheme: string | null;
+                            hcMethod: string | null;
+                            hcInterval: number | null;
+                            hcUnhealthyInterval: number | null;
+                            hcTimeout: number | null;
+                            hcHeaders: string | null;
+                            hcFollowRedirects: boolean | null;
+                            hcStatus: number | null;
+                            hcTlsServerName: string | null;
+                            hcHealthyThreshold: number | null;
+                            hcUnhealthyThreshold: number | null;
+                            resourceId: number | null;
+                            resourceName: string | null;
+                            resourceNiceId: string | null;
+                        }[];
+                        pagination: {
+                            total: number;
+                            limit: number;
+                            offset: number;
+                        };
+                    }>
+                >(`/org/${orgId}/health-checks?${sp.toString()}`, { signal });
+                return {
+                    healthChecks: res.data.data.healthChecks,
+                    pagination: res.data.data.pagination
+                };
+            }
+        }),
+    siteStatusHistory: ({
+        siteId,
+        days = 90
+    }: {
+        siteId: number;
+        days?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["SITE_STATUS_HISTORY", siteId, days] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<StatusHistoryResponse>
+                >(`/site/${siteId}/status-history?days=${days}`, { signal });
+                return res.data.data;
+            }
+        }),
+
+    resourceStatusHistory: ({
+        resourceId,
+        days = 90
+    }: {
+        resourceId?: number;
+        days?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["RESOURCE_STATUS_HISTORY", resourceId, days] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<StatusHistoryResponse>
+                >(`/resource/${resourceId}/status-history?days=${days}`, {
+                    signal
+                });
+                return res.data.data;
+            }
+        }),
+
+    healthCheckStatusHistory: ({
+        orgId,
+        healthCheckId,
+        days = 90
+    }: {
+        orgId: string;
+        healthCheckId: number;
+        days?: number;
+    }) =>
+        queryOptions({
+            queryKey: [
+                "HC_STATUS_HISTORY",
+                orgId,
+                healthCheckId,
+                days
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<StatusHistoryResponse>
+                >(
+                    `/org/${orgId}/health-check/${healthCheckId}/status-history?days=${days}`,
+                    { signal }
+                );
+                return res.data.data;
             }
         })
 };
@@ -470,5 +749,36 @@ export const approvalQueries = {
                 }
                 return false;
             }
+        })
+};
+
+export const domainQueries = {
+    getDomain: ({ orgId, domainId }: { orgId: string; domainId: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "DOMAIN", domainId] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDomainResponse>
+                >(`/org/${orgId}/domain/${domainId}`, { signal });
+                return res.data.data;
+            },
+            refetchInterval: durationToMs(10, "seconds")
+        }),
+    getDNSRecords: ({ orgId, domainId }: { orgId: string; domainId: string }) =>
+        queryOptions({
+            queryKey: [
+                "ORG",
+                orgId,
+                "DOMAIN",
+                domainId,
+                "DNS_RECORDS"
+            ] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetDNSRecordsResponse>
+                >(`/org/${orgId}/domain/${domainId}/dns-records`, { signal });
+                return res.data.data;
+            },
+            refetchInterval: durationToMs(10, "seconds")
         })
 };

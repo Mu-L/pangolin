@@ -1,5 +1,6 @@
 import {
     domains,
+    domainNamespaces,
     orgDomains,
     Resource,
     resourceHeaderAuth,
@@ -33,6 +34,7 @@ import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
 
 export type ProxyResourcesResults = {
@@ -140,7 +142,10 @@ export async function updateProxyResources(
             const [newHealthcheck] = await trx
                 .insert(targetHealthCheck)
                 .values({
+                    name: `${targetData.hostname}:${targetData.port}`,
+                    siteId: site.siteId,
                     targetId: newTarget.targetId,
+                    orgId: orgId,
                     hcEnabled: healthcheckData?.enabled || false,
                     hcPath: healthcheckData?.path,
                     hcScheme: healthcheckData?.scheme,
@@ -158,11 +163,27 @@ export async function updateProxyResources(
                         healthcheckData?.["follow-redirects"],
                     hcMethod: healthcheckData?.method,
                     hcStatus: healthcheckData?.status,
-                    hcHealth: "unknown"
+                    hcHealth: "unknown",
+                    hcHealthyThreshold: healthcheckData?.["healthy-threshold"],
+                    hcUnhealthyThreshold:
+                        healthcheckData?.["unhealthy-threshold"]
                 })
                 .returning();
 
             healthchecksToUpdate.push(newHealthcheck);
+
+            // Insert unknown status history when HC is created in disabled state
+            if (!healthcheckData?.enabled) {
+                await fireHealthCheckUnknownAlert(
+                    orgId,
+                    newHealthcheck.targetHealthCheckId,
+                    newHealthcheck.name,
+                    newHealthcheck.targetId,
+                    undefined,
+                    true,
+                    trx
+                );
+            }
         }
 
         // Find existing resource by niceId and orgId
@@ -231,6 +252,7 @@ export async function updateProxyResources(
                         fullDomain: http ? resourceData["full-domain"] : null,
                         subdomain: domain ? domain.subdomain : null,
                         domainId: domain ? domain.domainId : null,
+                        wildcard: domain ? domain.wildcard : false,
                         enabled: resourceEnabled,
                         sso: resourceData.auth?.["sso-enabled"] || false,
                         skipToIdpId:
@@ -522,7 +544,11 @@ export async function updateProxyResources(
                                 healthcheckData?.followRedirects ||
                                 healthcheckData?.["follow-redirects"],
                             hcMethod: healthcheckData?.method,
-                            hcStatus: healthcheckData?.status
+                            hcStatus: healthcheckData?.status,
+                            hcHealthyThreshold:
+                                healthcheckData?.["healthy-threshold"],
+                            hcUnhealthyThreshold:
+                                healthcheckData?.["unhealthy-threshold"]
                         })
                         .where(
                             eq(
@@ -547,6 +573,21 @@ export async function updateProxyResources(
                         ) {
                             targetsToUpdate.push(updatedTarget);
                         }
+                    }
+
+                    // Insert unknown status history when HC is disabled
+                    const isDisablingHc =
+                        !healthcheckData?.enabled && oldHealthcheck?.hcEnabled;
+                    if (isDisablingHc) {
+                        await fireHealthCheckUnknownAlert(
+                            orgId,
+                            newHealthcheck.targetHealthCheckId,
+                            newHealthcheck.name,
+                            newHealthcheck.targetId,
+                            undefined,
+                            true,
+                            trx
+                        );
                     }
                 } else {
                     await createTarget(existingResource.resourceId, targetData);
@@ -676,6 +717,7 @@ export async function updateProxyResources(
                     fullDomain: http ? resourceData["full-domain"] : null,
                     subdomain: domain ? domain.subdomain : null,
                     domainId: domain ? domain.domainId : null,
+                    wildcard: domain ? domain.wildcard : false,
                     enabled: resourceEnabled,
                     sso: resourceData.auth?.["sso-enabled"] || false,
                     skipToIdpId: resourceData.auth?.["auto-login-idp"] || null,
@@ -1081,6 +1123,10 @@ function checkIfHealthcheckChanged(
         JSON.stringify(incoming.hcHeaders)
     )
         return true;
+    if (existing.hcHealthyThreshold !== incoming.hcHealthyThreshold)
+        return true;
+    if (existing.hcUnhealthyThreshold !== incoming.hcUnhealthyThreshold)
+        return true;
 
     return false;
 }
@@ -1100,7 +1146,7 @@ function checkIfTargetChanged(
     return false;
 }
 
-async function getDomain(
+export async function getDomain(
     resourceId: number | undefined,
     fullDomain: string,
     orgId: string,
@@ -1143,7 +1189,13 @@ async function getDomainId(
     orgId: string,
     fullDomain: string,
     trx: Transaction
-): Promise<{ subdomain: string | null; domainId: string } | null> {
+): Promise<{
+    subdomain: string | null;
+    domainId: string;
+    wildcard: boolean;
+} | null> {
+    const isWildcardFullDomain = fullDomain.startsWith("*.");
+
     const possibleDomains = await trx
         .select()
         .from(domains)
@@ -1156,6 +1208,11 @@ async function getDomainId(
     }
 
     const validDomains = possibleDomains.filter((domain) => {
+        // Wildcard full-domains are not allowed on CNAME domains
+        if (isWildcardFullDomain && domain.domains.type === "cname") {
+            return false;
+        }
+
         if (domain.domains.type == "ns" || domain.domains.type == "wildcard") {
             return (
                 fullDomain === domain.domains.baseDomain ||
@@ -1173,6 +1230,21 @@ async function getDomainId(
     const domainSelection = validDomains[0].domains;
     const baseDomain = domainSelection.baseDomain;
 
+    // Wildcard full-domains are not allowed on namespace (provided/free) domains
+    if (isWildcardFullDomain) {
+        const [namespaceDomain] = await trx
+            .select()
+            .from(domainNamespaces)
+            .where(eq(domainNamespaces.domainId, domainSelection.domainId))
+            .limit(1);
+
+        if (namespaceDomain) {
+            throw new Error(
+                `Wildcard full-domains are not supported for provided or free domains: ${fullDomain}`
+            );
+        }
+    }
+
     // remove the base domain of the domain
     let subdomain = null;
     if (fullDomain != baseDomain) {
@@ -1182,6 +1254,7 @@ async function getDomainId(
     // Return the first valid domain
     return {
         subdomain: subdomain,
-        domainId: domainSelection.domainId
+        domainId: domainSelection.domainId,
+        wildcard: isWildcardFullDomain
     };
 }

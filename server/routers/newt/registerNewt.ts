@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, logsDb, statusHistory } from "@server/db";
 import {
     siteProvisioningKeys,
     siteProvisioningKeyOrg,
@@ -84,7 +84,7 @@ export async function registerNewt(
                 maxBatchSize: siteProvisioningKeys.maxBatchSize,
                 numUsed: siteProvisioningKeys.numUsed,
                 validUntil: siteProvisioningKeys.validUntil,
-                approveNewSites: siteProvisioningKeys.approveNewSites,
+                approveNewSites: siteProvisioningKeys.approveNewSites
             })
             .from(siteProvisioningKeys)
             .innerJoin(
@@ -125,7 +125,10 @@ export async function registerNewt(
             );
         }
 
-        if (keyRecord.maxBatchSize && keyRecord.numUsed >= keyRecord.maxBatchSize) {
+        if (
+            keyRecord.maxBatchSize &&
+            keyRecord.numUsed >= keyRecord.maxBatchSize
+        ) {
             return next(
                 createHttpError(
                     HttpCode.UNAUTHORIZED,
@@ -134,7 +137,10 @@ export async function registerNewt(
             );
         }
 
-        if (keyRecord.validUntil && new Date(keyRecord.validUntil) < new Date()) {
+        if (
+            keyRecord.validUntil &&
+            new Date(keyRecord.validUntil) < new Date()
+        ) {
             return next(
                 createHttpError(
                     HttpCode.UNAUTHORIZED,
@@ -154,7 +160,10 @@ export async function registerNewt(
         }
         if (!org.subnet) {
             return next(
-                createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "Organization subnet not found")
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Organization subnet not found"
+                )
             );
         }
 
@@ -195,7 +204,6 @@ export async function registerNewt(
         let newSiteId: number | undefined;
 
         await db.transaction(async (trx) => {
-
             const newClientAddress = await getNextAvailableClientSubnet(orgId);
             if (!newClientAddress) {
                 return next(
@@ -219,9 +227,17 @@ export async function registerNewt(
                     address: clientAddress,
                     type: "newt",
                     dockerSocketEnabled: true,
-                    status: keyRecord.approveNewSites ? "approved" : "pending",
+                    status: keyRecord.approveNewSites ? "approved" : "pending"
                 })
                 .returning();
+
+            await logsDb.insert(statusHistory).values({
+                entityType: "site",
+                entityId: newSite.siteId,
+                orgId: orgId,
+                status: "offline",
+                timestamp: Math.floor(Date.now() / 1000)
+            });
 
             newSiteId = newSite.siteId;
 
@@ -249,7 +265,7 @@ export async function registerNewt(
                 dateCreated: moment().toISOString()
             });
 
-            // Consume the provisioning key — cascade removes siteProvisioningKeyOrg
+            // Consume the provisioning key - cascade removes siteProvisioningKeyOrg
             await trx
                 .update(siteProvisioningKeys)
                 .set({

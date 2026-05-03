@@ -11,6 +11,11 @@ import { Button } from "@app/components/ui/button";
 import { ArrowRight, Plug } from "lucide-react";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Pending Sites"
+};
 
 type PendingSitesPageProps = {
     params: Promise<{ orgId: string }>;
@@ -64,6 +69,7 @@ export default async function PendingSitesPage(props: PendingSitesPageProps) {
         address: site.address?.split("/")[0],
         mbIn: formatSize(site.megabytesIn || 0, site.type),
         mbOut: formatSize(site.megabytesOut || 0, site.type),
+        resourceCount: Number(site.resourceCount ?? 0),
         orgId: params.orgId,
         type: site.type as any,
         online: site.online,

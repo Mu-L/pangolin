@@ -2,6 +2,7 @@ import { z } from "zod";
 import { portRangeStringSchema } from "@server/lib/ip";
 import { MaintenanceSchema } from "#dynamic/lib/blueprints/MaintenanceSchema";
 import { isValidRegionId } from "@server/db/regions";
+import { wildcardSubdomainSchema } from "@server/lib/schemas";
 
 export const SiteSchema = z.object({
     name: z.string().min(1).max(100),
@@ -12,7 +13,7 @@ export const TargetHealthCheckSchema = z.object({
     hostname: z.string(),
     port: z.int().min(1).max(65535),
     enabled: z.boolean().optional().default(true),
-    path: z.string().optional().default("/"),
+    path: z.string().optional(),
     scheme: z.string().optional(),
     mode: z.string().default("http"),
     interval: z.int().default(30),
@@ -26,8 +27,10 @@ export const TargetHealthCheckSchema = z.object({
         .default(null),
     "follow-redirects": z.boolean().default(true),
     followRedirects: z.boolean().optional(), // deprecated alias
-    method: z.string().default("GET"),
-    status: z.int().optional()
+    method: z.string().optional(),
+    status: z.int().optional(),
+    "healthy-threshold": z.int().min(1).optional().default(1),
+    "unhealthy-threshold": z.int().min(1).optional().default(1)
 });
 
 // Schema for individual target within a resource
@@ -164,6 +167,7 @@ export const ResourceSchema = z
         name: z.string().optional(),
         protocol: z.enum(["http", "tcp", "udp"]).optional(),
         ssl: z.boolean().optional(),
+        scheme: z.enum(["http", "https"]).optional(),
         "full-domain": z.string().optional(),
         "proxy-port": z.int().min(1).max(65535).optional(),
         enabled: z.boolean().optional(),
@@ -316,6 +320,34 @@ export const ResourceSchema = z
             message:
                 "Rules have conflicting or invalid priorities (must be unique, including auto-assigned ones)"
         }
+    )
+    .refine(
+        (resource) => {
+            const fullDomain = resource["full-domain"];
+            if (!fullDomain || !fullDomain.includes("*")) return true;
+
+            // A wildcard full-domain must be of the form *.labels.basedomain
+            // Extract the leftmost label(s) before the first non-wildcard segment.
+            // e.g. "*.level1.example.com" → subdomain candidate is "*.level1"
+            // We do this by finding the base domain: everything after the first
+            // real (non-wildcard) dot-separated segment pair.
+            //
+            // Simple rule: split on ".", first token must be "*", rest must be
+            // valid hostname labels, and there must be at least 2 remaining labels
+            // (so the full domain has a real base domain).
+            const parts = fullDomain.split(".");
+            if (parts[0] !== "*") return false; // * must be the very first label
+            if (parts.includes("*", 1)) return false; // no further wildcards
+            if (parts.length < 3) return false; // need at least *.label.tld
+
+            const labelRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
+            return parts.slice(1).every((label) => labelRegex.test(label));
+        },
+        {
+            path: ["full-domain"],
+            message:
+                'Wildcard full-domain must have "*" as the leftmost label only, followed by at least two valid hostname labels (e.g. "*.example.com" or "*.level1.example.com"). Patterns like "*example.com" or "level2.*.example.com" are not supported.'
+        }
     );
 
 export function isTargetsOnlyResource(resource: any): boolean {
@@ -325,16 +357,20 @@ export function isTargetsOnlyResource(resource: any): boolean {
 export const ClientResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr"]),
-        site: z.string(),
+        mode: z.enum(["host", "cidr", "http"]),
+        site: z.string().optional(), // DEPRECATED IN FAVOR OF sites
+        sites: z.array(z.string()).optional().default([]),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
-        // destinationPort: z.int().positive().optional(),
+        "destination-port": z.int().positive().optional(),
         destination: z.string().min(1),
         // enabled: z.boolean().default(true),
         "tcp-ports": portRangeStringSchema.optional().default("*"),
         "udp-ports": portRangeStringSchema.optional().default("*"),
         "disable-icmp": z.boolean().optional().default(false),
+        "full-domain": z.string().optional(),
+        ssl: z.boolean().optional(),
+        scheme: z.enum(["http", "https"]).optional().nullable(),
         alias: z
             .string()
             .regex(
@@ -474,6 +510,39 @@ export const ConfigSchema = z
                 code: z.ZodIssueCode.custom,
                 path: ["proxy-resources"],
                 message: `Duplicate 'full-domain' values found: ${fullDomainDuplicates}`
+            });
+        }
+
+        // Enforce the full-domain uniqueness across client-resources in the same stack
+        const clientFullDomainMap = new Map<string, string[]>();
+
+        Object.entries(config["client-resources"]).forEach(
+            ([resourceKey, resource]) => {
+                const fullDomain = resource["full-domain"];
+                if (fullDomain) {
+                    if (!clientFullDomainMap.has(fullDomain)) {
+                        clientFullDomainMap.set(fullDomain, []);
+                    }
+                    clientFullDomainMap.get(fullDomain)!.push(resourceKey);
+                }
+            }
+        );
+
+        const clientFullDomainDuplicates = Array.from(
+            clientFullDomainMap.entries()
+        )
+            .filter(([_, resourceKeys]) => resourceKeys.length > 1)
+            .map(
+                ([fullDomain, resourceKeys]) =>
+                    `'${fullDomain}' used by resources: ${resourceKeys.join(", ")}`
+            )
+            .join("; ");
+
+        if (clientFullDomainDuplicates.length !== 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["client-resources"],
+                message: `Duplicate 'full-domain' values found: ${clientFullDomainDuplicates}`
             });
         }
 

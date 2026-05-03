@@ -12,7 +12,7 @@ const Table = React.forwardRef<
 >(({ className, sticky, ...props }, ref) => (
     <div
         className={cn("relative w-full", {
-            "overflow-auto": !sticky
+            "overflow-x-auto overflow-y-hidden": !sticky
         })}
     >
         <table

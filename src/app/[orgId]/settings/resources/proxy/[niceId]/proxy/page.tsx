@@ -1,6 +1,6 @@
 "use client";
 
-import HealthCheckDialog from "@/components/HealthCheckDialog";
+import HealthCheckCredenza from "@/components/HealthCheckCredenza";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -62,6 +62,7 @@ import { formatAxiosError } from "@app/lib/api/formatAxiosError";
 import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries, resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { build } from "@server/build";
 import { tlsNameSchema } from "@server/lib/schemas";
 import { type GetResourceResponse } from "@server/routers/resource";
 import type { ListSitesResponse } from "@server/routers/site";
@@ -168,6 +169,30 @@ function ProxyResourceTargetsForm({
 
     const [targets, setTargets] = useState<LocalTarget[]>(initialTargets);
     const [targetsToRemove, setTargetsToRemove] = useState<number[]>([]);
+
+    const { data: polledTargets } = useQuery({
+        ...resourceQueries.resourceTargets({
+            resourceId: resource.resourceId
+        }),
+        refetchInterval: 10_000
+    });
+
+    useEffect(() => {
+        if (!polledTargets) return;
+        setTargets((prev) =>
+            prev.map((t) => {
+                const fresh = polledTargets.find(
+                    (p) => p.targetId === t.targetId
+                );
+                if (!fresh) return t;
+                return {
+                    ...t,
+                    hcHealth: fresh.hcHealth,
+                    hcEnabled: t.updated ? t.hcEnabled : fresh.hcEnabled
+                };
+            })
+        );
+    }, [polledTargets]);
     const [dockerStates, setDockerStates] = useState<Map<number, DockerState>>(
         new Map()
     );
@@ -317,19 +342,6 @@ function ProxyResourceTargetsForm({
             header: () => <span className="p-3">{t("healthCheck")}</span>,
             cell: ({ row }) => {
                 const status = row.original.hcHealth || "unknown";
-                const isEnabled = row.original.hcEnabled;
-
-                const getStatusColor = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return "green";
-                        case "unhealthy":
-                            return "red";
-                        case "unknown":
-                        default:
-                            return "secondary";
-                    }
-                };
 
                 const getStatusText = (status: string) => {
                     switch (status) {
@@ -343,19 +355,7 @@ function ProxyResourceTargetsForm({
                     }
                 };
 
-                const getStatusIcon = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return <CircleCheck className="w-3 h-3" />;
-                        case "unhealthy":
-                            return <CircleX className="w-3 h-3" />;
-                        case "unknown":
-                        default:
-                            return null;
-                    }
-                };
-
-                return (
+                   return (
                     <div className="flex items-center justify-center w-full">
                         {row.original.siteType === "newt" ? (
                             <Button
@@ -366,12 +366,15 @@ function ProxyResourceTargetsForm({
                                 }
                             >
                                 <div
-                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : ""}`}
+                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : "text-neutral-500"}`}
                                 >
-                                    <Settings className="h-4 w-4 text-foreground" />
+                                    <div
+                                        className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
+                                    ></div>
                                     {getStatusText(status)}
                                 </div>
                             </Button>
+
                         ) : (
                             <span>-</span>
                         )}
@@ -640,10 +643,10 @@ function ProxyResourceTargetsForm({
             hcInterval: null,
             hcTimeout: null,
             hcHeaders: null,
+            hcFollowRedirects: null,
             hcScheme: null,
             hcHostname: null,
             hcPort: null,
-            hcFollowRedirects: null,
             hcHealth: "unknown",
             hcStatus: null,
             hcMode: null,
@@ -951,6 +954,18 @@ function ProxyResourceTargetsForm({
                             </Button>
                         </div>
                     )}
+                    {build === "saas" &&
+                        targets.length > 1 &&
+                        new Set(targets.map((t) => t.siteId)).size > 1 && (
+                            <p className="text-sm text-muted-foreground mt-3 flex items-start gap-1.5">
+                                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <span>
+                                    Round robin routing will not work between
+                                    sites that are not connected to the same
+                                    node, but failover will work.
+                                </span>
+                            </p>
+                        )}
                 </SettingsSectionBody>
 
                 <form className="self-end mt-4" action={formAction}>
@@ -965,10 +980,10 @@ function ProxyResourceTargetsForm({
             </SettingsSection>
 
             {selectedTargetForHealthCheck && (
-                <HealthCheckDialog
+                <HealthCheckCredenza
+                    mode="autoSave"
                     open={healthCheckDialogOpen}
                     setOpen={setHealthCheckDialogOpen}
-                    targetId={selectedTargetForHealthCheck.targetId}
                     targetAddress={`${selectedTargetForHealthCheck.ip}:${selectedTargetForHealthCheck.port}`}
                     targetMethod={
                         selectedTargetForHealthCheck.method || undefined
@@ -993,7 +1008,7 @@ function ProxyResourceTargetsForm({
                             selectedTargetForHealthCheck.hcPort ||
                             selectedTargetForHealthCheck.port,
                         hcFollowRedirects:
-                            selectedTargetForHealthCheck.hcFollowRedirects ||
+                            selectedTargetForHealthCheck.hcFollowRedirects ??
                             true,
                         hcStatus:
                             selectedTargetForHealthCheck.hcStatus || undefined,

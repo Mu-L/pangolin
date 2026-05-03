@@ -86,7 +86,12 @@ export async function getUserResources(
                       .where(inArray(roleSiteResources.roleId, userRoleIds))
                 : Promise.resolve([]);
 
-        const [directResources, roleResourceResults, directSiteResourceResults, roleSiteResourceResults] = await Promise.all([
+        const [
+            directResources,
+            roleResourceResults,
+            directSiteResourceResults,
+            roleSiteResourceResults
+        ] = await Promise.all([
             directResourcesQuery,
             roleResourcesQuery,
             directSiteResourcesQuery,
@@ -118,24 +123,24 @@ export async function getUserResources(
         }> = [];
         if (accessibleResourceIds.length > 0) {
             resourcesData = await db
-            .select({
-                resourceId: resources.resourceId,
-                name: resources.name,
-                fullDomain: resources.fullDomain,
-                ssl: resources.ssl,
-                enabled: resources.enabled,
-                sso: resources.sso,
-                protocol: resources.protocol,
-                emailWhitelistEnabled: resources.emailWhitelistEnabled
-            })
-            .from(resources)
-            .where(
-                and(
-                    inArray(resources.resourceId, accessibleResourceIds),
-                    eq(resources.orgId, orgId),
-                    eq(resources.enabled, true)
-                )
-            );
+                .select({
+                    resourceId: resources.resourceId,
+                    name: resources.name,
+                    fullDomain: resources.fullDomain,
+                    ssl: resources.ssl,
+                    enabled: resources.enabled,
+                    sso: resources.sso,
+                    protocol: resources.protocol,
+                    emailWhitelistEnabled: resources.emailWhitelistEnabled
+                })
+                .from(resources)
+                .where(
+                    and(
+                        inArray(resources.resourceId, accessibleResourceIds),
+                        eq(resources.orgId, orgId),
+                        eq(resources.enabled, true)
+                    )
+                );
         }
 
         // Get site resource details for accessible site resources
@@ -145,7 +150,7 @@ export async function getUserResources(
             niceId: string;
             destination: string;
             mode: string;
-            protocol: string | null;
+            scheme: string | null;
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
@@ -158,7 +163,7 @@ export async function getUserResources(
                     niceId: siteResources.niceId,
                     destination: siteResources.destination,
                     mode: siteResources.mode,
-                    protocol: siteResources.protocol,
+                    scheme: siteResources.scheme,
                     enabled: siteResources.enabled,
                     alias: siteResources.alias,
                     aliasAddress: siteResources.aliasAddress
@@ -166,7 +171,10 @@ export async function getUserResources(
                 .from(siteResources)
                 .where(
                     and(
-                        inArray(siteResources.siteResourceId, accessibleSiteResourceIds),
+                        inArray(
+                            siteResources.siteResourceId,
+                            accessibleSiteResourceIds
+                        ),
                         eq(siteResources.orgId, orgId),
                         eq(siteResources.enabled, true)
                     )
@@ -242,11 +250,11 @@ export async function getUserResources(
                 name: siteResource.name,
                 destination: siteResource.destination,
                 mode: siteResource.mode,
-                protocol: siteResource.protocol,
+                protocol: siteResource.scheme,
                 enabled: siteResource.enabled,
                 alias: siteResource.alias,
                 aliasAddress: siteResource.aliasAddress,
-                type: 'site' as const
+                type: "site" as const
             };
         });
 
@@ -291,7 +299,7 @@ export type GetUserResourcesResponse = {
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
-            type: 'site';
+            type: "site";
         }>;
     };
 };

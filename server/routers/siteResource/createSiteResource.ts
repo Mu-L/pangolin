@@ -5,6 +5,8 @@ import {
     orgs,
     roles,
     roleSiteResources,
+    siteNetworks,
+    networks,
     SiteResource,
     siteResources,
     sites,
@@ -17,17 +19,20 @@ import {
     portRangeStringSchema
 } from "@server/lib/ip";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { validateAndConstructDomain } from "@server/lib/domainUtils";
+import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { build } from "@server/build";
 
 const createSiteResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -36,11 +41,15 @@ const createSiteResourceParamsSchema = z.strictObject({
 const createSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "port"]),
-        siteId: z.int(),
+        niceId: z.string().optional(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
+        mode: z.enum(["host", "cidr", "http"]),
+        ssl: z.boolean().optional(), // only used for http mode
+        scheme: z.enum(["http", "https"]).optional(),
+        siteIds: z.array(z.int()).optional(),
+        siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
         // proxyPort: z.int().positive().optional(),
-        // destinationPort: z.int().positive().optional(),
+        destinationPort: z.int().positive().optional(),
         destination: z.string().min(1),
         enabled: z.boolean().default(true),
         alias: z
@@ -57,20 +66,24 @@ const createSiteResourceSchema = z
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().optional(),
-        authDaemonMode: z.enum(["site", "remote"]).optional()
+        authDaemonMode: z.enum(["site", "remote"]).optional(),
+        domainId: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
+        subdomain: z.string().optional() // only used for http mode, we need this to verify the alias is unique within the org
     })
     .strict()
     .refine(
         (data) => {
             if (data.mode === "host") {
-                // Check if it's a valid IP address using zod (v4 or v6)
-                const isValidIP = z
-                    // .union([z.ipv4(), z.ipv6()])
-                    .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
-                    .safeParse(data.destination).success;
+                if (data.mode == "host") {
+                    // Check if it's a valid IP address using zod (v4 or v6)
+                    const isValidIP = z
+                        // .union([z.ipv4(), z.ipv6()])
+                        .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                        .safeParse(data.destination).success;
 
-                if (isValidIP) {
-                    return true;
+                    if (isValidIP) {
+                        return true;
+                    }
                 }
 
                 // Check if it's a valid domain (hostname pattern, TLD not required)
@@ -104,6 +117,32 @@ const createSiteResourceSchema = z
         },
         {
             message: "Destination must be a valid CIDR notation for cidr mode"
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "http") return true;
+            return (
+                data.scheme !== undefined &&
+                data.destinationPort !== undefined &&
+                data.destinationPort >= 1 &&
+                data.destinationPort <= 65535
+            );
+        },
+        {
+            message:
+                "HTTP mode requires scheme (http or https) and a valid destination port"
+        }
+    )
+    .refine(
+        (data) => {
+            return (
+                (data.siteIds !== undefined && data.siteIds.length > 0) ||
+                data.siteId !== undefined
+            );
+        },
+        {
+            message: "At least one of siteIds or siteId must be provided"
         }
     );
 
@@ -159,13 +198,16 @@ export async function createSiteResource(
         const { orgId } = parsedParams.data;
         const {
             name,
+            niceId,
+            siteIds: siteIdsInput = [],
             siteId,
             mode,
-            // protocol,
+            scheme,
             // proxyPort,
-            // destinationPort,
+            destinationPort,
             destination,
             enabled,
+            ssl,
             alias,
             userIds,
             roleIds,
@@ -174,18 +216,42 @@ export async function createSiteResource(
             udpPortRangeString,
             disableIcmp,
             authDaemonPort,
-            authDaemonMode
+            authDaemonMode,
+            domainId,
+            subdomain
         } = parsedBody.data;
 
+        // Backward compatibility: merge deprecated siteId into siteIds array
+        const siteIds = [...siteIdsInput];
+        if (siteId !== undefined && !siteIds.includes(siteId)) {
+            siteIds.push(siteId);
+        }
+
+        if (mode == "http") {
+            const hasHttpFeature = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix[TierFeature.HTTPPrivateResources]
+            );
+            if (!hasHttpFeature) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "HTTP private resources are not included in your current plan. Please upgrade."
+                    )
+                );
+            }
+        }
+
         // Verify the site exists and belongs to the org
-        const [site] = await db
+        const sitesToAssign = await db
             .select()
             .from(sites)
-            .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
-            .limit(1);
+            .where(and(inArray(sites.siteId, siteIds), eq(sites.orgId, orgId)));
 
-        if (!site) {
-            return next(createHttpError(HttpCode.NOT_FOUND, "Site not found"));
+        if (sitesToAssign.length !== siteIds.length) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Some site not found")
+            );
         }
 
         const [org] = await db
@@ -226,29 +292,50 @@ export async function createSiteResource(
             );
         }
 
-        // // check if resource with same protocol and proxy port already exists (only for port mode)
-        // if (mode === "port" && protocol && proxyPort) {
-        //     const [existingResource] = await db
-        //         .select()
-        //         .from(siteResources)
-        //         .where(
-        //             and(
-        //                 eq(siteResources.siteId, siteId),
-        //                 eq(siteResources.orgId, orgId),
-        //                 eq(siteResources.protocol, protocol),
-        //                 eq(siteResources.proxyPort, proxyPort)
-        //             )
-        //         )
-        //         .limit(1);
-        //     if (existingResource && existingResource.siteResourceId) {
-        //         return next(
-        //             createHttpError(
-        //                 HttpCode.CONFLICT,
-        //                 "A resource with the same protocol and proxy port already exists"
-        //             )
-        //         );
-        //     }
-        // }
+        if (domainId && alias) {
+            // throw an error because we can only have one or the other
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "Alias and domain cannot both be set. Please choose one or the other."
+                )
+            );
+        }
+
+        let fullDomain: string | null = null;
+        let finalSubdomain: string | null = null;
+        if (domainId) {
+            // Validate domain and construct full domain
+            const domainResult = await validateAndConstructDomain(
+                domainId,
+                orgId,
+                subdomain
+            );
+
+            if (!domainResult.success) {
+                return next(
+                    createHttpError(HttpCode.BAD_REQUEST, domainResult.error)
+                );
+            }
+
+            fullDomain = domainResult.fullDomain;
+            finalSubdomain = domainResult.subdomain;
+
+            // make sure the full domain is unique
+            const existingResource = await db
+                .select()
+                .from(siteResources)
+                .where(eq(siteResources.fullDomain, fullDomain));
+
+            if (existingResource.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        "Resource with that domain already exists"
+                    )
+                );
+            }
+        }
 
         // make sure the alias is unique within the org if provided
         if (alias) {
@@ -278,29 +365,56 @@ export async function createSiteResource(
             tierMatrix.sshPam
         );
 
-        const niceId = await getUniqueSiteResourceName(orgId);
+        let updatedNiceId = niceId;
+        if (!niceId) {
+            updatedNiceId = await getUniqueSiteResourceName(orgId);
+        }
+
         let aliasAddress: string | null = null;
-        if (mode == "host") {
-            // we can only have an alias on a host
+        if (mode === "host" || mode === "http") {
             aliasAddress = await getNextAvailableAliasAddress(orgId);
         }
 
         let newSiteResource: SiteResource | undefined;
         await db.transaction(async (trx) => {
+            const [network] = await trx
+                .insert(networks)
+                .values({
+                    scope: "resource",
+                    orgId: orgId
+                })
+                .returning();
+
+            if (!network) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        `Failed to create network`
+                    )
+                );
+            }
+
             // Create the site resource
             const insertValues: typeof siteResources.$inferInsert = {
-                siteId,
-                niceId,
+                niceId: updatedNiceId!,
                 orgId,
                 name,
-                mode: mode as "host" | "cidr",
+                mode,
+                ssl,
+                networkId: network.networkId,
                 destination,
+                scheme,
+                destinationPort,
                 enabled,
-                alias,
+                alias: alias ? alias.trim() : null,
                 aliasAddress,
-                tcpPortRangeString,
-                udpPortRangeString,
-                disableIcmp
+                tcpPortRangeString:
+                    mode == "http" ? "443,80" : tcpPortRangeString,
+                udpPortRangeString: mode == "http" ? "" : udpPortRangeString,
+                disableIcmp: disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
+                domainId,
+                subdomain: finalSubdomain,
+                fullDomain
             };
             if (isLicensedSshPam) {
                 if (authDaemonPort !== undefined)
@@ -316,6 +430,13 @@ export async function createSiteResource(
             const siteResourceId = newSiteResource.siteResourceId;
 
             //////////////////// update the associations ////////////////////
+
+            for (const siteId of siteIds) {
+                await trx.insert(siteNetworks).values({
+                    siteId: siteId,
+                    networkId: network.networkId
+                });
+            }
 
             const [adminRole] = await trx
                 .select()
@@ -359,22 +480,22 @@ export async function createSiteResource(
                 );
             }
 
-            const [newt] = await trx
-                .select()
-                .from(newts)
-                .where(eq(newts.siteId, site.siteId))
-                .limit(1);
+            for (const siteToAssign of sitesToAssign) {
+                const [newt] = await trx
+                    .select()
+                    .from(newts)
+                    .where(eq(newts.siteId, siteToAssign.siteId))
+                    .limit(1);
 
-            if (!newt) {
-                return next(
-                    createHttpError(HttpCode.NOT_FOUND, "Newt not found")
-                );
+                if (!newt) {
+                    return next(
+                        createHttpError(
+                            HttpCode.NOT_FOUND,
+                            `Newt not found for site ${siteToAssign.siteId}`
+                        )
+                    );
+                }
             }
-
-            await rebuildClientAssociationsFromSiteResource(
-                newSiteResource,
-                trx
-            ); // we need to call this because we added to the admin role
         });
 
         if (!newSiteResource) {
@@ -387,8 +508,34 @@ export async function createSiteResource(
         }
 
         logger.info(
-            `Created site resource ${newSiteResource.siteResourceId} for site ${siteId}`
+            `Created site resource ${newSiteResource.siteResourceId} for org ${orgId}`
         );
+
+        if (
+            ssl &&
+            mode === "http" &&
+            domainId &&
+            fullDomain &&
+            build != "oss"
+        ) {
+            await createCertificate(domainId, fullDomain, db);
+        }
+
+        // Run in the background after the response is sent. Wrapped in its
+        // own transaction so it always executes on the primary — avoiding any
+        // replica-lag issues while still allowing the HTTP response to return
+        // early.
+        db.transaction(async (trx) => {
+            await rebuildClientAssociationsFromSiteResource(
+                newSiteResource!,
+                trx
+            );
+        }).catch((err) => {
+            logger.error(
+                `Error rebuilding client associations for site resource ${newSiteResource!.siteResourceId}:`,
+                err
+            );
+        });
 
         return response(res, {
             data: newSiteResource,

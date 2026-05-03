@@ -22,7 +22,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 function formatBytes(bytes: number | null): string {
-    if (bytes === null || bytes === undefined) return "—";
+    if (bytes === null || bytes === undefined) return "-";
     if (bytes === 0) return "0 B";
     const units = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
@@ -33,7 +33,7 @@ function formatBytes(bytes: number | null): string {
 function formatDuration(startedAt: number, endedAt: number | null): string {
     if (endedAt === null || endedAt === undefined) return "Active";
     const durationSec = endedAt - startedAt;
-    if (durationSec < 0) return "—";
+    if (durationSec < 0) return "-";
     if (durationSec < 60) return `${durationSec}s`;
     if (durationSec < 3600) {
         const m = Math.floor(durationSec / 60);
@@ -451,11 +451,7 @@ export default function ConnectionLogsPage() {
                         <Link
                             href={`/${row.original.orgId}/settings/resources/client/?query=${row.original.resourceNiceId}`}
                         >
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-6"
-                            >
+                            <Button variant="outline" size="sm">
                                 {row.original.resourceName}
                                 <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
@@ -464,7 +460,7 @@ export default function ConnectionLogsPage() {
                 }
                 return (
                     <span className="whitespace-nowrap">
-                        {row.original.resourceName ?? "—"}
+                        {row.original.resourceName ?? "-"}
                     </span>
                 );
             }
@@ -497,11 +493,7 @@ export default function ConnectionLogsPage() {
                         <Link
                             href={`/${row.original.orgId}/settings/clients/${clientType}/${row.original.clientNiceId}`}
                         >
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-6"
-                            >
+                            <Button variant="outline" size="sm">
                                 <Laptop className="mr-1 h-3 w-3" />
                                 {row.original.clientName}
                                 <ArrowUpRight className="ml-2 h-3 w-3" />
@@ -511,7 +503,7 @@ export default function ConnectionLogsPage() {
                 }
                 return (
                     <span className="whitespace-nowrap">
-                        {row.original.clientName ?? "—"}
+                        {row.original.clientName ?? "-"}
                     </span>
                 );
             }
@@ -546,7 +538,7 @@ export default function ConnectionLogsPage() {
                         </span>
                     );
                 }
-                return <span>—</span>;
+                return <span>-</span>;
             }
         },
         {
@@ -620,23 +612,23 @@ export default function ConnectionLogsPage() {
                         <div>
                             <strong>Session ID:</strong>{" "}
                             <span className="font-mono">
-                                {row.sessionId ?? "—"}
+                                {row.sessionId ?? "-"}
                             </span>
                         </div>
                         <div>
                             <strong>Protocol:</strong>{" "}
-                            {row.protocol?.toUpperCase() ?? "—"}
+                            {row.protocol?.toUpperCase() ?? "-"}
                         </div>
                         <div>
                             <strong>Source:</strong>{" "}
                             <span className="font-mono">
-                                {row.sourceAddr ?? "—"}
+                                {row.sourceAddr ?? "-"}
                             </span>
                         </div>
                         <div>
                             <strong>Destination:</strong>{" "}
                             <span className="font-mono">
-                                {row.destAddr ?? "—"}
+                                {row.destAddr ?? "-"}
                             </span>
                         </div>
                     </div>
@@ -646,7 +638,7 @@ export default function ConnectionLogsPage() {
                         </div>*/}
                         {/*<div>
                             <strong>Resource:</strong>{" "}
-                            {row.resourceName ?? "—"}
+                            {row.resourceName ?? "-"}
                             {row.resourceNiceId && (
                                 <span className="text-muted-foreground ml-1">
                                     ({row.resourceNiceId})
@@ -654,7 +646,7 @@ export default function ConnectionLogsPage() {
                             )}
                         </div>*/}
                         <div>
-                            <strong>Site:</strong> {row.siteName ?? "—"}
+                            <strong>Site:</strong> {row.siteName ?? "-"}
                             {row.siteNiceId && (
                                 <span className="text-muted-foreground ml-1">
                                     ({row.siteNiceId})
@@ -662,7 +654,7 @@ export default function ConnectionLogsPage() {
                             )}
                         </div>
                         <div>
-                            <strong>Site ID:</strong> {row.siteId ?? "—"}
+                            <strong>Site ID:</strong> {row.siteId ?? "-"}
                         </div>
                         <div>
                             <strong>Started At:</strong>{" "}
@@ -670,14 +662,12 @@ export default function ConnectionLogsPage() {
                                 ? new Date(
                                       row.startedAt * 1000
                                   ).toLocaleString()
-                                : "—"}
+                                : "-"}
                         </div>
                         <div>
                             <strong>Ended At:</strong>{" "}
                             {row.endedAt
-                                ? new Date(
-                                      row.endedAt * 1000
-                                  ).toLocaleString()
+                                ? new Date(row.endedAt * 1000).toLocaleString()
                                 : "Active"}
                         </div>
                         <div>
@@ -686,7 +676,7 @@ export default function ConnectionLogsPage() {
                         </div>
                         {/*<div>
                             <strong>Resource ID:</strong>{" "}
-                            {row.siteResourceId ?? "—"}
+                            {row.siteResourceId ?? "-"}
                         </div>*/}
                     </div>
                     <div className="space-y-2">

@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025 Fossorial, Inc.
+ * Copyright (c) 2025-2026 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -29,6 +29,8 @@ import * as ssh from "#private/routers/ssh";
 import * as user from "#private/routers/user";
 import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
+import * as alertRule from "#private/routers/alertRule";
+import * as healthChecks from "#private/routers/healthChecks";
 
 import {
     verifyOrgAccess,
@@ -40,7 +42,9 @@ import {
     verifyRoleAccess,
     verifyUserAccess,
     verifyUserCanSetUserOrgRoles,
-    verifySiteProvisioningKeyAccess
+    verifySiteProvisioningKeyAccess,
+    verifyIsLoggedInUser,
+    verifyAdmin
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -87,6 +91,7 @@ authenticated.put(
     "/org/:orgId/idp/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.createIdp),
@@ -95,9 +100,22 @@ authenticated.put(
 );
 
 authenticated.post(
+    "/org/:orgId/idp/:idpId/import",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyAdmin,
+    logActionAudit(ActionsEnum.createIdp),
+    orgIdp.importOrgIdp
+);
+
+authenticated.post(
     "/org/:orgId/idp/:idpId/oidc",
     verifyValidLicense,
     verifyValidSubscription(tierMatrix.orgOidc),
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyLimits,
@@ -109,11 +127,23 @@ authenticated.post(
 authenticated.delete(
     "/org/:orgId/idp/:idpId",
     verifyValidLicense,
+    orgIdp.requireOrgIdentityProviderMode,
     verifyOrgAccess,
     verifyIdpAccess,
     verifyUserHasAction(ActionsEnum.deleteIdp),
     logActionAudit(ActionsEnum.deleteIdp),
     orgIdp.deleteOrgIdp
+);
+
+authenticated.delete(
+    "/org/:orgId/idp/:idpId/association",
+    verifyValidLicense,
+    orgIdp.requireOrgIdentityProviderMode,
+    verifyOrgAccess,
+    verifyIdpAccess,
+    verifyUserHasAction(ActionsEnum.deleteIdp),
+    logActionAudit(ActionsEnum.deleteIdp),
+    orgIdp.unassociateOrgIdp
 );
 
 authenticated.get(
@@ -125,19 +155,16 @@ authenticated.get(
     orgIdp.getOrgIdp
 );
 
-authenticated.get(
-    "/org/:orgId/idp",
-    verifyValidLicense,
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.listIdps),
-    orgIdp.listOrgIdps
-);
-
 authenticated.get("/org/:orgId/idp", orgIdp.listOrgIdps); // anyone can see this; it's just a list of idp names and ids
 
 authenticated.get(
+    "/user/:userId/admin-org-idps",
+    verifyIsLoggedInUser,
+    orgIdp.listUserAdminOrgIdps
+);
+
+authenticated.get(
     "/org/:orgId/certificate/:domainId/:domain",
-    verifyValidLicense,
     verifyOrgAccess,
     verifyCertificateAccess,
     verifyUserHasAction(ActionsEnum.getCertificate),
@@ -212,6 +239,13 @@ if (build === "saas") {
         verifyUserHasAction(ActionsEnum.billing),
         logActionAudit(ActionsEnum.billing),
         generateLicense.generateNewEnterpriseLicense
+    );
+
+    authenticated.post(
+        "/org/:orgId/license/:licenseKey/clear-instance-name",
+        verifyOrgAccess,
+        verifyUserHasAction(ActionsEnum.billing),
+        generateLicense.clearInstanceName
     );
 
     authenticated.post(
@@ -648,7 +682,96 @@ authenticated.delete(
 
 authenticated.get(
     "/org/:orgId/event-streaming-destinations",
+    verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listEventStreamingDestinations),
     eventStreamingDestination.listEventStreamingDestinations
+);
+
+authenticated.put(
+    "/org/:orgId/alert-rule",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createAlertRule),
+    logActionAudit(ActionsEnum.createAlertRule),
+    alertRule.createAlertRule
+);
+
+authenticated.post(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateAlertRule),
+    logActionAudit(ActionsEnum.updateAlertRule),
+    alertRule.updateAlertRule
+);
+
+authenticated.delete(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteAlertRule),
+    logActionAudit(ActionsEnum.deleteAlertRule),
+    alertRule.deleteAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rules",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listAlertRules),
+    alertRule.listAlertRules
+);
+
+authenticated.get(
+    "/org/:orgId/alert-rule/:alertRuleId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getAlertRule),
+    alertRule.getAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/health-checks",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listHealthChecks),
+    healthChecks.listHealthChecks
+);
+
+authenticated.put(
+    "/org/:orgId/health-check",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createHealthCheck),
+    logActionAudit(ActionsEnum.createHealthCheck),
+    healthChecks.createHealthCheck
+);
+
+authenticated.post(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateHealthCheck),
+    logActionAudit(ActionsEnum.updateHealthCheck),
+    healthChecks.updateHealthCheck
+);
+
+authenticated.delete(
+    "/org/:orgId/health-check/:healthCheckId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteHealthCheck),
+    logActionAudit(ActionsEnum.deleteHealthCheck),
+    healthChecks.deleteHealthCheck
+);
+
+authenticated.get(
+    "/org/:orgId/health-check/:healthCheckId/status-history",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getTarget),
+    healthChecks.getHealthCheckStatusHistory
 );

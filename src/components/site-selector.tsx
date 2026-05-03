@@ -18,7 +18,41 @@ import { useDebounce } from "use-debounce";
 export type Selectedsite = Pick<
     ListSitesResponse["sites"][number],
     "name" | "siteId" | "type"
->;
+> & {
+    /** When omitted, no online/offline indicator is shown. */
+    online?: ListSitesResponse["sites"][number]["online"];
+};
+
+type SiteOnlineStatusProps = {
+    type: Selectedsite["type"];
+    online: Selectedsite["online"];
+    t: (key: "online" | "offline") => string;
+};
+
+/** Dot-only indicator matching `SitesTable` colors (newt/wireguard only; nothing for local or missing status). */
+export function SiteOnlineStatus({ type, online, t }: SiteOnlineStatusProps) {
+    if (type !== "newt" && type !== "wireguard") {
+        return null;
+    }
+    if (typeof online !== "boolean") {
+        return null;
+    }
+    return (
+        <span
+            className="shrink-0 flex items-center"
+            role="img"
+            aria-label={online ? t("online") : t("offline")}
+        >
+            <div
+                className={
+                    online
+                        ? "w-2 h-2 bg-green-500 rounded-full"
+                        : "w-2 h-2 bg-neutral-500 rounded-full"
+                }
+            />
+        </span>
+    );
+}
 
 export type SitesSelectorProps = {
     orgId: string;
@@ -86,7 +120,18 @@ export function SitesSelector({
                                         : "opacity-0"
                                 )}
                             />
-                            {site.name}
+                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                                <span className="min-w-0 flex-1 truncate">
+                                    {site.name}
+                                </span>
+                                {site.online != null && (
+                                    <SiteOnlineStatus
+                                        type={site.type}
+                                        online={site.online}
+                                        t={t}
+                                    />
+                                )}
+                            </div>
                         </CommandItem>
                     ))}
                 </CommandGroup>

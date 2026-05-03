@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, networks, siteNetworks } from "@server/db";
 import { siteResources, sites, SiteResource } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -108,13 +108,18 @@ export async function listSiteResources(
             return next(createHttpError(HttpCode.NOT_FOUND, "Site not found"));
         }
 
-        // Get site resources
+        // Get site resources by joining networks to siteResources via siteNetworks
         const siteResourcesList = await db
             .select()
-            .from(siteResources)
+            .from(siteNetworks)
+            .innerJoin(networks, eq(siteNetworks.networkId, networks.networkId))
+            .innerJoin(
+                siteResources,
+                eq(siteResources.networkId, networks.networkId)
+            )
             .where(
                 and(
-                    eq(siteResources.siteId, siteId),
+                    eq(siteNetworks.siteId, siteId),
                     eq(siteResources.orgId, orgId)
                 )
             )

@@ -21,6 +21,7 @@ import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
 import { Badge } from "@app/components/ui/badge";
+import { InfoPopup } from "@app/components/ui/info-popup";
 
 export type RemoteExitNodeRow = {
     id: string;
@@ -33,6 +34,7 @@ export type RemoteExitNodeRow = {
     online: boolean;
     dateCreated: string;
     version?: string;
+    updateAvailable?: boolean;
 };
 
 type ExitNodesTableProps = {
@@ -146,7 +148,7 @@ export default function ExitNodesTable({
                 } else {
                     return (
                         <span className="text-neutral-500 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                             <span>{t("offline")}</span>
                         </span>
                     );
@@ -233,12 +235,17 @@ export default function ExitNodesTable({
                 const originalRow = row.original;
                 return (
                     <div className="flex items-center space-x-1">
-                        {originalRow.version && originalRow.version ? (
+                        {originalRow.version ? (
                             <Badge variant="secondary">
                                 {"v" + originalRow.version}
                             </Badge>
                         ) : (
                             "-"
+                        )}
+                        {originalRow.updateAvailable && (
+                            <InfoPopup
+                                info={t("pangolinNodeUpdateAvailableInfo")}
+                            />
                         )}
                     </div>
                 );

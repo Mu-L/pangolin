@@ -161,16 +161,13 @@ export default function Page() {
             description: t("siteNewtTunnelDescription"),
             disabled: true
         },
-        ...(env.flags.disableBasicWireguardSites
+        ...(env.flags.disableBasicWireguardSites || build == "saas"
             ? []
             : [
                   {
                       id: "wireguard" as SiteType,
                       title: t("siteWg"),
-                      description:
-                          build == "saas"
-                              ? t("siteWgDescriptionSaas")
-                              : t("siteWgDescription"),
+                      description: t("siteWgDescription"),
                       disabled: true
                   }
               ]),
@@ -426,9 +423,22 @@ export default function Page() {
                                 }));
 
                         setRemoteExitNodeOptions(exitNodeOptions);
+
+                        if (exitNodeOptions.length === 0) {
+                            // No remote exit nodes available - remove local option and default to newt
+                            setTunnelTypes((prev: any) =>
+                                prev.filter((item: any) => item.id !== "local")
+                            );
+                            form.setValue("method", "newt");
+                        }
                     }
                 } catch (error) {
                     console.error("Failed to fetch remote exit nodes:", error);
+                    // If fetch fails, no remote exit nodes available - remove local option and default to newt
+                    setTunnelTypes((prev: any) =>
+                        prev.filter((item: any) => item.id !== "local")
+                    );
+                    form.setValue("method", "newt");
                 }
             }
 

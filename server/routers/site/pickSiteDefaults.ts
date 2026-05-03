@@ -124,7 +124,7 @@ export async function pickSiteDefaults(
             return next(
                 createHttpError(
                     HttpCode.INTERNAL_SERVER_ERROR,
-                    "No available subnet found"
+                    "No available address"
                 )
             );
         }

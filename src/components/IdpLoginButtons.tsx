@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@app/components/ui/button";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
+import IdpTypeIcon from "@app/components/IdpTypeIcon";
 import {
     generateOidcUrlProxy,
     type GenerateOidcUrlResponse
@@ -135,24 +135,7 @@ export default function IdpLoginButtons({
                                     disabled={loading}
                                     loading={loading}
                                 >
-                                    {effectiveType === "google" && (
-                                        <Image
-                                            src="/idp/google.png"
-                                            alt="Google"
-                                            width={16}
-                                            height={16}
-                                            className="rounded"
-                                        />
-                                    )}
-                                    {effectiveType === "azure" && (
-                                        <Image
-                                            src="/idp/azure.png"
-                                            alt="Azure"
-                                            width={16}
-                                            height={16}
-                                            className="rounded"
-                                        />
-                                    )}
+                                    <IdpTypeIcon type={effectiveType} size={16} />
                                     <span>{idp.name}</span>
                                 </Button>
                             );

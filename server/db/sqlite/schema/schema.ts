@@ -54,7 +54,9 @@ export const orgs = sqliteTable("orgs", {
     settingsLogRetentionDaysAction: integer("settingsLogRetentionDaysAction") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
-    settingsLogRetentionDaysConnection: integer("settingsLogRetentionDaysConnection") // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
+    settingsLogRetentionDaysConnection: integer(
+        "settingsLogRetentionDaysConnection"
+    ) // where 0 = dont keep logs and -1 = keep forever and 9001 = end of the following year
         .notNull()
         .default(0),
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
@@ -90,6 +92,9 @@ export const sites = sqliteTable("sites", {
         .notNull(),
     niceId: text("niceId").notNull(),
     exitNodeId: integer("exitNode").references(() => exitNodes.exitNodeId, {
+        onDelete: "set null"
+    }),
+    networkId: integer("networkId").references(() => networks.networkId, {
         onDelete: "set null"
     }),
     name: text("name").notNull(),
@@ -173,7 +178,9 @@ export const resources = sqliteTable("resources", {
     maintenanceTitle: text("maintenanceTitle"),
     maintenanceMessage: text("maintenanceMessage"),
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
-    postAuthPath: text("postAuthPath")
+    postAuthPath: text("postAuthPath"),
+    health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
+    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false)
 });
 
 export const targets = sqliteTable("targets", {
@@ -204,9 +211,18 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     targetHealthCheckId: integer("targetHealthCheckId").primaryKey({
         autoIncrement: true
     }),
-    targetId: integer("targetId")
-        .notNull()
-        .references(() => targets.targetId, { onDelete: "cascade" }),
+    targetId: integer("targetId").references(() => targets.targetId, {
+        onDelete: "cascade"
+    }),
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    siteId: integer("siteId").references(() => sites.siteId, {
+        onDelete: "cascade"
+    }).notNull(),
+    name: text("name"),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()
         .default(false),
@@ -227,7 +243,9 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
     hcHealth: text("hcHealth")
         .$type<"unknown" | "healthy" | "unhealthy">()
         .default("unknown"), // "unknown", "healthy", "unhealthy"
-    hcTlsServerName: text("hcTlsServerName")
+    hcTlsServerName: text("hcTlsServerName"),
+    hcHealthyThreshold: integer("hcHealthyThreshold").default(1),
+    hcUnhealthyThreshold: integer("hcUnhealthyThreshold").default(1)
 });
 
 export const exitNodes = sqliteTable("exitNodes", {
@@ -250,16 +268,21 @@ export const siteResources = sqliteTable("siteResources", {
     siteResourceId: integer("siteResourceId").primaryKey({
         autoIncrement: true
     }),
-    siteId: integer("siteId")
-        .notNull()
-        .references(() => sites.siteId, { onDelete: "cascade" }),
     orgId: text("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
+    networkId: integer("networkId").references(() => networks.networkId, {
+        onDelete: "set null"
+    }),
+    defaultNetworkId: integer("defaultNetworkId").references(
+        () => networks.networkId,
+        { onDelete: "restrict" }
+    ),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
-    mode: text("mode").$type<"host" | "cidr">().notNull(), // "host" | "cidr" | "port"
-    protocol: text("protocol"), // only for port mode
+    ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
+    mode: text("mode").$type<"host" | "cidr" | "http">().notNull(), // "host" | "cidr" | "http"
+    scheme: text("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
     destination: text("destination").notNull(), // ip, cidr, hostname
@@ -274,7 +297,36 @@ export const siteResources = sqliteTable("siteResources", {
     authDaemonPort: integer("authDaemonPort").default(22123),
     authDaemonMode: text("authDaemonMode")
         .$type<"site" | "remote">()
-        .default("site")
+        .default("site"),
+    domainId: text("domainId").references(() => domains.domainId, {
+        onDelete: "set null"
+    }),
+    subdomain: text("subdomain"),
+    fullDomain: text("fullDomain")
+});
+
+export const networks = sqliteTable("networks", {
+    networkId: integer("networkId").primaryKey({ autoIncrement: true }),
+    niceId: text("niceId"),
+    name: text("name"),
+    scope: text("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" })
+});
+
+export const siteNetworks = sqliteTable("siteNetworks", {
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        }),
+    networkId: integer("networkId")
+        .notNull()
+        .references(() => networks.networkId, { onDelete: "cascade" })
 });
 
 export const clientSiteResources = sqliteTable("clientSiteResources", {
@@ -1096,6 +1148,7 @@ export const requestAuditLog = sqliteTable(
         actor: text("actor"),
         actorId: text("actorId"),
         resourceId: integer("resourceId"),
+        siteResourceId: integer("siteResourceId"),
         ip: text("ip"),
         location: text("location"),
         userAgent: text("userAgent"),
@@ -1142,6 +1195,20 @@ export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
     error: text("error"),
     complete: integer("complete", { mode: "boolean" }).notNull().default(false)
 });
+
+export const statusHistory = sqliteTable("statusHistory", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    entityType: text("entityType").notNull(), // "site" | "healthCheck"
+    entityId: integer("entityId").notNull(),  // siteId or targetHealthCheckId
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    status: text("status").notNull(), // "online"/"offline" for sites; "healthy"/"unhealthy"/"unknown" for healthChecks
+    timestamp: integer("timestamp").notNull(), // unix epoch seconds
+}, (table) => [
+    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
+    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
+]);
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
@@ -1195,6 +1262,7 @@ export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type ApiKeyAction = InferSelectModel<typeof apiKeyActions>;
 export type ApiKeyOrg = InferSelectModel<typeof apiKeyOrg>;
 export type SiteResource = InferSelectModel<typeof siteResources>;
+export type Network = InferSelectModel<typeof networks>;
 export type OrgDomains = InferSelectModel<typeof orgDomains>;
 export type SetupToken = InferSelectModel<typeof setupTokens>;
 export type HostMeta = InferSelectModel<typeof hostMeta>;
@@ -1209,3 +1277,4 @@ export type DeviceWebAuthCode = InferSelectModel<typeof deviceWebAuthCodes>;
 export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
+export type StatusHistory = InferSelectModel<typeof statusHistory>;

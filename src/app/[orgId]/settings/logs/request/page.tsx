@@ -360,6 +360,7 @@ export default function GeneralPage() {
     // 105 - Valid Password
     // 106 - Valid email
     // 107 - Valid SSO
+    // 108 - Connected Client
 
     // 201 - Resource Not Found
     // 202 - Resource Blocked
@@ -377,6 +378,7 @@ export default function GeneralPage() {
         105: t("validPassword"),
         106: t("validEmail"),
         107: t("validSSO"),
+        108: t("connectedClient"),
         201: t("resourceNotFound"),
         202: t("resourceBlocked"),
         203: t("droppedByRule"),
@@ -510,14 +512,14 @@ export default function GeneralPage() {
             cell: ({ row }) => {
                 return (
                     <Link
-                        href={`/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`}
+                        href={
+                            row.original.reason == 108 // for now the client will only have reason 108 so we know where to go
+                                ? `/${row.original.orgId}/settings/resources/client?query=${row.original.resourceNiceId}`
+                                : `/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`
+                        }
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-6"
-                        >
+                        <Button variant="outline" size="sm">
                             {row.original.resourceName}
                             <ArrowUpRight className="ml-2 h-3 w-3" />
                         </Button>
@@ -634,6 +636,7 @@ export default function GeneralPage() {
                                 { value: "105", label: t("validPassword") },
                                 { value: "106", label: t("validEmail") },
                                 { value: "107", label: t("validSSO") },
+                                { value: "108", label: t("connectedClient") },
                                 { value: "201", label: t("resourceNotFound") },
                                 { value: "202", label: t("resourceBlocked") },
                                 { value: "203", label: t("droppedByRule") },

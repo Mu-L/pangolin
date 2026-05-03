@@ -17,23 +17,34 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
+import { DataTableEmptyState } from "@/components/ui/data-table-empty-state";
 import { DataTablePagination } from "@app/components/DataTablePagination";
+import type { DataTableAddAction } from "@app/components/ui/data-table";
 import { Button } from "@app/components/ui/button";
 import { Card, CardContent, CardHeader } from "@app/components/ui/card";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { Input } from "@app/components/ui/input";
 import { useStoredColumnVisibility } from "@app/hooks/useStoredColumnVisibility";
+import { dataTableFilterDropdownContentClassName } from "@app/lib/dataTableFilterPopover";
 
-import { Columns, Filter, Plus, RefreshCw, Search } from "lucide-react";
+import {
+    ChevronDown,
+    Columns,
+    Filter,
+    Plus,
+    RefreshCw,
+    Search
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 // Extended ColumnDef type that includes optional friendlyName for column visibility dropdown
 export type ExtendedColumnDef<TData, TValue = unknown> = ColumnDef<
@@ -67,12 +78,16 @@ type ControlledDataTableProps<TData, TValue> = {
     tableId: string;
     addButtonText?: string;
     onAdd?: () => void;
+    addActions?: DataTableAddAction[];
+    addButtonDisabled?: boolean;
     onRefresh?: () => void;
     isRefreshing?: boolean;
     refreshButtonDisabled?: boolean;
     isNavigatingToAddPage?: boolean;
     searchPlaceholder?: string;
     filters?: DataTableFilter[];
+    /** Extra filter controls (e.g. searchable entity pickers) shown after the filter dropdowns. */
+    filterExtras?: ReactNode;
     filterDisplayMode?: "label" | "calculated"; // Global filter display mode (can be overridden per filter)
     columnVisibility?: Record<string, boolean>;
     enableColumnVisibility?: boolean;
@@ -90,11 +105,14 @@ export function ControlledDataTable<TData, TValue>({
     rows,
     addButtonText,
     onAdd,
+    addActions,
+    addButtonDisabled = false,
     onRefresh,
     isRefreshing,
     refreshButtonDisabled = false,
     searchPlaceholder = "Search...",
     filters,
+    filterExtras,
     filterDisplayMode = "label",
     columnVisibility: defaultColumnVisibility,
     enableColumnVisibility = false,
@@ -233,6 +251,46 @@ export function ControlledDataTable<TData, TValue>({
         return "";
     };
 
+    const tableRows = table.getRowModel().rows;
+    const hasRows = tableRows.length > 0;
+    const hasAddAction = Boolean(
+        addButtonText && ((addActions && addActions.length > 0) || onAdd)
+    );
+    const showAddActionInEmptyState = !hasRows && hasAddAction;
+    const addAction =
+        addActions && addActions.length > 0 && addButtonText ? (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        disabled={addButtonDisabled || isNavigatingToAddPage}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {addButtonText}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    {addActions.map((action, i) => (
+                        <DropdownMenuItem
+                            key={i}
+                            onSelect={() => action.onSelect()}
+                        >
+                            {action.label}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        ) : onAdd && addButtonText ? (
+            <Button
+                onClick={onAdd}
+                loading={isNavigatingToAddPage}
+                disabled={addButtonDisabled}
+            >
+                <Plus className="mr-2 h-4 w-4" />
+                {addButtonText}
+            </Button>
+        ) : null;
+
     return (
         <div className="container mx-auto max-w-12xl">
             <Card>
@@ -288,7 +346,9 @@ export function ControlledDataTable<TData, TValue>({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent
                                                 align="start"
-                                                className="w-48"
+                                                className={
+                                                    dataTableFilterDropdownContentClassName
+                                                }
                                             >
                                                 <DropdownMenuLabel>
                                                     {filter.label}
@@ -330,6 +390,7 @@ export function ControlledDataTable<TData, TValue>({
                                 })}
                             </div>
                         )}
+                        {filterExtras}
                     </div>
                     <div className="flex items-center gap-2 sm:justify-end">
                         {onRefresh && (
@@ -337,7 +398,9 @@ export function ControlledDataTable<TData, TValue>({
                                 <Button
                                     variant="outline"
                                     onClick={onRefresh}
-                                    disabled={isRefreshing || refreshButtonDisabled}
+                                    disabled={
+                                        isRefreshing || refreshButtonDisabled
+                                    }
                                 >
                                     <RefreshCw
                                         className={`mr-0 sm:mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -348,21 +411,20 @@ export function ControlledDataTable<TData, TValue>({
                                 </Button>
                             </div>
                         )}
-                        {onAdd && addButtonText && (
-                            <div>
-                                <Button
-                                    onClick={onAdd}
-                                    loading={isNavigatingToAddPage}
-                                >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    {addButtonText}
-                                </Button>
-                            </div>
+                        {addAction && (
+                            <>
+                                <div className="sm:hidden">{addAction}</div>
+                                {!showAddActionInEmptyState && (
+                                    <div className="hidden sm:block">
+                                        {addAction}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-hidden">
                         <Table>
                             <TableHeader>
                                 {table.getHeaderGroups().map((headerGroup) => (
@@ -552,14 +614,16 @@ export function ControlledDataTable<TData, TValue>({
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={columns.length}
-                                            className="h-24 text-center"
-                                        >
-                                            No results found.
-                                        </TableCell>
-                                    </TableRow>
+                                    <DataTableEmptyState
+                                        colSpan={columns.length}
+                                        action={
+                                            showAddActionInEmptyState ? (
+                                                <div className="hidden sm:block">
+                                                    {addAction}
+                                                </div>
+                                            ) : undefined
+                                        }
+                                    />
                                 )}
                             </TableBody>
                         </Table>

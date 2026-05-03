@@ -12,14 +12,6 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ContainersSelector } from "./ContainersSelector";
 import { Button } from "./ui/button";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "./ui/command";
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "./ui/select";
@@ -112,7 +104,7 @@ export function ResourceTargetAddressItem({
                             role="combobox"
                             className={cn(
                                 "w-45 justify-between text-sm border-r pr-4 rounded-none h-8 hover:bg-transparent",
-                                "rounded-l-md rounded-r-xs",
+                                "",
                                 !proxyTarget.siteId && "text-muted-foreground"
                             )}
                         >
@@ -121,10 +113,10 @@ export function ResourceTargetAddressItem({
                                     ? selectedSite?.name
                                     : t("siteSelect")}
                             </span>
-                            <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
+                            <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="p-0 w-45">
+                    <PopoverContent className="p-0">
                         <SitesSelector
                             orgId={orgId}
                             selectedSite={selectedSite}
@@ -150,7 +142,7 @@ export function ResourceTargetAddressItem({
                             })
                         }
                     >
-                        <SelectTrigger className="h-8 px-2 w-17.5 border-none bg-transparent shadow-none data-[state=open]:bg-transparent rounded-xs">
+                        <SelectTrigger className="h-8 px-2 w-17.5 border-none bg-transparent shadow-none data-[state=open]:bg-transparent rounded-none">
                             {proxyTarget.method || "http"}
                         </SelectTrigger>
                         <SelectContent>
@@ -212,6 +204,12 @@ export function ResourceTargetAddressItem({
                         proxyTarget.port === 0 ? "" : proxyTarget.port
                     }
                     className="w-18.75 px-2 border-none placeholder-gray-400 rounded-l-xs"
+                    type="number"
+                    onKeyDown={(e) => {
+                        if (["e", "E", "+", "-", "."].includes(e.key)) {
+                            e.preventDefault();
+                        }
+                    }}
                     onBlur={(e) => {
                         const value = parseInt(e.target.value, 10);
                         if (!isNaN(value) && value > 0) {

@@ -4,6 +4,7 @@ import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
 import { DataTable } from "@app/components/ui/data-table";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
     DropdownMenu,
@@ -12,6 +13,11 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { InfoPopup } from "@app/components/ui/info-popup";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -21,38 +27,52 @@ import {
     ArrowUp10Icon,
     ArrowUpDown,
     ArrowUpRight,
+    ChevronDown,
     ChevronsUpDownIcon,
+    Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
-import { orgQueries } from "@app/lib/queries";
-import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
+import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
+import {
+    ResourceSitesStatusCell,
+    type ResourceSiteRow
+} from "@app/components/ResourceSitesStatusCell";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
+import { build } from "@server/build";
+
+export type InternalResourceSiteRow = ResourceSiteRow;
 
 export type InternalResourceRow = {
     id: number;
     name: string;
     orgId: string;
-    siteName: string;
-    siteAddress: string | null;
+    sites: InternalResourceSiteRow[];
+    siteNames: string[];
+    siteAddresses: (string | null)[];
+    siteIds: number[];
+    siteNiceIds: string[];
     // mode: "host" | "cidr" | "port";
-    mode: "host" | "cidr";
+    mode: "host" | "cidr" | "http";
+    scheme: "http" | "https" | null;
+    ssl: boolean;
     // protocol: string | null;
     // proxyPort: number | null;
-    siteId: number;
-    siteNiceId: string;
     destination: string;
-    // destinationPort: number | null;
+    httpHttpsPort: number | null;
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
@@ -61,20 +81,43 @@ export type InternalResourceRow = {
     disableIcmp: boolean;
     authDaemonMode?: "site" | "remote" | null;
     authDaemonPort?: number | null;
+    subdomain?: string | null;
+    domainId?: string | null;
+    fullDomain?: string | null;
 };
+
+function formatDestinationDisplay(row: InternalResourceRow): string {
+    return formatSiteResourceDestinationDisplay({
+        mode: row.mode,
+        destination: row.destination,
+        httpHttpsPort: row.httpHttpsPort,
+        scheme: row.scheme
+    });
+}
+
+function isSafeUrlForLink(href: string): boolean {
+    try {
+        void new URL(href);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 type ClientResourcesTableProps = {
     internalResources: InternalResourceRow[];
     orgId: string;
     pagination: PaginationState;
     rowCount: number;
+    initialFilterSite?: Selectedsite | null;
 };
 
 export default function ClientResourcesTable({
     internalResources,
     orgId,
     pagination,
-    rowCount
+    rowCount,
+    initialFilterSite = null
 }: ClientResourcesTableProps) {
     const router = useRouter();
     const {
@@ -96,10 +139,32 @@ export default function ClientResourcesTable({
     const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-    const { data: sites = [] } = useQuery(orgQueries.sites({ orgId }));
+    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
 
     const [isRefreshing, startTransition] = useTransition();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 30_000);
+        return () => clearInterval(interval);
+    }, [router]);
+
+    const siteIdQ = searchParams.get("siteId");
+    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+    const selectedSite: Selectedsite | null = useMemo(() => {
+        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
+            return null;
+        }
+        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
+            return initialFilterSite;
+        }
+        return {
+            siteId: siteIdNum,
+            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
+            type: "newt"
+        };
+    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     const refreshData = () => {
         startTransition(() => {
@@ -135,6 +200,59 @@ export default function ClientResourcesTable({
             });
         }
     };
+
+    function SiteCell({ resourceRow }: { resourceRow: InternalResourceRow }) {
+        const { siteNames, siteNiceIds, orgId } = resourceRow;
+
+        if (!siteNames || siteNames.length === 0) {
+            return (
+                <span className="text-muted-foreground">
+                    {t("noSites", { defaultValue: "No sites" })}
+                </span>
+            );
+        }
+
+        if (siteNames.length === 1) {
+            return (
+                <Link href={`/${orgId}/settings/sites/${siteNiceIds[0]}`}>
+                    <Button variant="outline">
+                        {siteNames[0]}
+                        <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
+            );
+        }
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                    >
+                        <span>
+                            {siteNames.length} {t("sites")}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                    {siteNames.map((siteName, idx) => (
+                        <DropdownMenuItem key={siteNiceIds[idx]} asChild>
+                            <Link
+                                href={`/${orgId}/settings/sites/${siteNiceIds[idx]}`}
+                                className="flex items-center gap-2 cursor-pointer"
+                            >
+                                {siteName}
+                                <ArrowUpRight className="h-3 w-3" />
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
 
     const internalColumns: ExtendedColumnDef<InternalResourceRow>[] = [
         {
@@ -185,20 +303,65 @@ export default function ClientResourcesTable({
             }
         },
         {
-            accessorKey: "siteName",
-            friendlyName: t("site"),
-            header: () => <span className="p-3">{t("site")}</span>,
+            id: "sites",
+            accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
+            friendlyName: t("sites"),
+            header: () => (
+                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            role="combobox"
+                            className={cn(
+                                "justify-between text-sm h-8 px-2 w-full p-3",
+                                !selectedSite && "text-muted-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {t("sites")}
+                                <Funnel className="size-4 flex-none" />
+                                {selectedSite && (
+                                    <Badge
+                                        className="truncate max-w-[10rem]"
+                                        variant="secondary"
+                                    >
+                                        {selectedSite.name}
+                                    </Badge>
+                                )}
+                            </div>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className={dataTableFilterPopoverContentClassName}
+                        align="start"
+                    >
+                        <div className="border-b p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-full justify-start font-normal"
+                                onClick={clearSiteFilter}
+                            >
+                                {t("standaloneHcFilterAnySite")}
+                            </Button>
+                        </div>
+                        <SitesSelector
+                            orgId={orgId}
+                            selectedSite={selectedSite}
+                            onSelectSite={onPickSite}
+                        />
+                    </PopoverContent>
+                </Popover>
+            ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return (
-                    <Link
-                        href={`/${resourceRow.orgId}/settings/sites/${resourceRow.siteNiceId}`}
-                    >
-                        <Button variant="outline">
-                            {resourceRow.siteName}
-                            <ArrowUpRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </Link>
+                    <ResourceSitesStatusCell
+                        orgId={resourceRow.orgId}
+                        resourceSites={resourceRow.sites}
+                    />
                 );
             }
         },
@@ -215,6 +378,10 @@ export default function ClientResourcesTable({
                         {
                             value: "cidr",
                             label: t("editInternalResourceDialogModeCidr")
+                        },
+                        {
+                            value: "http",
+                            label: t("editInternalResourceDialogModeHttp")
                         }
                     ]}
                     selectedValue={searchParams.get("mode") ?? undefined}
@@ -227,10 +394,14 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                const modeLabels: Record<"host" | "cidr" | "port", string> = {
+                const modeLabels: Record<
+                    "host" | "cidr" | "port" | "http",
+                    string
+                > = {
                     host: t("editInternalResourceDialogModeHost"),
                     cidr: t("editInternalResourceDialogModeCidr"),
-                    port: t("editInternalResourceDialogModePort")
+                    port: t("editInternalResourceDialogModePort"),
+                    http: t("editInternalResourceDialogModeHttp")
                 };
                 return <span>{modeLabels[resourceRow.mode]}</span>;
             }
@@ -243,11 +414,12 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
+                const display = formatDestinationDisplay(resourceRow);
                 return (
                     <CopyToClipboard
-                        text={resourceRow.destination}
+                        text={display}
                         isLink={false}
-                        displayText={resourceRow.destination}
+                        displayText={display}
                     />
                 );
             }
@@ -260,15 +432,47 @@ export default function ClientResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
-                return resourceRow.mode === "host" && resourceRow.alias ? (
-                    <CopyToClipboard
-                        text={resourceRow.alias}
-                        isLink={false}
-                        displayText={resourceRow.alias}
-                    />
-                ) : (
-                    <span>-</span>
-                );
+                if (resourceRow.mode === "host" && resourceRow.alias) {
+                    return (
+                        <CopyToClipboard
+                            text={resourceRow.alias}
+                            isLink={false}
+                            displayText={resourceRow.alias}
+                        />
+                    );
+                }
+                if (resourceRow.mode === "http") {
+                    const domainId = resourceRow.domainId;
+                    const fullDomain = resourceRow.fullDomain;
+                    const url = `${resourceRow.ssl ? "https" : "http"}://${fullDomain}`;
+                    const did =
+                        build !== "oss" &&
+                        resourceRow.ssl &&
+                        domainId != null &&
+                        domainId !== "" &&
+                        fullDomain != null &&
+                        fullDomain !== "";
+
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
+                            {did ? (
+                                <ResourceAccessCertIndicator
+                                    orgId={resourceRow.orgId}
+                                    domainId={domainId}
+                                    fullDomain={fullDomain}
+                                />
+                            ) : null}
+                            <div className="">
+                                <CopyToClipboard
+                                    text={url}
+                                    isLink={isSafeUrlForLink(url)}
+                                    displayText={url}
+                                />
+                            </div>
+                        </div>
+                    );
+                }
+                return <span>-</span>;
             }
         },
         {
@@ -356,6 +560,16 @@ export default function ClientResourcesTable({
         });
     }
 
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
+
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
+
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
 
@@ -399,7 +613,7 @@ export default function ClientResourcesTable({
                     onConfirm={async () =>
                         deleteInternalResource(
                             selectedInternalResource!.id,
-                            selectedInternalResource!.siteId
+                            selectedInternalResource!.siteIds[0]
                         )
                     }
                     string={selectedInternalResource.name}
@@ -412,6 +626,7 @@ export default function ClientResourcesTable({
                 rows={internalResources}
                 tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
+                searchQuery={searchParams.get("query") ?? ""}
                 onAdd={() => setIsCreateDialogOpen(true)}
                 addButtonText={t("resourceAdd")}
                 onSearch={handleSearchChange}
@@ -435,7 +650,6 @@ export default function ClientResourcesTable({
                     setOpen={setIsEditDialogOpen}
                     resource={editingResource}
                     orgId={orgId}
-                    sites={sites}
                     onSuccess={() => {
                         // Delay refresh to allow modal to close smoothly
                         setTimeout(() => {
@@ -450,7 +664,6 @@ export default function ClientResourcesTable({
                 open={isCreateDialogOpen}
                 setOpen={setIsCreateDialogOpen}
                 orgId={orgId}
-                sites={sites}
                 onSuccess={() => {
                     // Delay refresh to allow modal to close smoothly
                     setTimeout(() => {

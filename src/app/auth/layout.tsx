@@ -10,7 +10,10 @@ import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
 export const metadata: Metadata = {
-    title: `Auth - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
+    title: {
+        template: `%s - ${process.env.BRANDING_APP_NAME || "Pangolin"}`,
+        default: `Auth - ${process.env.BRANDING_APP_NAME || "Pangolin"}`
+    },
     description: ""
 };
 
@@ -66,18 +69,23 @@ export default async function AuthLayout({ children }: AuthLayoutProps) {
                                 © {new Date().getFullYear()} Fossorial, Inc.
                             </span>
                         </a>
-                        <Separator orientation="vertical" />
-                        <a
-                            href="https://pangolin.net"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="Built by Fossorial"
-                            className="flex items-center space-x-2 whitespace-nowrap"
-                        >
-                            <span>
-                                {process.env.BRANDING_APP_NAME || "Pangolin"}
-                            </span>
-                        </a>
+                        {build !== "saas" && (
+                            <>
+                                <Separator orientation="vertical" />
+                                <a
+                                    href="https://pangolin.net"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label="Built by Fossorial"
+                                    className="flex items-center space-x-2 whitespace-nowrap"
+                                >
+                                    <span>
+                                        {process.env.BRANDING_APP_NAME ||
+                                            "Pangolin"}
+                                    </span>
+                                </a>
+                            </>
+                        )}
                         <Separator orientation="vertical" />
                         <span>
                             {build === "oss"

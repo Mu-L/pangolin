@@ -336,31 +336,22 @@ export async function validateOidcCallback(
                     .innerJoin(orgs, eq(orgs.orgId, idpOrg.orgId));
                 allOrgs = idpOrgs.map((o) => o.orgs);
 
-                // TODO: when there are multiple orgs we need to do this better!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-                if (allOrgs.length > 1) {
-                    // for some reason there is more than one org
-                    logger.error(
-                        "More than one organization linked to this IdP. This should not happen with auto-provisioning enabled."
+                for (const org of allOrgs) {
+                    const subscribed = await isSubscribed(
+                        org.orgId,
+                        tierMatrix.autoProvisioning
                     );
-                    return next(
-                        createHttpError(
-                            HttpCode.INTERNAL_SERVER_ERROR,
-                            "Multiple organizations linked to this IdP. Please contact support."
-                        )
-                    );
-                }
+                    if (!subscribed) {
+                        // filter out the org
+                        allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
 
-                const subscribed = await isSubscribed(
-                    allOrgs[0].orgId,
-                    tierMatrix.autoProvisioning
-                );
-                if (!subscribed) {
-                    return next(
-                        createHttpError(
-                            HttpCode.FORBIDDEN,
-                            "This organization's current plan does not support this feature."
-                        )
-                    );
+                        // return next(
+                        //     createHttpError(
+                        //         HttpCode.FORBIDDEN,
+                        //         "This organization's current plan does not support this feature."
+                        //     )
+                        // );
+                    }
                 }
             } else {
                 allOrgs = await db.select().from(orgs);

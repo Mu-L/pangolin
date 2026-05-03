@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { clients, db, exitNodes } from "@server/db";
+import { clients, db, exitNodes, logsDb, statusHistory } from "@server/db";
 import { roles, userSites, sites, roleSites, Site, orgs } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -15,11 +15,12 @@ import moment from "moment";
 import { OpenAPITags, registry } from "@server/openApi";
 import { hashPassword } from "@server/auth/password";
 import { isValidIP } from "@server/lib/validators";
-import { isIpInCidr } from "@server/lib/ip";
+import { getNextAvailableClientSubnet, isIpInCidr } from "@server/lib/ip";
 import { verifyExitNodeOrgAccess } from "#dynamic/lib/exitNodes";
 import { build } from "@server/build";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
+import { generateId } from "@server/auth/sessions/app";
 
 const createSiteParamsSchema = z.strictObject({
     orgId: z.string()
@@ -28,6 +29,7 @@ const createSiteParamsSchema = z.strictObject({
 const createSiteSchema = z.strictObject({
     name: z.string().min(1).max(255),
     exitNodeId: z.int().positive().optional(),
+    niceId: z.string().min(1).max(255).optional(),
     // subdomain: z
     //     .string()
     //     .min(1)
@@ -52,7 +54,10 @@ const createSiteSchema = z.strictObject({
 
 export type CreateSiteBody = z.infer<typeof createSiteSchema>;
 
-export type CreateSiteResponse = Site;
+export type CreateSiteResponse = Site & {
+    newtId?: string;
+    secret?: string;
+};
 
 registry.registerPath({
     method: "put",
@@ -64,7 +69,11 @@ registry.registerPath({
         body: {
             content: {
                 "application/json": {
-                    schema: createSiteSchema
+                    schema: createSiteSchema,
+                    example: {
+                        name: "My Site",
+                        type: "newt"
+                    }
                 }
             }
         }
@@ -96,8 +105,12 @@ export async function createSite(
             subnet,
             newtId,
             secret,
-            address
+            address,
+            niceId
         } = parsedBody.data;
+
+        const updatedNewtSecret = secret || generateId(48);
+        const updatedNewtId = newtId || generateId(15);
 
         const parsedParams = createSiteParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -111,7 +124,10 @@ export async function createSite(
 
         const { orgId } = parsedParams.data;
 
-        if (req.user && (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)) {
+        if (
+            req.user &&
+            (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)
+        ) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );
@@ -227,6 +243,18 @@ export async function createSite(
                     )
                 );
             }
+        } else {
+            const newClientAddress = await getNextAvailableClientSubnet(orgId);
+            if (!newClientAddress) {
+                return next(
+                    createHttpError(
+                        HttpCode.INTERNAL_SERVER_ERROR,
+                        "No available address found"
+                    )
+                );
+            }
+
+            updatedAddress = newClientAddress.split("/")[0];
         }
 
         if (subnet && exitNodeId) {
@@ -285,23 +313,51 @@ export async function createSite(
             }
         }
 
-        const niceId = await getUniqueSiteName(orgId);
+        let updatedNiceId = niceId;
+        if (!niceId) {
+            updatedNiceId = await getUniqueSiteName(orgId);
+        } else {
+            // make sure the niceId is unique
+            const existingSite = await db
+                .select()
+                .from(sites)
+                .where(and(eq(sites.niceId, niceId), eq(sites.orgId, orgId)))
+                .limit(1);
+
+            if (existingSite.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        `Nice ID ${niceId} already exists. Please choose a different one.`
+                    )
+                );
+            }
+        }
 
         let newSite: Site | undefined;
         await db.transaction(async (trx) => {
             if (type == "newt") {
                 [newSite] = await trx
                     .insert(sites)
-                    .values({ // NOTE: NO SUBNET OR EXIT NODE ID PASSED IN HERE BECAUSE ITS NOW CHOSEN ON CONNECT
+                    .values({
+                        // NOTE: NO SUBNET OR EXIT NODE ID PASSED IN HERE BECAUSE ITS NOW CHOSEN ON CONNECT
                         orgId,
                         name,
-                        niceId,
+                        niceId: updatedNiceId!,
                         address: updatedAddress || null,
                         type,
                         dockerSocketEnabled: true,
                         status: "approved"
                     })
                     .returning();
+
+                await logsDb.insert(statusHistory).values({
+                    entityType: "site",
+                    entityId: newSite.siteId,
+                    orgId: orgId,
+                    status: "offline",
+                    timestamp: Math.floor(Date.now() / 1000)
+                });
             } else if (type == "wireguard") {
                 // we are creating a site with an exit node (tunneled)
                 if (!subnet) {
@@ -353,7 +409,7 @@ export async function createSite(
                         orgId,
                         exitNodeId,
                         name,
-                        niceId,
+                        niceId: updatedNiceId!,
                         subnet,
                         type,
                         pubKey: pubKey || null,
@@ -367,8 +423,7 @@ export async function createSite(
                         exitNodeId: exitNodeId || null,
                         orgId,
                         name,
-                        niceId,
-                        address: updatedAddress || null,
+                        niceId: updatedNiceId!,
                         type,
                         dockerSocketEnabled: false,
                         online: true,
@@ -402,7 +457,10 @@ export async function createSite(
                 siteId: newSite.siteId
             });
 
-            if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
+            if (
+                req.user &&
+                !req.userOrgRoleIds?.includes(adminRole[0].roleId)
+            ) {
                 // make sure the user can access the site
                 trx.insert(userSites).values({
                     userId: req.user?.userId!,
@@ -412,10 +470,10 @@ export async function createSite(
 
             // add the peer to the exit node
             if (type == "newt") {
-                const secretHash = await hashPassword(secret!);
+                const secretHash = await hashPassword(updatedNewtSecret);
 
                 await trx.insert(newts).values({
-                    newtId: newtId!,
+                    newtId: updatedNewtId,
                     secretHash,
                     siteId: newSite.siteId,
                     dateCreated: moment().toISOString()
@@ -458,7 +516,11 @@ export async function createSite(
         }
 
         return response<CreateSiteResponse>(res, {
-            data: newSite,
+            data: {
+                ...newSite,
+                newtId: type == "newt" ? updatedNewtId : undefined,
+                secret: type == "newt" ? updatedNewtSecret : undefined
+            },
             success: true,
             error: false,
             message: "Site created successfully",

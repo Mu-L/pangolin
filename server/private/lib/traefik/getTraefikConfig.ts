@@ -1,7 +1,7 @@
 /*
  * This file is part of a proprietary work.
  *
- * Copyright (c) 2025 Fossorial, Inc.
+ * Copyright (c) 2025-2026 Fossorial, Inc.
  * All rights reserved.
  *
  * This file is licensed under the Fossorial Commercial License.
@@ -33,7 +33,15 @@ import {
 } from "drizzle-orm";
 import logger from "@server/logger";
 import config from "@server/lib/config";
-import { orgs, resources, sites, Target, targets } from "@server/db";
+import {
+    orgs,
+    resources,
+    sites,
+    siteNetworks,
+    siteResources,
+    Target,
+    targets
+} from "@server/db";
 import {
     sanitize,
     encodePath,
@@ -100,6 +108,7 @@ export async function getTraefikConfig(
             headers: resources.headers,
             proxyProtocol: resources.proxyProtocol,
             proxyProtocolVersion: resources.proxyProtocolVersion,
+            wildcard: resources.wildcard,
 
             maintenanceModeEnabled: resources.maintenanceModeEnabled,
             maintenanceModeType: resources.maintenanceModeType,
@@ -238,6 +247,7 @@ export async function getTraefikConfig(
                 priority: priority, // may be null, we fallback later
                 domainCertResolver: row.domainCertResolver,
                 preferWildcardCert: row.preferWildcardCert,
+                wildcard: row.wildcard,
 
                 maintenanceModeEnabled: row.maintenanceModeEnabled,
                 maintenanceModeType: row.maintenanceModeType,
@@ -267,6 +277,38 @@ export async function getTraefikConfig(
         });
     });
 
+    let siteResourcesWithFullDomain: {
+        siteResourceId: number;
+        fullDomain: string | null;
+        mode: "http" | "host" | "cidr";
+    }[] = [];
+    if (build == "enterprise") {
+        // we dont want to do this on the cloud
+        // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge
+        siteResourcesWithFullDomain = await db
+            .select({
+                siteResourceId: siteResources.siteResourceId,
+                fullDomain: siteResources.fullDomain,
+                mode: siteResources.mode
+            })
+            .from(siteResources)
+            .innerJoin(
+                siteNetworks,
+                eq(siteResources.networkId, siteNetworks.networkId)
+            )
+            .innerJoin(sites, eq(siteNetworks.siteId, sites.siteId))
+            .where(
+                and(
+                    eq(siteResources.enabled, true),
+                    isNotNull(siteResources.fullDomain),
+                    eq(siteResources.mode, "http"),
+                    eq(siteResources.ssl, true),
+                    eq(sites.exitNodeId, exitNodeId),
+                    inArray(sites.type, siteTypes)
+                )
+            );
+    }
+
     let validCerts: CertificateResult[] = [];
     if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
         // create a list of all domains to get certs for
@@ -274,6 +316,12 @@ export async function getTraefikConfig(
         for (const resource of resourcesMap.values()) {
             if (resource.enabled && resource.ssl && resource.fullDomain) {
                 domains.add(resource.fullDomain);
+            }
+        }
+        // Include siteResource aliases so pangolin-dns also fetches certs for them
+        for (const sr of siteResourcesWithFullDomain) {
+            if (sr.fullDomain) {
+                domains.add(sr.fullDomain);
             }
         }
         // get the valid certs for these domains
@@ -341,7 +389,16 @@ export async function getTraefikConfig(
                 ...additionalMiddlewares
             ];
 
-            let rule = `Host(\`${fullDomain}\`)`;
+            let rule: string;
+            if (resource.wildcard && fullDomain.startsWith("*.")) {
+                // Convert *.foo.bar.com -> HostRegexp(`^[^.]+\.foo\.bar\.com$`)
+                const escaped = fullDomain
+                    .slice(2) // remove leading "*."
+                    .replace(/\./g, "\\.");
+                rule = `HostRegexp(\`^[^.]+\\.${escaped}$\`)`;
+            } else {
+                rule = `Host(\`${fullDomain}\`)`;
+            }
 
             // priority logic
             let priority: number;
@@ -384,7 +441,8 @@ export async function getTraefikConfig(
                     config.getRawConfig().traefik.prefer_wildcard_cert;
 
                 const domainCertResolver = resource.domainCertResolver;
-                const preferWildcardCert = resource.preferWildcardCert;
+                const preferWildcardCert =
+                    resource.preferWildcardCert || resource.wildcard;
 
                 let resolverName: string | undefined;
                 let preferWildcard: boolean | undefined;
@@ -531,7 +589,7 @@ export async function getTraefikConfig(
                             resource.ssl ? entrypointHttps : entrypointHttp
                         ],
                         service: maintenanceServiceName,
-                        rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+                        rule: `${rule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
                         priority: 2001,
                         ...(resource.ssl ? { tls } : {})
                     };
@@ -863,6 +921,128 @@ export async function getTraefikConfig(
                           }
                         : {})
                 }
+            };
+        }
+    }
+
+    // Add Traefik routes for siteResource aliases (HTTP mode + SSL) so that
+    // Traefik generates TLS certificates for those domains even when no
+    // matching resource exists yet.
+    if (siteResourcesWithFullDomain.length > 0) {
+        // Build a set of domains already covered by normal resources
+        const existingFullDomains = new Set<string>();
+        for (const resource of resourcesMap.values()) {
+            if (resource.fullDomain) {
+                existingFullDomains.add(resource.fullDomain);
+            }
+        }
+
+        for (const sr of siteResourcesWithFullDomain) {
+            if (!sr.fullDomain) continue;
+
+            // Skip if this alias is already handled by a resource router
+            if (existingFullDomains.has(sr.fullDomain)) continue;
+
+            const fullDomain = sr.fullDomain;
+            const srKey = `site-resource-cert-${sr.siteResourceId}`;
+            const siteResourceServiceName = `${srKey}-service`;
+            const siteResourceRouterName = `${srKey}-router`;
+            const siteResourceRewriteMiddlewareName = `${srKey}-rewrite`;
+
+            const maintenancePort = config.getRawConfig().server.next_port;
+            const maintenanceHost =
+                config.getRawConfig().server.internal_hostname;
+
+            if (!config_output.http.routers) {
+                config_output.http.routers = {};
+            }
+            if (!config_output.http.services) {
+                config_output.http.services = {};
+            }
+            if (!config_output.http.middlewares) {
+                config_output.http.middlewares = {};
+            }
+
+            // Service pointing at the internal maintenance/Next.js page
+            config_output.http.services[siteResourceServiceName] = {
+                loadBalancer: {
+                    servers: [
+                        {
+                            url: `http://${maintenanceHost}:${maintenancePort}`
+                        }
+                    ],
+                    passHostHeader: true
+                }
+            };
+
+            // Middleware that rewrites any path to /maintenance-screen
+            config_output.http.middlewares[siteResourceRewriteMiddlewareName] =
+                {
+                    replacePathRegex: {
+                        regex: "^/(.*)",
+                        replacement: "/private-maintenance-screen"
+                    }
+                };
+
+            // HTTP -> HTTPS redirect so the ACME challenge can be served
+            config_output.http.routers[`${siteResourceRouterName}-redirect`] = {
+                entryPoints: [config.getRawConfig().traefik.http_entrypoint],
+                middlewares: [redirectHttpsMiddlewareName],
+                service: siteResourceServiceName,
+                rule: `Host(\`${fullDomain}\`)`,
+                priority: 100
+            };
+
+            // Determine TLS / cert-resolver configuration
+            let tls: any = {};
+            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+                const domainParts = fullDomain.split(".");
+                const wildCard =
+                    domainParts.length <= 2
+                        ? `*.${domainParts.join(".")}`
+                        : `*.${domainParts.slice(1).join(".")}`;
+
+                const globalDefaultResolver =
+                    config.getRawConfig().traefik.cert_resolver;
+                const globalDefaultPreferWildcard =
+                    config.getRawConfig().traefik.prefer_wildcard_cert;
+
+                tls = {
+                    certResolver: globalDefaultResolver,
+                    ...(globalDefaultPreferWildcard
+                        ? { domains: [{ main: wildCard }] }
+                        : {})
+                };
+            } else {
+                // pangolin-dns: only add route if we already have a valid cert
+                const matchingCert = validCerts.find(
+                    (cert) => cert.queriedDomain === fullDomain
+                );
+                if (!matchingCert) {
+                    logger.debug(
+                        `No matching certificate found for siteResource alias: ${fullDomain}`
+                    );
+                    continue;
+                }
+            }
+
+            // HTTPS router - presence of this entry triggers cert generation
+            config_output.http.routers[siteResourceRouterName] = {
+                entryPoints: [config.getRawConfig().traefik.https_entrypoint],
+                service: siteResourceServiceName,
+                middlewares: [siteResourceRewriteMiddlewareName],
+                rule: `Host(\`${fullDomain}\`)`,
+                priority: 100,
+                tls
+            };
+
+            // Assets bypass router - lets Next.js static files load without rewrite
+            config_output.http.routers[`${siteResourceRouterName}-assets`] = {
+                entryPoints: [config.getRawConfig().traefik.https_entrypoint],
+                service: siteResourceServiceName,
+                rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+                priority: 101,
+                tls
             };
         }
     }

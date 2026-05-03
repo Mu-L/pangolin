@@ -11,6 +11,11 @@ import UserProvider from "@app/providers/UserProvider";
 import { verifySession } from "@app/lib/auth/verifySession";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Invitations"
+};
 
 type InvitationsPageProps = {
     params: Promise<{ orgId: string }>;

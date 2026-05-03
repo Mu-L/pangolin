@@ -25,7 +25,7 @@ import {
     ResourceHeaderAuthExtendedCompatibility,
     resourceHeaderAuthExtendedCompatibility
 } from "@server/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 export type ResourceWithAuth = {
     resource: Resource | null;
@@ -47,7 +47,17 @@ export type UserSessionWithUser = {
 export async function getResourceByDomain(
     domain: string
 ): Promise<ResourceWithAuth | null> {
-    const [result] = await db
+    // Build wildcard domain variants to match against.
+    // For a domain like "me.example.test.com", we want to match:
+    //   - "*.example.test.com" (subdomain wildcard)
+    //   - "*.test.com" (parent wildcard, i.e. just "*" subdomain on parent)
+    const parts = domain.split(".");
+    const wildcardCandidates: string[] = [];
+    for (let i = 1; i < parts.length; i++) {
+        wildcardCandidates.push(`*.${parts.slice(i).join(".")}`);
+    }
+
+    const potentialResults = await db
         .select()
         .from(resources)
         .leftJoin(
@@ -70,8 +80,29 @@ export async function getResourceByDomain(
             )
         )
         .innerJoin(orgs, eq(orgs.orgId, resources.orgId))
-        .where(eq(resources.fullDomain, domain))
-        .limit(1);
+        .where(
+            or(
+                // Exact match
+                eq(resources.fullDomain, domain),
+                // Wildcard match: resource fullDomain is one of the wildcard candidates
+                wildcardCandidates.length > 0
+                    ? and(
+                          eq(resources.wildcard, true),
+                          inArray(resources.fullDomain, wildcardCandidates)
+                      )
+                    : sql`false`
+            )
+        );
+
+    if (!potentialResults.length) {
+        return null;
+    }
+
+    // Prefer exact match over wildcard match
+    const exactMatch = potentialResults.find(
+        (r) => r.resources?.fullDomain === domain
+    );
+    const result = exactMatch ?? potentialResults[0];
 
     if (!result) {
         return null;

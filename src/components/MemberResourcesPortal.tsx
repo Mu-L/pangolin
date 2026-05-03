@@ -67,7 +67,7 @@ type SiteResource = {
     enabled: boolean;
     alias: string | null;
     aliasAddress: string | null;
-    type: 'site';
+    type: "site";
 };
 
 type MemberResourcesPortalProps = {
@@ -130,7 +130,9 @@ const ResourceInfo = ({ resource }: { resource: Resource }) => {
         resource.whitelist;
 
     const hasAnyInfo =
-        Boolean(resource.siteName) || Boolean(hasAuthMethods) || !resource.enabled;
+        Boolean(resource.siteName) ||
+        Boolean(hasAuthMethods) ||
+        !resource.enabled;
 
     if (!hasAnyInfo) return null;
 
@@ -353,7 +355,9 @@ export default function MemberResourcesPortal({
     const [resources, setResources] = useState<Resource[]>([]);
     const [siteResources, setSiteResources] = useState<SiteResource[]>([]);
     const [filteredResources, setFilteredResources] = useState<Resource[]>([]);
-    const [filteredSiteResources, setFilteredSiteResources] = useState<SiteResource[]>([]);
+    const [filteredSiteResources, setFilteredSiteResources] = useState<
+        SiteResource[]
+    >([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -381,7 +385,9 @@ export default function MemberResourcesPortal({
                 setResources(response.data.data.resources);
                 setSiteResources(response.data.data.siteResources || []);
                 setFilteredResources(response.data.data.resources);
-                setFilteredSiteResources(response.data.data.siteResources || []);
+                setFilteredSiteResources(
+                    response.data.data.siteResources || []
+                );
             } else {
                 setError("Failed to load resources");
             }
@@ -459,9 +465,10 @@ export default function MemberResourcesPortal({
                 case "domain-asc":
                 case "domain-desc":
                     // Sort by destination for site resources
-                    const destCompare = sortBy === "domain-asc" 
-                        ? a.destination.localeCompare(b.destination)
-                        : b.destination.localeCompare(a.destination);
+                    const destCompare =
+                        sortBy === "domain-asc"
+                            ? a.destination.localeCompare(b.destination)
+                            : b.destination.localeCompare(a.destination);
                     return destCompare;
                 case "status-enabled":
                     return b.enabled ? 1 : -1;
@@ -487,12 +494,14 @@ export default function MemberResourcesPortal({
         startIndex + itemsPerPage
     );
     const remainingSlots = itemsPerPage - paginatedResources.length;
-    const paginatedSiteResources = remainingSlots > 0 
-        ? filteredSiteResources.slice(
-            Math.max(0, startIndex - filteredResources.length),
-            Math.max(0, startIndex - filteredResources.length) + remainingSlots
-          )
-        : [];
+    const paginatedSiteResources =
+        remainingSlots > 0
+            ? filteredSiteResources.slice(
+                  Math.max(0, startIndex - filteredResources.length),
+                  Math.max(0, startIndex - filteredResources.length) +
+                      remainingSlots
+              )
+            : [];
 
     const handleOpenResource = (resource: Resource) => {
         // Open the resource in a new tab
@@ -640,7 +649,8 @@ export default function MemberResourcesPortal({
             </div>
 
             {/* Resources Content */}
-            {filteredResources.length === 0 && filteredSiteResources.length === 0 ? (
+            {filteredResources.length === 0 &&
+            filteredSiteResources.length === 0 ? (
                 /* Enhanced Empty State */
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-20 text-center">
@@ -697,87 +707,96 @@ export default function MemberResourcesPortal({
                                     Public Resources
                                 </h3>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    Web applications and services accessible via browser
+                                    Web applications and services accessible via
+                                    browser
                                 </p>
                             </div>
                             <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 auto-cols-fr mb-8">
                                 {paginatedResources.map((resource) => (
-                            <Card key={resource.resourceId}>
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center min-w-0 flex-1 gap-3 overflow-hidden">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger className="min-w-0 max-w-full">
-                                                        <CardTitle className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                                                            {resource.name}
-                                                        </CardTitle>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p className="max-w-xs break-words">
-                                                            {resource.name}
-                                                        </p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                    <Card key={resource.resourceId}>
+                                        <div className="p-6">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center min-w-0 flex-1 gap-3 overflow-hidden">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger className="min-w-0 max-w-full">
+                                                                <CardTitle className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                                                                    {
+                                                                        resource.name
+                                                                    }
+                                                                </CardTitle>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p className="max-w-xs break-words">
+                                                                    {
+                                                                        resource.name
+                                                                    }
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+
+                                                <div className="flex-shrink-0">
+                                                    <ResourceInfo
+                                                        resource={resource}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 mt-3">
+                                                <button
+                                                    onClick={() =>
+                                                        handleOpenResource(
+                                                            resource
+                                                        )
+                                                    }
+                                                    className="text-sm text-muted-foreground font-medium text-left truncate flex-1"
+                                                    disabled={!resource.enabled}
+                                                >
+                                                    {resource.domain.replace(
+                                                        /^https?:\/\//,
+                                                        ""
+                                                    )}
+                                                </button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(
+                                                            resource.domain
+                                                        );
+                                                        toast({
+                                                            title: "Copied to clipboard",
+                                                            description:
+                                                                "Resource URL has been copied to your clipboard.",
+                                                            duration: 2000
+                                                        });
+                                                    }}
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
 
-                                        <div className="flex-shrink-0">
-                                            <ResourceInfo resource={resource} />
+                                        <div className="p-6 pt-0 mt-auto">
+                                            <Button
+                                                onClick={() =>
+                                                    handleOpenResource(resource)
+                                                }
+                                                className="w-full h-9 transition-all group-hover:shadow-sm"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={!resource.enabled}
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                                                Open Resource
+                                            </Button>
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 mt-3">
-                                        <button
-                                            onClick={() =>
-                                                handleOpenResource(resource)
-                                            }
-                                            className="text-sm text-muted-foreground font-medium text-left truncate flex-1"
-                                            disabled={!resource.enabled}
-                                        >
-                                            {resource.domain.replace(
-                                                /^https?:\/\//,
-                                                ""
-                                            )}
-                                        </button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(
-                                                    resource.domain
-                                                );
-                                                toast({
-                                                    title: "Copied to clipboard",
-                                                    description:
-                                                        "Resource URL has been copied to your clipboard.",
-                                                    duration: 2000
-                                                });
-                                            }}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <div className="p-6 pt-0 mt-auto">
-                                    <Button
-                                        onClick={() =>
-                                            handleOpenResource(resource)
-                                        }
-                                        className="w-full h-9 transition-all group-hover:shadow-sm"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={!resource.enabled}
-                                    >
-                                        <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                                        Open Resource
-                                    </Button>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
+                                    </Card>
+                                ))}
+                            </div>
                         </>
                     )}
 
@@ -790,7 +809,8 @@ export default function MemberResourcesPortal({
                                     Private Resources
                                 </h3>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    Internal network resources accessible via client
+                                    Internal network resources accessible via
+                                    client
                                 </p>
                             </div>
                             <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 auto-cols-fr mb-8">
@@ -802,13 +822,17 @@ export default function MemberResourcesPortal({
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger className="min-w-0 max-w-full">
-                                                                <CardTitle className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                                                                    {siteResource.name}
+                                                                <CardTitle className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                                                                    {
+                                                                        siteResource.name
+                                                                    }
                                                                 </CardTitle>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
                                                                 <p className="max-w-xs break-words">
-                                                                    {siteResource.name}
+                                                                    {
+                                                                        siteResource.name
+                                                                    }
                                                                 </p>
                                                             </TooltipContent>
                                                         </Tooltip>
@@ -818,39 +842,63 @@ export default function MemberResourcesPortal({
                                                 <div className="flex-shrink-0">
                                                     <InfoPopup>
                                                         <div className="space-y-2 text-sm">
-                                                            <div className="text-xs font-medium mb-1.5">Resource Details</div>
+                                                            <div className="text-xs font-medium mb-1.5">
+                                                                Resource Details
+                                                            </div>
                                                             <div>
-                                                                <span className="font-medium">Mode:</span>
+                                                                <span className="font-medium">
+                                                                    Mode:
+                                                                </span>
                                                                 <span className="ml-2 text-muted-foreground capitalize">
-                                                                    {siteResource.mode}
+                                                                    {
+                                                                        siteResource.mode
+                                                                    }
                                                                 </span>
                                                             </div>
                                                             {siteResource.protocol && (
                                                                 <div>
-                                                                    <span className="font-medium">Protocol:</span>
+                                                                    <span className="font-medium">
+                                                                        Protocol:
+                                                                    </span>
                                                                     <span className="ml-2 text-muted-foreground uppercase">
-                                                                        {siteResource.protocol}
+                                                                        {
+                                                                            siteResource.protocol
+                                                                        }
                                                                     </span>
                                                                 </div>
                                                             )}
                                                             <div>
-                                                                <span className="font-medium">Destination:</span>
+                                                                <span className="font-medium">
+                                                                    Destination:
+                                                                </span>
                                                                 <span className="ml-2 text-muted-foreground">
-                                                                    {siteResource.destination}
+                                                                    {
+                                                                        siteResource.destination
+                                                                    }
                                                                 </span>
                                                             </div>
                                                             {siteResource.alias && (
                                                                 <div>
-                                                                    <span className="font-medium">Alias:</span>
+                                                                    <span className="font-medium">
+                                                                        Alias:
+                                                                    </span>
                                                                     <span className="ml-2 text-muted-foreground">
-                                                                        {siteResource.alias}
+                                                                        {
+                                                                            siteResource.alias
+                                                                        }
                                                                     </span>
                                                                 </div>
                                                             )}
                                                             <div>
-                                                                <span className="font-medium">Status:</span>
-                                                                <span className={`ml-2 ${siteResource.enabled ? 'text-green-600' : 'text-red-600'}`}>
-                                                                    {siteResource.enabled ? 'Enabled' : 'Disabled'}
+                                                                <span className="font-medium">
+                                                                    Status:
+                                                                </span>
+                                                                <span
+                                                                    className={`ml-2 ${siteResource.enabled ? "text-green-600" : "text-red-600"}`}
+                                                                >
+                                                                    {siteResource.enabled
+                                                                        ? "Enabled"
+                                                                        : "Disabled"}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -864,7 +912,9 @@ export default function MemberResourcesPortal({
                                                         {/* Alias as primary */}
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <div className="text-base font-semibold text-foreground text-left truncate flex-1">
-                                                                {siteResource.alias}
+                                                                {
+                                                                    siteResource.alias
+                                                                }
                                                             </div>
                                                             <Button
                                                                 variant="ghost"
@@ -887,14 +937,18 @@ export default function MemberResourcesPortal({
                                                         </div>
                                                         {/* Destination as secondary */}
                                                         <div className="text-xs text-muted-foreground truncate">
-                                                            {siteResource.destination}
+                                                            {
+                                                                siteResource.destination
+                                                            }
                                                         </div>
                                                     </>
                                                 ) : (
                                                     /* Destination as primary when no alias */
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-sm text-muted-foreground font-medium text-left truncate flex-1">
-                                                            {siteResource.destination}
+                                                            {
+                                                                siteResource.destination
+                                                            }
                                                         </div>
                                                         <Button
                                                             variant="ghost"

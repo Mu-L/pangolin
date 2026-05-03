@@ -27,6 +27,7 @@ import { cn } from "@/lib/cn";
 import {
     finalizeSubdomainSanitize,
     isValidSubdomainStructure,
+    isWildcardSubdomain,
     sanitizeInputRaw,
     validateByDomainType
 } from "@/lib/subdomain-utils";
@@ -41,14 +42,17 @@ import {
     Check,
     CheckCircle2,
     ChevronsUpDown,
+    ExternalLink,
     KeyRound,
     Zap
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@/hooks/usePaidStatus";
 import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import { toUnicode } from "punycode";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useUserContext } from "@app/hooks/useUserContext";
 
 type AvailableOption = {
     domainNamespaceId: string;
@@ -76,6 +80,7 @@ interface DomainPickerProps {
             subdomain?: string;
             fullDomain: string;
             baseDomain: string;
+            wildcard?: boolean;
         } | null
     ) => void;
     cols?: number;
@@ -84,6 +89,7 @@ interface DomainPickerProps {
     defaultSubdomain?: string | null;
     defaultDomainId?: string | null;
     warnOnProvidedDomain?: boolean;
+    allowWildcard?: boolean;
 }
 
 export default function DomainPicker({
@@ -94,16 +100,29 @@ export default function DomainPicker({
     defaultSubdomain,
     defaultFullDomain,
     defaultDomainId,
-    warnOnProvidedDomain = false
+    warnOnProvidedDomain = false,
+    allowWildcard = false
 }: DomainPickerProps) {
     const { env } = useEnvContext();
+    const { user } = useUserContext();
     const api = createApiClient({ env });
     const t = useTranslations();
-    const { hasSaasSubscription } = usePaidStatus();
+    const { hasSaasSubscription, isPaidUser } = usePaidStatus();
+
+    const requiresPaywall =
+        build === "saas" &&
+        !hasSaasSubscription(tierMatrix[TierFeature.DomainNamespaces]) &&
+        new Date(user.dateCreated) > new Date("2026-04-13");
+
+    const wildcardAllowed =
+        allowWildcard && isPaidUser(tierMatrix[TierFeature.WildcardSubdomain]);
 
     const { data = [], isLoading: loadingDomains } = useQuery(
         orgQueries.domains({ orgId })
     );
+
+    // Wildcard mode is derived from the input itself — if the user types a
+    // wildcard subdomain (e.g. *.foo) and allowWildcard is enabled, it's active.
 
     if (!env.flags.usePangolinDns) {
         hideFreeDomain = true;
@@ -168,15 +187,21 @@ export default function DomainPicker({
                         domainId: firstOrExistingDomain.domainId
                     };
 
+                    const base = firstOrExistingDomain.baseDomain;
+                    const sub =
+                        firstOrExistingDomain.type !== "cname"
+                            ? defaultSubdomain?.trim() || undefined
+                            : undefined;
+                    const isWc =
+                        allowWildcard && !!sub && isWildcardSubdomain(sub);
+
                     onDomainChange?.({
                         domainId: firstOrExistingDomain.domainId,
                         type: "organization",
-                        subdomain:
-                            firstOrExistingDomain.type !== "cname"
-                                ? defaultSubdomain || undefined
-                                : undefined,
-                        fullDomain: firstOrExistingDomain.baseDomain,
-                        baseDomain: firstOrExistingDomain.baseDomain
+                        subdomain: sub,
+                        fullDomain: sub ? `${sub}.${base}` : base,
+                        baseDomain: base,
+                        wildcard: isWc
                     });
                 }
             }
@@ -275,7 +300,8 @@ export default function DomainPicker({
     }, [userInput, debouncedCheckAvailability, selectedBaseDomain]);
 
     const finalizeSubdomain = (sub: string, base: DomainOption): string => {
-        const sanitized = finalizeSubdomainSanitize(sub);
+        const wildcardMode = wildcardAllowed && isWildcardSubdomain(sub);
+        const sanitized = finalizeSubdomainSanitize(sub, wildcardMode);
 
         if (!sanitized) {
             toast({
@@ -291,7 +317,8 @@ export default function DomainPicker({
                 base.type === "provided-search"
                     ? "provided-search"
                     : "organization",
-            domainType: base.domainType
+            domainType: base.domainType,
+            allowWildcard: wildcardMode
         });
 
         if (!ok) {
@@ -320,7 +347,7 @@ export default function DomainPicker({
     };
 
     const handleSubdomainChange = (value: string) => {
-        const raw = sanitizeInputRaw(value);
+        const raw = sanitizeInputRaw(value, allowWildcard);
         setSubdomainInput(raw);
         setSelectedProvidedDomain(null);
 
@@ -328,13 +355,15 @@ export default function DomainPicker({
             const fullDomain = raw
                 ? `${raw}.${selectedBaseDomain.domain}`
                 : selectedBaseDomain.domain;
+            const isWc = wildcardAllowed && isWildcardSubdomain(raw);
 
             onDomainChange?.({
                 domainId: selectedBaseDomain.domainId!,
                 type: "organization",
                 subdomain: raw || undefined,
                 fullDomain,
-                baseDomain: selectedBaseDomain.domain
+                baseDomain: selectedBaseDomain.domain,
+                wildcard: isWc
             });
         }
     };
@@ -355,6 +384,17 @@ export default function DomainPicker({
 
     const handleBaseDomainSelect = (option: DomainOption) => {
         let sub = subdomainInput;
+
+        // If the selected domain doesn't support wildcards, strip any wildcard prefix.
+        const supportsWildcard =
+            wildcardAllowed &&
+            option.type === "organization" &&
+            option.domainType !== "cname";
+
+        if (!supportsWildcard && isWildcardSubdomain(sub)) {
+            sub = sub.replace(/^\*\./, "");
+            setSubdomainInput(sub);
+        }
 
         if (sub && sub.trim() !== "") {
             sub = finalizeSubdomain(sub, option) || "";
@@ -379,6 +419,7 @@ export default function DomainPicker({
         }
 
         const fullDomain = sub ? `${sub}.${option.domain}` : option.domain;
+        const isWc = wildcardAllowed && !!sub && isWildcardSubdomain(sub);
 
         if (option.type === "provided-search") {
             onDomainChange?.(null); // prevent the modal from closing with `<subdomain>.Free Provided domain`
@@ -392,7 +433,8 @@ export default function DomainPicker({
                         ? sub || undefined
                         : undefined,
                 fullDomain,
-                baseDomain: option.domain
+                baseDomain: option.domain,
+                wildcard: isWc
             });
         }
     };
@@ -421,7 +463,9 @@ export default function DomainPicker({
                       selectedBaseDomain.type === "provided-search"
                           ? "provided-search"
                           : "organization",
-                  domainType: selectedBaseDomain.domainType
+                  domainType: selectedBaseDomain.domainType,
+                  allowWildcard:
+                      wildcardAllowed && isWildcardSubdomain(subdomainInput)
               })
             : true;
 
@@ -429,6 +473,7 @@ export default function DomainPicker({
         selectedBaseDomain &&
         selectedBaseDomain.type === "organization" &&
         selectedBaseDomain.domainType !== "cname";
+
     const showProvidedDomainSearch =
         selectedBaseDomain?.type === "provided-search";
 
@@ -453,9 +498,11 @@ export default function DomainPicker({
         <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="subdomain-input">
-                        {t("domainPickerSubdomainLabel")}
-                    </Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="subdomain-input">
+                            {t("domainPickerSubdomainLabel")}
+                        </Label>
+                    </div>
                     <Input
                         id="subdomain-input"
                         value={
@@ -467,7 +514,9 @@ export default function DomainPicker({
                             showProvidedDomainSearch
                                 ? ""
                                 : showSubdomainInput
-                                  ? ""
+                                  ? wildcardAllowed
+                                      ? "* or subdomain"
+                                      : ""
                                   : t("domainPickerNotAvailableForCname")
                         }
                         disabled={
@@ -488,10 +537,34 @@ export default function DomainPicker({
                     />
                     {showSubdomainInput &&
                         subdomainInput &&
-                        !isValidSubdomainStructure(subdomainInput) && (
+                        !isValidSubdomainStructure(
+                            subdomainInput,
+                            wildcardAllowed &&
+                                isWildcardSubdomain(subdomainInput)
+                        ) && (
                             <p className="text-sm text-red-500">
                                 {t("domainPickerInvalidSubdomainStructure")}
                             </p>
+                        )}
+                    {allowWildcard &&
+                        !wildcardAllowed &&
+                        showSubdomainInput &&
+                        isWildcardSubdomain(subdomainInput) && (
+                            <>
+                                <p className="text-sm text-red-500">
+                                    {t(
+                                        "domainPickerWildcardSubdomainNotAllowed"
+                                    )}
+                                </p>
+                                <PaidFeaturesAlert
+                                    showBookADemo={false}
+                                    tiers={
+                                        tierMatrix[
+                                            TierFeature.WildcardSubdomain
+                                        ]
+                                    }
+                                />
+                            </>
                         )}
                 </div>
 
@@ -582,23 +655,23 @@ export default function DomainPicker({
                                                                 </span>
                                                                 <span className="text-xs text-muted-foreground">
                                                                     {orgDomain.type ===
-                                                                    "wildcard"
-                                                                        ? t(
-                                                                              "domainPickerManual"
-                                                                          )
-                                                                        : (
-                                                                              <>
-                                                                                  {orgDomain.type.toUpperCase()}{" "}
-                                                                                  •{" "}
-                                                                                  {orgDomain.verified
-                                                                                      ? t(
-                                                                                            "domainPickerVerified"
-                                                                                        )
-                                                                                      : t(
-                                                                                            "domainPickerUnverified"
-                                                                                        )}
-                                                                              </>
-                                                                          )}
+                                                                    "wildcard" ? (
+                                                                        t(
+                                                                            "domainPickerManual"
+                                                                        )
+                                                                    ) : (
+                                                                        <>
+                                                                            {orgDomain.type.toUpperCase()}{" "}
+                                                                            •{" "}
+                                                                            {orgDomain.verified
+                                                                                ? t(
+                                                                                      "domainPickerVerified"
+                                                                                  )
+                                                                                : t(
+                                                                                      "domainPickerUnverified"
+                                                                                  )}
+                                                                        </>
+                                                                    )}
                                                                 </span>
                                                             </div>
                                                             <Check
@@ -656,6 +729,7 @@ export default function DomainPicker({
                                                         })
                                                     }
                                                     className="mx-2 rounded-md"
+                                                    disabled={requiresPaywall}
                                                 >
                                                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 mr-3">
                                                         <Zap className="h-4 w-4 text-primary" />
@@ -696,22 +770,18 @@ export default function DomainPicker({
                 </div>
             </div>
 
-            {build === "saas" &&
-                !hasSaasSubscription(
-                    tierMatrix[TierFeature.DomainNamespaces]
-                ) &&
-                !hideFreeDomain && (
-                    <Card className="mt-3 border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden">
-                        <CardContent className="py-3 px-4">
-                            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                                <KeyRound className="size-4 shrink-0 text-black-500" />
-                                <span>
-                                    {t("domainPickerFreeDomainsPaidFeature")}
-                                </span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+            {requiresPaywall && !hideFreeDomain && (
+                <Card className="mt-3 border-black-500/30 bg-linear-to-br from-black-500/10 via-background to-background overflow-hidden">
+                    <CardContent className="py-3 px-4">
+                        <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                            <KeyRound className="size-4 shrink-0 text-black-500" />
+                            <span>
+                                {t("domainPickerFreeDomainsPaidFeature")}
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/*showProvidedDomainSearch && build === "saas" && (
                 <Alert>
@@ -838,6 +908,22 @@ export default function DomainPicker({
                     )}
                 </div>
             )}
+            {selectedBaseDomain?.domainType === "wildcard" &&
+                isWildcardSubdomain(subdomainInput) && (
+                    <p className="text-sm text-muted-foreground">
+                        {t("domainPickerWildcardCertWarning")}{" "}
+                        <a
+                            href="https://docs.pangolin.net/manage/resources/public/wildcard-resources#requirements-for-wildcard-resources"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                            {t("domainPickerWildcardCertWarningLink")}
+                            <ExternalLink className="size-3.5 shrink-0" />
+                        </a>
+                        .
+                    </p>
+                )}
         </div>
     );
 }

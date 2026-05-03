@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
+import UptimeMiniBar from "@app/components/UptimeMiniBar";
 
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
@@ -23,16 +24,27 @@ import {
     ArrowRight,
     ArrowUp10Icon,
     ArrowUpRight,
+    ChevronDown,
     ChevronsUpDownIcon,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import SiteResourcesOverview from "@app/components/SiteResourcesOverview";
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaContent,
+    CredenzaDescription,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
 import {
     ControlledDataTable,
     type ExtendedColumnDef
@@ -45,14 +57,15 @@ export type SiteRow = {
     mbIn: string;
     mbOut: string;
     orgId: string;
-    type: "newt" | "wireguard";
+    type: "newt" | "wireguard" | "local";
     newtVersion?: string;
     newtUpdateAvailable?: boolean;
-    online: boolean;
+    online?: boolean | null;
     address?: string;
     exitNodeName?: string;
     exitNodeEndpoint?: string;
     remoteExitNodeId?: string;
+    resourceCount: number;
 };
 
 type SitesTableProps = {
@@ -78,11 +91,20 @@ export default function SitesTable({
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
+    const [resourcesDialogSite, setResourcesDialogSite] =
+        useState<SiteRow | null>(null);
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 30_000);
+        return () => clearInterval(interval);
+    }, []);
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -212,7 +234,7 @@ export default function SitesTable({
                     } else {
                         return (
                             <span className="text-neutral-500 flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                                 <span>{t("offline")}</span>
                             </span>
                         );
@@ -220,6 +242,18 @@ export default function SitesTable({
                 } else {
                     return <span>-</span>;
                 }
+            }
+        },
+        {
+            id: "uptime",
+            friendlyName: "Uptime",
+            header: () => <span className="p-3">{t("uptime30d")}</span>,
+            cell: ({ row }) => {
+                const originalRow = row.original;
+                if (originalRow.type == "local") {
+                    return <span>-</span>;
+                }
+                return <UptimeMiniBar siteId={originalRow.id} days={30} />;
             }
         },
         {
@@ -320,6 +354,29 @@ export default function SitesTable({
             }
         },
         {
+            id: "resources",
+            accessorKey: "resourceCount",
+            friendlyName: t("resources"),
+            header: () => <span className="p-3">{t("resources")}</span>,
+            cell: ({ row }) => {
+                const siteRow = row.original;
+                return (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setResourcesDialogSite(siteRow)}
+                        className="flex h-8 items-center gap-2 px-0 font-normal"
+                    >
+                        <span className="text-sm tabular-nums">
+                            {siteRow.resourceCount} {t("resources")}
+                        </span>
+                        <ChevronDown className="h-3 w-3 shrink-0" />
+                    </Button>
+                );
+            }
+        },
+        {
             accessorKey: "exitNode",
             friendlyName: t("exitNode"),
             header: () => {
@@ -363,9 +420,9 @@ export default function SitesTable({
                         <Link
                             href={`/${originalRow.orgId}/settings/remote-exit-nodes/${originalRow.remoteExitNodeId}`}
                         >
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 {originalRow.exitNodeName}
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                                <ArrowUpRight className="ml-2 h-3 w-3" />
                             </Button>
                         </Link>
                     );
@@ -413,6 +470,22 @@ export default function SitesTable({
                                 >
                                     <DropdownMenuItem>
                                         {t("viewSettings")}
+                                    </DropdownMenuItem>
+                                </Link>
+                                <Link
+                                    className="block w-full"
+                                    href={`/${siteRow.orgId}/settings/resources/proxy?siteId=${siteRow.id}`}
+                                >
+                                    <DropdownMenuItem>
+                                        {t("sitesTableViewPublicResources")}
+                                    </DropdownMenuItem>
+                                </Link>
+                                <Link
+                                    className="block w-full"
+                                    href={`/${siteRow.orgId}/settings/resources/client?siteId=${siteRow.id}`}
+                                >
+                                    <DropdownMenuItem>
+                                        {t("sitesTableViewPrivateResources")}
                                     </DropdownMenuItem>
                                 </Link>
                                 <DropdownMenuItem
@@ -467,6 +540,43 @@ export default function SitesTable({
 
     return (
         <>
+            <Credenza
+                open={Boolean(resourcesDialogSite)}
+                onOpenChange={(open) => {
+                    if (!open) setResourcesDialogSite(null);
+                }}
+            >
+                <CredenzaContent className="md:max-w-7xl">
+                    <CredenzaHeader>
+                        <CredenzaTitle>{t("siteResourcesTab")}</CredenzaTitle>
+                        <CredenzaDescription>
+                            {t("siteResourcesDialogDescription")}
+                        </CredenzaDescription>
+                    </CredenzaHeader>
+                    <CredenzaBody>
+                        {resourcesDialogSite != null && (
+                            <SiteResourcesOverview
+                                orgIdOverride={orgId}
+                                siteId={resourcesDialogSite.id}
+                                initialPublicData={null}
+                                initialPrivateData={null}
+                                initialPublicForbidden={false}
+                                initialPrivateForbidden={false}
+                            />
+                        )}
+                    </CredenzaBody>
+                    <CredenzaFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setResourcesDialogSite(null)}
+                        >
+                            {t("close")}
+                        </Button>
+                    </CredenzaFooter>
+                </CredenzaContent>
+            </Credenza>
+
             {selectedSite && (
                 <ConfirmDeleteDialog
                     open={isDeleteModalOpen}

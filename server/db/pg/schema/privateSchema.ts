@@ -16,11 +16,14 @@ import {
     domains,
     orgs,
     targets,
+    roles,
     users,
     exitNodes,
     sessions,
     clients,
+    resources,
     siteResources,
+    targetHealthCheck,
     sites
 } from "./schema";
 
@@ -88,6 +91,8 @@ export const subscriptions = pgTable("subscriptions", {
     updatedAt: bigint("updatedAt", { mode: "number" }),
     version: integer("version"),
     billingCycleAnchor: bigint("billingCycleAnchor", { mode: "number" }),
+    expiresAt: bigint("expiresAt", { mode: "number" }),
+    trial: boolean("trial").default(false),
     type: varchar("type", { length: 50 }) // tier1, tier2, tier3, or license
 });
 
@@ -425,7 +430,9 @@ export const eventStreamingDestinations = pgTable(
         orgId: varchar("orgId", { length: 255 })
             .notNull()
             .references(() => orgs.orgId, { onDelete: "cascade" }),
-        sendConnectionLogs: boolean("sendConnectionLogs").notNull().default(false),
+        sendConnectionLogs: boolean("sendConnectionLogs")
+            .notNull()
+            .default(false),
         sendRequestLogs: boolean("sendRequestLogs").notNull().default(false),
         sendActionLogs: boolean("sendActionLogs").notNull().default(false),
         sendAccessLogs: boolean("sendAccessLogs").notNull().default(false),
@@ -447,7 +454,9 @@ export const eventStreamingCursors = pgTable(
                 onDelete: "cascade"
             }),
         logType: varchar("logType", { length: 50 }).notNull(), // "request" | "action" | "access" | "connection"
-        lastSentId: bigint("lastSentId", { mode: "number" }).notNull().default(0),
+        lastSentId: bigint("lastSentId", { mode: "number" })
+            .notNull()
+            .default(0),
         lastSentAt: bigint("lastSentAt", { mode: "number" }) // epoch milliseconds, null if never sent
     },
     (table) => [
@@ -457,6 +466,116 @@ export const eventStreamingCursors = pgTable(
         )
     ]
 );
+
+export const alertRules = pgTable("alertRules", {
+    alertRuleId: serial("alertRuleId").primaryKey(),
+    orgId: varchar("orgId", { length: 255 })
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    // Single field encodes both source and trigger - no redundancy
+    eventType: varchar("eventType", { length: 100 })
+        .$type<
+            | "site_online"
+            | "site_offline"
+            | "site_toggle"
+            | "health_check_healthy"
+            | "health_check_unhealthy"
+            | "health_check_toggle"
+            | "resource_healthy"
+            | "resource_unhealthy"
+            | "resource_degraded"
+            | "resource_toggle"
+        >()
+        .notNull(),
+    // Nullable depending on eventType
+    enabled: boolean("enabled").notNull().default(true),
+    cooldownSeconds: integer("cooldownSeconds").notNull().default(300),
+    allSites: boolean("allSites").notNull().default(false),
+    allHealthChecks: boolean("allHealthChecks").notNull().default(false),
+    allResources: boolean("allResources").notNull().default(false),
+    lastTriggeredAt: bigint("lastTriggeredAt", { mode: "number" }), // nullable
+    createdAt: bigint("createdAt", { mode: "number" }).notNull(),
+    updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
+});
+
+export const alertSites = pgTable("alertSites", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    siteId: integer("siteId")
+        .notNull()
+        .references(() => sites.siteId, { onDelete: "cascade" })
+});
+
+export const alertHealthChecks = pgTable("alertHealthChecks", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    healthCheckId: integer("healthCheckId")
+        .notNull()
+        .references(() => targetHealthCheck.targetHealthCheckId, {
+            onDelete: "cascade"
+        })
+});
+
+export const alertResources = pgTable("alertResources", {
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" })
+});
+
+// Separating channels by type avoids the mixed-shape problem entirely
+export const alertEmailActions = pgTable("alertEmailActions", {
+    emailActionId: serial("emailActionId").primaryKey(),
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    lastSentAt: bigint("lastSentAt", { mode: "number" }) // nullable
+});
+
+export const alertEmailRecipients = pgTable("alertEmailRecipients", {
+    recipientId: serial("recipientId").primaryKey(),
+    emailActionId: integer("emailActionId")
+        .notNull()
+        .references(() => alertEmailActions.emailActionId, {
+            onDelete: "cascade"
+        }),
+    // At least one of these should be set - enforced at app level
+    userId: varchar("userId").references(() => users.userId, {
+        onDelete: "cascade"
+    }),
+    roleId: integer("roleId").references(() => roles.roleId, {
+        onDelete: "cascade"
+    }),
+    email: varchar("email", { length: 255 }) // external emails not tied to a user
+});
+
+export const alertWebhookActions = pgTable("alertWebhookActions", {
+    webhookActionId: serial("webhookActionId").primaryKey(),
+    alertRuleId: integer("alertRuleId")
+        .notNull()
+        .references(() => alertRules.alertRuleId, { onDelete: "cascade" }),
+    webhookUrl: text("webhookUrl").notNull(),
+    config: text("config"), // encrypted JSON with auth config (authType, credentials)
+    enabled: boolean("enabled").notNull().default(true),
+    lastSentAt: bigint("lastSentAt", { mode: "number" }) // nullable
+});
+
+export const trialNotifications = pgTable("trialNotifications", {
+    notificationId: serial("notificationId").primaryKey(),
+    subscriptionId: varchar("subscriptionId", { length: 255 })
+        .notNull()
+        .references(() => subscriptions.subscriptionId, {
+            onDelete: "cascade"
+        }),
+    notificationType: varchar("notificationType", { length: 50 }).notNull(), // trial_ending_5d, trial_ending_24h, trial_ended
+    sentAt: bigint("sentAt", { mode: "number" }).notNull()
+});
 
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
@@ -495,3 +614,13 @@ export type EventStreamingDestination = InferSelectModel<
 export type EventStreamingCursor = InferSelectModel<
     typeof eventStreamingCursors
 >;
+export type AlertResources = InferSelectModel<typeof alertResources>;
+export type AlertHealthChecks = InferSelectModel<typeof alertHealthChecks>;
+export type AlertSites = InferSelectModel<typeof alertSites>;
+export type AlertRules = InferSelectModel<typeof alertRules>;
+export type AlertEmailActions = InferSelectModel<typeof alertEmailActions>;
+export type AlertEmailRecipients = InferSelectModel<
+    typeof alertEmailRecipients
+>;
+export type AlertWebhookActions = InferSelectModel<typeof alertWebhookActions>;
+export type TrialNotification = InferSelectModel<typeof trialNotifications>;

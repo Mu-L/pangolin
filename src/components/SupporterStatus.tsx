@@ -230,7 +230,7 @@ export default function SupporterStatus({
                             <p className="text-sm">
                                 <strong>Business & Enterprise Users:</strong> For larger organizations or teams requiring advanced features, consider our self-serve enterprise license and Enterprise Edition.{" "}
                                 <Link
-                                    href="https://pangolin.net/pricing?hosting=self-host"
+                                    href="https://pangolin.net/pricing#Self-Hosted"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="underline inline-flex items-center gap-1"

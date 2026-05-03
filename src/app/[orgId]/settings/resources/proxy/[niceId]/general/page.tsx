@@ -13,16 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useResourceContext } from "@app/hooks/useResourceContext";
-import {
-    Credenza,
-    CredenzaBody,
-    CredenzaClose,
-    CredenzaContent,
-    CredenzaDescription,
-    CredenzaFooter,
-    CredenzaHeader,
-    CredenzaTitle
-} from "@app/components/Credenza";
 import DomainPicker from "@app/components/DomainPicker";
 import {
     SettingsContainer,
@@ -42,7 +32,7 @@ import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import { AxiosResponse } from "axios";
-import { AlertCircle, Globe } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII, toUnicode } from "punycode";
@@ -62,6 +52,7 @@ import { GetResourceResponse } from "@server/routers/resource/getResource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import UptimeAlertSection from "@app/components/UptimeAlertSection";
 
 type MaintenanceSectionFormProps = {
     resource: GetResourceResponse;
@@ -171,6 +162,7 @@ function MaintenanceSectionForm({
             </SettingsSectionHeader>
 
             <SettingsSectionBody>
+                <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
                 <SettingsSectionForm>
                     <Form {...maintenanceForm}>
                         <form
@@ -178,9 +170,6 @@ function MaintenanceSectionForm({
                             className="space-y-4"
                             id="maintenance-settings-form"
                         >
-                            <PaidFeaturesAlert
-                                tiers={tierMatrix.maintencePage}
-                            />
                             <FormField
                                 control={maintenanceForm.control}
                                 name="maintenanceModeEnabled"
@@ -441,7 +430,6 @@ export default function GeneralForm() {
     const { resource, updateResource } = useResourceContext();
     const router = useRouter();
     const t = useTranslations();
-    const [editDomainOpen, setEditDomainOpen] = useState(false);
 
     const { env } = useEnvContext();
 
@@ -454,24 +442,13 @@ export default function GeneralForm() {
     );
 
     const resourceFullDomainName = useMemo(() => {
-        if (!resource.fullDomain) {
-            return "";
-        }
         try {
             const url = new URL(resourceFullDomain);
             return url.hostname;
         } catch {
             return "";
         }
-    }, [resourceFullDomain, resource.fullDomain]);
-
-    const [selectedDomain, setSelectedDomain] = useState<{
-        domainId: string;
-        domainNamespaceId?: string;
-        subdomain?: string;
-        fullDomain: string;
-        baseDomain: string;
-    } | null>(null);
+    }, [resourceFullDomain]);
 
     const GeneralFormSchema = z
         .object({
@@ -530,7 +507,7 @@ export default function GeneralForm() {
                     name: data.name,
                     niceId: data.niceId,
                     subdomain: data.subdomain
-                        ? toASCII(data.subdomain)
+                        ? toASCII(finalizeSubdomainSanitize(data.subdomain, true))
                         : undefined,
                     domainId: data.domainId,
                     proxyPort: data.proxyPort
@@ -578,6 +555,13 @@ export default function GeneralForm() {
     return (
         <>
             <SettingsContainer>
+                {resource?.resourceId && resource?.orgId && (
+                    <UptimeAlertSection
+                        orgId={resource.orgId}
+                        resourceId={resource.resourceId}
+                        startingName={resource.name}
+                    />
+                )}
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
@@ -596,37 +580,6 @@ export default function GeneralForm() {
                                     className="space-y-4"
                                     id="general-settings-form"
                                 >
-                                    <FormField
-                                        control={form.control}
-                                        name="enabled"
-                                        render={() => (
-                                            <FormItem className="col-span-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <FormControl>
-                                                        <SwitchInput
-                                                            id="enable-resource"
-                                                            defaultChecked={
-                                                                resource.enabled
-                                                            }
-                                                            label={t(
-                                                                "resourceEnable"
-                                                            )}
-                                                            onCheckedChange={(
-                                                                val
-                                                            ) =>
-                                                                form.setValue(
-                                                                    "enabled",
-                                                                    val
-                                                                )
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                </div>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
                                     <FormField
                                         control={form.control}
                                         name="name"
@@ -715,26 +668,90 @@ export default function GeneralForm() {
                                     )}
 
                                     {resource.http && (
-                                        <div className="space-y-2">
-                                            <Label>{t("resourceDomain")}</Label>
-                                            <div className="border p-2 rounded-md flex items-center justify-between">
-                                                <span className="text-sm flex items-center gap-2">
-                                                    <Globe size="14" />
-                                                    {resourceFullDomain}
-                                                </span>
-                                                <Button
-                                                    variant="secondary"
-                                                    type="button"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setEditDomainOpen(true)
+                                        <div className="space-y-4">
+                                            <div id="resource-domain-picker">
+                                                <DomainPicker
+                                                    allowWildcard={true}
+                                                    key={resource.resourceId}
+                                                    orgId={orgId as string}
+                                                    cols={2}
+                                                    defaultSubdomain={
+                                                        form.watch(
+                                                            "subdomain"
+                                                        ) ?? undefined
                                                     }
-                                                >
-                                                    {t("resourceEditDomain")}
-                                                </Button>
+                                                    defaultDomainId={
+                                                        form.watch(
+                                                            "domainId"
+                                                        ) ?? undefined
+                                                    }
+                                                    defaultFullDomain={
+                                                        resourceFullDomainName ||
+                                                        undefined
+                                                    }
+                                                    onDomainChange={(res) => {
+                                                        if (res === null) {
+                                                            form.setValue(
+                                                                "domainId",
+                                                                undefined
+                                                            );
+                                                            form.setValue(
+                                                                "subdomain",
+                                                                undefined
+                                                            );
+                                                            setResourceFullDomain(
+                                                                `${resource.ssl ? "https" : "http"}://`
+                                                            );
+                                                            return;
+                                                        }
+                                                        form.setValue(
+                                                            "domainId",
+                                                            res.domainId
+                                                        );
+                                                        form.setValue(
+                                                            "subdomain",
+                                                            res.subdomain ??
+                                                                undefined
+                                                        );
+                                                        setResourceFullDomain(
+                                                            `${resource.ssl ? "https" : "http"}://${toUnicode(res.fullDomain)}`
+                                                        );
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                     )}
+
+                                    <FormField
+                                        control={form.control}
+                                        name="enabled"
+                                        render={() => (
+                                            <FormItem className="col-span-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <FormControl>
+                                                        <SwitchInput
+                                                            id="enable-resource"
+                                                            defaultChecked={
+                                                                resource.enabled
+                                                            }
+                                                            label={t(
+                                                                "resourceEnable"
+                                                            )}
+                                                            onCheckedChange={(
+                                                                val
+                                                            ) =>
+                                                                form.setValue(
+                                                                    "enabled",
+                                                                    val
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </form>
                             </Form>
                         </SettingsSectionForm>
@@ -759,86 +776,6 @@ export default function GeneralForm() {
                     />
                 )}
             </SettingsContainer>
-
-            <Credenza
-                open={editDomainOpen}
-                onOpenChange={(setOpen) => setEditDomainOpen(setOpen)}
-            >
-                <CredenzaContent>
-                    <CredenzaHeader>
-                        <CredenzaTitle>Edit Domain</CredenzaTitle>
-                        <CredenzaDescription>
-                            Select a domain for your resource
-                        </CredenzaDescription>
-                    </CredenzaHeader>
-                    <CredenzaBody>
-                        <DomainPicker
-                            orgId={orgId as string}
-                            cols={1}
-                            defaultSubdomain={
-                                form.watch("subdomain") ?? resource.subdomain
-                            }
-                            defaultDomainId={
-                                form.watch("domainId") ?? resource.domainId
-                            }
-                            defaultFullDomain={resourceFullDomainName}
-                            onDomainChange={(res) => {
-                                const selected =
-                                    res === null
-                                        ? null
-                                        : {
-                                              domainId: res.domainId,
-                                              subdomain: res.subdomain,
-                                              fullDomain: res.fullDomain,
-                                              baseDomain: res.baseDomain,
-                                              domainNamespaceId:
-                                                  res.domainNamespaceId
-                                          };
-
-                                setSelectedDomain(selected);
-                            }}
-                        />
-                    </CredenzaBody>
-                    <CredenzaFooter>
-                        <CredenzaClose asChild>
-                            <Button variant="outline">{t("cancel")}</Button>
-                        </CredenzaClose>
-                        <Button
-                            onClick={() => {
-                                if (selectedDomain) {
-                                    const sanitizedSubdomain =
-                                        selectedDomain.subdomain
-                                            ? finalizeSubdomainSanitize(
-                                                  selectedDomain.subdomain
-                                              )
-                                            : "";
-
-                                    const sanitizedFullDomain =
-                                        sanitizedSubdomain
-                                            ? `${sanitizedSubdomain}.${selectedDomain.baseDomain}`
-                                            : selectedDomain.baseDomain;
-
-                                    setResourceFullDomain(
-                                        `${resource.ssl ? "https" : "http"}://${sanitizedFullDomain}`
-                                    );
-                                    form.setValue(
-                                        "domainId",
-                                        selectedDomain.domainId
-                                    );
-                                    form.setValue(
-                                        "subdomain",
-                                        sanitizedSubdomain
-                                    );
-
-                                    setEditDomainOpen(false);
-                                }
-                            }}
-                        >
-                            Select Domain
-                        </Button>
-                    </CredenzaFooter>
-                </CredenzaContent>
-            </Credenza>
         </>
     );
 }

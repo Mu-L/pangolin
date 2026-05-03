@@ -1,6 +1,4 @@
-/**
- * Inspired from plausible: https://github.com/plausible/analytics/blob/1df08a25b4a536c9cc1e03855ddcfeac1d1cf6e5/assets/js/dashboard/stats/locations/map.tsx
- */
+// Inspired from plausible: https://github.com/plausible/analytics/blob/1df08a25b4a536c9cc1e03855ddcfeac1d1cf6e5/assets/js/dashboard/stats/locations/map.tsx
 import { cn } from "@app/lib/cn";
 import worldJson from "visionscarto-world-atlas/world/110m.json";
 import * as topojson from "topojson-client";
@@ -220,7 +218,7 @@ function drawInteractiveCountries(
             });
             hoverPath
                 .datum(country)
-                .attr("d", path(country) as string)
+                .attr("d", path(country as any) as string)
                 .style("display", null);
         })
 
@@ -237,7 +235,7 @@ function drawInteractiveCountries(
     return svg;
 }
 
-type WorldJsonCountryData = { properties: { name: string; a3: string } };
+type WorldJsonCountryData = d3.ExtendedFeature<d3.GeoGeometryObjects | null, { name: string; a3: string }>;
 
 function parseWorldTopoJsonToGeoJsonFeatures(): Array<WorldJsonCountryData> {
     const collection = topojson.feature(
