@@ -22,7 +22,7 @@ import {
     Olm,
     olms,
     RemoteExitNode,
-    remoteExitNodes,
+    remoteExitNodes
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import { db } from "@server/db";
@@ -193,8 +193,6 @@ const connectedClients: Map<string, AuthenticatedWebSocket[]> = new Map();
 
 // Config version tracking map (local to this node, resets on server restart)
 const clientConfigVersions: Map<string, number> = new Map();
-
-
 
 // Recovery tracking
 let isRedisRecoveryInProgress = false;
@@ -406,9 +404,8 @@ const removeClient = async (
     const updatedClients = existingClients.filter((client) => client !== ws);
     if (updatedClients.length === 0) {
         connectedClients.delete(mapKey);
-        // Clean up config version tracking to prevent unbounded memory
-        // growth. Without this, every unique clientId that ever connects
-        // leaves a permanent entry in clientConfigVersions.
+        // Remove clientId from clientConfigVersions on disconnect — prevents
+        // unbounded memory growth from stale entries.
         clientConfigVersions.delete(clientId);
 
         if (redisManager.isRedisEnabled()) {
@@ -417,8 +414,7 @@ const removeClient = async (
                 await redisManager.del(
                     getNodeConnectionsKey(NODE_ID, clientId)
                 );
-                // Also clean up the Redis config version key so it doesn't
-                // accumulate indefinitely in Redis either.
+                // Remove Redis config version key to prevent indefinite accumulation.
                 await redisManager.del(getConfigVersionKey(clientId));
             } catch (error) {
                 logger.error(
@@ -1104,9 +1100,8 @@ const disconnectClient = async (clientId: string): Promise<boolean> => {
         }
     });
 
-    // Eagerly clean up tracking maps. The close event handlers will also
-    // call removeClient, but if the socket is already in CLOSING state
-    // the close event may never fire, leaving zombie entries.
+    // Eagerly remove client — close event may not fire if socket is already
+    // CLOSING, leaving zombie entries.
     connectedClients.delete(mapKey);
     clientConfigVersions.delete(clientId);
 
