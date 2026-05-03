@@ -8,6 +8,7 @@ import {
     resourcePincode,
     resourceRules,
     resourceWhitelist,
+    roleActions,
     roleResources,
     roles,
     Target,
@@ -45,6 +46,7 @@ import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
+import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -1210,14 +1212,26 @@ async function syncRoleResources(
         .where(eq(roleResources.resourceId, resourceId));
 
     for (const roleName of ssoRoles) {
-        const [role] = await trx
+        let [role] = await trx
             .select()
             .from(roles)
             .where(and(eq(roles.name, roleName), eq(roles.orgId, orgId)))
             .limit(1);
 
         if (!role) {
-            throw new Error(`Role not found: ${roleName} in org ${orgId}`);
+            const [created] = await trx
+                .insert(roles)
+                .values({ name: roleName, orgId })
+                .returning();
+            await trx.insert(roleActions).values(
+                defaultRoleAllowedActions.map((action) => ({
+                    roleId: created.roleId,
+                    actionId: action,
+                    orgId
+                }))
+            );
+            role = created;
+            logger.info(`Auto-created role "${roleName}" in org ${orgId} from blueprint`);
         }
 
         if (role.isAdmin) {
