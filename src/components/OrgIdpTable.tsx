@@ -25,7 +25,6 @@ import {
 import {
     ArrowRight,
     ArrowUpDown,
-    KeyRound,
     MoreHorizontal
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -50,6 +49,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 import type { ListUserAdminOrgIdpsResponse } from "@server/routers/orgIdp/types";
 import { cn } from "@app/lib/cn";
+import { Badge } from "@app/components/ui/badge";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { isIdpGlobalModeBannerVisible } from "@app/components/IdpGlobalModeBanner";
@@ -62,6 +62,61 @@ export type IdpRow = {
 };
 
 type AdminIdpRow = ListUserAdminOrgIdpsResponse["idps"][number];
+
+type ImportSourceOrg = { orgId: string; orgName: string };
+
+type GroupedImportableIdp = {
+    idpId: number;
+    name: string;
+    type: string;
+    variant: string;
+    tags: string | null;
+    sources: ImportSourceOrg[];
+};
+
+function adminRowForImport(
+    group: GroupedImportableIdp,
+    source: ImportSourceOrg
+): AdminIdpRow {
+    return {
+        idpId: group.idpId,
+        orgId: source.orgId,
+        orgName: source.orgName,
+        name: group.name,
+        type: group.type,
+        variant: group.variant,
+        tags: group.tags
+    };
+}
+
+function groupImportableIdps(rows: AdminIdpRow[]): GroupedImportableIdp[] {
+    const map = new Map<number, GroupedImportableIdp>();
+    for (const row of rows) {
+        let g = map.get(row.idpId);
+        if (!g) {
+            g = {
+                idpId: row.idpId,
+                name: row.name,
+                type: row.type,
+                variant: row.variant,
+                tags: row.tags,
+                sources: []
+            };
+            map.set(row.idpId, g);
+        }
+        if (!g.sources.some((s) => s.orgId === row.orgId)) {
+            g.sources.push({ orgId: row.orgId, orgName: row.orgName });
+        }
+    }
+    return Array.from(map.values())
+        .map((item) => ({
+            ...item,
+            sources: [...item.sources].sort((a, b) =>
+                a.orgName.localeCompare(b.orgName)
+            )
+        }))
+        .sort((a, b) => b.name.localeCompare(a.name));
+}
 
 function IdpImportRowIcon({
     type,
@@ -114,16 +169,22 @@ export default function IdpTable({ idps, orgId }: Props) {
         );
     }, [adminIdpsRaw, orgId, idps]);
 
-    const shownImportIdps = useMemo(() => {
+    const importableGrouped = useMemo(
+        () => groupImportableIdps(importableIdps),
+        [importableIdps]
+    );
+
+    const shownImportGrouped = useMemo(() => {
         const q = debouncedImportSearch.trim().toLowerCase();
         if (!q) {
-            return importableIdps;
+            return importableGrouped;
         }
-        return importableIdps.filter((row) => {
-            const hay = `${row.orgName} ${row.name}`.toLowerCase();
+        return importableGrouped.filter((group) => {
+            const hay =
+                `${group.name} ${group.sources.map((s) => s.orgName).join(" ")}`.toLowerCase();
             return hay.includes(q);
         });
-    }, [importableIdps, debouncedImportSearch]);
+    }, [importableGrouped, debouncedImportSearch]);
 
     const deleteIdp = async (idpId: number) => {
         try {
@@ -364,31 +425,44 @@ export default function IdpTable({ idps, orgId }: Props) {
                                     {t("idpImportEmpty")}
                                 </CommandEmpty>
                                 <CommandGroup>
-                                    {shownImportIdps.map((row) => (
+                                    {shownImportGrouped.map((group) => (
                                         <CommandItem
-                                            key={`${row.idpId}:${row.orgId}`}
+                                            key={group.idpId}
                                             className="items-start gap-3 py-2.5"
-                                            value={`${row.idpId}:${row.orgId}:${row.orgName}:${row.name}`}
+                                            value={`${group.idpId}:${group.name}:${group.sources.map((s) => s.orgName).join(" ")}`}
                                             disabled={!canImportOrgOidcIdp}
                                             onSelect={() => {
                                                 if (!canImportOrgOidcIdp) {
                                                     return;
                                                 }
-                                                void importIdp(row);
+                                                void importIdp(
+                                                    adminRowForImport(
+                                                        group,
+                                                        group.sources[0]
+                                                    )
+                                                );
                                             }}
                                         >
                                             <div className="mt-0.5 shrink-0">
                                                 <IdpImportRowIcon
-                                                    type={row.type}
-                                                    variant={row.variant}
+                                                    type={group.type}
+                                                    variant={group.variant}
                                                 />
                                             </div>
                                             <div className="min-w-0 flex-1 text-left">
                                                 <div className="truncate font-medium leading-tight">
-                                                    {row.orgName}
+                                                    {group.name}
                                                 </div>
-                                                <div className="truncate text-sm leading-tight text-muted-foreground">
-                                                    {row.name}
+                                                <div className="mt-1 flex flex-wrap gap-1">
+                                                    {group.sources.map((src) => (
+                                                        <Badge
+                                                            key={src.orgId}
+                                                            variant="secondary"
+                                                            className="max-w-full truncate font-normal"
+                                                        >
+                                                            {src.orgName}
+                                                        </Badge>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </CommandItem>
