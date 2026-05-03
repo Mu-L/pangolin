@@ -16,6 +16,8 @@ bootstrapVolume();
  * Wraps better-sqlite3 Statement to call `finalize()` immediately after
  * execution, freeing native sqlite3_stmt memory deterministically instead
  * of waiting for GC. Fixes steady off-heap growth under load (#2120).
+ * WARNING: Finalizes after first execution — incompatible with drizzle's
+ * reusable .prepare() builders. No such usage exists in this codebase.
  */
 function autoFinalizeStatement(
     stmt: BetterSqlite3.Statement

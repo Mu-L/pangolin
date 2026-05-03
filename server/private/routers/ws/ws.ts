@@ -414,8 +414,6 @@ const removeClient = async (
                 await redisManager.del(
                     getNodeConnectionsKey(NODE_ID, clientId)
                 );
-                // Remove Redis config version key to prevent indefinite accumulation.
-                await redisManager.del(getConfigVersionKey(clientId));
             } catch (error) {
                 logger.error(
                     "Failed to remove client from Redis tracking (cleanup will occur on recovery):",
