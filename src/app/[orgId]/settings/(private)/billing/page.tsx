@@ -55,6 +55,7 @@ import {
     tier3LimitSet
 } from "@server/lib/billing/limitSet";
 import { FeatureId } from "@server/lib/billing/features";
+import TrialBillingBanner from "@app/components/TrialBillingBanner";
 
 // Plan tier definitions matching the mockup
 type PlanId = "basic" | "home" | "team" | "business" | "enterprise";
@@ -805,6 +806,20 @@ export default function BillingPage() {
 
     return (
         <SettingsContainer>
+            {/* Trial Banner */}
+            {isTrial && (
+                <TrialBillingBanner
+                    onUpgrade={() => {
+                        const currentPlan = planOptions.find(
+                            (p) => p.id === currentPlanId
+                        );
+                        if (currentPlan?.tierType) {
+                            handleStartSubscription(currentPlan.tierType);
+                        }
+                    }}
+                />
+            )}
+
             {/* Subscription Status Alert */}
             {isProblematicState && statusMessage && (
                 <Alert variant="destructive" className="mb-6">
