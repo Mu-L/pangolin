@@ -90,14 +90,13 @@ export async function createCertificate(
             domainToWrite = `*.${domainToWrite}`;
         }
     } else if (domainRecord.type == "ns") {
-        // first if we have a * in the domain for this case we dont want to include it because it will mess with the cert generator so remove it
-        if (domain.startsWith("*.")) {
-            domain = domain.slice(2);
-        }
-
-        const parts = domain.split(".");
-        if (parts.length > 2) {
-            domainToWrite = parts.slice(1).join(".");
+        if (domain == domainRecord.baseDomain) {
+            domainToWrite = domainRecord.baseDomain;
+        } else {
+            const parts = domain.split(".");
+            if (parts.length > 2) {
+                domainToWrite = parts.slice(1).join(".");
+            }
         }
     }
 
