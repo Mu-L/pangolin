@@ -3,6 +3,7 @@ import {
     clientSiteResources,
     domains,
     orgDomains,
+    roleActions,
     roles,
     roleSiteResources,
     Site,
@@ -19,6 +20,7 @@ import { sites } from "@server/db";
 import { eq, and, ne, inArray, or, isNotNull } from "drizzle-orm";
 import { Config } from "./types";
 import logger from "@server/logger";
+import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { getNextAvailableAliasAddress } from "../ip";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 
@@ -335,8 +337,7 @@ export async function updateClientResources(
             }
 
             if (resourceData.roles.length > 0) {
-                // Re-add specified roles but we need to get the roleIds from the role name in the array
-                const rolesToUpdate = await trx
+                const existingRoles = await trx
                     .select()
                     .from(roles)
                     .where(
@@ -346,7 +347,28 @@ export async function updateClientResources(
                         )
                     );
 
-                const roleIds = rolesToUpdate.map((role) => role.roleId);
+                const foundNames = new Set(existingRoles.map((r) => r.name));
+                const missingNames = resourceData.roles.filter(
+                    (n) => !foundNames.has(n)
+                );
+
+                for (const name of missingNames) {
+                    const [created] = await trx
+                        .insert(roles)
+                        .values({ name, orgId })
+                        .returning();
+                    await trx.insert(roleActions).values(
+                        defaultRoleAllowedActions.map((action) => ({
+                            roleId: created.roleId,
+                            actionId: action,
+                            orgId
+                        }))
+                    );
+                    existingRoles.push(created);
+                    logger.info(`Auto-created role "${name}" in org ${orgId} from blueprint`);
+                }
+
+                const roleIds = existingRoles.map((role) => role.roleId);
 
                 await trx
                     .insert(roleSiteResources)
@@ -447,8 +469,7 @@ export async function updateClientResources(
             });
 
             if (resourceData.roles.length > 0) {
-                // get roleIds from role names
-                const rolesToUpdate = await trx
+                const existingRoles = await trx
                     .select()
                     .from(roles)
                     .where(
@@ -458,7 +479,28 @@ export async function updateClientResources(
                         )
                     );
 
-                const roleIds = rolesToUpdate.map((role) => role.roleId);
+                const foundNames = new Set(existingRoles.map((r) => r.name));
+                const missingNames = resourceData.roles.filter(
+                    (n) => !foundNames.has(n)
+                );
+
+                for (const name of missingNames) {
+                    const [created] = await trx
+                        .insert(roles)
+                        .values({ name, orgId })
+                        .returning();
+                    await trx.insert(roleActions).values(
+                        defaultRoleAllowedActions.map((action) => ({
+                            roleId: created.roleId,
+                            actionId: action,
+                            orgId
+                        }))
+                    );
+                    existingRoles.push(created);
+                    logger.info(`Auto-created role "${name}" in org ${orgId} from blueprint`);
+                }
+
+                const roleIds = existingRoles.map((role) => role.roleId);
 
                 await trx
                     .insert(roleSiteResources)
