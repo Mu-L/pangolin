@@ -16,6 +16,7 @@ import { customers, db, subscriptions } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
 import { generateId } from "@server/auth/sessions/app";
+import { handleSubscriptionLifesycle } from "../subscriptionLifecycle";
 
 export async function handleCustomerCreated(
     customer: Stripe.Customer
@@ -62,6 +63,13 @@ export async function handleCustomerCreated(
                 expiresAt: trialExpiresAt,
                 trial: true
             });
+
+            // update to the business limits for the trial
+            await handleSubscriptionLifesycle(
+                customer.metadata.orgId,
+                "active",
+                "tier3"
+            );
         });
 
         logger.info(`Customer with ID ${customer.id} created successfully.`);

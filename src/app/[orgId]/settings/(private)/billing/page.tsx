@@ -35,6 +35,7 @@ import {
 } from "@app/components/Credenza";
 import { cn } from "@app/lib/cn";
 import { CreditCard, ExternalLink, Check, AlertTriangle } from "lucide-react";
+import { Badge } from "@app/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@app/components/ui/alert";
 import {
     Tooltip,
@@ -55,6 +56,7 @@ import {
     tier3LimitSet
 } from "@server/lib/billing/limitSet";
 import { FeatureId } from "@server/lib/billing/features";
+import TrialBillingBanner from "@app/components/TrialBillingBanner";
 
 // Plan tier definitions matching the mockup
 type PlanId = "basic" | "home" | "team" | "business" | "enterprise";
@@ -805,6 +807,20 @@ export default function BillingPage() {
 
     return (
         <SettingsContainer>
+            {/* Trial Banner */}
+            {isTrial && (
+                <TrialBillingBanner
+                    onUpgrade={() => {
+                        const currentPlan = planOptions.find(
+                            (p) => p.id === currentPlanId
+                        );
+                        if (currentPlan?.tierType) {
+                            handleStartSubscription(currentPlan.tierType);
+                        }
+                    }}
+                />
+            )}
+
             {/* Subscription Status Alert */}
             {isProblematicState && statusMessage && (
                 <Alert variant="destructive" className="mb-6">
@@ -859,8 +875,19 @@ export default function BillingPage() {
                                     )}
                                 >
                                     <div className="flex-1">
-                                        <div className="text-2xl">
-                                            {plan.name}
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-2xl">
+                                                {plan.name}
+                                            </span>
+                                            {isCurrentPlan && isTrial && (
+                                                <Badge
+                                                    variant="outlinePrimary"
+                                                    className="text-xs"
+                                                >
+                                                    {t("billingTrialBadge") ||
+                                                        "Free Trial"}
+                                                </Badge>
+                                            )}
                                         </div>
                                         <div className="mt-1">
                                             <span className="text-xl">

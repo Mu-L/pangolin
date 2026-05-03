@@ -38,10 +38,7 @@ import { calculateUserClientsForOrgs } from "@server/lib/calculateUserClientsFor
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import {
-    assignUserToOrg,
-    removeUserFromOrg
-} from "@server/lib/userOrg";
+import { assignUserToOrg, removeUserFromOrg } from "@server/lib/userOrg";
 import { unwrapRoleMapping } from "@app/lib/idpRoleMapping";
 
 const ensureTrailingSlash = (url: string): string => {
@@ -336,23 +333,23 @@ export async function validateOidcCallback(
                     .innerJoin(orgs, eq(orgs.orgId, idpOrg.orgId));
                 allOrgs = idpOrgs.map((o) => o.orgs);
 
-                for (const org of allOrgs) {
-                    const subscribed = await isSubscribed(
-                        org.orgId,
-                        tierMatrix.autoProvisioning
-                    );
-                    if (!subscribed) {
-                        // filter out the org
-                        allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
+                // for (const org of allOrgs) {
+                //     const subscribed = await isSubscribed(
+                //         org.orgId,
+                //         tierMatrix.autoProvisioning
+                //     );
+                //     if (!subscribed) {
+                //         // filter out the org
+                //         allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
 
-                        // return next(
-                        //     createHttpError(
-                        //         HttpCode.FORBIDDEN,
-                        //         "This organization's current plan does not support this feature."
-                        //     )
-                        // );
-                    }
-                }
+                //         // return next(
+                //         //     createHttpError(
+                //         //         HttpCode.FORBIDDEN,
+                //         //         "This organization's current plan does not support this feature."
+                //         //     )
+                //         // );
+                //     }
+                // }
             } else {
                 allOrgs = await db.select().from(orgs);
             }
@@ -396,16 +393,14 @@ export async function validateOidcCallback(
                     idpOrgRes?.roleMapping || defaultRoleMapping;
                 if (roleMapping) {
                     logger.debug("Role Mapping", { roleMapping });
-                    const roleMappingJmes = unwrapRoleMapping(
-                        roleMapping
-                    ).evaluationExpression;
+                    const roleMappingJmes =
+                        unwrapRoleMapping(roleMapping).evaluationExpression;
                     const roleMappingResult = jmespath.search(
                         claims,
                         roleMappingJmes
                     );
-                    const roleNames = normalizeRoleMappingResult(
-                        roleMappingResult
-                    );
+                    const roleNames =
+                        normalizeRoleMappingResult(roleMappingResult);
 
                     const supportsMultiRole = await isLicensedOrSubscribed(
                         org.orgId,
@@ -515,7 +510,7 @@ export async function validateOidcCallback(
                 }
             }
 
-                const orgUserCounts: { orgId: string; userCount: number }[] = [];
+            const orgUserCounts: { orgId: string; userCount: number }[] = [];
 
             // sync the user with the orgs and roles
             await db.transaction(async (trx) => {
@@ -628,7 +623,7 @@ export async function validateOidcCallback(
                                 {
                                     orgId: org.orgId,
                                     userId: userId!,
-                                    autoProvisioned: true,
+                                    autoProvisioned: true
                                 },
                                 org.roleIds,
                                 trx
@@ -758,9 +753,7 @@ function hydrateOrgMapping(
     return orgMapping.split("{{orgId}}").join(orgId);
 }
 
-function normalizeRoleMappingResult(
-    result: unknown
-): string[] {
+function normalizeRoleMappingResult(result: unknown): string[] {
     if (typeof result === "string") {
         const role = result.trim();
         return role ? [role] : [];
@@ -770,7 +763,9 @@ function normalizeRoleMappingResult(
         return [
             ...new Set(
                 result
-                    .filter((value): value is string => typeof value === "string")
+                    .filter(
+                        (value): value is string => typeof value === "string"
+                    )
                     .map((value) => value.trim())
                     .filter(Boolean)
             )
