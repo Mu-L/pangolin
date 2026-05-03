@@ -22,7 +22,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { LookupUserResponse } from "@server/routers/auth/lookupUser";
 import { useTranslations } from "next-intl";
 import LoginPasswordForm from "@app/components/LoginPasswordForm";
-import LoginOrgSelector from "@app/components/LoginOrgSelector";
+import SmartLoginOrgSelector from "@app/components/SmartLoginOrgSelector";
 import UserProfileCard from "@app/components/UserProfileCard";
 import SecurityKeyAuthButton from "@app/components/SecurityKeyAuthButton";
 import { Separator } from "@app/components/ui/separator";
@@ -206,7 +206,7 @@ export default function SmartLoginForm({
     if (viewState.type === "orgSelector") {
         return (
             <div className="space-y-4">
-                <LoginOrgSelector
+                <SmartLoginOrgSelector
                     identifier={viewState.identifier}
                     lookupResult={viewState.lookupResult}
                     redirect={redirect}
