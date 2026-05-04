@@ -52,6 +52,10 @@ export function NewtSiteInstallCommands({
     const acceptClientsEnv = !acceptClients
         ? "\n      - DISABLE_CLIENTS=true"
         : "";
+    const acceptClientsHelmValue = acceptClients
+        ? ` \\
+      --set newtInstances[0].acceptClients=true`
+        : "";
 
     const commandList: Record<Platform, Record<string, CommandItem[]>> = {
         linux: {
@@ -162,13 +166,18 @@ sudo systemctl enable --now newt`
             "Helm Chart": [
                 `helm repo add fossorial https://charts.fossorial.io`,
                 `helm repo update fossorial`,
-                `helm install newt fossorial/newt \\
-    --create-namespace \\
-    --set newtInstances[0].name="main-tunnel" \\
-    --set newtInstances[0].enabled=true \\
-    --set-string newtInstances[0].auth.keys.endpointKey="${endpoint}" \\
-    --set-string newtInstances[0].auth.keys.idKey="${id}" \\
-    --set-string newtInstances[0].auth.keys.secretKey="${secret}"`
+                `kubectl create namespace newt --dry-run=client -o yaml | kubectl apply -f -`,
+                `kubectl create secret generic newt-main-tunnel-auth \\
+   -n newt \\
+  --from-literal=PANGOLIN_ENDPOINT="${endpoint}" \\
+  --from-literal=NEWT_ID="${id}" \\
+  --from-literal=NEWT_SECRET="${secret}" \\
+  --dry-run=client -o yaml | kubectl apply -f -`,
+                `helm upgrade --install newt fossorial/newt \\
+  -n newt \\
+  --set newtInstances[0].name="main-tunnel" \\
+  --set newtInstances[0].enabled=true \\
+  --set-string newtInstances[0].auth.existingSecretName="newt-main-tunnel-auth"${acceptClientsHelmValue}`
             ]
         },
         podman: {
