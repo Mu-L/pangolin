@@ -5,6 +5,8 @@ import { useDebounce } from "use-debounce";
 
 import { useTranslations } from "next-intl";
 import { MultiSelectTagInput } from "./multi-select/multi-select-tag-input";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type SelectedRole = { id: string; text: string };
 
@@ -27,6 +29,8 @@ export function RolesSelector({
     mapRolesByName,
     buttonText
 }: RolesSelectorProps) {
+    const { isPaidUser } = usePaidStatus();
+    const canSelectMultipleUsers = isPaidUser(tierMatrix.fullRbac);
     const t = useTranslations();
     const [roleSearchQuery, setRoleSearchQuery] = useState("");
 
@@ -74,7 +78,13 @@ export function RolesSelector({
             onSearch={setRoleSearchQuery}
             options={rolesShown}
             value={selectedRoles}
-            onChange={onSelectRoles}
+            onChange={(newRoles) => {
+                let roles = canSelectMultipleUsers
+                    ? [...newRoles]
+                    : [newRoles[0]];
+
+                onSelectRoles(roles);
+            }}
             disabled={disabled}
         />
     );
