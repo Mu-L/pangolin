@@ -31,8 +31,9 @@ export function CertificateStatusContent({
     const t = useTranslations();
 
     const labelClass =
-        "inline-flex shrink-0 items-center self-center text-sm font-medium leading-none";
-    const valueClass = "inline-flex items-center gap-2 text-sm leading-none";
+        "inline-flex shrink-0 items-center self-center text-sm font-medium leading-normal";
+    const valueClass =
+        "inline-flex items-center gap-2 text-sm leading-normal";
 
     const handleRefresh = async () => {
         await refreshCert();
@@ -133,14 +134,14 @@ export function CertificateStatusContent({
             {isPending && !disableRestartButton ? (
                 <Button
                     variant="ghost"
-                    className="h-auto min-h-0 shrink-0 p-0 text-sm font-normal leading-none inline-flex items-center self-center"
+                    className="h-auto min-h-0 shrink-0 p-0 text-sm font-normal leading-normal inline-flex items-center self-center"
                     onClick={handleRefresh}
                     disabled={refreshing}
                     title={t("restartCertificate", {
                         defaultValue: "Restart Certificate"
                     })}
                 >
-                    <span className="inline-flex items-center gap-2 leading-none">
+                    <span className="inline-flex items-center gap-2 leading-normal">
                         <FileBadge
                             className={`h-4 w-4 shrink-0 ${getStatusColor(cert.status)}`}
                             aria-hidden
@@ -148,7 +149,7 @@ export function CertificateStatusContent({
                         {cert.status.charAt(0).toUpperCase() +
                             cert.status.slice(1)}
                         <RotateCw
-                            className={`h-3 w-3 shrink-0 ${refreshing ? "animate-spin" : ""}`}
+                            className={`h-4 w-4 shrink-0 ${refreshing ? "animate-spin" : ""}`}
                         />
                     </span>
                 </Button>
@@ -164,7 +165,7 @@ export function CertificateStatusContent({
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="inline-flex h-auto min-h-0 w-3 shrink-0 items-center justify-center self-center p-0"
+                            className="inline-flex h-4 w-4 min-h-0 shrink-0 items-center justify-center self-center p-0"
                             onClick={handleRefresh}
                             disabled={refreshing}
                             title={t("restartCertificate", {
@@ -172,7 +173,7 @@ export function CertificateStatusContent({
                             })}
                         >
                             <RotateCw
-                                className={`h-3 w-3 shrink-0 ${refreshing ? "animate-spin" : ""}`}
+                                className={`h-4 w-4 shrink-0 ${refreshing ? "animate-spin" : ""}`}
                             />
                         </Button>
                     ) : null}
