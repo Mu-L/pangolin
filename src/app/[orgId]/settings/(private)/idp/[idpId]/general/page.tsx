@@ -175,26 +175,6 @@ export default function GeneralPage() {
     }, [variant]);
 
     useEffect(() => {
-        async function fetchRoles() {
-            const res = await api
-                .get<AxiosResponse<ListRolesResponse>>(`/org/${orgId}/roles`)
-                .catch((e) => {
-                    console.error(e);
-                    toast({
-                        variant: "destructive",
-                        title: t("accessRoleErrorFetch"),
-                        description: formatAxiosError(
-                            e,
-                            t("accessRoleErrorFetchDescription")
-                        )
-                    });
-                });
-
-            if (res?.status === 200) {
-                setRoles(res.data.data.roles);
-            }
-        }
-
         const loadIdp = async (
             availableRoles: { roleId: number; name: string }[]
         ) => {
@@ -211,11 +191,6 @@ export default function GeneralPage() {
 
                     const detectedRoleMappingConfig =
                         detectRoleMappingConfig(roleMapping);
-
-                    console.log({
-                        detectedRoleMappingConfig,
-                        roleMapping
-                    });
 
                     // Extract tenant ID from Azure URLs if present
                     let tenantId = "";
