@@ -652,6 +652,8 @@ function ProxyResourceTargetsForm({
             hcMode: null,
             hcUnhealthyInterval: null,
             hcTlsServerName: null,
+            hcHealthyThreshold: null,
+            hcUnhealthyThreshold: null,
             siteType: sites.length > 0 ? sites[0].type : null,
             new: true,
             updated: false
@@ -761,7 +763,9 @@ function ProxyResourceTargetsForm({
                     hcStatus: target.hcStatus || null,
                     hcUnhealthyInterval: target.hcUnhealthyInterval || null,
                     hcMode: target.hcMode || null,
-                    hcTlsServerName: target.hcTlsServerName
+                    hcTlsServerName: target.hcTlsServerName,
+                    hcHealthyThreshold: target.hcHealthyThreshold || null,
+                    hcUnhealthyThreshold: target.hcUnhealthyThreshold || null
                 };
 
                 // Only include path-related fields for HTTP resources
@@ -1018,7 +1022,13 @@ function ProxyResourceTargetsForm({
                             30,
                         hcTlsServerName:
                             selectedTargetForHealthCheck.hcTlsServerName ||
-                            undefined
+                            undefined,
+                        hcHealthyThreshold:
+                            selectedTargetForHealthCheck.hcHealthyThreshold ||
+                            1,
+                        hcUnhealthyThreshold:
+                            selectedTargetForHealthCheck.hcUnhealthyThreshold ||
+                            1
                     }}
                     onChanges={async (config) => {
                         if (selectedTargetForHealthCheck) {
