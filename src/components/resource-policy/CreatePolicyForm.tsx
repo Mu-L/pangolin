@@ -9,29 +9,22 @@ import {
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
-
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
-
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-
-import z from "zod";
-
 import { type PolicyFormValues, createPolicySchema } from ".";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgs, type ResourcePolicy } from "@server/db";
 import type { AxiosResponse } from "axios";
 import { useRouter } from "next/navigation";
-
 import { Button } from "@app/components/ui/button";
 import {
     Form,
@@ -42,13 +35,14 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
-
 import { useMemo, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { CreatePolicyUsersRolesSectionForm } from "./CreatePolicyUserRolesSectionForm";
 import { CreatePolicyAuthMethodsSectionForm } from "./CreatePolicyAuthMethodsSectionForm";
 import { CreatePolicyOtpEmailSectionForm } from "./CreatePolicyOtpEmailSectionForm";
 import { CreatePolicyRulesSectionForm } from "./CreatePolicyRulesSectionForm";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 
 // ─── CreatePolicyForm ─────────────────────────────────────────────────────────
 
@@ -200,71 +194,87 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
         return <></>;
     }
 
-    return (
-        <Form {...form}>
-            <SettingsContainer>
-                    {/* Name */}
-                    <SettingsSection>
-                        <SettingsSectionHeader>
-                            <SettingsSectionTitle>
-                                {t("resourcePolicyName")}
-                            </SettingsSectionTitle>
-                            <SettingsSectionDescription>
-                                {t("resourcePolicyNameDescription")}
-                            </SettingsSectionDescription>
-                        </SettingsSectionHeader>
-                        <SettingsSectionBody>
-                            <SettingsSectionForm>
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t("name")}</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    {...field}
-                                                    placeholder={t(
-                                                        "resourcePolicyNamePlaceholder"
-                                                    )}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </SettingsSectionForm>
-                        </SettingsSectionBody>
-                    </SettingsSection>
+    const policyTiers = tierMatrix[TierFeature.ResourcePolicies];
+    const isDisabled = !isPaidUser(policyTiers);
 
-                    <CreatePolicyUsersRolesSectionForm
-                        form={form}
-                        allRoles={allRoles}
-                        allUsers={allUsers}
-                        allIdps={allIdps}
-                    />
-                    <CreatePolicyAuthMethodsSectionForm form={form} />
-                    <CreatePolicyOtpEmailSectionForm
-                        form={form}
-                        emailEnabled={env.email.emailEnabled}
-                    />
-                    <CreatePolicyRulesSectionForm
-                        form={form}
-                        isMaxmindAvailable={isMaxmindAvailable}
-                        isMaxmindAsnAvailable={isMaxmindAsnAvailable}
-                    />
-                </SettingsContainer>
+    return (
+        <>
+            <PaidFeaturesAlert tiers={policyTiers} />
+            <Form {...form}>
+                <div
+                    className={
+                        isDisabled
+                            ? "pointer-events-none opacity-50"
+                            : undefined
+                    }
+                >
+                    <SettingsContainer>
+                        {/* Name */}
+                        <SettingsSection>
+                            <SettingsSectionHeader>
+                                <SettingsSectionTitle>
+                                    {t("resourcePolicyName")}
+                                </SettingsSectionTitle>
+                                <SettingsSectionDescription>
+                                    {t("resourcePolicyNameDescription")}
+                                </SettingsSectionDescription>
+                            </SettingsSectionHeader>
+                            <SettingsSectionBody>
+                                <SettingsSectionForm>
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("name")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        placeholder={t(
+                                                            "resourcePolicyNamePlaceholder"
+                                                        )}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </SettingsSectionForm>
+                            </SettingsSectionBody>
+                        </SettingsSection>
+
+                        <CreatePolicyUsersRolesSectionForm
+                            form={form}
+                            allRoles={allRoles}
+                            allUsers={allUsers}
+                            allIdps={allIdps}
+                        />
+                        <CreatePolicyAuthMethodsSectionForm form={form} />
+                        <CreatePolicyOtpEmailSectionForm
+                            form={form}
+                            emailEnabled={env.email.emailEnabled}
+                        />
+                        <CreatePolicyRulesSectionForm
+                            form={form}
+                            isMaxmindAvailable={isMaxmindAvailable}
+                            isMaxmindAsnAvailable={isMaxmindAsnAvailable}
+                        />
+                    </SettingsContainer>
+                </div>
 
                 <div className="flex py-6 justify-end">
                     <Button
                         type="button"
                         onClick={() => startTransition(onSubmit)}
                         loading={isSubmitting}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isDisabled}
                     >
                         {t("resourcePoliciesCreate")}
                     </Button>
                 </div>
-        </Form>
+            </Form>
+        </>
     );
 }

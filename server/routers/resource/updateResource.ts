@@ -25,7 +25,10 @@ import {
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { validateAndConstructDomain, checkWildcardDomainConflict } from "@server/lib/domainUtils";
+import {
+    validateAndConstructDomain,
+    checkWildcardDomainConflict
+} from "@server/lib/domainUtils";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -304,11 +307,30 @@ async function updateHttpResource(
 
     const updateData = parsedBody.data;
 
+    const isLicensed = await isLicensedOrSubscribed(
+        resource.orgId,
+        tierMatrix.wildcardSubdomain
+    );
+
     if (updateData.resourcePolicyId != null) {
+        if (!isLicensed) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "Resource policies are not supported on your current plan. Please upgrade to access this feature."
+                )
+            );
+        }
+
         const [existingPolicy] = await db
             .select()
             .from(resourcePolicies)
-            .where(eq(resourcePolicies.resourcePolicyId, updateData.resourcePolicyId))
+            .where(
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    updateData.resourcePolicyId
+                )
+            )
             .limit(1);
 
         if (!existingPolicy) {
@@ -346,10 +368,6 @@ async function updateHttpResource(
 
     // Wildcard subdomains are a paid feature
     if (updateData.subdomain && updateData.subdomain.includes("*")) {
-        const isLicensed = await isLicensedOrSubscribed(
-            resource.orgId,
-            tierMatrix.wildcardSubdomain
-        );
         if (!isLicensed) {
             return next(
                 createHttpError(
@@ -494,10 +512,6 @@ async function updateHttpResource(
         headers = null;
     }
 
-    const isLicensed = await isLicensedOrSubscribed(
-        resource.orgId,
-        tierMatrix.maintencePage
-    );
     if (!isLicensed) {
         updateData.maintenanceModeEnabled = undefined;
         updateData.maintenanceModeType = undefined;
@@ -560,7 +574,12 @@ async function updateRawResource(
         const [existingPolicy] = await db
             .select()
             .from(resourcePolicies)
-            .where(eq(resourcePolicies.resourcePolicyId, updateData.resourcePolicyId))
+            .where(
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    updateData.resourcePolicyId
+                )
+            )
             .limit(1);
 
         if (!existingPolicy) {

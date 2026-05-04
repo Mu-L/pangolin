@@ -29,6 +29,8 @@ import {
     DropdownMenuTrigger
 } from "./ui/dropdown-menu";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import { PaidFeaturesAlert } from "./PaidFeaturesAlert";
+import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 
 type ResourcePolicyRow = ListResourcePoliciesResponse["policies"][number];
 
@@ -253,6 +255,9 @@ export function ResourcePoliciesTable({
 
     return (
         <>
+            <PaidFeaturesAlert
+                tiers={tierMatrix[TierFeature.ResourcePolicies]}
+            />
             {selectedResourcePolicy && (
                 <ConfirmDeleteDialog
                     open={isDeleteModalOpen}

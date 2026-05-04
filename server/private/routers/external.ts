@@ -389,7 +389,7 @@ authenticated.delete(
     "/resource-policy/:resourcePolicyId",
     verifyResourcePolicyAccess,
     verifyValidLicense,
-    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
+    verifyValidSubscription(tierMatrix.resourcePolicies),
     verifyLimits,
     verifyUserHasAction(ActionsEnum.deleteResourcePolicy),
     logActionAudit(ActionsEnum.deleteResourcePolicy),
@@ -399,7 +399,7 @@ authenticated.delete(
 authenticated.get(
     "/org/:orgId/resource-policies",
     verifyValidLicense,
-    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
+    verifyValidSubscription(tierMatrix.resourcePolicies),
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.listResourcePolicies),
@@ -410,7 +410,7 @@ authenticated.get(
 authenticated.post(
     "/org/:orgId/resource-policy",
     verifyValidLicense,
-    // verifyValidSubscription(tierMatrix.loginPageDomain), // todo: use the correct subscription ?
+    verifyValidSubscription(tierMatrix.resourcePolicies),
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.createResourcePolicy),
