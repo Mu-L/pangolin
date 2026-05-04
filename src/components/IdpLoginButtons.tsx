@@ -104,7 +104,7 @@ export default function IdpLoginButtons({
                 </Alert>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-4">
                 {params.get("gotoapp") ? (
                     <>
                         <Button
