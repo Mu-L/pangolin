@@ -26,7 +26,7 @@ export default function GeneralPage() {
     const searchParams = useSearchParams();
 
     const [rows, setRows] = useState<any[]>([]);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isRefreshing, startRefreshingTransition] = useTransition();
     const [isExporting, startTransition] = useTransition();
 
     // Pagination state
@@ -279,7 +279,6 @@ export default function GeneralPage() {
 
     const refreshData = async () => {
         console.log("Data refreshed");
-        setIsRefreshing(true);
         try {
             // Refresh data with current date range and pagination
             await queryDateTime(
@@ -294,8 +293,6 @@ export default function GeneralPage() {
                 description: t("refreshError"),
                 variant: "destructive"
             });
-        } finally {
-            setIsRefreshing(false);
         }
     };
 
@@ -781,7 +778,7 @@ export default function GeneralPage() {
                 title={t("requestLogs")}
                 searchPlaceholder={t("searchLogs")}
                 searchColumn="host"
-                onRefresh={refreshData}
+                onRefresh={() => startRefreshingTransition(refreshData)}
                 isRefreshing={isRefreshing}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}

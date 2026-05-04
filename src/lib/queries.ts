@@ -1,5 +1,6 @@
 import { build } from "@server/build";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
+import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
 import type { ListClientsResponse } from "@server/routers/client";
 import type {
     ListDomainsResponse,
@@ -529,7 +530,36 @@ export const logAnalyticsFiltersSchema = z.object({
     resourceId: z.coerce.number().optional().catch(undefined)
 });
 
-export type LogAnalyticsFilters = z.TypeOf<typeof logAnalyticsFiltersSchema>;
+export type LogAnalyticsFilters = z.output<typeof logAnalyticsFiltersSchema>;
+
+export const logsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    action: z.string().optional().catch(undefined),
+    host: z.string().optional().catch(undefined),
+    location: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined),
+    method: z.string().optional().catch(undefined),
+    reason: z.string().optional().catch(undefined),
+    path: z.string().optional().catch(undefined)
+});
+
+export type LogFilters = z.output<typeof logsFiltersSchema>;
 
 export const logQueries = {
     requestAnalytics: ({
@@ -540,12 +570,37 @@ export const logQueries = {
         filters: LogAnalyticsFilters;
     }) =>
         queryOptions({
-            queryKey: ["REQUEST_LOG_ANALYTICS", orgId, filters] as const,
+            queryKey: ["REQUEST_LOGS", orgId, "ANALYTICS", filters] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryRequestAnalyticsResponse>
                 >(`/org/${orgId}/logs/analytics`, {
                     params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    requests: ({ orgId, filters }: { orgId: string; filters: LogFilters }) =>
+        queryOptions({
+            queryKey: ["REQUEST_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryRequestAuditLogResponse>
+                >(`/org/${orgId}/logs/request`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
                     signal
                 });
                 return res.data.data;
