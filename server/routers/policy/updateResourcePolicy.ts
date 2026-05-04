@@ -54,7 +54,7 @@ export async function updateResourcePolicy(
             );
         }
 
-        if (req.user && !req.userOrgRoleId) {
+        if (req.user && req.userOrgRoleIds?.length === 0) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );

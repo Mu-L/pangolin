@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
+import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
 
 export async function verifyResourcePolicyAccess(
     req: Request,
@@ -16,10 +17,8 @@ export async function verifyResourcePolicyAccess(
         req.params?.resourcePolicyId ||
         req.body?.resourcePolicyId ||
         req.query?.resourcePolicyId;
-    const niceId =
-        req.params?.niceId || req.body?.niceId || req.query?.niceId;
-    const orgId =
-        req.params?.orgId || req.body?.orgId || req.query?.orgId;
+    const niceId = req.params?.niceId || req.body?.niceId || req.query?.niceId;
+    const orgId = req.params?.orgId || req.body?.orgId || req.query?.orgId;
 
     try {
         if (!userId) {
@@ -110,7 +109,10 @@ export async function verifyResourcePolicyAccess(
             }
         }
 
-        req.userOrgRoleId = req.userOrg.roleId;
+        req.userOrgRoleIds = await getUserOrgRoleIds(
+            req.userOrg.userId,
+            orgId!
+        );
         req.userOrgId = policy.orgId;
 
         return next();

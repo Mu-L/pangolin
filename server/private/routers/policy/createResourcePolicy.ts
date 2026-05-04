@@ -143,7 +143,7 @@ export async function createResourcePolicy(
         }
         const { orgId } = parsedParams.data;
 
-        if (req.user && !req.userOrgRoleId) {
+        if (req.user && req.userOrgRoleIds?.length === 0) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );
@@ -304,7 +304,10 @@ export async function createResourcePolicy(
 
             const usersToAdd: InferInsertModel<typeof userPolicies>[] = [];
 
-            if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
+            if (
+                req.user &&
+                !req.userOrgRoleIds?.includes(adminRole[0].roleId)
+            ) {
                 // make sure the user can access the policy
                 usersToAdd.push({
                     userId: req.user?.userId!,

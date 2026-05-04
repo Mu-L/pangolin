@@ -145,7 +145,7 @@ export async function listResourcePolicies(
                 .where(
                     or(
                         eq(userPolicies.userId, req.user!.userId),
-                        eq(rolePolicies.roleId, req.userOrgRoleId!)
+                        inArray(rolePolicies.roleId, req.userOrgRoleIds || [])
                     )
                 );
         } else {

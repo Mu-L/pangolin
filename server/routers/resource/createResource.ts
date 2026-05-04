@@ -353,7 +353,7 @@ async function createHttpResource(
         });
 
         // make this policy visible by the current user
-        if (req.user && req.userOrgRoleId !== adminRole[0].roleId) {
+        if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
             await trx.insert(userPolicies).values({
                 userId: req.user?.userId!,
                 resourcePolicyId: defaultPolicy.resourcePolicyId
@@ -479,7 +479,7 @@ async function createRawResource(
         });
 
         // make this policy visible by the current user
-        if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
+        if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
             await trx.insert(userPolicies).values({
                 userId: req.user?.userId!,
                 resourcePolicyId: defaultPolicy.resourcePolicyId
