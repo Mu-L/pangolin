@@ -31,7 +31,7 @@ export function UsersSelector({
     const [debouncedValue] = useDebounce(userSearchQuery, 150);
 
     const { data: users = [] } = useQuery(
-        orgQueries.users({ orgId, perPage: 7, query: debouncedValue })
+        orgQueries.users({ orgId, perPage: 10, query: debouncedValue })
     );
 
     // always include the selected users in the list (if the user isn't searching)
