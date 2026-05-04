@@ -1,9 +1,9 @@
 import {
     db,
-    resourceHeaderAuth,
-    resourceHeaderAuthExtendedCompatibility,
-    resourcePassword,
-    resourcePincode,
+    resourcePolicies,
+    resourcePolicyHeaderAuth,
+    resourcePolicyPassword,
+    resourcePolicyPincode,
     resources,
     roleResources,
     sites,
@@ -163,10 +163,10 @@ function queryResourcesBase() {
             name: resources.name,
             ssl: resources.ssl,
             fullDomain: resources.fullDomain,
-            passwordId: resourcePassword.passwordId,
-            sso: resources.sso,
-            pincodeId: resourcePincode.pincodeId,
-            whitelist: resources.emailWhitelistEnabled,
+            passwordId: resourcePolicyPassword.passwordId,
+            sso: resourcePolicies.sso,
+            pincodeId: resourcePolicyPincode.pincodeId,
+            whitelist: resourcePolicies.emailWhitelistEnabled,
             http: resources.http,
             protocol: resources.protocol,
             proxyPort: resources.proxyPort,
@@ -174,29 +174,45 @@ function queryResourcesBase() {
             domainId: resources.domainId,
             niceId: resources.niceId,
             wildcard: resources.wildcard,
-            headerAuthId: resourceHeaderAuth.headerAuthId,
-            headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
-            health: resources.health
+            health: resources.health,
+            headerAuthId: resourcePolicyHeaderAuth.headerAuthId,
+            headerAuthExtendedCompatibility:
+                resourcePolicyHeaderAuth.extendedCompatibility
         })
         .from(resources)
         .leftJoin(
-            resourcePassword,
-            eq(resourcePassword.resourceId, resources.resourceId)
+            resourcePolicies,
+            or(
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    resources.resourcePolicyId
+                ),
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    resources.defaultResourcePolicyId
+                )
+            )
         )
+
         .leftJoin(
-            resourcePincode,
-            eq(resourcePincode.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourceHeaderAuth,
-            eq(resourceHeaderAuth.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourceHeaderAuthExtendedCompatibility,
+            resourcePolicyPassword,
             eq(
-                resourceHeaderAuthExtendedCompatibility.resourceId,
-                resources.resourceId
+                resourcePolicyPassword.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            resourcePolicyPincode,
+            eq(
+                resourcePolicyPincode.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            resourcePolicyHeaderAuth,
+            eq(
+                resourcePolicyHeaderAuth.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
             )
         )
         .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
@@ -206,10 +222,10 @@ function queryResourcesBase() {
         )
         .groupBy(
             resources.resourceId,
-            resourcePassword.passwordId,
-            resourcePincode.pincodeId,
-            resourceHeaderAuth.headerAuthId,
-            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
+            resourcePolicies.resourcePolicyId,
+            resourcePolicyPassword.passwordId,
+            resourcePolicyPincode.pincodeId,
+            resourcePolicyHeaderAuth.headerAuthId
         );
 }
 
@@ -355,21 +371,21 @@ export async function listResources(
                 case "protected":
                     conditions.push(
                         or(
-                            eq(resources.sso, true),
-                            eq(resources.emailWhitelistEnabled, true),
-                            not(isNull(resourceHeaderAuth.headerAuthId)),
-                            not(isNull(resourcePincode.pincodeId)),
-                            not(isNull(resourcePassword.passwordId))
+                            eq(resourcePolicies.sso, true),
+                            eq(resourcePolicies.emailWhitelistEnabled, true),
+                            not(isNull(resourcePolicyHeaderAuth.headerAuthId)),
+                            not(isNull(resourcePolicyPincode.pincodeId)),
+                            not(isNull(resourcePolicyPassword.passwordId))
                         )
                     );
                     break;
                 case "not_protected":
                     conditions.push(
-                        not(eq(resources.sso, true)),
-                        not(eq(resources.emailWhitelistEnabled, true)),
-                        isNull(resourceHeaderAuth.headerAuthId),
-                        isNull(resourcePincode.pincodeId),
-                        isNull(resourcePassword.passwordId)
+                        not(eq(resourcePolicies.sso, true)),
+                        not(eq(resourcePolicies.emailWhitelistEnabled, true)),
+                        isNull(resourcePolicyHeaderAuth.headerAuthId),
+                        isNull(resourcePolicyPincode.pincodeId),
+                        isNull(resourcePolicyPassword.passwordId)
                     );
                     break;
             }
@@ -446,9 +462,9 @@ export async function listResources(
                     ssl: row.ssl,
                     fullDomain: row.fullDomain,
                     passwordId: row.passwordId,
-                    sso: row.sso,
+                    sso: row.sso ?? false,
                     pincodeId: row.pincodeId,
-                    whitelist: row.whitelist,
+                    whitelist: row.whitelist ?? false,
                     http: row.http,
                     protocol: row.protocol,
                     proxyPort: row.proxyPort,

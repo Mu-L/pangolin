@@ -8,8 +8,11 @@ import type {
 import type { GetDomainResponse } from "@server/routers/domain/getDomain";
 import type {
     GetResourceWhitelistResponse,
+    GetResourcePoliciesResponse,
     ListResourceNamesResponse,
-    ListResourcesResponse
+    ListResourcesResponse,
+    ListResourceRolesResponse,
+    ListResourceUsersResponse
 } from "@server/routers/resource";
 import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { ListRolesResponse } from "@server/routers/role";
@@ -33,6 +36,9 @@ import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
 import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
 import { StatusHistoryResponse } from "@server/lib/statusHistory";
+import { wait } from "./wait";
+import type { ListResourcePoliciesResponse } from "@server/routers/resource/types";
+import type { GetResourcePolicyResponse } from "@server/routers/policy";
 
 export type ProductUpdate = {
     link: string | null;
@@ -508,6 +514,28 @@ export const orgQueries = {
                 );
                 return res.data.data;
             }
+        }),
+
+    policies: ({ orgId, name }: { orgId: string; name?: string }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "RESOURCES_POLICIES", name] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: "10"
+                });
+
+                if (name) {
+                    sp.set("query", name);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourcePoliciesResponse>
+                >(`/org/${orgId}/resource-policies?${sp.toString()}`, {
+                    signal
+                });
+
+                return res.data.data.policies;
+            }
         })
 };
 
@@ -565,7 +593,7 @@ export const resourceQueries = {
             queryKey: ["RESOURCES", resourceId, "USERS"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<ListSiteResourceUsersResponse>
+                    AxiosResponse<ListResourceUsersResponse>
                 >(`/resource/${resourceId}/users`, { signal });
                 return res.data.data.users;
             }
@@ -575,7 +603,7 @@ export const resourceQueries = {
             queryKey: ["RESOURCES", resourceId, "ROLES"] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
-                    AxiosResponse<ListSiteResourceRolesResponse>
+                    AxiosResponse<ListResourceRolesResponse>
                 >(`/resource/${resourceId}/roles`, { signal });
 
                 return res.data.data.roles;
@@ -633,6 +661,17 @@ export const resourceQueries = {
                 >(`/resource/${resourceId}/whitelist`, { signal });
 
                 return res.data.data.whitelist;
+            }
+        }),
+    policies: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "POLICIES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<GetResourcePoliciesResponse>
+                >(`/resource/${resourceId}/policies`, { signal });
+
+                return res.data.data;
             }
         }),
     listNamesPerOrg: (orgId: string) =>

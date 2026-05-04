@@ -1,17 +1,22 @@
-import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { db, targetHealthCheck } from "@server/db";
-import { newts, resources, sites, targets } from "@server/db";
 import { eq, inArray } from "drizzle-orm";
+import {
+    db,
+    newts,
+    resourcePolicies,
+    resources,
+    sites,
+    targetHealthCheck,
+    targets
+} from "@server/db";
 import response from "@server/lib/response";
-import HttpCode from "@server/types/HttpCode";
-import createHttpError from "http-errors";
 import logger from "@server/logger";
-import { fromError } from "zod-validation-error";
-import { addPeer } from "../gerbil/peers";
-import { removeTargets } from "../newt/targets";
-import { getAllowedIps } from "../target/helpers";
 import { OpenAPITags, registry } from "@server/openApi";
+import HttpCode from "@server/types/HttpCode";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+import { removeTargets } from "../newt/targets";
 
 // Define Zod schema for request parameters validation
 const deleteResourceSchema = z.strictObject({
@@ -111,6 +116,18 @@ export async function deleteResource(
                     );
                 }
             }
+        }
+
+        // Also delete default resource policy
+        if (deletedResource.defaultResourcePolicyId) {
+            await db
+                .delete(resourcePolicies)
+                .where(
+                    eq(
+                        resourcePolicies.resourcePolicyId,
+                        deletedResource.defaultResourcePolicyId
+                    )
+                );
         }
 
         return response(res, {

@@ -92,7 +92,13 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII } from "punycode";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+    useMemo,
+    useState,
+    useCallback,
+    useTransition,
+    useEffect
+} from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -218,7 +224,7 @@ export default function Page() {
     >([]);
     const [loadingExitNodes, setLoadingExitNodes] = useState(build === "saas");
 
-    const [createLoading, setCreateLoading] = useState(false);
+    const [createLoading, startTransition] = useTransition();
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
 
@@ -328,7 +334,7 @@ export default function Page() {
                         id: "raw" as ResourceType,
                         title: t("resourceRaw"),
                         description:
-                            build == "saas"
+                            build === "saas"
                                 ? t("resourceRawDescriptionCloud")
                                 : t("resourceRawDescription")
                     }
@@ -473,8 +479,6 @@ export default function Page() {
     );
 
     async function onSubmit() {
-        setCreateLoading(true);
-
         const baseData = baseForm.getValues();
         const isHttp = baseData.http;
 
@@ -610,8 +614,6 @@ export default function Page() {
                 )
             });
         }
-
-        setCreateLoading(false);
     }
 
     useEffect(() => {
@@ -1465,7 +1467,7 @@ export default function Page() {
                                         console.log(httpForm.getValues());
 
                                         if (baseValid && settingsValid) {
-                                            onSubmit();
+                                            startTransition(onSubmit);
                                         }
                                     }}
                                     loading={createLoading}

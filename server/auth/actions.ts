@@ -152,7 +152,21 @@ export enum ActionsEnum {
     createHealthCheck = "createHealthCheck",
     updateHealthCheck = "updateHealthCheck",
     deleteHealthCheck = "deleteHealthCheck",
-    listHealthChecks = "listHealthChecks"
+    listHealthChecks = "listHealthChecks",
+    listResourcePolicies = "listResourcePolicies",
+    getResourcePolicy = "getResourcePolicy",
+    createResourcePolicy = "createResourcePolicy",
+    updateResourcePolicy = "updateResourcePolicy",
+    deleteResourcePolicy = "deleteResourcePolicy",
+    listResourcePolicyRoles = "listResourcePolicyRoles",
+    setResourcePolicyRoles = "setResourcePolicyRoles",
+    listResourcePolicyUsers = "listResourcePolicyUsers",
+    setResourcePolicyUsers = "setResourcePolicyUsers",
+    setResourcePolicyPassword = "setResourcePolicyPassword",
+    setResourcePolicyPincode = "setResourcePolicyPincode",
+    setResourcePolicyHeaderAuth = "setResourcePolicyHeaderAuth",
+    setResourcePolicyWhitelist = "setResourcePolicyWhitelist",
+    setResourcePolicyRules = "setResourcePolicyRules"
 }
 
 export async function checkUserActionPermission(

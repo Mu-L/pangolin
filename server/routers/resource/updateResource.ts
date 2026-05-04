@@ -7,6 +7,7 @@ import {
     orgDomains,
     orgs,
     Resource,
+    resourcePolicies,
     resources
 } from "@server/db";
 import { eq, and, ne } from "drizzle-orm";
@@ -68,7 +69,8 @@ const updateHttpResourceBodySchema = z
         maintenanceTitle: z.string().max(255).nullable().optional(),
         maintenanceMessage: z.string().max(2000).nullable().optional(),
         maintenanceEstimatedTime: z.string().max(100).nullable().optional(),
-        postAuthPath: z.string().nullable().optional()
+        postAuthPath: z.string().nullable().optional(),
+        resourcePolicyId: z.number().nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -165,7 +167,8 @@ const updateRawResourceBodySchema = z
         stickySession: z.boolean().optional(),
         enabled: z.boolean().optional(),
         proxyProtocol: z.boolean().optional(),
-        proxyProtocolVersion: z.int().min(1).optional()
+        proxyProtocolVersion: z.int().min(1).optional(),
+        resourcePolicyId: z.number().nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -300,6 +303,23 @@ async function updateHttpResource(
     }
 
     const updateData = parsedBody.data;
+
+    if (updateData.resourcePolicyId != null) {
+        const [existingPolicy] = await db
+            .select()
+            .from(resourcePolicies)
+            .where(eq(resourcePolicies.resourcePolicyId, updateData.resourcePolicyId))
+            .limit(1);
+
+        if (!existingPolicy) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Resource policy with ID ${updateData.resourcePolicyId} not found`
+                )
+            );
+        }
+    }
 
     if (updateData.niceId) {
         const [existingResource] = await db
@@ -535,6 +555,23 @@ async function updateRawResource(
     }
 
     const updateData = parsedBody.data;
+
+    if (updateData.resourcePolicyId != null) {
+        const [existingPolicy] = await db
+            .select()
+            .from(resourcePolicies)
+            .where(eq(resourcePolicies.resourcePolicyId, updateData.resourcePolicyId))
+            .limit(1);
+
+        if (!existingPolicy) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Resource policy with ID ${updateData.resourcePolicyId} not found`
+                )
+            );
+        }
+    }
 
     if (updateData.niceId) {
         const [existingResource] = await db

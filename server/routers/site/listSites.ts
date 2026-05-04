@@ -135,7 +135,7 @@ const listSitesSchema = z.object({
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
-        .min(0)
+        .positive()
         .optional()
         .catch(1)
         .default(1)
