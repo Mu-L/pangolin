@@ -233,7 +233,7 @@ export default function ResourceAuthenticationPage() {
                                             <Command shouldFilter={false}>
                                                 <CommandInput
                                                     placeholder={t(
-                                                        "siteSearch"
+                                                        "resourcePolicySearch"
                                                     )}
                                                     value={
                                                         resourcePolicysearchQuery
