@@ -43,14 +43,24 @@ const listResourcePoliciesSchema = z.object({
         .positive()
         .optional()
         .catch(20)
-        .default(20),
+        .default(20)
+        .openapi({
+            type: "integer",
+            default: 20,
+            description: "Number of items per page"
+        }),
     page: z.coerce
         .number<string>() // for prettier formatting
         .int()
         .min(0)
         .optional()
         .catch(1)
-        .default(1),
+        .default(1)
+        .openapi({
+            type: "integer",
+            default: 1,
+            description: "Page number to retrieve"
+        }),
     query: z.string().optional()
 });
 
