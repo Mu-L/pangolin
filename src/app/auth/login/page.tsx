@@ -160,6 +160,18 @@ export default async function Page(props: {
                                 redirect={redirectUrl}
                                 forceLogin={forceLogin}
                                 defaultUser={defaultUser}
+                                orgSignIn={
+                                    !isInvite &&
+                                    (build === "saas" ||
+                                        env.app.identityProviderMode === "org")
+                                        ? {
+                                              href: `/auth/org${buildQueryString(searchParams)}`,
+                                              linkText: t("orgAuthSignInToOrg"),
+                                              descriptionText:
+                                                  t("needToSignInToOrg")
+                                          }
+                                        : undefined
+                                }
                             />
                         </CardContent>
                     </Card>
@@ -195,7 +207,8 @@ export default async function Page(props: {
                 </p>
             )}
 
-            {!isInvite &&
+            {!useSmartLogin &&
+            !isInvite &&
             (build === "saas" || env.app.identityProviderMode === "org") ? (
                 <OrgSignInLink
                     href={`/auth/org${buildQueryString(searchParams)}`}

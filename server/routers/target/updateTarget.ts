@@ -10,7 +10,11 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { addPeer } from "../gerbil/peers";
 import { addTargets } from "../newt/targets";
-import { fireHealthCheckHealthyAlert, fireHealthCheckUnknownAlert, fireHealthCheckUnhealthyAlert } from "#dynamic/lib/alerts";
+import {
+    fireHealthCheckHealthyAlert,
+    fireHealthCheckUnknownAlert,
+    fireHealthCheckUnhealthyAlert
+} from "@server/lib/alerts";
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -169,7 +173,7 @@ export async function updateTarget(
         let updatedTarget: any;
         let updatedHc: any;
         await db.transaction(async (trx) => {
-             [updatedTarget] = await trx
+            [updatedTarget] = await trx
                 .update(targets)
                 .set({
                     siteId: parsedBody.data.siteId,
@@ -181,8 +185,12 @@ export async function updateTarget(
                     path: parsedBody.data.path,
                     pathMatchType: parsedBody.data.pathMatchType,
                     priority: parsedBody.data.priority,
-                    rewritePath: pathMatchTypeRemoved ? null : parsedBody.data.rewritePath,
-                    rewritePathType: pathMatchTypeRemoved ? null : parsedBody.data.rewritePathType
+                    rewritePath: pathMatchTypeRemoved
+                        ? null
+                        : parsedBody.data.rewritePath,
+                    rewritePathType: pathMatchTypeRemoved
+                        ? null
+                        : parsedBody.data.rewritePathType
                 })
                 .where(eq(targets.targetId, targetId))
                 .returning();
@@ -213,7 +221,8 @@ export async function updateTarget(
             // If hcEnabled is being turned on (was false, now true), set to "unhealthy"
             // so the target must pass a health check before being considered healthy.
             const hcEnabledTurnedOn =
-                parsedBody.data.hcEnabled === true && existingHc.hcEnabled === false;
+                parsedBody.data.hcEnabled === true &&
+                existingHc.hcEnabled === false;
 
             let hcHealthValue: "unknown" | "healthy" | "unhealthy" | undefined;
             if (
@@ -253,7 +262,10 @@ export async function updateTarget(
                 .where(eq(targetHealthCheck.targetId, targetId))
                 .returning();
 
-            if (updatedHc.hcHealth === "unhealthy" && existingHc.hcHealth !== "unhealthy") {
+            if (
+                updatedHc.hcHealth === "unhealthy" &&
+                existingHc.hcHealth !== "unhealthy"
+            ) {
                 logger.debug(
                     `Health check ${updatedHc.targetHealthCheckId} for target ${targetId} is now unhealthy, firing alert`
                 );
@@ -266,7 +278,10 @@ export async function updateTarget(
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
                 );
-            } else if (updatedHc.hcHealth === "unknown" && existingHc.hcHealth !== "unknown") {
+            } else if (
+                updatedHc.hcHealth === "unknown" &&
+                existingHc.hcHealth !== "unknown"
+            ) {
                 logger.debug(
                     `Health check ${updatedHc.targetHealthCheckId} for target ${targetId} is now unknown, firing alert`
                 );
@@ -280,7 +295,10 @@ export async function updateTarget(
                     false, // dont send the alert because we just want to create the alert, not notify users yet
                     trx
                 );
-            } else if (updatedHc.hcHealth === "healthy" && existingHc.hcHealth !== "healthy") {
+            } else if (
+                updatedHc.hcHealth === "healthy" &&
+                existingHc.hcHealth !== "healthy"
+            ) {
                 logger.debug(
                     `Health check ${updatedHc.targetHealthCheckId} for target ${targetId} is now healthy, firing alert`
                 );

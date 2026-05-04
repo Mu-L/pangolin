@@ -24,7 +24,7 @@ import { eq, and } from "drizzle-orm";
 import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckUnhealthyAlert
-} from "#private/lib/alerts/events/healthCheckEvents";
+} from "@server/lib/alerts";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty(),
@@ -73,10 +73,7 @@ export async function triggerHealthCheckAlert(
             .from(targetHealthCheck)
             .where(
                 and(
-                    eq(
-                        targetHealthCheck.targetHealthCheckId,
-                        healthCheckId
-                    ),
+                    eq(targetHealthCheck.targetHealthCheckId, healthCheckId),
                     eq(targetHealthCheck.orgId, orgId)
                 )
             )

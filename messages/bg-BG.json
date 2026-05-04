@@ -763,6 +763,7 @@
     "newtEndpoint": "Крайна точка",
     "newtId": "Идентификационен номер",
     "newtSecretKey": "Секретен ключ",
+    "newtVersion": "Версия",
     "architecture": "Архитектура",
     "sites": "Сайтове",
     "siteWgAnyClients": "Използвайте клиент на WireGuard, за да се свържете. Ще трябва да използвате вътрешните ресурси чрез IP адреса на връстника.",
@@ -1666,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Преглед на бележките за изданието",
     "newtUpdateAvailable": "Ново обновление",
     "newtUpdateAvailableInfo": "Нова версия на Newt е налична. Моля, обновете до последната версия за най-добро изживяване.",
+    "pangolinNodeUpdateAvailableInfo": "Налична е нова версия на Pangolin Node. Моля, актуализирайте до последната версия за най-добро изживяване.",
     "domainPickerEnterDomain": "Домейн",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Въведете пълния домейн на ресурса, за да видите наличните опции.",
@@ -2353,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Изберете своя доставчик на идентичност, за да продължите",
     "orgAuthNoIdpConfigured": "Тази организация няма конфигурирани доставчици на идентичност. Можете да влезете с вашата Pangolin идентичност.",
     "orgAuthSignInWithPangolin": "Впишете се с Pangolin",
-    "orgAuthSignInToOrg": "Влезте в организация",
+    "orgAuthSignInToOrg": "Идентификационен доставчик на организация (SSO)",
     "orgAuthSelectOrgTitle": "Вход в организация.",
     "orgAuthSelectOrgDescription": "Въведете идентификатора на вашата организация, за да продължите.",
     "orgAuthOrgIdPlaceholder": "вашата-организация",
@@ -3201,5 +3203,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Уайлдкард подсайтове не са позволени.",
     "domainPickerWildcardCertWarning": "Ресурсите с уайлдкард може да изискват допълнителна конфигурация за правилна работа.",
     "domainPickerWildcardCertWarningLink": "Научете повече",
-    "health": "Здраве"
+    "health": "Здраве",
+    "domainPendingErrorTitle": "Проблем при проверка"
 }

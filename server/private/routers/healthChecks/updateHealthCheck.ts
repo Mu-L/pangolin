@@ -22,7 +22,11 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq, isNull } from "drizzle-orm";
 import { addStandaloneHealthCheck } from "@server/routers/newt/targets";
-import { fireHealthCheckUnhealthyAlert, fireHealthCheckUnknownAlert, fireHealthCheckHealthyAlert } from "#private/lib/alerts";
+import {
+    fireHealthCheckUnhealthyAlert,
+    fireHealthCheckUnknownAlert,
+    fireHealthCheckHealthyAlert
+} from "@server/lib/alerts";
 
 const paramsSchema = z
     .object({
@@ -234,7 +238,10 @@ export async function updateHealthCheck(
             )
             .returning();
 
-        if (updated.hcHealth === "unhealthy" && existingHealthCheck.hcHealth !== "unhealthy") {
+        if (
+            updated.hcHealth === "unhealthy" &&
+            existingHealthCheck.hcHealth !== "unhealthy"
+        ) {
             await fireHealthCheckUnhealthyAlert(
                 updated.orgId,
                 updated.targetHealthCheckId,
@@ -243,7 +250,10 @@ export async function updateHealthCheck(
                 undefined,
                 false // dont send the alert because we just want to create the alert, not notify users yet
             );
-        } else if (updated.hcHealth === "unknown" && existingHealthCheck.hcHealth !== "unknown") {
+        } else if (
+            updated.hcHealth === "unknown" &&
+            existingHealthCheck.hcHealth !== "unknown"
+        ) {
             // if the health is unknown, we want to fire an alert to notify users to enable health checks
             await fireHealthCheckUnknownAlert(
                 updated.orgId,
@@ -253,7 +263,10 @@ export async function updateHealthCheck(
                 undefined,
                 false // dont send the alert because we just want to create the alert, not notify users yet
             );
-        } else if (updated.hcHealth === "healthy" && existingHealthCheck.hcHealth !== "healthy") {
+        } else if (
+            updated.hcHealth === "healthy" &&
+            existingHealthCheck.hcHealth !== "healthy"
+        ) {
             await fireHealthCheckHealthyAlert(
                 updated.orgId,
                 updated.targetHealthCheckId,
@@ -263,7 +276,6 @@ export async function updateHealthCheck(
                 false // dont send the alert because we just want to create the alert, not notify users yet
             );
         }
-
 
         // Push updated health check to newt if the site is a newt site
         const [newt] = await db

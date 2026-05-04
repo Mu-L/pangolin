@@ -1,12 +1,8 @@
 import { MessageHandler } from "@server/routers/ws";
-import {
-    db,
-    Newt,
-    sites
-} from "@server/db";
+import { db, Newt, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
-import { fireSiteOfflineAlert } from "#dynamic/lib/alerts";
+import { fireSiteOfflineAlert } from "@server/lib/alerts";
 
 /**
  * Handles disconnecting messages from sites to show disconnected in the ui
@@ -38,7 +34,13 @@ export const handleNewtDisconnectingMessage: MessageHandler = async (
                 .where(eq(sites.siteId, newt.siteId!))
                 .returning();
 
-            await fireSiteOfflineAlert(site.orgId, site.siteId, site.name, undefined, trx);
+            await fireSiteOfflineAlert(
+                site.orgId,
+                site.siteId,
+                site.name,
+                undefined,
+                trx
+            );
         });
     } catch (error) {
         logger.error("Error handling disconnecting message", { error });

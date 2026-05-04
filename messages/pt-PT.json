@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Chave Secreta",
+    "newtVersion": "Versão",
     "architecture": "Arquitetura",
     "sites": "sites",
     "siteWgAnyClients": "Use qualquer cliente do WireGuard para se conectar. Você terá que endereçar recursos internos usando o IP de pares.",
@@ -1666,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Ver notas de versão",
     "newtUpdateAvailable": "Nova Atualização Disponível",
     "newtUpdateAvailableInfo": "Uma nova versão do Newt está disponível. Atualize para a versão mais recente para uma melhor experiência.",
+    "pangolinNodeUpdateAvailableInfo": "Uma nova versão do Pangolin Node está disponível. Atualize para a versão mais recente para uma melhor experiência.",
     "domainPickerEnterDomain": "Domínio",
     "domainPickerPlaceholder": "myapp.exemplo.com",
     "domainPickerDescription": "Insira o domínio completo do recurso para ver as opções disponíveis.",
@@ -2353,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Escolha o seu provedor de identidade para continuar",
     "orgAuthNoIdpConfigured": "Esta organização não tem nenhum provedor de identidade configurado. Você pode entrar com a identidade do seu Pangolin.",
     "orgAuthSignInWithPangolin": "Entrar com o Pangolin",
-    "orgAuthSignInToOrg": "Fazer login em uma organização",
+    "orgAuthSignInToOrg": "Provedor de Identidade da Organização (SSO)",
     "orgAuthSelectOrgTitle": "Entrada da Organização",
     "orgAuthSelectOrgDescription": "Digite seu ID da organização para continuar",
     "orgAuthOrgIdPlaceholder": "sua-organização",
@@ -3201,5 +3203,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Subdomínios curinga não são permitidos.",
     "domainPickerWildcardCertWarning": "Recursos curinga podem exigir configurações adicionais para funcionarem corretamente.",
     "domainPickerWildcardCertWarningLink": "Saiba mais",
-    "health": "Saúde"
+    "health": "Saúde",
+    "domainPendingErrorTitle": "Problema de Verificação"
 }

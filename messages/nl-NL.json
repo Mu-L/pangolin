@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Geheim",
+    "newtVersion": "Versie",
     "architecture": "Architectuur",
     "sites": "Sites",
     "siteWgAnyClients": "Gebruik een willekeurige WireGuard client om verbinding te maken. Je zult interne bronnen moeten aanspreken met behulp van de peer IP.",
@@ -1666,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Uitgaveopmerkingen bekijken",
     "newtUpdateAvailable": "Update beschikbaar",
     "newtUpdateAvailableInfo": "Er is een nieuwe versie van Newt beschikbaar. Update naar de nieuwste versie voor de beste ervaring.",
+    "pangolinNodeUpdateAvailableInfo": "Er is een nieuwe versie van Pangolin Node beschikbaar. Update naar de nieuwste versie voor de beste ervaring.",
     "domainPickerEnterDomain": "Domein",
     "domainPickerPlaceholder": "mijnapp.voorbeeld.nl",
     "domainPickerDescription": "Voer de volledige domein van de bron in om beschikbare opties te zien.",
@@ -2353,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Kies uw identiteitsprovider om door te gaan",
     "orgAuthNoIdpConfigured": "Deze organisatie heeft geen identiteitsproviders geconfigureerd. Je kunt in plaats daarvan inloggen met je Pangolin-identiteit.",
     "orgAuthSignInWithPangolin": "Log in met Pangolin",
-    "orgAuthSignInToOrg": "Log in bij een organisatie",
+    "orgAuthSignInToOrg": "Organisatie Identiteitsprovider (SSO)",
     "orgAuthSelectOrgTitle": "Organisatie Inloggen",
     "orgAuthSelectOrgDescription": "Voer je organisatie-ID in om verder te gaan",
     "orgAuthOrgIdPlaceholder": "jouw-organisatie",
@@ -3168,7 +3170,7 @@
     "publicIpEndpoint": "Eindpunt",
     "lastTriggeredAt": "Laatste Trigger",
     "reject": "Afwijzen",
-    "uptimeDaysAgo": "{count} days ago",
+    "uptimeDaysAgo": "{count} dagen geleden",
     "uptimeToday": "Vandaag",
     "uptimeNoDataAvailable": "Geen gegevens beschikbaar",
     "uptimeSuffix": "werktijd",
@@ -3201,5 +3203,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Wildcard-subdomeinen zijn niet toegestaan.",
     "domainPickerWildcardCertWarning": "Wildcard-bronnen hebben mogelijk extra configuratie nodig om correct te werken.",
     "domainPickerWildcardCertWarningLink": "Meer informatie",
-    "health": "Gezondheid"
+    "health": "Gezondheid",
+    "domainPendingErrorTitle": "Verificatieprobleem"
 }

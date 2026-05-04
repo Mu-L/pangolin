@@ -23,7 +23,7 @@ import {
     fireHealthCheckHealthyAlert,
     fireHealthCheckUnhealthyAlert,
     fireHealthCheckUnknownAlert
-} from "#dynamic/lib/alerts";
+} from "@server/lib/alerts";
 
 const createTargetParamsSchema = z.strictObject({
     resourceId: z.string().transform(Number).pipe(z.int().positive())

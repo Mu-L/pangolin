@@ -81,10 +81,10 @@ export default function ProductUpdates({
 
     const showNewVersionPopup = Boolean(
         latestVersion &&
-        valid(latestVersion) &&
-        valid(currentVersion) &&
-        ignoredVersionUpdate !== latestVersion &&
-        gt(latestVersion, currentVersion)
+            valid(latestVersion) &&
+            valid(currentVersion) &&
+            ignoredVersionUpdate !== latestVersion &&
+            gt(latestVersion, currentVersion)
     );
 
     const filteredUpdates = data.updates.filter(
@@ -103,40 +103,51 @@ export default function ProductUpdates({
             )}
         >
             <div className="flex flex-col gap-1">
-                {filteredUpdates.length > 1 && (
-                    <small
-                        className={cn(
-                            "text-xs text-muted-foreground flex items-center gap-1 mt-2",
-                            showMoreUpdatesText
-                                ? "animate-in fade-in duration-300"
-                                : "opacity-0"
+                {filteredUpdates.length > 0 && (
+                    <div className="mt-3 flex flex-col gap-2">
+                        {filteredUpdates.length > 1 && (
+                            <small
+                                className={cn(
+                                    "text-xs text-muted-foreground flex items-center gap-1",
+                                    showMoreUpdatesText
+                                        ? "animate-in fade-in duration-300"
+                                        : "opacity-0"
+                                )}
+                            >
+                                <BellIcon className="flex-none size-3" />
+                                <span>
+                                    {showNewVersionPopup
+                                        ? t("productUpdateMoreInfo", {
+                                              noOfUpdates:
+                                                  filteredUpdates.length
+                                          })
+                                        : t("productUpdateInfo", {
+                                              noOfUpdates:
+                                                  filteredUpdates.length
+                                          })}
+                                </span>
+                            </small>
                         )}
-                    >
-                        <BellIcon className="flex-none size-3" />
-                        <span>
-                            {showNewVersionPopup
-                                ? t("productUpdateMoreInfo", {
-                                      noOfUpdates: filteredUpdates.length
-                                  })
-                                : t("productUpdateInfo", {
-                                      noOfUpdates: filteredUpdates.length
-                                  })}
-                        </span>
-                    </small>
+                        <ProductUpdatesListPopup
+                            updates={filteredUpdates}
+                            show={filteredUpdates.length > 0}
+                            onDimissAll={() =>
+                                setProductUpdatesRead([
+                                    ...productUpdatesRead,
+                                    ...filteredUpdates.map(
+                                        (update) => update.id
+                                    )
+                                ])
+                            }
+                            onDimiss={(id) =>
+                                setProductUpdatesRead([
+                                    ...productUpdatesRead,
+                                    id
+                                ])
+                            }
+                        />
+                    </div>
                 )}
-                <ProductUpdatesListPopup
-                    updates={filteredUpdates}
-                    show={filteredUpdates.length > 0}
-                    onDimissAll={() =>
-                        setProductUpdatesRead([
-                            ...productUpdatesRead,
-                            ...filteredUpdates.map((update) => update.id)
-                        ])
-                    }
-                    onDimiss={(id) =>
-                        setProductUpdatesRead([...productUpdatesRead, id])
-                    }
-                />
             </div>
 
             <NewVersionAvailable

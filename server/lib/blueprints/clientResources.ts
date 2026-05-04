@@ -131,41 +131,22 @@ export async function updateClientResources(
             : [];
 
         const allSites: { siteId: number }[] = [];
+
         if (resourceData.site) {
-            let siteSingle;
-            const resourceSiteId = resourceData.site;
-
-            if (resourceSiteId) {
-                // Look up site by niceId
-                [siteSingle] = await trx
-                    .select({ siteId: sites.siteId })
-                    .from(sites)
-                    .where(
-                        and(
-                            eq(sites.niceId, resourceSiteId),
-                            eq(sites.orgId, orgId)
-                        )
+            // Look up site by niceId
+            const [siteSingle] = await trx
+                .select({ siteId: sites.siteId })
+                .from(sites)
+                .where(
+                    and(
+                        eq(sites.niceId, resourceData.site),
+                        eq(sites.orgId, orgId)
                     )
-                    .limit(1);
-            } else if (siteId) {
-                // Use the provided siteId directly, but verify it belongs to the org
-                [siteSingle] = await trx
-                    .select({ siteId: sites.siteId })
-                    .from(sites)
-                    .where(
-                        and(eq(sites.siteId, siteId), eq(sites.orgId, orgId))
-                    )
-                    .limit(1);
-            } else {
-                throw new Error(`Target site is required`);
+                )
+                .limit(1);
+            if (siteSingle) {
+                allSites.push(siteSingle);
             }
-
-            if (!siteSingle) {
-                throw new Error(
-                    `Site not found: ${resourceSiteId} in org ${orgId}`
-                );
-            }
-            allSites.push(siteSingle);
         }
 
         if (resourceData.sites) {
@@ -180,13 +161,29 @@ export async function updateClientResources(
                         )
                     )
                     .limit(1);
-                if (!site) {
-                    throw new Error(
-                        `Site not found: ${siteId} in org ${orgId}`
-                    );
+                if (site) {
+                    allSites.push(site);
                 }
-                allSites.push(site);
             }
+        }
+
+        if (siteId && allSites.length === 0) {
+            // only add if there are not provided sites
+            // Use the provided siteId directly, but verify it belongs to the org
+            const [siteSingle] = await trx
+                .select({ siteId: sites.siteId })
+                .from(sites)
+                .where(and(eq(sites.siteId, siteId), eq(sites.orgId, orgId)))
+                .limit(1);
+            if (siteSingle) {
+                allSites.push(siteSingle);
+            }
+        }
+
+        if (allSites.length === 0) {
+            throw new Error(
+                `No valid sites found for private private resource ${resourceNiceId} in org ${orgId}`
+            );
         }
 
         if (existingResource) {

@@ -25,6 +25,10 @@
     "subscriptionViolationMessage": "You're beyond your limits for your current plan. Correct the problem by removing sites, users, or other resources to stay within your plan.",
     "trialBannerMessage": "Your trial expires in {countdown}. Upgrade to keep access.",
     "trialBannerExpired": "Your trial has expired. Upgrade now to restore access.",
+    "billingTrialBannerTitle": "Free Trial Active",
+    "billingTrialBannerDescription": "You're currently on a free trial on the business tier. When the trial ends, your account will automatically revert to the Basic tier features and limits. Upgrade anytime to keep access to your current plan's features.",
+    "billingTrialBannerUpgrade": "Upgrade Now",
+    "billingTrialBadge": "Free Trial",
     "trialActive": "Free Trial Active",
     "trialExpired": "Trial Expired",
     "trialHasEnded": "Your trial has ended.",
@@ -763,6 +767,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Secret",
+    "newtVersion": "Version",
     "architecture": "Architecture",
     "sites": "Sites",
     "siteWgAnyClients": "Use any WireGuard client to connect. You will have to address internal resources using the peer IP.",
@@ -1666,6 +1671,7 @@
     "pangolinUpdateAvailableReleaseNotes": "View Release Notes",
     "newtUpdateAvailable": "Update Available",
     "newtUpdateAvailableInfo": "A new version of Newt is available. Please update to the latest version for the best experience.",
+    "pangolinNodeUpdateAvailableInfo": "A new version of Pangolin Node is available. Please update to the latest version for the best experience.",
     "domainPickerEnterDomain": "Domain",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Enter the full domain of the resource to see available options.",
@@ -2353,7 +2359,7 @@
     "orgAuthChooseIdpDescription": "Choose your identity provider to continue",
     "orgAuthNoIdpConfigured": "This organization doesn't have any identity providers configured. You can log in with your Pangolin identity instead.",
     "orgAuthSignInWithPangolin": "Sign in with Pangolin",
-    "orgAuthSignInToOrg": "Sign in to an organization",
+    "orgAuthSignInToOrg": "Organization Identity Provider (SSO)",
     "orgAuthSelectOrgTitle": "Organization Sign In",
     "orgAuthSelectOrgDescription": "Enter your organization ID to continue",
     "orgAuthOrgIdPlaceholder": "your-organization",
@@ -3201,5 +3207,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Wildcard subdomains are not allowed.",
     "domainPickerWildcardCertWarning": "Wildcard resources may require additional configuration to work properly.",
     "domainPickerWildcardCertWarningLink": "Learn more",
-    "health": "Health"
+    "health": "Health",
+    "domainPendingErrorTitle": "Verification Issue"
 }

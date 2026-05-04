@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Segreto",
+    "newtVersion": "Versione",
     "architecture": "Architettura",
     "sites": "Siti",
     "siteWgAnyClients": "Usa qualsiasi client WireGuard per connetterti. Dovrai indirizzare le risorse interne utilizzando l'IP del peer.",
@@ -1666,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Visualizza Note Di Rilascio",
     "newtUpdateAvailable": "Aggiornamento Disponibile",
     "newtUpdateAvailableInfo": "È disponibile una nuova versione di Newt. Si prega di aggiornare all'ultima versione per la migliore esperienza.",
+    "pangolinNodeUpdateAvailableInfo": "È disponibile una nuova versione di Pangolin Node. Si prega di aggiornare all'ultima versione per la migliore esperienza.",
     "domainPickerEnterDomain": "Dominio",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Inserisci il dominio completo della risorsa per vedere le opzioni disponibili.",
@@ -2353,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Scegli il tuo provider di identità per continuare",
     "orgAuthNoIdpConfigured": "Questa organizzazione non ha nessun provider di identità configurato. Puoi accedere con la tua identità Pangolin.",
     "orgAuthSignInWithPangolin": "Accedi con Pangolino",
-    "orgAuthSignInToOrg": "Accedi a un'organizzazione",
+    "orgAuthSignInToOrg": "Provider di identità dell'organizzazione (SSO)",
     "orgAuthSelectOrgTitle": "Accesso Organizzazione",
     "orgAuthSelectOrgDescription": "Inserisci l'ID dell'organizzazione per continuare",
     "orgAuthOrgIdPlaceholder": "la-tua-organizzazione",
@@ -3201,5 +3203,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "I sottodomini wildcard non sono permessi.",
     "domainPickerWildcardCertWarning": "Le risorse wildcard potrebbero richiedere configurazioni aggiuntive per funzionare correttamente.",
     "domainPickerWildcardCertWarningLink": "Scopri di più",
-    "health": "Salute"
+    "health": "Salute",
+    "domainPendingErrorTitle": "Problema di Verifica"
 }

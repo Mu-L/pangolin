@@ -496,11 +496,6 @@ export async function createSiteResource(
                     );
                 }
             }
-
-            await rebuildClientAssociationsFromSiteResource(
-                newSiteResource,
-                trx
-            ); // we need to call this because we added to the admin role
         });
 
         if (!newSiteResource) {
@@ -525,6 +520,22 @@ export async function createSiteResource(
         ) {
             await createCertificate(domainId, fullDomain, db);
         }
+
+        // Run in the background after the response is sent. Wrapped in its
+        // own transaction so it always executes on the primary — avoiding any
+        // replica-lag issues while still allowing the HTTP response to return
+        // early.
+        db.transaction(async (trx) => {
+            await rebuildClientAssociationsFromSiteResource(
+                newSiteResource!,
+                trx
+            );
+        }).catch((err) => {
+            logger.error(
+                `Error rebuilding client associations for site resource ${newSiteResource!.siteResourceId}:`,
+                err
+            );
+        });
 
         return response(res, {
             data: newSiteResource,

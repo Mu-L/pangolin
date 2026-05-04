@@ -63,16 +63,25 @@ export async function deleteSiteResource(
             );
         }
 
-        await db.transaction(async (trx) => {
-            // Delete the site resource
-            const [removedSiteResource] = await trx
-                .delete(siteResources)
-                .where(eq(siteResources.siteResourceId, siteResourceId))
-                .returning();
+        // Delete the site resource
+        const [removedSiteResource] = await db
+            .delete(siteResources)
+            .where(eq(siteResources.siteResourceId, siteResourceId))
+            .returning();
 
+        // Run in the background after the response is sent. Wrapped in its
+        // own transaction so it always executes on the primary — avoiding any
+        // replica-lag issues while still allowing the HTTP response to return
+        // early.
+        db.transaction(async (trx) => {
             await rebuildClientAssociationsFromSiteResource(
                 removedSiteResource,
                 trx
+            );
+        }).catch((err) => {
+            logger.error(
+                `Error rebuilding client associations for site resource ${removedSiteResource!.siteResourceId}:`,
+                err
             );
         });
 

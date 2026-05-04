@@ -64,7 +64,7 @@ export const NotifyTrialExpiring = ({
 
                                 <EmailText>
                                     Some features and resources may now be
-                                    restricted or disconnected. To restore full
+                                    restricted. To restore full
                                     access and continue using all the features
                                     you had during your trial, please upgrade to
                                     a paid plan.
@@ -85,7 +85,7 @@ export const NotifyTrialExpiring = ({
                                     <strong>{orgName}</strong> will end on{" "}
                                     <strong>{trialEndsAt}</strong>
                                     {isLastDay
-                                        ? " — that's tomorrow!"
+                                        ? " - that's tomorrow!"
                                         : `, in ${daysRemaining} days`}
                                     .
                                 </EmailText>
@@ -93,8 +93,7 @@ export const NotifyTrialExpiring = ({
                                 <EmailText>
                                     After your trial ends, your account will be
                                     moved to the free plan and some
-                                    functionality may be restricted or your
-                                    sites may disconnect.
+                                    functionality may be restricted.
                                 </EmailText>
 
                                 <EmailText>

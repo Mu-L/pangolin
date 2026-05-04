@@ -42,17 +42,23 @@ export async function sendAlertWebhook(
     webhookConfig: WebhookAlertConfig,
     context: AlertContext
 ): Promise<void> {
-    const payload = {
-        event: context.eventType,
-        timestamp: new Date().toISOString(),
-        status: deriveStatus(context.eventType, context.data),
-        data: {
-            orgId: context.orgId,
-            ...context.data
-        }
-    };
+    const eventType = context.eventType;
+    const timestamp = new Date().toISOString();
+    const status = deriveStatus(eventType, context.data);
+    const data = { orgId: context.orgId, ...context.data };
 
-    const body = JSON.stringify(payload);
+    let body: string;
+    if (webhookConfig.useBodyTemplate && webhookConfig.bodyTemplate?.trim()) {
+        body = renderTemplate(webhookConfig.bodyTemplate, {
+            event: eventType,
+            timestamp,
+            status,
+            data
+        });
+    } else {
+        body = JSON.stringify({ event: eventType, timestamp, status, data });
+    }
+
     const headers = buildHeaders(webhookConfig);
 
     let lastError: Error | undefined;
@@ -216,4 +222,53 @@ function buildHeaders(
     }
 
     return headers;
+}
+
+// ---------------------------------------------------------------------------
+// Body template rendering
+// ---------------------------------------------------------------------------
+
+interface TemplateContext {
+    event: string;
+    timestamp: string;
+    status: string;
+    data: Record<string, unknown>;
+}
+
+/**
+ * Render a body template with {{event}}, {{timestamp}}, {{status}}, and
+ * {{data}} placeholders, mirroring the logic in HttpLogDestination.
+ *
+ * {{data}} is replaced first (as raw JSON) so that any literal "{{…}}"
+ * strings inside data values are not re-expanded.
+ */
+function renderTemplate(template: string, ctx: TemplateContext): string {
+    const rendered = template
+        .replace(/\{\{data\}\}/g, JSON.stringify(ctx.data))
+        .replace(/\{\{event\}\}/g, escapeJsonString(ctx.event))
+        .replace(/\{\{timestamp\}\}/g, escapeJsonString(ctx.timestamp))
+        .replace(/\{\{status\}\}/g, escapeJsonString(ctx.status));
+
+    // Validate the rendered result is valid JSON; if not, log a warning and
+    // fall back to the default payload so the webhook still fires.
+    try {
+        JSON.parse(rendered);
+        return rendered;
+    } catch {
+        logger.warn(
+            `sendAlertWebhook: body template produced invalid JSON for event ` +
+                `"${ctx.event}" destined for a webhook. Falling back to default ` +
+                `payload. Check that {{data}} is NOT wrapped in quotes in your template.`
+        );
+        return JSON.stringify({
+            event: ctx.event,
+            timestamp: ctx.timestamp,
+            status: ctx.status,
+            data: ctx.data
+        });
+    }
+}
+
+function escapeJsonString(value: string): string {
+    return JSON.stringify(value).slice(1, -1);
 }

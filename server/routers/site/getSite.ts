@@ -42,9 +42,12 @@ async function query(siteId?: number, niceId?: string, orgId?: string) {
     }
 }
 
-export type GetSiteResponse = NonNullable<
-    Awaited<ReturnType<typeof query>>
->["sites"] & { newtId: string | null };
+type SiteQueryRow = NonNullable<Awaited<ReturnType<typeof query>>>;
+
+export type GetSiteResponse = SiteQueryRow["sites"] & {
+    newtId: string | null;
+    newtVersion: string | null;
+};
 
 registry.registerPath({
     method: "get",
@@ -100,7 +103,8 @@ export async function getSite(
 
         const data: GetSiteResponse = {
             ...site.sites,
-            newtId: site.newt ? site.newt.newtId : null
+            newtId: site.newt ? site.newt.newtId : null,
+            newtVersion: site.newt?.version ?? null
         };
 
         return response<GetSiteResponse>(res, {

@@ -763,6 +763,7 @@
     "newtEndpoint": "Endpoint",
     "newtId": "ID",
     "newtSecretKey": "Secreto",
+    "newtVersion": "Versión",
     "architecture": "Arquitectura",
     "sites": "Sitios",
     "siteWgAnyClients": "Usa cualquier cliente de Wirex para conectarte. Tendrás que dirigirte a los recursos internos usando la IP de compañeros.",
@@ -1666,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Ver notas de lanzamiento",
     "newtUpdateAvailable": "Nueva actualización disponible",
     "newtUpdateAvailableInfo": "Hay una nueva versión de Newt disponible. Actualice a la última versión para la mejor experiencia.",
+    "pangolinNodeUpdateAvailableInfo": "Hay una nueva versión de Pangolin Node disponible. Actualice a la última versión para la mejor experiencia.",
     "domainPickerEnterDomain": "Dominio",
     "domainPickerPlaceholder": "miapp.ejemplo.com",
     "domainPickerDescription": "Ingresa el dominio completo del recurso para ver las opciones disponibles.",
@@ -2353,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Elige tu proveedor de identidad para continuar",
     "orgAuthNoIdpConfigured": "Esta organización no tiene ningún proveedor de identidad configurado. En su lugar puedes iniciar sesión con tu identidad de Pangolin.",
     "orgAuthSignInWithPangolin": "Iniciar sesión con Pangolin",
-    "orgAuthSignInToOrg": "Iniciar sesión en una organización",
+    "orgAuthSignInToOrg": "Proveedor de identidad de la organización (SSO)",
     "orgAuthSelectOrgTitle": "Inicio de sesión de organización",
     "orgAuthSelectOrgDescription": "Ingrese el ID de su organización para continuar",
     "orgAuthOrgIdPlaceholder": "tu-organización",
@@ -3201,5 +3203,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "No se permiten subdominios comodín.",
     "domainPickerWildcardCertWarning": "Los recursos comodín pueden requerir configuración adicional para funcionar correctamente.",
     "domainPickerWildcardCertWarningLink": "Más información",
-    "health": "Salud"
+    "health": "Salud",
+    "domainPendingErrorTitle": "Problema de verificación"
 }

@@ -21,10 +21,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq, and } from "drizzle-orm";
-import {
-    fireSiteOnlineAlert,
-    fireSiteOfflineAlert
-} from "#private/lib/alerts/events/siteEvents";
+import { fireSiteOnlineAlert, fireSiteOfflineAlert } from "@server/lib/alerts";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty(),

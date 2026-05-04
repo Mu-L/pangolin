@@ -763,6 +763,7 @@
     "newtEndpoint": "Uç Nokta",
     "newtId": "Kimlik",
     "newtSecretKey": "Gizli",
+    "newtVersion": "Sürüm",
     "architecture": "Mimari",
     "sites": "Siteler",
     "siteWgAnyClients": "Herhangi bir WireGuard istemcisi kullanarak bağlanın. Dahili kaynaklara eş IP adresini kullanarak erişmeniz gerekecek.",
@@ -1666,6 +1667,7 @@
     "pangolinUpdateAvailableReleaseNotes": "Yayın Notlarını Görüntüle",
     "newtUpdateAvailable": "Güncelleme Mevcut",
     "newtUpdateAvailableInfo": "Newt'in yeni bir versiyonu mevcut. En iyi deneyim için lütfen en son sürüme güncelleyin.",
+    "pangolinNodeUpdateAvailableInfo": "Pangolin Node'un yeni bir sürümü mevcut. En iyi deneyim için lütfen en son sürüme güncelleyin.",
     "domainPickerEnterDomain": "Alan Adı",
     "domainPickerPlaceholder": "myapp.example.com",
     "domainPickerDescription": "Mevcut seçenekleri görmek için kaynağın tam etki alanını girin.",
@@ -2353,7 +2355,7 @@
     "orgAuthChooseIdpDescription": "Devam etmek için kimlik sağlayıcınızı seçin",
     "orgAuthNoIdpConfigured": "Bu kuruluşta yapılandırılmış kimlik sağlayıcı yok. Bunun yerine Pangolin kimliğinizle giriş yapabilirsiniz.",
     "orgAuthSignInWithPangolin": "Pangolin ile Giriş Yap",
-    "orgAuthSignInToOrg": "Bir kuruluşa giriş yapın",
+    "orgAuthSignInToOrg": "Kuruluş Kimlik Sağlayıcısı (SSO)",
     "orgAuthSelectOrgTitle": "Kuruluş Giriş",
     "orgAuthSelectOrgDescription": "Devam etmek için kuruluş kimliğinizi girin",
     "orgAuthOrgIdPlaceholder": "kuruluşunuz",
@@ -3201,5 +3203,6 @@
     "domainPickerWildcardSubdomainNotAllowed": "Genel alt alanlara izin verilmiyor.",
     "domainPickerWildcardCertWarning": "Genel kaynaklar düzgün çalışmak için ek yapılandırma gerektirebilir.",
     "domainPickerWildcardCertWarningLink": "Daha fazla bilgi",
-    "health": "Sağlık"
+    "health": "Sağlık",
+    "domainPendingErrorTitle": "Doğrulama Sorunu"
 }

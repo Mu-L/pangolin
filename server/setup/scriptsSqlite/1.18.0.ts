@@ -22,6 +22,9 @@ export default async function migration() {
                     thc."targetId",
                     t."siteId",
                     s."orgId",
+                    r."name" AS "resourceName",
+                    t."ip",
+                    t."port",
                     thc."hcEnabled",
                     thc."hcPath",
                     thc."hcScheme",
@@ -39,13 +42,17 @@ export default async function migration() {
                     thc."hcTlsServerName"
                 FROM 'targetHealthCheck' thc
                 JOIN 'targets' t ON thc."targetId" = t."targetId"
-                JOIN 'sites' s ON t."siteId" = s."siteId"`
+                JOIN 'sites' s ON t."siteId" = s."siteId"
+                JOIN 'resources' r ON t."resourceId" = r."resourceId"`
             )
             .all() as {
             targetHealthCheckId: number;
             targetId: number;
             siteId: number;
             orgId: string;
+            resourceName: string;
+            ip: string;
+            port: number;
             hcEnabled: number;
             hcPath: string | null;
             hcScheme: string | null;
@@ -392,6 +399,7 @@ export default async function migration() {
                     "targetId",
                     "orgId",
                     "siteId",
+                    "name",
                     "hcEnabled",
                     "hcPath",
                     "hcScheme",
@@ -407,7 +415,7 @@ export default async function migration() {
                     "hcStatus",
                     "hcHealth",
                     "hcTlsServerName"
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             );
 
             const insertAll = db.transaction(() => {
@@ -417,6 +425,7 @@ export default async function migration() {
                         hc.targetId,
                         hc.orgId,
                         hc.siteId,
+                        `Resource ${hc.resourceName} - ${hc.ip}:${hc.port}`,
                         hc.hcEnabled,
                         hc.hcPath,
                         hc.hcScheme,
