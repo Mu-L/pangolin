@@ -105,7 +105,6 @@ authenticated.put(
     site.createSite
 );
 
-
 authenticated.get(
     "/org/:orgId/sites",
     verifyOrgAccess,
@@ -727,7 +726,7 @@ authenticated.put(
     "/resource-policy/:resourcePolicyId/access-control",
     verifyResourcePolicyAccess,
     verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
-    verifyUserHasAction(ActionsEnum.setResourcePolicyRoles),
+    logActionAudit(ActionsEnum.setResourcePolicyUsers),
     policy.setResourcePolicyAccessControl
 );
 

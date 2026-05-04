@@ -111,7 +111,7 @@ export async function verifyResourcePolicyAccess(
 
         req.userOrgRoleIds = await getUserOrgRoleIds(
             req.userOrg.userId,
-            orgId!
+            policy.orgId
         );
         req.userOrgId = policy.orgId;
 

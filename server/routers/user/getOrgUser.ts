@@ -47,10 +47,7 @@ export async function queryUser(orgId: string, userId: string) {
         .from(userOrgRoles)
         .leftJoin(roles, eq(userOrgRoles.roleId, roles.roleId))
         .where(
-            and(
-                eq(userOrgRoles.userId, userId),
-                eq(userOrgRoles.orgId, orgId)
-            )
+            and(eq(userOrgRoles.userId, userId), eq(userOrgRoles.orgId, orgId))
         );
 
     const isAdmin = roleRows.some((r) => r.isAdmin);
@@ -146,7 +143,7 @@ export async function getOrgUser(
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "User does not have permission perform this action"
+                        "User does not have permission to get organization user details"
                     )
                 );
             }
