@@ -17,10 +17,13 @@ import {
     resourceHeaderAuth,
     ResourceHeaderAuth,
     resourceRules,
+    resourcePolicyRules,
     resources,
     roleResources,
+    rolePolicies,
     sessions,
     userResources,
+    userPolicies,
     users,
     ResourceHeaderAuthExtendedCompatibility,
     resourceHeaderAuthExtendedCompatibility
@@ -154,58 +157,126 @@ export async function getRoleName(roleId: number): Promise<string | null> {
 }
 
 /**
- * Check if role has access to resource
+ * Check if role has access to resource (direct or via resource policy)
  */
 export async function getRoleResourceAccess(
     resourceId: number,
     roleIds: number[]
 ) {
-    const roleResourceAccess = await db
-        .select()
-        .from(roleResources)
-        .where(
-            and(
-                eq(roleResources.resourceId, resourceId),
-                inArray(roleResources.roleId, roleIds)
+    const [direct, viaPolicies] = await Promise.all([
+        db
+            .select()
+            .from(roleResources)
+            .where(
+                and(
+                    eq(roleResources.resourceId, resourceId),
+                    inArray(roleResources.roleId, roleIds)
+                )
+            ),
+        db
+            .select({
+                roleId: rolePolicies.roleId,
+                resourcePolicyId: rolePolicies.resourcePolicyId
+            })
+            .from(rolePolicies)
+            .innerJoin(
+                resources,
+                eq(resources.resourcePolicyId, rolePolicies.resourcePolicyId)
             )
-        );
+            .where(
+                and(
+                    eq(resources.resourceId, resourceId),
+                    inArray(rolePolicies.roleId, roleIds)
+                )
+            )
+    ]);
 
-    return roleResourceAccess.length > 0 ? roleResourceAccess : null;
+    const combined = [...direct, ...viaPolicies];
+    return combined.length > 0 ? combined : null;
 }
 
 /**
- * Check if user has direct access to resource
+ * Check if user has access to resource (direct or via resource policy)
  */
 export async function getUserResourceAccess(
     userId: string,
     resourceId: number
 ) {
-    const userResourceAccess = await db
-        .select()
-        .from(userResources)
-        .where(
-            and(
-                eq(userResources.userId, userId),
-                eq(userResources.resourceId, resourceId)
+    const [direct, viaPolicies] = await Promise.all([
+        db
+            .select()
+            .from(userResources)
+            .where(
+                and(
+                    eq(userResources.userId, userId),
+                    eq(userResources.resourceId, resourceId)
+                )
             )
-        )
-        .limit(1);
+            .limit(1),
+        db
+            .select({
+                userId: userPolicies.userId,
+                resourcePolicyId: userPolicies.resourcePolicyId
+            })
+            .from(userPolicies)
+            .innerJoin(
+                resources,
+                eq(resources.resourcePolicyId, userPolicies.resourcePolicyId)
+            )
+            .where(
+                and(
+                    eq(resources.resourceId, resourceId),
+                    eq(userPolicies.userId, userId)
+                )
+            )
+            .limit(1)
+    ]);
 
-    return userResourceAccess.length > 0 ? userResourceAccess[0] : null;
+    return direct[0] ?? viaPolicies[0] ?? null;
 }
 
 /**
- * Get resource rules for a given resource
+ * Get resource rules for a given resource (direct and via resource policy)
  */
 export async function getResourceRules(
     resourceId: number
 ): Promise<ResourceRule[]> {
-    const rules = await db
-        .select()
-        .from(resourceRules)
-        .where(eq(resourceRules.resourceId, resourceId));
+    const [directRules, policyRules] = await Promise.all([
+        db
+            .select()
+            .from(resourceRules)
+            .where(eq(resourceRules.resourceId, resourceId)),
+        db
+            .select({
+                ruleId: resourcePolicyRules.ruleId,
+                resourceId: sql<number>`${resourceId}`,
+                enabled: resourcePolicyRules.enabled,
+                priority: resourcePolicyRules.priority,
+                action: resourcePolicyRules.action,
+                match: resourcePolicyRules.match,
+                value: resourcePolicyRules.value
+            })
+            .from(resourcePolicyRules)
+            .innerJoin(
+                resources,
+                eq(
+                    resources.resourcePolicyId,
+                    resourcePolicyRules.resourcePolicyId
+                )
+            )
+            .where(eq(resources.resourceId, resourceId))
+    ]);
 
-    return rules;
+    const maxDirectPriority = directRules.reduce(
+        (max, r) => Math.max(max, r.priority),
+        0
+    );
+    const offsetPolicyRules = policyRules.map((r) => ({
+        ...r,
+        priority: maxDirectPriority + r.priority
+    }));
+
+    return [...directRules, ...offsetPolicyRules] as ResourceRule[];
 }
 
 /**
