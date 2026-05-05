@@ -162,9 +162,10 @@ export const HeaderSchema = z.object({
 });
 
 // Schema for individual resource
-export const ResourceSchema = z
+export const PublicResourceSchema = z
     .object({
         name: z.string().optional(),
+        policy: z.string().optional(),
         protocol: z.enum(["http", "tcp", "udp"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).optional(),
@@ -340,7 +341,8 @@ export const ResourceSchema = z
             if (parts.includes("*", 1)) return false; // no further wildcards
             if (parts.length < 3) return false; // need at least *.label.tld
 
-            const labelRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
+            const labelRegex =
+                /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
             return parts.slice(1).every((label) => labelRegex.test(label));
         },
         {
@@ -354,7 +356,7 @@ export function isTargetsOnlyResource(resource: any): boolean {
     return Object.keys(resource).length === 1 && resource.targets;
 }
 
-export const ClientResourceSchema = z
+export const PrivateResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
         mode: z.enum(["host", "cidr", "http"]),
@@ -435,19 +437,19 @@ export const ClientResourceSchema = z
 export const ConfigSchema = z
     .object({
         "proxy-resources": z
-            .record(z.string(), ResourceSchema)
+            .record(z.string(), PublicResourceSchema)
             .optional()
             .prefault({}),
         "public-resources": z
-            .record(z.string(), ResourceSchema)
+            .record(z.string(), PublicResourceSchema)
             .optional()
             .prefault({}),
         "client-resources": z
-            .record(z.string(), ClientResourceSchema)
+            .record(z.string(), PrivateResourceSchema)
             .optional()
             .prefault({}),
         "private-resources": z
-            .record(z.string(), ClientResourceSchema)
+            .record(z.string(), PrivateResourceSchema)
             .optional()
             .prefault({}),
         sites: z.record(z.string(), SiteSchema).optional().prefault({})
@@ -472,10 +474,13 @@ export const ConfigSchema = z
         }
 
         return data as {
-            "proxy-resources": Record<string, z.infer<typeof ResourceSchema>>;
+            "proxy-resources": Record<
+                string,
+                z.infer<typeof PublicResourceSchema>
+            >;
             "client-resources": Record<
                 string,
-                z.infer<typeof ClientResourceSchema>
+                z.infer<typeof PrivateResourceSchema>
             >;
             sites: Record<string, z.infer<typeof SiteSchema>>;
         };
@@ -614,5 +619,5 @@ export const ConfigSchema = z
 // Type inference from the schema
 export type Site = z.infer<typeof SiteSchema>;
 export type Target = z.infer<typeof TargetSchema>;
-export type Resource = z.infer<typeof ResourceSchema>;
+export type Resource = z.infer<typeof PublicResourceSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
