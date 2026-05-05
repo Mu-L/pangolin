@@ -207,7 +207,7 @@ export default function SmartLoginOrgSelector({
             />
 
             {hasInternalAccount && (
-                <div className="mt-3">
+                <div className="mt-4">
                     <Button
                         type="button"
                         className="w-full"
@@ -237,7 +237,7 @@ export default function SmartLoginOrgSelector({
                         </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         {params.get("gotoapp") ? (
                             <Button
                                 type="button"

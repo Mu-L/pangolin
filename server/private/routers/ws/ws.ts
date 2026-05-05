@@ -22,7 +22,7 @@ import {
     Olm,
     olms,
     RemoteExitNode,
-    remoteExitNodes,
+    remoteExitNodes
 } from "@server/db";
 import { eq } from "drizzle-orm";
 import { db } from "@server/db";
@@ -193,8 +193,6 @@ const connectedClients: Map<string, AuthenticatedWebSocket[]> = new Map();
 
 // Config version tracking map (local to this node, resets on server restart)
 const clientConfigVersions: Map<string, number> = new Map();
-
-
 
 // Recovery tracking
 let isRedisRecoveryInProgress = false;
@@ -406,6 +404,9 @@ const removeClient = async (
     const updatedClients = existingClients.filter((client) => client !== ws);
     if (updatedClients.length === 0) {
         connectedClients.delete(mapKey);
+        // Remove clientId from clientConfigVersions on disconnect — prevents
+        // unbounded memory growth from stale entries.
+        clientConfigVersions.delete(clientId);
 
         if (redisManager.isRedisEnabled()) {
             try {
@@ -1096,6 +1097,11 @@ const disconnectClient = async (clientId: string): Promise<boolean> => {
             client.close(1000, "Disconnected by server");
         }
     });
+
+    // Eagerly remove client — close event may not fire if socket is already
+    // CLOSING, leaving zombie entries.
+    connectedClients.delete(mapKey);
+    clientConfigVersions.delete(clientId);
 
     return true;
 };
