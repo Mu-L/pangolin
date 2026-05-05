@@ -284,7 +284,7 @@ export default function SmartLoginForm({
 
                 {orgSignIn && (
                     <>
-                        <div className="relative my-4">
+                        <div className="relative">
                             <div className="absolute inset-0 flex items-center">
                                 <Separator />
                             </div>

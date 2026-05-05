@@ -145,7 +145,7 @@ export default function MfaInputForm({
                 </Alert>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-4">
                 <Button
                     type="submit"
                     form={formId}

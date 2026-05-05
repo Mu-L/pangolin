@@ -40,7 +40,9 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                     <InfoSection>
                         <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
                         <InfoSectionContent>
-                            {resource.niceId}
+                            <span className="inline-flex items-center">
+                                {resource.niceId}
+                            </span>
                         </InfoSectionContent>
                     </InfoSection>
                     {resource.http ? (
@@ -49,7 +51,9 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                 <InfoSectionTitle>URL</InfoSectionTitle>
                                 <InfoSectionContent>
                                     {resource.wildcard ? (
-                                        <span>{fullUrl}</span>
+                                        <span className="inline-flex items-center">
+                                            {fullUrl}
+                                        </span>
                                     ) : (
                                         <CopyToClipboard
                                             text={fullUrl}
@@ -68,7 +72,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     authInfo.sso ||
                                     authInfo.whitelist ||
                                     authInfo.headerAuth ? (
-                                        <div className="flex items-start space-x-2">
+                                        <div className="flex items-center space-x-2">
                                             <ShieldCheck className="w-4 h-4 flex-shrink-0 text-green-500" />
                                             <span>{t("protected")}</span>
                                         </div>
@@ -106,7 +110,9 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     {t("protocol")}
                                 </InfoSectionTitle>
                                 <InfoSectionContent>
-                                    {resource.protocol.toUpperCase()}
+                                    <span className="inline-flex items-center">
+                                        {resource.protocol.toUpperCase()}
+                                    </span>
                                 </InfoSectionContent>
                             </InfoSection>
                             <InfoSection>
