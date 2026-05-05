@@ -512,10 +512,9 @@ export async function validateOidcCallback(
 
             const orgUserCounts: { orgId: string; userCount: number }[] = [];
 
+            let userId = existingUser?.userId;
             // sync the user with the orgs and roles
             await db.transaction(async (trx) => {
-                let userId = existingUser?.userId;
-
                 // create user if not exists
                 if (!existingUser) {
                     userId = generateId(15);
@@ -645,8 +644,15 @@ export async function validateOidcCallback(
                         userCount: userCount.length
                     });
                 }
+            });
 
+            db.transaction(async (trx) => {
                 await calculateUserClientsForOrgs(userId!, trx);
+            }).catch((err) => {
+                logger.error(
+                    "Error calculating user clients after syncing orgs and roles for OIDC user",
+                    { error: err }
+                );
             });
 
             for (const orgCount of orgUserCounts) {
