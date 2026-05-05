@@ -333,23 +333,16 @@ export async function validateOidcCallback(
                     .innerJoin(orgs, eq(orgs.orgId, idpOrg.orgId));
                 allOrgs = idpOrgs.map((o) => o.orgs);
 
-                // for (const org of allOrgs) {
-                //     const subscribed = await isSubscribed(
-                //         org.orgId,
-                //         tierMatrix.autoProvisioning
-                //     );
-                //     if (!subscribed) {
-                //         // filter out the org
-                //         allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
-
-                //         // return next(
-                //         //     createHttpError(
-                //         //         HttpCode.FORBIDDEN,
-                //         //         "This organization's current plan does not support this feature."
-                //         //     )
-                //         // );
-                //     }
-                // }
+                for (const org of allOrgs) {
+                    const subscribed = await isSubscribed(
+                        org.orgId,
+                        tierMatrix.autoProvisioning
+                    );
+                    if (!subscribed) {
+                        // filter out the org
+                        allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
+                    }
+                }
             } else {
                 allOrgs = await db.select().from(orgs);
             }
