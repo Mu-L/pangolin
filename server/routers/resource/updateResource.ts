@@ -1,6 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, domainNamespaces, loginPage } from "@server/db";
+import {
+    db,
+    domainNamespaces,
+    loginPage,
+    resourceHeaderAuth,
+    resourceHeaderAuthExtendedCompatibility,
+    resourcePassword,
+    resourcePincode,
+    resourceRules,
+    resourceWhitelist
+} from "@server/db";
 import {
     domains,
     Org,
@@ -569,60 +579,122 @@ async function updateRawResource(
     }
 
     const updateData = parsedBody.data;
+    let updatedResource: Resource | null = null;
 
-    if (updateData.resourcePolicyId != null) {
-        const [existingPolicy] = await db
-            .select()
-            .from(resourcePolicies)
-            .where(
-                eq(
-                    resourcePolicies.resourcePolicyId,
-                    updateData.resourcePolicyId
-                )
-            )
-            .limit(1);
-
-        if (!existingPolicy) {
-            return next(
-                createHttpError(
-                    HttpCode.NOT_FOUND,
-                    `Resource policy with ID ${updateData.resourcePolicyId} not found`
-                )
-            );
-        }
-    }
-
-    if (updateData.niceId) {
-        const [existingResource] = await db
-            .select()
-            .from(resources)
-            .where(
-                and(
-                    eq(resources.niceId, updateData.niceId),
-                    eq(resources.orgId, resource.orgId)
-                )
-            );
-
-        if (
-            existingResource &&
-            existingResource.resourceId !== resource.resourceId
-        ) {
-            return next(
-                createHttpError(
-                    HttpCode.CONFLICT,
-                    `A resource with niceId "${updateData.niceId}" already exists`
-                )
-            );
-        }
-    }
-
-    const updatedResource = await db
-        .update(resources)
-        .set(updateData)
+    const [existingResource] = await db
+        .select()
+        .from(resources)
         .where(eq(resources.resourceId, resource.resourceId))
-        .returning();
+        .limit(1);
 
-    if (updatedResource.length === 0) {
+    await db.transaction(async (trx) => {
+        if (updateData.resourcePolicyId != null) {
+            const [existingPolicy] = await trx
+                .select()
+                .from(resourcePolicies)
+                .where(
+                    eq(
+                        resourcePolicies.resourcePolicyId,
+                        updateData.resourcePolicyId
+                    )
+                )
+                .limit(1);
+
+            if (!existingPolicy) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Resource policy with ID ${updateData.resourcePolicyId} not found`
+                    )
+                );
+            }
+        } else {
+            // we are in an inline policy and we need to clear out the old tables
+            await Promise.all([
+                trx
+                    .delete(resourcePassword)
+                    .where(
+                        eq(
+                            resourcePassword.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourcePincode)
+                    .where(
+                        eq(
+                            resourcePincode.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourceHeaderAuth)
+                    .where(
+                        eq(
+                            resourceHeaderAuth.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourceHeaderAuthExtendedCompatibility)
+                    .where(
+                        eq(
+                            resourceHeaderAuthExtendedCompatibility.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourceWhitelist)
+                    .where(
+                        eq(
+                            resourceWhitelist.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+
+                trx
+                    .delete(resourceRules)
+                    .where(
+                        eq(
+                            resourceRules.resourceId,
+                            existingResource.resourceId
+                        )
+                    )
+            ]);
+        }
+
+        if (updateData.niceId) {
+            const [existingResourceConflict] = await trx
+                .select()
+                .from(resources)
+                .where(
+                    and(
+                        eq(resources.niceId, updateData.niceId),
+                        eq(resources.orgId, resource.orgId)
+                    )
+                );
+
+            if (
+                existingResourceConflict &&
+                existingResourceConflict.resourceId !== resource.resourceId
+            ) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        `A resource with niceId "${updateData.niceId}" already exists`
+                    )
+                );
+            }
+        }
+
+        [updatedResource] = await trx
+            .update(resources)
+            .set(updateData)
+            .where(eq(resources.resourceId, resource.resourceId))
+            .returning();
+    });
+
+    if (!updatedResource) {
         return next(
             createHttpError(
                 HttpCode.NOT_FOUND,
@@ -632,7 +704,7 @@ async function updateRawResource(
     }
 
     return response(res, {
-        data: updatedResource[0],
+        data: updatedResource,
         success: true,
         error: false,
         message: "Non-http Resource updated successfully",

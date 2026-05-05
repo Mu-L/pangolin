@@ -497,6 +497,50 @@ export async function updateProxyResources(
                         )
                         .returning();
 
+                    // Clear the old resource-level auth tables (not used in inline policy mode)
+                    await Promise.all([
+                        trx
+                            .delete(resourcePassword)
+                            .where(
+                                eq(
+                                    resourcePassword.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourcePincode)
+                            .where(
+                                eq(
+                                    resourcePincode.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourceHeaderAuth)
+                            .where(
+                                eq(
+                                    resourceHeaderAuth.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourceHeaderAuthExtendedCompatibility)
+                            .where(
+                                eq(
+                                    resourceHeaderAuthExtendedCompatibility.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourceWhitelist)
+                            .where(
+                                eq(
+                                    resourceWhitelist.resourceId,
+                                    existingResource.resourceId
+                                )
+                            )
+                    ]);
+
                     // Update inline policy auth fields and policy-level tables
                     await syncInlinePolicyAuth(
                         inlinePolicyId,
@@ -798,6 +842,17 @@ export async function updateProxyResources(
             } else {
                 // INLINE POLICY MODE: sync rules into policy-level table
                 const inlinePolicyId = resource!.defaultResourcePolicyId!;
+
+                // Clear the old resource-level rules table
+                await trx
+                    .delete(resourceRules)
+                    .where(
+                        eq(
+                            resourceRules.resourceId,
+                            existingResource.resourceId
+                        )
+                    );
+
                 await syncInlinePolicyRules(
                     inlinePolicyId,
                     resourceData.rules || [],
