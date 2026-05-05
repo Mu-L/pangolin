@@ -11,15 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import {
-    db,
-    labels,
-    resourceLabels,
-    resources,
-    siteLabels,
-    sites,
-    type Label
-} from "@server/db";
+import { db, labels } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";

@@ -10,6 +10,7 @@
  *
  * This file is not licensed under the AGPLv3.
  */
+
 import {
     db,
     labels,
@@ -20,7 +21,6 @@ import {
 } from "@server/db";
 import response from "@server/lib/response";
 import logger from "@server/logger";
-import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
 import HttpCode from "@server/types/HttpCode";
 import { and, eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
@@ -29,20 +29,16 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const paramsSchema = z.strictObject({
-    orgId: z.string().nonempty()
+    orgId: z.string().nonempty(),
+    labelId: z.string().transform(Number).pipe(z.int().positive())
 });
 
-const bodySchema = z.strictObject({
-    name: z.string().nonempty(),
-    color: z
-        .string()
-        .regex(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i)
-        .nonempty(),
+const attachLabelBodySchema = z.strictObject({
     siteId: z.number().int().optional(),
     resourceId: z.number().int().optional()
 });
 
-export async function createOrgLabel(
+export async function attachLabelToItem(
     req: Request,
     res: Response,
     next: NextFunction
@@ -58,9 +54,9 @@ export async function createOrgLabel(
             );
         }
 
-        const { orgId } = parsedParams.data;
+        const { orgId, labelId } = parsedParams.data;
 
-        const parsedBody = bodySchema.safeParse(req.body);
+        const parsedBody = attachLabelBodySchema.safeParse(req.body);
         if (!parsedBody.success) {
             return next(
                 createHttpError(
@@ -70,7 +66,30 @@ export async function createOrgLabel(
             );
         }
 
-        const { name, color, siteId, resourceId } = parsedBody.data;
+        const { siteId, resourceId } = parsedBody.data;
+
+        if (!siteId && !resourceId) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "At least one of `siteId` or `resourceId` should be provided."
+                )
+            );
+        }
+
+        const [existing] = await db
+            .select()
+            .from(labels)
+            .where(and(eq(labels.labelId, labelId), eq(labels.orgId, orgId)));
+
+        if (!existing) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Label with Id ${labelId} not found`
+                )
+            );
+        }
 
         if (siteId) {
             const siteCount = await db.$count(
@@ -81,11 +100,19 @@ export async function createOrgLabel(
             if (siteCount === 0) {
                 return next(
                     createHttpError(
-                        HttpCode.BAD_REQUEST,
+                        HttpCode.NOT_FOUND,
                         `Site with Id ${siteId} doesn't exist.`
                     )
                 );
             }
+
+            await db
+                .insert(siteLabels)
+                .values({
+                    labelId,
+                    siteId
+                })
+                .returning();
         }
 
         if (resourceId) {
@@ -105,40 +132,19 @@ export async function createOrgLabel(
                     )
                 );
             }
+
+            await db.insert(resourceLabels).values({
+                labelId,
+                resourceId
+            });
         }
 
-        const label = await db.transaction(async (tx) => {
-            const [label] = await tx
-                .insert(labels)
-                .values({
-                    name,
-                    color,
-                    orgId
-                })
-                .returning();
-
-            if (siteId) {
-                await tx.insert(siteLabels).values({
-                    siteId,
-                    labelId: label.labelId
-                });
-            }
-
-            if (resourceId) {
-                await tx.insert(resourceLabels).values({
-                    resourceId,
-                    labelId: label.labelId
-                });
-            }
-            return label;
-        });
-
-        return response<CreateOrEditLabelResponse>(res, {
-            data: { label },
+        return response(res, {
+            data: {},
             success: true,
             error: false,
-            message: "Org Label created successfully",
-            status: HttpCode.CREATED
+            message: "Site Label object created successfully",
+            status: HttpCode.OK
         });
     } catch (error) {
         logger.error(error);

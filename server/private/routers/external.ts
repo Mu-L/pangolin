@@ -757,6 +757,14 @@ authenticated.patch(
     labels.updateOrgLabel
 );
 
+authenticated.put(
+    "/org/:orgId/label/:labelId/attach",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.attachLabelToItem),
+    labels.attachLabelToItem
+);
+
 authenticated.get(
     "/org/:orgId/health-checks",
     verifyValidLicense,
