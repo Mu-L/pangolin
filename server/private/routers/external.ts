@@ -31,6 +31,7 @@ import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
+import * as labels from "#private/routers/labels";
 
 import {
     verifyOrgAccess,
@@ -730,6 +731,30 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getAlertRule),
     alertRule.getAlertRule
+);
+
+authenticated.get(
+    "/org/:orgId/labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listOrgLabels),
+    labels.listOrgLabels
+);
+
+authenticated.post(
+    "/org/:orgId/labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.createOrgLabel),
+    labels.createOrgLabel
+);
+
+authenticated.patch(
+    "/org/:orgId/label/:labelId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateOrgLabel),
+    labels.updateOrgLabel
 );
 
 authenticated.get(

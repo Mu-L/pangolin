@@ -1,0 +1,109 @@
+/*
+ * This file is part of a proprietary work.
+ *
+ * Copyright (c) 2025-2026 Fossorial, Inc.
+ * All rights reserved.
+ *
+ * This file is licensed under the Fossorial Commercial License.
+ * You may not use this file except in compliance with the License.
+ * Unauthorized use, copying, modification, or distribution is strictly prohibited.
+ *
+ * This file is not licensed under the AGPLv3.
+ */
+
+import {
+    db,
+    labels,
+    resourceLabels,
+    resources,
+    siteLabels,
+    sites,
+    type Label
+} from "@server/db";
+import response from "@server/lib/response";
+import logger from "@server/logger";
+import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
+import HttpCode from "@server/types/HttpCode";
+import { and, eq } from "drizzle-orm";
+import { NextFunction, Request, Response } from "express";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+
+const paramsSchema = z.strictObject({
+    orgId: z.string().nonempty(),
+    labelId: z.string().transform(Number).pipe(z.int().positive())
+});
+
+const updateLabelBodySchema = z.strictObject({
+    name: z.string().min(1).max(255).optional(),
+    color: z
+        .string()
+        .regex(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i)
+        .nonempty()
+});
+
+export async function updateOrgLabel(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
+    try {
+        const parsedParams = paramsSchema.safeParse(req.params);
+        if (!parsedParams.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error).toString()
+                )
+            );
+        }
+
+        const { orgId, labelId } = parsedParams.data;
+
+        const parsedBody = updateLabelBodySchema.safeParse(req.body);
+        if (!parsedBody.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedBody.error).toString()
+                )
+            );
+        }
+
+        const [existing] = await db
+            .select()
+            .from(labels)
+            .where(and(eq(labels.labelId, labelId), eq(labels.orgId, orgId)));
+
+        if (!existing) {
+            return next(createHttpError(HttpCode.NOT_FOUND, "Label not found"));
+        }
+
+        const { name, color } = parsedBody.data;
+
+        const [label] = await db
+            .update(labels)
+            .set({
+                name,
+                color
+            })
+            .where(and(eq(labels.labelId, labelId), eq(labels.orgId, orgId)))
+            .returning();
+
+        return response<CreateOrEditLabelResponse>(res, {
+            data: {
+                label
+            },
+            success: true,
+            error: false,
+            message: "Label updated successfully",
+            status: HttpCode.OK
+        });
+    } catch (error) {
+        logger.error(error);
+        return next(
+            createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "An error occurred")
+        );
+    }
+}

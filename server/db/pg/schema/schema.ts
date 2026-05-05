@@ -162,6 +162,45 @@ export const resources = pgTable("resources", {
     wildcard: boolean("wildcard").notNull().default(false)
 });
 
+export const labels = pgTable("labels", {
+    labelId: serial("labelId").primaryKey(),
+    name: varchar("name").notNull(),
+    color: varchar("color").notNull(),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteLabels = pgTable("siteLabels", {
+    siteLabelId: serial("siteLabelId").primaryKey(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    labelId: integer("labelId")
+        .references(() => labels.labelId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const resourceLabels = pgTable("resourceLabels", {
+    resourceLabelId: serial("resourceLabelId").primaryKey(),
+    resourceId: integer("resourceId")
+        .references(() => resources.resourceId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    labelId: integer("labelId")
+        .references(() => labels.labelId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
 export const targets = pgTable("targets", {
     targetId: serial("targetId").primaryKey(),
     resourceId: integer("resourceId")
@@ -196,9 +235,11 @@ export const targetHealthCheck = pgTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
-    siteId: integer("siteId").references(() => sites.siteId, {
-        onDelete: "cascade"
-    }).notNull(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
     name: varchar("name"),
     hcEnabled: boolean("hcEnabled").notNull().default(false),
     hcPath: varchar("hcPath"),
@@ -1097,19 +1138,30 @@ export const roundTripMessageTracker = pgTable("roundTripMessageTracker", {
     complete: boolean("complete").notNull().default(false)
 });
 
-export const statusHistory = pgTable("statusHistory", {
-    id: serial("id").primaryKey(),
-    entityType: varchar("entityType").notNull(),
-    entityId: integer("entityId").notNull(),
-    orgId: varchar("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    status: varchar("status").notNull(),
-    timestamp: integer("timestamp").notNull(),
-}, (table) => [
-    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
-    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
-]);
+export const statusHistory = pgTable(
+    "statusHistory",
+    {
+        id: serial("id").primaryKey(),
+        entityType: varchar("entityType").notNull(),
+        entityId: integer("entityId").notNull(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        status: varchar("status").notNull(),
+        timestamp: integer("timestamp").notNull()
+    },
+    (table) => [
+        index("idx_statusHistory_entity").on(
+            table.entityType,
+            table.entityId,
+            table.timestamp
+        ),
+        index("idx_statusHistory_org_timestamp").on(
+            table.orgId,
+            table.timestamp
+        )
+    ]
+);
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
@@ -1179,3 +1231,4 @@ export type RoundTripMessageTracker = InferSelectModel<
 >;
 export type Network = InferSelectModel<typeof networks>;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
+export type Label = InferSelectModel<typeof labels>;
