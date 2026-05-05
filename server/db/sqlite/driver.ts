@@ -48,16 +48,17 @@ function autoFinalizeStatement(
 function createDb() {
     const sqlite = new Database(location);
 
-    // Enable WAL mode — allows concurrent readers + single writer, preventing
-    // contention across subsystems (verifySession, Traefik, audit, ping).
-    sqlite.pragma("journal_mode = WAL");
+    if (process.env.ENABLE_SQLITE_WAL_MODE == "true") {
+        // Enable WAL mode — allows concurrent readers + single writer, preventing
+        // contention across subsystems (verifySession, Traefik, audit, ping).
+        sqlite.pragma("journal_mode = WAL");
+        // NORMAL sync mode: safe with WAL, reduces write lock hold time.
+        sqlite.pragma("synchronous = NORMAL");
+    }
 
     // Wait up to 5s on SQLITE_BUSY instead of failing — prevents audit log
     // retry loops that accumulate memory.
     sqlite.pragma("busy_timeout = 5000");
-
-    // NORMAL sync mode: safe with WAL, reduces write lock hold time.
-    sqlite.pragma("synchronous = NORMAL");
 
     // 64 MB page cache (default 2 MB) — reduces I/O round-trips on large
     // TraefikConfigManager JOINs that block the event loop.
