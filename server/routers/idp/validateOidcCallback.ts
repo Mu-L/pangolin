@@ -483,7 +483,14 @@ export async function validateOidcCallback(
                             }
                         }
 
-                        await calculateUserClientsForOrgs(existingUser.userId);
+                        calculateUserClientsForOrgs(existingUser.userId).catch(
+                            (err) => {
+                                logger.error(
+                                    "Error calculating user clients after removing all orgs for user with no valid IdP mappings",
+                                    { error: err }
+                                );
+                            }
+                        );
 
                         return next(
                             createHttpError(
