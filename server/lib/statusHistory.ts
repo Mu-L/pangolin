@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db, logsDb, statusHistory } from "@server/db";
 import { and, eq, gte, asc } from "drizzle-orm";
-import cache from "@server/lib/cache";
+import { regionalCache as cache } from "@server/private/lib/cache";
 
 const STATUS_HISTORY_CACHE_TTL = 60; // seconds
 
@@ -66,7 +66,7 @@ export async function invalidateStatusHistoryCache(
     entityId: number
 ): Promise<void> {
     const prefix = `statusHistory:${entityType}:${entityId}:`;
-    const keys = cache.keys().filter((k) => k.startsWith(prefix));
+    const keys = await cache.keysWithPrefix(prefix);
     if (keys.length > 0) {
         await cache.del(keys);
     }
