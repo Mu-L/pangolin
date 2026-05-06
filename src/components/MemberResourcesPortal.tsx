@@ -40,6 +40,7 @@ import {
     TooltipProvider,
     TooltipTrigger
 } from "@/components/ui/tooltip";
+import CopyToClipboard from "@app/components/CopyToClipboard";
 
 // Update Resource type to include site information
 type Resource = {
@@ -64,6 +65,8 @@ type SiteResource = {
     destination: string;
     mode: string;
     protocol: string | null;
+    ssl: boolean;
+    fullDomain: string | null;
     enabled: boolean;
     alias: string | null;
     aliasAddress: string | null;
@@ -947,7 +950,14 @@ export default function MemberResourcesPortal({
                                             </div>
 
                                             <div className="mt-3">
-                                                {siteResource.alias ? (
+                                                {siteResource.mode === "http" &&
+                                                siteResource.fullDomain ? (
+                                                    /* HTTP mode - show as clickable link */
+                                                    <CopyToClipboard
+                                                        text={`${siteResource.ssl ? "https" : (siteResource.protocol ?? "http")}://${siteResource.fullDomain}`}
+                                                        isLink={true}
+                                                    />
+                                                ) : siteResource.alias ? (
                                                     <>
                                                         {/* Alias as primary */}
                                                         <div className="flex items-center gap-2 mb-1">
@@ -1021,7 +1031,29 @@ export default function MemberResourcesPortal({
                                             </div>
                                         </div>
 
-                                        <div className="p-6 pt-0 mt-auto">
+                                        <div className="p-6 pt-0 mt-auto space-y-2">
+                                            {siteResource.mode === "http" &&
+                                            siteResource.fullDomain ? (
+                                                <Button
+                                                    onClick={() =>
+                                                        window.open(
+                                                            `${siteResource.ssl ? "https" : (siteResource.protocol ?? "http")}://${siteResource.fullDomain}`,
+                                                            "_blank"
+                                                        )
+                                                    }
+                                                    className="w-full h-9"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !siteResource.enabled
+                                                    }
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                                                    {t(
+                                                        "memberPortalOpenResource"
+                                                    )}
+                                                </Button>
+                                            ) : null}
                                             <div className="flex items-center justify-center py-2 px-4 bg-muted/50 rounded text-sm text-muted-foreground">
                                                 <Combine className="h-3.5 w-3.5 mr-2" />
                                                 {t(

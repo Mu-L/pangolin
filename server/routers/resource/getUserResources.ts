@@ -151,6 +151,8 @@ export async function getUserResources(
             destination: string;
             mode: string;
             scheme: string | null;
+            ssl: boolean;
+            fullDomain: string | null;
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
@@ -164,6 +166,8 @@ export async function getUserResources(
                     destination: siteResources.destination,
                     mode: siteResources.mode,
                     scheme: siteResources.scheme,
+                    ssl: siteResources.ssl,
+                    fullDomain: siteResources.fullDomain,
                     enabled: siteResources.enabled,
                     alias: siteResources.alias,
                     aliasAddress: siteResources.aliasAddress
@@ -251,6 +255,8 @@ export async function getUserResources(
                 destination: siteResource.destination,
                 mode: siteResource.mode,
                 protocol: siteResource.scheme,
+                ssl: siteResource.ssl,
+                fullDomain: siteResource.fullDomain,
                 enabled: siteResource.enabled,
                 alias: siteResource.alias,
                 aliasAddress: siteResource.aliasAddress,
@@ -296,6 +302,8 @@ export type GetUserResourcesResponse = {
             destination: string;
             mode: string;
             protocol: string | null;
+            ssl: boolean;
+            fullDomain: string | null;
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
