@@ -151,7 +151,7 @@ export function EditPolicyRulesSectionForm({
         resolver: zodResolver(addRuleSchema),
         defaultValues: {
             action: "ACCEPT" as const,
-            match: "IP",
+            match: "PATH",
             value: ""
         }
     });
