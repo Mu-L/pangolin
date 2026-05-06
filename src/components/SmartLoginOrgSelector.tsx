@@ -147,7 +147,7 @@ export default function SmartLoginOrgSelector({
             const response = await generateOidcUrlProxy(
                 idpId,
                 safeRedirect,
-                orgId,
+                undefined,
                 forceLogin
             );
 

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 import { TagInputStyleClassesProps, type Tag as TagType } from "./tag-input";
 import {
     Command,
@@ -220,7 +226,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             >
                 <PopoverAnchor asChild>
                     <div
-                        className="relative h-full flex items-center rounded-md border border-input bg-transparent pr-3"
+                        className="relative h-full flex items-center rounded-md border border-input bg-transparent pr-1"
                         ref={triggerContainerRef}
                     >
                         {childrenWithProps}
@@ -260,10 +266,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                     side="bottom"
                     align="start"
                     forceMount
-                    className={cn(
-                        "p-0",
-                        classStyleProps?.popoverContent
-                    )}
+                    className={cn("p-0", classStyleProps?.popoverContent)}
                     style={{
                         width: `${popoverWidth}px`,
                         minWidth: `${popoverWidth}px`,
@@ -300,7 +303,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                                             key={option.id}
                                             value={`${option.text} ${option.id}`}
                                             onSelect={() => toggleTag(option)}
-                                            className={classStyleProps?.commandItem}
+                                            className={
+                                                classStyleProps?.commandItem
+                                            }
                                         >
                                             <Check
                                                 className={cn(
