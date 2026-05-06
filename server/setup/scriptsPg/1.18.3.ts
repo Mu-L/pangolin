@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 
 const version = "1.18.3";
 
+await migration();
+
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
 
@@ -77,7 +79,7 @@ export default async function migration() {
             }
 
             console.log(
-                `Migrated ${existingHealthChecks.length} targetHealthCheck row(s) with corrected IDs`
+                `Updated names for ${existingHealthChecks.length} existing targetHealthCheck row(s)`
             );
         } catch (e) {
             console.error("Error while migrating targetHealthCheck rows:", e);

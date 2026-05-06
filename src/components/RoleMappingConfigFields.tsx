@@ -16,6 +16,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
+import { RolesSelector } from "./roles-selector";
 
 export type RoleMappingRoleOption = {
     roleId: number;
@@ -38,6 +39,8 @@ export type RoleMappingConfigFieldsProps = {
     fieldIdPrefix?: string;
     /** When true, show extra hint for global default policies (no org role list). */
     showFreeformRoleNamesHint?: boolean;
+    /** Org ID to use for role lookup. Falls back to URL params when not provided. */
+    orgId?: string;
 };
 
 export default function RoleMappingConfigFields({
@@ -53,14 +56,12 @@ export default function RoleMappingConfigFields({
     rawExpression,
     onRawExpressionChange,
     fieldIdPrefix = "role-mapping",
-    showFreeformRoleNamesHint = false
+    showFreeformRoleNamesHint = false,
+    orgId
 }: RoleMappingConfigFieldsProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
-    const [activeFixedRoleTagIndex, setActiveFixedRoleTagIndex] = useState<
-        number | null
-    >(null);
 
     const supportsMultipleRolesPerUser = isPaidUser(tierMatrix.fullRbac);
     const showSingleRoleDisclaimer =
@@ -93,6 +94,10 @@ export default function RoleMappingConfigFields({
             onFixedRoleNamesChange([fixedRoleNames[0]]);
         }
     }, [supportsMultipleRolesPerUser, fixedRoleNames, onFixedRoleNamesChange]);
+
+    const [fixedRolesActiveTagIndex, setFixedRolesActiveTagIndex] = useState<
+        number | null
+    >(null);
 
     const fixedRadioId = `${fieldIdPrefix}-fixed-roles-mode`;
     const builderRadioId = `${fieldIdPrefix}-mapping-builder-mode`;
@@ -160,58 +165,94 @@ export default function RoleMappingConfigFields({
 
             {roleMappingMode === "fixedRoles" && (
                 <div className="space-y-2 min-w-0 max-w-full">
-                    <TagInput
-                        tags={fixedRoleNames.map((name) => ({
-                            id: name,
-                            text: name
-                        }))}
-                        setTags={(nextTags) => {
-                            const prevTags = fixedRoleNames.map((name) => ({
+                    {restrictToOrgRoles ? (
+                        <RolesSelector
+                            selectedRoles={fixedRoleNames.map((name) => ({
                                 id: name,
                                 text: name
-                            }));
-                            const next =
-                                typeof nextTags === "function"
-                                    ? nextTags(prevTags)
-                                    : nextTags;
+                            }))}
+                            mapRolesByName
+                            orgId={orgId as string}
+                            onSelectRoles={(nextTags) => {
+                                let names = [
+                                    ...new Set(nextTags.map((tag) => tag.text))
+                                ];
 
-                            let names = [
-                                ...new Set(next.map((tag) => tag.text))
-                            ];
-
-                            if (!supportsMultipleRolesPerUser) {
-                                if (
-                                    names.length === 0 &&
-                                    fixedRoleNames.length > 0
-                                ) {
-                                    onFixedRoleNamesChange([
-                                        fixedRoleNames[
-                                            fixedRoleNames.length - 1
-                                        ]!
-                                    ]);
-                                    return;
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        fixedRoleNames.length > 0
+                                    ) {
+                                        onFixedRoleNamesChange([
+                                            fixedRoleNames[
+                                                fixedRoleNames.length - 1
+                                            ]!
+                                        ]);
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
                                 }
-                                if (names.length > 1) {
-                                    names = [names[names.length - 1]!];
-                                }
-                            }
 
-                            onFixedRoleNamesChange(names);
-                        }}
-                        activeTagIndex={activeFixedRoleTagIndex}
-                        setActiveTagIndex={setActiveFixedRoleTagIndex}
-                        placeholder={
-                            restrictToOrgRoles
-                                ? t("roleMappingFixedRolesPlaceholderSelect")
-                                : t("roleMappingFixedRolesPlaceholderFreeform")
-                        }
-                        enableAutocomplete={restrictToOrgRoles}
-                        autocompleteOptions={roleOptions}
-                        restrictTagsToAutocompleteOptions={restrictToOrgRoles}
-                        allowDuplicates={false}
-                        sortTags={true}
-                        size="sm"
-                    />
+                                onFixedRoleNamesChange(names);
+                            }}
+                        />
+                    ) : (
+                        <TagInput
+                            tags={fixedRoleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }))}
+                            setTags={(nextTags) => {
+                                const prev = fixedRoleNames.map((name) => ({
+                                    id: name,
+                                    text: name
+                                }));
+                                const next =
+                                    typeof nextTags === "function"
+                                        ? nextTags(prev)
+                                        : nextTags;
+
+                                let names = [
+                                    ...new Set(next.map((tag) => tag.text))
+                                ];
+
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        fixedRoleNames.length > 0
+                                    ) {
+                                        onFixedRoleNamesChange([
+                                            fixedRoleNames[
+                                                fixedRoleNames.length - 1
+                                            ]!
+                                        ]);
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
+                                }
+
+                                onFixedRoleNamesChange(names);
+                            }}
+                            activeTagIndex={fixedRolesActiveTagIndex}
+                            setActiveTagIndex={setFixedRolesActiveTagIndex}
+                            placeholder={t(
+                                "roleMappingAssignRolesPlaceholderFreeform"
+                            )}
+                            enableAutocomplete={false}
+                            autocompleteOptions={roleOptions}
+                            restrictTagsToAutocompleteOptions={false}
+                            allowDuplicates={false}
+                            sortTags={true}
+                            size="sm"
+                            styleClasses={{
+                                inlineTagsContainer: "min-w-0 max-w-full"
+                            }}
+                        />
+                    )}
                     <FormDescription>
                         {showFreeformRoleNamesHint
                             ? t("roleMappingFixedRolesDescriptionDefaultPolicy")
@@ -261,6 +302,7 @@ export default function RoleMappingConfigFields({
                                 showFreeformRoleNamesHint={
                                     showFreeformRoleNamesHint
                                 }
+                                orgId={orgId}
                                 supportsMultipleRolesPerUser={
                                     supportsMultipleRolesPerUser
                                 }
@@ -337,7 +379,8 @@ function BuilderRuleRow({
     supportsMultipleRolesPerUser,
     showRemoveButton,
     onChange,
-    onRemove
+    onRemove,
+    orgId
 }: {
     rule: MappingBuilderRule;
     roleOptions: Tag[];
@@ -349,6 +392,7 @@ function BuilderRuleRow({
     showRemoveButton: boolean;
     onChange: (rule: MappingBuilderRule) => void;
     onRemove: () => void;
+    orgId?: string;
 }) {
     const t = useTranslations();
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
@@ -378,67 +422,109 @@ function BuilderRuleRow({
                     {t("roleMappingAssignRoles")}
                 </FormLabel>
                 <div className="min-w-0 max-w-full">
-                    <TagInput
-                        tags={rule.roleNames.map((name) => ({
-                            id: name,
-                            text: name
-                        }))}
-                        setTags={(nextTags) => {
-                            const prevRoleTags = rule.roleNames.map((name) => ({
+                    {restrictToOrgRoles ? (
+                        <RolesSelector
+                            selectedRoles={rule.roleNames.map((name) => ({
                                 id: name,
                                 text: name
-                            }));
-                            const next =
-                                typeof nextTags === "function"
-                                    ? nextTags(prevRoleTags)
-                                    : nextTags;
+                            }))}
+                            buttonText={t("roleMappingAssignRoles")}
+                            mapRolesByName
+                            orgId={orgId as string}
+                            onSelectRoles={(nextTags) => {
+                                let names = [
+                                    ...new Set(nextTags.map((tag) => tag.text))
+                                ];
 
-                            let names = [
-                                ...new Set(next.map((tag) => tag.text))
-                            ];
-
-                            if (!supportsMultipleRolesPerUser) {
-                                if (
-                                    names.length === 0 &&
-                                    rule.roleNames.length > 0
-                                ) {
-                                    onChange({
-                                        ...rule,
-                                        roleNames: [
-                                            rule.roleNames[
-                                                rule.roleNames.length - 1
-                                            ]!
-                                        ]
-                                    });
-                                    return;
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        rule.roleNames.length > 0
+                                    ) {
+                                        onChange({
+                                            ...rule,
+                                            roleNames: [
+                                                rule.roleNames[
+                                                    rule.roleNames.length - 1
+                                                ]!
+                                            ]
+                                        });
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
                                 }
-                                if (names.length > 1) {
-                                    names = [names[names.length - 1]!];
-                                }
-                            }
 
-                            onChange({
-                                ...rule,
-                                roleNames: names
-                            });
-                        }}
-                        activeTagIndex={activeTagIndex}
-                        setActiveTagIndex={setActiveTagIndex}
-                        placeholder={
-                            restrictToOrgRoles
-                                ? t("roleMappingAssignRoles")
-                                : t("roleMappingAssignRolesPlaceholderFreeform")
-                        }
-                        enableAutocomplete={restrictToOrgRoles}
-                        autocompleteOptions={roleOptions}
-                        restrictTagsToAutocompleteOptions={restrictToOrgRoles}
-                        allowDuplicates={false}
-                        sortTags={true}
-                        size="sm"
-                        styleClasses={{
-                            inlineTagsContainer: "min-w-0 max-w-full"
-                        }}
-                    />
+                                onChange({
+                                    ...rule,
+                                    roleNames: names
+                                });
+                            }}
+                        />
+                    ) : (
+                        <TagInput
+                            tags={rule.roleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }))}
+                            setTags={(nextTags) => {
+                                const prevRoleTags = rule.roleNames.map(
+                                    (name) => ({
+                                        id: name,
+                                        text: name
+                                    })
+                                );
+                                const next =
+                                    typeof nextTags === "function"
+                                        ? nextTags(prevRoleTags)
+                                        : nextTags;
+
+                                let names = [
+                                    ...new Set(next.map((tag) => tag.text))
+                                ];
+
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        rule.roleNames.length > 0
+                                    ) {
+                                        onChange({
+                                            ...rule,
+                                            roleNames: [
+                                                rule.roleNames[
+                                                    rule.roleNames.length - 1
+                                                ]!
+                                            ]
+                                        });
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
+                                }
+
+                                onChange({
+                                    ...rule,
+                                    roleNames: names
+                                });
+                            }}
+                            activeTagIndex={activeTagIndex}
+                            setActiveTagIndex={setActiveTagIndex}
+                            placeholder={t(
+                                "roleMappingAssignRolesPlaceholderFreeform"
+                            )}
+                            enableAutocomplete={false}
+                            autocompleteOptions={roleOptions}
+                            restrictTagsToAutocompleteOptions={false}
+                            allowDuplicates={false}
+                            sortTags={true}
+                            size="sm"
+                            styleClasses={{
+                                inlineTagsContainer: "min-w-0 max-w-full"
+                            }}
+                        />
+                    )}
                 </div>
                 {showFreeformRoleNamesHint && (
                     <p className="text-sm text-muted-foreground">

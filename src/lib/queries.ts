@@ -125,24 +125,56 @@ export const orgQueries = {
                 return res.data.data.clients;
             }
         }),
-    users: ({ orgId }: { orgId: string }) =>
+    users: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "USERS"] as const,
+            queryKey: ["ORG", orgId, "USERS", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
                 const res = await meta!.api.get<
                     AxiosResponse<ListUsersResponse>
-                >(`/org/${orgId}/users`, { signal });
+                >(`/org/${orgId}/users?${sp.toString()}`, { signal });
 
                 return res.data.data.users;
             }
         }),
-    roles: ({ orgId }: { orgId: string }) =>
+    roles: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
         queryOptions({
-            queryKey: ["ORG", orgId, "ROLES"] as const,
+            queryKey: ["ORG", orgId, "ROLES", { query, perPage }] as const,
             queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
                 const res = await meta!.api.get<
                     AxiosResponse<ListRolesResponse>
-                >(`/org/${orgId}/roles`, { signal });
+                >(`/org/${orgId}/roles?${sp.toString()}`, { signal });
 
                 return res.data.data.roles;
             }

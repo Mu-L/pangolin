@@ -29,7 +29,10 @@ import { decrypt } from "@server/lib/crypto";
 import logger from "@server/logger";
 import { sendAlertWebhook } from "./sendAlertWebhook";
 import { sendAlertEmail } from "./sendAlertEmail";
-import { AlertContext, WebhookAlertConfig } from "@server/routers/alertRule/types";
+import {
+    AlertContext,
+    WebhookAlertConfig
+} from "@server/routers/alertRule/types";
 
 /**
  * Core alert processing pipeline.
@@ -99,7 +102,10 @@ export async function processAlerts(context: AlertContext): Promise<void> {
                     baseConditions,
                     or(
                         eq(alertRules.allHealthChecks, true),
-                        eq(alertHealthChecks.healthCheckId, context.healthCheckId)
+                        eq(
+                            alertHealthChecks.healthCheckId,
+                            context.healthCheckId
+                        )
                     )
                 )
             );
@@ -208,14 +214,19 @@ async function processRule(
 
     for (const action of emailActions) {
         try {
-            const recipients = await resolveEmailRecipients(action.emailActionId);
+            const recipients = await resolveEmailRecipients(
+                action.emailActionId
+            );
             if (recipients.length > 0) {
                 await sendAlertEmail(recipients, context);
                 await db
                     .update(alertEmailActions)
                     .set({ lastSentAt: now })
                     .where(
-                        eq(alertEmailActions.emailActionId, action.emailActionId)
+                        eq(
+                            alertEmailActions.emailActionId,
+                            action.emailActionId
+                        )
                     );
             }
         } catch (err) {
@@ -269,7 +280,7 @@ async function processRule(
                     )
                 );
         } catch (err) {
-            logger.error(
+            logger.warn(
                 `processAlerts: failed to send alert webhook for action ${action.webhookActionId}`,
                 err
             );
@@ -289,7 +300,9 @@ async function processRule(
  * - All users in a role (by `roleId`, resolved via `userOrgRoles`)
  * - Direct external email addresses
  */
-async function resolveEmailRecipients(emailActionId: number): Promise<string[]> {
+async function resolveEmailRecipients(
+    emailActionId: number
+): Promise<string[]> {
     const rows = await db
         .select()
         .from(alertEmailRecipients)

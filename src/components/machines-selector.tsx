@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { useTranslations } from "next-intl";
-import { MultiSelectTags } from "./multi-select-tags";
+import { MultiSelectTagInput } from "./multi-select/multi-select-tag-input";
 
 export type SelectedMachine = Pick<
     ListClientsResponse["clients"][number],
@@ -28,11 +28,13 @@ export function MachinesSelector({
 
     const [debouncedValue] = useDebounce(machineSearchQuery, 150);
 
+    const perPage = 7;
+
     const { data: machines = [] } = useQuery(
-        orgQueries.machineClients({ orgId, perPage: 10, query: debouncedValue })
+        orgQueries.machineClients({ orgId, perPage, query: debouncedValue })
     );
 
-    // always include the selected machines in the list of machines shown (if the user isn't searching)
+    // always include the selected machines in the list (if the user isn't searching)
     const machinesShown = useMemo(() => {
         const allMachines: Array<SelectedMachine> = [...machines];
         if (debouncedValue.trim().length === 0) {
@@ -44,75 +46,32 @@ export function MachinesSelector({
                 }
             }
         }
-
         return allMachines;
     }, [machines, selectedMachines, debouncedValue]);
 
-    // const selectedMachinesIds = new Set(
-    //     selectedMachines.map((m) => m.clientId)
-    // );
-
     return (
-        <MultiSelectTags
+        <MultiSelectTagInput
+            buttonText={t("accessClientSelect")}
+            searchPlaceholder={t("search")}
             emptyPlaceholder={t("machineNotFound")}
-            searchPlaceholder={t("machineSearch")}
-            value={selectedMachines.map((m) => ({
-                ...m,
-                text: m.name,
-                id: m.clientId.toString()
-            }))}
-            onChange={(values) => {
-                onSelectMachines(values);
-            }}
-            options={machinesShown.map((m) => ({
-                ...m,
-                id: m.clientId.toString(),
-                text: m.name
-            }))}
-            onSearch={setMachineSearchQuery}
             searchQuery={machineSearchQuery}
+            onSearch={setMachineSearchQuery}
+            options={machinesShown.map((mc) => ({
+                id: mc.clientId.toString(),
+                text: mc.name
+            }))}
+            value={selectedMachines.map((mc) => ({
+                id: mc.clientId.toString(),
+                text: mc.name
+            }))}
+            onChange={(newValues) => {
+                onSelectMachines(
+                    newValues.map((v) => ({
+                        clientId: Number(v.id),
+                        name: v.text
+                    }))
+                );
+            }}
         />
-        // <Command shouldFilter={false}>
-        //     <CommandInput
-        //         placeholder={t("machineSearch")}
-        //         value={machineSearchQuery}
-        //         onValueChange={setMachineSearchQuery}
-        //     />
-        //     <CommandList>
-        //         <CommandEmpty>{t("machineNotFound")}</CommandEmpty>
-        //         <CommandGroup>
-        //             {machinesShown.map((m) => (
-        //                 <CommandItem
-        //                     value={`${m.name}:${m.clientId}`}
-        //                     key={m.clientId}
-        //                     onSelect={() => {
-        //                         let newMachineClients = [];
-        //                         if (selectedMachinesIds.has(m.clientId)) {
-        //                             newMachineClients = selectedMachines.filter(
-        //                                 (mc) => mc.clientId !== m.clientId
-        //                             );
-        //                         } else {
-        //                             newMachineClients = [
-        //                                 ...selectedMachines,
-        //                                 m
-        //                             ];
-        //                         }
-        //                         onSelectMachines(newMachineClients);
-        //                     }}
-        //                 >
-        //                     <CheckIcon
-        //                         className={cn(
-        //                             "mr-2 h-4 w-4",
-        //                             selectedMachinesIds.has(m.clientId)
-        //                                 ? "opacity-100"
-        //                                 : "opacity-0"
-        //                         )}
-        //                     />
-        //                     {`${m.name}`}
-        //                 </CommandItem>
-        //             ))}
-        //         </CommandGroup>
-        //     </CommandList>
-        // </Command>
     );
 }

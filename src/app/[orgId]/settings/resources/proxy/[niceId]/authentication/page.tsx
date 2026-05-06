@@ -1,5 +1,6 @@
 "use client";
 
+import { RolesSelector } from "@app/components/roles-selector";
 import SetResourceHeaderAuthForm from "@app/components/SetResourceHeaderAuthForm";
 import SetResourcePincodeForm from "@app/components/SetResourcePincodeForm";
 import {
@@ -33,6 +34,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
+import { UsersSelector } from "@app/components/users-selector";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useOrgContext } from "@app/hooks/useOrgContext";
@@ -179,13 +181,6 @@ export default function ResourceAuthenticationPage() {
         }
         return [];
     }, [orgIdps]);
-
-    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
-        number | null
-    >(null);
 
     const [ssoEnabled, setSsoEnabled] = useState(resource.sso ?? false);
 
@@ -497,46 +492,27 @@ export default function ResourceAuthenticationPage() {
                                                             {t("roles")}
                                                         </FormLabel>
                                                         <FormControl>
-                                                            <TagInput
-                                                                {...field}
-                                                                activeTagIndex={
-                                                                    activeRolesTagIndex
+                                                            <RolesSelector
+                                                                selectedRoles={
+                                                                    field.value ??
+                                                                    []
                                                                 }
-                                                                setActiveTagIndex={
-                                                                    setActiveRolesTagIndex
+                                                                restrictAdminRole
+                                                                orgId={
+                                                                    org.org
+                                                                        .orgId
                                                                 }
-                                                                placeholder={t(
-                                                                    "accessRoleSelect2"
-                                                                )}
-                                                                size="sm"
-                                                                tags={
-                                                                    usersRolesForm.getValues()
-                                                                        .roles
-                                                                }
-                                                                setTags={(
-                                                                    newRoles
+                                                                onSelectRoles={(
+                                                                    newUsers
                                                                 ) => {
                                                                     usersRolesForm.setValue(
                                                                         "roles",
-                                                                        newRoles as [
+                                                                        newUsers as [
                                                                             Tag,
                                                                             ...Tag[]
                                                                         ]
                                                                     );
                                                                 }}
-                                                                enableAutocomplete={
-                                                                    true
-                                                                }
-                                                                autocompleteOptions={
-                                                                    allRoles
-                                                                }
-                                                                allowDuplicates={
-                                                                    false
-                                                                }
-                                                                restrictTagsToAutocompleteOptions={
-                                                                    true
-                                                                }
-                                                                sortTags={true}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -557,23 +533,16 @@ export default function ResourceAuthenticationPage() {
                                                             {t("users")}
                                                         </FormLabel>
                                                         <FormControl>
-                                                            <TagInput
-                                                                {...field}
-                                                                activeTagIndex={
-                                                                    activeUsersTagIndex
+                                                            <UsersSelector
+                                                                selectedUsers={
+                                                                    field.value ??
+                                                                    []
                                                                 }
-                                                                setActiveTagIndex={
-                                                                    setActiveUsersTagIndex
+                                                                orgId={
+                                                                    org.org
+                                                                        .orgId
                                                                 }
-                                                                placeholder={t(
-                                                                    "accessUserSelect"
-                                                                )}
-                                                                tags={
-                                                                    usersRolesForm.getValues()
-                                                                        .users
-                                                                }
-                                                                size="sm"
-                                                                setTags={(
+                                                                onSelectUsers={(
                                                                     newUsers
                                                                 ) => {
                                                                     usersRolesForm.setValue(
@@ -584,19 +553,6 @@ export default function ResourceAuthenticationPage() {
                                                                         ]
                                                                     );
                                                                 }}
-                                                                enableAutocomplete={
-                                                                    true
-                                                                }
-                                                                autocompleteOptions={
-                                                                    allUsers
-                                                                }
-                                                                allowDuplicates={
-                                                                    false
-                                                                }
-                                                                restrictTagsToAutocompleteOptions={
-                                                                    true
-                                                                }
-                                                                sortTags={true}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
