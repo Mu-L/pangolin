@@ -372,9 +372,10 @@ export async function getNextAvailableClientSubnet(
 }
 
 export async function getNextAvailableAliasAddress(
-    orgId: string
+    orgId: string,
+    trx: Transaction | typeof db = db
 ): Promise<string> {
-    const [org] = await db.select().from(orgs).where(eq(orgs.orgId, orgId));
+    const [org] = await trx.select().from(orgs).where(eq(orgs.orgId, orgId));
 
     if (!org) {
         throw new Error(`Organization with ID ${orgId} not found`);
@@ -390,7 +391,7 @@ export async function getNextAvailableAliasAddress(
         );
     }
 
-    const existingAddresses = await db
+    const existingAddresses = await trx
         .select({
             aliasAddress: siteResources.aliasAddress
         })
@@ -478,7 +479,12 @@ export type Alias = { alias: string | null; aliasAddress: string | null };
 
 export function generateAliasConfig(allSiteResources: SiteResource[]): Alias[] {
     return allSiteResources
-        .filter((sr) => sr.aliasAddress && ((sr.alias && sr.mode == "host") || (sr.fullDomain && sr.mode == "http")))
+        .filter(
+            (sr) =>
+                sr.aliasAddress &&
+                ((sr.alias && sr.mode == "host") ||
+                    (sr.fullDomain && sr.mode == "http"))
+        )
         .map((sr) => ({
             alias: sr.alias || sr.fullDomain,
             aliasAddress: sr.aliasAddress
