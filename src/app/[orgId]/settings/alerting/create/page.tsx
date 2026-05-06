@@ -18,14 +18,15 @@ export default function NewAlertRulePage() {
     const isPaid = isPaidUser(tierMatrix.alertingRules);
     const { env } = useEnvContext();
     const router = useRouter();
+    const disableEnterpriseFeatures = env.flags.disableEnterpriseFeatures;
 
     useEffect(() => {
-        if (env.flags.disableEnterpriseFeatures) {
+        if (disableEnterpriseFeatures) {
             router.replace(`/${orgId}/settings/alerting/rules`);
         }
-    }, [env.flags.disableEnterpriseFeatures, orgId, router]);
+    }, [disableEnterpriseFeatures, orgId, router]);
 
-    if (env.flags.disableEnterpriseFeatures) {
+    if (disableEnterpriseFeatures) {
         return null;
     }
 
