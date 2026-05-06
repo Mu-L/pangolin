@@ -17,7 +17,6 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
 import { RolesSelector } from "./roles-selector";
-import { useParams } from "next/navigation";
 
 export type RoleMappingRoleOption = {
     roleId: number;
@@ -40,6 +39,8 @@ export type RoleMappingConfigFieldsProps = {
     fieldIdPrefix?: string;
     /** When true, show extra hint for global default policies (no org role list). */
     showFreeformRoleNamesHint?: boolean;
+    /** Org ID to use for role lookup. Falls back to URL params when not provided. */
+    orgId?: string;
 };
 
 export default function RoleMappingConfigFields({
@@ -55,13 +56,12 @@ export default function RoleMappingConfigFields({
     rawExpression,
     onRawExpressionChange,
     fieldIdPrefix = "role-mapping",
-    showFreeformRoleNamesHint = false
+    showFreeformRoleNamesHint = false,
+    orgId
 }: RoleMappingConfigFieldsProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
-
-    const { orgId } = useParams();
 
     const supportsMultipleRolesPerUser = isPaidUser(tierMatrix.fullRbac);
     const showSingleRoleDisclaimer =
@@ -242,6 +242,7 @@ export default function RoleMappingConfigFields({
                                 showFreeformRoleNamesHint={
                                     showFreeformRoleNamesHint
                                 }
+                                orgId={orgId}
                                 supportsMultipleRolesPerUser={
                                     supportsMultipleRolesPerUser
                                 }
@@ -318,7 +319,8 @@ function BuilderRuleRow({
     supportsMultipleRolesPerUser,
     showRemoveButton,
     onChange,
-    onRemove
+    onRemove,
+    orgId
 }: {
     rule: MappingBuilderRule;
     roleOptions: Tag[];
@@ -330,10 +332,10 @@ function BuilderRuleRow({
     showRemoveButton: boolean;
     onChange: (rule: MappingBuilderRule) => void;
     onRemove: () => void;
+    orgId?: string;
 }) {
     const t = useTranslations();
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
-    const { orgId } = useParams();
 
     return (
         <div

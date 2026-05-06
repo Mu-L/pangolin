@@ -681,6 +681,9 @@ export default function PoliciesPage() {
                                         control: form.control,
                                         name: "orgMapping"
                                     }}
+                                    orgId={
+                                        editingPolicy?.orgId || policyFormOrgId
+                                    }
                                     roleMappingFieldIdPrefix="admin-idp-policy-role"
                                     roleMappingMode={policyRoleMappingMode}
                                     onRoleMappingModeChange={

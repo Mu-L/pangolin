@@ -500,6 +500,7 @@ export default function GeneralPage() {
                                     onAutoProvisionChange={(checked) => {
                                         form.setValue("autoProvision", checked);
                                     }}
+                                    orgId={orgId as string}
                                     roleMappingMode={roleMappingMode}
                                     onRoleMappingModeChange={(data) => {
                                         setRoleMappingMode(data);
