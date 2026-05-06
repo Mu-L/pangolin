@@ -134,7 +134,9 @@ export default function AlertingRulesTable({
 }: AlertingRulesTableProps) {
     const router = useRouter();
     const t = useTranslations();
-    const api = createApiClient(useEnvContext());
+    const envContext = useEnvContext();
+    const api = createApiClient(envContext);
+    const { env } = envContext;
     const [isRefreshing, startRefresh] = useTransition();
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
@@ -426,9 +428,15 @@ export default function AlertingRulesTable({
                 searchQuery={query}
                 manualFiltering
                 manualSorting
-                onAdd={() => {
-                    router.push(`/${orgId}/settings/alerting/create`);
-                }}
+                onAdd={
+                    !env.flags.disableEnterpriseFeatures
+                        ? () => {
+                              router.push(
+                                  `/${orgId}/settings/alerting/create`
+                              );
+                          }
+                        : undefined
+                }
                 onRefresh={refreshList}
                 isRefreshing={isRefreshing || isFiltering}
                 addButtonText={t("alertingAddRule")}
