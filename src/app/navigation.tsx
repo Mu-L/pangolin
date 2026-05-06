@@ -212,11 +212,15 @@ export const orgNavSections = (
                 title: "sidebarManagement",
                 icon: <Building2 className="size-4 flex-none" />,
                 items: [
-                    {
-                        title: "sidebarAlerting",
-                        href: "/{orgId}/settings/alerting",
-                        icon: <BellRing className="size-4 flex-none" />
-                    },
+                    ...(!env?.flags.disableEnterpriseFeatures
+                        ? [
+                              {
+                                  title: "sidebarAlerting",
+                                  href: "/{orgId}/settings/alerting",
+                                  icon: <BellRing className="size-4 flex-none" />
+                              }
+                          ]
+                        : []),
                     {
                         title: "sidebarProvisioning",
                         href: "/{orgId}/settings/provisioning",
