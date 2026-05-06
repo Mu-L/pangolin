@@ -24,8 +24,11 @@ export async function getCachedStatusHistory(
         return cached;
     }
 
-    const nowSec = Math.floor(Date.now() / 1000);
-    const startSec = nowSec - days * 86400;
+    // Anchor to UTC midnight so the query window aligns with stable calendar days
+    const utcToday = new Date();
+    utcToday.setUTCHours(0, 0, 0, 0);
+    const todayMidnightSec = Math.floor(utcToday.getTime() / 1000);
+    const startSec = todayMidnightSec - days * 86400;
 
     const events = await logsDb
         .select()
@@ -110,11 +113,18 @@ export function computeBuckets(
     days: number
 ): { buckets: StatusHistoryDayBucket[]; totalDowntime: number } {
     const nowSec = Math.floor(Date.now() / 1000);
+
+    // Anchor bucket boundaries to UTC midnight so dates are stable calendar days
+    // and don't drift as the cache expires and is recomputed
+    const utcToday = new Date();
+    utcToday.setUTCHours(0, 0, 0, 0);
+    const todayMidnightSec = Math.floor(utcToday.getTime() / 1000);
+
     const buckets: StatusHistoryDayBucket[] = [];
     let totalDowntime = 0;
 
     for (let d = 0; d < days; d++) {
-        const dayStartSec = nowSec - (days - d) * 86400;
+        const dayStartSec = todayMidnightSec - (days - d) * 86400;
         const dayEndSec = dayStartSec + 86400;
 
         const dayEvents = events.filter(
