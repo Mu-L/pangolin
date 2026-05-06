@@ -19,13 +19,15 @@ export type UsersSelectorProps = {
     selectedUsers?: SelectedUser[];
     onSelectUsers: (users: SelectedUser[]) => void;
     disabled?: boolean;
+    lockedIds?: Set<string>;
 };
 
 export function UsersSelector({
     orgId,
     selectedUsers = [],
     onSelectUsers,
-    disabled
+    disabled,
+    lockedIds
 }: UsersSelectorProps) {
     const t = useTranslations();
     const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -61,6 +63,7 @@ export function UsersSelector({
             value={selectedUsers}
             onChange={onSelectUsers}
             disabled={disabled}
+            lockedIds={lockedIds}
         />
     );
 }

@@ -27,11 +27,13 @@ import { EditPolicyRulesSectionForm } from "./EditPolicyRulesSectionForm";
 export type EditPolicyFormProps = {
     hidePolicyNameForm?: boolean;
     readonly?: boolean;
+    resourceId?: number;
 };
 
 export function EditPolicyForm({
     hidePolicyNameForm,
-    readonly
+    readonly,
+    resourceId
 }: EditPolicyFormProps) {
     const { org } = useOrgContext();
     const t = useTranslations();
@@ -84,6 +86,7 @@ export function EditPolicyForm({
                 orgId={org.org.orgId}
                 allIdps={allIdps}
                 readonly={readonly}
+                resourceId={resourceId}
             />
 
             <EditPolicyAuthMethodsSectionForm readonly={readonly} />
@@ -97,6 +100,7 @@ export function EditPolicyForm({
                 isMaxmindAvailable={isMaxmindAvailable}
                 isMaxmindAsnAvailable={isMaxmindASNAvailable}
                 readonly={readonly}
+                resourceId={resourceId}
             />
         </SettingsContainer>
     );

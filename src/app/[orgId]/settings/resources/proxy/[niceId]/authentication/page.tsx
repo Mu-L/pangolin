@@ -336,7 +336,10 @@ export default function ResourceAuthenticationPage() {
                                     </Button>
                                 }
                             />
-                            <EditPolicyForm readonly />
+                            <EditPolicyForm
+                                readonly
+                                resourceId={resource.resourceId}
+                            />
                         </ResourcePolicyProvider>
                     )
                 )}

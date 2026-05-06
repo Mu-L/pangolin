@@ -12,6 +12,7 @@ import type {
     ListResourceNamesResponse,
     ListResourcesResponse,
     ListResourceRolesResponse,
+    ListResourceRulesResponse,
     ListResourceUsersResponse
 } from "@server/routers/resource";
 import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
@@ -639,6 +640,17 @@ export const resourceQueries = {
                 >(`/resource/${resourceId}/roles`, { signal });
 
                 return res.data.data.roles;
+            }
+        }),
+    resourceRules: ({ resourceId }: { resourceId: number }) =>
+        queryOptions({
+            queryKey: ["RESOURCES", resourceId, "RULES"] as const,
+            queryFn: async ({ signal, meta }) => {
+                const res = await meta!.api.get<
+                    AxiosResponse<ListResourceRulesResponse>
+                >(`/resource/${resourceId}/rules`, { signal });
+
+                return res.data.data.rules;
             }
         }),
     siteResourceUsers: ({ siteResourceId }: { siteResourceId: number }) =>

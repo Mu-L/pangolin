@@ -45,7 +45,9 @@ import {
 } from "@app/components/ui/select";
 
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
-import { useActionState, useState } from "react";
+import { resourceQueries } from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 // ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
@@ -54,12 +56,14 @@ type PolicyUsersRolesSectionProps = {
     orgId: string;
     allIdps: { id: number; text: string }[];
     readonly?: boolean;
+    resourceId?: number;
 };
 
 export function EditPolicyUsersRolesSectionForm({
     orgId,
     allIdps,
-    readonly
+    readonly,
+    resourceId
 }: PolicyUsersRolesSectionProps) {
     const t = useTranslations();
 
@@ -69,6 +73,105 @@ export function EditPolicyUsersRolesSectionForm({
 
     const api = createApiClient(useEnvContext());
 
+    // ── Resource overlay: fetch resource-specific roles & users ──────────────
+    const isResourceOverlay = resourceId !== undefined;
+
+    const { data: resourceRolesData } = useQuery({
+        ...resourceQueries.resourceRoles({ resourceId: resourceId! }),
+        enabled: isResourceOverlay
+    });
+
+    const { data: resourceUsersData } = useQuery({
+        ...resourceQueries.resourceUsers({ resourceId: resourceId! }),
+        enabled: isResourceOverlay
+    });
+
+    // IDs from the policy (locked — cannot be removed)
+    const policyRoleLockedIds = useMemo(
+        () => new Set(policy.roles.map((r) => r.roleId.toString())),
+        [policy.roles]
+    );
+    const policyUserLockedIds = useMemo(
+        () => new Set(policy.users.map((u) => u.userId)),
+        [policy.users]
+    );
+
+    // Policy entries mapped to selector format
+    const policyRoleItems = useMemo(
+        () =>
+            policy.roles.map((r) => ({
+                id: r.roleId.toString(),
+                text: r.name
+            })),
+        [policy.roles]
+    );
+    const policyUserItems = useMemo(
+        () =>
+            policy.users.map((u) => ({
+                id: u.userId,
+                text: `${getUserDisplayName({ email: u.email, username: u.username })}${u.type !== UserType.Internal ? ` (${u.idpName})` : ""}`
+            })),
+        [policy.users]
+    );
+
+    // Track the initial resource-specific roles/users for diffing on save
+    const initialResourceRoleIdsRef = useRef<Set<string>>(new Set());
+    const initialResourceUserIdsRef = useRef<Set<string>>(new Set());
+
+    // Combined selected roles/users (policy + resource-specific)
+    const [combinedRoles, setCombinedRoles] = useState(policyRoleItems);
+    const [combinedUsers, setCombinedUsers] = useState(policyUserItems);
+    const [resourceRolesInitialized, setResourceRolesInitialized] =
+        useState(false);
+    const [resourceUsersInitialized, setResourceUsersInitialized] =
+        useState(false);
+
+    useEffect(() => {
+        if (!isResourceOverlay || resourceRolesInitialized) return;
+        if (!resourceRolesData) return;
+
+        const resourceSpecific = resourceRolesData
+            .filter((r) => !policyRoleLockedIds.has(r.roleId.toString()))
+            .map((r) => ({ id: r.roleId.toString(), text: r.name }));
+
+        initialResourceRoleIdsRef.current = new Set(
+            resourceSpecific.map((r) => r.id)
+        );
+        setCombinedRoles([...policyRoleItems, ...resourceSpecific]);
+        setResourceRolesInitialized(true);
+    }, [
+        isResourceOverlay,
+        resourceRolesData,
+        resourceRolesInitialized,
+        policyRoleItems,
+        policyRoleLockedIds
+    ]);
+
+    useEffect(() => {
+        if (!isResourceOverlay || resourceUsersInitialized) return;
+        if (!resourceUsersData) return;
+
+        const resourceSpecific = resourceUsersData
+            .filter((u) => !policyUserLockedIds.has(u.userId))
+            .map((u) => ({
+                id: u.userId,
+                text: `${getUserDisplayName({ email: u.email ?? undefined, username: u.username ?? undefined })}${u.type !== UserType.Internal ? ` (${u.idpName})` : ""}`
+            }));
+
+        initialResourceUserIdsRef.current = new Set(
+            resourceSpecific.map((u) => u.id)
+        );
+        setCombinedUsers([...policyUserItems, ...resourceSpecific]);
+        setResourceUsersInitialized(true);
+    }, [
+        isResourceOverlay,
+        resourceUsersData,
+        resourceUsersInitialized,
+        policyUserItems,
+        policyUserLockedIds
+    ]);
+
+    // ── Standard policy form (non-overlay) ──────────────────────────────────
     const form = useForm({
         resolver: zodResolver(
             createPolicySchema.pick({
@@ -81,14 +184,8 @@ export function EditPolicyUsersRolesSectionForm({
         defaultValues: {
             sso: policy.sso,
             skipToIdpId: policy.idpId,
-            roles: policy.roles.map((role) => ({
-                id: role.roleId.toString(),
-                text: role.name
-            })),
-            users: policy.users.map((user) => ({
-                id: user.userId,
-                text: `${getUserDisplayName({ email: user.email, username: user.username })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
-            }))
+            roles: policyRoleItems,
+            users: policyUserItems
         }
     });
 
@@ -99,12 +196,17 @@ export function EditPolicyUsersRolesSectionForm({
     });
 
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
+    const [isSavingOverlay, setIsSavingOverlay] = useState(false);
 
     async function onSubmit() {
         if (readonly) return;
 
-        const isValid = await form.trigger();
+        if (isResourceOverlay) {
+            await saveResourceOverlay();
+            return;
+        }
 
+        const isValid = await form.trigger();
         if (!isValid) return;
 
         const payload = form.getValues();
@@ -147,6 +249,87 @@ export function EditPolicyUsersRolesSectionForm({
         }
     }
 
+    async function saveResourceOverlay() {
+        setIsSavingOverlay(true);
+        try {
+            // Compute which roles/users are resource-specific (non-locked)
+            const currentResourceRoleIds = new Set(
+                combinedRoles
+                    .filter((r) => !policyRoleLockedIds.has(r.id))
+                    .map((r) => r.id)
+            );
+            const currentResourceUserIds = new Set(
+                combinedUsers
+                    .filter((u) => !policyUserLockedIds.has(u.id))
+                    .map((u) => u.id)
+            );
+
+            const initialRoleIds = initialResourceRoleIdsRef.current;
+            const initialUserIds = initialResourceUserIdsRef.current;
+
+            const addedRoleIds = [...currentResourceRoleIds].filter(
+                (id) => !initialRoleIds.has(id)
+            );
+            const removedRoleIds = [...initialRoleIds].filter(
+                (id) => !currentResourceRoleIds.has(id)
+            );
+            const addedUserIds = [...currentResourceUserIds].filter(
+                (id) => !initialUserIds.has(id)
+            );
+            const removedUserIds = [...initialUserIds].filter(
+                (id) => !currentResourceUserIds.has(id)
+            );
+
+            await Promise.all([
+                ...addedRoleIds.map((id) =>
+                    api.post(`/resource/${resourceId}/roles/add`, {
+                        roleId: Number(id)
+                    })
+                ),
+                ...removedRoleIds.map((id) =>
+                    api.post(`/resource/${resourceId}/roles/remove`, {
+                        roleId: Number(id)
+                    })
+                ),
+                ...addedUserIds.map((id) =>
+                    api.post(`/resource/${resourceId}/users/add`, {
+                        userId: id
+                    })
+                ),
+                ...removedUserIds.map((id) =>
+                    api.post(`/resource/${resourceId}/users/remove`, {
+                        userId: id
+                    })
+                )
+            ]);
+
+            // Update refs to reflect new state
+            initialResourceRoleIdsRef.current = currentResourceRoleIds;
+            initialResourceUserIdsRef.current = currentResourceUserIds;
+
+            toast({
+                title: t("success"),
+                description: t("policyUpdatedSuccess")
+            });
+            router.refresh();
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("policyErrorUpdateDescription")
+                )
+            });
+        } finally {
+            setIsSavingOverlay(false);
+        }
+    }
+
+    const isLoading =
+        isResourceOverlay &&
+        (!resourceRolesInitialized || !resourceUsersInitialized);
+
     return (
         <Form {...form}>
             <form action={formAction}>
@@ -166,78 +349,105 @@ export function EditPolicyUsersRolesSectionForm({
                                 label={t("ssoUse")}
                                 defaultChecked={ssoEnabled}
                                 onCheckedChange={(val) => {
-                                    console.log(`form.setValue("sso", ${val})`);
                                     form.setValue("sso", val);
                                 }}
-                                disabled={readonly}
+                                disabled={readonly || isResourceOverlay}
                             />
 
                             {ssoEnabled && (
                                 <>
-                                    <FormField
-                                        control={form.control}
-                                        name="roles"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col items-start">
-                                                <FormLabel>
-                                                    {t("roles")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <RolesSelector
-                                                        orgId={orgId}
-                                                        selectedRoles={
-                                                            field.value
-                                                        }
-                                                        onSelectRoles={(
-                                                            roles
-                                                        ) =>
-                                                            form.setValue(
-                                                                "roles",
+                                    <FormItem className="flex flex-col items-start">
+                                        <FormLabel>{t("roles")}</FormLabel>
+                                        <FormControl>
+                                            {isResourceOverlay ? (
+                                                <RolesSelector
+                                                    orgId={orgId}
+                                                    selectedRoles={
+                                                        combinedRoles
+                                                    }
+                                                    onSelectRoles={
+                                                        setCombinedRoles
+                                                    }
+                                                    disabled={isLoading}
+                                                    restrictAdminRole
+                                                    lockedIds={
+                                                        policyRoleLockedIds
+                                                    }
+                                                />
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="roles"
+                                                    render={({ field }) => (
+                                                        <RolesSelector
+                                                            orgId={orgId}
+                                                            selectedRoles={
+                                                                field.value
+                                                            }
+                                                            onSelectRoles={(
                                                                 roles
-                                                            )
-                                                        }
-                                                        disabled={readonly}
-                                                        restrictAdminRole
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                                <FormDescription>
-                                                    {t(
-                                                        "resourceRoleDescription"
+                                                            ) =>
+                                                                form.setValue(
+                                                                    "roles",
+                                                                    roles
+                                                                )
+                                                            }
+                                                            disabled={readonly}
+                                                            restrictAdminRole
+                                                        />
                                                     )}
-                                                </FormDescription>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="users"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col items-start">
-                                                <FormLabel>
-                                                    {t("users")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <UsersSelector
-                                                        orgId={orgId}
-                                                        selectedUsers={
-                                                            field.value
-                                                        }
-                                                        onSelectUsers={(
-                                                            users
-                                                        ) =>
-                                                            form.setValue(
-                                                                "users",
+                                                />
+                                            )}
+                                        </FormControl>
+                                        <FormMessage />
+                                        <FormDescription>
+                                            {t("resourceRoleDescription")}
+                                        </FormDescription>
+                                    </FormItem>
+
+                                    <FormItem className="flex flex-col items-start">
+                                        <FormLabel>{t("users")}</FormLabel>
+                                        <FormControl>
+                                            {isResourceOverlay ? (
+                                                <UsersSelector
+                                                    orgId={orgId}
+                                                    selectedUsers={
+                                                        combinedUsers
+                                                    }
+                                                    onSelectUsers={
+                                                        setCombinedUsers
+                                                    }
+                                                    disabled={isLoading}
+                                                    lockedIds={
+                                                        policyUserLockedIds
+                                                    }
+                                                />
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="users"
+                                                    render={({ field }) => (
+                                                        <UsersSelector
+                                                            orgId={orgId}
+                                                            selectedUsers={
+                                                                field.value
+                                                            }
+                                                            onSelectUsers={(
                                                                 users
-                                                            )
-                                                        }
-                                                        disabled={readonly}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                                            ) =>
+                                                                form.setValue(
+                                                                    "users",
+                                                                    users
+                                                                )
+                                                            }
+                                                            disabled={readonly}
+                                                        />
+                                                    )}
+                                                />
+                                            )}
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
                                 </>
                             )}
 
@@ -247,7 +457,7 @@ export function EditPolicyUsersRolesSectionForm({
                                         {t("defaultIdentityProvider")}
                                     </label>
                                     <Select
-                                        disabled={readonly}
+                                        disabled={readonly || isResourceOverlay}
                                         onValueChange={(value) => {
                                             if (value === "none") {
                                                 form.setValue(
@@ -302,8 +512,13 @@ export function EditPolicyUsersRolesSectionForm({
                     <SettingsSectionFooter>
                         <Button
                             type="submit"
-                            loading={isSubmitting}
-                            disabled={readonly || isSubmitting}
+                            loading={isSubmitting || isSavingOverlay}
+                            disabled={
+                                readonly ||
+                                isSubmitting ||
+                                isSavingOverlay ||
+                                isLoading
+                            }
                         >
                             {t("resourceUsersRolesSubmit")}
                         </Button>

@@ -75,13 +75,28 @@ import {
     getSortedRowModel,
     useReactTable
 } from "@tanstack/react-table";
-import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
+import {
+    ArrowUpDown,
+    Check,
+    ChevronsUpDown,
+    LockIcon,
+    Plus
+} from "lucide-react";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useTransition
+} from "react";
 import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { resourceQueries } from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useRouter } from "next/navigation";
 
@@ -103,24 +118,39 @@ type LocalRule = {
     enabled: boolean;
     new?: boolean;
     updated?: boolean;
+    fromPolicy?: boolean;
 };
 
 type PolicyRulesSectionProps = {
     isMaxmindAvailable: boolean;
     isMaxmindAsnAvailable: boolean;
     readonly?: boolean;
+    resourceId?: number;
 };
 
 export function EditPolicyRulesSectionForm({
     isMaxmindAvailable,
     isMaxmindAsnAvailable,
-    readonly
+    readonly,
+    resourceId
 }: PolicyRulesSectionProps) {
     const t = useTranslations();
 
     const { policy } = useResourcePolicyContext();
     const api = createApiClient(useEnvContext());
     const router = useRouter();
+
+    const isResourceOverlay = resourceId !== undefined;
+
+    // ── Fetch resource-specific rules when in overlay mode ───────────────────
+    const { data: resourceRulesData } = useQuery({
+        ...resourceQueries.resourceRules({ resourceId: resourceId! }),
+        enabled: isResourceOverlay
+    });
+
+    const deletedResourceRuleIdsRef = useRef<Set<number>>(new Set());
+    const [resourceRulesInitialized, setResourceRulesInitialized] =
+        useState(false);
 
     const form = useForm({
         resolver: zodResolver(
@@ -140,8 +170,42 @@ export function EditPolicyRulesSectionForm({
         name: "applyRules"
     });
 
-    const [rules, setRules] = useState<LocalRule[]>(policy.rules);
-    const [isExpanded, setIsExpanded] = useState(rulesEnabled);
+    const [rules, setRules] = useState<LocalRule[]>(
+        policy.rules.map((r) => ({ ...r, fromPolicy: !isResourceOverlay }))
+    );
+    const [isExpanded, setIsExpanded] = useState(
+        rulesEnabled || isResourceOverlay
+    );
+
+    // Initialize resource-specific rules once fetched
+    useEffect(() => {
+        if (!isResourceOverlay || resourceRulesInitialized) return;
+        if (!resourceRulesData) return;
+
+        const policyRuleIds = new Set(policy.rules.map((r) => r.ruleId));
+        const resourceSpecific: LocalRule[] = resourceRulesData
+            .filter((r) => !policyRuleIds.has(r.ruleId))
+            .map((r) => ({
+                ruleId: r.ruleId,
+                action: r.action as "ACCEPT" | "DROP" | "PASS",
+                match: r.match,
+                value: r.value,
+                priority: r.priority,
+                enabled: r.enabled,
+                fromPolicy: false
+            }));
+
+        setRules([
+            ...policy.rules.map((r) => ({ ...r, fromPolicy: true })),
+            ...resourceSpecific
+        ]);
+        setResourceRulesInitialized(true);
+    }, [
+        isResourceOverlay,
+        resourceRulesData,
+        resourceRulesInitialized,
+        policy.rules
+    ]);
 
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
         useState(false);
@@ -275,11 +339,17 @@ export function EditPolicyRulesSectionForm({
 
     const removeRule = useCallback(
         function removeRule(ruleId: number) {
+            const rule = rules.find((r) => r.ruleId === ruleId);
+            if (!rule || rule.fromPolicy) return; // cannot remove policy rules
+            // Track deletion for resource overlay mode (only for existing DB rules)
+            if (isResourceOverlay && !rule.new) {
+                deletedResourceRuleIdsRef.current.add(ruleId);
+            }
             const updatedRules = rules.filter((rule) => rule.ruleId !== ruleId);
             setRules(updatedRules);
             syncFormRules(updatedRules);
         },
-        [rules, syncFormRules]
+        [rules, syncFormRules, isResourceOverlay]
     );
 
     const updateRule = useCallback(
@@ -328,35 +398,45 @@ export function EditPolicyRulesSectionForm({
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 ),
-                cell: ({ row }) => (
-                    <Input
-                        defaultValue={row.original.priority}
-                        className="w-[75px]"
-                        type="number"
-                        disabled={readonly}
-                        onClick={(e) => e.currentTarget.focus()}
-                        onBlur={(e) => {
-                            const parsed = z.coerce
-                                .number()
-                                .int()
-                                .optional()
-                                .safeParse(e.target.value);
-                            if (!parsed.success) {
-                                toast({
-                                    variant: "destructive",
-                                    title: t("rulesErrorInvalidPriority"),
-                                    description: t(
-                                        "rulesErrorInvalidPriorityDescription"
-                                    )
+                cell: ({ row }) => {
+                    const isLocked = row.original.fromPolicy;
+                    if (isLocked) {
+                        return (
+                            <span className="px-3 text-muted-foreground">
+                                &mdash;
+                            </span>
+                        );
+                    }
+                    return (
+                        <Input
+                            defaultValue={row.original.priority}
+                            className="w-[75px]"
+                            type="number"
+                            disabled={readonly}
+                            onClick={(e) => e.currentTarget.focus()}
+                            onBlur={(e) => {
+                                const parsed = z.coerce
+                                    .number()
+                                    .int()
+                                    .optional()
+                                    .safeParse(e.target.value);
+                                if (!parsed.success) {
+                                    toast({
+                                        variant: "destructive",
+                                        title: t("rulesErrorInvalidPriority"),
+                                        description: t(
+                                            "rulesErrorInvalidPriorityDescription"
+                                        )
+                                    });
+                                    return;
+                                }
+                                updateRule(row.original.ruleId, {
+                                    priority: parsed.data
                                 });
-                                return;
-                            }
-                            updateRule(row.original.ruleId, {
-                                priority: parsed.data
-                            });
-                        }}
-                    />
-                )
+                            }}
+                        />
+                    );
+                }
             },
             {
                 accessorKey: "action",
@@ -364,7 +444,7 @@ export function EditPolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Select
                         defaultValue={row.original.action}
-                        disabled={readonly}
+                        disabled={readonly || row.original.fromPolicy}
                         onValueChange={(value: "ACCEPT" | "DROP" | "PASS") =>
                             updateRule(row.original.ruleId, { action: value })
                         }
@@ -394,7 +474,7 @@ export function EditPolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Select
                         defaultValue={row.original.match}
-                        disabled={readonly}
+                        disabled={readonly || row.original.fromPolicy}
                         onValueChange={(
                             value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN"
                         ) =>
@@ -444,7 +524,9 @@ export function EditPolicyRulesSectionForm({
                                 <Button
                                     variant="outline"
                                     role="combobox"
-                                    disabled={readonly}
+                                    disabled={
+                                        readonly || row.original.fromPolicy
+                                    }
                                     className="min-w-50 justify-between"
                                 >
                                     {row.original.value
@@ -500,7 +582,9 @@ export function EditPolicyRulesSectionForm({
                                 <Button
                                     variant="outline"
                                     role="combobox"
-                                    disabled={readonly}
+                                    disabled={
+                                        readonly || row.original.fromPolicy
+                                    }
                                     className="min-w-50 justify-between"
                                 >
                                     {row.original.value
@@ -586,7 +670,7 @@ export function EditPolicyRulesSectionForm({
                         <Input
                             defaultValue={row.original.value}
                             className="min-w-50"
-                            disabled={readonly}
+                            disabled={readonly || row.original.fromPolicy}
                             onBlur={(e) =>
                                 updateRule(row.original.ruleId, {
                                     value: e.target.value
@@ -601,7 +685,7 @@ export function EditPolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Switch
                         defaultChecked={row.original.enabled}
-                        disabled={readonly}
+                        disabled={readonly || row.original.fromPolicy}
                         onCheckedChange={(val) =>
                             updateRule(row.original.ruleId, { enabled: val })
                         }
@@ -613,13 +697,23 @@ export function EditPolicyRulesSectionForm({
                 header: () => <span className="p-3">{t("actions")}</span>,
                 cell: ({ row }) => (
                     <div className="flex items-center space-x-2">
-                        <Button
-                            variant="outline"
-                            disabled={readonly}
-                            onClick={() => removeRule(row.original.ruleId)}
-                        >
-                            {t("delete")}
-                        </Button>
+                        {row.original.fromPolicy ? (
+                            <Button
+                                variant="outline"
+                                disabled
+                                className="cursor-not-allowed"
+                            >
+                                <LockIcon className="h-4 w-4" />
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                disabled={readonly}
+                                onClick={() => removeRule(row.original.ruleId)}
+                            >
+                                {t("delete")}
+                            </Button>
+                        )}
                     </div>
                 )
             }
@@ -651,11 +745,15 @@ export function EditPolicyRulesSectionForm({
     async function saveRules() {
         if (readonly) return;
 
+        if (isResourceOverlay) {
+            await saveResourceOverlayRules();
+            return;
+        }
+
         const isValid = form.trigger();
         if (!isValid) return;
 
         const payload = form.getValues();
-        console.log({ payload });
 
         try {
             const res = await api
@@ -685,6 +783,57 @@ export function EditPolicyRulesSectionForm({
                 variant: "destructive",
                 title: t("policyErrorUpdate"),
                 description: t("policyErrorUpdateMessageDescription")
+            });
+        }
+    }
+
+    async function saveResourceOverlayRules() {
+        try {
+            const newRules = rules.filter((r) => !r.fromPolicy && r.new);
+            const updatedRules = rules.filter(
+                (r) => !r.fromPolicy && !r.new && r.updated
+            );
+            const deletedIds = [...deletedResourceRuleIdsRef.current];
+
+            await Promise.all([
+                ...newRules.map((r) =>
+                    api.put(`/resource/${resourceId}/rule`, {
+                        action: r.action,
+                        match: r.match,
+                        value: r.value,
+                        priority: r.priority,
+                        enabled: r.enabled
+                    })
+                ),
+                ...updatedRules.map((r) =>
+                    api.post(`/resource/${resourceId}/rule/${r.ruleId}`, {
+                        action: r.action,
+                        match: r.match,
+                        value: r.value,
+                        priority: r.priority,
+                        enabled: r.enabled
+                    })
+                ),
+                ...deletedIds.map((id) =>
+                    api.delete(`/resource/${resourceId}/rule/${id}`)
+                )
+            ]);
+
+            deletedResourceRuleIdsRef.current = new Set();
+
+            toast({
+                title: t("success"),
+                description: t("policyUpdatedSuccess")
+            });
+            router.refresh();
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("policyErrorUpdateDescription")
+                )
             });
         }
     }
@@ -740,7 +889,7 @@ export function EditPolicyRulesSectionForm({
                             onCheckedChange={(val) => {
                                 form.setValue("applyRules", val);
                             }}
-                            disabled={readonly}
+                            disabled={readonly || isResourceOverlay}
                         />
                     </div>
 
@@ -763,7 +912,8 @@ export function EditPolicyRulesSectionForm({
                                                     value={field.value}
                                                     disabled={
                                                         readonly ||
-                                                        !rulesEnabled
+                                                        (!isResourceOverlay &&
+                                                            !rulesEnabled)
                                                     }
                                                     onValueChange={
                                                         field.onChange
@@ -802,7 +952,8 @@ export function EditPolicyRulesSectionForm({
                                                     value={field.value}
                                                     disabled={
                                                         readonly ||
-                                                        !rulesEnabled
+                                                        (!isResourceOverlay &&
+                                                            !rulesEnabled)
                                                     }
                                                     onValueChange={
                                                         field.onChange
@@ -872,7 +1023,8 @@ export function EditPolicyRulesSectionForm({
                                                                 role="combobox"
                                                                 disabled={
                                                                     readonly ||
-                                                                    !rulesEnabled
+                                                                    (!isResourceOverlay &&
+                                                                        !rulesEnabled)
                                                                 }
                                                                 aria-expanded={
                                                                     openAddRuleCountrySelect
@@ -965,7 +1117,8 @@ export function EditPolicyRulesSectionForm({
                                                                 role="combobox"
                                                                 disabled={
                                                                     readonly ||
-                                                                    !rulesEnabled
+                                                                    (!isResourceOverlay &&
+                                                                        !rulesEnabled)
                                                                 }
                                                                 aria-expanded={
                                                                     openAddRuleAsnSelect
@@ -1083,7 +1236,8 @@ export function EditPolicyRulesSectionForm({
                                                         {...field}
                                                         disabled={
                                                             readonly ||
-                                                            !rulesEnabled
+                                                            (!isResourceOverlay &&
+                                                                !rulesEnabled)
                                                         }
                                                     />
                                                 )}
@@ -1095,7 +1249,10 @@ export function EditPolicyRulesSectionForm({
                                 <Button
                                     type="submit"
                                     variant="outline"
-                                    disabled={readonly || !rulesEnabled}
+                                    disabled={
+                                        readonly ||
+                                        (!isResourceOverlay && !rulesEnabled)
+                                    }
                                 >
                                     {t("ruleSubmit")}
                                 </Button>
