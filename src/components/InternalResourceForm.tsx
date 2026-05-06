@@ -840,12 +840,16 @@ export function InternalResourceForm({
                                                                 modeCidrKey
                                                             )
                                                         },
-                                                        {
-                                                            value: "http",
-                                                            label: t(
-                                                                modeHttpKey
-                                                            )
-                                                        }
+                                                        ...(!disableEnterpriseFeatures
+                                                            ? [
+                                                                  {
+                                                                      value: "http" as const,
+                                                                      label: t(
+                                                                          modeHttpKey
+                                                                      )
+                                                                  }
+                                                              ]
+                                                            : [])
                                                     ];
                                                 return (
                                                     <FormItem>

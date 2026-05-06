@@ -53,10 +53,12 @@ export default function UptimeAlertSection({
     days = 90
 }: UptimeAlertSectionProps) {
     const t = useTranslations();
-    const api = createApiClient(useEnvContext());
+    const envContext = useEnvContext();
+    const api = createApiClient(envContext);
     const queryClient = useQueryClient();
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
+    const { env } = envContext;
 
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(
@@ -176,7 +178,9 @@ export default function UptimeAlertSection({
                                 {t("uptimeSectionDescription", { days })}
                             </SettingsSectionDescription>
                         </div>
-                        {alertButton}
+                        {!env.flags.disableEnterpriseFeatures
+                            ? alertButton
+                            : null}
                     </div>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>

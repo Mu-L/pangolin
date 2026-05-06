@@ -217,15 +217,17 @@ export const orgNavSections = (
                               {
                                   title: "sidebarAlerting",
                                   href: "/{orgId}/settings/alerting",
-                                  icon: <BellRing className="size-4 flex-none" />
+                                  icon: (
+                                      <BellRing className="size-4 flex-none" />
+                                  )
+                              },
+                              {
+                                  title: "sidebarProvisioning",
+                                  href: "/{orgId}/settings/provisioning",
+                                  icon: <Boxes className="size-4 flex-none" />
                               }
                           ]
                         : []),
-                    {
-                        title: "sidebarProvisioning",
-                        href: "/{orgId}/settings/provisioning",
-                        icon: <Boxes className="size-4 flex-none" />
-                    },
                     {
                         title: "sidebarBluePrints",
                         href: "/{orgId}/settings/blueprints",
