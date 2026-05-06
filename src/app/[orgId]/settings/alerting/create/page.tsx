@@ -3,10 +3,12 @@
 import AlertRuleGraphEditor from "@app/components/alert-rule-editor/AlertRuleGraphEditor";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { defaultFormValues } from "@app/lib/alertRuleForm";
+import { useEnvContext } from "@app/hooks/useEnvContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 export default function NewAlertRulePage() {
     const params = useParams();
@@ -14,6 +16,18 @@ export default function NewAlertRulePage() {
     const t = useTranslations();
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
+    const { env } = useEnvContext();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (env.flags.disableEnterpriseFeatures) {
+            router.replace(`/${orgId}/settings/alerting/rules`);
+        }
+    }, [env.flags.disableEnterpriseFeatures, orgId, router]);
+
+    if (env.flags.disableEnterpriseFeatures) {
+        return null;
+    }
 
     return (
         <>
