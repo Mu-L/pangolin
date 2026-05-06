@@ -6,6 +6,7 @@ import z from "zod";
 import logger from "@server/logger";
 import semver from "semver";
 import { getValidCertificatesForDomains } from "#dynamic/lib/certificates";
+import { lockManager } from "#dynamic/lib/lock";
 
 interface IPRange {
     start: bigint;
@@ -327,121 +328,146 @@ export async function getNextAvailableClientSubnet(
     orgId: string,
     transaction: Transaction | typeof db = db
 ): Promise<string> {
-    const [org] = await transaction
-        .select()
-        .from(orgs)
-        .where(eq(orgs.orgId, orgId));
+    return await lockManager.withLock(
+        `client-subnet-allocation:${orgId}`,
+        async () => {
+            const [org] = await transaction
+                .select()
+                .from(orgs)
+                .where(eq(orgs.orgId, orgId));
 
-    if (!org) {
-        throw new Error(`Organization with ID ${orgId} not found`);
-    }
+            if (!org) {
+                throw new Error(`Organization with ID ${orgId} not found`);
+            }
 
-    if (!org.subnet) {
-        throw new Error(`Organization with ID ${orgId} has no subnet defined`);
-    }
+            if (!org.subnet) {
+                throw new Error(
+                    `Organization with ID ${orgId} has no subnet defined`
+                );
+            }
 
-    const existingAddressesSites = await transaction
-        .select({
-            address: sites.address
-        })
-        .from(sites)
-        .where(and(isNotNull(sites.address), eq(sites.orgId, orgId)));
+            const existingAddressesSites = await transaction
+                .select({
+                    address: sites.address
+                })
+                .from(sites)
+                .where(and(isNotNull(sites.address), eq(sites.orgId, orgId)));
 
-    const existingAddressesClients = await transaction
-        .select({
-            address: clients.subnet
-        })
-        .from(clients)
-        .where(and(isNotNull(clients.subnet), eq(clients.orgId, orgId)));
+            const existingAddressesClients = await transaction
+                .select({
+                    address: clients.subnet
+                })
+                .from(clients)
+                .where(
+                    and(isNotNull(clients.subnet), eq(clients.orgId, orgId))
+                );
 
-    const addresses = [
-        ...existingAddressesSites.map(
-            (site) => `${site.address?.split("/")[0]}/32`
-        ), // we are overriding the 32 so that we pick individual addresses in the subnet of the org for the site and the client even though they are stored with the /block_size of the org
-        ...existingAddressesClients.map(
-            (client) => `${client.address.split("/")}/32`
-        )
-    ].filter((address) => address !== null) as string[];
+            const addresses = [
+                ...existingAddressesSites.map(
+                    (site) => `${site.address?.split("/")[0]}/32`
+                ), // we are overriding the 32 so that we pick individual addresses in the subnet of the org for the site and the client even though they are stored with the /block_size of the org
+                ...existingAddressesClients.map(
+                    (client) => `${client.address.split("/")}/32`
+                )
+            ].filter((address) => address !== null) as string[];
 
-    const subnet = findNextAvailableCidr(addresses, 32, org.subnet); // pick the sites address in the org
-    if (!subnet) {
-        throw new Error("No available subnets remaining in space");
-    }
+            const subnet = findNextAvailableCidr(addresses, 32, org.subnet); // pick the sites address in the org
+            if (!subnet) {
+                throw new Error("No available subnets remaining in space");
+            }
 
-    return subnet;
+            return subnet;
+        }
+    );
 }
 
 export async function getNextAvailableAliasAddress(
     orgId: string,
     trx: Transaction | typeof db = db
 ): Promise<string> {
-    const [org] = await trx.select().from(orgs).where(eq(orgs.orgId, orgId));
+    return await lockManager.withLock(
+        `alias-address-allocation:${orgId}`,
+        async () => {
+            const [org] = await trx
+                .select()
+                .from(orgs)
+                .where(eq(orgs.orgId, orgId));
 
-    if (!org) {
-        throw new Error(`Organization with ID ${orgId} not found`);
-    }
+            if (!org) {
+                throw new Error(`Organization with ID ${orgId} not found`);
+            }
 
-    if (!org.subnet) {
-        throw new Error(`Organization with ID ${orgId} has no subnet defined`);
-    }
+            if (!org.subnet) {
+                throw new Error(
+                    `Organization with ID ${orgId} has no subnet defined`
+                );
+            }
 
-    if (!org.utilitySubnet) {
-        throw new Error(
-            `Organization with ID ${orgId} has no utility subnet defined`
-        );
-    }
+            if (!org.utilitySubnet) {
+                throw new Error(
+                    `Organization with ID ${orgId} has no utility subnet defined`
+                );
+            }
 
-    const existingAddresses = await trx
-        .select({
-            aliasAddress: siteResources.aliasAddress
-        })
-        .from(siteResources)
-        .where(
-            and(
-                isNotNull(siteResources.aliasAddress),
-                eq(siteResources.orgId, orgId)
-            )
-        );
+            const existingAddresses = await trx
+                .select({
+                    aliasAddress: siteResources.aliasAddress
+                })
+                .from(siteResources)
+                .where(
+                    and(
+                        isNotNull(siteResources.aliasAddress),
+                        eq(siteResources.orgId, orgId)
+                    )
+                );
 
-    const addresses = [
-        ...existingAddresses.map(
-            (site) => `${site.aliasAddress?.split("/")[0]}/32`
-        ),
-        // reserve a /29 for the dns server and other stuff
-        `${org.utilitySubnet.split("/")[0]}/29`
-    ].filter((address) => address !== null) as string[];
+            const addresses = [
+                ...existingAddresses.map(
+                    (site) => `${site.aliasAddress?.split("/")[0]}/32`
+                ),
+                // reserve a /29 for the dns server and other stuff
+                `${org.utilitySubnet.split("/")[0]}/29`
+            ].filter((address) => address !== null) as string[];
 
-    let subnet = findNextAvailableCidr(addresses, 32, org.utilitySubnet);
-    if (!subnet) {
-        throw new Error("No available subnets remaining in space");
-    }
+            let subnet = findNextAvailableCidr(
+                addresses,
+                32,
+                org.utilitySubnet
+            );
+            if (!subnet) {
+                throw new Error("No available subnets remaining in space");
+            }
 
-    // remove the cidr
-    subnet = subnet.split("/")[0];
+            // remove the cidr
+            subnet = subnet.split("/")[0];
 
-    return subnet;
+            return subnet;
+        }
+    );
 }
 
 export async function getNextAvailableOrgSubnet(): Promise<string> {
-    const existingAddresses = await db
-        .select({
-            subnet: orgs.subnet
-        })
-        .from(orgs)
-        .where(isNotNull(orgs.subnet));
+    return await lockManager.withLock("org-subnet-allocation", async () => {
+        const existingAddresses = await db
+            .select({
+                subnet: orgs.subnet
+            })
+            .from(orgs)
+            .where(isNotNull(orgs.subnet));
 
-    const addresses = existingAddresses.map((org) => org.subnet!);
+        const addresses = existingAddresses.map((org) => org.subnet!);
 
-    const subnet = findNextAvailableCidr(
-        addresses,
-        config.getRawConfig().orgs.block_size,
-        config.getRawConfig().orgs.subnet_group
-    );
-    if (!subnet) {
-        throw new Error("No available subnets remaining in space");
-    }
+        const subnet = findNextAvailableCidr(
+            addresses,
+            config.getRawConfig().orgs.block_size,
+            config.getRawConfig().orgs.subnet_group
+        );
+        if (!subnet) {
+            throw new Error("No available subnets remaining in space");
+        }
 
-    return subnet;
+        return subnet;
+    });
 }
 
 export function generateRemoteSubnets(
