@@ -18,12 +18,14 @@ export type UsersSelectorProps = {
     orgId: string;
     selectedUsers?: SelectedUser[];
     onSelectUsers: (users: SelectedUser[]) => void;
+    disabled?: boolean;
 };
 
 export function UsersSelector({
     orgId,
     selectedUsers = [],
-    onSelectUsers
+    onSelectUsers,
+    disabled
 }: UsersSelectorProps) {
     const t = useTranslations();
     const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -58,6 +60,7 @@ export function UsersSelector({
             options={usersShown}
             value={selectedUsers}
             onChange={onSelectUsers}
+            disabled={disabled}
         />
     );
 }

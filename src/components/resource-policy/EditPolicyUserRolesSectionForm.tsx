@@ -23,8 +23,9 @@ import type { AxiosResponse } from "axios";
 import { useRouter } from "next/navigation";
 import { createPolicySchema } from ".";
 
+import { RolesSelector } from "@app/components/roles-selector";
+import { UsersSelector } from "@app/components/users-selector";
 import { SwitchInput } from "@app/components/SwitchInput";
-import { Tag, TagInput } from "@app/components/tags/tag-input";
 import { Button } from "@app/components/ui/button";
 import {
     Form,
@@ -50,15 +51,13 @@ import { useForm, useWatch } from "react-hook-form";
 // ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
 
 type PolicyUsersRolesSectionProps = {
-    allRoles: { id: string; text: string }[];
-    allUsers: { id: string; text: string }[];
+    orgId: string;
     allIdps: { id: number; text: string }[];
     readonly?: boolean;
 };
 
 export function EditPolicyUsersRolesSectionForm({
-    allRoles,
-    allUsers,
+    orgId,
     allIdps,
     readonly
 }: PolicyUsersRolesSectionProps) {
@@ -98,12 +97,6 @@ export function EditPolicyUsersRolesSectionForm({
         control: form.control,
         name: "skipToIdpId"
     });
-    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
-        number | null
-    >(null);
 
     const [, formAction, isSubmitting] = useActionState(onSubmit, null);
 
@@ -190,43 +183,21 @@ export function EditPolicyUsersRolesSectionForm({
                                                     {t("roles")}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <TagInput
-                                                        {...field}
-                                                        activeTagIndex={
-                                                            activeRolesTagIndex
+                                                    <RolesSelector
+                                                        orgId={orgId}
+                                                        selectedRoles={
+                                                            field.value
                                                         }
-                                                        setActiveTagIndex={
-                                                            setActiveRolesTagIndex
-                                                        }
-                                                        placeholder={t(
-                                                            "accessRoleSelect2"
-                                                        )}
-                                                        size="sm"
-                                                        tags={
-                                                            form.getValues()
-                                                                .roles
-                                                        }
-                                                        setTags={(newRoles) => {
+                                                        onSelectRoles={(
+                                                            roles
+                                                        ) =>
                                                             form.setValue(
                                                                 "roles",
-                                                                newRoles as [
-                                                                    Tag,
-                                                                    ...Tag[]
-                                                                ]
-                                                            );
-                                                        }}
-                                                        enableAutocomplete={
-                                                            true
+                                                                roles
+                                                            )
                                                         }
-                                                        autocompleteOptions={
-                                                            allRoles
-                                                        }
-                                                        allowDuplicates={false}
-                                                        restrictTagsToAutocompleteOptions={
-                                                            true
-                                                        }
-                                                        sortTags={true}
                                                         disabled={readonly}
+                                                        restrictAdminRole
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -247,42 +218,19 @@ export function EditPolicyUsersRolesSectionForm({
                                                     {t("users")}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <TagInput
-                                                        {...field}
-                                                        activeTagIndex={
-                                                            activeUsersTagIndex
+                                                    <UsersSelector
+                                                        orgId={orgId}
+                                                        selectedUsers={
+                                                            field.value
                                                         }
-                                                        setActiveTagIndex={
-                                                            setActiveUsersTagIndex
-                                                        }
-                                                        placeholder={t(
-                                                            "accessUserSelect"
-                                                        )}
-                                                        size="sm"
-                                                        tags={
-                                                            form.getValues()
-                                                                .users
-                                                        }
-                                                        setTags={(newUsers) => {
+                                                        onSelectUsers={(
+                                                            users
+                                                        ) =>
                                                             form.setValue(
                                                                 "users",
-                                                                newUsers as [
-                                                                    Tag,
-                                                                    ...Tag[]
-                                                                ]
-                                                            );
-                                                        }}
-                                                        enableAutocomplete={
-                                                            true
+                                                                users
+                                                            )
                                                         }
-                                                        autocompleteOptions={
-                                                            allUsers
-                                                        }
-                                                        allowDuplicates={false}
-                                                        restrictTagsToAutocompleteOptions={
-                                                            true
-                                                        }
-                                                        sortTags={true}
                                                         disabled={readonly}
                                                     />
                                                 </FormControl>
