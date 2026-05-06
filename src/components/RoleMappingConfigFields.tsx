@@ -95,6 +95,10 @@ export default function RoleMappingConfigFields({
         }
     }, [supportsMultipleRolesPerUser, fixedRoleNames, onFixedRoleNamesChange]);
 
+    const [fixedRolesActiveTagIndex, setFixedRolesActiveTagIndex] = useState<
+        number | null
+    >(null);
+
     const fixedRadioId = `${fieldIdPrefix}-fixed-roles-mode`;
     const builderRadioId = `${fieldIdPrefix}-mapping-builder-mode`;
     const rawRadioId = `${fieldIdPrefix}-raw-expression-mode`;
@@ -161,38 +165,94 @@ export default function RoleMappingConfigFields({
 
             {roleMappingMode === "fixedRoles" && (
                 <div className="space-y-2 min-w-0 max-w-full">
-                    <RolesSelector
-                        selectedRoles={fixedRoleNames.map((name) => ({
-                            id: name,
-                            text: name
-                        }))}
-                        mapRolesByName
-                        orgId={orgId as string}
-                        onSelectRoles={(nextTags) => {
-                            let names = [
-                                ...new Set(nextTags.map((tag) => tag.text))
-                            ];
+                    {restrictToOrgRoles ? (
+                        <RolesSelector
+                            selectedRoles={fixedRoleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }))}
+                            mapRolesByName
+                            orgId={orgId as string}
+                            onSelectRoles={(nextTags) => {
+                                let names = [
+                                    ...new Set(nextTags.map((tag) => tag.text))
+                                ];
 
-                            if (!supportsMultipleRolesPerUser) {
-                                if (
-                                    names.length === 0 &&
-                                    fixedRoleNames.length > 0
-                                ) {
-                                    onFixedRoleNamesChange([
-                                        fixedRoleNames[
-                                            fixedRoleNames.length - 1
-                                        ]!
-                                    ]);
-                                    return;
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        fixedRoleNames.length > 0
+                                    ) {
+                                        onFixedRoleNamesChange([
+                                            fixedRoleNames[
+                                                fixedRoleNames.length - 1
+                                            ]!
+                                        ]);
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
                                 }
-                                if (names.length > 1) {
-                                    names = [names[names.length - 1]!];
-                                }
-                            }
 
-                            onFixedRoleNamesChange(names);
-                        }}
-                    />
+                                onFixedRoleNamesChange(names);
+                            }}
+                        />
+                    ) : (
+                        <TagInput
+                            tags={fixedRoleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }))}
+                            setTags={(nextTags) => {
+                                const prev = fixedRoleNames.map((name) => ({
+                                    id: name,
+                                    text: name
+                                }));
+                                const next =
+                                    typeof nextTags === "function"
+                                        ? nextTags(prev)
+                                        : nextTags;
+
+                                let names = [
+                                    ...new Set(next.map((tag) => tag.text))
+                                ];
+
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        fixedRoleNames.length > 0
+                                    ) {
+                                        onFixedRoleNamesChange([
+                                            fixedRoleNames[
+                                                fixedRoleNames.length - 1
+                                            ]!
+                                        ]);
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
+                                }
+
+                                onFixedRoleNamesChange(names);
+                            }}
+                            activeTagIndex={fixedRolesActiveTagIndex}
+                            setActiveTagIndex={setFixedRolesActiveTagIndex}
+                            placeholder={t(
+                                "roleMappingAssignRolesPlaceholderFreeform"
+                            )}
+                            enableAutocomplete={false}
+                            autocompleteOptions={roleOptions}
+                            restrictTagsToAutocompleteOptions={false}
+                            allowDuplicates={false}
+                            sortTags={true}
+                            size="sm"
+                            styleClasses={{
+                                inlineTagsContainer: "min-w-0 max-w-full"
+                            }}
+                        />
+                    )}
                     <FormDescription>
                         {showFreeformRoleNamesHint
                             ? t("roleMappingFixedRolesDescriptionDefaultPolicy")
