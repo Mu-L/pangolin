@@ -33,12 +33,12 @@ const paramsSchema = z.strictObject({
     labelId: z.string().transform(Number).pipe(z.int().positive())
 });
 
-const attachLabelBodySchema = z.strictObject({
+const detachLabelBodySchema = z.strictObject({
     siteId: z.number().int().optional(),
     resourceId: z.number().int().optional()
 });
 
-export async function attachLabelToItem(
+export async function detachLabelFromItem(
     req: Request,
     res: Response,
     next: NextFunction
@@ -56,7 +56,7 @@ export async function attachLabelToItem(
 
         const { orgId, labelId } = parsedParams.data;
 
-        const parsedBody = attachLabelBodySchema.safeParse(req.body);
+        const parsedBody = detachLabelBodySchema.safeParse(req.body);
         if (!parsedBody.success) {
             return next(
                 createHttpError(
@@ -107,12 +107,13 @@ export async function attachLabelToItem(
             }
 
             await db
-                .insert(siteLabels)
-                .values({
-                    labelId,
-                    siteId
-                })
-                .returning();
+                .delete(siteLabels)
+                .where(
+                    and(
+                        eq(siteLabels.labelId, labelId),
+                        eq(siteLabels.siteId, siteId)
+                    )
+                );
         }
 
         if (resourceId) {
@@ -133,17 +134,21 @@ export async function attachLabelToItem(
                 );
             }
 
-            await db.insert(resourceLabels).values({
-                labelId,
-                resourceId
-            });
+            await db
+                .delete(resourceLabels)
+                .where(
+                    and(
+                        eq(resourceLabels.labelId, labelId),
+                        eq(resourceLabels.resourceId, resourceId)
+                    )
+                );
         }
 
         return response(res, {
             data: {},
             success: true,
             error: false,
-            message: "Site Label object created successfully",
+            message: "Label detached successfully",
             status: HttpCode.OK
         });
     } catch (error) {

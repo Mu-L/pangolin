@@ -765,6 +765,14 @@ authenticated.put(
     labels.attachLabelToItem
 );
 
+authenticated.delete(
+    "/org/:orgId/label/:labelId/detach",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.detachLabelFromItem),
+    labels.detachLabelFromItem
+);
+
 authenticated.get(
     "/org/:orgId/health-checks",
     verifyValidLicense,

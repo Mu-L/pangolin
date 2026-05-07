@@ -152,6 +152,7 @@ export enum ActionsEnum {
     createOrgLabel = "createOrgLabel",
     updateOrgLabel = "updateOrgLabel",
     attachLabelToItem = "attachLabelToItem",
+    detachLabelFromItem = "detachLabelFromItem",
     getAlertRule = "getAlertRule",
     createHealthCheck = "createHealthCheck",
     updateHealthCheck = "updateHealthCheck",
