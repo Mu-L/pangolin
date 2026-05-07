@@ -485,6 +485,133 @@ async function syncAcmeCertsFromHttp(endpoint: string): Promise<void> {
     }
 }
 
+async function storeCertForDomain(
+    domain: string,
+    certPem: string,
+    keyPem: string,
+    validatedX509: crypto.X509Certificate
+): Promise<void> {
+    const wildcard = domain.startsWith("*.");
+
+    const existing = await db
+        .select()
+        .from(certificates)
+        .where(eq(certificates.domain, domain))
+        .limit(1);
+
+    let oldCertPem: string | null = null;
+    let oldKeyPem: string | null = null;
+
+    if (existing.length > 0 && existing[0].certFile) {
+        try {
+            const storedCertPem = decrypt(
+                existing[0].certFile,
+                config.getRawConfig().server.secret!
+            );
+            const wildcardUnchanged = existing[0].wildcard === wildcard;
+            if (storedCertPem === certPem && wildcardUnchanged) {
+                return;
+            }
+            oldCertPem = storedCertPem;
+            if (existing[0].keyFile) {
+                try {
+                    oldKeyPem = decrypt(
+                        existing[0].keyFile,
+                        config.getRawConfig().server.secret!
+                    );
+                } catch (keyErr) {
+                    logger.debug(
+                        `acmeCertSync: could not decrypt stored key for ${domain}: ${keyErr}`
+                    );
+                }
+            }
+        } catch (err) {
+            logger.debug(
+                `acmeCertSync: could not decrypt stored cert for ${domain}, will update: ${err}`
+            );
+        }
+    }
+
+    let expiresAt: number | null = null;
+    try {
+        expiresAt = Math.floor(
+            new Date(validatedX509.validTo).getTime() / 1000
+        );
+    } catch (err) {
+        logger.debug(
+            `acmeCertSync: could not parse cert expiry for ${domain}: ${err}`
+        );
+    }
+
+    const encryptedCert = encrypt(
+        certPem,
+        config.getRawConfig().server.secret!
+    );
+    const encryptedKey = encrypt(keyPem, config.getRawConfig().server.secret!);
+    const now = Math.floor(Date.now() / 1000);
+
+    const domainId = await findDomainId(domain);
+    if (domainId) {
+        logger.debug(
+            `acmeCertSync: resolved domainId "${domainId}" for cert domain "${domain}"`
+        );
+    } else {
+        logger.debug(
+            `acmeCertSync: no matching domain record found for cert domain "${domain}"`
+        );
+    }
+
+    if (existing.length > 0) {
+        logger.debug(
+            `acmeCertSync: updating existing certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+        );
+        await db
+            .update(certificates)
+            .set({
+                certFile: encryptedCert,
+                keyFile: encryptedKey,
+                status: "valid",
+                expiresAt,
+                updatedAt: now,
+                wildcard,
+                ...(domainId !== null && { domainId })
+            })
+            .where(eq(certificates.domain, domain));
+
+        logger.debug(
+            `acmeCertSync: updated certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+        );
+
+        await pushCertUpdateToAffectedNewts(
+            domain,
+            domainId,
+            oldCertPem,
+            oldKeyPem
+        );
+    } else {
+        logger.debug(
+            `acmeCertSync: inserting new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+        );
+        await db.insert(certificates).values({
+            domain,
+            domainId,
+            certFile: encryptedCert,
+            keyFile: encryptedKey,
+            status: "valid",
+            expiresAt,
+            createdAt: now,
+            updatedAt: now,
+            wildcard
+        });
+
+        logger.debug(
+            `acmeCertSync: inserted new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
+        );
+
+        await pushCertUpdateToAffectedNewts(domain, domainId, null, null);
+    }
+}
+
 function findAcmeJsonFiles(dirPath: string): string[] {
     const results: string[] = [];
     let entries: fs.Dirent[];
@@ -575,18 +702,16 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
     }
 
     for (const cert of allCerts) {
-        const domain = cert?.domain?.main;
+        const mainDomain = cert?.domain?.main;
 
-        if (!domain || typeof domain !== "string") {
+        if (!mainDomain || typeof mainDomain !== "string") {
             logger.debug(`acmeCertSync: skipping cert with missing domain`);
             continue;
         }
 
-        const { wildcard } = detectWildcard(domain, cert.domain?.sans);
-
         if (!cert.certificate || !cert.key) {
             logger.debug(
-                `acmeCertSync: skipping cert for ${domain} - empty certificate or key field`
+                `acmeCertSync: skipping cert for ${mainDomain} - empty certificate or key field`
             );
             continue;
         }
@@ -598,14 +723,14 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
             keyPem = Buffer.from(cert.key, "base64").toString("utf8");
         } catch (err) {
             logger.debug(
-                `acmeCertSync: skipping cert for ${domain} - failed to base64-decode cert/key: ${err}`
+                `acmeCertSync: skipping cert for ${mainDomain} - failed to base64-decode cert/key: ${err}`
             );
             continue;
         }
 
         if (!certPem.trim() || !keyPem.trim()) {
             logger.debug(
-                `acmeCertSync: skipping cert for ${domain} - blank PEM after base64 decode`
+                `acmeCertSync: skipping cert for ${mainDomain} - blank PEM after base64 decode`
             );
             continue;
         }
@@ -616,7 +741,7 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
         const firstCertPemForValidation = extractFirstCert(certPem);
         if (!firstCertPemForValidation) {
             logger.debug(
-                `acmeCertSync: skipping cert for ${domain} - no PEM certificate block found`
+                `acmeCertSync: skipping cert for ${mainDomain} - no PEM certificate block found`
             );
             continue;
         }
@@ -628,7 +753,7 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
             );
         } catch (err) {
             logger.debug(
-                `acmeCertSync: skipping cert for ${domain} - invalid X.509 certificate: ${err}`
+                `acmeCertSync: skipping cert for ${mainDomain} - invalid X.509 certificate: ${err}`
             );
             continue;
         }
@@ -638,139 +763,40 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
             crypto.createPrivateKey(keyPem);
         } catch (err) {
             logger.debug(
-                `acmeCertSync: skipping cert for ${domain} - invalid private key: ${err}`
+                `acmeCertSync: skipping cert for ${mainDomain} - invalid private key: ${err}`
             );
             continue;
         }
 
-        // Check if cert already exists in DB
-        const existing = await db
-            .select()
-            .from(certificates)
-            .where(and(eq(certificates.domain, domain)))
-            .limit(1);
-
-        let oldCertPem: string | null = null;
-        let oldKeyPem: string | null = null;
-
-        if (existing.length > 0 && existing[0].certFile) {
-            try {
-                const storedCertPem = decrypt(
-                    existing[0].certFile,
-                    config.getRawConfig().server.secret!
-                );
-                const wildcardUnchanged = existing[0].wildcard === wildcard;
-                if (storedCertPem === certPem && wildcardUnchanged) {
-                    // logger.debug(
-                    // `acmeCertSync: cert for ${domain} is unchanged, skipping`
-                    // );
-                    continue;
+        // Collect all domains covered by this cert: main + every SAN.
+        // Each domain gets its own row in the certificates table so that
+        // lookups by any hostname on the cert succeed independently.
+        const allDomains = new Set<string>([mainDomain]);
+        if (Array.isArray(cert.domain?.sans)) {
+            for (const san of cert.domain.sans) {
+                if (typeof san === "string" && san.trim()) {
+                    allDomains.add(san.trim());
                 }
-                // Cert has changed; capture old values so we can send a correct
-                // update message to the newt after the DB write.
-                oldCertPem = storedCertPem;
-                if (existing[0].keyFile) {
-                    try {
-                        oldKeyPem = decrypt(
-                            existing[0].keyFile,
-                            config.getRawConfig().server.secret!
-                        );
-                    } catch (keyErr) {
-                        logger.debug(
-                            `acmeCertSync: could not decrypt stored key for ${domain}: ${keyErr}`
-                        );
-                    }
-                }
-            } catch (err) {
-                // Decryption failure means we should proceed with the update
-                logger.debug(
-                    `acmeCertSync: could not decrypt stored cert for ${domain}, will update: ${err}`
-                );
             }
         }
 
-        // Parse cert expiry from the validated X.509 certificate
-        let expiresAt: number | null = null;
-        try {
-            expiresAt = Math.floor(
-                new Date(validatedX509.validTo).getTime() / 1000
-            );
-        } catch (err) {
-            logger.debug(
-                `acmeCertSync: could not parse cert expiry for ${domain}: ${err}`
-            );
-        }
-
-        const encryptedCert = encrypt(
-            certPem,
-            config.getRawConfig().server.secret!
+        logger.debug(
+            `acmeCertSync: cert for ${mainDomain} covers ${allDomains.size} domain(s): ${[...allDomains].join(", ")}`
         );
-        const encryptedKey = encrypt(
-            keyPem,
-            config.getRawConfig().server.secret!
-        );
-        const now = Math.floor(Date.now() / 1000);
 
-        const domainId = await findDomainId(domain);
-        if (domainId) {
-            logger.debug(
-                `acmeCertSync: resolved domainId "${domainId}" for cert domain "${domain}"`
-            );
-        } else {
-            logger.debug(
-                `acmeCertSync: no matching domain record found for cert domain "${domain}"`
-            );
-        }
-
-        if (existing.length > 0) {
-            logger.debug(
-                `acmeCertSync: updating existing certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
-            );
-            await db
-                .update(certificates)
-                .set({
-                    certFile: encryptedCert,
-                    keyFile: encryptedKey,
-                    status: "valid",
-                    expiresAt,
-                    updatedAt: now,
-                    wildcard,
-                    ...(domainId !== null && { domainId })
-                })
-                .where(eq(certificates.domain, domain));
-
-            logger.debug(
-                `acmeCertSync: updated certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
-            );
-
-            await pushCertUpdateToAffectedNewts(
-                domain,
-                domainId,
-                oldCertPem,
-                oldKeyPem
-            );
-        } else {
-            logger.debug(
-                `acmeCertSync: inserting new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
-            );
-            await db.insert(certificates).values({
-                domain,
-                domainId,
-                certFile: encryptedCert,
-                keyFile: encryptedKey,
-                status: "valid",
-                expiresAt,
-                createdAt: now,
-                updatedAt: now,
-                wildcard
-            });
-
-            logger.debug(
-                `acmeCertSync: inserted new certificate for ${domain} (expires ${expiresAt ? new Date(expiresAt * 1000).toISOString() : "unknown"})`
-            );
-
-            // For a brand-new cert, push to any SSL resources that were waiting for it
-            await pushCertUpdateToAffectedNewts(domain, domainId, null, null);
+        for (const domain of allDomains) {
+            try {
+                await storeCertForDomain(
+                    domain,
+                    certPem,
+                    keyPem,
+                    validatedX509
+                );
+            } catch (err) {
+                logger.error(
+                    `acmeCertSync: error storing cert for domain "${domain}": ${err}`
+                );
+            }
         }
     }
 }
