@@ -25,9 +25,9 @@ import { tierMatrix } from "./billing/tierMatrix";
 
 export async function calculateUserClientsForOrgs(
     userId: string,
-    trx?: Transaction
+    trx: Transaction | typeof db = db
 ): Promise<void> {
-    const execute = async (transaction: Transaction) => {
+    const execute = async (transaction: Transaction | typeof db) => {
         const orgCache = new Map<string, typeof orgs.$inferSelect | null>();
         const adminRoleCache = new Map<
             string,
@@ -437,7 +437,7 @@ export async function calculateUserClientsForOrgs(
 
 async function cleanupOrphanedClients(
     userId: string,
-    trx: Transaction,
+    trx: Transaction | typeof db,
     userOrgIds: string[] = []
 ): Promise<void> {
     // Find all OLM clients for this user that should be deleted
