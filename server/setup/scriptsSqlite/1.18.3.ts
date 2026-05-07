@@ -16,7 +16,7 @@ export default async function migration() {
         db.transaction(() => {
             db.prepare(
                 `
-                    CREATE TABLE 'trialNotifications' (
+                    CREATE TABLE IF NOT EXISTS 'trialNotifications' (
                        	'notificationId' integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                        	'subscriptionId' text NOT NULL,
                        	'notificationType' text NOT NULL,

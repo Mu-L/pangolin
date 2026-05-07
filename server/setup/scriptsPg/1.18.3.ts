@@ -44,16 +44,12 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-            CREATE TABLE "trialNotifications" (
+            CREATE TABLE IF NOT EXISTS "trialNotifications" (
                	"notificationId" serial PRIMARY KEY NOT NULL,
                	"subscriptionId" varchar(255) NOT NULL,
                	"notificationType" varchar(50) NOT NULL,
                	"sentAt" bigint NOT NULL
             );
-        `);
-
-        await db.execute(sql`
-            ALTER TABLE "trialNotifications" ADD CONSTRAINT "trialNotifications_subscriptionId_subscriptions_subscriptionId_fk" FOREIGN KEY ("subscriptionId") REFERENCES "public"."subscriptions"("subscriptionId") ON DELETE cascade ON UPDATE no action;
         `);
 
         await db.execute(sql`COMMIT`);
