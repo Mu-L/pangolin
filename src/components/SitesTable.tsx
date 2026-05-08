@@ -50,6 +50,9 @@ import {
     ControlledDataTable,
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { LabelsSelector } from "./labels-selector";
 
 export type SiteRow = {
     id: number;
@@ -67,6 +70,11 @@ export type SiteRow = {
     exitNodeEndpoint?: string;
     remoteExitNodeId?: string;
     resourceCount: number;
+    labels?: Array<{
+        labelId: number;
+        name: string;
+        color: string;
+    }>;
 };
 
 type SitesTableProps = {
@@ -368,7 +376,7 @@ export default function SitesTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => setResourcesDialogSite(siteRow)}
-                        className="flex h-8 items-center gap-2 px-0 font-normal"
+                        className="flex h-8 items-center gap-2 px-2 font-normal"
                     >
                         <span className="text-sm tabular-nums">
                             {siteRow.resourceCount} {t("resources")}
@@ -450,11 +458,41 @@ export default function SitesTable({
                 );
             }
         },
+        // The label feature should be added to the tiers
         {
             accessorKey: "labels",
             header: () => <span className="p-3">{t("labels")}</span>,
             cell: ({ row }) => {
-                return <></>;
+                const labels = row.original.labels ?? [];
+                return (
+                    <div className="inline-flex flex-wrap items-center justify-end w-full">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="p-1 size-auto rounded-full"
+                                    title={t("addLabels")}
+                                >
+                                    <span className="sr-only">
+                                        {t("addLabels")}
+                                    </span>
+                                    <PlusIcon className="size-3" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                align="center"
+                                className="p-0 w-full"
+                            >
+                                <LabelsSelector
+                                    orgId={orgId}
+                                    selectedLabels={[]}
+                                    onSelectionChange={() => {}}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                );
             }
         },
         {
@@ -616,11 +654,11 @@ export default function SitesTable({
                         title={t("siteDelete")}
                     />
 
-                    <SiteLabelsDialog
+                    {/* <SiteLabelsDialog
                         isOpen={isLabelsDialogOpen}
                         setIsOpen={setIsLabelsDialogOpen}
                         site={selectedSite}
-                    />
+                    /> */}
                 </>
             )}
 

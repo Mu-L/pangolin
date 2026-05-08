@@ -9,7 +9,10 @@ import {
     siteResources,
     targets,
     sites,
-    userSites
+    userSites,
+    labels,
+    siteLabels,
+    type Label
 } from "@server/db";
 import cache from "#dynamic/lib/cache";
 import response from "@server/lib/response";
@@ -23,6 +26,8 @@ import createHttpError from "http-errors";
 import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 // Stale-while-revalidate: keeps the last successfully fetched version so that
 // a transient network failure / timeout does not flip every site back to
@@ -233,6 +238,7 @@ type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
 type SiteWithUpdateAvailable = Omit<SiteRowBase, "online"> & {
     online?: SiteRowBase["online"]; // undefined for local sites
     newtUpdateAvailable?: boolean;
+    labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
 };
 
 export type ListSitesResponse = PaginatedResponse<{
@@ -367,11 +373,46 @@ export async function listSites(
         // Get latest version asynchronously without blocking the response
         const latestNewtVersionPromise = getLatestNewtVersion();
 
+        const siteIds = rows.map((site) => site.siteId);
+
+        let labelsForSites: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            siteId: number;
+        }> = [];
+
+        // The label feature should be added in the tiers
+        // if (await isLicensedOrSubscribed(orgId, tierMatrix.fullRbac)) {
+        // }
+        labelsForSites =
+            siteIds.length === 0
+                ? []
+                : await db
+                      .select({
+                          labelId: labels.labelId,
+                          name: labels.name,
+                          color: labels.name,
+                          siteId: siteLabels.siteId
+                      })
+                      .from(labels)
+                      .innerJoin(
+                          siteLabels,
+                          eq(siteLabels.labelId, labels.labelId)
+                      )
+                      .where(inArray(siteLabels.siteId, siteIds));
+
         const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
             const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
             // Initially set to false, will be updated if version check succeeds
             siteWithUpdate.newtUpdateAvailable = false;
-            return siteWithUpdate;
+
+            // associate labels
+            const labelsForSite = labelsForSites.filter(
+                (label) => label.siteId === site.siteId
+            );
+
+            return { ...siteWithUpdate, labels: labelsForSite };
         });
 
         // Try to get the latest version, but don't block if it fails
