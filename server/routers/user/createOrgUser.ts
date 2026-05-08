@@ -6,7 +6,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { db, orgs } from "@server/db";
+import { db, orgs, primaryDb } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { idp, idpOidcConfig, roles, userOrgs, users } from "@server/db";
 import { generateId } from "@server/auth/sessions/app";
@@ -34,8 +34,7 @@ const bodySchema = z
         roleId: z.number().int().positive().optional()
     })
     .refine(
-        (d) =>
-            (d.roleIds != null && d.roleIds.length > 0) || d.roleId != null,
+        (d) => (d.roleIds != null && d.roleIds.length > 0) || d.roleId != null,
         { message: "roleIds or roleId is required", path: ["roleIds"] }
     )
     .transform((data) => ({
@@ -100,8 +99,14 @@ export async function createOrgUser(
         }
 
         const { orgId } = parsedParams.data;
-        const { username, email, name, type, idpId, roleIds: uniqueRoleIds } =
-            parsedBody.data;
+        const {
+            username,
+            email,
+            name,
+            type,
+            idpId,
+            roleIds: uniqueRoleIds
+        } = parsedBody.data;
 
         if (build == "saas") {
             const usage = await usageService.getUsage(orgId, FeatureId.USERS);
@@ -232,6 +237,7 @@ export async function createOrgUser(
                 );
             }
 
+            let userIdForClients: string | undefined;
             await db.transaction(async (trx) => {
                 const [existingUser] = await trx
                     .select()
@@ -270,7 +276,7 @@ export async function createOrgUser(
                         {
                             orgId,
                             userId: existingUser.userId,
-                            autoProvisioned: false,
+                            autoProvisioned: false
                         },
                         uniqueRoleIds,
                         trx
@@ -292,20 +298,30 @@ export async function createOrgUser(
                         })
                         .returning();
 
-                        await assignUserToOrg(
-                            org,
-                            {
-                                orgId,
-                                userId: newUser.userId,
-                                autoProvisioned: false,
-                            },
-                            uniqueRoleIds,
-                            trx
-                        );
+                    await assignUserToOrg(
+                        org,
+                        {
+                            orgId,
+                            userId: newUser.userId,
+                            autoProvisioned: false
+                        },
+                        uniqueRoleIds,
+                        trx
+                    );
                 }
 
-                await calculateUserClientsForOrgs(userId, trx);
+                userIdForClients = userId;
             });
+
+            if (userIdForClients) {
+                calculateUserClientsForOrgs(userIdForClients, primaryDb).catch(
+                    (e) => {
+                        logger.error(
+                            `Failed to calculate user clients after creating org user: ${e}`
+                        );
+                    }
+                );
+            }
         } else {
             return next(
                 createHttpError(HttpCode.BAD_REQUEST, "User type is required")

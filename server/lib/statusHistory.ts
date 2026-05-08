@@ -124,7 +124,7 @@ export function computeBuckets(
     let totalDowntime = 0;
 
     for (let d = 0; d < days; d++) {
-        const dayStartSec = todayMidnightSec - (days - d) * 86400;
+        const dayStartSec = todayMidnightSec - (days - 1 - d) * 86400;
         const dayEndSec = dayStartSec + 86400;
 
         const dayEvents = events.filter(

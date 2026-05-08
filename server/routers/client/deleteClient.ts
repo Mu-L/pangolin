@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, olms } from "@server/db";
+import { db, olms, primaryDb, Client, Olm } from "@server/db";
 import { clients, clientSitesAssociationsCache } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -71,14 +71,17 @@ export async function deleteClient(
             );
         }
 
+        let deletedClient: Client | undefined;
+        let olm: Olm | undefined;
+
         await db.transaction(async (trx) => {
             // Then delete the client itself
-            const [deletedClient] = await trx
+            [deletedClient] = await trx
                 .delete(clients)
                 .where(eq(clients.clientId, clientId))
                 .returning();
 
-            const [olm] = await trx
+            [olm] = await trx
                 .select()
                 .from(olms)
                 .where(eq(olms.clientId, clientId))
@@ -88,13 +91,28 @@ export async function deleteClient(
             if (!client.userId && client.olmId) {
                 await trx.delete(olms).where(eq(olms.olmId, client.olmId));
             }
-
-            await rebuildClientAssociationsFromClient(deletedClient, trx);
-
-            if (olm) {
-                await sendTerminateClient(deletedClient.clientId, OlmErrorCodes.TERMINATED_DELETED, olm.olmId); //  the olmId needs to be provided because it cant look it up after deletion
-            }
         });
+
+        if (deletedClient) {
+            rebuildClientAssociationsFromClient(deletedClient, primaryDb).catch(
+                (e) => {
+                    logger.error(
+                        `Failed to rebuild client associations after deleting client ${clientId}: ${e}`
+                    );
+                }
+            );
+            if (olm) {
+                sendTerminateClient(
+                    deletedClient.clientId,
+                    OlmErrorCodes.TERMINATED_DELETED,
+                    olm.olmId
+                ).catch((e) => {
+                    logger.error(
+                        `Failed to send terminate message for client ${deletedClient?.clientId} after deleting client ${clientId}: ${e}`
+                    );
+                });
+            }
+        }
 
         return response(res, {
             data: null,

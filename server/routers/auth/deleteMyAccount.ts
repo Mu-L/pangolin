@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, orgs, userOrgs, users } from "@server/db";
+import { db, orgs, userOrgs, users, primaryDb } from "@server/db";
 import { eq, and, inArray, not } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -218,11 +218,16 @@ export async function deleteMyAccount(
 
         await db.transaction(async (trx) => {
             await trx.delete(users).where(eq(users.userId, userId));
-            await calculateUserClientsForOrgs(userId, trx);
             // loop through the other orgs and decrement the count
             for (const userOrg of otherOrgsTheUserWasIn) {
                 await usageService.add(userOrg.orgId, FeatureId.USERS, -1, trx);
             }
+        });
+
+        calculateUserClientsForOrgs(userId, primaryDb).catch((e) => {
+            logger.error(
+                `Failed to calculate user clients after deleting account for user ${userId}: ${e}`
+            );
         });
 
         try {
