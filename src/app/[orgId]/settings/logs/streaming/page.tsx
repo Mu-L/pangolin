@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -38,7 +38,10 @@ import {
     HttpDestinationCredenza,
     parseHttpConfig
 } from "@app/components/HttpDestinationCredenza";
-import { S3DestinationCredenza } from "@app/components/S3DestinationCredenza";
+import {
+    S3DestinationCredenza,
+    parseS3Config
+} from "@app/components/S3DestinationCredenza";
 import { DatadogDestinationCredenza } from "@app/components/DatadogDestinationCredenza";
 import { useTranslations } from "next-intl";
 
@@ -64,6 +67,42 @@ interface DestinationCardProps {
     disabled?: boolean;
 }
 
+function getDestinationDisplay(destination: Destination): {
+    name: string;
+    typeLabel: string;
+    detail: string;
+    icon: React.ReactNode;
+} {
+    if (destination.type === "s3") {
+        const cfg = parseS3Config(destination.config);
+        const detail = cfg.bucket
+            ? `s3://${cfg.bucket}${cfg.prefix ? `/${cfg.prefix.replace(/^\/+/, "")}` : ""}`
+            : "";
+        return {
+            name: cfg.name,
+            typeLabel: "Amazon S3",
+            detail,
+            icon: (
+                <Image
+                    src="/third-party/s3.png"
+                    alt="Amazon S3"
+                    width={16}
+                    height={16}
+                    className="rounded-sm"
+                />
+            )
+        };
+    }
+    // Default: HTTP
+    const cfg = parseHttpConfig(destination.config);
+    return {
+        name: cfg.name,
+        typeLabel: "HTTP",
+        detail: cfg.url,
+        icon: <Globe className="h-3.5 w-3.5 text-black" />
+    };
+}
+
 function DestinationCard({
     destination,
     onToggle,
@@ -73,25 +112,25 @@ function DestinationCard({
     disabled = false
 }: DestinationCardProps) {
     const t = useTranslations();
-    const cfg = parseHttpConfig(destination.config);
+    const { name, typeLabel, detail, icon } =
+        getDestinationDisplay(destination);
 
     return (
         <div className="relative flex flex-col rounded-lg border bg-card text-card-foreground p-5 gap-3">
             {/* Top row: icon + name/type + toggle */}
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                    {/* Squirkle icon: gray outer → white inner → black globe */}
                     <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-2xl bg-muted">
                         <div className="flex items-center justify-center w-6 h-6 rounded-xl bg-white shadow-sm">
-                            <Globe className="h-3.5 w-3.5 text-black" />
+                            {icon}
                         </div>
                     </div>
                     <div className="min-w-0">
                         <p className="font-semibold text-sm leading-tight truncate">
-                            {cfg.name || t("streamingUnnamedDestination")}
+                            {name || t("streamingUnnamedDestination")}
                         </p>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            HTTP
+                            {typeLabel}
                         </p>
                     </div>
                 </div>
@@ -105,9 +144,9 @@ function DestinationCard({
                 />
             </div>
 
-            {/* URL preview */}
+            {/* Detail preview (URL for HTTP, s3:// path for S3) */}
             <p className="text-xs text-muted-foreground truncate">
-                {cfg.url || (
+                {detail || (
                     <span className="italic">
                         {t("streamingNoUrlConfigured")}
                     </span>
@@ -485,7 +524,7 @@ export default function StreamingDestinationsPage() {
                         if (!v) setDeleteTarget(null);
                     }}
                     string={
-                        parseHttpConfig(deleteTarget.config).name ||
+                        getDestinationDisplay(deleteTarget).name ||
                         t("streamingDeleteDialogThisDestination")
                     }
                     title={t("streamingDeleteTitle")}
@@ -493,7 +532,7 @@ export default function StreamingDestinationsPage() {
                         <p>
                             {t("streamingDeleteDialogAreYouSure")}{" "}
                             <span>
-                                {parseHttpConfig(deleteTarget.config).name ||
+                                {getDestinationDisplay(deleteTarget).name ||
                                     t("streamingDeleteDialogThisDestination")}
                             </span>
                             {t("streamingDeleteDialogPermanentlyRemoved")}

@@ -30,10 +30,12 @@ import {
     LOG_TYPES,
     LogEvent,
     DestinationFailureState,
-    HttpConfig
+    HttpConfig,
+    S3Config
 } from "./types";
 import { LogDestinationProvider } from "./providers/LogDestinationProvider";
 import { HttpLogDestination } from "./providers/HttpLogDestination";
+import { S3LogDestination } from "./providers/S3LogDestination";
 import type { EventStreamingDestination } from "@server/db";
 
 // ---------------------------------------------------------------------------
@@ -72,11 +74,11 @@ const MAX_CATCHUP_BATCHES = 20;
  * After the last entry the max value is re-used.
  */
 const BACKOFF_SCHEDULE_MS = [
-    60_000,       // 1 min   (failure 1)
-    2 * 60_000,   // 2 min   (failure 2)
-    5 * 60_000,   // 5 min   (failure 3)
-    10 * 60_000,  // 10 min  (failure 4)
-    30 * 60_000   // 30 min  (failure 5+)
+    60_000, // 1 min   (failure 1)
+    2 * 60_000, // 2 min   (failure 2)
+    5 * 60_000, // 5 min   (failure 3)
+    10 * 60_000, // 10 min  (failure 4)
+    30 * 60_000 // 30 min  (failure 5+)
 ];
 
 /**
@@ -204,7 +206,10 @@ export class LogStreamingManager {
             this.pollTimer = null;
             this.runPoll()
                 .catch((err) =>
-                    logger.error("LogStreamingManager: unexpected poll error", err)
+                    logger.error(
+                        "LogStreamingManager: unexpected poll error",
+                        err
+                    )
                 )
                 .finally(() => {
                     if (this.isRunning) {
@@ -275,10 +280,13 @@ export class LogStreamingManager {
         }
 
         // Decrypt and parse config – skip destination if either step fails
-        let configFromDb: HttpConfig;
+        let configFromDb: unknown;
         try {
-            const decryptedConfig = decrypt(dest.config, config.getRawConfig().server.secret!);
-            configFromDb = JSON.parse(decryptedConfig) as HttpConfig;
+            const decryptedConfig = decrypt(
+                dest.config,
+                config.getRawConfig().server.secret!
+            );
+            configFromDb = JSON.parse(decryptedConfig);
         } catch (err) {
             logger.error(
                 `LogStreamingManager: destination ${dest.destinationId} has invalid or undecryptable config`,
@@ -362,7 +370,10 @@ export class LogStreamingManager {
                     .from(eventStreamingCursors)
                     .where(
                         and(
-                            eq(eventStreamingCursors.destinationId, dest.destinationId),
+                            eq(
+                                eventStreamingCursors.destinationId,
+                                dest.destinationId
+                            ),
                             eq(eventStreamingCursors.logType, logType)
                         )
                     )
@@ -431,9 +442,7 @@ export class LogStreamingManager {
 
             if (rows.length === 0) break;
 
-            const events = rows.map((row) =>
-                this.rowToLogEvent(logType, row)
-            );
+            const events = rows.map((row) => this.rowToLogEvent(logType, row));
 
             // Throws on failure – caught by the caller which applies back-off
             await provider.send(events);
@@ -677,8 +686,7 @@ export class LogStreamingManager {
                 break;
         }
 
-        const orgId =
-            typeof row.orgId === "string" ? row.orgId : "";
+        const orgId = typeof row.orgId === "string" ? row.orgId : "";
 
         return {
             id: row.id,
@@ -708,6 +716,8 @@ export class LogStreamingManager {
         switch (type) {
             case "http":
                 return new HttpLogDestination(config as HttpConfig);
+            case "s3":
+                return new S3LogDestination(config as S3Config);
             // Future providers:
             // case "datadog": return new DatadogLogDestination(config as DatadogConfig);
             default:
