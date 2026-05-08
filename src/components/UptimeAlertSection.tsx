@@ -1,18 +1,5 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { BellPlus, BellRing } from "lucide-react";
-import {
-    SettingsSection,
-    SettingsSectionHeader,
-    SettingsSectionTitle,
-    SettingsSectionDescription,
-    SettingsSectionBody
-} from "@app/components/Settings";
-import UptimeBar from "@app/components/UptimeBar";
-import { Button } from "@app/components/ui/button";
 import {
     Credenza,
     CredenzaBody,
@@ -23,18 +10,32 @@ import {
     CredenzaHeader,
     CredenzaTitle
 } from "@app/components/Credenza";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import {
+    SettingsSection,
+    SettingsSectionBody,
+    SettingsSectionDescription,
+    SettingsSectionHeader,
+    SettingsSectionTitle
+} from "@app/components/Settings";
+import UptimeBar from "@app/components/UptimeBar";
+import { TagInput, type Tag } from "@app/components/tags/tag-input";
+import { Button } from "@app/components/ui/button";
 import { Input } from "@app/components/ui/input";
 import { Label } from "@app/components/ui/label";
-import { TagInput, type Tag } from "@app/components/tags/tag-input";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { toast } from "@app/hooks/useToast";
-import { orgQueries } from "@app/lib/queries";
-import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { orgQueries } from "@app/lib/queries";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BellPlus, BellRing } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useState } from "react";
+import { RolesSelector } from "./roles-selector";
+import { UsersSelector } from "./users-selector";
 
 interface UptimeAlertSectionProps {
     orgId: string;
@@ -52,10 +53,12 @@ export default function UptimeAlertSection({
     days = 90
 }: UptimeAlertSectionProps) {
     const t = useTranslations();
-    const api = createApiClient(useEnvContext());
+    const envContext = useEnvContext();
+    const api = createApiClient(envContext);
     const queryClient = useQueryClient();
     const { isPaidUser } = usePaidStatus();
     const isPaid = isPaidUser(tierMatrix.alertingRules);
+    const { env } = envContext;
 
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(
@@ -64,12 +67,7 @@ export default function UptimeAlertSection({
     const [userTags, setUserTags] = useState<Tag[]>([]);
     const [roleTags, setRoleTags] = useState<Tag[]>([]);
     const [emailTags, setEmailTags] = useState<Tag[]>([]);
-    const [activeUserTagIndex, setActiveUserTagIndex] = useState<number | null>(
-        null
-    );
-    const [activeRoleTagIndex, setActiveRoleTagIndex] = useState<number | null>(
-        null
-    );
+
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
@@ -79,27 +77,6 @@ export default function UptimeAlertSection({
         ...orgQueries.alertRulesForSource({ orgId, siteId, resourceId }),
         enabled: isPaid
     });
-
-    const { data: orgUsers = [] } = useQuery(orgQueries.users({ orgId }));
-    const { data: orgRoles = [] } = useQuery(orgQueries.roles({ orgId }));
-
-    const allUsers = useMemo(
-        () =>
-            orgUsers.map((u) => ({
-                id: String(u.id),
-                text: getUserDisplayName({
-                    email: u.email,
-                    name: u.name,
-                    username: u.username
-                })
-            })),
-        [orgUsers]
-    );
-
-    const allRoles = useMemo(
-        () => orgRoles.map((r) => ({ id: String(r.roleId), text: r.name })),
-        [orgRoles]
-    );
 
     const hasRules = (alertRules?.length ?? 0) > 0;
 
@@ -201,7 +178,9 @@ export default function UptimeAlertSection({
                                 {t("uptimeSectionDescription", { days })}
                             </SettingsSectionDescription>
                         </div>
-                        {alertButton}
+                        {!env.flags.disableEnterpriseFeatures
+                            ? alertButton
+                            : null}
                     </div>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
@@ -227,10 +206,16 @@ export default function UptimeAlertSection({
                     </CredenzaHeader>
                     <CredenzaBody>
                         <div className="space-y-4">
-                            <PaidFeaturesAlert tiers={tierMatrix.alertingRules} />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.alertingRules}
+                            />
                             <fieldset
                                 disabled={!isPaid}
-                                className={!isPaid ? "opacity-50 pointer-events-none" : ""}
+                                className={
+                                    !isPaid
+                                        ? "opacity-50 pointer-events-none"
+                                        : ""
+                                }
                             >
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -240,65 +225,53 @@ export default function UptimeAlertSection({
                                         <Input
                                             id="alert-name"
                                             value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            placeholder={t("uptimeAlertNamePlaceholder")}
+                                            onChange={(e) =>
+                                                setName(e.target.value)
+                                            }
+                                            placeholder={t(
+                                                "uptimeAlertNamePlaceholder"
+                                            )}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>{t("alertingNotifyUsers")}</Label>
-                                        <TagInput
-                                            activeTagIndex={activeUserTagIndex}
-                                            setActiveTagIndex={setActiveUserTagIndex}
-                                            placeholder={t("alertingSelectUsers")}
-                                            size="sm"
-                                            tags={userTags}
-                                            setTags={(newTags) => {
-                                                const next =
-                                                    typeof newTags === "function"
-                                                        ? newTags(userTags)
-                                                        : newTags;
-                                                setUserTags(next as Tag[]);
-                                            }}
-                                            enableAutocomplete
-                                            autocompleteOptions={allUsers}
-                                            restrictTagsToAutocompleteOptions
-                                            allowDuplicates={false}
-                                            sortTags
+                                        <Label>
+                                            {t("alertingNotifyUsers")}
+                                        </Label>
+                                        <UsersSelector
+                                            selectedUsers={userTags}
+                                            orgId={orgId}
+                                            onSelectUsers={setUserTags}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>{t("alertingNotifyRoles")}</Label>
-                                        <TagInput
-                                            activeTagIndex={activeRoleTagIndex}
-                                            setActiveTagIndex={setActiveRoleTagIndex}
-                                            placeholder={t("alertingSelectRoles")}
-                                            size="sm"
-                                            tags={roleTags}
-                                            setTags={(newTags) => {
-                                                const next =
-                                                    typeof newTags === "function"
-                                                        ? newTags(roleTags)
-                                                        : newTags;
-                                                setRoleTags(next as Tag[]);
-                                            }}
-                                            enableAutocomplete
-                                            autocompleteOptions={allRoles}
-                                            restrictTagsToAutocompleteOptions
-                                            allowDuplicates={false}
-                                            sortTags
+                                        <Label>
+                                            {t("alertingNotifyRoles")}
+                                        </Label>
+                                        <RolesSelector
+                                            selectedRoles={roleTags}
+                                            restrictAdminRole
+                                            orgId={orgId}
+                                            onSelectRoles={setRoleTags}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>{t("uptimeAdditionalEmails")}</Label>
+                                        <Label>
+                                            {t("uptimeAdditionalEmails")}
+                                        </Label>
                                         <TagInput
                                             activeTagIndex={activeEmailTagIndex}
-                                            setActiveTagIndex={setActiveEmailTagIndex}
-                                            placeholder={t("alertingEmailPlaceholder")}
+                                            setActiveTagIndex={
+                                                setActiveEmailTagIndex
+                                            }
+                                            placeholder={t(
+                                                "alertingEmailPlaceholder"
+                                            )}
                                             size="sm"
                                             tags={emailTags}
                                             setTags={(newTags) => {
                                                 const next =
-                                                    typeof newTags === "function"
+                                                    typeof newTags ===
+                                                    "function"
                                                         ? newTags(emailTags)
                                                         : newTags;
                                                 setEmailTags(next as Tag[]);
@@ -306,7 +279,9 @@ export default function UptimeAlertSection({
                                             allowDuplicates={false}
                                             sortTags
                                             validateTag={(tag) =>
-                                                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tag)
+                                                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                                                    tag
+                                                )
                                             }
                                             delimiterList={[",", "Enter"]}
                                         />

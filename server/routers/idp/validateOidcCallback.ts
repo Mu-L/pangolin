@@ -333,23 +333,16 @@ export async function validateOidcCallback(
                     .innerJoin(orgs, eq(orgs.orgId, idpOrg.orgId));
                 allOrgs = idpOrgs.map((o) => o.orgs);
 
-                // for (const org of allOrgs) {
-                //     const subscribed = await isSubscribed(
-                //         org.orgId,
-                //         tierMatrix.autoProvisioning
-                //     );
-                //     if (!subscribed) {
-                //         // filter out the org
-                //         allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
-
-                //         // return next(
-                //         //     createHttpError(
-                //         //         HttpCode.FORBIDDEN,
-                //         //         "This organization's current plan does not support this feature."
-                //         //     )
-                //         // );
-                //     }
-                // }
+                for (const org of allOrgs) {
+                    const subscribed = await isSubscribed(
+                        org.orgId,
+                        tierMatrix.autoProvisioning
+                    );
+                    if (!subscribed) {
+                        // filter out the org
+                        allOrgs = allOrgs.filter((o) => o.orgId !== org.orgId);
+                    }
+                }
             } else {
                 allOrgs = await db.select().from(orgs);
             }
@@ -490,7 +483,14 @@ export async function validateOidcCallback(
                             }
                         }
 
-                        await calculateUserClientsForOrgs(existingUser.userId);
+                        calculateUserClientsForOrgs(existingUser.userId).catch(
+                            (err) => {
+                                logger.error(
+                                    "Error calculating user clients after removing all orgs for user with no valid IdP mappings",
+                                    { error: err }
+                                );
+                            }
+                        );
 
                         return next(
                             createHttpError(
@@ -512,10 +512,9 @@ export async function validateOidcCallback(
 
             const orgUserCounts: { orgId: string; userCount: number }[] = [];
 
+            let userId = existingUser?.userId;
             // sync the user with the orgs and roles
             await db.transaction(async (trx) => {
-                let userId = existingUser?.userId;
-
                 // create user if not exists
                 if (!existingUser) {
                     userId = generateId(15);
@@ -645,8 +644,15 @@ export async function validateOidcCallback(
                         userCount: userCount.length
                     });
                 }
+            });
 
+            db.transaction(async (trx) => {
                 await calculateUserClientsForOrgs(userId!, trx);
+            }).catch((err) => {
+                logger.error(
+                    "Error calculating user clients after syncing orgs and roles for OIDC user",
+                    { error: err }
+                );
             });
 
             for (const orgCount of orgUserCounts) {

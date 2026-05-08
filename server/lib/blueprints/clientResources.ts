@@ -361,7 +361,7 @@ export async function updateClientResources(
         } else {
             let aliasAddress: string | null = null;
             if (resourceData.mode === "host" || resourceData.mode === "http") {
-                aliasAddress = await getNextAvailableAliasAddress(orgId);
+                aliasAddress = await getNextAvailableAliasAddress(orgId, trx);
             }
 
             let domainInfo:

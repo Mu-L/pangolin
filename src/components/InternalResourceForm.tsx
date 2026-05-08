@@ -40,7 +40,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, ExternalLink } from "lucide-react";
+import {
+    ArrowDownIcon,
+    ChevronDownIcon,
+    ChevronsUpDown,
+    ExternalLink
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -50,11 +55,13 @@ import {
     formatMultiSitesSelectorLabel
 } from "./multi-site-selector";
 import type { Selectedsite } from "./site-selector";
-import { CaretSortIcon } from "@radix-ui/react-icons";
+
 import { MachinesSelector } from "./machines-selector";
 import DomainPicker from "@app/components/DomainPicker";
 import { SwitchInput } from "@app/components/SwitchInput";
 import CertificateStatus from "@app/components/CertificateStatus";
+import { UsersSelector } from "./users-selector";
+import { RolesSelector } from "./roles-selector";
 import { build } from "@server/build";
 
 // --- Helpers (shared) ---
@@ -833,12 +840,16 @@ export function InternalResourceForm({
                                                                 modeCidrKey
                                                             )
                                                         },
-                                                        {
-                                                            value: "http",
-                                                            label: t(
-                                                                modeHttpKey
-                                                            )
-                                                        }
+                                                        ...(!disableEnterpriseFeatures
+                                                            ? [
+                                                                  {
+                                                                      value: "http" as const,
+                                                                      label: t(
+                                                                          modeHttpKey
+                                                                      )
+                                                                  }
+                                                              ]
+                                                            : [])
                                                     ];
                                                 return (
                                                     <FormItem>
@@ -1484,40 +1495,22 @@ export function InternalResourceForm({
                                         <FormItem className="flex flex-col items-start">
                                             <FormLabel>{t("roles")}</FormLabel>
                                             <FormControl>
-                                                <TagInput
-                                                    {...field}
-                                                    activeTagIndex={
-                                                        activeRolesTagIndex
+                                                <RolesSelector
+                                                    selectedRoles={
+                                                        field.value ?? []
                                                     }
-                                                    setActiveTagIndex={
-                                                        setActiveRolesTagIndex
-                                                    }
-                                                    placeholder={t(
-                                                        "accessRoleSelect2"
-                                                    )}
-                                                    size="sm"
-                                                    tags={
-                                                        form.getValues()
-                                                            .roles ?? []
-                                                    }
-                                                    setTags={(newRoles) =>
+                                                    orgId={orgId}
+                                                    onSelectRoles={(
+                                                        newUsers
+                                                    ) => {
                                                         form.setValue(
                                                             "roles",
-                                                            newRoles as [
+                                                            newUsers as [
                                                                 Tag,
                                                                 ...Tag[]
                                                             ]
-                                                        )
-                                                    }
-                                                    enableAutocomplete
-                                                    autocompleteOptions={
-                                                        allRoles
-                                                    }
-                                                    allowDuplicates={false}
-                                                    restrictTagsToAutocompleteOptions={
-                                                        true
-                                                    }
-                                                    sortTags={true}
+                                                        );
+                                                    }}
                                                 />
                                             </FormControl>
                                             <FormMessage />
@@ -1530,43 +1523,21 @@ export function InternalResourceForm({
                                     render={({ field }) => (
                                         <FormItem className="flex flex-col items-start">
                                             <FormLabel>{t("users")}</FormLabel>
-                                            <FormControl>
-                                                <TagInput
-                                                    {...field}
-                                                    activeTagIndex={
-                                                        activeUsersTagIndex
-                                                    }
-                                                    setActiveTagIndex={
-                                                        setActiveUsersTagIndex
-                                                    }
-                                                    placeholder={t(
-                                                        "accessUserSelect"
-                                                    )}
-                                                    tags={
-                                                        form.getValues()
-                                                            .users ?? []
-                                                    }
-                                                    size="sm"
-                                                    setTags={(newUsers) =>
-                                                        form.setValue(
-                                                            "users",
-                                                            newUsers as [
-                                                                Tag,
-                                                                ...Tag[]
-                                                            ]
-                                                        )
-                                                    }
-                                                    enableAutocomplete={true}
-                                                    autocompleteOptions={
-                                                        allUsers
-                                                    }
-                                                    allowDuplicates={false}
-                                                    restrictTagsToAutocompleteOptions={
-                                                        true
-                                                    }
-                                                    sortTags={true}
-                                                />
-                                            </FormControl>
+                                            <UsersSelector
+                                                selectedUsers={
+                                                    field.value ?? []
+                                                }
+                                                orgId={orgId}
+                                                onSelectUsers={(newUsers) => {
+                                                    form.setValue(
+                                                        "users",
+                                                        newUsers as [
+                                                            Tag,
+                                                            ...Tag[]
+                                                        ]
+                                                    );
+                                                }}
+                                            />
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -1580,73 +1551,20 @@ export function InternalResourceForm({
                                                 <FormLabel>
                                                     {t("machineClients")}
                                                 </FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                className={cn(
-                                                                    "justify-between w-full",
-                                                                    "text-muted-foreground pl-1.5"
-                                                                )}
-                                                            >
-                                                                <span
-                                                                    className={cn(
-                                                                        "inline-flex items-center gap-1",
-                                                                        "overflow-x-auto"
-                                                                    )}
-                                                                >
-                                                                    {(
-                                                                        field.value ??
-                                                                        []
-                                                                    ).map(
-                                                                        (
-                                                                            client
-                                                                        ) => (
-                                                                            <span
-                                                                                key={
-                                                                                    client.clientId
-                                                                                }
-                                                                                className={cn(
-                                                                                    "bg-muted-foreground/20 font-normal text-foreground rounded-sm",
-                                                                                    "py-1 px-1.5 text-xs"
-                                                                                )}
-                                                                            >
-                                                                                {
-                                                                                    client.name
-                                                                                }
-                                                                            </span>
-                                                                        )
-                                                                    )}
-                                                                    <span className="pl-1 font-normal">
-                                                                        {t(
-                                                                            "accessClientSelect"
-                                                                        )}
-                                                                    </span>
-                                                                </span>
-                                                                <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="p-0">
-                                                        <MachinesSelector
-                                                            selectedMachines={
-                                                                field.value ??
-                                                                []
-                                                            }
-                                                            orgId={orgId}
-                                                            onSelectMachines={(
-                                                                machines
-                                                            ) => {
-                                                                form.setValue(
-                                                                    "clients",
-                                                                    machines
-                                                                );
-                                                            }}
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
+                                                <MachinesSelector
+                                                    selectedMachines={
+                                                        field.value ?? []
+                                                    }
+                                                    orgId={orgId}
+                                                    onSelectMachines={(
+                                                        machines
+                                                    ) => {
+                                                        form.setValue(
+                                                            "clients",
+                                                            machines
+                                                        );
+                                                    }}
+                                                />
                                                 <FormMessage />
                                             </FormItem>
                                         )}

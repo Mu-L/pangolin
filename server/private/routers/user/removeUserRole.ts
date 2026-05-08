@@ -14,7 +14,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import stoi from "@server/lib/stoi";
-import { db } from "@server/db";
+import { db, primaryDb, Client } from "@server/db";
 import { userOrgRoles, userOrgs, roles, clients } from "@server/db";
 import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -129,6 +129,7 @@ export async function removeUserRole(
             }
         }
 
+        let orgClientsToRebuild: Client[] = [];
         await db.transaction(async (trx) => {
             await trx
                 .delete(userOrgRoles)
@@ -150,10 +151,18 @@ export async function removeUserRole(
                     )
                 );
 
-            for (const orgClient of orgClients) {
-                await rebuildClientAssociationsFromClient(orgClient, trx);
-            }
+            orgClientsToRebuild = orgClients;
         });
+
+        for (const orgClient of orgClientsToRebuild) {
+            rebuildClientAssociationsFromClient(orgClient, primaryDb).catch(
+                (e) => {
+                    logger.error(
+                        `Failed to rebuild client associations for client ${orgClient.clientId} after removing role: ${e}`
+                    );
+                }
+            );
+        }
 
         return response(res, {
             data: { userId, orgId: role.orgId, roleId },

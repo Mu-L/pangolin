@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, primaryDb } from "@server/db";
 import {
     roles,
     Client,
@@ -92,7 +92,10 @@ export async function createClient(
 
         const { orgId } = parsedParams.data;
 
-        if (req.user && (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)) {
+        if (
+            req.user &&
+            (!req.userOrgRoleIds || req.userOrgRoleIds.length === 0)
+        ) {
             return next(
                 createHttpError(HttpCode.FORBIDDEN, "User does not have a role")
             );
@@ -198,7 +201,10 @@ export async function createClient(
 
             if (!randomExitNode) {
                 return next(
-                    createHttpError(HttpCode.NOT_FOUND, `No exit nodes available. ${build == "saas" ? "Please contact support." : "You need to install gerbil to use the clients."}`)
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `No exit nodes available. ${build == "saas" ? "Please contact support." : "You need to install gerbil to use the clients."}`
+                    )
                 );
             }
 
@@ -256,9 +262,17 @@ export async function createClient(
                 clientId: newClient.clientId,
                 dateCreated: moment().toISOString()
             });
-
-            await rebuildClientAssociationsFromClient(newClient, trx);
         });
+
+        if (newClient) {
+            rebuildClientAssociationsFromClient(newClient, primaryDb).catch(
+                (e) => {
+                    logger.error(
+                        `Failed to rebuild client associations after creating client: ${e}`
+                    );
+                }
+            );
+        }
 
         return response<CreateClientResponse>(res, {
             data: newClient,

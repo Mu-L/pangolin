@@ -104,27 +104,23 @@ const updateSiteResourceSchema = z
                     data.alias.trim() !== "";
 
                 return isValidDomain && isValidAlias; // require the alias to be set in the case of domain
+            } else if (data.mode === "cidr" && data.destination) {
+                // Check if it's a valid CIDR (v4 or v6)
+                const isValidCIDR = z
+                    .union([z.cidrv4(), z.cidrv6()])
+                    .safeParse(data.destination).success;
+                return isValidCIDR;
+            } else if (data.mode === "http") {
+                // we have to have a domainId defined
+                if (!data.domainId) {
+                    return false;
+                }
             }
             return true;
         },
         {
             message:
                 "Destination must be a valid IP address or valid domain AND alias is required"
-        }
-    )
-    .refine(
-        (data) => {
-            if (data.mode === "cidr" && data.destination) {
-                // Check if it's a valid CIDR (v4 or v6)
-                const isValidCIDR = z
-                    .union([z.cidrv4(), z.cidrv6()])
-                    .safeParse(data.destination).success;
-                return isValidCIDR;
-            }
-            return true;
-        },
-        {
-            message: "Destination must be a valid CIDR notation for cidr mode"
         }
     )
     .refine(

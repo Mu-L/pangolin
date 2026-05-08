@@ -10,7 +10,8 @@ import {
     SiteResource,
     siteResources,
     sites,
-    userSiteResources
+    userSiteResources,
+    primaryDb
 } from "@server/db";
 import { getUniqueSiteResourceName } from "@server/db/names";
 import {
@@ -74,16 +75,14 @@ const createSiteResourceSchema = z
     .refine(
         (data) => {
             if (data.mode === "host") {
-                if (data.mode == "host") {
-                    // Check if it's a valid IP address using zod (v4 or v6)
-                    const isValidIP = z
-                        // .union([z.ipv4(), z.ipv6()])
-                        .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
-                        .safeParse(data.destination).success;
+                // Check if it's a valid IP address using zod (v4 or v6)
+                const isValidIP = z
+                    // .union([z.ipv4(), z.ipv6()])
+                    .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
+                    .safeParse(data.destination).success;
 
-                    if (isValidIP) {
-                        return true;
-                    }
+                if (isValidIP) {
+                    return true;
                 }
 
                 // Check if it's a valid domain (hostname pattern, TLD not required)
@@ -96,17 +95,12 @@ const createSiteResourceSchema = z
                     data.alias.trim() !== "";
 
                 return isValidDomain && isValidAlias; // require the alias to be set in the case of domain
-            }
-            return true;
-        },
-        {
-            message:
-                "Destination must be a valid IPV4 address or valid domain AND alias is required"
-        }
-    )
-    .refine(
-        (data) => {
-            if (data.mode === "cidr") {
+            } else if (data.mode === "http") {
+                // we have to have a domainId defined
+                if (!data.domainId) {
+                    return false;
+                }
+            } else if (data.mode === "cidr") {
                 // Check if it's a valid CIDR (v4 or v6)
                 const isValidCIDR = z
                     .union([z.cidrv4(), z.cidrv6()])
@@ -116,7 +110,8 @@ const createSiteResourceSchema = z
             return true;
         },
         {
-            message: "Destination must be a valid CIDR notation for cidr mode"
+            message:
+                "Destination must be a valid IPV4 address or valid domain AND alias is required"
         }
     )
     .refine(
@@ -525,12 +520,10 @@ export async function createSiteResource(
         // own transaction so it always executes on the primary — avoiding any
         // replica-lag issues while still allowing the HTTP response to return
         // early.
-        db.transaction(async (trx) => {
-            await rebuildClientAssociationsFromSiteResource(
-                newSiteResource!,
-                trx
-            );
-        }).catch((err) => {
+        rebuildClientAssociationsFromSiteResource(
+            newSiteResource!,
+            primaryDb
+        ).catch((err) => {
             logger.error(
                 `Error rebuilding client associations for site resource ${newSiteResource!.siteResourceId}:`,
                 err

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, newts, sites } from "@server/db";
+import { db, newts, primaryDb, sites } from "@server/db";
 import { siteResources } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -73,12 +73,10 @@ export async function deleteSiteResource(
         // own transaction so it always executes on the primary — avoiding any
         // replica-lag issues while still allowing the HTTP response to return
         // early.
-        db.transaction(async (trx) => {
-            await rebuildClientAssociationsFromSiteResource(
-                removedSiteResource,
-                trx
-            );
-        }).catch((err) => {
+        rebuildClientAssociationsFromSiteResource(
+            removedSiteResource,
+            primaryDb
+        ).catch((err) => {
             logger.error(
                 `Error rebuilding client associations for site resource ${removedSiteResource!.siteResourceId}:`,
                 err

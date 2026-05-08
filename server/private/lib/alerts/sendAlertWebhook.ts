@@ -236,15 +236,43 @@ interface TemplateContext {
 }
 
 /**
- * Render a body template with {{event}}, {{timestamp}}, {{status}}, and
- * {{data}} placeholders, mirroring the logic in HttpLogDestination.
+ * Render a body template with {{event}}, {{timestamp}}, {{status}}, {{data}},
+ * and individual data-field placeholders (e.g. {{orgId}}, {{siteId}}, …).
  *
- * {{data}} is replaced first (as raw JSON) so that any literal "{{…}}"
- * strings inside data values are not re-expanded.
+ * Replacement order:
+ *   1. {{data}} → raw JSON of the full data object (prevents re-expansion of
+ *      nested values that might look like placeholders).
+ *   2. Top-level scalar fields from data (string values are JSON-escaped;
+ *      numbers and booleans are rendered as-is). Unknown placeholders are
+ *      left untouched.
+ *   3. The fixed top-level keys: event, timestamp, status.
  */
 function renderTemplate(template: string, ctx: TemplateContext): string {
-    const rendered = template
-        .replace(/\{\{data\}\}/g, JSON.stringify(ctx.data))
+    // Step 1 – expand {{data}} first so its contents are already serialised
+    // and won't be touched by later passes.
+    let rendered = template.replace(/\{\{data\}\}/g, JSON.stringify(ctx.data));
+
+    // Step 2 – expand individual data fields. Only replace placeholders whose
+    // key actually exists in ctx.data; leave everything else as-is.
+    for (const [key, value] of Object.entries(ctx.data)) {
+        if (value === null || value === undefined) continue;
+        const placeholder = new RegExp(
+            `\\{\\{${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\}\\}`,
+            "g"
+        );
+        let serialised: string;
+        if (typeof value === "string") {
+            serialised = escapeJsonString(value);
+        } else if (typeof value === "number" || typeof value === "boolean") {
+            serialised = String(value);
+        } else {
+            serialised = escapeJsonString(JSON.stringify(value));
+        }
+        rendered = rendered.replace(placeholder, serialised);
+    }
+
+    // Step 3 – expand the fixed top-level keys.
+    rendered = rendered
         .replace(/\{\{event\}\}/g, escapeJsonString(ctx.event))
         .replace(/\{\{timestamp\}\}/g, escapeJsonString(ctx.timestamp))
         .replace(/\{\{status\}\}/g, escapeJsonString(ctx.status));
