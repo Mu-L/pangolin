@@ -392,7 +392,7 @@ export async function listSites(
                       .select({
                           labelId: labels.labelId,
                           name: labels.name,
-                          color: labels.name,
+                          color: labels.color,
                           siteId: siteLabels.siteId
                       })
                       .from(labels)

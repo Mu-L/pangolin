@@ -21,12 +21,13 @@ import {
     SelectTrigger,
     SelectValue
 } from "./ui/select";
-import { createApiClient } from "@app/lib/api";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
 import type { AxiosResponse } from "axios";
+import { toast } from "@app/hooks/useToast";
 
-type SelectedLabel = {
+export type SelectedLabel = {
     name: string;
     color: string;
     labelId: number;
@@ -35,8 +36,7 @@ type SelectedLabel = {
 export type LabelsSelectorProps = {
     orgId: string;
     selectedLabels: SelectedLabel[];
-    onSelectionChange: (sites: SelectedLabel[]) => void;
-    onCreateLabel: (newlabel: SelectedLabel) => Promise<void>;
+    toggleLabel: (newlabel: SelectedLabel, action: "detach" | "attach") => void;
 };
 
 const LABEL_COLORS = {
@@ -52,8 +52,7 @@ const LABEL_COLORS = {
 export function LabelsSelector({
     orgId,
     selectedLabels,
-    onSelectionChange,
-    onCreateLabel
+    toggleLabel
 }: LabelsSelectorProps) {
     const t = useTranslations();
     const [labelSearchQuery, setlabelsSearchQuery] = useState("");
@@ -94,17 +93,28 @@ export function LabelsSelector({
     async function createLabel(_: any, formData: FormData) {
         const name = formData.get("name")?.toString();
         const color = formData.get("color")?.toString();
-        const res = await api.post<AxiosResponse<CreateOrEditLabelResponse>>(
-            `/org/${orgId}/labels`,
-            { name, color }
-        );
+        try {
+            const res = await api.post<
+                AxiosResponse<CreateOrEditLabelResponse>
+            >(`/org/${orgId}/labels`, { name, color });
 
-        const { label } = res.data.data;
-        await onCreateLabel({
-            labelId: label.labelId,
-            name: label.name,
-            color: label.color
-        });
+            const { label } = res.data.data;
+
+            toggleLabel(
+                {
+                    labelId: label.labelId,
+                    name: label.name,
+                    color: label.color
+                },
+                "attach"
+            );
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e, t("errorOccurred")),
+                variant: "destructive"
+            });
+        }
         setlabelsSearchQuery("");
     }
 
@@ -185,18 +195,18 @@ export function LabelsSelector({
                             key={label.labelId}
                             value={`${label.labelId}`}
                             onSelect={() => {
-                                if (selectedIds.has(label.labelId)) {
-                                    onSelectionChange(
-                                        selectedLabels.filter(
-                                            (l) => l.labelId !== label.labelId
-                                        )
-                                    );
-                                } else {
-                                    onSelectionChange([
-                                        ...selectedLabels,
-                                        label
-                                    ]);
-                                }
+                                toggleLabel(
+                                    label,
+                                    selectedIds.has(label.labelId)
+                                        ? "detach"
+                                        : "attach"
+                                );
+                                // } else {
+                                //     onSelectionChange([
+                                //         ...selectedLabels,
+                                //         label
+                                //     ]);
+                                // }
                             }}
                         >
                             <Checkbox
@@ -208,7 +218,7 @@ export function LabelsSelector({
                             />
                             <div className="min-w-0 flex-1 flex items-center gap-2">
                                 <span
-                                    className="inline-block p-1 rounded-full bg-(--label-color)"
+                                    className="inline-block size-3 flex-none rounded-full bg-(--label-color)"
                                     style={{
                                         // @ts-expect-error CSS variable
                                         "--label-color": label.color

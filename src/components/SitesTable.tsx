@@ -3,6 +3,16 @@
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import UptimeMiniBar from "@app/components/UptimeMiniBar";
 
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaContent,
+    CredenzaDescription,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
+import SiteResourcesOverview from "@app/components/SiteResourcesOverview";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
@@ -14,9 +24,9 @@ import {
 import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
-import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { build } from "@server/build";
 import { type PaginationState } from "@tanstack/react-table";
 import {
@@ -27,32 +37,30 @@ import {
     ChevronDown,
     ChevronsUpDownIcon,
     MoreHorizontal,
-    PlusIcon
+    PlusIcon,
+    XIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import {
+    startTransition,
+    useEffect,
+    useOptimistic,
+    useState,
+    useTransition
+} from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
-import SiteResourcesOverview from "@app/components/SiteResourcesOverview";
-import {
-    Credenza,
-    CredenzaBody,
-    CredenzaContent,
-    CredenzaDescription,
-    CredenzaFooter,
-    CredenzaHeader,
-    CredenzaTitle
-} from "@app/components/Credenza";
 import {
     ControlledDataTable,
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
-import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+
+import { LabelsSelector, type SelectedLabel } from "./labels-selector";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { LabelsSelector } from "./labels-selector";
+import { cn } from "@app/lib/cn";
 
 export type SiteRow = {
     id: number;
@@ -463,36 +471,7 @@ export default function SitesTable({
             accessorKey: "labels",
             header: () => <span className="p-3">{t("labels")}</span>,
             cell: ({ row }) => {
-                const labels = row.original.labels ?? [];
-                return (
-                    <div className="inline-flex flex-wrap items-center justify-end w-full">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    size="icon"
-                                    variant="outline"
-                                    className="p-1 size-auto rounded-full"
-                                    title={t("addLabels")}
-                                >
-                                    <span className="sr-only">
-                                        {t("addLabels")}
-                                    </span>
-                                    <PlusIcon className="size-3" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                align="center"
-                                className="p-0 w-full"
-                            >
-                                <LabelsSelector
-                                    orgId={orgId}
-                                    selectedLabels={[]}
-                                    onSelectionChange={() => {}}
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                );
+                return <SiteLabelCell site={row.original} orgId={orgId} />;
             }
         },
         {
@@ -653,12 +632,6 @@ export default function SitesTable({
                         string={selectedSite.name}
                         title={t("siteDelete")}
                     />
-
-                    {/* <SiteLabelsDialog
-                        isOpen={isLabelsDialogOpen}
-                        setIsOpen={setIsLabelsDialogOpen}
-                        site={selectedSite}
-                    /> */}
                 </>
             )}
 
@@ -696,36 +669,104 @@ export default function SitesTable({
     );
 }
 
-type SiteLabelsDialogProps = {
+type SiteLabelCellProps = {
     site: SiteRow;
-    isOpen: boolean;
-    setIsOpen: (open: boolean) => void;
+    orgId: string;
 };
 
-function SiteLabelsDialog({ site, isOpen, setIsOpen }: SiteLabelsDialogProps) {
+function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
     const t = useTranslations();
+
+    const api = createApiClient(useEnvContext());
+
+    const router = useRouter();
+
+    const labels = site.labels ?? [];
+    const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
+
+    function toggleSiteLabel(
+        label: SelectedLabel,
+        action: "attach" | "detach"
+    ) {
+        startTransition(async () => {
+            try {
+                if (action === "attach") {
+                    setOptimisticLabels([...optimisticLabels, label]);
+
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/attach`,
+                        { siteId: site.id }
+                    );
+                } else {
+                    setOptimisticLabels(
+                        optimisticLabels.filter(
+                            (lb) => lb.labelId !== label.labelId
+                        )
+                    );
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/detach`,
+                        { siteId: site.id }
+                    );
+                }
+            } catch (e) {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e, t("errorOccurred")),
+                    variant: "destructive"
+                });
+            } finally {
+                router.refresh();
+            }
+        });
+    }
+
     return (
-        <Credenza open={isOpen} onOpenChange={setIsOpen}>
-            <CredenzaContent className="">
-                <CredenzaHeader>
-                    <CredenzaTitle>{t("siteLabelsTab")}</CredenzaTitle>
-                    <CredenzaDescription>
-                        {t("siteLabelsDescription")}
-                    </CredenzaDescription>
-                </CredenzaHeader>
-                <CredenzaBody>
-                    <></>
-                </CredenzaBody>
-                <CredenzaFooter>
+        <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
+            {optimisticLabels.map((label) => (
+                <Button
+                    key={label.labelId}
+                    variant="outline"
+                    onClick={() => toggleSiteLabel(label, "detach")}
+                    className={cn(
+                        "inline-flex gap-1 items-center",
+                        "rounded-full text-sm cursor-pointer",
+                        "px-1.5 py-0 h-auto"
+                    )}
+                >
+                    <div
+                        className="size-3 rounded-full bg-(--color) flex-none"
+                        style={{
+                            // @ts-expect-error css color
+                            "--color": label.color
+                        }}
+                    />
+                    <span className="whitespace-nowrap text-ellipsis max-w-20 overflow-hidden relative bottom-0.5">
+                        {label.name}
+                    </span>
+
+                    <XIcon className="size-3 flex-none" />
+                </Button>
+            ))}
+            <Popover>
+                <PopoverTrigger asChild>
                     <Button
-                        type="button"
+                        size="icon"
                         variant="outline"
-                        onClick={() => setIsOpen(false)}
+                        className="p-1 size-auto rounded-full"
+                        title={t("addLabels")}
                     >
-                        {t("close")}
+                        <span className="sr-only">{t("addLabels")}</span>
+                        <PlusIcon className="size-3" />
                     </Button>
-                </CredenzaFooter>
-            </CredenzaContent>
-        </Credenza>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="p-0 w-full">
+                    <LabelsSelector
+                        orgId={orgId}
+                        selectedLabels={optimisticLabels}
+                        toggleLabel={toggleSiteLabel}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
     );
 }

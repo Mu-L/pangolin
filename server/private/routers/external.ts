@@ -765,7 +765,7 @@ authenticated.put(
     labels.attachLabelToItem
 );
 
-authenticated.delete(
+authenticated.put(
     "/org/:orgId/label/:labelId/detach",
     verifyValidLicense,
     verifyOrgAccess,
