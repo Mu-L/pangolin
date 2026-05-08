@@ -94,6 +94,7 @@ export default function SitesTable({
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [resourcesDialogSite, setResourcesDialogSite] =
         useState<SiteRow | null>(null);
+    const [isLabelsDialogOpen, setIsLabelsDialogOpen] = useState(false);
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
 
@@ -453,18 +454,7 @@ export default function SitesTable({
             accessorKey: "labels",
             header: () => <span className="p-3">{t("labels")}</span>,
             cell: ({ row }) => {
-                return (
-                    <Button
-                        className="rounded-full inline-flex gap-1 items-center py-0.5"
-                        size="sm"
-                        variant="outline"
-                    >
-                        <PlusIcon className="size-3 flex-none" />{" "}
-                        <span className="text-xs">
-                            {t("addLabelsButtonText")}
-                        </span>
-                    </Button>
-                );
+                return <></>;
             }
         },
         {
@@ -507,6 +497,14 @@ export default function SitesTable({
                                         {t("sitesTableViewPrivateResources")}
                                     </DropdownMenuItem>
                                 </Link>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setSelectedSite(siteRow);
+                                        setIsLabelsDialogOpen(true);
+                                    }}
+                                >
+                                    <span>{t("addLabels")}</span>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedSite(siteRow);
@@ -597,25 +595,33 @@ export default function SitesTable({
             </Credenza>
 
             {selectedSite && (
-                <ConfirmDeleteDialog
-                    open={isDeleteModalOpen}
-                    setOpen={(val) => {
-                        setIsDeleteModalOpen(val);
-                        setSelectedSite(null);
-                    }}
-                    dialog={
-                        <div className="space-y-2">
-                            <p>{t("siteQuestionRemove")}</p>
-                            <p>{t("siteMessageRemove")}</p>
-                        </div>
-                    }
-                    buttonText={t("siteConfirmDelete")}
-                    onConfirm={async () =>
-                        startTransition(() => deleteSite(selectedSite!.id))
-                    }
-                    string={selectedSite.name}
-                    title={t("siteDelete")}
-                />
+                <>
+                    <ConfirmDeleteDialog
+                        open={isDeleteModalOpen}
+                        setOpen={(val) => {
+                            setIsDeleteModalOpen(val);
+                            setSelectedSite(null);
+                        }}
+                        dialog={
+                            <div className="space-y-2">
+                                <p>{t("siteQuestionRemove")}</p>
+                                <p>{t("siteMessageRemove")}</p>
+                            </div>
+                        }
+                        buttonText={t("siteConfirmDelete")}
+                        onConfirm={async () =>
+                            startTransition(() => deleteSite(selectedSite!.id))
+                        }
+                        string={selectedSite.name}
+                        title={t("siteDelete")}
+                    />
+
+                    <SiteLabelsDialog
+                        isOpen={isLabelsDialogOpen}
+                        setIsOpen={setIsLabelsDialogOpen}
+                        site={selectedSite}
+                    />
+                </>
             )}
 
             <ControlledDataTable
@@ -649,5 +655,39 @@ export default function SitesTable({
                 stickyRightColumn="actions"
             />
         </>
+    );
+}
+
+type SiteLabelsDialogProps = {
+    site: SiteRow;
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+};
+
+function SiteLabelsDialog({ site, isOpen, setIsOpen }: SiteLabelsDialogProps) {
+    const t = useTranslations();
+    return (
+        <Credenza open={isOpen} onOpenChange={setIsOpen}>
+            <CredenzaContent className="">
+                <CredenzaHeader>
+                    <CredenzaTitle>{t("siteLabelsTab")}</CredenzaTitle>
+                    <CredenzaDescription>
+                        {t("siteLabelsDescription")}
+                    </CredenzaDescription>
+                </CredenzaHeader>
+                <CredenzaBody>
+                    <></>
+                </CredenzaBody>
+                <CredenzaFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsOpen(false)}
+                    >
+                        {t("close")}
+                    </Button>
+                </CredenzaFooter>
+            </CredenzaContent>
+        </Credenza>
     );
 }
