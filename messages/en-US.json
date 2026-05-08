@@ -1124,6 +1124,8 @@
     "idpErrorConnectingTo": "There was a problem connecting to {name}. Please contact your administrator.",
     "idpErrorNotFound": "IdP not found",
     "inviteInvalid": "Invalid Invite",
+    "labels": "Labels",
+    "addLabelsButtonText": "Add labels",
     "inviteInvalidDescription": "The invite link is invalid.",
     "inviteErrorWrongUser": "Invite is not for this user",
     "inviteErrorUserNotExists": "User does not exist. Please create an account first.",

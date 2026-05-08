@@ -26,7 +26,8 @@ import {
     ArrowUpRight,
     ChevronDown,
     ChevronsUpDownIcon,
-    MoreHorizontal
+    MoreHorizontal,
+    PlusIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -437,7 +438,7 @@ export default function SitesTable({
             header: () => {
                 return <span className="p-3">{t("address")}</span>;
             },
-            cell: ({ row }: { row: any }) => {
+            cell: ({ row }) => {
                 const originalRow = row.original;
                 return originalRow.address ? (
                     <div className="flex items-center space-x-2">
@@ -445,6 +446,22 @@ export default function SitesTable({
                     </div>
                 ) : (
                     "-"
+                );
+            }
+        },
+        {
+            accessorKey: "labels",
+            header: () => <span className="p-3">{t("labels")}</span>,
+            cell: ({ row }) => {
+                return (
+                    <Button
+                        className="rounded-full inline-flex gap-1 items-center py-0.5"
+                        size="sm"
+                        variant="outline"
+                    >
+                        <PlusIcon className="size-4 flex-none" />{" "}
+                        <span>{t("addLabelsButtonText")}</span>
+                    </Button>
                 );
             }
         },
@@ -622,7 +639,8 @@ export default function SitesTable({
                     niceId: false,
                     nice: false,
                     exitNode: false,
-                    address: false
+                    address: false,
+                    labels: false
                 }}
                 enableColumnVisibility
                 stickyLeftColumn="name"
