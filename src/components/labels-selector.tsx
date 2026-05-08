@@ -1,6 +1,6 @@
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 import {
     Command,
     CommandEmpty,
@@ -13,6 +13,18 @@ import { Checkbox } from "./ui/checkbox";
 import { useTranslations } from "next-intl";
 import { useDebounce } from "use-debounce";
 import { type Selectedsite, SiteOnlineStatus } from "./site-selector";
+import { Button } from "./ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "./ui/select";
+import { createApiClient } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
+import type { AxiosResponse } from "axios";
 
 type SelectedLabel = {
     name: string;
@@ -24,16 +36,30 @@ export type LabelsSelectorProps = {
     orgId: string;
     selectedLabels: SelectedLabel[];
     onSelectionChange: (sites: SelectedLabel[]) => void;
+    onCreateLabel: (newlabel: SelectedLabel) => Promise<void>;
+};
+
+const LABEL_COLORS = {
+    red: "#ff6467",
+    green: "#05df72",
+    blue: "#51a2ff",
+    yellow: "#fdc744",
+    orange: "#ff8905",
+    purple: "#a684ff",
+    gray: "#b4b4b4"
 };
 
 export function LabelsSelector({
     orgId,
     selectedLabels,
-    onSelectionChange
+    onSelectionChange,
+    onCreateLabel
 }: LabelsSelectorProps) {
     const t = useTranslations();
     const [labelSearchQuery, setlabelsSearchQuery] = useState("");
     const [debouncedQuery] = useDebounce(labelSearchQuery, 150);
+
+    const api = createApiClient(useEnvContext());
 
     const { data: labels = [] } = useQuery(
         orgQueries.labels({
@@ -59,6 +85,29 @@ export function LabelsSelector({
         [selectedLabels]
     );
 
+    const colorValues = Object.values(LABEL_COLORS);
+    const randomColor =
+        colorValues[Math.floor(Math.random() * colorValues.length)];
+
+    const [, action, isPending] = useActionState(createLabel, null);
+
+    async function createLabel(_: any, formData: FormData) {
+        const name = formData.get("name")?.toString();
+        const color = formData.get("color")?.toString();
+        const res = await api.post<AxiosResponse<CreateOrEditLabelResponse>>(
+            `/org/${orgId}/labels`,
+            { name, color }
+        );
+
+        const { label } = res.data.data;
+        await onCreateLabel({
+            labelId: label.labelId,
+            name: label.name,
+            color: label.color
+        });
+        setlabelsSearchQuery("");
+    }
+
     return (
         <Command shouldFilter={false}>
             <CommandInput
@@ -67,13 +116,65 @@ export function LabelsSelector({
                 onValueChange={setlabelsSearchQuery}
             />
             <CommandList>
-                <CommandEmpty className="px-3 break-all max-w-full wrap-anywhere text-wrap">
+                <CommandEmpty className="px-3 break-all wrap-anywhere text-wrap">
                     {labelSearchQuery.trim().length > 0 ? (
-                        <>
-                            {t("createNewLabel", {
-                                label: labelSearchQuery.trim()
-                            })}
-                        </>
+                        <div className="flex flex-col gap-2 items-center">
+                            <span className="max-w-34">
+                                {t("createNewLabel", {
+                                    label: labelSearchQuery.trim()
+                                })}
+                            </span>
+
+                            <form
+                                action={action}
+                                className="flex items-center gap-2"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="name"
+                                    value={labelSearchQuery.trim()}
+                                />
+
+                                <Select defaultValue={randomColor} name="color">
+                                    <SelectTrigger className="w-18 [&_[data-name]]:hidden [&_[svg]]:hidden!">
+                                        <SelectValue
+                                            placeholder={t("selectColor")}
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.entries(LABEL_COLORS).map(
+                                            ([color, value]) => (
+                                                <SelectItem
+                                                    value={value}
+                                                    key={color}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <div
+                                                        className="size-4 rounded-full bg-(--color) flex-none"
+                                                        style={{
+                                                            // @ts-expect-error css color
+                                                            "--color": value
+                                                        }}
+                                                    />
+                                                    <span data-name>
+                                                        {color}
+                                                    </span>
+                                                </SelectItem>
+                                            )
+                                        )}
+                                    </SelectContent>
+                                </Select>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    loading={isPending}
+                                    type="submit"
+                                >
+                                    {t("create")}
+                                </Button>
+                            </form>
+                        </div>
                     ) : (
                         t("labelsNotFound")
                     )}

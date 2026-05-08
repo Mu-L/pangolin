@@ -1130,6 +1130,7 @@
     "siteLabelsDescription": "Manage labels associated with this site.",
     "labelsNotFound": "Labels not found",
     "labelSearch": "Search labels",
+    "selectColor": "Select color",
     "createNewLabel": "Create new org label \"{label}\"",
     "inviteInvalidDescription": "The invite link is invalid.",
     "inviteErrorWrongUser": "Invite is not for this user",
