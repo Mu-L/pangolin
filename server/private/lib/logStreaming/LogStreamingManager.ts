@@ -313,6 +313,7 @@ export class LogStreamingManager {
         if (enabledTypes.length === 0) return;
 
         let anyFailure = false;
+        let firstError: string | null = null;
 
         for (const logType of enabledTypes) {
             if (!this.isRunning) break;
@@ -320,6 +321,10 @@ export class LogStreamingManager {
                 await this.processLogType(dest, provider, logType);
             } catch (err) {
                 anyFailure = true;
+                if (firstError === null) {
+                    firstError =
+                        err instanceof Error ? err.message : String(err);
+                }
                 logger.error(
                     `LogStreamingManager: failed to process "${logType}" logs ` +
                         `for destination ${dest.destinationId}`,
@@ -330,6 +335,10 @@ export class LogStreamingManager {
 
         if (anyFailure) {
             this.recordFailure(dest.destinationId);
+            await this.setDestinationError(
+                dest.destinationId,
+                firstError ?? "Unknown error"
+            );
         } else {
             // Any success resets the failure/back-off state
             if (this.failures.has(dest.destinationId)) {
@@ -338,6 +347,7 @@ export class LogStreamingManager {
                     `LogStreamingManager: destination ${dest.destinationId} recovered`
                 );
             }
+            await this.clearDestinationError(dest.destinationId);
         }
     }
 
@@ -758,6 +768,45 @@ export class LogStreamingManager {
     // -------------------------------------------------------------------------
     // DB helpers
     // -------------------------------------------------------------------------
+
+    private async setDestinationError(
+        destinationId: number,
+        errorMessage: string
+    ): Promise<void> {
+        // Truncate to 1000 chars so it fits comfortably in the text column.
+        const truncated = errorMessage.slice(0, 1000);
+        try {
+            await db
+                .update(eventStreamingDestinations)
+                .set({ lastError: truncated, lastErrorAt: Date.now() })
+                .where(
+                    eq(eventStreamingDestinations.destinationId, destinationId)
+                );
+        } catch (err) {
+            logger.warn(
+                `LogStreamingManager: could not persist error status for destination ${destinationId}`,
+                err
+            );
+        }
+    }
+
+    private async clearDestinationError(destinationId: number): Promise<void> {
+        try {
+            // Only update if there is actually an error stored, to avoid
+            // unnecessary writes on every successful poll cycle.
+            await db
+                .update(eventStreamingDestinations)
+                .set({ lastError: null, lastErrorAt: null })
+                .where(
+                    eq(eventStreamingDestinations.destinationId, destinationId)
+                );
+        } catch (err) {
+            logger.warn(
+                `LogStreamingManager: could not clear error status for destination ${destinationId}`,
+                err
+            );
+        }
+    }
 
     private async loadEnabledDestinations(): Promise<
         EventStreamingDestination[]

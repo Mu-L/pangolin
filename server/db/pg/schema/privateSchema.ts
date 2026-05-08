@@ -439,6 +439,8 @@ export const eventStreamingDestinations = pgTable(
         type: varchar("type", { length: 50 }).notNull(), // e.g. "http", "kafka", etc.
         config: text("config").notNull(), // JSON string with the configuration for the destination
         enabled: boolean("enabled").notNull().default(true),
+        lastError: text("lastError"), // last send error message, null if healthy
+        lastErrorAt: bigint("lastErrorAt", { mode: "number" }), // epoch ms of last error, null if healthy
         createdAt: bigint("createdAt", { mode: "number" }).notNull(),
         updatedAt: bigint("updatedAt", { mode: "number" }).notNull()
     }

@@ -3062,7 +3062,7 @@
     "streamingDatadogTitle": "Datadog",
     "streamingDatadogDescription": "Forward events directly to your Datadog account.",
     "streamingTypePickerDescription": "Choose a destination type to get started.",
-    "streamingFailedToLoad": "Failed to load destinations",
+    "streamingLastSyncError": "An error occurred on the last sync",
     "streamingUnexpectedError": "An unexpected error occurred.",
     "streamingFailedToUpdate": "Failed to update destination",
     "streamingDeletedSuccess": "Destination deleted successfully",

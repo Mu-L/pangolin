@@ -22,7 +22,18 @@ import {
 } from "@app/components/Credenza";
 import { Button } from "@app/components/ui/button";
 import { Switch } from "@app/components/ui/switch";
-import { Globe, MoreHorizontal, Plus } from "lucide-react";
+import {
+    Globe,
+    MoreHorizontal,
+    Plus,
+    AlertCircle,
+    ChevronDown
+} from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import { AxiosResponse } from "axios";
 import { build } from "@server/build";
 import Image from "next/image";
@@ -152,6 +163,31 @@ function DestinationCard({
                     </span>
                 )}
             </p>
+
+            {/* Error indicator */}
+            {destination.lastError && (
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <button
+                            type="button"
+                            className="flex items-center gap-1.5 text-left cursor-pointer rounded px-0 hover:opacity-75 transition-opacity"
+                        >
+                            <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                            <p className="text-xs text-destructive">
+                                {t("streamingLastSyncError")}
+                            </p>
+                            <ChevronDown className="h-3 w-3 text-destructive shrink-0 ml-auto" />
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        side="bottom"
+                        align="end"
+                        className="w-80 text-xs break-words"
+                    >
+                        {destination.lastError}
+                    </PopoverContent>
+                </Popover>
+            )}
 
             {/* Footer: edit button + three-dots menu */}
             <div className="mt-auto pt-5 flex gap-2">

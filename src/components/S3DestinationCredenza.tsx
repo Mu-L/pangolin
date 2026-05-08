@@ -18,6 +18,8 @@ import { Switch } from "@app/components/ui/switch";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import { Checkbox } from "@app/components/ui/checkbox";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
@@ -164,6 +166,14 @@ export function S3DestinationCredenza({
                 </CredenzaHeader>
 
                 <CredenzaBody>
+                    {editing?.lastError && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription className="break-words">
+                                {editing.lastError}
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     <HorizontalTabs
                         clientSide
                         items={[
