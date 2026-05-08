@@ -459,8 +459,10 @@ export default function SitesTable({
                         size="sm"
                         variant="outline"
                     >
-                        <PlusIcon className="size-4 flex-none" />{" "}
-                        <span>{t("addLabelsButtonText")}</span>
+                        <PlusIcon className="size-3 flex-none" />{" "}
+                        <span className="text-xs">
+                            {t("addLabelsButtonText")}
+                        </span>
                     </Button>
                 );
             }
