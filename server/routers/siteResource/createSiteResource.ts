@@ -10,7 +10,8 @@ import {
     SiteResource,
     siteResources,
     sites,
-    userSiteResources
+    userSiteResources,
+    primaryDb
 } from "@server/db";
 import { getUniqueSiteResourceName } from "@server/db/names";
 import {
@@ -519,12 +520,10 @@ export async function createSiteResource(
         // own transaction so it always executes on the primary — avoiding any
         // replica-lag issues while still allowing the HTTP response to return
         // early.
-        db.transaction(async (trx) => {
-            await rebuildClientAssociationsFromSiteResource(
-                newSiteResource!,
-                trx
-            );
-        }).catch((err) => {
+        rebuildClientAssociationsFromSiteResource(
+            newSiteResource!,
+            primaryDb
+        ).catch((err) => {
             logger.error(
                 `Error rebuilding client associations for site resource ${newSiteResource!.siteResourceId}:`,
                 err
