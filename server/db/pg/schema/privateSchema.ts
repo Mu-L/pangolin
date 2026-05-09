@@ -332,6 +332,7 @@ export const connectionAuditLog = pgTable(
         clientId: integer("clientId").references(() => clients.clientId, {
             onDelete: "cascade"
         }),
+        clientEndpoint: text("clientEndpoint"),
         userId: text("userId").references(() => users.userId, {
             onDelete: "cascade"
         }),

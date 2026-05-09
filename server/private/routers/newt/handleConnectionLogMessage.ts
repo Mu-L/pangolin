@@ -11,7 +11,7 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { db } from "@server/db";
+import { clientSitesAssociationsCache, db } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import { sites, Newt, clients, orgs } from "@server/db";
 import { and, eq, inArray } from "drizzle-orm";
@@ -146,7 +146,11 @@ export const handleConnectionLogMessage: MessageHandler = async (context) => {
     // each unique sourceAddr + the org's CIDR suffix and do a targeted IN query.
     const ipToClient = new Map<
         string,
-        { clientId: number; userId: string | null }
+        {
+            clientId: number;
+            userId: string | null;
+            clientEndpoint: string | null;
+        }
     >();
 
     if (cidrSuffix) {
@@ -172,9 +176,21 @@ export const handleConnectionLogMessage: MessageHandler = async (context) => {
                 .select({
                     clientId: clients.clientId,
                     userId: clients.userId,
-                    subnet: clients.subnet
+                    subnet: clients.subnet,
+                    clientEndpoint: clientSitesAssociationsCache.endpoint
                 })
                 .from(clients)
+                .leftJoin(
+                    // this should be one to one
+                    clientSitesAssociationsCache,
+                    and(
+                        eq(
+                            clients.clientId,
+                            clientSitesAssociationsCache.clientId
+                        ),
+                        eq(clientSitesAssociationsCache.siteId, newt.siteId)
+                    )
+                )
                 .where(
                     and(
                         eq(clients.orgId, orgId),
@@ -189,7 +205,8 @@ export const handleConnectionLogMessage: MessageHandler = async (context) => {
                 );
                 ipToClient.set(ip, {
                     clientId: c.clientId,
-                    userId: c.userId
+                    userId: c.userId,
+                    clientEndpoint: c.clientEndpoint
                 });
             }
         }
@@ -234,6 +251,7 @@ export const handleConnectionLogMessage: MessageHandler = async (context) => {
             orgId,
             siteId: newt.siteId,
             clientId: clientInfo?.clientId ?? null,
+            clientEndpoint: clientInfo?.clientEndpoint ?? null,
             userId: clientInfo?.userId ?? null,
             sourceAddr: session.sourceAddr,
             destAddr: session.destAddr,

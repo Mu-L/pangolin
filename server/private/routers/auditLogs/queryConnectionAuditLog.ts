@@ -124,15 +124,11 @@ function getWhere(data: Q) {
         data.clientId
             ? eq(connectionAuditLog.clientId, data.clientId)
             : undefined,
-        data.siteId
-            ? eq(connectionAuditLog.siteId, data.siteId)
-            : undefined,
+        data.siteId ? eq(connectionAuditLog.siteId, data.siteId) : undefined,
         data.siteResourceId
             ? eq(connectionAuditLog.siteResourceId, data.siteResourceId)
             : undefined,
-        data.userId
-            ? eq(connectionAuditLog.userId, data.userId)
-            : undefined
+        data.userId ? eq(connectionAuditLog.userId, data.userId) : undefined
     );
 }
 
@@ -144,6 +140,7 @@ export function queryConnection(data: Q) {
             orgId: connectionAuditLog.orgId,
             siteId: connectionAuditLog.siteId,
             clientId: connectionAuditLog.clientId,
+            clientEndpoint: connectionAuditLog.clientEndpoint,
             userId: connectionAuditLog.userId,
             sourceAddr: connectionAuditLog.sourceAddr,
             destAddr: connectionAuditLog.destAddr,
@@ -203,10 +200,7 @@ async function enrichWithDetails(
     ];
 
     // Fetch resource details from main database
-    const resourceMap = new Map<
-        number,
-        { name: string; niceId: string }
-    >();
+    const resourceMap = new Map<number, { name: string; niceId: string }>();
     if (siteResourceIds.length > 0) {
         const resourceDetails = await primaryDb
             .select({
@@ -268,10 +262,7 @@ async function enrichWithDetails(
     }
 
     // Fetch user details from main database
-    const userMap = new Map<
-        string,
-        { email: string | null }
-    >();
+    const userMap = new Map<string, { email: string | null }>();
     if (userIds.length > 0) {
         const userDetails = await primaryDb
             .select({
@@ -290,29 +281,25 @@ async function enrichWithDetails(
     return logs.map((log) => ({
         ...log,
         resourceName: log.siteResourceId
-            ? resourceMap.get(log.siteResourceId)?.name ?? null
+            ? (resourceMap.get(log.siteResourceId)?.name ?? null)
             : null,
         resourceNiceId: log.siteResourceId
-            ? resourceMap.get(log.siteResourceId)?.niceId ?? null
+            ? (resourceMap.get(log.siteResourceId)?.niceId ?? null)
             : null,
-        siteName: log.siteId
-            ? siteMap.get(log.siteId)?.name ?? null
-            : null,
+        siteName: log.siteId ? (siteMap.get(log.siteId)?.name ?? null) : null,
         siteNiceId: log.siteId
-            ? siteMap.get(log.siteId)?.niceId ?? null
+            ? (siteMap.get(log.siteId)?.niceId ?? null)
             : null,
         clientName: log.clientId
-            ? clientMap.get(log.clientId)?.name ?? null
+            ? (clientMap.get(log.clientId)?.name ?? null)
             : null,
         clientNiceId: log.clientId
-            ? clientMap.get(log.clientId)?.niceId ?? null
+            ? (clientMap.get(log.clientId)?.niceId ?? null)
             : null,
         clientType: log.clientId
-            ? clientMap.get(log.clientId)?.type ?? null
+            ? (clientMap.get(log.clientId)?.type ?? null)
             : null,
-        userEmail: log.userId
-            ? userMap.get(log.userId)?.email ?? null
-            : null
+        userEmail: log.userId ? (userMap.get(log.userId)?.email ?? null) : null
     }));
 }
 

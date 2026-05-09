@@ -646,6 +646,12 @@ export default function ConnectionLogsPage() {
                             )}
                         </div>*/}
                         <div>
+                            <strong>Client Endpoint:</strong>{" "}
+                            <span className="font-mono">
+                                {row.clientEndpoint ?? "-"}
+                            </span>
+                        </div>
+                        <div>
                             <strong>Site:</strong> {row.siteName ?? "-"}
                             {row.siteNiceId && (
                                 <span className="text-muted-foreground ml-1">
