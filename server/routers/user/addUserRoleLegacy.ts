@@ -88,11 +88,11 @@ export async function addUserRoleLegacy(
             );
         }
 
-        if (existingUser.isOwner) {
+        if (existingUser.isOwner && role.isAdmin !== true) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
-                    "Cannot change the role of the owner of the organization"
+                    "The organization owner must retain an administrator role"
                 )
             );
         }

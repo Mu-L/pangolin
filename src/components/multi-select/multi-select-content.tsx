@@ -11,7 +11,7 @@ import { cn } from "@app/lib/cn";
 import { CheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-export type TagValue = { text: string; id: string };
+export type TagValue = { text: string; id: string; isAdmin?: boolean };
 
 export type MultiSelectTagsProps<T extends TagValue> = {
     emptyPlaceholder?: string;

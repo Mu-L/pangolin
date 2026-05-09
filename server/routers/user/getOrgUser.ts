@@ -47,10 +47,7 @@ export async function queryUser(orgId: string, userId: string) {
         .from(userOrgRoles)
         .leftJoin(roles, eq(userOrgRoles.roleId, roles.roleId))
         .where(
-            and(
-                eq(userOrgRoles.userId, userId),
-                eq(userOrgRoles.orgId, orgId)
-            )
+            and(eq(userOrgRoles.userId, userId), eq(userOrgRoles.orgId, orgId))
         );
 
     const isAdmin = roleRows.some((r) => r.isAdmin);
@@ -61,7 +58,8 @@ export async function queryUser(orgId: string, userId: string) {
         roleIds: roleRows.map((r) => r.roleId),
         roles: roleRows.map((r) => ({
             roleId: r.roleId,
-            name: r.roleName ?? ""
+            name: r.roleName ?? "",
+            isAdmin: r.isAdmin === true
         }))
     };
 }

@@ -99,6 +99,14 @@ export default function UsersTable({
         ];
     }, [searchParams.toString()]);
 
+    const isRemovingSelf = useMemo(() => {
+        if (!selectedUser || !user) return false;
+        return (
+            `${selectedUser.username}-${selectedUser.idpId}` ===
+            `${user.username}-${user.idpId}`
+        );
+    }, [selectedUser, user]);
+
     function handleFilterChange(
         column: string,
         value: string | undefined | null
@@ -223,10 +231,7 @@ export default function UsersTable({
             header: () => <span className="p-3"></span>,
             cell: ({ row }) => {
                 const userRow = row.original;
-                const isCurrentUser =
-                    `${userRow.username}-${userRow.idpId}` ===
-                    `${user?.username}-${user?.idpId}`;
-                const isDisabled = userRow.isOwner || isCurrentUser;
+                const canRemoveFromOrg = !userRow.isOwner;
                 return (
                     <div className="flex items-center justify-end">
                         <div>
@@ -235,7 +240,6 @@ export default function UsersTable({
                                     <Button
                                         variant="ghost"
                                         className="h-8 w-8 p-0"
-                                        disabled={isDisabled}
                                     >
                                         <span className="sr-only">
                                             {t("openMenu")}
@@ -247,16 +251,12 @@ export default function UsersTable({
                                     <Link
                                         href={`/${org?.org.orgId}/settings/access/users/${userRow.id}`}
                                         className="block w-full"
-                                        aria-disabled={isDisabled}
-                                        onClick={(e) =>
-                                            isDisabled && e.preventDefault()
-                                        }
                                     >
-                                        <DropdownMenuItem disabled={isDisabled}>
+                                        <DropdownMenuItem>
                                             {t("accessUserManage")}
                                         </DropdownMenuItem>
                                     </Link>
-                                    {!isDisabled && (
+                                    {canRemoveFromOrg && (
                                         <DropdownMenuItem
                                             onClick={() => {
                                                 setIsDeleteModalOpen(true);
@@ -271,25 +271,14 @@ export default function UsersTable({
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
-                        {isDisabled ? (
-                            <Button
-                                variant={"outline"}
-                                className="ml-2"
-                                disabled
-                            >
+                        <Link
+                            href={`/${org?.org.orgId}/settings/access/users/${userRow.id}`}
+                        >
+                            <Button variant={"outline"} className="ml-2">
                                 {t("manage")}
                                 <ArrowRight className="ml-2 w-4 h-4" />
                             </Button>
-                        ) : (
-                            <Link
-                                href={`/${org?.org.orgId}/settings/access/users/${userRow.id}`}
-                            >
-                                <Button variant={"outline"} className="ml-2">
-                                    {t("manage")}
-                                    <ArrowRight className="ml-2 w-4 h-4" />
-                                </Button>
-                            </Link>
-                        )}
+                        </Link>
                     </div>
                 );
             }
@@ -359,22 +348,45 @@ export default function UsersTable({
                 }}
                 dialog={
                     <div className="space-y-2">
-                        <p>{t("userQuestionOrgRemove")}</p>
-                        <p>{t("userMessageOrgRemove")}</p>
+                        <p>
+                            {t(
+                                isRemovingSelf
+                                    ? "userQuestionOrgRemoveSelf"
+                                    : "userQuestionOrgRemove"
+                            )}
+                        </p>
+                        <p>
+                            {t(
+                                isRemovingSelf
+                                    ? "userMessageOrgRemoveSelf"
+                                    : "userMessageOrgRemove"
+                            )}
+                        </p>
                     </div>
                 }
-                buttonText={t("userRemoveOrgConfirm")}
+                buttonText={t(
+                    isRemovingSelf
+                        ? "userRemoveOrgConfirmSelf"
+                        : "userRemoveOrgConfirm"
+                )}
+                warningText={
+                    isRemovingSelf ? t("userRemoveOrgSelfWarning") : undefined
+                }
                 onConfirm={async () => startTransition(removeUser)}
                 string={
-                    selectedUser
-                        ? getUserDisplayName({
-                              email: selectedUser.email,
-                              name: selectedUser.name,
-                              username: selectedUser.username
-                          })
-                        : ""
+                    isRemovingSelf
+                        ? t("userRemoveOrgConfirmPhraseSelf")
+                        : selectedUser
+                          ? getUserDisplayName({
+                                email: selectedUser.email,
+                                name: selectedUser.name,
+                                username: selectedUser.username
+                            })
+                          : ""
                 }
-                title={t("userRemoveOrg")}
+                title={t(
+                    isRemovingSelf ? "userRemoveOrgSelf" : "userRemoveOrg"
+                )}
             />
 
             <ControlledDataTable
