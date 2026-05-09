@@ -30,10 +30,12 @@ import {
     LOG_TYPES,
     LogEvent,
     DestinationFailureState,
-    HttpConfig
+    HttpConfig,
+    S3Config
 } from "./types";
 import { LogDestinationProvider } from "./providers/LogDestinationProvider";
 import { HttpLogDestination } from "./providers/HttpLogDestination";
+import { S3LogDestination } from "./providers/S3LogDestination";
 import type { EventStreamingDestination } from "@server/db";
 
 // ---------------------------------------------------------------------------
@@ -72,11 +74,11 @@ const MAX_CATCHUP_BATCHES = 20;
  * After the last entry the max value is re-used.
  */
 const BACKOFF_SCHEDULE_MS = [
-    60_000,       // 1 min   (failure 1)
-    2 * 60_000,   // 2 min   (failure 2)
-    5 * 60_000,   // 5 min   (failure 3)
-    10 * 60_000,  // 10 min  (failure 4)
-    30 * 60_000   // 30 min  (failure 5+)
+    60_000, // 1 min   (failure 1)
+    2 * 60_000, // 2 min   (failure 2)
+    5 * 60_000, // 5 min   (failure 3)
+    10 * 60_000, // 10 min  (failure 4)
+    30 * 60_000 // 30 min  (failure 5+)
 ];
 
 /**
@@ -204,7 +206,10 @@ export class LogStreamingManager {
             this.pollTimer = null;
             this.runPoll()
                 .catch((err) =>
-                    logger.error("LogStreamingManager: unexpected poll error", err)
+                    logger.error(
+                        "LogStreamingManager: unexpected poll error",
+                        err
+                    )
                 )
                 .finally(() => {
                     if (this.isRunning) {
@@ -275,10 +280,13 @@ export class LogStreamingManager {
         }
 
         // Decrypt and parse config – skip destination if either step fails
-        let configFromDb: HttpConfig;
+        let configFromDb: unknown;
         try {
-            const decryptedConfig = decrypt(dest.config, config.getRawConfig().server.secret!);
-            configFromDb = JSON.parse(decryptedConfig) as HttpConfig;
+            const decryptedConfig = decrypt(
+                dest.config,
+                config.getRawConfig().server.secret!
+            );
+            configFromDb = JSON.parse(decryptedConfig);
         } catch (err) {
             logger.error(
                 `LogStreamingManager: destination ${dest.destinationId} has invalid or undecryptable config`,
@@ -305,6 +313,7 @@ export class LogStreamingManager {
         if (enabledTypes.length === 0) return;
 
         let anyFailure = false;
+        let firstError: string | null = null;
 
         for (const logType of enabledTypes) {
             if (!this.isRunning) break;
@@ -312,6 +321,10 @@ export class LogStreamingManager {
                 await this.processLogType(dest, provider, logType);
             } catch (err) {
                 anyFailure = true;
+                if (firstError === null) {
+                    firstError =
+                        err instanceof Error ? err.message : String(err);
+                }
                 logger.error(
                     `LogStreamingManager: failed to process "${logType}" logs ` +
                         `for destination ${dest.destinationId}`,
@@ -322,6 +335,10 @@ export class LogStreamingManager {
 
         if (anyFailure) {
             this.recordFailure(dest.destinationId);
+            await this.setDestinationError(
+                dest.destinationId,
+                firstError ?? "Unknown error"
+            );
         } else {
             // Any success resets the failure/back-off state
             if (this.failures.has(dest.destinationId)) {
@@ -330,6 +347,7 @@ export class LogStreamingManager {
                     `LogStreamingManager: destination ${dest.destinationId} recovered`
                 );
             }
+            await this.clearDestinationError(dest.destinationId);
         }
     }
 
@@ -362,7 +380,10 @@ export class LogStreamingManager {
                     .from(eventStreamingCursors)
                     .where(
                         and(
-                            eq(eventStreamingCursors.destinationId, dest.destinationId),
+                            eq(
+                                eventStreamingCursors.destinationId,
+                                dest.destinationId
+                            ),
                             eq(eventStreamingCursors.logType, logType)
                         )
                     )
@@ -431,9 +452,7 @@ export class LogStreamingManager {
 
             if (rows.length === 0) break;
 
-            const events = rows.map((row) =>
-                this.rowToLogEvent(logType, row)
-            );
+            const events = rows.map((row) => this.rowToLogEvent(logType, row));
 
             // Throws on failure – caught by the caller which applies back-off
             await provider.send(events);
@@ -677,8 +696,7 @@ export class LogStreamingManager {
                 break;
         }
 
-        const orgId =
-            typeof row.orgId === "string" ? row.orgId : "";
+        const orgId = typeof row.orgId === "string" ? row.orgId : "";
 
         return {
             id: row.id,
@@ -708,6 +726,8 @@ export class LogStreamingManager {
         switch (type) {
             case "http":
                 return new HttpLogDestination(config as HttpConfig);
+            case "s3":
+                return new S3LogDestination(config as S3Config);
             // Future providers:
             // case "datadog": return new DatadogLogDestination(config as DatadogConfig);
             default:
@@ -748,6 +768,45 @@ export class LogStreamingManager {
     // -------------------------------------------------------------------------
     // DB helpers
     // -------------------------------------------------------------------------
+
+    private async setDestinationError(
+        destinationId: number,
+        errorMessage: string
+    ): Promise<void> {
+        // Truncate to 1000 chars so it fits comfortably in the text column.
+        const truncated = errorMessage.slice(0, 1000);
+        try {
+            await db
+                .update(eventStreamingDestinations)
+                .set({ lastError: truncated, lastErrorAt: Date.now() })
+                .where(
+                    eq(eventStreamingDestinations.destinationId, destinationId)
+                );
+        } catch (err) {
+            logger.warn(
+                `LogStreamingManager: could not persist error status for destination ${destinationId}`,
+                err
+            );
+        }
+    }
+
+    private async clearDestinationError(destinationId: number): Promise<void> {
+        try {
+            // Only update if there is actually an error stored, to avoid
+            // unnecessary writes on every successful poll cycle.
+            await db
+                .update(eventStreamingDestinations)
+                .set({ lastError: null, lastErrorAt: null })
+                .where(
+                    eq(eventStreamingDestinations.destinationId, destinationId)
+                );
+        } catch (err) {
+            logger.warn(
+                `LogStreamingManager: could not clear error status for destination ${destinationId}`,
+                err
+            );
+        }
+    }
 
     private async loadEnabledDestinations(): Promise<
         EventStreamingDestination[]

@@ -19,7 +19,8 @@ import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import { Textarea } from "@app/components/ui/textarea";
 import { Checkbox } from "@app/components/ui/checkbox";
-import { Plus, X } from "lucide-react";
+import { Plus, X, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
@@ -56,6 +57,8 @@ export interface Destination {
     sendActionLogs: boolean;
     sendConnectionLogs: boolean;
     sendRequestLogs: boolean;
+    lastError: string | null;
+    lastErrorAt: number | null;
     createdAt: number;
     updatedAt: number;
 }
@@ -122,9 +125,7 @@ function HeadersEditor({ headers, onChange }: HeadersEditorProps) {
                     />
                     <Input
                         value={h.value}
-                        onChange={(e) =>
-                            updateRow(i, "value", e.target.value)
-                        }
+                        onChange={(e) => updateRow(i, "value", e.target.value)}
                         placeholder={t("httpDestHeaderValuePlaceholder")}
                         className="flex-1"
                     />
@@ -200,10 +201,7 @@ export function HttpDestinationCredenza({
         if (!raw) return null;
         try {
             const parsed = new URL(raw);
-            if (
-                parsed.protocol !== "http:" &&
-                parsed.protocol !== "https:"
-            ) {
+            if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
                 return t("httpDestUrlErrorHttpRequired");
             }
             if (build === "saas" && parsed.protocol !== "https:") {
@@ -216,9 +214,7 @@ export function HttpDestinationCredenza({
     })();
 
     const isValid =
-        cfg.name.trim() !== "" &&
-        cfg.url.trim() !== "" &&
-        urlError === null;
+        cfg.name.trim() !== "" && cfg.url.trim() !== "" && urlError === null;
 
     async function handleSave() {
         if (!isValid) return;
@@ -253,10 +249,7 @@ export function HttpDestinationCredenza({
                 title: editing
                     ? t("httpDestUpdateFailed")
                     : t("httpDestCreateFailed"),
-                description: formatAxiosError(
-                    e,
-                    t("streamingUnexpectedError")
-                )
+                description: formatAxiosError(e, t("streamingUnexpectedError"))
             });
         } finally {
             setSaving(false);
@@ -280,6 +273,14 @@ export function HttpDestinationCredenza({
                 </CredenzaHeader>
 
                 <CredenzaBody>
+                    {editing?.lastError && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription className="break-words">
+                                {editing.lastError}
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     <HorizontalTabs
                         clientSide
                         items={[
@@ -357,7 +358,9 @@ export function HttpDestinationCredenza({
                                                 {t("httpDestAuthNoneTitle")}
                                             </Label>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                {t("httpDestAuthNoneDescription")}
+                                                {t(
+                                                    "httpDestAuthNoneDescription"
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -375,15 +378,21 @@ export function HttpDestinationCredenza({
                                                     htmlFor="auth-bearer"
                                                     className="cursor-pointer font-medium"
                                                 >
-                                                    {t("httpDestAuthBearerTitle")}
+                                                    {t(
+                                                        "httpDestAuthBearerTitle"
+                                                    )}
                                                 </Label>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {t("httpDestAuthBearerDescription")}
+                                                    {t(
+                                                        "httpDestAuthBearerDescription"
+                                                    )}
                                                 </p>
                                             </div>
                                             {cfg.authType === "bearer" && (
                                                 <Input
-                                                    placeholder={t("httpDestAuthBearerPlaceholder")}
+                                                    placeholder={t(
+                                                        "httpDestAuthBearerPlaceholder"
+                                                    )}
                                                     value={
                                                         cfg.bearerToken ?? ""
                                                     }
@@ -411,15 +420,21 @@ export function HttpDestinationCredenza({
                                                     htmlFor="auth-basic"
                                                     className="cursor-pointer font-medium"
                                                 >
-                                                    {t("httpDestAuthBasicTitle")}
+                                                    {t(
+                                                        "httpDestAuthBasicTitle"
+                                                    )}
                                                 </Label>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {t("httpDestAuthBasicDescription")}
+                                                    {t(
+                                                        "httpDestAuthBasicDescription"
+                                                    )}
                                                 </p>
                                             </div>
                                             {cfg.authType === "basic" && (
                                                 <Input
-                                                    placeholder={t("httpDestAuthBasicPlaceholder")}
+                                                    placeholder={t(
+                                                        "httpDestAuthBasicPlaceholder"
+                                                    )}
                                                     value={
                                                         cfg.basicCredentials ??
                                                         ""
@@ -448,16 +463,22 @@ export function HttpDestinationCredenza({
                                                     htmlFor="auth-custom"
                                                     className="cursor-pointer font-medium"
                                                 >
-                                                    {t("httpDestAuthCustomTitle")}
+                                                    {t(
+                                                        "httpDestAuthCustomTitle"
+                                                    )}
                                                 </Label>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    {t("httpDestAuthCustomDescription")}
+                                                    {t(
+                                                        "httpDestAuthCustomDescription"
+                                                    )}
                                                 </p>
                                             </div>
                                             {cfg.authType === "custom" && (
                                                 <div className="flex gap-2">
                                                     <Input
-                                                        placeholder={t("httpDestAuthCustomHeaderNamePlaceholder")}
+                                                        placeholder={t(
+                                                            "httpDestAuthCustomHeaderNamePlaceholder"
+                                                        )}
                                                         value={
                                                             cfg.customHeaderName ??
                                                             ""
@@ -472,7 +493,9 @@ export function HttpDestinationCredenza({
                                                         className="flex-1"
                                                     />
                                                     <Input
-                                                        placeholder={t("httpDestAuthCustomHeaderValuePlaceholder")}
+                                                        placeholder={t(
+                                                            "httpDestAuthCustomHeaderValuePlaceholder"
+                                                        )}
                                                         value={
                                                             cfg.customHeaderValue ??
                                                             ""
@@ -593,10 +616,14 @@ export function HttpDestinationCredenza({
                                                 htmlFor="fmt-json-array"
                                                 className="cursor-pointer font-medium"
                                             >
-                                                {t("httpDestFormatJsonArrayTitle")}
+                                                {t(
+                                                    "httpDestFormatJsonArrayTitle"
+                                                )}
                                             </Label>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                {t("httpDestFormatJsonArrayDescription")}
+                                                {t(
+                                                    "httpDestFormatJsonArrayDescription"
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -616,7 +643,9 @@ export function HttpDestinationCredenza({
                                                 {t("httpDestFormatNdjsonTitle")}
                                             </Label>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                {t("httpDestFormatNdjsonDescription")}
+                                                {t(
+                                                    "httpDestFormatNdjsonDescription"
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -636,7 +665,9 @@ export function HttpDestinationCredenza({
                                                 {t("httpDestFormatSingleTitle")}
                                             </Label>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                {t("httpDestFormatSingleDescription")}
+                                                {t(
+                                                    "httpDestFormatSingleDescription"
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -717,7 +748,9 @@ export function HttpDestinationCredenza({
                                             {t("httpDestConnectionLogsTitle")}
                                         </label>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            {t("httpDestConnectionLogsDescription")}
+                                            {t(
+                                                "httpDestConnectionLogsDescription"
+                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -739,7 +772,9 @@ export function HttpDestinationCredenza({
                                             {t("httpDestRequestLogsTitle")}
                                         </label>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            {t("httpDestRequestLogsDescription")}
+                                            {t(
+                                                "httpDestRequestLogsDescription"
+                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -764,7 +799,9 @@ export function HttpDestinationCredenza({
                         loading={saving}
                         disabled={!isValid || saving}
                     >
-                        {editing ? t("httpDestSaveChanges") : t("httpDestCreateDestination")}
+                        {editing
+                            ? t("httpDestSaveChanges")
+                            : t("httpDestCreateDestination")}
                     </Button>
                 </CredenzaFooter>
             </CredenzaContent>

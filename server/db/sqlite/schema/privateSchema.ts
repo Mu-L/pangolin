@@ -332,6 +332,7 @@ export const connectionAuditLog = sqliteTable(
         clientId: integer("clientId").references(() => clients.clientId, {
             onDelete: "cascade"
         }),
+        clientEndpoint: text("clientEndpoint"),
         userId: text("userId").references(() => users.userId, {
             onDelete: "cascade"
         }),
@@ -445,6 +446,8 @@ export const eventStreamingDestinations = sqliteTable(
         enabled: integer("enabled", { mode: "boolean" })
             .notNull()
             .default(true),
+        lastError: text("lastError"), // last send error message, null if healthy
+        lastErrorAt: integer("lastErrorAt"), // epoch ms of last error, null if healthy
         createdAt: integer("createdAt").notNull(),
         updatedAt: integer("updatedAt").notNull()
     }
