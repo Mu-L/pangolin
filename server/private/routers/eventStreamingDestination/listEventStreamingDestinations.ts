@@ -51,6 +51,8 @@ export type ListEventStreamingDestinationsResponse = {
         type: string;
         config: string;
         enabled: boolean;
+        lastError: string | null;
+        lastErrorAt: number | null;
         createdAt: number;
         updatedAt: number;
         sendConnectionLogs: boolean;
@@ -79,7 +81,8 @@ async function query(orgId: string, limit: number, offset: number) {
 registry.registerPath({
     method: "get",
     path: "/org/{orgId}/event-streaming-destination",
-    description: "List all event streaming destinations for a specific organization.",
+    description:
+        "List all event streaming destinations for a specific organization.",
     tags: [OpenAPITags.Org],
     request: {
         query: querySchema,

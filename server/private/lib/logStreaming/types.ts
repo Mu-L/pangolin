@@ -108,6 +108,40 @@ export interface HttpConfig {
 }
 
 // ---------------------------------------------------------------------------
+// S3 destination configuration
+// ---------------------------------------------------------------------------
+
+/**
+ * Controls how the batch of events is serialised into each S3 object.
+ *
+ * - `json_array` – `[{…}, {…}]`  – default; each object is a JSON array.
+ * - `ndjson`     – `{…}\n{…}`    – newline-delimited JSON, one object per line.
+ * - `csv`        – RFC-4180 CSV with a header row derived from the event fields.
+ */
+export type S3PayloadFormat = "json_array" | "ndjson" | "csv";
+
+export interface S3Config {
+    /** Human-readable label for the destination */
+    name: string;
+    /** AWS Access Key ID */
+    accessKeyId: string;
+    /** AWS Secret Access Key */
+    secretAccessKey: string;
+    /** AWS region (e.g. "us-east-1") */
+    region: string;
+    /** Target S3 bucket name */
+    bucket: string;
+    /** Optional key prefix – appended before the auto-generated path */
+    prefix?: string;
+    /** Override the S3 endpoint for S3-compatible storage (e.g. MinIO, R2) */
+    endpoint?: string;
+    /** How events are serialised into each object. Defaults to "json_array". */
+    format: S3PayloadFormat;
+    /** Whether to gzip-compress the object before upload. */
+    gzip: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Per-destination per-log-type cursor (reflects the DB table)
 // ---------------------------------------------------------------------------
 
