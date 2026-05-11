@@ -106,13 +106,14 @@ export async function attachLabelToItem(
                 );
             }
 
+            // idempotent, calling this endpoint multiple times should attach the label only once
             await db
                 .insert(siteLabels)
                 .values({
                     labelId,
                     siteId
                 })
-                .returning();
+                .onConflictDoNothing();
         }
 
         if (resourceId) {
@@ -133,10 +134,14 @@ export async function attachLabelToItem(
                 );
             }
 
-            await db.insert(resourceLabels).values({
-                labelId,
-                resourceId
-            });
+            // idempotent, calling this endpoint multiple times should attach the label only once
+            await db
+                .insert(resourceLabels)
+                .values({
+                    labelId,
+                    resourceId
+                })
+                .onConflictDoNothing();
         }
 
         return response(res, {

@@ -173,33 +173,41 @@ export const labels = pgTable("labels", {
         .notNull()
 });
 
-export const siteLabels = pgTable("siteLabels", {
-    siteLabelId: serial("siteLabelId").primaryKey(),
-    siteId: integer("siteId")
-        .references(() => sites.siteId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    labelId: integer("labelId")
-        .references(() => labels.labelId, {
-            onDelete: "cascade"
-        })
-        .notNull()
-});
+export const siteLabels = pgTable(
+    "siteLabels",
+    {
+        siteLabelId: serial("siteLabelId").primaryKey(),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_label_uniq").on(t.siteId, t.labelId)]
+);
 
-export const resourceLabels = pgTable("resourceLabels", {
-    resourceLabelId: serial("resourceLabelId").primaryKey(),
-    resourceId: integer("resourceId")
-        .references(() => resources.resourceId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    labelId: integer("labelId")
-        .references(() => labels.labelId, {
-            onDelete: "cascade"
-        })
-        .notNull()
-});
+export const resourceLabels = pgTable(
+    "resourceLabels",
+    {
+        resourceLabelId: serial("resourceLabelId").primaryKey(),
+        resourceId: integer("resourceId")
+            .references(() => resources.resourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
+);
 
 export const targets = pgTable("targets", {
     targetId: serial("targetId").primaryKey(),
