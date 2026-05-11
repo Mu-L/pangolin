@@ -469,7 +469,11 @@ export default function SitesTable({
         // The label feature should be added to the tiers
         {
             accessorKey: "labels",
-            header: () => <span className="p-3">{t("labels")}</span>,
+            header: () => (
+                <span className="p-3 text-end w-full inline-block">
+                    {t("labels")}
+                </span>
+            ),
             cell: ({ row }) => {
                 return <SiteLabelCell site={row.original} orgId={orgId} />;
             }
@@ -679,6 +683,8 @@ function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
 
     const api = createApiClient(useEnvContext());
 
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
     const router = useRouter();
 
     const labels = site.labels ?? [];
@@ -722,7 +728,7 @@ function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
 
     return (
         <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
-            {optimisticLabels.map((label) => (
+            {optimisticLabels.slice(0, 3).map((label) => (
                 <Button
                     key={label.labelId}
                     variant="outline"
@@ -740,14 +746,27 @@ function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
                             "--color": label.color
                         }}
                     />
-                    <span className="whitespace-nowrap text-ellipsis max-w-20 overflow-hidden relative bottom-0.5">
+                    <span className="whitespace-nowrap text-ellipsis max-w-16 overflow-hidden relative bottom-0.5">
                         {label.name}
                     </span>
 
                     <XIcon className="size-3 flex-none" />
                 </Button>
             ))}
-            <Popover>
+            {optimisticLabels.length > 3 && (
+                <Button
+                    variant="outline"
+                    className={cn(
+                        "inline-flex gap-1 items-center",
+                        "rounded-full text-sm cursor-pointer",
+                        "px-1.5 py-0 h-auto"
+                    )}
+                    onClick={() => setIsPopoverOpen(true)}
+                >
+                    +{optimisticLabels.length - 3}
+                </Button>
+            )}
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         size="icon"
