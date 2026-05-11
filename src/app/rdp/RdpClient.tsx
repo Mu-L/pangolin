@@ -57,7 +57,7 @@ export default function RdpClient() {
         gatewayAddress: "ws://localhost:7171/jet/rdp",
         hostname: "172.31.3.58:3389",
         domain: "",
-        authtoken: "",
+        authtoken: "abc123",
         kdcProxyUrl: "",
         pcb: "",
         desktopWidth: 1280,
@@ -281,7 +281,7 @@ export default function RdpClient() {
                                 }
                             />
                         </Field>
-                        <Field label="Auth Token" id="authtoken">
+                        {/* <Field label="Auth Token" id="authtoken">
                             <Input
                                 id="authtoken"
                                 value={form.authtoken}
@@ -296,7 +296,7 @@ export default function RdpClient() {
                                 value={form.pcb}
                                 onChange={(e) => update("pcb", e.target.value)}
                             />
-                        </Field>
+                        </Field> */}
                         <div className="grid grid-cols-2 gap-4">
                             <Field label="Desktop Width" id="desktopWidth">
                                 <Input
@@ -325,7 +325,7 @@ export default function RdpClient() {
                                 />
                             </Field>
                         </div>
-                        <Field
+                        {/* <Field
                             label="KDC Proxy URL (optional)"
                             id="kdcProxyUrl"
                         >
@@ -336,7 +336,7 @@ export default function RdpClient() {
                                     update("kdcProxyUrl", e.target.value)
                                 }
                             />
-                        </Field>
+                        </Field> */}
                         <div className="flex items-center gap-2">
                             <Checkbox
                                 id="enable_clipboard"
