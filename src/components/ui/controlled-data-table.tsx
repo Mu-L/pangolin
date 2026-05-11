@@ -305,6 +305,7 @@ export function ControlledDataTable<TData, TValue>({
                                         onSearch(e.currentTarget.value)
                                     }
                                     className="w-full pl-8"
+                                    type="search"
                                 />
                                 <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                             </div>
