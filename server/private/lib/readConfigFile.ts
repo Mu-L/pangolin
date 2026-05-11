@@ -141,6 +141,7 @@ export const privateConfigSchema = z
                     )
                     .optional(),
                 hide_auth_layout_footer: z.boolean().optional().default(false),
+                hide_powered_by: z.boolean().optional(),
                 login_page: z
                     .object({
                         subtitle_text: z.string().optional()

@@ -97,6 +97,13 @@ export class PrivateConfig {
             );
         }
 
+        process.env.BRANDING_HIDE_POWERED_BY =
+            this.rawPrivateConfig.branding?.hide_powered_by === true ||
+            this.rawPrivateConfig.branding?.resource_auth_page
+                ?.hide_powered_by === true
+                ? "true"
+                : "false";
+
         process.env.LOGIN_PAGE_SUBTITLE_TEXT =
             this.rawPrivateConfig.branding?.login_page?.subtitle_text || "";
 
