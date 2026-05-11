@@ -47,6 +47,7 @@ import {
     Clock,
     Funnel,
     MoreHorizontal,
+    PlusIcon,
     ShieldCheck,
     ShieldOff,
     XCircle
@@ -55,6 +56,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+    startTransition,
     useEffect,
     useMemo,
     useOptimistic,
@@ -68,6 +70,8 @@ import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
+import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import { LabelBadge } from "./label-badge";
 
 export type TargetHealth = {
     targetId: number;
@@ -538,11 +542,10 @@ export default function ProxyResourcesTable({
                       ),
                       cell: ({ row }: { row: { original: ResourceRow } }) => {
                           return (
-                              //   <SiteLabelCell
-                              //       site={row.original}
-                              //       orgId={orgId}
-                              //   />
-                              <></>
+                              <ResourceLabelCell
+                                  resource={row.original}
+                                  orgId={orgId}
+                              />
                           );
                       }
                   }
@@ -704,6 +707,105 @@ export default function ProxyResourcesTable({
                 stickyRightColumn="actions"
             />
         </>
+    );
+}
+
+type ResourceLabelCellProps = {
+    resource: ResourceRow;
+    orgId: string;
+};
+
+function ResourceLabelCell({ resource, orgId }: ResourceLabelCellProps) {
+    const t = useTranslations();
+
+    const api = createApiClient(useEnvContext());
+
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    const router = useRouter();
+
+    const labels = resource.labels ?? [];
+    const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
+
+    function toggleSiteLabel(
+        label: SelectedLabel,
+        action: "attach" | "detach"
+    ) {
+        startTransition(async () => {
+            try {
+                if (action === "attach") {
+                    setOptimisticLabels([...optimisticLabels, label]);
+
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/attach`,
+                        { resourceId: resource.id }
+                    );
+                } else {
+                    setOptimisticLabels(
+                        optimisticLabels.filter(
+                            (lb) => lb.labelId !== label.labelId
+                        )
+                    );
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/detach`,
+                        { resourceId: resource.id }
+                    );
+                }
+            } catch (e) {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e, t("errorOccurred")),
+                    variant: "destructive"
+                });
+            } finally {
+                router.refresh();
+            }
+        });
+    }
+
+    return (
+        <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
+            {optimisticLabels.slice(0, 3).map((label) => (
+                <LabelBadge
+                    key={label.labelId}
+                    onClick={() => setIsPopoverOpen(true)}
+                    {...label}
+                />
+            ))}
+            {optimisticLabels.length > 3 && (
+                <Button
+                    variant="outline"
+                    className={cn(
+                        "inline-flex gap-1 items-center",
+                        "rounded-full text-sm cursor-pointer",
+                        "px-1.5 py-0 h-auto"
+                    )}
+                    onClick={() => setIsPopoverOpen(true)}
+                >
+                    +{optimisticLabels.length - 3}
+                </Button>
+            )}
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        className="p-1 size-auto rounded-full"
+                        title={t("addLabels")}
+                    >
+                        <span className="sr-only">{t("addLabels")}</span>
+                        <PlusIcon className="size-3" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="p-0 w-full">
+                    <LabelsSelector
+                        orgId={orgId}
+                        selectedLabels={optimisticLabels}
+                        toggleLabel={toggleSiteLabel}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
     );
 }
 

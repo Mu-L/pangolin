@@ -417,7 +417,9 @@ export async function listResources(
             conditions.push(or(...queryList));
         }
 
-        const baseQuery = queryResourcesBase(isLabelFeatureEnabled).where(and(...conditions));
+        const baseQuery = queryResourcesBase(isLabelFeatureEnabled).where(
+            and(...conditions)
+        );
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(baseQuery.as("filtered_resources"));
@@ -463,7 +465,8 @@ export async function listResources(
                           )
                           .where(
                               inArray(resourceLabels.resourceId, resourceIdList)
-                          );
+                          )
+                          .orderBy(asc(resourceLabels.resourceLabelId));
         }
 
         const allResourceTargets =

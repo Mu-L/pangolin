@@ -423,7 +423,8 @@ export async function listSites(
                               siteLabels,
                               eq(siteLabels.labelId, labels.labelId)
                           )
-                          .where(inArray(siteLabels.siteId, siteIds));
+                          .where(inArray(siteLabels.siteId, siteIds))
+                          .orderBy(asc(siteLabels.siteLabelId));
         }
 
         const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
