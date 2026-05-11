@@ -194,35 +194,43 @@ export const labels = sqliteTable("labels", {
         .notNull()
 });
 
-export const siteLabels = sqliteTable("siteLabels", {
-    siteLabelId: integer("siteLabelId").primaryKey({ autoIncrement: true }),
-    siteId: integer("siteId")
-        .references(() => sites.siteId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    labelId: integer("labelId")
-        .references(() => labels.labelId, {
-            onDelete: "cascade"
-        })
-        .notNull()
-});
+export const siteLabels = sqliteTable(
+    "siteLabels",
+    {
+        siteLabelId: integer("siteLabelId").primaryKey({ autoIncrement: true }),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_label_uniq").on(t.siteId, t.labelId)]
+);
 
-export const resourceLabels = sqliteTable("resourceLabels", {
-    resourceLabelId: integer("resourceLabelId").primaryKey({
-        autoIncrement: true
-    }),
-    resourceId: integer("resourceId")
-        .references(() => resources.resourceId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    labelId: integer("labelId")
-        .references(() => labels.labelId, {
-            onDelete: "cascade"
-        })
-        .notNull()
-});
+export const resourceLabels = sqliteTable(
+    "resourceLabels",
+    {
+        resourceLabelId: integer("resourceLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        resourceId: integer("resourceId")
+            .references(() => resources.resourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
+);
 
 export const targets = sqliteTable("targets", {
     targetId: integer("targetId").primaryKey({ autoIncrement: true }),
