@@ -45,6 +45,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
     startTransition,
     useEffect,
+    useMemo,
     useOptimistic,
     useState,
     useTransition
@@ -180,7 +181,8 @@ export default function SitesTable({
         });
     }
 
-    const columns: ExtendedColumnDef<SiteRow>[] = [
+    const columns = useMemo<ExtendedColumnDef<SiteRow>[]>(() => {
+        const cols: ExtendedColumnDef<SiteRow>[] = [
         {
             accessorKey: "name",
             enableHiding: false,
@@ -470,26 +472,6 @@ export default function SitesTable({
                 );
             }
         },
-        ...(isLabelFeatureEnabled
-            ? [
-                  {
-                      accessorKey: "labels",
-                      header: () => (
-                          <span className="p-3 text-end w-full inline-block">
-                              {t("labels")}
-                          </span>
-                      ),
-                      cell: ({ row }: { row: { original: SiteRow } }) => {
-                          return (
-                              <SiteLabelCell
-                                  site={row.original}
-                                  orgId={orgId}
-                              />
-                          );
-                      }
-                  }
-              ]
-            : []),
         {
             id: "actions",
             enableHiding: false,
@@ -544,7 +526,24 @@ export default function SitesTable({
                 );
             }
         }
-    ];
+        ];
+
+        if (isLabelFeatureEnabled) {
+            cols.splice(cols.length - 1, 0, {
+                accessorKey: "labels",
+                header: () => (
+                    <span className="p-3 text-end w-full inline-block">
+                        {t("labels")}
+                    </span>
+                ),
+                cell: ({ row }: { row: { original: SiteRow } }) => (
+                    <SiteLabelCell site={row.original} orgId={orgId} />
+                )
+            });
+        }
+
+        return cols;
+    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
