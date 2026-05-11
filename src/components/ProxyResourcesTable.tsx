@@ -118,6 +118,11 @@ type ProxyResourcesTableProps = {
     initialFilterSite?: Selectedsite | null;
 };
 
+const booleanSearchFilterSchema = z
+    .enum(["true", "false"])
+    .optional()
+    .catch(undefined);
+
 export default function ProxyResourcesTable({
     resources,
     orgId,
@@ -224,389 +229,429 @@ export default function ProxyResourcesTable({
         }
     }
 
-    const proxyColumns: ExtendedColumnDef<ResourceRow>[] = [
-        {
-            accessorKey: "name",
-            enableHiding: false,
-            friendlyName: t("name"),
-            header: () => {
-                const nameOrder = getSortDirection("name", searchParams);
-                const Icon =
-                    nameOrder === "asc"
-                        ? ArrowDown01Icon
-                        : nameOrder === "desc"
-                          ? ArrowUp10Icon
-                          : ChevronsUpDownIcon;
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
 
-                return (
-                    <Button
-                        variant="ghost"
-                        className="p-3"
-                        onClick={() => toggleSort("name")}
-                    >
-                        {t("name")}
-                        <Icon className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
-        },
-        {
-            id: "niceId",
-            accessorKey: "nice",
-            friendlyName: t("identifier"),
-            enableHiding: true,
-            header: () => <span className="p-3">{t("identifier")}</span>,
-            cell: ({ row }) => {
-                return <span>{row.original.nice || "-"}</span>;
-            }
-        },
-        {
-            id: "sites",
-            accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
-            friendlyName: t("sites"),
-            header: () => (
-                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
-                    <PopoverTrigger asChild>
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
+
+    const siteFilterOpenRef = useRef(siteFilterOpen);
+    siteFilterOpenRef.current = siteFilterOpen;
+
+    const selectedSiteRef = useRef(selectedSite);
+    selectedSiteRef.current = selectedSite;
+
+    const clearSiteFilterRef = useRef(clearSiteFilter);
+    clearSiteFilterRef.current = clearSiteFilter;
+
+    const onPickSiteRef = useRef(onPickSite);
+    onPickSiteRef.current = onPickSite;
+
+    const proxyColumns = useMemo<ExtendedColumnDef<ResourceRow>[]>(() => {
+        const cols: ExtendedColumnDef<ResourceRow>[] = [
+            {
+                accessorKey: "name",
+                enableHiding: false,
+                friendlyName: t("name"),
+                header: () => {
+                    const nameOrder = getSortDirection("name", searchParams);
+                    const Icon =
+                        nameOrder === "asc"
+                            ? ArrowDown01Icon
+                            : nameOrder === "desc"
+                              ? ArrowUp10Icon
+                              : ChevronsUpDownIcon;
+
+                    return (
                         <Button
-                            type="button"
                             variant="ghost"
-                            role="combobox"
-                            className={cn(
-                                "justify-between text-sm h-8 px-2 w-full p-3",
-                                !selectedSite && "text-muted-foreground"
-                            )}
+                            className="p-3"
+                            onClick={() => toggleSort("name")}
                         >
-                            <div className="flex items-center gap-2 min-w-0">
-                                {t("sites")}
-                                <Funnel className="size-4 flex-none" />
-                                {selectedSite && (
-                                    <Badge
-                                        className="truncate max-w-[10rem]"
-                                        variant="secondary"
-                                    >
-                                        {selectedSite.name}
-                                    </Badge>
-                                )}
-                            </div>
+                            {t("name")}
+                            <Icon className="ml-2 h-4 w-4" />
                         </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                        className={dataTableFilterPopoverContentClassName}
-                        align="start"
+                    );
+                }
+            },
+            {
+                id: "niceId",
+                accessorKey: "nice",
+                friendlyName: t("identifier"),
+                enableHiding: true,
+                header: () => <span className="p-3">{t("identifier")}</span>,
+                cell: ({ row }) => {
+                    return <span>{row.original.nice || "-"}</span>;
+                }
+            },
+            {
+                id: "sites",
+                accessorFn: (row) =>
+                    row.sites.map((s) => s.siteName).join(", "),
+                friendlyName: t("sites"),
+                header: () => (
+                    <Popover
+                        open={siteFilterOpenRef.current}
+                        onOpenChange={setSiteFilterOpen}
                     >
-                        <div className="border-b p-1">
+                        <PopoverTrigger asChild>
                             <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                className="h-8 w-full justify-start font-normal"
-                                onClick={clearSiteFilter}
+                                role="combobox"
+                                className={cn(
+                                    "justify-between text-sm h-8 px-2 w-full p-3",
+                                    !selectedSiteRef.current &&
+                                        "text-muted-foreground"
+                                )}
                             >
-                                {t("standaloneHcFilterAnySite")}
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {t("sites")}
+                                    <Funnel className="size-4 flex-none" />
+                                    {selectedSiteRef.current && (
+                                        <Badge
+                                            className="truncate max-w-[10rem]"
+                                            variant="secondary"
+                                        >
+                                            {selectedSiteRef.current.name}
+                                        </Badge>
+                                    )}
+                                </div>
                             </Button>
-                        </div>
-                        <SitesSelector
-                            orgId={orgId}
-                            selectedSite={selectedSite}
-                            onSelectSite={onPickSite}
-                        />
-                    </PopoverContent>
-                </Popover>
-            ),
-            cell: ({ row }) => (
-                <ResourceSitesStatusCell
-                    orgId={row.original.orgId}
-                    resourceSites={row.original.sites}
-                />
-            )
-        },
-        {
-            accessorKey: "protocol",
-            friendlyName: t("protocol"),
-            enableHiding: true,
-            header: () => <span className="p-3">{t("protocol")}</span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <span>
-                        {resourceRow.http
-                            ? resourceRow.ssl
-                                ? "HTTPS"
-                                : "HTTP"
-                            : resourceRow.protocol.toUpperCase()}
-                    </span>
-                );
-            }
-        },
-        {
-            id: "status",
-            accessorKey: "status",
-            friendlyName: t("health"),
-            header: () => (
-                <ColumnFilterButton
-                    options={[
-                        { value: "healthy", label: t("resourcesTableHealthy") },
-                        {
-                            value: "degraded",
-                            label: t("resourcesTableDegraded")
-                        },
-                        {
-                            value: "unhealthy",
-                            label: t("resourcesTableUnhealthy")
-                        },
-                        { value: "unknown", label: t("resourcesTableUnknown") }
-                    ]}
-                    selectedValue={
-                        searchParams.get("healthStatus") ?? undefined
-                    }
-                    onValueChange={(value) =>
-                        handleFilterChange("healthStatus", value)
-                    }
-                    searchPlaceholder={t("searchPlaceholder")}
-                    emptyMessage={t("emptySearchOptions")}
-                    label={t("health")}
-                    className="p-3"
-                />
-            ),
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <TargetStatusCell
-                        targets={resourceRow.targets}
-                        healthStatus={resourceRow.health}
+                        </PopoverTrigger>
+                        <PopoverContent
+                            className={dataTableFilterPopoverContentClassName}
+                            align="start"
+                        >
+                            <div className="border-b p-1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-full justify-start font-normal"
+                                    onClick={() => clearSiteFilterRef.current()}
+                                >
+                                    {t("standaloneHcFilterAnySite")}
+                                </Button>
+                            </div>
+                            <SitesSelector
+                                orgId={orgId}
+                                selectedSite={selectedSiteRef.current}
+                                onSelectSite={(site) =>
+                                    onPickSiteRef.current(site)
+                                }
+                            />
+                        </PopoverContent>
+                    </Popover>
+                ),
+                cell: ({ row }) => (
+                    <ResourceSitesStatusCell
+                        orgId={row.original.orgId}
+                        resourceSites={row.original.sites}
                     />
-                );
+                )
             },
-            sortingFn: (rowA, rowB) => {
-                const statusA = rowA.original.health;
-                const statusB = rowB.original.health;
-                if (!statusA && !statusB) return 0;
-                if (!statusA) return 1;
-                if (!statusB) return -1;
-                const statusOrder = {
-                    healthy: 3,
-                    degraded: 2,
-                    unhealthy: 1,
-                    unknown: 0
-                };
-                return statusOrder[statusA] - statusOrder[statusB];
-            }
-        },
-        {
-            id: "statusHistory",
-            friendlyName: t("uptime30d"),
-            header: () => <span className="p-3">{t("uptime30d")}</span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return <UptimeMiniBar resourceId={resourceRow.id} days={30} />;
-            }
-        },
-        {
-            accessorKey: "domain",
-            friendlyName: t("access"),
-            header: () => <span className="p-3">{t("access")}</span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-
-                if (!resourceRow.http) {
+            {
+                accessorKey: "protocol",
+                friendlyName: t("protocol"),
+                enableHiding: true,
+                header: () => <span className="p-3">{t("protocol")}</span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
                     return (
-                        <div className="flex items-center gap-2 min-w-0">
-                            <CopyToClipboard
-                                text={resourceRow.proxyPort?.toString() || ""}
-                                isLink={false}
-                            />
-                        </div>
+                        <span>
+                            {resourceRow.http
+                                ? resourceRow.ssl
+                                    ? "HTTPS"
+                                    : "HTTP"
+                                : resourceRow.protocol.toUpperCase()}
+                        </span>
                     );
                 }
-
-                if (!resourceRow.domainId) {
+            },
+            {
+                id: "status",
+                accessorKey: "status",
+                friendlyName: t("health"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            {
+                                value: "healthy",
+                                label: t("resourcesTableHealthy")
+                            },
+                            {
+                                value: "degraded",
+                                label: t("resourcesTableDegraded")
+                            },
+                            {
+                                value: "unhealthy",
+                                label: t("resourcesTableUnhealthy")
+                            },
+                            {
+                                value: "unknown",
+                                label: t("resourcesTableUnknown")
+                            }
+                        ]}
+                        selectedValue={
+                            searchParams.get("healthStatus") ?? undefined
+                        }
+                        onValueChange={(value) =>
+                            handleFilterChange("healthStatus", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("health")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
                     return (
-                        <div className="flex items-center gap-2 min-w-0">
-                            <InfoPopup
-                                info={t("domainNotFoundDescription")}
-                                text={t("domainNotFound")}
-                            />
-                        </div>
+                        <TargetStatusCell
+                            targets={resourceRow.targets}
+                            healthStatus={resourceRow.health}
+                        />
+                    );
+                },
+                sortingFn: (rowA, rowB) => {
+                    const statusA = rowA.original.health;
+                    const statusB = rowB.original.health;
+                    if (!statusA && !statusB) return 0;
+                    if (!statusA) return 1;
+                    if (!statusB) return -1;
+                    const statusOrder = {
+                        healthy: 3,
+                        degraded: 2,
+                        unhealthy: 1,
+                        unknown: 0
+                    };
+                    return statusOrder[statusA] - statusOrder[statusB];
+                }
+            },
+            {
+                id: "statusHistory",
+                friendlyName: t("uptime30d"),
+                header: () => <span className="p-3">{t("uptime30d")}</span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    return (
+                        <UptimeMiniBar resourceId={resourceRow.id} days={30} />
                     );
                 }
+            },
+            {
+                accessorKey: "domain",
+                friendlyName: t("access"),
+                header: () => <span className="p-3">{t("access")}</span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
 
-                const domainId = resourceRow.domainId;
-                const certHostname = resourceRow.fullDomain;
-                const showHttpsCertIndicator =
-                    build !== "oss" &&
-                    resourceRow.ssl &&
-                    certHostname != null &&
-                    certHostname !== "";
-
-                return (
-                    <div className="flex items-center gap-2 min-w-0">
-                        {showHttpsCertIndicator ? (
-                            <ResourceAccessCertIndicator
-                                orgId={resourceRow.orgId}
-                                domainId={domainId}
-                                fullDomain={certHostname}
-                            />
-                        ) : null}
-                        <div className="">
-                            {!resourceRow.wildcard ? (
+                    if (!resourceRow.http) {
+                        return (
+                            <div className="flex items-center gap-2 min-w-0">
                                 <CopyToClipboard
-                                    text={resourceRow.domain}
-                                    isLink={true}
+                                    text={
+                                        resourceRow.proxyPort?.toString() || ""
+                                    }
+                                    isLink={false}
                                 />
+                            </div>
+                        );
+                    }
+
+                    if (!resourceRow.domainId) {
+                        return (
+                            <div className="flex items-center gap-2 min-w-0">
+                                <InfoPopup
+                                    info={t("domainNotFoundDescription")}
+                                    text={t("domainNotFound")}
+                                />
+                            </div>
+                        );
+                    }
+
+                    const domainId = resourceRow.domainId;
+                    const certHostname = resourceRow.fullDomain;
+                    const showHttpsCertIndicator =
+                        build !== "oss" &&
+                        resourceRow.ssl &&
+                        certHostname != null &&
+                        certHostname !== "";
+
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
+                            {showHttpsCertIndicator ? (
+                                <ResourceAccessCertIndicator
+                                    orgId={resourceRow.orgId}
+                                    domainId={domainId}
+                                    fullDomain={certHostname}
+                                />
+                            ) : null}
+                            <div className="">
+                                {!resourceRow.wildcard ? (
+                                    <CopyToClipboard
+                                        text={resourceRow.domain}
+                                        isLink={true}
+                                    />
+                                ) : (
+                                    <span>{resourceRow.domain}</span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+            },
+            {
+                accessorKey: "authState",
+                friendlyName: t("authentication"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            { value: "protected", label: t("protected") },
+                            {
+                                value: "not_protected",
+                                label: t("notProtected")
+                            },
+                            { value: "none", label: t("none") }
+                        ]}
+                        selectedValue={
+                            searchParams.get("authState") ?? undefined
+                        }
+                        onValueChange={(value) =>
+                            handleFilterChange("authState", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("authentication")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    return (
+                        <div>
+                            {resourceRow.authState === "protected" ? (
+                                <span className="flex items-center space-x-2">
+                                    <ShieldCheck className="w-4 h-4 text-green-500" />
+                                    <span>{t("protected")}</span>
+                                </span>
+                            ) : resourceRow.authState === "not_protected" ? (
+                                <span className="flex items-center space-x-2">
+                                    <ShieldOff className="w-4 h-4 text-yellow-500" />
+                                    <span>{t("notProtected")}</span>
+                                </span>
                             ) : (
-                                <span>{resourceRow.domain}</span>
+                                <span>-</span>
                             )}
                         </div>
-                    </div>
-                );
-            }
-        },
-        {
-            accessorKey: "authState",
-            friendlyName: t("authentication"),
-            header: () => (
-                <ColumnFilterButton
-                    options={[
-                        { value: "protected", label: t("protected") },
-                        { value: "not_protected", label: t("notProtected") },
-                        { value: "none", label: t("none") }
-                    ]}
-                    selectedValue={searchParams.get("authState") ?? undefined}
-                    onValueChange={(value) =>
-                        handleFilterChange("authState", value)
-                    }
-                    searchPlaceholder={t("searchPlaceholder")}
-                    emptyMessage={t("emptySearchOptions")}
-                    label={t("authentication")}
-                    className="p-3"
-                />
-            ),
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <div>
-                        {resourceRow.authState === "protected" ? (
-                            <span className="flex items-center space-x-2">
-                                <ShieldCheck className="w-4 h-4 text-green-500" />
-                                <span>{t("protected")}</span>
-                            </span>
-                        ) : resourceRow.authState === "not_protected" ? (
-                            <span className="flex items-center space-x-2">
-                                <ShieldOff className="w-4 h-4 text-yellow-500" />
-                                <span>{t("notProtected")}</span>
-                            </span>
-                        ) : (
-                            <span>-</span>
+                    );
+                }
+            },
+            {
+                accessorKey: "enabled",
+                friendlyName: t("enabled"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            { value: "true", label: t("enabled") },
+                            { value: "false", label: t("disabled") }
+                        ]}
+                        selectedValue={booleanSearchFilterSchema.parse(
+                            searchParams.get("enabled")
                         )}
-                    </div>
-                );
-            }
-        },
-        {
-            accessorKey: "enabled",
-            friendlyName: t("enabled"),
-            header: () => (
-                <ColumnFilterButton
-                    options={[
-                        { value: "true", label: t("enabled") },
-                        { value: "false", label: t("disabled") }
-                    ]}
-                    selectedValue={booleanSearchFilterSchema.parse(
-                        searchParams.get("enabled")
-                    )}
-                    onValueChange={(value) =>
-                        handleFilterChange("enabled", value)
-                    }
-                    searchPlaceholder={t("searchPlaceholder")}
-                    emptyMessage={t("emptySearchOptions")}
-                    label={t("enabled")}
-                    className="p-3"
-                />
-            ),
-            cell: ({ row }) => (
-                <ResourceEnabledForm
-                    resource={row.original}
-                    onToggleResourceEnabled={toggleResourceEnabled}
-                />
-            )
-        },
-        ...(isLabelFeatureEnabled
-            ? [
-                  {
-                      id: "labels",
-                      accessorKey: "labels",
-                      header: () => (
-                          <span className="p-3 text-end w-full inline-block">
-                              {t("labels")}
-                          </span>
-                      ),
-                      cell: ({ row }: { row: { original: ResourceRow } }) => {
-                          return (
-                              <ResourceLabelCell
-                                  resource={row.original}
-                                  orgId={orgId}
-                              />
-                          );
-                      }
-                  }
-              ]
-            : []),
-        {
-            id: "actions",
-            enableHiding: false,
-            header: () => <span className="p-3"></span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <div className="flex items-center gap-2 justify-end">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">
-                                        {t("openMenu")}
-                                    </span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <Link
-                                    className="block w-full"
-                                    href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
-                                >
-                                    <DropdownMenuItem>
-                                        {t("viewSettings")}
+                        onValueChange={(value) =>
+                            handleFilterChange("enabled", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("enabled")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => (
+                    <ResourceEnabledForm
+                        resource={row.original}
+                        onToggleResourceEnabled={toggleResourceEnabled}
+                    />
+                )
+            },
+            {
+                id: "actions",
+                enableHiding: false,
+                header: () => <span className="p-3"></span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    return (
+                        <div className="flex items-center gap-2 justify-end">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        <span className="sr-only">
+                                            {t("openMenu")}
+                                        </span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <Link
+                                        className="block w-full"
+                                        href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
+                                    >
+                                        <DropdownMenuItem>
+                                            {t("viewSettings")}
+                                        </DropdownMenuItem>
+                                    </Link>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setSelectedResource(resourceRow);
+                                            setIsDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        <span className="text-red-500">
+                                            {t("delete")}
+                                        </span>
                                     </DropdownMenuItem>
-                                </Link>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedResource(resourceRow);
-                                        setIsDeleteModalOpen(true);
-                                    }}
-                                >
-                                    <span className="text-red-500">
-                                        {t("delete")}
-                                    </span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Link
-                            href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
-                        >
-                            <Button variant={"outline"}>
-                                {t("edit")}
-                                <ArrowRight className="ml-2 w-4 h-4" />
-                            </Button>
-                        </Link>
-                    </div>
-                );
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Link
+                                href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
+                            >
+                                <Button variant={"outline"}>
+                                    {t("edit")}
+                                    <ArrowRight className="ml-2 w-4 h-4" />
+                                </Button>
+                            </Link>
+                        </div>
+                    );
+                }
             }
-        }
-    ];
+        ];
 
-    const booleanSearchFilterSchema = z
-        .enum(["true", "false"])
-        .optional()
-        .catch(undefined);
+        if (isLabelFeatureEnabled) {
+            cols.splice(cols.length - 1, 0, {
+                id: "labels",
+                accessorKey: "labels",
+                header: () => (
+                    <span className="p-3 text-end w-full inline-block">
+                        {t("labels")}
+                    </span>
+                ),
+                cell: ({ row }: { row: { original: ResourceRow } }) => (
+                    <ResourceLabelCell resource={row.original} orgId={orgId} />
+                )
+            });
+        }
+
+        return cols;
+    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,
@@ -622,16 +667,6 @@ export default function ProxyResourcesTable({
             searchParams
         });
     }
-
-    const clearSiteFilter = () => {
-        handleFilterChange("siteId", undefined);
-        setSiteFilterOpen(false);
-    };
-
-    const onPickSite = (site: Selectedsite) => {
-        handleFilterChange("siteId", String(site.siteId));
-        setSiteFilterOpen(false);
-    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
