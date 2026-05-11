@@ -190,9 +190,9 @@ const listSitesSchema = z.object({
         })
 });
 
-function querySitesBase() {
-    return db
-        .select({
+function querySitesBase(isLabelFeatureEnabled: boolean) {
+    let query = db
+        .selectDistinct({
             siteId: sites.siteId,
             niceId: sites.niceId,
             name: sites.name,
@@ -231,6 +231,14 @@ function querySitesBase() {
             remoteExitNodes,
             eq(remoteExitNodes.exitNodeId, sites.exitNodeId)
         );
+
+    if (isLabelFeatureEnabled) {
+        query = query
+            .leftJoin(siteLabels, eq(siteLabels.siteId, sites.siteId))
+            .leftJoin(labels, eq(labels.labelId, siteLabels.labelId));
+    }
+
+    return query;
 }
 
 type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
@@ -314,6 +322,11 @@ export async function listSites(
                 .where(eq(sites.orgId, orgId));
         }
 
+        const isLabelFeatureEnabled = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.labels
+        );
+
         const { pageSize, page, query, sort_by, order, online, status } =
             parsedQuery.data;
 
@@ -325,31 +338,43 @@ export async function listSites(
                 eq(sites.orgId, orgId)
             )
         ];
-        if (query) {
-            conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${sites.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${sites.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
-                )
-            );
-        }
+
         if (typeof online !== "undefined") {
             conditions.push(eq(sites.online, online));
         }
         if (typeof status !== "undefined") {
             conditions.push(eq(sites.status, status));
         }
-        const baseQuery = querySitesBase().where(and(...conditions));
+        if (query) {
+            const queryList = [
+                like(
+                    sql`LOWER(${sites.name})`,
+                    "%" + query.toLowerCase() + "%"
+                ),
+                like(
+                    sql`LOWER(${sites.niceId})`,
+                    "%" + query.toLowerCase() + "%"
+                )
+            ];
+
+            if (isLabelFeatureEnabled) {
+                queryList.push(
+                    like(
+                        sql`LOWER(${labels.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
+                );
+            }
+            conditions.push(or(...queryList));
+        }
+
+        const baseQuery = querySitesBase(isLabelFeatureEnabled).where(
+            and(...conditions)
+        );
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase()
+            querySitesBase(isLabelFeatureEnabled)
                 .where(and(...conditions))
                 .as("filtered_sites")
         );
@@ -382,25 +407,24 @@ export async function listSites(
             siteId: number;
         }> = [];
 
-        // The label feature should be added in the tiers
-        // if (await isLicensedOrSubscribed(orgId, tierMatrix.fullRbac)) {
-        // }
-        labelsForSites =
-            siteIds.length === 0
-                ? []
-                : await db
-                      .select({
-                          labelId: labels.labelId,
-                          name: labels.name,
-                          color: labels.color,
-                          siteId: siteLabels.siteId
-                      })
-                      .from(labels)
-                      .innerJoin(
-                          siteLabels,
-                          eq(siteLabels.labelId, labels.labelId)
-                      )
-                      .where(inArray(siteLabels.siteId, siteIds));
+        if (isLabelFeatureEnabled) {
+            labelsForSites =
+                siteIds.length === 0
+                    ? []
+                    : await db
+                          .select({
+                              labelId: labels.labelId,
+                              name: labels.name,
+                              color: labels.color,
+                              siteId: siteLabels.siteId
+                          })
+                          .from(labels)
+                          .innerJoin(
+                              siteLabels,
+                              eq(siteLabels.labelId, labels.labelId)
+                          )
+                          .where(inArray(siteLabels.siteId, siteIds));
+        }
 
         const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
             const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
