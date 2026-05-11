@@ -2,10 +2,12 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 import {
     ResourceSitesStatusCell,
     type ResourceSiteRow
 } from "@app/components/ResourceSitesStatusCell";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
@@ -24,12 +26,14 @@ import {
 import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
-import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
-import { toast } from "@app/hooks/useToast";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import type { PaginationState } from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
@@ -64,8 +68,6 @@ import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
-import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
-import { build } from "@server/build";
 
 export type TargetHealth = {
     targetId: number;
@@ -97,30 +99,12 @@ export type ResourceRow = {
     health?: "healthy" | "degraded" | "unhealthy" | "unknown";
     sites: ResourceSiteRow[];
     wildcard?: boolean;
+    labels?: Array<{
+        labelId: number;
+        name: string;
+        color: string;
+    }>;
 };
-
-function StatusIcon({
-    status,
-    className = ""
-}: {
-    status: string | undefined | null;
-    className?: string;
-}) {
-    const iconClass = `h-4 w-4 ${className}`;
-
-    switch (status) {
-        case "healthy":
-            return <CheckCircle2 className={`${iconClass} text-green-500`} />;
-        case "degraded":
-            return <CheckCircle2 className={`${iconClass} text-yellow-500`} />;
-        case "unhealthy":
-            return <XCircle className={`${iconClass} text-destructive`} />;
-        case "unknown":
-            return <Clock className={`${iconClass} text-muted-foreground`} />;
-        default:
-            return null;
-    }
-}
 
 type ProxyResourcesTableProps = {
     resources: ResourceRow[];
@@ -152,6 +136,9 @@ export default function ProxyResourcesTable({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] =
         useState<ResourceRow | null>();
+
+    const { isPaidUser } = usePaidStatus();
+    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
@@ -231,120 +218,6 @@ export default function ProxyResourcesTable({
                 )
             });
         }
-    }
-
-    function TargetStatusCell({
-        targets,
-        healthStatus
-    }: {
-        targets?: TargetHealth[];
-        healthStatus?: string;
-    }) {
-        const overallStatus = healthStatus;
-
-        if (!targets || targets.length === 0) {
-            return (
-                <div className="flex items-center gap-2">
-                    <StatusIcon status="unknown" />
-                    <span className="text-sm">
-                        {t("resourcesTableNoTargets")}
-                    </span>
-                </div>
-            );
-        }
-
-        const monitoredTargets = targets.filter(
-            (t) => t.enabled && t.healthStatus && t.healthStatus !== "unknown"
-        );
-        const unknownTargets = targets.filter(
-            (t) => !t.enabled || !t.healthStatus || t.healthStatus === "unknown"
-        );
-
-        return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-2 h-8 px-0 font-normal"
-                    >
-                        <StatusIcon status={overallStatus} />
-                        <span className="text-sm">
-                            {overallStatus === "healthy" &&
-                                t("resourcesTableHealthy")}
-                            {overallStatus === "degraded" &&
-                                t("resourcesTableDegraded")}
-                            {overallStatus === "unhealthy" &&
-                                t("resourcesTableUnhealthy")}
-                            {overallStatus === "unknown" &&
-                                t("resourcesTableUnknown")}
-                        </span>
-                        <ChevronDown className="h-3 w-3" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-70">
-                    {monitoredTargets.length > 0 && (
-                        <>
-                            {monitoredTargets.map((target) => (
-                                <DropdownMenuItem
-                                    key={target.targetId}
-                                    className="flex items-center justify-between gap-4"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <StatusIcon
-                                            status={
-                                                target.healthStatus ===
-                                                "healthy"
-                                                    ? "online"
-                                                    : "offline"
-                                            }
-                                            className="h-3 w-3"
-                                        />
-                                        {target.siteName
-                                            ? `${target.siteName} (${target.ip}:${target.port})`
-                                            : `${target.ip}:${target.port}`}
-                                    </div>
-                                    <span
-                                        className={`capitalize ${
-                                            target.healthStatus === "healthy"
-                                                ? "text-green-500"
-                                                : "text-destructive"
-                                        }`}
-                                    >
-                                        {target.healthStatus}
-                                    </span>
-                                </DropdownMenuItem>
-                            ))}
-                        </>
-                    )}
-                    {unknownTargets.length > 0 && (
-                        <>
-                            {unknownTargets.map((target) => (
-                                <DropdownMenuItem
-                                    key={target.targetId}
-                                    className="flex items-center justify-between gap-4"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <StatusIcon
-                                            status="unknown"
-                                            className="h-3 w-3"
-                                        />
-                                        {target.siteName
-                                            ? `${target.siteName} (${target.ip}:${target.port})`
-                                            : `${target.ip}:${target.port}`}
-                                    </div>
-                                    <span className="text-muted-foreground">
-                                        {!target.enabled
-                                            ? t("disabled")
-                                            : t("resourcesTableNotMonitored")}
-                                    </span>
-                                </DropdownMenuItem>
-                            ))}
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        );
     }
 
     const proxyColumns: ExtendedColumnDef<ResourceRow>[] = [
@@ -653,6 +526,28 @@ export default function ProxyResourcesTable({
                 />
             )
         },
+        ...(isLabelFeatureEnabled
+            ? [
+                  {
+                      id: "labels",
+                      accessorKey: "labels",
+                      header: () => (
+                          <span className="p-3 text-end w-full inline-block">
+                              {t("labels")}
+                          </span>
+                      ),
+                      cell: ({ row }: { row: { original: ResourceRow } }) => {
+                          return (
+                              //   <SiteLabelCell
+                              //       site={row.original}
+                              //       orgId={orgId}
+                              //   />
+                              <></>
+                          );
+                      }
+                  }
+              ]
+            : []),
         {
             id: "actions",
             enableHiding: false,
@@ -800,11 +695,127 @@ export default function ProxyResourcesTable({
                 isRefreshing={isRefreshing || isFiltering}
                 isNavigatingToAddPage={isNavigatingToAddPage}
                 enableColumnVisibility
-                columnVisibility={{ niceId: false, protocol: false }}
+                columnVisibility={{
+                    niceId: false,
+                    protocol: false,
+                    labels: false
+                }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
             />
         </>
+    );
+}
+
+function TargetStatusCell({
+    targets,
+    healthStatus
+}: {
+    targets?: TargetHealth[];
+    healthStatus?: string;
+}) {
+    const overallStatus = healthStatus;
+    const t = useTranslations();
+
+    if (!targets || targets.length === 0) {
+        return (
+            <div className="flex items-center gap-2">
+                <StatusIcon status="unknown" />
+                <span className="text-sm">{t("resourcesTableNoTargets")}</span>
+            </div>
+        );
+    }
+
+    const monitoredTargets = targets.filter(
+        (t) => t.enabled && t.healthStatus && t.healthStatus !== "unknown"
+    );
+    const unknownTargets = targets.filter(
+        (t) => !t.enabled || !t.healthStatus || t.healthStatus === "unknown"
+    );
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 h-8 px-0 font-normal"
+                >
+                    <StatusIcon status={overallStatus} />
+                    <span className="text-sm">
+                        {overallStatus === "healthy" &&
+                            t("resourcesTableHealthy")}
+                        {overallStatus === "degraded" &&
+                            t("resourcesTableDegraded")}
+                        {overallStatus === "unhealthy" &&
+                            t("resourcesTableUnhealthy")}
+                        {overallStatus === "unknown" &&
+                            t("resourcesTableUnknown")}
+                    </span>
+                    <ChevronDown className="h-3 w-3" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-70">
+                {monitoredTargets.length > 0 && (
+                    <>
+                        {monitoredTargets.map((target) => (
+                            <DropdownMenuItem
+                                key={target.targetId}
+                                className="flex items-center justify-between gap-4"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <StatusIcon
+                                        status={
+                                            target.healthStatus === "healthy"
+                                                ? "online"
+                                                : "offline"
+                                        }
+                                        className="h-3 w-3"
+                                    />
+                                    {target.siteName
+                                        ? `${target.siteName} (${target.ip}:${target.port})`
+                                        : `${target.ip}:${target.port}`}
+                                </div>
+                                <span
+                                    className={`capitalize ${
+                                        target.healthStatus === "healthy"
+                                            ? "text-green-500"
+                                            : "text-destructive"
+                                    }`}
+                                >
+                                    {target.healthStatus}
+                                </span>
+                            </DropdownMenuItem>
+                        ))}
+                    </>
+                )}
+                {unknownTargets.length > 0 && (
+                    <>
+                        {unknownTargets.map((target) => (
+                            <DropdownMenuItem
+                                key={target.targetId}
+                                className="flex items-center justify-between gap-4"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <StatusIcon
+                                        status="unknown"
+                                        className="h-3 w-3"
+                                    />
+                                    {target.siteName
+                                        ? `${target.siteName} (${target.ip}:${target.port})`
+                                        : `${target.ip}:${target.port}`}
+                                </div>
+                                <span className="text-muted-foreground">
+                                    {!target.enabled
+                                        ? t("disabled")
+                                        : t("resourcesTableNotMonitored")}
+                                </span>
+                            </DropdownMenuItem>
+                        ))}
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -846,4 +857,27 @@ function ResourceEnabledForm({
             />
         </form>
     );
+}
+
+function StatusIcon({
+    status,
+    className = ""
+}: {
+    status: string | undefined | null;
+    className?: string;
+}) {
+    const iconClass = `h-4 w-4 ${className}`;
+
+    switch (status) {
+        case "healthy":
+            return <CheckCircle2 className={`${iconClass} text-green-500`} />;
+        case "degraded":
+            return <CheckCircle2 className={`${iconClass} text-yellow-500`} />;
+        case "unhealthy":
+            return <XCircle className={`${iconClass} text-destructive`} />;
+        case "unknown":
+            return <Clock className={`${iconClass} text-muted-foreground`} />;
+        default:
+            return null;
+    }
 }

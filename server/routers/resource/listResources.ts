@@ -325,24 +325,6 @@ export async function listResources(
             )
         ];
 
-        if (query) {
-            conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${resources.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${resources.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${resources.fullDomain})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
-                )
-            );
-        }
         if (typeof enabled !== "undefined") {
             conditions.push(eq(resources.enabled, enabled));
         }
@@ -385,6 +367,24 @@ export async function listResources(
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
                 .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
             conditions.push(inArray(resources.resourceId, resourcesWithSite));
+        }
+        if (query) {
+            conditions.push(
+                or(
+                    like(
+                        sql`LOWER(${resources.name})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${resources.niceId})`,
+                        "%" + query.toLowerCase() + "%"
+                    ),
+                    like(
+                        sql`LOWER(${resources.fullDomain})`,
+                        "%" + query.toLowerCase() + "%"
+                    )
+                )
+            );
         }
 
         const baseQuery = queryResourcesBase().where(and(...conditions));
