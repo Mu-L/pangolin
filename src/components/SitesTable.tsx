@@ -57,11 +57,12 @@ import {
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
 
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { cn } from "@app/lib/cn";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { LabelBadge } from "./label-badge";
 import { LabelsSelector, type SelectedLabel } from "./labels-selector";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type SiteRow = {
     id: number;
@@ -720,27 +721,11 @@ function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
     return (
         <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
             {optimisticLabels.slice(0, 3).map((label) => (
-                <Button
+                <LabelBadge
                     key={label.labelId}
-                    variant="outline"
                     onClick={() => setIsPopoverOpen(true)}
-                    className={cn(
-                        "inline-flex gap-1 items-center",
-                        "rounded-full text-sm cursor-pointer",
-                        "pl-1.5 pr-2 py-0 h-auto"
-                    )}
-                >
-                    <div
-                        className="size-3 rounded-full bg-(--color) flex-none"
-                        style={{
-                            // @ts-expect-error css color
-                            "--color": label.color
-                        }}
-                    />
-                    <span className="whitespace-nowrap text-ellipsis max-w-16 overflow-hidden relative">
-                        {label.name}
-                    </span>
-                </Button>
+                    {...label}
+                />
             ))}
             {optimisticLabels.length > 3 && (
                 <Button
