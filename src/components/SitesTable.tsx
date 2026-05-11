@@ -37,8 +37,7 @@ import {
     ChevronDown,
     ChevronsUpDownIcon,
     MoreHorizontal,
-    PlusIcon,
-    XIcon
+    PlusIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -58,9 +57,11 @@ import {
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
 
+import { cn } from "@app/lib/cn";
 import { LabelsSelector, type SelectedLabel } from "./labels-selector";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { cn } from "@app/lib/cn";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export type SiteRow = {
     id: number;
@@ -110,9 +111,11 @@ export default function SitesTable({
     const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
     const [resourcesDialogSite, setResourcesDialogSite] =
         useState<SiteRow | null>(null);
-    const [isLabelsDialogOpen, setIsLabelsDialogOpen] = useState(false);
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+
+    const { isPaidUser } = usePaidStatus();
+    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
@@ -466,18 +469,26 @@ export default function SitesTable({
                 );
             }
         },
-        // The label feature should be added to the tiers
-        {
-            accessorKey: "labels",
-            header: () => (
-                <span className="p-3 text-end w-full inline-block">
-                    {t("labels")}
-                </span>
-            ),
-            cell: ({ row }) => {
-                return <SiteLabelCell site={row.original} orgId={orgId} />;
-            }
-        },
+        ...(isLabelFeatureEnabled
+            ? [
+                  {
+                      accessorKey: "labels",
+                      header: () => (
+                          <span className="p-3 text-end w-full inline-block">
+                              {t("labels")}
+                          </span>
+                      ),
+                      cell: ({ row }: { row: { original: SiteRow } }) => {
+                          return (
+                              <SiteLabelCell
+                                  site={row.original}
+                                  orgId={orgId}
+                              />
+                          );
+                      }
+                  }
+              ]
+            : []),
         {
             id: "actions",
             enableHiding: false,
@@ -518,24 +529,6 @@ export default function SitesTable({
                                         {t("sitesTableViewPrivateResources")}
                                     </DropdownMenuItem>
                                 </Link>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedSite(siteRow);
-                                        setIsLabelsDialogOpen(true);
-                                    }}
-                                >
-                                    <span>{t("addLabels")}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedSite(siteRow);
-                                        setIsDeleteModalOpen(true);
-                                    }}
-                                >
-                                    <span className="text-red-500">
-                                        {t("delete")}
-                                    </span>
-                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
@@ -616,27 +609,25 @@ export default function SitesTable({
             </Credenza>
 
             {selectedSite && (
-                <>
-                    <ConfirmDeleteDialog
-                        open={isDeleteModalOpen}
-                        setOpen={(val) => {
-                            setIsDeleteModalOpen(val);
-                            setSelectedSite(null);
-                        }}
-                        dialog={
-                            <div className="space-y-2">
-                                <p>{t("siteQuestionRemove")}</p>
-                                <p>{t("siteMessageRemove")}</p>
-                            </div>
-                        }
-                        buttonText={t("siteConfirmDelete")}
-                        onConfirm={async () =>
-                            startTransition(() => deleteSite(selectedSite!.id))
-                        }
-                        string={selectedSite.name}
-                        title={t("siteDelete")}
-                    />
-                </>
+                <ConfirmDeleteDialog
+                    open={isDeleteModalOpen}
+                    setOpen={(val) => {
+                        setIsDeleteModalOpen(val);
+                        setSelectedSite(null);
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("siteQuestionRemove")}</p>
+                            <p>{t("siteMessageRemove")}</p>
+                        </div>
+                    }
+                    buttonText={t("siteConfirmDelete")}
+                    onConfirm={async () =>
+                        startTransition(() => deleteSite(selectedSite!.id))
+                    }
+                    string={selectedSite.name}
+                    title={t("siteDelete")}
+                />
             )}
 
             <ControlledDataTable
@@ -732,11 +723,11 @@ function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
                 <Button
                     key={label.labelId}
                     variant="outline"
-                    onClick={() => toggleSiteLabel(label, "detach")}
+                    onClick={() => setIsPopoverOpen(true)}
                     className={cn(
                         "inline-flex gap-1 items-center",
                         "rounded-full text-sm cursor-pointer",
-                        "px-1.5 py-0 h-auto"
+                        "pl-1.5 pr-2 py-0 h-auto"
                     )}
                 >
                     <div
@@ -746,11 +737,9 @@ function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
                             "--color": label.color
                         }}
                     />
-                    <span className="whitespace-nowrap text-ellipsis max-w-16 overflow-hidden relative bottom-0.5">
+                    <span className="whitespace-nowrap text-ellipsis max-w-16 overflow-hidden relative">
                         {label.name}
                     </span>
-
-                    <XIcon className="size-3 flex-none" />
                 </Button>
             ))}
             {optimisticLabels.length > 3 && (
