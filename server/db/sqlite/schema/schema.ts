@@ -232,6 +232,26 @@ export const resourceLabels = sqliteTable(
     (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
 );
 
+export const siteResourceLabels = sqliteTable(
+    "siteResourceLabels",
+    {
+        siteResourceLabelId: integer("siteResourceLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        siteResourceId: integer("siteResourceId")
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_resource_label_uniq").on(t.siteResourceId, t.labelId)]
+);
+
 export const targets = sqliteTable("targets", {
     targetId: integer("targetId").primaryKey({ autoIncrement: true }),
     resourceId: integer("resourceId")
