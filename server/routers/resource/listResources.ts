@@ -162,8 +162,8 @@ export type ResourceWithTargets = {
     labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
 };
 
-function queryResourcesBase(isLabelFeatureEnabled: boolean) {
-    let query = db
+function queryResourcesBase() {
+    return db
         .select({
             resourceId: resources.resourceId,
             name: resources.name,
@@ -209,24 +209,14 @@ function queryResourcesBase(isLabelFeatureEnabled: boolean) {
         .leftJoin(
             targetHealthCheck,
             eq(targetHealthCheck.targetId, targets.targetId)
+        )
+        .groupBy(
+            resources.resourceId,
+            resourcePassword.passwordId,
+            resourcePincode.pincodeId,
+            resourceHeaderAuth.headerAuthId,
+            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
         );
-
-    if (isLabelFeatureEnabled) {
-        query = query
-            .leftJoin(
-                resourceLabels,
-                eq(resourceLabels.resourceId, resources.resourceId)
-            )
-            .leftJoin(labels, eq(labels.labelId, resourceLabels.labelId));
-    }
-
-    return query.groupBy(
-        resources.resourceId,
-        resourcePassword.passwordId,
-        resourcePincode.pincodeId,
-        resourceHeaderAuth.headerAuthId,
-        resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
-    );
 }
 
 export type ListResourcesResponse = PaginatedResponse<{
@@ -390,26 +380,25 @@ export async function listResources(
             conditions.push(inArray(resources.resourceId, resourcesWithSite));
         }
         if (query) {
+            const q = "%" + query.toLowerCase() + "%";
             const queryList = [
-                like(
-                    sql`LOWER(${resources.name})`,
-                    "%" + query.toLowerCase() + "%"
-                ),
-                like(
-                    sql`LOWER(${resources.niceId})`,
-                    "%" + query.toLowerCase() + "%"
-                ),
-                like(
-                    sql`LOWER(${resources.fullDomain})`,
-                    "%" + query.toLowerCase() + "%"
-                )
+                like(sql`LOWER(${resources.name})`, q),
+                like(sql`LOWER(${resources.niceId})`, q),
+                like(sql`LOWER(${resources.fullDomain})`, q)
             ];
 
             if (isLabelFeatureEnabled) {
                 queryList.push(
-                    like(
-                        sql`LOWER(${labels.name})`,
-                        "%" + query.toLowerCase() + "%"
+                    inArray(
+                        resources.resourceId,
+                        db
+                            .select({ id: resourceLabels.resourceId })
+                            .from(resourceLabels)
+                            .innerJoin(
+                                labels,
+                                eq(labels.labelId, resourceLabels.labelId)
+                            )
+                            .where(like(sql`LOWER(${labels.name})`, q))
                     )
                 );
             }
@@ -417,9 +406,7 @@ export async function listResources(
             conditions.push(or(...queryList));
         }
 
-        const baseQuery = queryResourcesBase(isLabelFeatureEnabled).where(
-            and(...conditions)
-        );
+        const baseQuery = queryResourcesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(baseQuery.as("filtered_resources"));

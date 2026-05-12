@@ -190,8 +190,8 @@ const listSitesSchema = z.object({
         })
 });
 
-function querySitesBase(isLabelFeatureEnabled: boolean) {
-    let query = db
+function querySitesBase() {
+    return db
         .selectDistinct({
             siteId: sites.siteId,
             niceId: sites.niceId,
@@ -231,14 +231,6 @@ function querySitesBase(isLabelFeatureEnabled: boolean) {
             remoteExitNodes,
             eq(remoteExitNodes.exitNodeId, sites.exitNodeId)
         );
-
-    if (isLabelFeatureEnabled) {
-        query = query
-            .leftJoin(siteLabels, eq(siteLabels.siteId, sites.siteId))
-            .leftJoin(labels, eq(labels.labelId, siteLabels.labelId));
-    }
-
-    return query;
 }
 
 type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
@@ -346,37 +338,35 @@ export async function listSites(
             conditions.push(eq(sites.status, status));
         }
         if (query) {
+            const q = "%" + query.toLowerCase() + "%";
             const queryList = [
-                like(
-                    sql`LOWER(${sites.name})`,
-                    "%" + query.toLowerCase() + "%"
-                ),
-                like(
-                    sql`LOWER(${sites.niceId})`,
-                    "%" + query.toLowerCase() + "%"
-                )
+                like(sql`LOWER(${sites.name})`, q),
+                like(sql`LOWER(${sites.niceId})`, q)
             ];
 
             if (isLabelFeatureEnabled) {
                 queryList.push(
-                    like(
-                        sql`LOWER(${labels.name})`,
-                        "%" + query.toLowerCase() + "%"
+                    inArray(
+                        sites.siteId,
+                        db
+                            .select({ id: siteLabels.siteId })
+                            .from(siteLabels)
+                            .innerJoin(
+                                labels,
+                                eq(labels.labelId, siteLabels.labelId)
+                            )
+                            .where(like(sql`LOWER(${labels.name})`, q))
                     )
                 );
             }
             conditions.push(or(...queryList));
         }
 
-        const baseQuery = querySitesBase(isLabelFeatureEnabled).where(
-            and(...conditions)
-        );
+        const baseQuery = querySitesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase(isLabelFeatureEnabled)
-                .where(and(...conditions))
-                .as("filtered_sites")
+            querySitesBase().where(and(...conditions)).as("filtered_sites")
         );
 
         const siteListQuery = baseQuery
