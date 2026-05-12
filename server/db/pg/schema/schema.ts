@@ -227,6 +227,24 @@ export const siteResourceLabels = pgTable(
     (t) => [unique("site_resource_label_uniq").on(t.siteResourceId, t.labelId)]
 );
 
+export const clientLabels = pgTable(
+    "clientLabels",
+    {
+        clientLabelId: serial("clientLabelId").primaryKey(),
+        clientId: integer("clientId")
+            .references(() => clients.clientId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("client_label_uniq").on(t.clientId, t.labelId)]
+);
+
 export const targets = pgTable("targets", {
     targetId: serial("targetId").primaryKey(),
     resourceId: integer("resourceId")

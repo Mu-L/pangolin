@@ -12,6 +12,8 @@
  */
 
 import {
+    clients,
+    clientLabels,
     db,
     labels,
     resourceLabels,
@@ -24,7 +26,7 @@ import {
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -38,7 +40,8 @@ const paramsSchema = z.strictObject({
 const attachLabelBodySchema = z.strictObject({
     siteId: z.number().int().optional(),
     resourceId: z.number().int().optional(),
-    siteResourceId: z.number().int().optional()
+    siteResourceId: z.number().int().optional(),
+    clientId: z.number().int().optional()
 });
 
 export async function attachLabelToItem(
@@ -69,13 +72,14 @@ export async function attachLabelToItem(
             );
         }
 
-        const { siteId, resourceId, siteResourceId } = parsedBody.data;
+        const { siteId, resourceId, siteResourceId, clientId } =
+            parsedBody.data;
 
-        if (!siteId && !resourceId && !siteResourceId) {
+        if (!siteId && !resourceId && !siteResourceId && !clientId) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    "At least one of `siteId`, `resourceId` or `siteResourceId` should be provided."
+                    "At least one of `siteId`, `resourceId`, `siteResourceId` or `clientId` should be provided."
                 )
             );
         }
@@ -171,6 +175,35 @@ export async function attachLabelToItem(
                 .values({
                     labelId,
                     siteResourceId
+                })
+                .onConflictDoNothing();
+        }
+
+        if (clientId) {
+            const clientCount = await db.$count(
+                clients,
+                and(
+                    eq(clients.clientId, clientId),
+                    eq(clients.orgId, orgId),
+                    isNull(clients.userId)
+                )
+            );
+
+            if (clientCount === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Client with Id ${clientId} doesn't exist.`
+                    )
+                );
+            }
+
+            // idempotent, calling this endpoint multiple times should attach the label only once
+            await db
+                .insert(clientLabels)
+                .values({
+                    labelId,
+                    clientId
                 })
                 .onConflictDoNothing();
         }

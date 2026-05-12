@@ -10,8 +10,11 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { cn } from "@app/lib/cn";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     ArrowRight,
     ArrowUpDown,
@@ -19,12 +22,26 @@ import {
     CircleSlash,
     ArrowDown01Icon,
     ArrowUp10Icon,
-    ChevronsUpDownIcon
+    ChevronsUpDownIcon,
+    PlusIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import {
+    startTransition,
+    useMemo,
+    useOptimistic,
+    useState,
+    useTransition
+} from "react";
+import { LabelBadge } from "./label-badge";
+import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "./ui/popover";
 import { Badge } from "./ui/badge";
 import type { PaginationState } from "@tanstack/react-table";
 import { ControlledDataTable } from "./ui/controlled-data-table";
@@ -53,6 +70,11 @@ export type ClientRow = {
     archived?: boolean;
     blocked?: boolean;
     approvalState: "approved" | "pending" | "denied";
+    labels?: Array<{
+        labelId: number;
+        name: string;
+        color: string;
+    }>;
 };
 
 type ClientTableProps = {
@@ -84,17 +106,21 @@ export default function MachineClientsTable({
     );
 
     const api = createApiClient(useEnvContext());
-    const [isRefreshing, startTransition] = useTransition();
+    const [isRefreshing, startRefreshTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+
+    const { isPaidUser } = usePaidStatus();
+    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const defaultMachineColumnVisibility = {
         subnet: false,
         userId: false,
-        niceId: false
+        niceId: false,
+        labels: false
     };
 
     const refreshData = () => {
-        startTransition(() => {
+        startRefreshTransition(() => {
             try {
                 router.refresh();
             } catch (error) {
@@ -384,6 +410,24 @@ export default function MachineClientsTable({
             }
         ];
 
+        if (isLabelFeatureEnabled) {
+            baseColumns.push({
+                id: "labels",
+                accessorKey: "labels",
+                header: () => (
+                    <span className="p-3 text-end w-full inline-block">
+                        {t("labels")}
+                    </span>
+                ),
+                cell: ({ row }: { row: { original: ClientRow } }) => (
+                    <MachineClientLabelCell
+                        client={row.original}
+                        orgId={orgId}
+                    />
+                )
+            });
+        }
+
         // Only include actions column if there are rows without userIds
         if (hasRowsWithoutUserId) {
             baseColumns.push({
@@ -464,7 +508,7 @@ export default function MachineClientsTable({
         }
 
         return baseColumns;
-    }, [hasRowsWithoutUserId, t, getSortDirection, toggleSort]);
+    }, [hasRowsWithoutUserId, isLabelFeatureEnabled, orgId, t, searchParams]);
 
     const booleanSearchFilterSchema = z
         .enum(["true", "false"])
@@ -589,5 +633,97 @@ export default function MachineClientsTable({
                 ]}
             />
         </>
+    );
+}
+
+type MachineClientLabelCellProps = {
+    client: ClientRow;
+    orgId: string;
+};
+
+function MachineClientLabelCell({ client, orgId }: MachineClientLabelCellProps) {
+    const t = useTranslations();
+    const api = createApiClient(useEnvContext());
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const router = useRouter();
+
+    const labels = client.labels ?? [];
+    const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
+
+    function toggleClientLabel(label: SelectedLabel, action: "attach" | "detach") {
+        startTransition(async () => {
+            try {
+                if (action === "attach") {
+                    setOptimisticLabels([...optimisticLabels, label]);
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/attach`,
+                        { clientId: client.id }
+                    );
+                } else {
+                    setOptimisticLabels(
+                        optimisticLabels.filter(
+                            (lb) => lb.labelId !== label.labelId
+                        )
+                    );
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/detach`,
+                        { clientId: client.id }
+                    );
+                }
+            } catch (e) {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e, t("errorOccurred")),
+                    variant: "destructive"
+                });
+            } finally {
+                router.refresh();
+            }
+        });
+    }
+
+    return (
+        <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
+            {optimisticLabels.slice(0, 3).map((label) => (
+                <LabelBadge
+                    key={label.labelId}
+                    onClick={() => setIsPopoverOpen(true)}
+                    {...label}
+                />
+            ))}
+            {optimisticLabels.length > 3 && (
+                <Button
+                    variant="outline"
+                    className={cn(
+                        "inline-flex gap-1 items-center",
+                        "rounded-full text-sm cursor-pointer",
+                        "px-1.5 py-0 h-auto"
+                    )}
+                    onClick={() => setIsPopoverOpen(true)}
+                >
+                    +{optimisticLabels.length - 3}
+                </Button>
+            )}
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        className="p-1 size-auto rounded-full"
+                        title={t("addLabels")}
+                    >
+                        <span className="sr-only">{t("addLabels")}</span>
+                        <PlusIcon className="size-3" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="p-0 w-full">
+                    <LabelsSelector
+                        orgId={orgId}
+                        selectedLabels={optimisticLabels}
+                        toggleLabel={toggleClientLabel}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
     );
 }
