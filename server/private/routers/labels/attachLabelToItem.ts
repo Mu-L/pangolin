@@ -17,6 +17,8 @@ import {
     resourceLabels,
     resources,
     siteLabels,
+    siteResourceLabels,
+    siteResources,
     sites
 } from "@server/db";
 import response from "@server/lib/response";
@@ -35,7 +37,8 @@ const paramsSchema = z.strictObject({
 
 const attachLabelBodySchema = z.strictObject({
     siteId: z.number().int().optional(),
-    resourceId: z.number().int().optional()
+    resourceId: z.number().int().optional(),
+    siteResourceId: z.number().int().optional()
 });
 
 export async function attachLabelToItem(
@@ -66,13 +69,13 @@ export async function attachLabelToItem(
             );
         }
 
-        const { siteId, resourceId } = parsedBody.data;
+        const { siteId, resourceId, siteResourceId } = parsedBody.data;
 
-        if (!siteId && !resourceId) {
+        if (!siteId && !resourceId && !siteResourceId) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    "At least one of `siteId` or `resourceId` should be provided."
+                    "At least one of `siteId`, `resourceId` or `siteResourceId` should be provided."
                 )
             );
         }
@@ -144,11 +147,39 @@ export async function attachLabelToItem(
                 .onConflictDoNothing();
         }
 
+        if (siteResourceId) {
+            const resourceCount = await db.$count(
+                resources,
+                and(
+                    eq(siteResources.siteResourceId, siteResourceId),
+                    eq(siteResources.orgId, orgId)
+                )
+            );
+
+            if (resourceCount === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `SiteResource with Id ${siteResourceId} doesn't exist.`
+                    )
+                );
+            }
+
+            // idempotent, calling this endpoint multiple times should attach the label only once
+            await db
+                .insert(siteResourceLabels)
+                .values({
+                    labelId,
+                    siteResourceId
+                })
+                .onConflictDoNothing();
+        }
+
         return response(res, {
             data: {},
             success: true,
             error: false,
-            message: "Site Label object created successfully",
+            message: "Label attached successfully",
             status: HttpCode.OK
         });
     } catch (error) {
