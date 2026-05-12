@@ -17,6 +17,8 @@ import {
     resourceLabels,
     resources,
     siteLabels,
+    siteResourceLabels,
+    siteResources,
     sites
 } from "@server/db";
 import response from "@server/lib/response";
@@ -35,7 +37,8 @@ const paramsSchema = z.strictObject({
 
 const detachLabelBodySchema = z.strictObject({
     siteId: z.number().int().optional(),
-    resourceId: z.number().int().optional()
+    resourceId: z.number().int().optional(),
+    siteResourceId: z.number().int().optional()
 });
 
 export async function detachLabelFromItem(
@@ -66,13 +69,13 @@ export async function detachLabelFromItem(
             );
         }
 
-        const { siteId, resourceId } = parsedBody.data;
+        const { siteId, resourceId, siteResourceId } = parsedBody.data;
 
-        if (!siteId && !resourceId) {
+        if (!siteId && !resourceId && !siteResourceId) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    "At least one of `siteId` or `resourceId` should be provided."
+                    "At least one of `siteId`, `siteResourceId` or `resourceId` should be provided."
                 )
             );
         }
@@ -140,6 +143,34 @@ export async function detachLabelFromItem(
                     and(
                         eq(resourceLabels.labelId, labelId),
                         eq(resourceLabels.resourceId, resourceId)
+                    )
+                );
+        }
+
+        if (siteResourceId) {
+            const resourceCount = await db.$count(
+                siteResources,
+                and(
+                    eq(siteResources.siteResourceId, siteResourceId),
+                    eq(siteResources.orgId, orgId)
+                )
+            );
+
+            if (resourceCount === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `SiteResource with Id ${siteResourceId} doesn't exist.`
+                    )
+                );
+            }
+
+            await db
+                .delete(siteResourceLabels)
+                .where(
+                    and(
+                        eq(siteResourceLabels.labelId, labelId),
+                        eq(siteResourceLabels.siteResourceId, siteResourceId)
                     )
                 );
         }

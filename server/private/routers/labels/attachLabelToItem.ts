@@ -149,7 +149,7 @@ export async function attachLabelToItem(
 
         if (siteResourceId) {
             const resourceCount = await db.$count(
-                resources,
+                siteResources,
                 and(
                     eq(siteResources.siteResourceId, siteResourceId),
                     eq(siteResources.orgId, orgId)
