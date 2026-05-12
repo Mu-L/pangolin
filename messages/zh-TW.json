@@ -489,7 +489,7 @@
     "createdAt": "創建於",
     "proxyErrorInvalidHeader": "無效的自訂主機 Header。使用域名格式，或將空保存為取消自訂 Header。",
     "proxyErrorTls": "無效的 TLS 伺服器名稱。使用域名格式，或保存空以刪除 TLS 伺服器名稱。",
-    "proxyEnableSSL": "啟用 SSL",
+    "proxyEnableSSL": "啟用 TLS",
     "proxyEnableSSLDescription": "啟用 SSL/TLS 加密以確保您目標的 HTTPS 連接。",
     "target": "目標",
     "configureTarget": "配置目標",
@@ -1763,7 +1763,7 @@
         "description": "更可靠、維護成本更低的自架 Pangolin 伺服器，並附帶額外的附加功能",
         "introTitle": "託管式自架 Pangolin",
         "introDescription": "這是一種部署選擇，為那些希望簡潔和額外可靠的人設計，同時仍然保持他們的數據的私密性和自我託管性。",
-        "introDetail": "通過此選項，您仍然運行您自己的 Pangolin 節點 - - 您的隧道、SSL 終止，並且流量在您的伺服器上保持所有狀態。 不同之處在於，管理和監測是通過我們的雲層儀錶板進行的，該儀錶板開啟了一些好處：",
+        "introDetail": "通過此選項，您仍然運行您自己的 Pangolin 節點 - - 您的隧道、TLS 終止，並且流量在您的伺服器上保持所有狀態。 不同之處在於，管理和監測是通過我們的雲層儀錶板進行的，該儀錶板開啟了一些好處：",
         "benefitSimplerOperations": {
             "title": "簡單的操作",
             "description": "無需運行您自己的郵件伺服器或設置複雜的警報。您將從方框中獲得健康檢查和下限提醒。"
