@@ -856,7 +856,7 @@ function TargetStatusCell({
 
     if (!targets || targets.length === 0) {
         return (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2">
                 <StatusIcon status="unknown" />
                 <span className="text-sm">{t("resourcesTableNoTargets")}</span>
             </div>
@@ -876,7 +876,7 @@ function TargetStatusCell({
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-2 h-8 px-0 font-normal"
+                    className="flex items-center gap-2 h-8 px-2 font-normal"
                 >
                     <StatusIcon status={overallStatus} />
                     <span className="text-sm">
