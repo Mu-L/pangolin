@@ -8,8 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@app/hooks/useToast";
 import type {
     UserInteraction,
-    IronError
+    IronError,
+    FileTransferProvider
 } from "@devolutions/iron-remote-desktop/dist";
+import type {
+    RdpFileTransferProvider,
+    FileInfo
+} from "@devolutions/iron-remote-desktop-rdp/dist";
 
 declare module "react" {
     namespace JSX {
@@ -72,6 +77,13 @@ export default function RdpClient() {
 
     const userInteractionRef = useRef<UserInteraction | null>(null);
     const backendRef = useRef<unknown>(null);
+    // Holds the RdpFileTransferProvider constructor so we can create a fresh
+    // instance per session (avoids stale upload state across reconnects).
+    const fileTransferClassRef = useRef<typeof RdpFileTransferProvider | null>(
+        null
+    );
+    // Active session's provider instance; replaced on each connect.
+    const fileTransferRef = useRef<RdpFileTransferProvider | null>(null);
     const extensionsRef = useRef<{
         displayControl: (enable: boolean) => unknown;
         preConnectionBlob: (pcb: string) => unknown;
@@ -97,6 +109,11 @@ export default function RdpClient() {
                 preConnectionBlob: rdpMod.preConnectionBlob,
                 kdcProxyUrl: rdpMod.kdcProxyUrl
             };
+
+            // Store the class; a fresh instance is created per session.
+            fileTransferClassRef.current =
+                rdpMod.RdpFileTransferProvider as unknown as typeof RdpFileTransferProvider;
+
             // Importing the package registers the custom element as a side
             // effect. Touch the default export to avoid tree-shaking.
             void coreMod;
@@ -161,6 +178,56 @@ export default function RdpClient() {
 
         userInteraction.setEnableClipboard(form.enableClipboard);
 
+        // Dispose any previous session's provider and create a fresh one so
+        // there is no stale upload state from a prior connection.
+        fileTransferRef.current?.dispose();
+        const ProviderClass = fileTransferClassRef.current;
+        const fileTransfer = ProviderClass ? new ProviderClass() : null;
+        fileTransferRef.current = fileTransfer;
+
+        if (fileTransfer) {
+            // Auto-download files when the remote copies them to clipboard.
+            fileTransfer.on("files-available", (files: FileInfo[]) => {
+                const downloadable = files.filter((f) => !f.isDirectory);
+                if (downloadable.length === 0) return;
+                toast({
+                    title: `Downloading ${downloadable.length} file(s) from remote…`
+                });
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.isDirectory) continue;
+                    const { completion } = fileTransfer.downloadFile(file, i);
+                    completion
+                        .then((blob) => {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = file.name;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        })
+                        .catch((err) => {
+                            toast({
+                                variant: "destructive",
+                                title: `Download failed: ${file.name}`,
+                                description: `${err}`
+                            });
+                        });
+                }
+            });
+
+            // Notify when individual uploads complete (remote pasted a file).
+            fileTransfer.on("upload-complete", (file: File) => {
+                toast({ title: `Uploaded: ${file.name}` });
+            });
+
+            // Register with the web component so CLIPRDR extensions are
+            // wired up before connect() builds the session.
+            userInteraction.enableFileTransfer(
+                fileTransfer as unknown as FileTransferProvider
+            );
+        }
+
         const builder = userInteraction
             .configBuilder()
             .withUsername(form.username)
@@ -190,6 +257,8 @@ export default function RdpClient() {
             userInteraction.setVisibility(true);
 
             const termInfo = await sessionInfo.run();
+            fileTransferRef.current?.dispose();
+            fileTransferRef.current = null;
             toast({
                 title: "Session terminated",
                 description: termInfo.reason()
@@ -401,12 +470,39 @@ export default function RdpClient() {
                     >
                         Meta
                     </Button>
-                    <Button
+                    {/* <Button
                         size="sm"
                         variant="secondary"
                         onClick={toggleCursorKind}
                     >
                         Toggle cursor
+                    </Button> */}
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={async () => {
+                            const ft = fileTransferRef.current;
+                            if (!ft) return;
+                            const files = await ft.showFilePicker({
+                                multiple: true
+                            });
+                            if (files.length === 0) return;
+                            try {
+                                ft.uploadFiles(files);
+                                toast({
+                                    title: "Files ready to paste",
+                                    description: `${files.length} file(s) copied to remote clipboard — press Ctrl+V on the remote desktop to paste.`
+                                });
+                            } catch (err) {
+                                toast({
+                                    variant: "destructive",
+                                    title: "Upload failed",
+                                    description: `${err}`
+                                });
+                            }
+                        }}
+                    >
+                        Upload files
                     </Button>
                     <Button
                         size="sm"
