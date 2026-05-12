@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
     reactStrictMode: false,
+    transpilePackages: ["@novnc/novnc"],
     eslint: {
         ignoreDuringBuilds: true
     },
