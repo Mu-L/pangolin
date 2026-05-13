@@ -17,7 +17,7 @@ import { initPeerAddHandshake } from "./peers";
 export const handleOlmServerInitAddPeerHandshake: MessageHandler = async (
     context
 ) => {
-    logger.info("Handling register olm message!");
+    logger.info("Handle Olm Server Init Add Peer Handshake Message");
     const { message, client: c, sendToClient } = context;
     const olm = c as Olm;
 
