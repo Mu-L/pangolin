@@ -58,7 +58,8 @@ export async function queryUser(orgId: string, userId: string) {
         roleIds: roleRows.map((r) => r.roleId),
         roles: roleRows.map((r) => ({
             roleId: r.roleId,
-            name: r.roleName ?? ""
+            name: r.roleName ?? "",
+            isAdmin: r.isAdmin === true
         }))
     };
 }

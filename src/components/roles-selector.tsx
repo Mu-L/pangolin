@@ -6,7 +6,7 @@ import { useDebounce } from "use-debounce";
 import { useTranslations } from "next-intl";
 import { MultiSelectTagInput } from "./multi-select/multi-select-tag-input";
 
-export type SelectedRole = { id: string; text: string };
+export type SelectedRole = { id: string; text: string; isAdmin?: boolean };
 
 export type RolesSelectorProps = {
     orgId: string;

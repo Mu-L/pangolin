@@ -129,9 +129,7 @@ export function LayoutSidebar({
         user.serverAdmin || Boolean(currentOrg?.isOwner || currentOrg?.isAdmin);
 
     const showTrial =
-        build === "saas" &&
-        Boolean(orgId) &&
-        subscriptionContext?.isTrial;
+        build === "saas" && Boolean(orgId) && subscriptionContext?.isTrial;
 
     return (
         <div
@@ -240,11 +238,16 @@ export function LayoutSidebar({
                     <div className="px-4">
                         <ProductUpdates isCollapsed={isSidebarCollapsed} />
                     </div>
-                ) : <div className="mt-0.2"></div>}
+                ) : (
+                    <div className="mt-0.2"></div>
+                )}
 
                 {showTrial && (
                     <div className="px-4">
-                        <ShowTrialCard isCollapsed={isSidebarCollapsed} />
+                        <ShowTrialCard
+                            isCollapsed={isSidebarCollapsed}
+                            isOwner={Boolean(currentOrg?.isOwner)}
+                        />
                     </div>
                 )}
 

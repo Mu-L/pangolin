@@ -17,7 +17,6 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { build } from "@server/build";
 import { RolesSelector } from "./roles-selector";
-import { useParams } from "next/navigation";
 
 export type RoleMappingRoleOption = {
     roleId: number;
@@ -40,6 +39,8 @@ export type RoleMappingConfigFieldsProps = {
     fieldIdPrefix?: string;
     /** When true, show extra hint for global default policies (no org role list). */
     showFreeformRoleNamesHint?: boolean;
+    /** Org ID to use for role lookup. Falls back to URL params when not provided. */
+    orgId?: string;
 };
 
 export default function RoleMappingConfigFields({
@@ -55,13 +56,12 @@ export default function RoleMappingConfigFields({
     rawExpression,
     onRawExpressionChange,
     fieldIdPrefix = "role-mapping",
-    showFreeformRoleNamesHint = false
+    showFreeformRoleNamesHint = false,
+    orgId
 }: RoleMappingConfigFieldsProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
-
-    const { orgId } = useParams();
 
     const supportsMultipleRolesPerUser = isPaidUser(tierMatrix.fullRbac);
     const showSingleRoleDisclaimer =
@@ -94,6 +94,10 @@ export default function RoleMappingConfigFields({
             onFixedRoleNamesChange([fixedRoleNames[0]]);
         }
     }, [supportsMultipleRolesPerUser, fixedRoleNames, onFixedRoleNamesChange]);
+
+    const [fixedRolesActiveTagIndex, setFixedRolesActiveTagIndex] = useState<
+        number | null
+    >(null);
 
     const fixedRadioId = `${fieldIdPrefix}-fixed-roles-mode`;
     const builderRadioId = `${fieldIdPrefix}-mapping-builder-mode`;
@@ -161,38 +165,94 @@ export default function RoleMappingConfigFields({
 
             {roleMappingMode === "fixedRoles" && (
                 <div className="space-y-2 min-w-0 max-w-full">
-                    <RolesSelector
-                        selectedRoles={fixedRoleNames.map((name) => ({
-                            id: name,
-                            text: name
-                        }))}
-                        mapRolesByName
-                        orgId={orgId as string}
-                        onSelectRoles={(nextTags) => {
-                            let names = [
-                                ...new Set(nextTags.map((tag) => tag.text))
-                            ];
+                    {restrictToOrgRoles ? (
+                        <RolesSelector
+                            selectedRoles={fixedRoleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }))}
+                            mapRolesByName
+                            orgId={orgId as string}
+                            onSelectRoles={(nextTags) => {
+                                let names = [
+                                    ...new Set(nextTags.map((tag) => tag.text))
+                                ];
 
-                            if (!supportsMultipleRolesPerUser) {
-                                if (
-                                    names.length === 0 &&
-                                    fixedRoleNames.length > 0
-                                ) {
-                                    onFixedRoleNamesChange([
-                                        fixedRoleNames[
-                                            fixedRoleNames.length - 1
-                                        ]!
-                                    ]);
-                                    return;
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        fixedRoleNames.length > 0
+                                    ) {
+                                        onFixedRoleNamesChange([
+                                            fixedRoleNames[
+                                                fixedRoleNames.length - 1
+                                            ]!
+                                        ]);
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
                                 }
-                                if (names.length > 1) {
-                                    names = [names[names.length - 1]!];
-                                }
-                            }
 
-                            onFixedRoleNamesChange(names);
-                        }}
-                    />
+                                onFixedRoleNamesChange(names);
+                            }}
+                        />
+                    ) : (
+                        <TagInput
+                            tags={fixedRoleNames.map((name) => ({
+                                id: name,
+                                text: name
+                            }))}
+                            setTags={(nextTags) => {
+                                const prev = fixedRoleNames.map((name) => ({
+                                    id: name,
+                                    text: name
+                                }));
+                                const next =
+                                    typeof nextTags === "function"
+                                        ? nextTags(prev)
+                                        : nextTags;
+
+                                let names = [
+                                    ...new Set(next.map((tag) => tag.text))
+                                ];
+
+                                if (!supportsMultipleRolesPerUser) {
+                                    if (
+                                        names.length === 0 &&
+                                        fixedRoleNames.length > 0
+                                    ) {
+                                        onFixedRoleNamesChange([
+                                            fixedRoleNames[
+                                                fixedRoleNames.length - 1
+                                            ]!
+                                        ]);
+                                        return;
+                                    }
+                                    if (names.length > 1) {
+                                        names = [names[names.length - 1]!];
+                                    }
+                                }
+
+                                onFixedRoleNamesChange(names);
+                            }}
+                            activeTagIndex={fixedRolesActiveTagIndex}
+                            setActiveTagIndex={setFixedRolesActiveTagIndex}
+                            placeholder={t(
+                                "roleMappingAssignRolesPlaceholderFreeform"
+                            )}
+                            enableAutocomplete={false}
+                            autocompleteOptions={roleOptions}
+                            restrictTagsToAutocompleteOptions={false}
+                            allowDuplicates={false}
+                            sortTags={true}
+                            size="sm"
+                            styleClasses={{
+                                inlineTagsContainer: "min-w-0 max-w-full"
+                            }}
+                        />
+                    )}
                     <FormDescription>
                         {showFreeformRoleNamesHint
                             ? t("roleMappingFixedRolesDescriptionDefaultPolicy")
@@ -242,6 +302,7 @@ export default function RoleMappingConfigFields({
                                 showFreeformRoleNamesHint={
                                     showFreeformRoleNamesHint
                                 }
+                                orgId={orgId}
                                 supportsMultipleRolesPerUser={
                                     supportsMultipleRolesPerUser
                                 }
@@ -318,7 +379,8 @@ function BuilderRuleRow({
     supportsMultipleRolesPerUser,
     showRemoveButton,
     onChange,
-    onRemove
+    onRemove,
+    orgId
 }: {
     rule: MappingBuilderRule;
     roleOptions: Tag[];
@@ -330,10 +392,10 @@ function BuilderRuleRow({
     showRemoveButton: boolean;
     onChange: (rule: MappingBuilderRule) => void;
     onRemove: () => void;
+    orgId?: string;
 }) {
     const t = useTranslations();
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
-    const { orgId } = useParams();
 
     return (
         <div

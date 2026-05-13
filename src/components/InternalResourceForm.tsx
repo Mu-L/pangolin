@@ -840,12 +840,16 @@ export function InternalResourceForm({
                                                                 modeCidrKey
                                                             )
                                                         },
-                                                        {
-                                                            value: "http",
-                                                            label: t(
-                                                                modeHttpKey
-                                                            )
-                                                        }
+                                                        ...(!disableEnterpriseFeatures
+                                                            ? [
+                                                                  {
+                                                                      value: "http" as const,
+                                                                      label: t(
+                                                                          modeHttpKey
+                                                                      )
+                                                                  }
+                                                              ]
+                                                            : [])
                                                     ];
                                                 return (
                                                     <FormItem>
@@ -1125,30 +1129,6 @@ export function InternalResourceForm({
                                         }}
                                     />
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name="ssl"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <SwitchInput
-                                                    id="internal-resource-ssl"
-                                                    label={t(enableSslLabelKey)}
-                                                    description={t(
-                                                        enableSslDescriptionKey
-                                                    )}
-                                                    checked={!!field.value}
-                                                    onCheckedChange={
-                                                        field.onChange
-                                                    }
-                                                    disabled={
-                                                        httpSectionDisabled
-                                                    }
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
                                 <div className="flex items-start justify-between gap-4">
                                     <FormField
                                         control={form.control}

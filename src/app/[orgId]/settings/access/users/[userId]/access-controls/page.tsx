@@ -1,5 +1,6 @@
 "use client";
 
+import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import IdpTypeBadge from "@app/components/IdpTypeBadge";
 import OrgRolesTagField from "@app/components/OrgRolesTagField";
 import {
@@ -25,6 +26,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { userOrgUserContext } from "@app/hooks/useOrgUserContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
+import { useUserContext } from "@app/hooks/useUserContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
@@ -32,7 +34,7 @@ import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -42,13 +44,15 @@ const accessControlsFormSchema = z.object({
     roles: z.array(
         z.object({
             id: z.string(),
-            text: z.string()
+            text: z.string(),
+            isAdmin: z.boolean().optional()
         })
     )
 });
 
 export default function AccessControlsPage() {
     const { orgUser: user, updateOrgUser } = userOrgUserContext();
+    const { user: sessionUser } = useUserContext();
     const { env } = useEnvContext();
 
     const api = createApiClient({ env });
@@ -72,7 +76,8 @@ export default function AccessControlsPage() {
             autoProvisioned: user.autoProvisioned || false,
             roles: (user.roles ?? []).map((r) => ({
                 id: r.roleId.toString(),
-                text: r.name
+                text: r.name,
+                isAdmin: r.isAdmin === true
             }))
         }
     });
@@ -84,7 +89,8 @@ export default function AccessControlsPage() {
             "roles",
             (user.roles ?? []).map((r) => ({
                 id: r.roleId.toString(),
-                text: r.name
+                text: r.name,
+                isAdmin: r.isAdmin === true
             }))
         );
         form.setValue("autoProvisioned", user.autoProvisioned || false);
@@ -95,11 +101,11 @@ export default function AccessControlsPage() {
             ? t("singleRolePerUserPlanNotice")
             : t("singleRolePerUserEditionNotice");
 
-    const [, action, isSubmitting] = useActionState(onSubmit, null);
-    async function onSubmit() {
-        const isValid = await form.trigger();
-        if (!isValid) return;
+    const [isSaving, setIsSaving] = useState(false);
+    const [confirmRemoveOwnAdminOpen, setConfirmRemoveOwnAdminOpen] =
+        useState(false);
 
+    async function executeSave() {
         const values = form.getValues();
 
         if (values.roles.length === 0) {
@@ -111,6 +117,7 @@ export default function AccessControlsPage() {
             return;
         }
 
+        setIsSaving(true);
         try {
             const roleIds = values.roles.map((r) => parseInt(r.id, 10));
             const updateRoleRequest = supportsMultipleRolesPerUser
@@ -130,7 +137,8 @@ export default function AccessControlsPage() {
                 roleIds,
                 roles: values.roles.map((r) => ({
                     roleId: parseInt(r.id, 10),
-                    name: r.text
+                    name: r.text,
+                    isAdmin: r.isAdmin === true
                 })),
                 autoProvisioned: values.autoProvisioned
             });
@@ -149,11 +157,61 @@ export default function AccessControlsPage() {
                     t("accessRoleErrorAddDescription")
                 )
             });
+        } finally {
+            setIsSaving(false);
         }
+    }
+
+    async function handleAccessControlsSubmit(e: React.FormEvent) {
+        e.preventDefault();
+
+        const isValid = await form.trigger();
+        if (!isValid) return;
+
+        const values = form.getValues();
+
+        if (values.roles.length === 0) {
+            toast({
+                variant: "destructive",
+                title: t("accessRoleErrorAdd"),
+                description: t("accessRoleSelectPlease")
+            });
+            return;
+        }
+
+        const willHaveAdminRole = values.roles.some(
+            (r) => r.isAdmin === true
+        );
+
+        const isRemovingOwnAdmin =
+            sessionUser.userId === user.userId &&
+            user.isAdmin &&
+            !willHaveAdminRole;
+
+        if (isRemovingOwnAdmin) {
+            setConfirmRemoveOwnAdminOpen(true);
+            return;
+        }
+
+        await executeSave();
     }
 
     return (
         <SettingsContainer>
+            <ConfirmDeleteDialog
+                open={confirmRemoveOwnAdminOpen}
+                setOpen={setConfirmRemoveOwnAdminOpen}
+                title={t("removeOwnAdminRoleConfirmTitle")}
+                dialog={
+                    <div className="space-y-2">
+                        <p>{t("removeOwnAdminRoleConfirmDescription")}</p>
+                    </div>
+                }
+                buttonText={t("removeOwnAdminRoleConfirmButton")}
+                string={t("removeOwnAdminRoleConfirmPhrase")}
+                onConfirm={executeSave}
+            />
+
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
@@ -168,7 +226,7 @@ export default function AccessControlsPage() {
                     <SettingsSectionForm>
                         <Form {...form}>
                             <form
-                                action={action}
+                                onSubmit={(e) => void handleAccessControlsSubmit(e)}
                                 className="space-y-4"
                                 id="access-controls-form"
                             >
@@ -237,8 +295,8 @@ export default function AccessControlsPage() {
                 <SettingsSectionFooter>
                     <Button
                         type="submit"
-                        loading={isSubmitting}
-                        disabled={isSubmitting}
+                        loading={isSaving}
+                        disabled={isSaving}
                         form="access-controls-form"
                     >
                         {t("accessControlsSubmit")}

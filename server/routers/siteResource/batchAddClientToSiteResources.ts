@@ -5,7 +5,8 @@ import {
     clients,
     clientSiteResources,
     siteResources,
-    apiKeyOrg
+    apiKeyOrg,
+    primaryDb
 } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -220,8 +221,12 @@ export async function batchAddClientToSiteResources(
                     siteResourceId: siteResource.siteResourceId
                 });
             }
+        });
 
-            await rebuildClientAssociationsFromClient(client, trx);
+        rebuildClientAssociationsFromClient(client, primaryDb).catch((e) => {
+            logger.error(
+                `Failed to rebuild client associations after batch adding site resources for client ${clientId}: ${e}`
+            );
         });
 
         return response(res, {

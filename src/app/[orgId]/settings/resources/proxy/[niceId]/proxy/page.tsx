@@ -84,6 +84,7 @@ import {
     AlertTriangle,
     CircleCheck,
     CircleX,
+    ExternalLink,
     Info,
     Plus,
     Settings
@@ -961,13 +962,18 @@ function ProxyResourceTargetsForm({
                     {build === "saas" &&
                         targets.length > 1 &&
                         new Set(targets.map((t) => t.siteId)).size > 1 && (
-                            <p className="text-sm text-muted-foreground mt-3 flex items-start gap-1.5">
-                                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span>
-                                    Round robin routing will not work between
-                                    sites that are not connected to the same
-                                    node, but failover will work.
-                                </span>
+                            <p className="text-sm text-muted-foreground mt-3">
+                                {t("proxyMultiSiteRoundRobinNodeHelp")}{" "}
+                                <a
+                                    href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                >
+                                    {t("learnMore")}
+                                    <ExternalLink className="size-3.5 shrink-0" />
+                                </a>
+                                .
                             </p>
                         )}
                 </SettingsSectionBody>

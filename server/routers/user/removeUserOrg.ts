@@ -7,7 +7,8 @@ import {
     siteResources,
     sites,
     UserOrg,
-    userSiteResources
+    userSiteResources,
+    primaryDb
 } from "@server/db";
 import { userOrgs, userResources, users, userSites } from "@server/db";
 import { and, count, eq, exists, inArray } from "drizzle-orm";
@@ -91,25 +92,12 @@ export async function removeUserOrg(
 
         await db.transaction(async (trx) => {
             await removeUserFromOrg(org, userId, trx);
+        });
 
-            // if (build === "saas") {
-            //     const [rootUser] = await trx
-            //         .select()
-            //         .from(users)
-            //         .where(eq(users.userId, userId));
-            //
-            //     const [leftInOrgs] = await trx
-            //         .select({ count: count() })
-            //         .from(userOrgs)
-            //         .where(eq(userOrgs.userId, userId));
-            //
-            //     // if the user is not an internal user and does not belong to any org, delete the entire user
-            //     if (rootUser?.type !== UserType.Internal && !leftInOrgs.count) {
-            //         await trx.delete(users).where(eq(users.userId, userId));
-            //     }
-            // }
-
-            await calculateUserClientsForOrgs(userId, trx);
+        calculateUserClientsForOrgs(userId, primaryDb).catch((e) => {
+            logger.error(
+                `Failed to calculate user clients after removing user ${userId} from org ${orgId}: ${e}`
+            );
         });
 
         return response(res, {
