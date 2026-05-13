@@ -87,17 +87,8 @@ export async function setUserOrgRoles(
             );
         }
 
-        if (existingUser.isOwner) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "Cannot change the roles of the owner of the organization"
-                )
-            );
-        }
-
         const orgRoles = await db
-            .select({ roleId: roles.roleId })
+            .select({ roleId: roles.roleId, isAdmin: roles.isAdmin })
             .from(roles)
             .where(
                 and(
@@ -113,6 +104,18 @@ export async function setUserOrgRoles(
                     "One or more role IDs are invalid for this organization"
                 )
             );
+        }
+
+        if (existingUser.isOwner) {
+            const hasAdminRole = orgRoles.some((r) => r.isAdmin === true);
+            if (!hasAdminRole) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "The organization owner must retain an administrator role"
+                    )
+                );
+            }
         }
 
         let orgClientsToRebuild: Client[] = [];

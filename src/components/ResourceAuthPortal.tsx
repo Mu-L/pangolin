@@ -375,7 +375,8 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
             {!accessDenied ? (
                 <div>
                     {isUnlocked() && build === "enterprise" ? (
-                        !env.branding.resourceAuthPage?.hidePoweredBy && (
+                        !env.branding.resourceAuthPage?.hidePoweredBy &&
+                        !env.branding.hidePoweredBy && (
                             <div className="text-center mb-2">
                                 <span className="text-sm text-muted-foreground">
                                     {t("poweredBy")}{" "}

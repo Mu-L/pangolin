@@ -98,15 +98,6 @@ export async function addUserRole(
             );
         }
 
-        if (existingUser[0].isOwner) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "Cannot change the role of the owner of the organization"
-                )
-            );
-        }
-
         const roleExists = await db
             .select()
             .from(roles)

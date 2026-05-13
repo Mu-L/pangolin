@@ -61,6 +61,8 @@ export default function ShareLinksTable({
     const api = createApiClient(useEnvContext());
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedLink, setSelectedLink] = useState<ShareLinkRow | null>(null);
     const [rows, setRows] = useState<ShareLinkRow[]>(shareLinks);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -92,6 +94,7 @@ export default function ShareLinksTable({
                 title: t("shareErrorDelete"),
                 description: formatAxiosError(e, t("shareErrorDeleteMessage"))
             });
+            throw e;
         });
 
         const newRows = rows.filter((r) => r.accessTokenId !== id);
@@ -293,9 +296,10 @@ export default function ShareLinksTable({
                         {/* </DropdownMenu> */}
                         <Button
                             variant={"outline"}
-                            onClick={() =>
-                                deleteSharelink(row.original.accessTokenId)
-                            }
+                            onClick={() => {
+                                setSelectedLink(resourceRow);
+                                setIsDeleteModalOpen(true);
+                            }}
                         >
                             {t("delete")}
                         </Button>
@@ -307,6 +311,30 @@ export default function ShareLinksTable({
 
     return (
         <>
+            {selectedLink && (
+                <ConfirmDeleteDialog
+                    open={isDeleteModalOpen}
+                    setOpen={(val) => {
+                        setIsDeleteModalOpen(val);
+                        if (!val) setSelectedLink(null);
+                    }}
+                    dialog={
+                        <div className="space-y-2">
+                            <p>{t("shareQuestionRemove")}</p>
+                            <p>{t("shareMessageRemove")}</p>
+                        </div>
+                    }
+                    buttonText={t("shareDeleteConfirm")}
+                    onConfirm={async () =>
+                        deleteSharelink(selectedLink.accessTokenId)
+                    }
+                    string={
+                        selectedLink.title || selectedLink.resourceName
+                    }
+                    title={t("shareDelete")}
+                />
+            )}
+
             <CreateShareLinkForm
                 open={isCreateModalOpen}
                 setOpen={setIsCreateModalOpen}
