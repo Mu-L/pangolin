@@ -580,6 +580,23 @@ export const trialNotifications = pgTable("trialNotifications", {
     sentAt: bigint("sentAt", { mode: "number" }).notNull()
 });
 
+export const browserGatewayTarget = pgTable("browserGatewayTarget", {
+    browserGatewayTargetId: serial("browserGatewayTargetId").primaryKey(),
+    resourceId: integer("resourceId")
+        .references(() => resources.resourceId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    type: varchar("type").notNull(), // "ssh", "rdp", "vnc"
+    destination: varchar("destination").notNull(),
+    destinationPort: integer("destinationPort").notNull()
+});
+
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -627,3 +644,6 @@ export type AlertEmailRecipients = InferSelectModel<
 >;
 export type AlertWebhookActions = InferSelectModel<typeof alertWebhookActions>;
 export type TrialNotification = InferSelectModel<typeof trialNotifications>;
+export type BrowserGatewayTarget = InferSelectModel<
+    typeof browserGatewayTarget
+>;
