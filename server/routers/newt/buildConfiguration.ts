@@ -1,4 +1,6 @@
 import {
+    browserGatewayTarget,
+    BrowserGatewayTarget,
     clients,
     clientSiteResourcesAssociationsCache,
     clientSitesAssociationsCache,
@@ -309,4 +311,13 @@ export async function buildTargetConfigurationForNewtClient(
         tcpTargets,
         udpTargets
     };
+}
+
+export async function buildBrowserGatewayTargetConfigurationForNewtClient(
+    siteId: number
+): Promise<BrowserGatewayTarget[]> {
+    return await db
+        .select()
+        .from(browserGatewayTarget)
+        .where(eq(browserGatewayTarget.siteId, siteId));
 }
