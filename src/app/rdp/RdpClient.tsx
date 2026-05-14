@@ -37,7 +37,6 @@ type FormState = {
     password: string;
     hostname: string;
     domain: string;
-    authtoken: string;
     kdcProxyUrl: string;
     pcb: string;
     desktopWidth: number;
@@ -60,7 +59,6 @@ export default function RdpClient() {
         password: "Password123!",
         hostname: "172.31.3.58:3389",
         domain: "",
-        authtoken: "pangolin-browser-gateway-dev",
         kdcProxyUrl: "",
         pcb: "",
         desktopWidth: 1280,
@@ -159,16 +157,6 @@ export default function RdpClient() {
             return;
         }
 
-        if (form.authtoken === "") {
-            toast({
-                variant: "destructive",
-                title: "Missing auth token",
-                description:
-                    "An auth token is required to connect through the gateway"
-            });
-            return;
-        }
-
         toast({
             title: "Connecting...",
             description: "Connection in progress"
@@ -235,7 +223,7 @@ export default function RdpClient() {
                 `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/rdp`
             )
             .withServerDomain(form.domain)
-            .withAuthToken(form.authtoken)
+            .withAuthToken("test-token")
             .withDesktopSize({
                 width: form.desktopWidth,
                 height: form.desktopHeight
@@ -341,15 +329,7 @@ export default function RdpClient() {
                                 }
                             />
                         </Field>
-                        {/* <Field label="Auth Token" id="authtoken">
-                            <Input
-                                id="authtoken"
-                                value={form.authtoken}
-                                onChange={(e) =>
-                                    update("authtoken", e.target.value)
-                                }
-                            />
-                        </Field>
+                        {/* 
                         <Field label="Pre Connection Blob (optional)" id="pcb">
                             <Input
                                 id="pcb"

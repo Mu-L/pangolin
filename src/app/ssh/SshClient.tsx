@@ -7,22 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type FormState = {
-    gatewayAddress: string;
     hostname: string;
     port: string;
     username: string;
     password: string;
-    authToken: string;
 };
 
 export default function SshClient() {
     const [form, setForm] = useState<FormState>({
-        gatewayAddress: "ws://localhost:7171/jet/ssh",
         hostname: "",
         port: "22",
         username: "",
-        password: "",
-        authToken: "abc123"
+        password: ""
     });
 
     const [connected, setConnected] = useState(false);
@@ -122,7 +118,8 @@ export default function SshClient() {
         setError(null);
         setConnecting(true);
 
-        const url = new URL(form.gatewayAddress);
+        const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
+        const url = new URL(proxyAddress);
         // Pass connection parameters as query params so the proxy can route
         // before any application-level framing is needed.
         url.searchParams.set("host", form.hostname);
@@ -130,7 +127,7 @@ export default function SshClient() {
         url.searchParams.set("username", form.username);
         // Auth token is sent as a query param; the proxy validates it before
         // forwarding any data.
-        url.searchParams.set("authToken", form.authToken);
+        url.searchParams.set("authToken", "test-token");
 
         const ws = new WebSocket(url.toString(), ["ssh"]);
         wsRef.current = ws;
@@ -195,27 +192,6 @@ export default function SshClient() {
             {!connected && (
                 <div className="bg-neutral-900 rounded-lg p-6 max-w-lg w-full mx-auto flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2 flex flex-col gap-1">
-                            <Label
-                                htmlFor="gatewayAddress"
-                                className="text-neutral-300"
-                            >
-                                Gateway Address
-                            </Label>
-                            <Input
-                                id="gatewayAddress"
-                                value={form.gatewayAddress}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        gatewayAddress: e.target.value
-                                    })
-                                }
-                                placeholder="ws://localhost:7171/jet/ssh"
-                                className="bg-neutral-800 border-neutral-700 text-white"
-                            />
-                        </div>
-
                         <div className="flex flex-col gap-1">
                             <Label
                                 htmlFor="hostname"
@@ -293,26 +269,6 @@ export default function SshClient() {
                                 className="bg-neutral-800 border-neutral-700 text-white"
                             />
                         </div>
-
-                        <div className="col-span-2 flex flex-col gap-1">
-                            <Label
-                                htmlFor="authToken"
-                                className="text-neutral-300"
-                            >
-                                Auth Token
-                            </Label>
-                            <Input
-                                id="authToken"
-                                value={form.authToken}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        authToken: e.target.value
-                                    })
-                                }
-                                className="bg-neutral-800 border-neutral-700 text-white"
-                            />
-                        </div>
                     </div>
 
                     {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -320,10 +276,7 @@ export default function SshClient() {
                     <Button
                         onClick={connect}
                         disabled={
-                            connecting ||
-                            !form.hostname ||
-                            !form.username ||
-                            !form.authToken
+                            connecting || !form.hostname || !form.username
                         }
                         className="w-full"
                     >
