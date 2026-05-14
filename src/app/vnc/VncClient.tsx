@@ -7,20 +7,16 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@app/hooks/useToast";
 
 type FormState = {
-    proxyAddress: string;
     host: string;
     port: string;
     password: string;
-    authToken: string;
 };
 
 export default function VncClient() {
     const [form, setForm] = useState<FormState>({
-        proxyAddress: "ws://localhost:7171/jet/vnc",
         host: "",
         port: "5900",
-        password: "",
-        authToken: "abc123"
+        password: ""
     });
 
     const [connected, setConnected] = useState(false);
@@ -83,11 +79,12 @@ export default function VncClient() {
 
         // Build the proxy WebSocket URL:
         // ws://<proxyAddress>?authToken=<token>&host=<host>&port=<port>
-        const base = form.proxyAddress.replace(/\/$/, "");
+        const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/vnc`;
+        const base = proxyAddress.replace(/\/$/, "");
         const params = new URLSearchParams({
-            authToken: form.authToken,
             host: form.host,
-            port: form.port
+            port: form.port,
+            authToken: "test-token"
         });
         const wsUrl = `${base}?${params.toString()}`;
 
@@ -172,26 +169,6 @@ export default function VncClient() {
                                 value={form.password}
                                 onChange={(e) =>
                                     update("password", e.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <Field label="Proxy Address" id="proxyAddress">
-                            <Input
-                                id="proxyAddress"
-                                value={form.proxyAddress}
-                                onChange={(e) =>
-                                    update("proxyAddress", e.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <Field label="Auth Token" id="authToken">
-                            <Input
-                                id="authToken"
-                                value={form.authToken}
-                                onChange={(e) =>
-                                    update("authToken", e.target.value)
                                 }
                             />
                         </Field>
