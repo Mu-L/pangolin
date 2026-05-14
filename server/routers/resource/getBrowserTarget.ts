@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { browserGatewayTarget, db } from "@server/db";
 import { resources, targets } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -40,11 +40,14 @@ export async function getBrowserTarget(
 
         const [row] = await db
             .select({
-                ip: targets.ip,
-                port: targets.port
+                ip: browserGatewayTarget.destination,
+                port: browserGatewayTarget.destinationPort
             })
-            .from(targets)
-            .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .from(browserGatewayTarget)
+            .innerJoin(
+                resources,
+                eq(browserGatewayTarget.resourceId, resources.resourceId)
+            )
             .where(eq(resources.fullDomain, fullDomain))
             .limit(1);
 
