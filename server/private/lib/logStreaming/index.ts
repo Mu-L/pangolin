@@ -24,7 +24,8 @@ import { LogStreamingManager } from "./LogStreamingManager";
  */
 export const logStreamingManager = new LogStreamingManager();
 
-if (build != "saas") { // this is handled separately in the saas build, so we don't want to start it here
+if (build !== "saas") {
+    // this is handled separately in the saas build, so we don't want to start it here
     logStreamingManager.start();
 }
 
