@@ -53,7 +53,7 @@ export default function OrgLabelsTable({
     rowCount
 }: OrgLabelsTableProps) {
     const router = useRouter();
-    const pathname = usePathname();
+
     const {
         navigate: filter,
         isNavigating: isFiltering,
@@ -63,13 +63,13 @@ export default function OrgLabelsTable({
     const [selectedLabel, setSelectedLabel] = useState<LabelRow | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-    const [isRefreshing, startRefreshTransition] = useTransition();
+    const [isRefreshing, startTransition] = useTransition();
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
 
     function refreshData() {
-        startRefreshTransition(async () => {
+        startTransition(async () => {
             try {
                 router.refresh();
             } catch {
@@ -80,11 +80,6 @@ export default function OrgLabelsTable({
                 });
             }
         });
-    }
-
-    function toggleSort(column: string) {
-        const newSearch = getNextSortOrder(column, searchParams);
-        filter({ searchParams: newSearch });
     }
 
     const handlePaginationChange = (newPage: PaginationState) => {
@@ -105,25 +100,21 @@ export default function OrgLabelsTable({
                 accessorKey: "name",
                 enableHiding: false,
                 header: () => {
-                    const nameOrder = getSortDirection("name", searchParams);
-                    const Icon =
-                        nameOrder === "asc"
-                            ? ArrowDown01Icon
-                            : nameOrder === "desc"
-                              ? ArrowUp10Icon
-                              : ChevronsUpDownIcon;
-                    return (
-                        <Button
-                            variant="ghost"
-                            className="p-3"
-                            onClick={() => toggleSort("name")}
-                        >
-                            {t("name")}
-                            <Icon className="ml-2 h-4 w-4" />
-                        </Button>
-                    );
+                    return <span className="p-3">{t("name")}</span>;
                 },
-                cell: ({ row }) => <EditLabelCell label={row.original} />
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-1.5 group">
+                        <div
+                            className="size-2.5 rounded-full bg-(--color) flex-none"
+                            style={{
+                                // @ts-expect-error css color
+                                "--color": row.original.color
+                            }}
+                        />
+
+                        {row.original.name}
+                    </div>
+                )
             },
             {
                 accessorKey: "actions",
@@ -160,7 +151,7 @@ export default function OrgLabelsTable({
     );
 
     function deleteLabel(label: LabelRow) {
-        startRefreshTransition(async () => {
+        startTransition(async () => {
             await api
                 .delete(`/org/${orgId}/label/${label.labelId}`)
                 .catch((e) => {
@@ -212,39 +203,5 @@ export default function OrgLabelsTable({
                 rowCount={rowCount}
             />
         </>
-    );
-}
-
-type EditLabelCellProps = {
-    label: LabelRow;
-};
-
-function EditLabelCell({ label }: EditLabelCellProps) {
-    const t = useTranslations();
-
-    return (
-        <div className="flex items-center gap-1.5 group">
-            <div
-                className="size-2.5 rounded-full bg-(--color) flex-none"
-                style={{
-                    // @ts-expect-error css color
-                    "--color": label.color
-                }}
-            />
-
-            {label.name}
-
-            {/* <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                    "opacity-0 group-hover:opacity-100 text-xs",
-                    "inline-flex gap-2 items-center"
-                )}
-            >
-                {t("edit")}
-                <PencilIcon className="size-3 flex-none" />
-            </Button> */}
-        </div>
     );
 }

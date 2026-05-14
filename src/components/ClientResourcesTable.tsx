@@ -204,8 +204,8 @@ export default function ClientResourcesTable({
         siteId: number
     ) => {
         try {
-            await api.delete(`/site-resource/${resourceId}`).then(() => {
-                startTransition(() => {
+            startTransition(async () => {
+                await api.delete(`/site-resource/${resourceId}`).then(() => {
                     router.refresh();
                     setIsDeleteModalOpen(false);
                 });
