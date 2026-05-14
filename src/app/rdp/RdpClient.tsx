@@ -58,11 +58,11 @@ const isIronError = (error: unknown): error is IronError => {
 export default function RdpClient() {
     const [form, setForm] = useState<FormState>({
         username: "Administrator",
-        password: "Wdvwy1W*ITK-(OK.sW?nVK%?mTl30wL0",
-        gatewayAddress: "ws://localhost:7171/jet/rdp",
+        password: "Password123!",
+        gatewayAddress: "ws://localhost:8082/rdp",
         hostname: "172.31.3.58:3389",
         domain: "",
-        authtoken: "abc123",
+        authtoken: "pangolin-browser-gateway-dev",
         kdcProxyUrl: "",
         pcb: "",
         desktopWidth: 1280,

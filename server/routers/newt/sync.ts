@@ -3,18 +3,18 @@ import { eq } from "drizzle-orm";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
 import {
-    buildBrowserGatewayTargetConfigurationForNewtClient,
     buildClientConfigurationForNewtClient,
     buildTargetConfigurationForNewtClient
 } from "./buildConfiguration";
 import { canCompress } from "@server/lib/clientVersionChecks";
 
 export async function sendNewtSyncMessage(newt: Newt, site: Site) {
-    const { tcpTargets, udpTargets, validHealthCheckTargets } =
-        await buildTargetConfigurationForNewtClient(site.siteId);
-
-    const browserGatewayTargets =
-        await buildBrowserGatewayTargetConfigurationForNewtClient(site.siteId);
+    const {
+        tcpTargets,
+        udpTargets,
+        validHealthCheckTargets,
+        browserGatewayTargets
+    } = await buildTargetConfigurationForNewtClient(site.siteId);
 
     let exitNode: ExitNode | undefined;
     if (site.exitNodeId) {
@@ -41,14 +41,7 @@ export async function sendNewtSyncMessage(newt: Newt, site: Site) {
                 healthCheckTargets: validHealthCheckTargets,
                 peers: peers,
                 clientTargets: targets,
-                browserGatewayTargets: browserGatewayTargets.map((t) => ({
-                    id: t.browserGatewayTargetId,
-                    resourceId: t.resourceId,
-                    siteId: t.siteId,
-                    type: t.type,
-                    destination: t.destination,
-                    destinationPort: t.destinationPort
-                }))
+                browserGatewayTargets: browserGatewayTargets
             }
         },
         {
