@@ -7,7 +7,7 @@ import {
     olms,
     sites
 } from "@server/db";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, ne, or } from "drizzle-orm";
 import logger from "@server/logger";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { validateSessionToken } from "@server/auth/sessions/app";
@@ -301,7 +301,18 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
                 isRelayed: relay == true,
                 isJitMode: jitMode
             })
-            .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
+            .where(
+                and(
+                    eq(clientSitesAssociationsCache.clientId, client.clientId),
+                    or(
+                        ne(
+                            clientSitesAssociationsCache.isRelayed,
+                            relay == true
+                        ),
+                        ne(clientSitesAssociationsCache.isJitMode, jitMode)
+                    )
+                )
+            );
     }
 
     // this prevents us from accepting a register from an olm that has not hole punched yet.

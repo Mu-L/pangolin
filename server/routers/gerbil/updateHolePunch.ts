@@ -411,12 +411,14 @@ async function handleSiteEndpointChange(siteId: number, newEndpoint: string) {
             return;
         }
 
-        // Get all non-relayed clients connected to this site
+        // Get all non-relayed and not jit clients connected to this site
         const connectedClients = await db
             .select({
+                online: clients.online,
                 clientId: clients.clientId,
                 olmId: olms.olmId,
-                isRelayed: clientSitesAssociationsCache.isRelayed
+                isRelayed: clientSitesAssociationsCache.isRelayed,
+                isJitMode: clientSitesAssociationsCache.isJitMode
             })
             .from(clientSitesAssociationsCache)
             .innerJoin(
@@ -426,32 +428,36 @@ async function handleSiteEndpointChange(siteId: number, newEndpoint: string) {
             .innerJoin(olms, eq(olms.clientId, clients.clientId))
             .where(
                 and(
+                    eq(clients.online, true), // the client has to be online or it does not matter...
                     eq(clientSitesAssociationsCache.siteId, siteId),
-                    eq(clientSitesAssociationsCache.isRelayed, false)
+                    eq(clientSitesAssociationsCache.isRelayed, false),
+                    eq(clientSitesAssociationsCache.isJitMode, false)
                 )
             );
 
-        // Update each non-relayed client with the new site endpoint
-        for (const client of connectedClients) {
-            try {
-                await updateOlmPeer(
-                    client.clientId,
-                    {
-                        siteId: siteId,
-                        publicKey: site.publicKey,
-                        endpoint: newEndpoint
-                    },
-                    client.olmId
-                );
-                logger.debug(
-                    `Updated client ${client.clientId} with new site ${siteId} endpoint: ${newEndpoint}`
-                );
-            } catch (error) {
-                logger.error(
-                    `Failed to update client ${client.clientId} with new site endpoint: ${error}`
-                );
-            }
-        }
+        // Update each non-relayed client with the new site endpoint (in parallel)
+        await Promise.allSettled(
+            connectedClients.map(async (client) => {
+                try {
+                    await updateOlmPeer(
+                        client.clientId,
+                        {
+                            siteId: siteId,
+                            publicKey: site.publicKey!,
+                            endpoint: newEndpoint
+                        },
+                        client.olmId
+                    );
+                    logger.debug(
+                        `Updated client ${client.clientId} with new site ${siteId} endpoint: ${newEndpoint}`
+                    );
+                } catch (error) {
+                    logger.error(
+                        `Failed to update client ${client.clientId} with new site endpoint: ${error}`
+                    );
+                }
+            })
+        );
     } catch (error) {
         logger.error(
             `Error handling site endpoint change for site ${siteId}: ${error}`
@@ -498,6 +504,7 @@ async function handleClientEndpointChange( // TODO: I THINK WE DONT NEED TO HIT 
             )
             .where(
                 and(
+                    eq(sites.online, true), // the site has to be online or it does not matter...
                     eq(clientSitesAssociationsCache.clientId, clientId),
                     eq(clientSitesAssociationsCache.isRelayed, false),
                     eq(clientSitesAssociationsCache.isJitMode, false)
