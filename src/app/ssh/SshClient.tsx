@@ -6,24 +6,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type Target = {
+    ip: string;
+    port: number;
+};
+
 type FormState = {
-    hostname: string;
-    port: string;
     username: string;
     password: string;
 };
 
-export default function SshClient() {
+export default function SshClient({
+    target,
+    error
+}: {
+    target: Target | null;
+    error: string | null;
+}) {
     const [form, setForm] = useState<FormState>({
-        hostname: "",
-        port: "22",
         username: "",
         password: ""
     });
 
     const [connected, setConnected] = useState(false);
     const [connecting, setConnecting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [connectError, setConnectError] = useState<string | null>(null);
 
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<import("@xterm/xterm").Terminal | null>(null);
@@ -115,18 +122,14 @@ export default function SshClient() {
     }, []);
 
     function connect() {
-        setError(null);
+        setConnectError(null);
         setConnecting(true);
 
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
         const url = new URL(proxyAddress);
-        // Pass connection parameters as query params so the proxy can route
-        // before any application-level framing is needed.
-        url.searchParams.set("host", form.hostname);
-        url.searchParams.set("port", form.port);
+        url.searchParams.set("host", target?.ip ?? "");
+        url.searchParams.set("port", String(target?.port ?? 22));
         url.searchParams.set("username", form.username);
-        // Auth token is sent as a query param; the proxy validates it before
-        // forwarding any data.
         url.searchParams.set("authToken", "test-token");
 
         const ws = new WebSocket(url.toString(), ["ssh"]);
@@ -166,7 +169,7 @@ export default function SshClient() {
         ws.onerror = () => {
             setConnecting(false);
             setConnected(false);
-            setError("WebSocket connection failed");
+            setConnectError("WebSocket connection failed");
         };
 
         ws.onclose = (evt) => {
@@ -185,6 +188,14 @@ export default function SshClient() {
         setConnected(false);
     }
 
+    if (error) {
+        return (
+            <div className="flex flex-col h-screen bg-black text-white p-4 items-center justify-center">
+                <p className="text-red-400">{error}</p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col h-screen bg-black text-white p-4 gap-4">
             <h1 className="text-xl font-semibold text-white">SSH Terminal</h1>
@@ -192,43 +203,7 @@ export default function SshClient() {
             {!connected && (
                 <div className="bg-neutral-900 rounded-lg p-6 max-w-lg w-full mx-auto flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1">
-                            <Label
-                                htmlFor="hostname"
-                                className="text-neutral-300"
-                            >
-                                Host
-                            </Label>
-                            <Input
-                                id="hostname"
-                                value={form.hostname}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        hostname: e.target.value
-                                    })
-                                }
-                                placeholder="192.168.1.1"
-                                className="bg-neutral-800 border-neutral-700 text-white"
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                            <Label htmlFor="port" className="text-neutral-300">
-                                Port
-                            </Label>
-                            <Input
-                                id="port"
-                                value={form.port}
-                                onChange={(e) =>
-                                    setForm({ ...form, port: e.target.value })
-                                }
-                                placeholder="22"
-                                className="bg-neutral-800 border-neutral-700 text-white"
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 col-span-2">
                             <Label
                                 htmlFor="username"
                                 className="text-neutral-300"
@@ -249,7 +224,7 @@ export default function SshClient() {
                             />
                         </div>
 
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 col-span-2">
                             <Label
                                 htmlFor="password"
                                 className="text-neutral-300"
@@ -271,13 +246,13 @@ export default function SshClient() {
                         </div>
                     </div>
 
-                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                    {connectError && (
+                        <p className="text-red-400 text-sm">{connectError}</p>
+                    )}
 
                     <Button
                         onClick={connect}
-                        disabled={
-                            connecting || !form.hostname || !form.username
-                        }
+                        disabled={connecting || !form.username}
                         className="w-full"
                     >
                         {connecting ? "Connecting…" : "Connect"}
