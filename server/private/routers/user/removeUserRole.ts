@@ -98,11 +98,11 @@ export async function removeUserRole(
             );
         }
 
-        if (existingUser.isOwner) {
+        if (existingUser.isOwner && role.isAdmin === true) {
             return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
-                    "Cannot change the roles of the owner of the organization"
+                    "Cannot remove the administrator role from the organization owner"
                 )
             );
         }

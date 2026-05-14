@@ -1227,7 +1227,11 @@ async function getDomainId(
         return null;
     }
 
-    const domainSelection = validDomains[0].domains;
+    // Pick the most specific (longest baseDomain) valid domain so that, e.g.,
+    // *.test.dev.example.com is assigned to *.dev.example.com rather than *.example.com.
+    const domainSelection = validDomains.sort(
+        (a, b) => b.domains.baseDomain.length - a.domains.baseDomain.length
+    )[0].domains;
     const baseDomain = domainSelection.baseDomain;
 
     // Wildcard full-domains are not allowed on namespace (provided/free) domains

@@ -46,6 +46,7 @@ export interface ConnectionLogRecord {
     orgId: string;
     siteId: number;
     clientId: number | null;
+    clientEndpoint: string | null;
     userId: string | null;
     sourceAddr: string;
     destAddr: string;
