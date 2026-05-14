@@ -35,7 +35,6 @@ declare module "react" {
 type FormState = {
     username: string;
     password: string;
-    gatewayAddress: string;
     hostname: string;
     domain: string;
     authtoken: string;
@@ -59,7 +58,6 @@ export default function RdpClient() {
     const [form, setForm] = useState<FormState>({
         username: "Administrator",
         password: "Password123!",
-        gatewayAddress: "ws://localhost:8082/rdp",
         hostname: "172.31.3.58:3389",
         domain: "",
         authtoken: "pangolin-browser-gateway-dev",
@@ -233,7 +231,9 @@ export default function RdpClient() {
             .withUsername(form.username)
             .withPassword(form.password)
             .withDestination(form.hostname)
-            .withProxyAddress(form.gatewayAddress)
+            .withProxyAddress(
+                `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/rdp`
+            )
             .withServerDomain(form.domain)
             .withAuthToken(form.authtoken)
             .withDesktopSize({
@@ -338,15 +338,6 @@ export default function RdpClient() {
                                 value={form.password}
                                 onChange={(e) =>
                                     update("password", e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Gateway Address" id="gatewayAddress">
-                            <Input
-                                id="gatewayAddress"
-                                value={form.gatewayAddress}
-                                onChange={(e) =>
-                                    update("gatewayAddress", e.target.value)
                                 }
                             />
                         </Field>
