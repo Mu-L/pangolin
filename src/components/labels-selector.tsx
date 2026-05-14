@@ -1,6 +1,15 @@
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgQueries } from "@app/lib/queries";
+import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
 import { useQuery } from "@tanstack/react-query";
-import { useActionState, useMemo, useState, useTransition } from "react";
+import type { AxiosResponse } from "axios";
+import { useTranslations } from "next-intl";
+import { useActionState, useMemo, useState } from "react";
+import { useDebounce } from "use-debounce";
+import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import {
     Command,
     CommandEmpty,
@@ -9,11 +18,6 @@ import {
     CommandItem,
     CommandList
 } from "./ui/command";
-import { Checkbox } from "./ui/checkbox";
-import { useTranslations } from "next-intl";
-import { useDebounce } from "use-debounce";
-import { type Selectedsite, SiteOnlineStatus } from "./site-selector";
-import { Button } from "./ui/button";
 import {
     Select,
     SelectContent,
@@ -21,11 +25,6 @@ import {
     SelectTrigger,
     SelectValue
 } from "./ui/select";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
-import { useEnvContext } from "@app/hooks/useEnvContext";
-import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
-import type { AxiosResponse } from "axios";
-import { toast } from "@app/hooks/useToast";
 
 export type SelectedLabel = {
     name: string;

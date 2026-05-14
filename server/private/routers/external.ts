@@ -757,6 +757,14 @@ authenticated.patch(
     labels.updateOrgLabel
 );
 
+authenticated.delete(
+    "/org/:orgId/label/:labelId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteOrgLabel),
+    labels.deleteOrgLabel
+);
+
 authenticated.put(
     "/org/:orgId/label/:labelId/attach",
     verifyValidLicense,

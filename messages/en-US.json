@@ -1141,6 +1141,7 @@
     "idpErrorNotFound": "IdP not found",
     "inviteInvalid": "Invalid Invite",
     "labels": "Labels",
+    "orgLabelsDescription": "Manage labels in this organization.",
     "addLabels": "Add labels",
     "siteLabelsTab": "Labels",
     "siteLabelsDescription": "Manage labels associated with this site.",
