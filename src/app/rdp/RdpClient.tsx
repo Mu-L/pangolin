@@ -32,10 +32,14 @@ declare module "react" {
     }
 }
 
+type Target = {
+    ip: string;
+    port: number;
+};
+
 type FormState = {
     username: string;
     password: string;
-    hostname: string;
     domain: string;
     kdcProxyUrl: string;
     pcb: string;
@@ -53,11 +57,16 @@ const isIronError = (error: unknown): error is IronError => {
     );
 };
 
-export default function RdpClient() {
+export default function RdpClient({
+    target,
+    error
+}: {
+    target: Target | null;
+    error: string | null;
+}) {
     const [form, setForm] = useState<FormState>({
-        username: "Administrator",
-        password: "Password123!",
-        hostname: "172.31.3.58:3389",
+        username: "",
+        password: "",
         domain: "",
         kdcProxyUrl: "",
         pcb: "",
@@ -214,11 +223,15 @@ export default function RdpClient() {
             );
         }
 
+        const destination = target
+            ? `${target.ip}:${target.port}`
+            : "";
+
         const builder = userInteraction
             .configBuilder()
             .withUsername(form.username)
             .withPassword(form.password)
-            .withDestination(form.hostname)
+            .withDestination(destination)
             .withProxyAddress(
                 `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/rdp`
             )
@@ -283,6 +296,14 @@ export default function RdpClient() {
         setCursorOverrideActive((v) => !v);
     };
 
+    if (error) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <p className="text-destructive">{error}</p>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-background">
             {showLogin && (
@@ -292,15 +313,6 @@ export default function RdpClient() {
                     </h1>
 
                     <div className="space-y-4">
-                        <Field label="Hostname" id="hostname">
-                            <Input
-                                id="hostname"
-                                value={form.hostname}
-                                onChange={(e) =>
-                                    update("hostname", e.target.value)
-                                }
-                            />
-                        </Field>
                         <Field label="Domain" id="domain">
                             <Input
                                 id="domain"

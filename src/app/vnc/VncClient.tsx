@@ -6,16 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@app/hooks/useToast";
 
+type Target = {
+    ip: string;
+    port: number;
+};
+
 type FormState = {
-    host: string;
-    port: string;
     password: string;
 };
 
-export default function VncClient() {
+export default function VncClient({
+    target,
+    error
+}: {
+    target: Target | null;
+    error: string | null;
+}) {
     const [form, setForm] = useState<FormState>({
-        host: "",
-        port: "5900",
         password: ""
     });
 
@@ -43,11 +50,11 @@ export default function VncClient() {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const connect = async () => {
-        if (!form.host) {
+        if (!target) {
             toast({
                 variant: "destructive",
-                title: "Missing host",
-                description: "Enter the VNC server hostname or IP"
+                title: "No target",
+                description: "No resource target is available"
             });
             return;
         }
@@ -78,12 +85,12 @@ export default function VncClient() {
         }
 
         // Build the proxy WebSocket URL:
-        // ws://<proxyAddress>?authToken=<token>&host=<host>&port=<port>
+        // ws://<proxyAddress>?authToken=<token>&host=<ip>&port=<port>
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/vnc`;
         const base = proxyAddress.replace(/\/$/, "");
         const params = new URLSearchParams({
-            host: form.host,
-            port: form.port,
+            host: target.ip,
+            port: String(target.port),
             authToken: "test-token"
         });
         const wsUrl = `${base}?${params.toString()}`;
@@ -135,6 +142,14 @@ export default function VncClient() {
         rfbRef.current = rfb;
     };
 
+    if (error) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <p className="text-destructive">{error}</p>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-background">
             {!connected && (
@@ -144,24 +159,6 @@ export default function VncClient() {
                     </h1>
 
                     <div className="space-y-4">
-                        <Field label="VNC Host" id="host">
-                            <Input
-                                id="host"
-                                placeholder="192.168.1.100"
-                                value={form.host}
-                                onChange={(e) => update("host", e.target.value)}
-                            />
-                        </Field>
-
-                        <Field label="VNC Port" id="port">
-                            <Input
-                                id="port"
-                                type="number"
-                                value={form.port}
-                                onChange={(e) => update("port", e.target.value)}
-                            />
-                        </Field>
-
                         <Field label="Password (optional)" id="password">
                             <Input
                                 id="password"
