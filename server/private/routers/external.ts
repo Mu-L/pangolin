@@ -737,6 +737,7 @@ authenticated.get(
     "/org/:orgId/labels",
     verifyValidLicense,
     verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
     verifyUserHasAction(ActionsEnum.listOrgLabels),
     labels.listOrgLabels
 );
@@ -745,6 +746,7 @@ authenticated.post(
     "/org/:orgId/labels",
     verifyValidLicense,
     verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
     verifyUserHasAction(ActionsEnum.createOrgLabel),
     labels.createOrgLabel
 );
@@ -753,6 +755,7 @@ authenticated.patch(
     "/org/:orgId/label/:labelId",
     verifyValidLicense,
     verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
     verifyUserHasAction(ActionsEnum.updateOrgLabel),
     labels.updateOrgLabel
 );
@@ -769,6 +772,7 @@ authenticated.put(
     "/org/:orgId/label/:labelId/attach",
     verifyValidLicense,
     verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
     verifyUserHasAction(ActionsEnum.attachLabelToItem),
     labels.attachLabelToItem
 );
@@ -777,6 +781,7 @@ authenticated.put(
     "/org/:orgId/label/:labelId/detach",
     verifyValidLicense,
     verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
     verifyUserHasAction(ActionsEnum.detachLabelFromItem),
     labels.detachLabelFromItem
 );
