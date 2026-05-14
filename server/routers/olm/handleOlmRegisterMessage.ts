@@ -1,4 +1,4 @@
-import { db, orgs } from "@server/db";
+import { db, orgs, primaryDb } from "@server/db";
 import { MessageHandler } from "@server/routers/ws";
 import {
     clients,
@@ -81,7 +81,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             .where(eq(olms.olmId, olm.olmId));
     }
 
-    const [client] = await db
+    const [client] = await primaryDb // read from the primary here so there is no latency with the last update on the holepunch
         .select()
         .from(clients)
         .where(eq(clients.clientId, olm.clientId))
@@ -98,7 +98,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     if (client.blocked) {
         logger.debug(
             `[handleOlmRegisterMessage] Client ${client.clientId} is blocked. Ignoring register.`,
-            { orgId: client.orgId }
+            { orgId: client.orgId, clientId: client.clientId }
         );
         sendOlmError(OlmErrorCodes.CLIENT_BLOCKED, olm.olmId);
         return;
@@ -107,7 +107,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     if (client.approvalState == "pending") {
         logger.debug(
             `[handleOlmRegisterMessage] Client ${client.clientId} approval is pending. Ignoring register.`,
-            { orgId: client.orgId }
+            { orgId: client.orgId, clientId: client.clientId }
         );
         sendOlmError(OlmErrorCodes.CLIENT_PENDING, olm.olmId);
         return;
@@ -136,7 +136,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
     if (!org) {
         logger.warn("[handleOlmRegisterMessage] Org not found", {
-            orgId: client.orgId
+            orgId: client.orgId,
+            clientId: client.clientId
         });
         sendOlmError(OlmErrorCodes.ORG_NOT_FOUND, olm.olmId);
         return;
@@ -145,7 +146,8 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     if (orgId) {
         if (!olm.userId) {
             logger.warn("[handleOlmRegisterMessage] Olm has no user ID", {
-                orgId: client.orgId
+                orgId: client.orgId,
+                clientId: client.clientId
             });
             sendOlmError(OlmErrorCodes.USER_ID_NOT_FOUND, olm.olmId);
             return;
@@ -156,7 +158,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         if (!userSession || !user) {
             logger.warn(
                 "[handleOlmRegisterMessage] Invalid user session for olm register",
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(OlmErrorCodes.INVALID_USER_SESSION, olm.olmId);
             return;
@@ -164,7 +166,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         if (user.userId !== olm.userId) {
             logger.warn(
                 "[handleOlmRegisterMessage] User ID mismatch for olm register",
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(OlmErrorCodes.USER_ID_MISMATCH, olm.olmId);
             return;
@@ -182,13 +184,14 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
 
         logger.debug("[handleOlmRegisterMessage] Policy check result", {
             orgId: client.orgId,
+            clientId: client.clientId,
             policyCheck
         });
 
         if (policyCheck?.error) {
             logger.error(
                 `[handleOlmRegisterMessage] Error checking access policies for olm user ${olm.userId} in org ${orgId}: ${policyCheck?.error}`,
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
             return;
@@ -197,7 +200,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         if (policyCheck.policies?.passwordAge?.compliant === false) {
             logger.warn(
                 `[handleOlmRegisterMessage] Olm user ${olm.userId} has non-compliant password age for org ${orgId}`,
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(
                 OlmErrorCodes.ORG_ACCESS_POLICY_PASSWORD_EXPIRED,
@@ -209,7 +212,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         ) {
             logger.warn(
                 `[handleOlmRegisterMessage] Olm user ${olm.userId} has non-compliant session length for org ${orgId}`,
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(
                 OlmErrorCodes.ORG_ACCESS_POLICY_SESSION_EXPIRED,
@@ -219,7 +222,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         } else if (policyCheck.policies?.requiredTwoFactor === false) {
             logger.warn(
                 `[handleOlmRegisterMessage] Olm user ${olm.userId} does not have 2FA enabled for org ${orgId}`,
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(
                 OlmErrorCodes.ORG_ACCESS_POLICY_2FA_REQUIRED,
@@ -229,7 +232,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         } else if (!policyCheck.allowed) {
             logger.warn(
                 `[handleOlmRegisterMessage] Olm user ${olm.userId} does not pass access policies for org ${orgId}: ${policyCheck.error}`,
-                { orgId: client.orgId }
+                { orgId: client.orgId, clientId: client.clientId }
             );
             sendOlmError(OlmErrorCodes.ORG_ACCESS_POLICY_DENIED, olm.olmId);
             return;
@@ -253,7 +256,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     // Prepare an array to store site configurations
     logger.debug(
         `[handleOlmRegisterMessage] Found ${sitesCount} sites for client ${client.clientId}`,
-        { orgId: client.orgId }
+        { orgId: client.orgId, clientId: client.clientId }
     );
 
     let jitMode = false;
@@ -263,19 +266,20 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
         // If we have too many sites we need to drop into fully JIT mode by not sending any of the sites
         logger.info(
             `[handleOlmRegisterMessage] Too many sites (${sitesCount}), dropping into JIT mode`,
-            { orgId: client.orgId }
+            { orgId: client.orgId, clientId: client.clientId }
         );
         jitMode = true;
     }
 
     logger.debug(
         `[handleOlmRegisterMessage] Olm client ID: ${client.clientId}, Public Key: ${publicKey}, Relay: ${relay}`,
-        { orgId: client.orgId }
+        { orgId: client.orgId, clientId: client.clientId }
     );
 
     if (!publicKey) {
         logger.warn("[handleOlmRegisterMessage] Public key not provided", {
-            orgId: client.orgId
+            orgId: client.orgId,
+            clientId: client.clientId
         });
         return;
     }
@@ -283,7 +287,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     if (client.pubKey !== publicKey || client.archived) {
         logger.info(
             "[handleOlmRegisterMessage] Public key mismatch. Updating public key and clearing session info...",
-            { orgId: client.orgId }
+            { orgId: client.orgId, clientId: client.clientId }
         );
         // Update the client's public key
         await db
@@ -321,7 +325,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     if (now - (client.lastHolePunch || 0) > 5 && sitesCount > 0) {
         logger.warn(
             `[handleOlmRegisterMessage] Client last hole punch is too old and we have sites to send; skipping this register. The client is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`,
-            { orgId: client.orgId }
+            { orgId: client.orgId, clientId: client.clientId }
         );
         return;
     }
