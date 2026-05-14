@@ -1153,7 +1153,7 @@ export async function getTraefikConfig(
                 middlewares: routerMiddlewares,
                 service: bgServiceName,
                 rule: bgRule,
-                priority: 110, // higher than 105 (UI router) to match /gateway/* first
+                priority: 110, // highest - websocket path takes precedence
                 ...(bgResource.ssl ? { tls } : {})
             };
 
@@ -1164,37 +1164,59 @@ export async function getTraefikConfig(
             };
         }
 
-        // UI router: serve the browser gateway pages from the internal pangolin instance
-        // Covers /{type} paths for each configured type plus Next.js assets
+        // UI: serve the browser gateway page from the internal pangolin instance.
+        // The primary type is used for the path rewrite (e.g. /rdp), mirroring
+        // how the maintenance page rewrites everything to /maintenance-screen.
+        const primaryType = typeMap.keys().next().value as string;
         const internalHost = config.getRawConfig().server.internal_hostname;
         const internalPort = config.getRawConfig().server.next_port;
+        const uiRewriteMiddlewareName = `bg-r${bgResource.resourceId}-ui-rewrite`;
+        const entrypoint = bgResource.ssl
+            ? config.getRawConfig().traefik.https_entrypoint
+            : config.getRawConfig().traefik.http_entrypoint;
 
-        const typePaths = Array.from(typeMap.keys())
-            .map((t) => `PathPrefix(\`/${t}\`)`)
-            .join(" || ");
-        const uiRule = `${hostRule} && (${typePaths} || PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`;
+        if (!config_output.http.middlewares) {
+            config_output.http.middlewares = {};
+        }
+
+        config_output.http.middlewares![uiRewriteMiddlewareName] = {
+            replacePathRegex: {
+                regex: "^/(.*)",
+                replacement: `/${primaryType}`
+            }
+        };
 
         config_output.http.services![bgUiServiceName] = {
             loadBalancer: {
                 servers: [
                     {
-                        url: `http://${internalHost}:${internalPort}`
+                        // url: `http://${internalHost}:${internalPort}`
+                        url: `https://owen-devel.hostlocal.app`
                     }
                 ]
             }
         };
 
+        // Assets router at higher priority so /_next files load without rewrite
+        config_output.http.routers![
+            `bg-r${bgResource.resourceId}-assets-router`
+        ] = {
+            entryPoints: [entrypoint],
+            middlewares: routerMiddlewares,
+            service: bgUiServiceName,
+            rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+            priority: 101,
+            ...(bgResource.ssl ? { tls } : {})
+        };
+
+        // Catch-all router rewrites everything on the domain to /{primaryType}
         config_output.http.routers![`bg-r${bgResource.resourceId}-ui-router`] =
             {
-                entryPoints: [
-                    bgResource.ssl
-                        ? config.getRawConfig().traefik.https_entrypoint
-                        : config.getRawConfig().traefik.http_entrypoint
-                ],
-                middlewares: routerMiddlewares,
+                entryPoints: [entrypoint],
+                middlewares: [...routerMiddlewares, uiRewriteMiddlewareName],
                 service: bgUiServiceName,
-                rule: uiRule,
-                priority: 105,
+                rule: hostRule,
+                priority: 100,
                 ...(bgResource.ssl ? { tls } : {})
             };
     }
