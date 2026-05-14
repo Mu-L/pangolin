@@ -705,7 +705,7 @@ export async function getTraefikConfig(
                             resource.ssl ? entrypointHttps : entrypointHttp
                         ],
                         service: maintenanceServiceName,
-                        rule: `${rule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+                        rule: `${rule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`)) `,
                         priority: 2001,
                         ...(resource.ssl ? { tls } : {})
                     };
@@ -1190,8 +1190,7 @@ export async function getTraefikConfig(
             loadBalancer: {
                 servers: [
                     {
-                        // url: `http://${internalHost}:${internalPort}`
-                        url: `https://owen-devel.hostlocal.app`
+                        url: `http://${internalHost}:${internalPort}`
                     }
                 ]
             }
@@ -1204,7 +1203,7 @@ export async function getTraefikConfig(
             entryPoints: [entrypoint],
             middlewares: routerMiddlewares,
             service: bgUiServiceName,
-            rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+            rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
             priority: 101,
             ...(bgResource.ssl ? { tls } : {})
         };
@@ -1336,7 +1335,7 @@ export async function getTraefikConfig(
             config_output.http.routers[`${siteResourceRouterName}-assets`] = {
                 entryPoints: [config.getRawConfig().traefik.https_entrypoint],
                 service: siteResourceServiceName,
-                rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`))`,
+                rule: `Host(\`${fullDomain}\`) && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
                 priority: 101,
                 tls
             };
@@ -1439,7 +1438,7 @@ export async function getTraefikConfig(
                         config.getRawConfig().traefik.https_entrypoint
                     ],
                     service: "landing-service",
-                    rule: `Host(\`${fullDomain}\`) && (PathRegexp(\`^/auth/resource/[^/]+$\`) || PathRegexp(\`^/auth/idp/[0-9]+/oidc/callback\`) || PathPrefix(\`/_next\`) || Path(\`/auth/org\`) || PathRegexp(\`^/__nextjs*\`))`,
+                    rule: `Host(\`${fullDomain}\`) && (PathRegexp(\`^/auth/resource/[^/]+$\`) || PathRegexp(\`^/auth/idp/[0-9]+/oidc/callback\`) || PathPrefix(\`/_next\`) || Path(\`/auth/org\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
                     priority: 203,
                     tls: tls
                 };
