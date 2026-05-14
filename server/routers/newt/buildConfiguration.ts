@@ -235,6 +235,11 @@ export async function buildTargetConfigurationForNewtClient(
         .from(targetHealthCheck)
         .where(eq(targetHealthCheck.siteId, siteId));
 
+    const allBrowserGatewayTargets = await db
+        .select()
+        .from(browserGatewayTarget)
+        .where(eq(browserGatewayTarget.siteId, siteId));
+
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
             // Filter out invalid targets
@@ -306,18 +311,17 @@ export async function buildTargetConfigurationForNewtClient(
         (target) => target !== null
     );
 
+    const browserGatewayTargets = allBrowserGatewayTargets.map((t) => ({
+        id: t.browserGatewayTargetId,
+        type: t.type,
+        destination: t.destination,
+        destinationPort: t.destinationPort
+    }));
+
     return {
         validHealthCheckTargets,
         tcpTargets,
-        udpTargets
+        udpTargets,
+        browserGatewayTargets
     };
-}
-
-export async function buildBrowserGatewayTargetConfigurationForNewtClient(
-    siteId: number
-): Promise<BrowserGatewayTarget[]> {
-    return await db
-        .select()
-        .from(browserGatewayTarget)
-        .where(eq(browserGatewayTarget.siteId, siteId));
 }
