@@ -141,7 +141,12 @@ export default function OrgLabelsTable({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem>{t("edit")}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {}}>
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    setSelectedLabel(row.original);
+                                    setIsDeleteModalOpen(true);
+                                }}
+                            >
                                 <span className="text-red-500">
                                     {t("delete")}
                                 </span>
@@ -154,8 +159,22 @@ export default function OrgLabelsTable({
         [searchParams, t]
     );
 
-    async function deleteLabel() {
-        // ...
+    function deleteLabel(label: LabelRow) {
+        startRefreshTransition(async () => {
+            await api
+                .delete(`/org/${orgId}/label/${label.labelId}`)
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("labelErrorDelete"),
+                        description: formatAxiosError(e, t("labelErrorDelete"))
+                    });
+                })
+                .then(() => {
+                    router.refresh();
+                    setIsDeleteModalOpen(false);
+                });
+        });
     }
 
     return (
@@ -169,14 +188,14 @@ export default function OrgLabelsTable({
                     }}
                     dialog={
                         <div className="space-y-2">
-                            <p>{t("resourceQuestionRemove")}</p>
-                            <p>{t("resourceMessageRemove")}</p>
+                            <p>{t("labelQuestionRemove")}</p>
+                            <p>{t("labelMessageRemove")}</p>
                         </div>
                     }
-                    buttonText={t("resourceDeleteConfirm")}
-                    onConfirm={async () => {}}
+                    buttonText={t("labelDeleteConfirm")}
+                    onConfirm={async () => deleteLabel(selectedLabel)}
                     string={selectedLabel.name}
-                    title={t("resourceDelete")}
+                    title={t("labelDelete")}
                 />
             )}
             <ControlledDataTable
