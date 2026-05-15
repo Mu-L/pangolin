@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"embed"
 	"encoding/base64"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -67,6 +68,9 @@ const (
 )
 
 func main() {
+
+	crowdsecFlag := flag.Bool("crowdsec", false, "Enable the CrowdSec installation prompt")
+	flag.Parse()
 
 	// print a banner about prerequisites - opening port 80, 443, 51820, and 21820 on the VPS and firewall and pointing your domain to the VPS IP with a records. Docs are at http://localhost:3000/Getting%20Started/dns-networking
 
@@ -206,7 +210,7 @@ func main() {
 		}
 	}
 
-	if !checkIsCrowdsecInstalledInCompose() {
+	if *crowdsecFlag && !checkIsCrowdsecInstalledInCompose() {
 		fmt.Println("\n=== CrowdSec Install ===")
 		// check if crowdsec is installed
 		if readBool("Would you like to install CrowdSec?", false) {

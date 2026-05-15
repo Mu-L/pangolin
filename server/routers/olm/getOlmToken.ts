@@ -8,7 +8,7 @@ import {
     ExitNode,
     exitNodes,
     sites,
-    clientSitesAssociationsCache,
+    clientSitesAssociationsCache
 } from "@server/db";
 import { olms } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
@@ -28,6 +28,7 @@ import { verifyPassword } from "@server/auth/password";
 import logger from "@server/logger";
 import config from "@server/lib/config";
 import { APP_VERSION } from "@server/lib/consts";
+import { build } from "@server/build";
 
 export const olmGetTokenBodySchema = z.object({
     olmId: z.string(),
@@ -219,6 +220,22 @@ export async function getOlmToken(
                 eq(sites.siteId, clientSitesAssociationsCache.siteId)
             )
             .where(eq(clientSitesAssociationsCache.clientId, clientIdToUse!));
+
+        if (clientSites.length > 250 && build == "saas") {
+            // set all of the cache rows isJitMode to true
+            await db
+                .update(clientSitesAssociationsCache)
+                .set({ isJitMode: true })
+                .where(
+                    and(
+                        eq(
+                            clientSitesAssociationsCache.clientId,
+                            clientIdToUse!
+                        ),
+                        eq(clientSitesAssociationsCache.isJitMode, false)
+                    )
+                );
+        }
 
         // Extract unique exit node IDs
         const exitNodeIds = Array.from(
