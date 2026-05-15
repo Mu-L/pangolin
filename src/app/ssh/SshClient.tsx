@@ -26,10 +26,16 @@ export default function SshClient({
     target: Target | null;
     error: string | null;
 }) {
-    const [form, setForm] = useState<FormState>({
-        username: "",
-        password: "",
-        privateKey: ""
+    const STORAGE_KEY = "pangolin_ssh_credentials";
+
+    const [form, setForm] = useState<FormState>(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) return JSON.parse(saved) as FormState;
+        } catch {
+            // ignore
+        }
+        return { username: "", password: "", privateKey: "" };
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +178,11 @@ export default function SshClient({
                     privateKey: form.privateKey
                 })
             );
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+            } catch {
+                // ignore
+            }
             setConnecting(false);
             setConnected(true);
         };
