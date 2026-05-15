@@ -43,8 +43,6 @@ type FormState = {
     domain: string;
     kdcProxyUrl: string;
     pcb: string;
-    desktopWidth: number;
-    desktopHeight: number;
     enableClipboard: boolean;
 };
 
@@ -70,8 +68,6 @@ export default function RdpClient({
         domain: "",
         kdcProxyUrl: "",
         pcb: "",
-        desktopWidth: 1280,
-        desktopHeight: 720,
         enableClipboard: true
     });
 
@@ -238,8 +234,8 @@ export default function RdpClient({
             .withServerDomain(form.domain)
             .withAuthToken("test-token")
             .withDesktopSize({
-                width: form.desktopWidth,
-                height: form.desktopHeight
+                width: window.innerWidth,
+                height: window.innerHeight
             })
             .withExtension(exts.displayControl(true));
 
@@ -349,34 +345,7 @@ export default function RdpClient({
                                 onChange={(e) => update("pcb", e.target.value)}
                             />
                         </Field> */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="Desktop Width" id="desktopWidth">
-                                <Input
-                                    id="desktopWidth"
-                                    type="number"
-                                    value={form.desktopWidth}
-                                    onChange={(e) =>
-                                        update(
-                                            "desktopWidth",
-                                            Number(e.target.value) || 0
-                                        )
-                                    }
-                                />
-                            </Field>
-                            <Field label="Desktop Height" id="desktopHeight">
-                                <Input
-                                    id="desktopHeight"
-                                    type="number"
-                                    value={form.desktopHeight}
-                                    onChange={(e) =>
-                                        update(
-                                            "desktopHeight",
-                                            Number(e.target.value) || 0
-                                        )
-                                    }
-                                />
-                            </Field>
-                        </div>
+
                         {/* <Field
                             label="KDC Proxy URL (optional)"
                             id="kdcProxyUrl"
@@ -389,7 +358,7 @@ export default function RdpClient({
                                 }
                             />
                         </Field> */}
-                        <div className="flex items-center gap-2">
+                        {/* <div className="flex items-center gap-2">
                             <Checkbox
                                 id="enable_clipboard"
                                 checked={form.enableClipboard}
@@ -400,8 +369,7 @@ export default function RdpClient({
                             <Label htmlFor="enable_clipboard">
                                 Enable Clipboard
                             </Label>
-                        </div>
-
+                        </div> */}
                         <Button
                             onClick={startSession}
                             disabled={!moduleReady}

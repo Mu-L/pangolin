@@ -7,7 +7,7 @@ import SshClient from "./SshClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-    title: "SSH Terminal"
+    title: "SSH"
 };
 
 export default async function SshPage() {
