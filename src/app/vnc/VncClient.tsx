@@ -181,7 +181,7 @@ export default function VncClient({
                 className="flex h-screen flex-col bg-neutral-900"
                 style={{ display: connected ? "flex" : "none" }}
             >
-                <div className="flex items-center gap-2 bg-black p-2 text-white">
+                <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
                     <Button
                         size="sm"
                         variant="secondary"
@@ -212,7 +212,7 @@ export default function VncClient({
                         variant="destructive"
                         onClick={disconnect}
                     >
-                        Disconnect
+                        Terminate
                     </Button>
                 </div>
 
