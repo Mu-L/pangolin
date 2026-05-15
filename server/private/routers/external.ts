@@ -31,6 +31,7 @@ import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
+import * as browserGatewayTarget from "#private/routers/browserGatewayTarget";
 
 import {
     verifyOrgAccess,
@@ -774,4 +775,49 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getTarget),
     healthChecks.getHealthCheckStatusHistory
+);
+
+authenticated.put(
+    "/org/:orgId/resource/:resourceId/browser-gateway-target",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.createBrowserGatewayTarget),
+    browserGatewayTarget.createBrowserGatewayTarget
+);
+
+authenticated.get(
+    "/org/:orgId/resource/:resourceId/browser-gateway-targets",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listBrowserGatewayTargets),
+    browserGatewayTarget.listBrowserGatewayTargets
+);
+
+authenticated.get(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getBrowserGatewayTarget),
+    browserGatewayTarget.getBrowserGatewayTarget
+);
+
+authenticated.post(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.updateBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.updateBrowserGatewayTarget),
+    browserGatewayTarget.updateBrowserGatewayTarget
+);
+
+authenticated.delete(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.deleteBrowserGatewayTarget),
+    browserGatewayTarget.deleteBrowserGatewayTarget
 );

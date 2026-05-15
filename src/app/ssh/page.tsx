@@ -15,7 +15,7 @@ export default async function SshPage() {
     const host = headersList.get("host") || "";
     const hostname = host.split(":")[0];
 
-    let target: { ip: string; port: number } | null = null;
+    let target: { ip: string; port: number; authToken: string } | null = null;
     let error: string | null = null;
 
     try {

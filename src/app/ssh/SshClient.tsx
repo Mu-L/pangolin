@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 type Target = {
     ip: string;
     port: number;
+    authToken: string;
 };
 
 type FormState = {
@@ -125,12 +126,18 @@ export default function SshClient({
         setConnectError(null);
         setConnecting(true);
 
+        if (!target) {
+            setConnectError("No target specified");
+            setConnecting(false);
+            return;
+        }
+
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
         const url = new URL(proxyAddress);
-        url.searchParams.set("host", target?.ip ?? "");
-        url.searchParams.set("port", String(target?.port ?? 22));
+        url.searchParams.set("host", target.ip ?? "");
+        url.searchParams.set("port", String(target.port ?? 22));
         url.searchParams.set("username", form.username);
-        url.searchParams.set("authToken", "test-token");
+        url.searchParams.set("authToken", target.authToken ?? "");
 
         const ws = new WebSocket(url.toString(), ["ssh"]);
         wsRef.current = ws;

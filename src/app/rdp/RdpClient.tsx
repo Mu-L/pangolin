@@ -35,6 +35,7 @@ declare module "react" {
 type Target = {
     ip: string;
     port: number;
+    authToken: string;
 };
 
 type FormState = {
@@ -219,9 +220,16 @@ export default function RdpClient({
             );
         }
 
-        const destination = target ? `${target.ip}:${target.port}` : "";
+        if (!target) {
+            toast({
+                variant: "destructive",
+                title: "No target",
+                description: "No connection target available"
+            });
+            return;
+        }
 
-        console.log("Starting RDP session with destination:", destination);
+        const destination = `${target.ip}:${target.port}`;
 
         const builder = userInteraction
             .configBuilder()
@@ -232,7 +240,7 @@ export default function RdpClient({
                 `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/rdp`
             )
             .withServerDomain(form.domain)
-            .withAuthToken("test-token")
+            .withAuthToken(target.authToken)
             .withDesktopSize({
                 width: window.innerWidth,
                 height: window.innerHeight

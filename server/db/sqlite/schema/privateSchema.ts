@@ -602,6 +602,7 @@ export const browserGatewayTarget = sqliteTable("browserGatewayTarget", {
             onDelete: "cascade"
         })
         .notNull(),
+    authToken: text("authToken").notNull(),
     type: text("type").notNull(), // "ssh", "rdp", "vnc"
     destination: text("destination").notNull(),
     destinationPort: integer("destinationPort").notNull()
