@@ -96,8 +96,6 @@ export default function VncClient({
         });
         const wsUrl = `${base}?${params.toString()}`;
 
-        toast({ title: "Connecting…", description: wsUrl });
-
         // Clear the container so noVNC gets a clean mount point.
         screenRef.current.innerHTML = "";
 
@@ -113,7 +111,6 @@ export default function VncClient({
         rfb.resizeSession = true;
 
         rfb.addEventListener("connect", () => {
-            toast({ title: "Connected" });
             setConnected(true);
         });
 
@@ -122,10 +119,6 @@ export default function VncClient({
             (e: { detail: { clean: boolean } }) => {
                 rfbRef.current = null;
                 setConnected(false);
-                toast({
-                    title: e.detail.clean ? "Disconnected" : "Connection lost",
-                    variant: e.detail.clean ? "default" : "destructive"
-                });
             }
         );
 

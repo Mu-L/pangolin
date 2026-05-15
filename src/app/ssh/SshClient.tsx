@@ -250,7 +250,7 @@ export default function SshClient({
                             disabled={connecting || !form.username}
                             className="w-full"
                         >
-                            {connecting ? "Connecting…" : "Connect"}
+                            {connecting ? "Connecting..." : "Connect"}
                         </Button>
                     </div>
                 </div>

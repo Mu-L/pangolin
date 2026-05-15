@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@app/hooks/useToast";
 import type {
     UserInteraction,
@@ -74,6 +73,7 @@ export default function RdpClient({
 
     const [showLogin, setShowLogin] = useState(true);
     const [moduleReady, setModuleReady] = useState(false);
+    const [connecting, setConnecting] = useState(false);
     const [unicodeMode, setUnicodeMode] = useState(false);
     const [cursorOverrideActive, setCursorOverrideActive] = useState(false);
 
@@ -152,9 +152,11 @@ export default function RdpClient({
     };
 
     const startSession = async () => {
+        setConnecting(true);
         const userInteraction = userInteractionRef.current;
         const exts = extensionsRef.current;
         if (!userInteraction || !exts) {
+            setConnecting(false);
             toast({
                 variant: "destructive",
                 title: "Not ready",
@@ -162,11 +164,6 @@ export default function RdpClient({
             });
             return;
         }
-
-        toast({
-            title: "Connecting...",
-            description: "Connection in progress"
-        });
 
         userInteraction.setEnableClipboard(form.enableClipboard);
 
@@ -221,6 +218,7 @@ export default function RdpClient({
         }
 
         if (!target) {
+            setConnecting(false);
             toast({
                 variant: "destructive",
                 title: "No target",
@@ -257,19 +255,16 @@ export default function RdpClient({
         try {
             const sessionInfo = await userInteraction.connect(builder.build());
 
-            toast({ title: "Connected" });
+            setConnecting(false);
             setShowLogin(false);
             userInteraction.setVisibility(true);
 
             const termInfo = await sessionInfo.run();
             fileTransferRef.current?.dispose();
             fileTransferRef.current = null;
-            toast({
-                title: "Session terminated",
-                description: termInfo.reason()
-            });
             setShowLogin(true);
         } catch (err) {
+            setConnecting(false);
             setShowLogin(true);
             if (isIronError(err)) {
                 toast({
@@ -381,6 +376,7 @@ export default function RdpClient({
                         <Button
                             onClick={startSession}
                             disabled={!moduleReady}
+                            loading={connecting}
                             className="w-full"
                         >
                             {moduleReady ? "Connect" : "Loading module..."}
