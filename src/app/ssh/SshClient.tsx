@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Target = {
     ip: string;
@@ -15,6 +16,7 @@ type Target = {
 type FormState = {
     username: string;
     password: string;
+    privateKey: string;
 };
 
 export default function SshClient({
@@ -26,8 +28,26 @@ export default function SshClient({
 }) {
     const [form, setForm] = useState<FormState>({
         username: "",
-        password: ""
+        password: "",
+        privateKey: ""
     });
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    function handleKeyFile(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const text = ev.target?.result;
+            if (typeof text === "string") {
+                setForm((prev) => ({ ...prev, privateKey: text }));
+            }
+        };
+        reader.readAsText(file);
+        // Reset input so the same file can be re-selected if needed.
+        e.target.value = "";
+    }
 
     const [connected, setConnected] = useState(false);
     const [connecting, setConnecting] = useState(false);
@@ -143,9 +163,15 @@ export default function SshClient({
         wsRef.current = ws;
 
         ws.onopen = () => {
-            // Send the password (or empty string) as the first frame so the
-            // proxy can complete SSH authentication before piping pty data.
-            ws.send(JSON.stringify({ type: "auth", password: form.password }));
+            // Send credentials as the first frame so the proxy can complete
+            // SSH authentication before piping pty data.
+            ws.send(
+                JSON.stringify({
+                    type: "auth",
+                    password: form.password,
+                    privateKey: form.privateKey
+                })
+            );
             setConnecting(false);
             setConnected(true);
         };
@@ -236,6 +262,60 @@ export default function SshClient({
                                         password: e.target.value
                                     })
                                 }
+                                placeholder={
+                                    form.privateKey
+                                        ? "Optional with key auth"
+                                        : ""
+                                }
+                            />
+                        </Field>
+
+                        <Field label="Private Key (optional)" id="privateKey">
+                            <Textarea
+                                id="privateKey"
+                                value={form.privateKey}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        privateKey: e.target.value
+                                    })
+                                }
+                                placeholder="Paste your private key here (PEM format)…"
+                                rows={5}
+                                className="font-mono text-xs"
+                            />
+                            <div className="mt-1.5 flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        fileInputRef.current?.click()
+                                    }
+                                >
+                                    Upload key file
+                                </Button>
+                                {form.privateKey && (
+                                    <button
+                                        type="button"
+                                        className="text-xs text-muted-foreground underline"
+                                        onClick={() =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                privateKey: ""
+                                            }))
+                                        }
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                accept=".pem,.key,.pub,*"
+                                onChange={handleKeyFile}
                             />
                         </Field>
 
@@ -247,7 +327,11 @@ export default function SshClient({
 
                         <Button
                             onClick={connect}
-                            disabled={connecting || !form.username}
+                            disabled={
+                                connecting ||
+                                !form.username ||
+                                (!form.password && !form.privateKey)
+                            }
                             className="w-full"
                         >
                             {connecting ? "Connecting..." : "Connect"}
