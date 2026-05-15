@@ -62,13 +62,23 @@ export default function RdpClient({
     target: Target | null;
     error: string | null;
 }) {
-    const [form, setForm] = useState<FormState>({
-        username: "",
-        password: "",
-        domain: "",
-        kdcProxyUrl: "",
-        pcb: "",
-        enableClipboard: true
+    const STORAGE_KEY = "pangolin_rdp_credentials";
+
+    const [form, setForm] = useState<FormState>(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) return JSON.parse(saved) as FormState;
+        } catch {
+            // ignore
+        }
+        return {
+            username: "",
+            password: "",
+            domain: "",
+            kdcProxyUrl: "",
+            pcb: "",
+            enableClipboard: true
+        };
     });
 
     const [showLogin, setShowLogin] = useState(true);
@@ -255,6 +265,11 @@ export default function RdpClient({
         try {
             const sessionInfo = await userInteraction.connect(builder.build());
 
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+            } catch {
+                // ignore
+            }
             setConnecting(false);
             setShowLogin(false);
             userInteraction.setVisibility(true);

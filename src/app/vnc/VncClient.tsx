@@ -23,8 +23,16 @@ export default function VncClient({
     target: Target | null;
     error: string | null;
 }) {
-    const [form, setForm] = useState<FormState>({
-        password: ""
+    const STORAGE_KEY = "pangolin_vnc_credentials";
+
+    const [form, setForm] = useState<FormState>(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) return JSON.parse(saved) as FormState;
+        } catch {
+            // ignore
+        }
+        return { password: "" };
     });
 
     const [connected, setConnected] = useState(false);
@@ -111,6 +119,11 @@ export default function VncClient({
         rfb.resizeSession = true;
 
         rfb.addEventListener("connect", () => {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+            } catch {
+                // ignore
+            }
             setConnected(true);
         });
 
