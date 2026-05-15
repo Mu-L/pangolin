@@ -190,26 +190,22 @@ export default function SshClient({
 
     if (error) {
         return (
-            <div className="flex flex-col h-screen bg-black text-white p-4 items-center justify-center">
-                <p className="text-red-400">{error}</p>
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <p className="text-destructive">{error}</p>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-screen bg-black text-white p-4 gap-4">
-            <h1 className="text-xl font-semibold text-white">SSH Terminal</h1>
-
+        <div className="min-h-screen bg-background">
             {!connected && (
-                <div className="bg-neutral-900 rounded-lg p-6 max-w-lg w-full mx-auto flex flex-col gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1 col-span-2">
-                            <Label
-                                htmlFor="username"
-                                className="text-neutral-300"
-                            >
-                                Username
-                            </Label>
+                <div className="mx-auto max-w-2xl p-6">
+                    <h1 className="mb-4 text-2xl font-semibold">
+                        SSH Terminal
+                    </h1>
+
+                    <div className="space-y-4">
+                        <Field label="Username" id="username">
                             <Input
                                 id="username"
                                 value={form.username}
@@ -220,17 +216,9 @@ export default function SshClient({
                                     })
                                 }
                                 placeholder="root"
-                                className="bg-neutral-800 border-neutral-700 text-white"
                             />
-                        </div>
-
-                        <div className="flex flex-col gap-1 col-span-2">
-                            <Label
-                                htmlFor="password"
-                                className="text-neutral-300"
-                            >
-                                Password
-                            </Label>
+                        </Field>
+                        <Field label="Password" id="password">
                             <Input
                                 id="password"
                                 type="password"
@@ -241,43 +229,61 @@ export default function SshClient({
                                         password: e.target.value
                                     })
                                 }
-                                className="bg-neutral-800 border-neutral-700 text-white"
                             />
-                        </div>
+                        </Field>
+
+                        {connectError && (
+                            <p className="text-destructive text-sm">
+                                {connectError}
+                            </p>
+                        )}
+
+                        <Button
+                            onClick={connect}
+                            disabled={connecting || !form.username}
+                            className="w-full"
+                        >
+                            {connecting ? "Connecting…" : "Connect"}
+                        </Button>
                     </div>
-
-                    {connectError && (
-                        <p className="text-red-400 text-sm">{connectError}</p>
-                    )}
-
-                    <Button
-                        onClick={connect}
-                        disabled={connecting || !form.username}
-                        className="w-full"
-                    >
-                        {connecting ? "Connecting…" : "Connect"}
-                    </Button>
                 </div>
             )}
 
             {connected && (
-                <div className="flex flex-col flex-1 gap-2 min-h-0">
-                    <div className="flex justify-end">
+                <div className="flex h-screen flex-col bg-neutral-900">
+                    <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
                         <Button
-                            variant="destructive"
                             size="sm"
+                            variant="destructive"
                             onClick={disconnect}
                         >
-                            Disconnect
+                            Terminate
                         </Button>
                     </div>
                     <div
                         ref={terminalRef}
-                        className="flex-1 rounded overflow-hidden"
+                        className="flex-1 overflow-hidden"
                         style={{ minHeight: 0 }}
                     />
                 </div>
             )}
+        </div>
+    );
+}
+
+function Field({
+    label,
+    id,
+    children
+}: {
+    label: string;
+    id: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="space-y-1.5">
+            <Label htmlFor={id}>{label}</Label>
+            {children}
         </div>
     );
 }
