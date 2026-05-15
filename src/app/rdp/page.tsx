@@ -7,7 +7,7 @@ import RdpClient from "./RdpClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-    title: "RDP Test"
+    title: "RDP"
 };
 
 export default async function RdpPage() {

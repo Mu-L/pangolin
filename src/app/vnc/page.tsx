@@ -7,7 +7,7 @@ import VncClient from "./VncClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-    title: "VNC Test"
+    title: "VNC"
 };
 
 export default async function VncPage() {
