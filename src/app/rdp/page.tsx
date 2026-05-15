@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { internal } from "@app/lib/api";
+import { priv } from "@app/lib/api";
 import { AxiosResponse } from "axios";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
 import RdpClient from "./RdpClient";
@@ -19,11 +19,13 @@ export default async function RdpPage() {
     let error: string | null = null;
 
     try {
-        const res = await internal.get<AxiosResponse<GetBrowserTargetResponse>>(
+        const res = await priv.get<AxiosResponse<GetBrowserTargetResponse>>(
             `/resource/browser-target?fullDomain=${encodeURIComponent(hostname)}`
         );
         target = res.data.data;
-    } catch {
+        console.log("Fetched browser target:", target);
+    } catch (error) {
+        console.error("Error fetching browser target:", error);
         error = "No resource found for this domain";
     }
 

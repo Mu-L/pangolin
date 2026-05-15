@@ -38,10 +38,12 @@ export async function getBrowserTarget(
 
         const { fullDomain } = parsed.data;
 
-        const [row] = await db
+        logger.info(`Retrieving browser target for domain: ${fullDomain}`);
+
+        const [browserTarget] = await db
             .select({
-                ip: browserGatewayTarget.destination,
-                port: browserGatewayTarget.destinationPort
+                destination: browserGatewayTarget.destination,
+                destinationPort: browserGatewayTarget.destinationPort
             })
             .from(browserGatewayTarget)
             .innerJoin(
@@ -51,7 +53,7 @@ export async function getBrowserTarget(
             .where(eq(resources.fullDomain, fullDomain))
             .limit(1);
 
-        if (!row) {
+        if (!browserTarget) {
             return next(
                 createHttpError(
                     HttpCode.NOT_FOUND,
@@ -61,7 +63,10 @@ export async function getBrowserTarget(
         }
 
         return response<GetBrowserTargetResponse>(res, {
-            data: { ip: row.ip, port: row.port },
+            data: {
+                ip: browserTarget.destination,
+                port: browserTarget.destinationPort
+            },
             success: true,
             error: false,
             message: "Browser target retrieved successfully",
