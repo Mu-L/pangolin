@@ -1,4 +1,5 @@
 import {
+    browserGatewayTarget,
     db,
     resourceHeaderAuth,
     resourceHeaderAuthExtendedCompatibility,
@@ -433,6 +434,30 @@ export async function listResources(
                       )
                       .leftJoin(sites, eq(targets.siteId, sites.siteId));
 
+        const allBgTargetSites =
+            resourceIdList.length === 0
+                ? []
+                : await db
+                      .select({
+                          resourceId: browserGatewayTarget.resourceId,
+                          siteId: browserGatewayTarget.siteId,
+                          siteName: sites.name,
+                          siteNiceId: sites.niceId,
+                          siteOnline: sites.online,
+                          siteType: sites.type
+                      })
+                      .from(browserGatewayTarget)
+                      .where(
+                          inArray(
+                              browserGatewayTarget.resourceId,
+                              resourceIdList
+                          )
+                      )
+                      .leftJoin(
+                          sites,
+                          eq(sites.siteId, browserGatewayTarget.siteId)
+                      );
+
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
 
@@ -482,6 +507,21 @@ export async function listResources(
                 }
             >();
             for (const t of raw) {
+                if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
+                    continue;
+                }
+                const isLocal = t.siteType === "local";
+                siteById.set(t.siteId, {
+                    siteId: t.siteId,
+                    siteName: t.siteName ?? "",
+                    siteNiceId: t.siteNiceId ?? "",
+                    online: isLocal ? undefined : Boolean(t.siteOnline)
+                });
+            }
+            const bgRaw = allBgTargetSites.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
+            for (const t of bgRaw) {
                 if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
                     continue;
                 }

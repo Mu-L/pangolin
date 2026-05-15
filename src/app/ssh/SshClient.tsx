@@ -244,9 +244,7 @@ export default function SshClient({
         <div className="min-h-screen bg-background">
             {!connected && (
                 <div className="mx-auto max-w-2xl p-6">
-                    <h1 className="mb-4 text-2xl font-semibold">
-                        SSH Terminal
-                    </h1>
+                    <h1 className="mb-4 text-2xl font-semibold">SSH</h1>
 
                     <div className="space-y-4">
                         <Field label="Username" id="username">

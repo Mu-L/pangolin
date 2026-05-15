@@ -322,9 +322,7 @@ export default function RdpClient({
         <div className="min-h-screen bg-background">
             {showLogin && (
                 <div className="mx-auto max-w-2xl p-6">
-                    <h1 className="mb-4 text-2xl font-semibold">
-                        RDP Test Connection
-                    </h1>
+                    <h1 className="mb-4 text-2xl font-semibold">RDP</h1>
 
                     <div className="space-y-4">
                         <Field label="Domain" id="domain">
