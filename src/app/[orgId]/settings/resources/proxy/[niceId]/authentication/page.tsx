@@ -49,7 +49,7 @@ import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import SetResourcePasswordForm from "components/SetResourcePasswordForm";
+import SetResourcePasswordForm from "@app/components/SetResourcePasswordForm";
 import { Binary, Bot, InfoIcon, Key } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
