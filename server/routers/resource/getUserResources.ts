@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { db } from "@server/db";
-import { and, eq, or, inArray } from "drizzle-orm";
+import { db, DB_TYPE } from "@server/db";
+import { and, eq, or, inArray, sql } from "drizzle-orm";
 import {
     resources,
     userResources,
@@ -12,7 +12,9 @@ import {
     resourceWhitelist,
     siteResources,
     userSiteResources,
-    roleSiteResources
+    roleSiteResources,
+    siteNetworks,
+    sites
 } from "@server/db";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
@@ -159,9 +161,21 @@ export async function getUserResources(
             tcpPortRangeString: string | null;
             udpPortRangeString: string | null;
             disableIcmp: boolean | null;
+            siteIds: number[];
+            siteNames: string[];
+            siteNiceIds: string[];
+            siteAddresses: (string | null)[];
+            siteOnlines: boolean[];
         }> = [];
         if (accessibleSiteResourceIds.length > 0) {
-            siteResourcesData = await db
+            const aggCol = <T>(column: any) => {
+                if (DB_TYPE === "sqlite") {
+                    return sql<T>`json_group_array(${column})`;
+                }
+                return sql<T>`COALESCE(array_agg(${column}) FILTER (WHERE ${sites.siteId} IS NOT NULL), '{}')`;
+            };
+
+            const siteResourcesRaw = await db
                 .select({
                     siteResourceId: siteResources.siteResourceId,
                     name: siteResources.name,
@@ -176,9 +190,19 @@ export async function getUserResources(
                     aliasAddress: siteResources.aliasAddress,
                     tcpPortRangeString: siteResources.tcpPortRangeString,
                     udpPortRangeString: siteResources.udpPortRangeString,
-                    disableIcmp: siteResources.disableIcmp
+                    disableIcmp: siteResources.disableIcmp,
+                    siteIds: aggCol<number[]>(sites.siteId),
+                    siteNames: aggCol<string[]>(sites.name),
+                    siteNiceIds: aggCol<string[]>(sites.niceId),
+                    siteAddresses: aggCol<(string | null)[]>(sites.address),
+                    siteOnlines: aggCol<boolean[]>(sites.online)
                 })
                 .from(siteResources)
+                .leftJoin(
+                    siteNetworks,
+                    eq(siteResources.networkId, siteNetworks.networkId)
+                )
+                .leftJoin(sites, eq(siteNetworks.siteId, sites.siteId))
                 .where(
                     and(
                         inArray(
@@ -188,7 +212,55 @@ export async function getUserResources(
                         eq(siteResources.orgId, orgId),
                         eq(siteResources.enabled, true)
                     )
-                );
+                )
+                .groupBy(siteResources.siteResourceId);
+
+            siteResourcesData = siteResourcesRaw.map((row: any) => {
+                if (DB_TYPE !== "sqlite") {
+                    return row;
+                }
+                const siteIdsRaw = JSON.parse(row.siteIds) as (number | null)[];
+                const siteNamesRaw = JSON.parse(row.siteNames) as (
+                    | string
+                    | null
+                )[];
+                const siteNiceIdsRaw = JSON.parse(row.siteNiceIds) as (
+                    | string
+                    | null
+                )[];
+                const siteAddressesRaw = JSON.parse(row.siteAddresses) as (
+                    | string
+                    | null
+                )[];
+                const siteOnlinesRaw = JSON.parse(row.siteOnlines) as (
+                    | 0
+                    | 1
+                    | null
+                )[];
+
+                const siteIds: number[] = [];
+                const siteNames: string[] = [];
+                const siteNiceIds: string[] = [];
+                const siteAddresses: (string | null)[] = [];
+                const siteOnlines: boolean[] = [];
+                for (let i = 0; i < siteIdsRaw.length; i++) {
+                    if (siteIdsRaw[i] == null) continue;
+                    siteIds.push(siteIdsRaw[i] as number);
+                    siteNames.push((siteNamesRaw[i] ?? "") as string);
+                    siteNiceIds.push((siteNiceIdsRaw[i] ?? "") as string);
+                    siteAddresses.push(siteAddressesRaw[i] ?? null);
+                    siteOnlines.push(siteOnlinesRaw[i] === 1);
+                }
+
+                return {
+                    ...row,
+                    siteIds,
+                    siteNames,
+                    siteNiceIds,
+                    siteAddresses,
+                    siteOnlines
+                };
+            });
         }
 
         // Check for password, pincode, and whitelist protection for each resource
@@ -269,6 +341,11 @@ export async function getUserResources(
                 tcpPortRangeString: siteResource.tcpPortRangeString,
                 udpPortRangeString: siteResource.udpPortRangeString,
                 disableIcmp: siteResource.disableIcmp,
+                siteIds: siteResource.siteIds,
+                siteNames: siteResource.siteNames,
+                siteNiceIds: siteResource.siteNiceIds,
+                siteAddresses: siteResource.siteAddresses,
+                siteOnlines: siteResource.siteOnlines,
                 type: "site" as const
             };
         });
@@ -319,6 +396,11 @@ export type GetUserResourcesResponse = {
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
+            siteIds: number[];
+            siteNames: string[];
+            siteNiceIds: string[];
+            siteAddresses: (string | null)[];
+            siteOnlines: boolean[];
             type: "site";
         }>;
     };
