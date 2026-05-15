@@ -223,9 +223,9 @@ export default function RdpClient({
             );
         }
 
-        const destination = target
-            ? `${target.ip}:${target.port}`
-            : "";
+        const destination = target ? `${target.ip}:${target.port}` : "";
+
+        console.log("Starting RDP session with destination:", destination);
 
         const builder = userInteraction
             .configBuilder()
