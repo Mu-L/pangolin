@@ -2,6 +2,8 @@ import { BrowserGatewayTarget, Target, TargetHealthCheck } from "@server/db";
 import { sendToClient } from "#dynamic/routers/ws";
 import logger from "@server/logger";
 import { canCompress } from "@server/lib/clientVersionChecks";
+import { decrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 
 export async function addTargets(
     newtId: string,
@@ -247,14 +249,21 @@ export async function sendBrowserGatewayTargets(
 ) {
     if (targets.length === 0) return;
 
-    const payload = targets.map((t) => ({
-        id: t.browserGatewayTargetId,
-        resourceId: t.resourceId,
-        siteId: t.siteId,
-        type: t.type,
-        destination: t.destination,
-        destinationPort: t.destinationPort
-    }));
+    const payload = targets.map((t) => {
+        const decryptAuthToken = decrypt(
+            t.authToken,
+            config.getRawConfig().server.secret!
+        );
+        return {
+            id: t.browserGatewayTargetId,
+            resourceId: t.resourceId,
+            siteId: t.siteId,
+            type: t.type,
+            destination: t.destination,
+            destinationPort: t.destinationPort,
+            authToken: decryptAuthToken
+        };
+    });
 
     await sendToClient(
         newtId,

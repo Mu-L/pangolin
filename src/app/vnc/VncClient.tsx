@@ -9,6 +9,7 @@ import { toast } from "@app/hooks/useToast";
 type Target = {
     ip: string;
     port: number;
+    authToken: string;
 };
 
 type FormState = {
@@ -91,7 +92,7 @@ export default function VncClient({
         const params = new URLSearchParams({
             host: target.ip,
             port: String(target.port),
-            authToken: "test-token"
+            authToken: target.authToken
         });
         const wsUrl = `${base}?${params.toString()}`;
 

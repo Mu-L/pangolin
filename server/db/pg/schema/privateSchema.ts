@@ -592,6 +592,7 @@ export const browserGatewayTarget = pgTable("browserGatewayTarget", {
             onDelete: "cascade"
         })
         .notNull(),
+    authToken: varchar("authToken").notNull(),
     type: varchar("type").notNull(), // "ssh", "rdp", "vnc"
     destination: varchar("destination").notNull(),
     destinationPort: integer("destinationPort").notNull()

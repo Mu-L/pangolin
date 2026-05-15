@@ -18,6 +18,7 @@ import logger from "@server/logger";
 import { initPeerAddHandshake, updatePeer } from "../olm/peers";
 import { eq, and } from "drizzle-orm";
 import config from "@server/lib/config";
+import { decrypt } from "@server/lib/crypto";
 import {
     formatEndpoint,
     generateSubnetProxyTargetV2,
@@ -311,12 +312,17 @@ export async function buildTargetConfigurationForNewtClient(
         (target) => target !== null
     );
 
-    const browserGatewayTargets = allBrowserGatewayTargets.map((t) => ({
-        id: t.browserGatewayTargetId,
-        type: t.type,
-        destination: t.destination,
-        destinationPort: t.destinationPort
-    }));
+    const serverSecret = config.getRawConfig().server.secret!;
+    const browserGatewayTargets = allBrowserGatewayTargets.map((t) => {
+        const decryptAuthToken = decrypt(t.authToken, serverSecret);
+        return {
+            id: t.browserGatewayTargetId,
+            type: t.type,
+            destination: t.destination,
+            destinationPort: t.destinationPort,
+            authToken: decryptAuthToken
+        };
+    });
 
     return {
         validHealthCheckTargets,

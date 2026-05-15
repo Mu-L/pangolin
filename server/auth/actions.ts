@@ -152,7 +152,12 @@ export enum ActionsEnum {
     createHealthCheck = "createHealthCheck",
     updateHealthCheck = "updateHealthCheck",
     deleteHealthCheck = "deleteHealthCheck",
-    listHealthChecks = "listHealthChecks"
+    listHealthChecks = "listHealthChecks",
+    createBrowserGatewayTarget = "createBrowserGatewayTarget",
+    updateBrowserGatewayTarget = "updateBrowserGatewayTarget",
+    deleteBrowserGatewayTarget = "deleteBrowserGatewayTarget",
+    getBrowserGatewayTarget = "getBrowserGatewayTarget",
+    listBrowserGatewayTargets = "listBrowserGatewayTargets"
 }
 
 export async function checkUserActionPermission(

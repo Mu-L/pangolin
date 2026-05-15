@@ -8,6 +8,8 @@ import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
+import { decrypt } from "@server/lib/crypto";
+import config from "@server/lib/config";
 
 const getBrowserTargetSchema = z
     .object({
@@ -18,6 +20,7 @@ const getBrowserTargetSchema = z
 export type GetBrowserTargetResponse = {
     ip: string;
     port: number;
+    authToken: string;
 };
 
 export async function getBrowserTarget(
@@ -43,7 +46,8 @@ export async function getBrowserTarget(
         const [browserTarget] = await db
             .select({
                 destination: browserGatewayTarget.destination,
-                destinationPort: browserGatewayTarget.destinationPort
+                destinationPort: browserGatewayTarget.destinationPort,
+                authToken: browserGatewayTarget.authToken
             })
             .from(browserGatewayTarget)
             .innerJoin(
@@ -52,6 +56,11 @@ export async function getBrowserTarget(
             )
             .where(eq(resources.fullDomain, fullDomain))
             .limit(1);
+
+        const decryptAuthToken = decrypt(
+            browserTarget.authToken,
+            config.getRawConfig().server.secret!
+        );
 
         if (!browserTarget) {
             return next(
@@ -65,7 +74,8 @@ export async function getBrowserTarget(
         return response<GetBrowserTargetResponse>(res, {
             data: {
                 ip: browserTarget.destination,
-                port: browserTarget.destinationPort
+                port: browserTarget.destinationPort,
+                authToken: decryptAuthToken
             },
             success: true,
             error: false,
