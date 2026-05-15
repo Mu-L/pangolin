@@ -156,6 +156,9 @@ export async function getUserResources(
             enabled: boolean;
             alias: string | null;
             aliasAddress: string | null;
+            tcpPortRangeString: string | null;
+            udpPortRangeString: string | null;
+            disableIcmp: boolean | null;
         }> = [];
         if (accessibleSiteResourceIds.length > 0) {
             siteResourcesData = await db
@@ -170,7 +173,10 @@ export async function getUserResources(
                     fullDomain: siteResources.fullDomain,
                     enabled: siteResources.enabled,
                     alias: siteResources.alias,
-                    aliasAddress: siteResources.aliasAddress
+                    aliasAddress: siteResources.aliasAddress,
+                    tcpPortRangeString: siteResources.tcpPortRangeString,
+                    udpPortRangeString: siteResources.udpPortRangeString,
+                    disableIcmp: siteResources.disableIcmp
                 })
                 .from(siteResources)
                 .where(
@@ -260,6 +266,9 @@ export async function getUserResources(
                 enabled: siteResource.enabled,
                 alias: siteResource.alias,
                 aliasAddress: siteResource.aliasAddress,
+                tcpPortRangeString: siteResource.tcpPortRangeString,
+                udpPortRangeString: siteResource.udpPortRangeString,
+                disableIcmp: siteResource.disableIcmp,
                 type: "site" as const
             };
         });
@@ -302,6 +311,9 @@ export type GetUserResourcesResponse = {
             destination: string;
             mode: string;
             protocol: string | null;
+            tcpPortRangeString: string | null;
+            udpPortRangeString: string | null;
+            disableIcmp: boolean | null;
             ssl: boolean;
             fullDomain: string | null;
             enabled: boolean;
