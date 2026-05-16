@@ -180,7 +180,8 @@ export const resources = sqliteTable("resources", {
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
     health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false)
+    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
+    browserAccessType: text("browserAccessType").default("http") // rdp, ssh, http, vnc
 });
 
 export const targets = sqliteTable("targets", {
@@ -219,9 +220,11 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
-    siteId: integer("siteId").references(() => sites.siteId, {
-        onDelete: "cascade"
-    }).notNull(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
     name: text("name"),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()
@@ -1196,19 +1199,30 @@ export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
     complete: integer("complete", { mode: "boolean" }).notNull().default(false)
 });
 
-export const statusHistory = sqliteTable("statusHistory", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    entityType: text("entityType").notNull(), // "site" | "healthCheck"
-    entityId: integer("entityId").notNull(),  // siteId or targetHealthCheckId
-    orgId: text("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    status: text("status").notNull(), // "online"/"offline" for sites; "healthy"/"unhealthy"/"unknown" for healthChecks
-    timestamp: integer("timestamp").notNull(), // unix epoch seconds
-}, (table) => [
-    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
-    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
-]);
+export const statusHistory = sqliteTable(
+    "statusHistory",
+    {
+        id: integer("id").primaryKey({ autoIncrement: true }),
+        entityType: text("entityType").notNull(), // "site" | "healthCheck"
+        entityId: integer("entityId").notNull(), // siteId or targetHealthCheckId
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        status: text("status").notNull(), // "online"/"offline" for sites; "healthy"/"unhealthy"/"unknown" for healthChecks
+        timestamp: integer("timestamp").notNull() // unix epoch seconds
+    },
+    (table) => [
+        index("idx_statusHistory_entity").on(
+            table.entityType,
+            table.entityId,
+            table.timestamp
+        ),
+        index("idx_statusHistory_org_timestamp").on(
+            table.orgId,
+            table.timestamp
+        )
+    ]
+);
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;

@@ -141,6 +141,7 @@ export type ResourceWithTargets = {
     headerAuthId: number | null;
     wildcard: boolean;
     health: string | null;
+    browserAccessType: string | null;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -178,7 +179,8 @@ function queryResourcesBase() {
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
                 resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
-            health: resources.health
+            health: resources.health,
+            browserAccessType: resources.browserAccessType
         })
         .from(resources)
         .leftJoin(
@@ -478,6 +480,7 @@ export async function listResources(
                     protocol: row.protocol,
                     proxyPort: row.proxyPort,
                     wildcard: row.wildcard,
+                    browserAccessType: row.browserAccessType,
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,

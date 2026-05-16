@@ -159,7 +159,8 @@ export const resources = pgTable("resources", {
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
     health: varchar("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-    wildcard: boolean("wildcard").notNull().default(false)
+    wildcard: boolean("wildcard").notNull().default(false),
+    browserAccessType: text("browserAccessType").default("http") // rdp, ssh, http, vnc
 });
 
 export const targets = pgTable("targets", {
@@ -196,9 +197,11 @@ export const targetHealthCheck = pgTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
-    siteId: integer("siteId").references(() => sites.siteId, {
-        onDelete: "cascade"
-    }).notNull(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
     name: varchar("name"),
     hcEnabled: boolean("hcEnabled").notNull().default(false),
     hcPath: varchar("hcPath"),
@@ -1097,19 +1100,30 @@ export const roundTripMessageTracker = pgTable("roundTripMessageTracker", {
     complete: boolean("complete").notNull().default(false)
 });
 
-export const statusHistory = pgTable("statusHistory", {
-    id: serial("id").primaryKey(),
-    entityType: varchar("entityType").notNull(),
-    entityId: integer("entityId").notNull(),
-    orgId: varchar("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    status: varchar("status").notNull(),
-    timestamp: integer("timestamp").notNull(),
-}, (table) => [
-    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
-    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
-]);
+export const statusHistory = pgTable(
+    "statusHistory",
+    {
+        id: serial("id").primaryKey(),
+        entityType: varchar("entityType").notNull(),
+        entityId: integer("entityId").notNull(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        status: varchar("status").notNull(),
+        timestamp: integer("timestamp").notNull()
+    },
+    (table) => [
+        index("idx_statusHistory_entity").on(
+            table.entityType,
+            table.entityId,
+            table.timestamp
+        ),
+        index("idx_statusHistory_org_timestamp").on(
+            table.orgId,
+            table.timestamp
+        )
+    ]
+);
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;

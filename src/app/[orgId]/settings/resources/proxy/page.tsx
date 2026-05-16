@@ -125,6 +125,7 @@ export default async function ProxyResourcesPage(
             fullDomain: resource.fullDomain ?? null,
             ssl: resource.ssl,
             wildcard: resource.wildcard,
+            browserAccessType: resource.browserAccessType,
             targets: resource.targets?.map((target) => ({
                 targetId: target.targetId,
                 ip: target.ip,
