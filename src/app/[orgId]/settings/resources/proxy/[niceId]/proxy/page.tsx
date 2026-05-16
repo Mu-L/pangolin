@@ -121,6 +121,10 @@ export default function ReverseProxyTargetsPage(props: {
     const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
 
+    const [targetMode, setTargetMode] = useState<
+        "http" | "ssh" | "rdp" | "vnc"
+    >((resource.browserAccessType as "http" | "ssh" | "rdp" | "vnc") || "http");
+
     const { data: remoteTargets = [], isLoading: isLoadingTargets } = useQuery(
         resourceQueries.resourceTargets({
             resourceId: resource.resourceId
@@ -137,9 +141,12 @@ export default function ReverseProxyTargetsPage(props: {
                 orgId={params.orgId}
                 initialTargets={remoteTargets}
                 resource={resource}
+                targetMode={targetMode}
+                setTargetMode={setTargetMode}
+                updateResource={updateResource}
             />
 
-            {resource.http && (
+            {resource.http && targetMode === "http" && (
                 <ProxyResourceHttpForm
                     resource={resource}
                     updateResource={updateResource}
@@ -159,11 +166,17 @@ export default function ReverseProxyTargetsPage(props: {
 function ProxyResourceTargetsForm({
     orgId,
     initialTargets,
-    resource
+    resource,
+    targetMode,
+    setTargetMode,
+    updateResource
 }: {
     initialTargets: LocalTarget[];
     orgId: string;
     resource: GetResourceResponse;
+    targetMode: "http" | "ssh" | "rdp" | "vnc";
+    setTargetMode: (mode: "http" | "ssh" | "rdp" | "vnc") => void;
+    updateResource: ResourceContextType["updateResource"];
 }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -201,9 +214,6 @@ function ProxyResourceTargetsForm({
     const [selectedTargetForHealthCheck, setSelectedTargetForHealthCheck] =
         useState<LocalTarget | null>(null);
 
-    const [targetMode, setTargetMode] = useState<
-        "http" | "ssh" | "rdp" | "vnc"
-    >("http");
     const [bgDestination, setBgDestination] = useState("");
     const [bgDestinationPort, setBgDestinationPort] = useState("");
     const [bgSiteId, setBgSiteId] = useState<number | null>(null);
@@ -938,11 +948,30 @@ function ProxyResourceTargetsForm({
                         <span className="text-sm font-medium">Target Type</span>
                         <Select
                             value={targetMode}
-                            onValueChange={(v) =>
-                                setTargetMode(
-                                    v as "http" | "ssh" | "rdp" | "vnc"
-                                )
-                            }
+                            onValueChange={async (v) => {
+                                const mode = v as
+                                    | "http"
+                                    | "ssh"
+                                    | "rdp"
+                                    | "vnc";
+                                setTargetMode(mode);
+                                try {
+                                    await api.post(
+                                        `/resource/${resource.resourceId}`,
+                                        { browserAccessType: mode }
+                                    );
+                                    updateResource({ browserAccessType: mode });
+                                } catch (err) {
+                                    toast({
+                                        variant: "destructive",
+                                        title: t("settingsErrorUpdate"),
+                                        description: formatAxiosError(
+                                            err,
+                                            t("settingsErrorUpdateDescription")
+                                        )
+                                    });
+                                }
+                            }}
                         >
                             <SelectTrigger className="w-36">
                                 <SelectValue />

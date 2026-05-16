@@ -82,6 +82,7 @@ export type ResourceRow = {
     name: string;
     orgId: string;
     domain: string;
+    browserAccessType: string | null;
     authState: string;
     http: boolean;
     protocol: string;
@@ -493,6 +494,12 @@ export default function ProxyResourcesTable({
             ),
             cell: ({ row }) => {
                 const resourceRow = row.original;
+                if (
+                    !resourceRow.http ||
+                    resourceRow.browserAccessType !== "http"
+                ) {
+                    return <span>-</span>;
+                }
                 return (
                     <TargetStatusCell
                         targets={resourceRow.targets}
@@ -521,6 +528,12 @@ export default function ProxyResourcesTable({
             header: () => <span className="p-3">{t("uptime30d")}</span>,
             cell: ({ row }) => {
                 const resourceRow = row.original;
+                if (
+                    !resourceRow.http ||
+                    resourceRow.browserAccessType !== "http"
+                ) {
+                    return <span>-</span>;
+                }
                 return <UptimeMiniBar resourceId={resourceRow.id} days={30} />;
             }
         },

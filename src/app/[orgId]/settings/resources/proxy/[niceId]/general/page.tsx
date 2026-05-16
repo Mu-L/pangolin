@@ -507,7 +507,9 @@ export default function GeneralForm() {
                     name: data.name,
                     niceId: data.niceId,
                     subdomain: data.subdomain
-                        ? toASCII(finalizeSubdomainSanitize(data.subdomain, true))
+                        ? toASCII(
+                              finalizeSubdomainSanitize(data.subdomain, true)
+                          )
                         : undefined,
                     domainId: data.domainId,
                     proxyPort: data.proxyPort
@@ -555,13 +557,15 @@ export default function GeneralForm() {
     return (
         <>
             <SettingsContainer>
-                {resource?.resourceId && resource?.orgId && (
-                    <UptimeAlertSection
-                        orgId={resource.orgId}
-                        resourceId={resource.resourceId}
-                        startingName={resource.name}
-                    />
-                )}
+                {resource?.resourceId &&
+                    resource?.orgId &&
+                    resource.browserAccessType == "http" && (
+                        <UptimeAlertSection
+                            orgId={resource.orgId}
+                            resourceId={resource.resourceId}
+                            startingName={resource.name}
+                        />
+                    )}
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
