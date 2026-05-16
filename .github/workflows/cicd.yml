@@ -415,7 +415,9 @@ jobs:
 
             - name: Install cosign
               # cosign is used to sign container images using keyless (OIDC) signing
-              uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+              uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.2
+              with:
+                cosign-release: v3.0.6
 
             - name: Sign (GHCR, keyless)
               # Sign each GHCR image by digest using keyless (OIDC) signing via Sigstore/Rekor.
