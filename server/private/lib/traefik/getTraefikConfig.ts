@@ -1182,7 +1182,7 @@ export async function getTraefikConfig(
         config_output.http.middlewares![uiRewriteMiddlewareName] = {
             replacePathRegex: {
                 regex: "^/(.*)",
-                replacement: `/${primaryType}`
+                replacement: `/auth/${primaryType}`
             }
         };
 
