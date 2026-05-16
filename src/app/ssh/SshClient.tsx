@@ -336,14 +336,14 @@ export default function SshClient({
 
                         <Button
                             onClick={connect}
+                            loading={connecting}
                             disabled={
-                                connecting ||
                                 !form.username ||
                                 (!form.password && !form.privateKey)
                             }
                             className="w-full"
                         >
-                            {connecting ? "Connecting..." : "Connect"}
+                            Connect
                         </Button>
                     </div>
                 </div>
