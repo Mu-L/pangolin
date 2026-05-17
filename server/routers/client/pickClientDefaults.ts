@@ -15,7 +15,11 @@ export type PickClientDefaultsResponse = {
     olmSecret: string;
     subnet: string;
 };
-const PickClientDefaultsResponseDataSchema = z.object({olmId: z.string(), olmSecret: z.string(), subnet: z.string()});
+const PickClientDefaultsResponseDataSchema = z.object({
+    olmId: z.string(),
+    olmSecret: z.string(),
+    subnet: z.string()
+});
 
 
 const pickClientDefaultsSchema = z.strictObject({

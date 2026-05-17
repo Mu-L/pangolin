@@ -53,7 +53,9 @@ const bodySchema = z.strictObject({
 export type CreateHealthCheckResponse = {
     targetHealthCheckId: number;
 };
-const CreateHealthCheckResponseDataSchema = z.object({targetHealthCheckId: z.number()});
+const CreateHealthCheckResponseDataSchema = z.object({
+    targetHealthCheckId: z.number()
+});
 
 
 registry.registerPath({

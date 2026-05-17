@@ -43,7 +43,9 @@ const bodySchema = z.strictObject({
 export type CreateEventStreamingDestinationResponse = {
     destinationId: number;
 };
-const CreateEventStreamingDestinationResponseDataSchema = z.object({destinationId: z.number()});
+const CreateEventStreamingDestinationResponseDataSchema = z.object({
+    destinationId: z.number()
+});
 
 
 registry.registerPath({

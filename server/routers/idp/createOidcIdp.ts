@@ -34,7 +34,10 @@ export type CreateIdpResponse = {
     idpId: number;
     redirectUrl: string;
 };
-const CreateIdpResponseDataSchema = z.object({idpId: z.number(), redirectUrl: z.string()});
+const CreateIdpResponseDataSchema = z.object({
+    idpId: z.number(),
+    redirectUrl: z.string()
+});
 
 
 registry.registerPath({

@@ -25,7 +25,11 @@ export type UpdateDomainResponse = {
     certResolver: string | null;
     preferWildcardCert: boolean | null;
 };
-const UpdateDomainResponseDataSchema = z.object({domainId: z.string(), certResolver: z.string().nullable(), preferWildcardCert: z.boolean().nullable()});
+const UpdateDomainResponseDataSchema = z.object({
+    domainId: z.string(),
+    certResolver: z.string().nullable(),
+    preferWildcardCert: z.boolean().nullable()
+});
 
 
 registry.registerPath({

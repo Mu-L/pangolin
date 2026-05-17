@@ -18,7 +18,9 @@ const getOrgSchema = z.strictObject({
 export type GetOrgResponse = {
     org: Org;
 };
-const GetOrgResponseDataSchema = z.object({org: z.object({}).passthrough()});
+const GetOrgResponseDataSchema = z.object({
+    org: z.object({}).passthrough()
+});
 
 
 registry.registerPath({

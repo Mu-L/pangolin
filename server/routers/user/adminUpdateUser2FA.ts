@@ -23,7 +23,10 @@ export type UpdateUser2FAResponse = {
     userId: string;
     twoFactorRequested: boolean;
 };
-const UpdateUser2FAResponseDataSchema = z.object({userId: z.string(), twoFactorRequested: z.boolean()});
+const UpdateUser2FAResponseDataSchema = z.object({
+    userId: z.string(),
+    twoFactorRequested: z.boolean()
+});
 
 
 registry.registerPath({

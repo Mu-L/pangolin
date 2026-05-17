@@ -68,7 +68,10 @@ export type InviteUserResponse = {
     inviteLink: string;
     expiresAt: number;
 };
-const InviteUserResponseDataSchema = z.object({inviteLink: z.string(), expiresAt: z.number()});
+const InviteUserResponseDataSchema = z.object({
+    inviteLink: z.string(),
+    expiresAt: z.number()
+});
 
 
 registry.registerPath({

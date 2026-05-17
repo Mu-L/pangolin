@@ -39,7 +39,9 @@ const bodySchema = z.strictObject({
 export type UpdateIdpResponse = {
     idpId: number;
 };
-const UpdateIdpResponseDataSchema = z.object({idpId: z.number()});
+const UpdateIdpResponseDataSchema = z.object({
+    idpId: z.number()
+});
 
 
 registry.registerPath({

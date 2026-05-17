@@ -33,7 +33,13 @@ export type CreateOrgApiKeyResponse = {
     lastChars: string;
     createdAt: string;
 };
-const CreateOrgApiKeyResponseDataSchema = z.object({apiKeyId: z.string(), name: z.string(), apiKey: z.string(), lastChars: z.string(), createdAt: z.string()});
+const CreateOrgApiKeyResponseDataSchema = z.object({
+    apiKeyId: z.string(),
+    name: z.string(),
+    apiKey: z.string(),
+    lastChars: z.string(),
+    createdAt: z.string()
+});
 
 
 registry.registerPath({

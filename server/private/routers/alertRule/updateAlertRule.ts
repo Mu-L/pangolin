@@ -149,7 +149,9 @@ const bodySchema = z
 export type UpdateAlertRuleResponse = {
     alertRuleId: number;
 };
-const UpdateAlertRuleResponseDataSchema = z.object({alertRuleId: z.number()});
+const UpdateAlertRuleResponseDataSchema = z.object({
+    alertRuleId: z.number()
+});
 
 
 registry.registerPath({
