@@ -11,7 +11,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const archiveClientSchema = z.strictObject({
-    clientId: z.string().transform(Number).pipe(z.int().positive())
+    clientId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

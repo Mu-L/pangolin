@@ -20,7 +20,7 @@ const authWithWhitelistBodySchema = z.strictObject({
 });
 
 const authWithWhitelistParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 export type AuthWithWhitelistResponse = {

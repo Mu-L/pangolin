@@ -11,11 +11,11 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const deleteRoleSchema = z.strictObject({
-    roleId: z.string().transform(Number).pipe(z.int().positive())
+    roleId: z.coerce.number().int().positive()
 });
 
 const deelteRoleBodySchema = z.strictObject({
-    roleId: z.string().transform(Number).pipe(z.int().positive())
+    roleId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

@@ -22,7 +22,7 @@ import {
 
 const batchAddClientToSiteResourcesParamsSchema = z
     .object({
-        clientId: z.string().transform(Number).pipe(z.number().int().positive())
+        clientId: z.coerce.number().int().positive()
     })
     .strict();
 

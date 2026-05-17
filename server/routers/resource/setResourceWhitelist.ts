@@ -24,7 +24,7 @@ const setResourceWhitelistBodySchema = z.strictObject({
 });
 
 const setResourceWhitelistParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

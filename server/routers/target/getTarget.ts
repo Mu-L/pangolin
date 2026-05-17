@@ -11,7 +11,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const getTargetSchema = z.strictObject({
-    targetId: z.string().transform(Number).pipe(z.int().positive())
+    targetId: z.coerce.number().int().positive()
 });
 
 type GetTargetResponse = Target &

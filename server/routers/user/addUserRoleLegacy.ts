@@ -14,7 +14,7 @@ import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAs
 
 /** Legacy path param order: /role/:roleId/add/:userId */
 const addUserRoleLegacyParamsSchema = z.strictObject({
-    roleId: z.string().transform(stoi).pipe(z.number()),
+    roleId: z.coerce.number(),
     userId: z.string()
 });
 

@@ -18,8 +18,8 @@ import { isValidRegionId } from "@server/db/regions";
 
 // Define Zod schema for request parameters validation
 const updateResourceRuleParamsSchema = z.strictObject({
-    ruleId: z.string().transform(Number).pipe(z.int().positive()),
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    ruleId: z.coerce.number().int().positive(),
+    resourceId: z.coerce.number().int().positive()
 });
 
 // Define Zod schema for request body validation

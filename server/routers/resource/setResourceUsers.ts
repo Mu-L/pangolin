@@ -15,7 +15,7 @@ const setUserResourcesBodySchema = z.strictObject({
 });
 
 const setUserResourcesParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

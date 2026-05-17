@@ -11,7 +11,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const listSiteResourcesParamsSchema = z.strictObject({
-    siteId: z.string().transform(Number).pipe(z.int().positive()),
+    siteId: z.coerce.number().int().positive(),
     orgId: z.string()
 });
 

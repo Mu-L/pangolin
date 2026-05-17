@@ -42,7 +42,12 @@ const createSiteResourceParamsSchema = z.strictObject({
 const createSiteResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
-        niceId: z.string().optional(),
+        niceId: z.string().optional()
+            .openapi({
+                description:
+                    "Fully qualified domain name with optional wildcards, e.g., example.internal, *.example.internal, or host-0?.example.internal",
+                example: "service.example.internal"
+            }),
         // protocol: z.enum(["tcp", "udp"]).optional(),
         mode: z.enum(["host", "cidr", "http"]),
         ssl: z.boolean().optional(), // only used for http mode

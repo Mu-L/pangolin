@@ -31,7 +31,7 @@ export const generateAccessTokenBodySchema = z.strictObject({
 });
 
 export const generateAccssTokenParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 export type GenerateAccessTokenResponse = Omit<

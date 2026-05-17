@@ -31,7 +31,7 @@ import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 
 const updateResourceParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 const updateHttpResourceBodySchema = z

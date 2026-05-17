@@ -14,7 +14,7 @@ import { sendTerminateClient } from "./terminate";
 import { OlmErrorCodes } from "../olm/error";
 
 const deleteClientSchema = z.strictObject({
-    clientId: z.string().transform(Number).pipe(z.int().positive())
+    clientId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

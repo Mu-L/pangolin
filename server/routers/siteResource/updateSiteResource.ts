@@ -37,7 +37,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const updateSiteResourceParamsSchema = z.strictObject({
-    siteResourceId: z.string().transform(Number).pipe(z.int().positive())
+    siteResourceId: z.coerce.number().int().positive()
 });
 
 const updateSiteResourceSchema = z
@@ -58,7 +58,12 @@ const updateSiteResourceSchema = z
         // mode: z.enum(["host", "cidr", "port"]).optional(),
         mode: z.enum(["host", "cidr", "http"]).optional(),
         ssl: z.boolean().optional(),
-        scheme: z.enum(["http", "https"]).nullish(),
+        scheme: z.enum(["http", "https"]).nullish()
+            .openapi({
+                description:
+                    "Fully qualified domain name with optional wildcards, e.g., example.internal, *.example.internal, or host-0?.example.internal",
+                example: "service.example.internal"
+            }),
         // proxyPort: z.int().positive().nullish(),
         destinationPort: z.int().positive().nullish(),
         destination: z.string().min(1).optional(),

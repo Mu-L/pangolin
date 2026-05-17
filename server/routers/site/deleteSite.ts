@@ -16,7 +16,7 @@ import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 
 const deleteSiteSchema = z.strictObject({
-    siteId: z.string().transform(Number).pipe(z.int().positive())
+    siteId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

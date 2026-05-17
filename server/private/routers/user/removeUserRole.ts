@@ -27,7 +27,7 @@ import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAs
 
 const removeUserRoleParamsSchema = z.strictObject({
     userId: z.string(),
-    roleId: z.string().transform(stoi).pipe(z.number())
+    roleId: z.coerce.number()
 });
 
 registry.registerPath({

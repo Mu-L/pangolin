@@ -13,7 +13,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { BlueprintData } from "./types";
 
 const getBlueprintSchema = z.strictObject({
-    blueprintId: z.string().transform(stoi).pipe(z.int().positive()),
+    blueprintId: z.coerce.number().int().positive(),
     orgId: z.string()
 });
 

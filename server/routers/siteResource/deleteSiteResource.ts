@@ -12,7 +12,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
 
 const deleteSiteResourceParamsSchema = z.strictObject({
-    siteResourceId: z.string().transform(Number).pipe(z.int().positive())
+    siteResourceId: z.coerce.number().int().positive()
 });
 
 export type DeleteSiteResourceResponse = {

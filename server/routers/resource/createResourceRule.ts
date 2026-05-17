@@ -25,7 +25,7 @@ const createResourceRuleSchema = z.strictObject({
 });
 
 const createResourceRuleParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

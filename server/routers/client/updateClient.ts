@@ -11,7 +11,7 @@ import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const updateClientParamsSchema = z.strictObject({
-    clientId: z.string().transform(Number).pipe(z.int().positive())
+    clientId: z.coerce.number().int().positive()
 });
 
 const updateClientSchema = z.strictObject({

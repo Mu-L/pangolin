@@ -20,7 +20,7 @@ export const authWithPasswordBodySchema = z.strictObject({
 });
 
 export const authWithPasswordParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 export type AuthWithPasswordResponse = {

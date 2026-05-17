@@ -15,7 +15,7 @@ const setResourceRolesBodySchema = z.strictObject({
 });
 
 const setResourceRolesParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

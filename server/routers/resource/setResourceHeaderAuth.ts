@@ -15,7 +15,7 @@ import { hashPassword } from "@server/auth/password";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const setResourceAuthMethodsParamsSchema = z.object({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 const setResourceAuthMethodsBodySchema = z.strictObject({

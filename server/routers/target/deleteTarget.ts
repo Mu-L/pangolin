@@ -13,7 +13,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { targetHealthCheck } from "@server/db";
 
 const deleteTargetSchema = z.strictObject({
-    targetId: z.string().transform(Number).pipe(z.int().positive())
+    targetId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({

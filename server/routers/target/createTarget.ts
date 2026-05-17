@@ -26,7 +26,7 @@ import {
 } from "@server/lib/alerts";
 
 const createTargetParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 const createTargetSchema = z.strictObject({

@@ -14,7 +14,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const updateRoleParamsSchema = z.strictObject({
-    roleId: z.string().transform(Number).pipe(z.int().positive())
+    roleId: z.coerce.number().int().positive()
 });
 
 const sshSudoModeSchema = z.enum(["none", "full", "commands"]);
