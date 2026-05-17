@@ -630,7 +630,7 @@
     "createdAt": "Vytvořeno v",
     "proxyErrorInvalidHeader": "Neplatná hodnota hlavičky hostitele. Použijte formát názvu domény, nebo uložte prázdné pro zrušení vlastního hlavičky hostitele.",
     "proxyErrorTls": "Neplatné jméno TLS serveru. Použijte formát doménového jména nebo uložte prázdné pro odstranění názvu TLS serveru.",
-    "proxyEnableSSL": "Povolit SSL",
+    "proxyEnableSSL": "Povolit TLS",
     "proxyEnableSSLDescription": "Povolit šifrování SSL/TLS pro zabezpečená připojení HTTPS k cílům.",
     "target": "Target",
     "configureTarget": "Konfigurace cílů",
