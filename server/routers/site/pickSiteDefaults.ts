@@ -15,6 +15,7 @@ import config from "@server/lib/config";
 import { OpenAPITags, registry } from "@server/openApi";
 import { fromError } from "zod-validation-error";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { listExitNodes } from "#dynamic/lib/exitNodes";
 
 export type PickSiteDefaultsResponse = {
@@ -29,6 +30,8 @@ export type PickSiteDefaultsResponse = {
     newtSecret: string;
     clientAddress?: string;
 };
+const PickSiteDefaultsResponseDataSchema = z.object({exitNodeId: z.number(), address: z.string(), publicKey: z.string(), name: z.string(), listenPort: z.number(), endpoint: z.string(), subnet: z.string(), newtId: z.string(), newtSecret: z.string(), clientAddress: z.string().optional()});
+
 
 registry.registerPath({
     method: "get",
@@ -46,13 +49,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(PickSiteDefaultsResponseDataSchema)
                 }
             }
         }

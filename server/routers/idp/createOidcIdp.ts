@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { db } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -33,6 +34,8 @@ export type CreateIdpResponse = {
     idpId: number;
     redirectUrl: string;
 };
+const CreateIdpResponseDataSchema = z.object({idpId: z.number(), redirectUrl: z.string()});
+
 
 registry.registerPath({
     method: "put",
@@ -53,13 +56,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(CreateIdpResponseDataSchema)
                 }
             }
         }

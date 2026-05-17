@@ -6,6 +6,7 @@ import logger from "@server/logger";
 import { generateId } from "@server/auth/sessions/app";
 import { getNextAvailableClientSubnet } from "@server/lib/ip";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
 
@@ -14,6 +15,8 @@ export type PickClientDefaultsResponse = {
     olmSecret: string;
     subnet: string;
 };
+const PickClientDefaultsResponseDataSchema = z.object({olmId: z.string(), olmSecret: z.string(), subnet: z.string()});
+
 
 const pickClientDefaultsSchema = z.strictObject({
     orgId: z.string()
@@ -32,13 +35,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(PickClientDefaultsResponseDataSchema)
                 }
             }
         }

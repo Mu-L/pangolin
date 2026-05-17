@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { db } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { apiKeyOrg, apiKeys } from "@server/db";
 import { fromError } from "zod-validation-error";
 import createHttpError from "http-errors";
@@ -32,6 +33,8 @@ export type CreateOrgApiKeyResponse = {
     lastChars: string;
     createdAt: string;
 };
+const CreateOrgApiKeyResponseDataSchema = z.object({apiKeyId: z.string(), name: z.string(), apiKey: z.string(), lastChars: z.string(), createdAt: z.string()});
+
 
 registry.registerPath({
     method: "put",
@@ -53,13 +56,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(CreateOrgApiKeyResponseDataSchema)
                 }
             }
         }

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { db } from "@server/db";
 import { users, userOrgs } from "@server/db";
 import { eq, and } from "drizzle-orm";
@@ -22,6 +23,8 @@ export type UpdateUser2FAResponse = {
     userId: string;
     twoFactorRequested: boolean;
 };
+const UpdateUser2FAResponseDataSchema = z.object({userId: z.string(), twoFactorRequested: z.boolean()});
+
 
 registry.registerPath({
     method: "post",
@@ -43,13 +46,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(UpdateUser2FAResponseDataSchema)
                 }
             }
         }

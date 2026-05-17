@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -53,6 +54,8 @@ const bodySchema = z
     }));
 
 export type CreateOrgUserResponse = {};
+const CreateOrgUserResponseDataSchema = z.object({});
+
 
 registry.registerPath({
     method: "put",
@@ -74,13 +77,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(CreateOrgUserResponseDataSchema)
                 }
             }
         }

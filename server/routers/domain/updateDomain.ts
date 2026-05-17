@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { db, domains, orgDomains } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -24,6 +25,8 @@ export type UpdateDomainResponse = {
     certResolver: string | null;
     preferWildcardCert: boolean | null;
 };
+const UpdateDomainResponseDataSchema = z.object({domainId: z.string(), certResolver: z.string().nullable(), preferWildcardCert: z.boolean().nullable()});
+
 
 registry.registerPath({
     method: "patch",
@@ -41,13 +44,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(UpdateDomainResponseDataSchema)
                 }
             }
         }

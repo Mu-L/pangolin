@@ -13,6 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { db } from "@server/db";
 import { eventStreamingDestinations } from "@server/db";
 import { logStreamingManager } from "#private/lib/logStreaming";
@@ -42,6 +43,8 @@ const bodySchema = z.strictObject({
 export type CreateEventStreamingDestinationResponse = {
     destinationId: number;
 };
+const CreateEventStreamingDestinationResponseDataSchema = z.object({destinationId: z.number()});
+
 
 registry.registerPath({
     method: "put",
@@ -63,13 +66,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(CreateEventStreamingDestinationResponseDataSchema)
                 }
             }
         }

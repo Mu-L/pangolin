@@ -13,6 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { db, targetHealthCheck, newts, sites } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -81,6 +82,8 @@ export type UpdateHealthCheckResponse = {
     hcHealthyThreshold: number | null;
     hcUnhealthyThreshold: number | null;
 };
+const UpdateHealthCheckResponseDataSchema = z.object({targetHealthCheckId: z.number(), name: z.string().nullable(), siteId: z.number().nullable(), hcEnabled: z.boolean(), hcHealth: z.string().nullable(), hcMode: z.string().nullable(), hcHostname: z.string().nullable(), hcPort: z.number().nullable(), hcPath: z.string().nullable(), hcScheme: z.string().nullable(), hcMethod: z.string().nullable(), hcInterval: z.number().nullable(), hcUnhealthyInterval: z.number().nullable(), hcTimeout: z.number().nullable(), hcHeaders: z.string().nullable(), hcFollowRedirects: z.boolean().nullable(), hcStatus: z.number().nullable(), hcTlsServerName: z.string().nullable(), hcHealthyThreshold: z.number().nullable(), hcUnhealthyThreshold: z.number().nullable()});
+
 
 registry.registerPath({
     method: "post",
@@ -102,13 +105,7 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(UpdateHealthCheckResponseDataSchema)
                 }
             }
         }

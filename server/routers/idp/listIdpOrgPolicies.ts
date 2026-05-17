@@ -9,6 +9,7 @@ import { eq, sql } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 
 const paramsSchema = z.object({
     idpId: z.coerce.number<number>()
@@ -44,6 +45,21 @@ export type ListIdpOrgPoliciesResponse = {
     pagination: { total: number; limit: number; offset: number };
 };
 
+const ListIdpOrgPoliciesResponseDataSchema = z.object({
+    policies: z.array(
+        z.object({
+            idpId: z.number(),
+            orgId: z.string(),
+            assignDefaultOrgRoleId: z.number().nullable()
+        })
+    ),
+    pagination: z.object({
+        total: z.number(),
+        limit: z.number(),
+        offset: z.number()
+    })
+});
+
 registry.registerPath({
     method: "get",
     path: "/idp/{idpId}/org",
@@ -58,13 +74,9 @@ registry.registerPath({
             description: "Successful response",
             content: {
                 "application/json": {
-                    schema: z.object({
-                        data: z.unknown().nullable(),
-                        success: z.boolean(),
-                        error: z.boolean(),
-                        message: z.string(),
-                        status: z.number()
-                    })
+                    schema: createApiResponseSchema(
+                        ListIdpOrgPoliciesResponseDataSchema
+                    )
                 }
             }
         }
