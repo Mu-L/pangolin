@@ -56,7 +56,7 @@ export function OrgLabelForm({ onSubmit, defaultValue }: OrgLabelFormProps) {
         <Form {...form}>
             <form
                 id="org-label-form"
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-4 px-0.5"
                 action={async () => {
                     if (await form.trigger()) {
                         onSubmit(form.getValues());

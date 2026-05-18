@@ -258,7 +258,7 @@
     "labelDelete": "Delete Label",
     "labelAdd": "Add Label",
     "labelCreateSuccessMessage": "Label Created Successfully",
-    "labelEditSuccess": "Label Modified Successfully",
+    "labelEditSuccessMessage": "Label Modified Successfully",
     "labelNameField": "Label Name",
     "labelColorField": "Label Color",
     "labelPlaceholder": "Ex: homelab",
