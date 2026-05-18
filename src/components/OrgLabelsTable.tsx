@@ -33,6 +33,7 @@ import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { cn } from "@app/lib/cn";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 import { CreateOrgLabelDialog } from "./CreateOrgLabelDialog";
+import { EditOrgLabelDialog } from "./EditOrgLabelDialog";
 
 export type LabelRow = {
     labelId: number;
@@ -134,7 +135,14 @@ export default function OrgLabelsTable({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem>{t("edit")}</DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    setSelectedLabel(row.original);
+                                    setIsEditModalOpen(true);
+                                }}
+                            >
+                                {t("edit")}
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={() => {
                                     setSelectedLabel(row.original);
@@ -191,6 +199,16 @@ export default function OrgLabelsTable({
                         onConfirm={async () => deleteLabel(selectedLabel)}
                         string={selectedLabel.name}
                         title={t("labelDelete")}
+                    />
+
+                    <EditOrgLabelDialog
+                        open={isEditModalOpen}
+                        setOpen={setIsEditModalOpen}
+                        orgId={orgId}
+                        onSuccess={() =>
+                            startTransition(() => router.refresh())
+                        }
+                        label={selectedLabel}
                     />
                 </>
             )}

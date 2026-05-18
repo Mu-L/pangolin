@@ -20,36 +20,42 @@ import {
 import { OrgLabelForm } from "./OrgLabelForm";
 import { Button } from "./ui/button";
 
-export type CreateOrgLabelDialogProps = {
+export type EditOrgLabelDialogProps = {
     open: boolean;
     setOpen: (val: boolean) => void;
     orgId: string;
     onSuccess?: () => void;
+    label: {
+        name: string;
+        color: string;
+        labelId: number;
+    };
 };
 
-export function CreateOrgLabelDialog({
+export function EditOrgLabelDialog({
     open,
     setOpen,
     orgId,
-    onSuccess
-}: CreateOrgLabelDialogProps) {
+    onSuccess,
+    label
+}: EditOrgLabelDialogProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const [isSubmitting, startTransition] = useTransition();
 
-    async function createOrgLabel(data: { name: string; color: string }) {
+    async function editOrgLabel(data: { name: string; color: string }) {
         try {
-            const res = await api.post<
+            const res = await api.patch<
                 AxiosResponse<CreateOrEditLabelResponse>
-            >(`/org/${orgId}/labels`, data);
+            >(`/org/${orgId}/label/${label.labelId}`, data);
 
-            if (res.status === 201) {
+            if (res.status === 200) {
                 setOpen(false);
                 onSuccess?.();
 
                 toast({
                     title: t("success"),
-                    description: t("labelCreateSuccessMessage")
+                    description: t("labelEditSuccessMessage")
                 });
             }
         } catch (e) {
@@ -65,15 +71,16 @@ export function CreateOrgLabelDialog({
         <Credenza open={open} onOpenChange={setOpen}>
             <CredenzaContent className="md:max-w-md">
                 <CredenzaHeader>
-                    <CredenzaTitle>{t("createLabelDialogTitle")}</CredenzaTitle>
+                    <CredenzaTitle>{t("editLabelDialogTitle")}</CredenzaTitle>
                     <CredenzaDescription>
-                        {t("createLabelDialogDescription")}
+                        {t("editLabelDialogDescription")}
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
                     <OrgLabelForm
+                        defaultValue={label}
                         onSubmit={(data) => {
-                            startTransition(async () => createOrgLabel(data));
+                            startTransition(async () => editOrgLabel(data));
                         }}
                     />
                 </CredenzaBody>
@@ -93,7 +100,7 @@ export function CreateOrgLabelDialog({
                         disabled={isSubmitting}
                         loading={isSubmitting}
                     >
-                        {t("labelCreate")}
+                        {t("labelEdit")}
                     </Button>
                 </CredenzaFooter>
             </CredenzaContent>

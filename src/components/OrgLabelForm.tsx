@@ -34,9 +34,10 @@ export type LabelFormData = z.infer<typeof labelFormSchema>;
 
 export type OrgLabelFormProps = {
     onSubmit: (data: LabelFormData) => void;
+    defaultValue?: LabelFormData;
 };
 
-export function OrgLabelForm({ onSubmit }: OrgLabelFormProps) {
+export function OrgLabelForm({ onSubmit, defaultValue }: OrgLabelFormProps) {
     const t = useTranslations();
 
     const colorValues = Object.values(LABEL_COLORS);
@@ -46,8 +47,8 @@ export function OrgLabelForm({ onSubmit }: OrgLabelFormProps) {
     const form = useForm({
         resolver: zodResolver(labelFormSchema),
         defaultValues: {
-            name: "",
-            color: randomColor
+            name: defaultValue?.name ?? "",
+            color: defaultValue?.color ?? randomColor
         }
     });
 
