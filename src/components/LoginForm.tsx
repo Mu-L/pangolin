@@ -368,7 +368,7 @@ export default function LoginForm({
 
                         {hasIdp && (
                             <>
-                                <div className="relative my-4">
+                                <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
                                         <Separator />
                                     </div>

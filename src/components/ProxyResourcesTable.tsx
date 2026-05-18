@@ -96,6 +96,7 @@ export type ResourceRow = {
     targets?: TargetHealth[];
     health?: "healthy" | "degraded" | "unhealthy" | "unknown";
     sites: ResourceSiteRow[];
+    wildcard?: boolean;
 };
 
 function StatusIcon({
@@ -570,10 +571,14 @@ export default function ProxyResourcesTable({
                             />
                         ) : null}
                         <div className="">
-                            <CopyToClipboard
-                                text={resourceRow.domain}
-                                isLink={true}
-                            />
+                            {!resourceRow.wildcard ? (
+                                <CopyToClipboard
+                                    text={resourceRow.domain}
+                                    isLink={true}
+                                />
+                            ) : (
+                                <span>{resourceRow.domain}</span>
+                            )}
                         </div>
                     </div>
                 );

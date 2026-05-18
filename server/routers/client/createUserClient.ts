@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db } from "@server/db";
+import { db, primaryDb } from "@server/db";
 import {
     roles,
     Client,
@@ -237,9 +237,17 @@ export async function createUserClient(
                 userId,
                 clientId: newClient.clientId
             });
-
-            await rebuildClientAssociationsFromClient(newClient, trx);
         });
+
+        if (newClient) {
+            rebuildClientAssociationsFromClient(newClient, primaryDb).catch(
+                (e) => {
+                    logger.error(
+                        `Failed to rebuild client associations after creating user client: ${e}`
+                    );
+                }
+            );
+        }
 
         return response<CreateClientAndOlmResponse>(res, {
             data: newClient,

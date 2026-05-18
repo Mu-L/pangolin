@@ -27,11 +27,11 @@ export async function buildSiteConfigurationForOlmClient(
 ) {
     const siteConfigurations: {
         siteId: number;
-        name?: string
-        endpoint?: string
-        publicKey?: string
-        serverIP?: string | null
-        serverPort?: number | null
+        name?: string;
+        endpoint?: string;
+        publicKey?: string;
+        serverIP?: string | null;
+        serverPort?: number | null;
         remoteSubnets?: string[];
         aliases: Alias[];
     }[] = [];
@@ -79,7 +79,6 @@ export async function buildSiteConfigurationForOlmClient(
                 )
             );
 
-
         if (jitMode) {
             // Add site configuration to the array
             siteConfigurations.push({
@@ -109,10 +108,9 @@ export async function buildSiteConfigurationForOlmClient(
             continue;
         }
 
-        if (!site.publicKey || site.publicKey == "") { // the site is not ready to accept new peers
-            logger.warn(
-                `Site ${site.siteId} has no public key, skipping`
-            );
+        if (!site.publicKey || site.publicKey == "") {
+            // the site is not ready to accept new peers
+            logger.warn(`Site ${site.siteId} has no public key, skipping`);
             continue;
         }
 

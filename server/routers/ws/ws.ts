@@ -3,7 +3,15 @@ import zlib from "zlib";
 import { Server as HttpServer } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { Socket } from "net";
-import { Newt, newts, NewtSession, olms, Olm, OlmSession, sites } from "@server/db";
+import {
+    Newt,
+    newts,
+    NewtSession,
+    olms,
+    Olm,
+    OlmSession,
+    sites
+} from "@server/db";
 import { eq } from "drizzle-orm";
 import { db } from "@server/db";
 import { recordPing } from "@server/routers/newt/pingAccumulator";
@@ -80,6 +88,9 @@ const removeClient = async (
     const updatedClients = existingClients.filter((client) => client !== ws);
     if (updatedClients.length === 0) {
         connectedClients.delete(mapKey);
+        // Remove clientId from clientConfigVersions — prevents unbounded growth
+        // from stale entries.
+        clientConfigVersions.delete(clientId);
 
         logger.info(
             `All connections removed for ${clientType.toUpperCase()} ID: ${clientId}`
@@ -218,9 +229,13 @@ const hasActiveConnections = async (clientId: string): Promise<boolean> => {
 };
 
 // Get the current config version for a client
-const getClientConfigVersion = async (clientId: string): Promise<number | undefined> => {
+const getClientConfigVersion = async (
+    clientId: string
+): Promise<number | undefined> => {
     const version = clientConfigVersions.get(clientId);
-    logger.debug(`getClientConfigVersion called for clientId: ${clientId}, returning: ${version} (type: ${typeof version})`);
+    logger.debug(
+        `getClientConfigVersion called for clientId: ${clientId}, returning: ${version} (type: ${typeof version})`
+    );
     return version;
 };
 
@@ -506,6 +521,11 @@ const disconnectClient = async (clientId: string): Promise<boolean> => {
             client.close(1000, "Disconnected by server");
         }
     });
+
+    // Eagerly remove client — close event may not fire if socket already
+    // CLOSING, leaving zombie entries.
+    connectedClients.delete(mapKey);
+    clientConfigVersions.delete(clientId);
 
     return true;
 };

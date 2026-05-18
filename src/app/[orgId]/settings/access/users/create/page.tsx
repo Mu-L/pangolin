@@ -13,7 +13,7 @@ import { StrategyOption, StrategySelect } from "@app/components/StrategySelect";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import { Button } from "@app/components/ui/button";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import {
     Form,
     FormControl,
@@ -91,7 +91,7 @@ export default function Page() {
         "internal"
     );
     const [inviteLink, setInviteLink] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+
     const [expiresInDays, setExpiresInDays] = useState(1);
     const [roles, setRoles] = useState<{ roleId: number; name: string }[]>([]);
     const [idps, setIdps] = useState<IdpOption[]>([]);
@@ -311,10 +311,29 @@ export default function Page() {
         setUserOptions(options);
     }, [idps, t]);
 
-    async function onSubmitInternal(
-        values: z.infer<typeof internalFormSchema>
-    ) {
-        setLoading(true);
+    const [, submitInternalAction, isSubmittingInternal] = useActionState(
+        onSubmitInternal,
+        null
+    );
+    const [, submitGoogleAzureAction, isSubmittingGoogleAzure] = useActionState(
+        onSubmitGoogleAzure,
+        null
+    );
+    const [, submitGenericOidcAction, isSubmittingGenericOidc] = useActionState(
+        onSubmitGenericOidc,
+        null
+    );
+
+    const loading =
+        isSubmittingInternal ||
+        isSubmittingGoogleAzure ||
+        isSubmittingGenericOidc;
+
+    async function onSubmitInternal() {
+        const isValid = await internalForm.trigger();
+        if (!isValid) return;
+
+        const values = internalForm.getValues();
 
         const roleIds = values.roles.map((r) => parseInt(r.id, 10));
 
@@ -357,25 +376,24 @@ export default function Page() {
 
             setExpiresInDays(parseInt(values.validForHours) / 24);
         }
-
-        setLoading(false);
     }
 
-    async function onSubmitGoogleAzure(
-        values: z.infer<typeof googleAzureFormSchema>
-    ) {
+    async function onSubmitGoogleAzure() {
+        const isValid = await googleAzureForm.trigger();
+        if (!isValid) return;
+
+        const values = googleAzureForm.getValues();
+
         const selectedUserOption = userOptions.find(
             (opt) => opt.id === selectedOption
         );
         if (!selectedUserOption?.idpId) return;
 
-        setLoading(true);
-
         const roleIds = values.roles.map((r) => parseInt(r.id, 10));
 
         const res = await api
             .put(`/org/${orgId}/user`, {
-                username: values.email, // Use email as username for Google/Azure
+                username: values.email,
                 email: values.email || undefined,
                 name: values.name,
                 type: "oidc",
@@ -401,19 +419,18 @@ export default function Page() {
             });
             router.push(`/${orgId}/settings/access/users`);
         }
-
-        setLoading(false);
     }
 
-    async function onSubmitGenericOidc(
-        values: z.infer<typeof genericOidcFormSchema>
-    ) {
+    async function onSubmitGenericOidc() {
+        const isValid = await genericOidcForm.trigger();
+        if (!isValid) return;
+
+        const values = genericOidcForm.getValues();
+
         const selectedUserOption = userOptions.find(
             (opt) => opt.id === selectedOption
         );
         if (!selectedUserOption?.idpId) return;
-
-        setLoading(true);
 
         const roleIds = values.roles.map((r) => parseInt(r.id, 10));
 
@@ -445,8 +462,6 @@ export default function Page() {
             });
             router.push(`/${orgId}/settings/access/users`);
         }
-
-        setLoading(false);
     }
 
     return (
@@ -513,9 +528,9 @@ export default function Page() {
                                         <SettingsSectionForm>
                                             <Form {...internalForm}>
                                                 <form
-                                                    onSubmit={internalForm.handleSubmit(
-                                                        onSubmitInternal
-                                                    )}
+                                                    action={
+                                                        submitInternalAction
+                                                    }
                                                     className="space-y-4"
                                                     id="create-user-form"
                                                 >
@@ -595,13 +610,7 @@ export default function Page() {
                                                     <OrgRolesTagField
                                                         form={internalForm}
                                                         name="roles"
-                                                        label={t("roles")}
-                                                        placeholder={t(
-                                                            "accessRoleSelect2"
-                                                        )}
-                                                        allRoleOptions={
-                                                            allRoleOptions
-                                                        }
+                                                        orgId={orgId as string}
                                                         supportsMultipleRolesPerUser={
                                                             supportsMultipleRolesPerUser
                                                         }
@@ -610,13 +619,6 @@ export default function Page() {
                                                         }
                                                         paywallMessage={
                                                             invitePaywallMessage
-                                                        }
-                                                        loading={loading}
-                                                        activeTagIndex={
-                                                            activeInviteRoleTagIndex
-                                                        }
-                                                        setActiveTagIndex={
-                                                            setActiveInviteRoleTagIndex
                                                         }
                                                     />
 
@@ -712,9 +714,9 @@ export default function Page() {
                                         })() && (
                                             <Form {...googleAzureForm}>
                                                 <form
-                                                    onSubmit={googleAzureForm.handleSubmit(
-                                                        onSubmitGoogleAzure
-                                                    )}
+                                                    action={
+                                                        submitGoogleAzureAction
+                                                    }
                                                     className="space-y-4"
                                                     id="create-user-form"
                                                 >
@@ -763,13 +765,7 @@ export default function Page() {
                                                     <OrgRolesTagField
                                                         form={googleAzureForm}
                                                         name="roles"
-                                                        label={t("roles")}
-                                                        placeholder={t(
-                                                            "accessRoleSelect2"
-                                                        )}
-                                                        allRoleOptions={
-                                                            allRoleOptions
-                                                        }
+                                                        orgId={orgId as string}
                                                         supportsMultipleRolesPerUser={
                                                             supportsMultipleRolesPerUser
                                                         }
@@ -778,13 +774,6 @@ export default function Page() {
                                                         }
                                                         paywallMessage={
                                                             invitePaywallMessage
-                                                        }
-                                                        loading={loading}
-                                                        activeTagIndex={
-                                                            activeOidcRoleTagIndex
-                                                        }
-                                                        setActiveTagIndex={
-                                                            setActiveOidcRoleTagIndex
                                                         }
                                                     />
                                                 </form>
@@ -808,9 +797,9 @@ export default function Page() {
                                         })() && (
                                             <Form {...genericOidcForm}>
                                                 <form
-                                                    onSubmit={genericOidcForm.handleSubmit(
-                                                        onSubmitGenericOidc
-                                                    )}
+                                                    action={
+                                                        submitGenericOidcAction
+                                                    }
                                                     className="space-y-4"
                                                     id="create-user-form"
                                                 >
@@ -888,13 +877,7 @@ export default function Page() {
                                                     <OrgRolesTagField
                                                         form={genericOidcForm}
                                                         name="roles"
-                                                        label={t("roles")}
-                                                        placeholder={t(
-                                                            "accessRoleSelect2"
-                                                        )}
-                                                        allRoleOptions={
-                                                            allRoleOptions
-                                                        }
+                                                        orgId={orgId as string}
                                                         supportsMultipleRolesPerUser={
                                                             supportsMultipleRolesPerUser
                                                         }
@@ -903,13 +886,6 @@ export default function Page() {
                                                         }
                                                         paywallMessage={
                                                             invitePaywallMessage
-                                                        }
-                                                        loading={loading}
-                                                        activeTagIndex={
-                                                            activeOidcRoleTagIndex
-                                                        }
-                                                        setActiveTagIndex={
-                                                            setActiveOidcRoleTagIndex
                                                         }
                                                     />
                                                 </form>

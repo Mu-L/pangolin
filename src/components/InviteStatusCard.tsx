@@ -99,7 +99,7 @@ export default function InviteStatusCard({
                 router.push(redirectUrl);
             } else if (!user && type === "not_logged_in") {
                 const redirectUrl = email
-                    ? `/auth/login?redirect=/invite?token=${tokenParam}&email=${email}`
+                    ? `/auth/login?redirect=/invite?token=${tokenParam}&user=${email}`
                     : `/auth/login?redirect=/invite?token=${tokenParam}`;
                 router.push(redirectUrl);
             } else {
@@ -113,7 +113,7 @@ export default function InviteStatusCard({
     async function goToLogin() {
         await api.post("/auth/logout", {});
         const redirectUrl = email
-            ? `/auth/login?redirect=/invite?token=${tokenParam}&email=${email}`
+            ? `/auth/login?redirect=/invite?token=${tokenParam}&user=${email}`
             : `/auth/login?redirect=/invite?token=${tokenParam}`;
         router.push(redirectUrl);
     }

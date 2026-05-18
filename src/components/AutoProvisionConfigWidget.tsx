@@ -47,6 +47,7 @@ type AutoProvisionConfigWidgetProps = {
     roleMappingFieldIdPrefix?: string;
     showFreeformRoleNamesHint?: boolean;
     autoProvisionSwitchId?: string;
+    orgId?: string;
 };
 
 export default function AutoProvisionConfigWidget({
@@ -67,7 +68,8 @@ export default function AutoProvisionConfigWidget({
     showAutoProvisionSwitch = true,
     roleMappingFieldIdPrefix = "org-idp-auto-provision",
     showFreeformRoleNamesHint = false,
-    autoProvisionSwitchId = "auto-provision-toggle"
+    autoProvisionSwitchId = "auto-provision-toggle",
+    orgId
 }: AutoProvisionConfigWidgetProps) {
     const t = useTranslations();
     const { isPaidUser } = usePaidStatus();
@@ -106,6 +108,7 @@ export default function AutoProvisionConfigWidget({
                             showFreeformRoleNamesHint={
                                 showFreeformRoleNamesHint
                             }
+                            orgId={orgId}
                             roleMappingMode={roleMappingMode}
                             onRoleMappingModeChange={onRoleMappingModeChange}
                             roles={roles}

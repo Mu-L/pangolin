@@ -1,5 +1,8 @@
 "use client";
 
+import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
+import { StrategySelect } from "@app/components/StrategySelect";
+import { TagInput, type Tag } from "@app/components/tags/tag-input";
 import { Button } from "@app/components/ui/button";
 import { Checkbox } from "@app/components/ui/checkbox";
 import {
@@ -21,11 +24,13 @@ import {
 import { Input } from "@app/components/ui/input";
 import { Switch } from "@app/components/ui/switch";
 import { Textarea } from "@app/components/ui/textarea";
+import { Label } from "@app/components/ui/label";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import {
     Select,
     SelectContent,
@@ -33,24 +38,21 @@ import {
     SelectTrigger,
     SelectValue
 } from "@app/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
-import { Label } from "@app/components/ui/label";
-import { StrategySelect } from "@app/components/StrategySelect";
-import { TagInput, type Tag } from "@app/components/tags/tag-input";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import {
     type AlertRuleFormAction,
     type AlertRuleFormValues
 } from "@app/lib/alertRuleForm";
+import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
-import { ContactSalesBanner } from "@app/components/ContactSalesBanner";
-import { Bell, Globe, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { Bell, ChevronsUpDown, Globe, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Control, UseFormReturn } from "react-hook-form";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useDebounce } from "use-debounce";
+import { RolesSelector } from "../roles-selector";
+import { UsersSelector } from "../users-selector";
 
 export function AddActionPanel({
     onAdd
@@ -498,12 +500,6 @@ function NotifyActionFields({
     const t = useTranslations();
 
     const [emailActiveIdx, setEmailActiveIdx] = useState<number | null>(null);
-    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
-        number | null
-    >(null);
 
     const { data: orgUsers = [], isLoading: isLoadingUsers } = useQuery(
         orgQueries.users({ orgId })
@@ -574,14 +570,6 @@ function NotifyActionFields({
         hasResolvedTagsRef.current = true;
     }, [isLoadingUsers, isLoadingRoles, allUsers, allRoles]);
 
-    const userTags = (useWatch({
-        control,
-        name: `actions.${index}.userTags`
-    }) ?? []) as Tag[];
-    const roleTags = (useWatch({
-        control,
-        name: `actions.${index}.roleTags`
-    }) ?? []) as Tag[];
     const emailTags = (useWatch({
         control,
         name: `actions.${index}.emailTags`
@@ -596,29 +584,16 @@ function NotifyActionFields({
                     <FormItem className="flex flex-col items-start">
                         <FormLabel>{t("alertingNotifyUsers")}</FormLabel>
                         <FormControl>
-                            <TagInput
-                                {...field}
-                                activeTagIndex={activeUsersTagIndex}
-                                setActiveTagIndex={setActiveUsersTagIndex}
-                                placeholder={t("alertingSelectUsers")}
-                                size="sm"
-                                tags={userTags}
-                                setTags={(newTags) => {
-                                    const next =
-                                        typeof newTags === "function"
-                                            ? newTags(userTags)
-                                            : newTags;
+                            <UsersSelector
+                                selectedUsers={field.value ?? []}
+                                orgId={orgId}
+                                onSelectUsers={(newUsers) => {
                                     form.setValue(
                                         `actions.${index}.userTags`,
-                                        next as Tag[],
+                                        newUsers as [Tag, ...Tag[]],
                                         { shouldDirty: true }
                                     );
                                 }}
-                                enableAutocomplete={true}
-                                autocompleteOptions={allUsers}
-                                allowDuplicates={false}
-                                restrictTagsToAutocompleteOptions={true}
-                                sortTags={true}
                             />
                         </FormControl>
                         <FormMessage />
@@ -632,29 +607,17 @@ function NotifyActionFields({
                     <FormItem className="flex flex-col items-start">
                         <FormLabel>{t("alertingNotifyRoles")}</FormLabel>
                         <FormControl>
-                            <TagInput
-                                {...field}
-                                activeTagIndex={activeRolesTagIndex}
-                                setActiveTagIndex={setActiveRolesTagIndex}
-                                placeholder={t("alertingSelectRoles")}
-                                size="sm"
-                                tags={roleTags}
-                                setTags={(newTags) => {
-                                    const next =
-                                        typeof newTags === "function"
-                                            ? newTags(roleTags)
-                                            : newTags;
+                            <RolesSelector
+                                selectedRoles={field.value ?? []}
+                                restrictAdminRole
+                                orgId={orgId}
+                                onSelectRoles={(newUsers) => {
                                     form.setValue(
                                         `actions.${index}.roleTags`,
-                                        next as Tag[],
+                                        newUsers as [Tag, ...Tag[]],
                                         { shouldDirty: true }
                                     );
                                 }}
-                                enableAutocomplete={true}
-                                autocompleteOptions={allRoles}
-                                allowDuplicates={false}
-                                restrictTagsToAutocompleteOptions={true}
-                                sortTags={true}
                             />
                         </FormControl>
                         <FormMessage />

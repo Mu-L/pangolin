@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, orgs } from "@server/db";
-import { roles, userInviteRoles, userInvites, userOrgs, users } from "@server/db";
+import { db, orgs, primaryDb } from "@server/db";
+import {
+    roles,
+    userInviteRoles,
+    userInvites,
+    userOrgs,
+    users
+} from "@server/db";
 import { eq, and, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -146,9 +152,7 @@ export async function acceptInvite(
             .from(userInviteRoles)
             .where(eq(userInviteRoles.inviteId, inviteId));
 
-        const inviteRoleIds = [
-            ...new Set(inviteRoleRows.map((r) => r.roleId))
-        ];
+        const inviteRoleIds = [...new Set(inviteRoleRows.map((r) => r.roleId))];
         if (inviteRoleIds.length === 0) {
             return next(
                 createHttpError(
@@ -193,12 +197,18 @@ export async function acceptInvite(
                 .delete(userInvites)
                 .where(eq(userInvites.inviteId, inviteId));
 
-            await calculateUserClientsForOrgs(existingUser[0].userId, trx);
-
             logger.debug(
                 `User ${existingUser[0].userId} accepted invite to org ${existingInvite.orgId}`
             );
         });
+
+        calculateUserClientsForOrgs(existingUser[0].userId, primaryDb).catch(
+            (e) => {
+                logger.error(
+                    `Failed to calculate user clients after accepting invite for user ${existingUser[0].userId}: ${e}`
+                );
+            }
+        );
 
         return response<AcceptInviteResponse>(res, {
             data: { accepted: true, orgId: existingInvite.orgId },

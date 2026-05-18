@@ -19,7 +19,7 @@ export function InfoSections({
     return (
         <div
             className={cn(
-                "grid grid-cols-2 md:grid-cols-(--columns) md:space-x-16 gap-4 md:items-start",
+                "grid w-full min-w-0 grid-cols-2 md:grid-cols-(--columns) md:space-x-16 gap-4 md:items-start",
                 columnSizing === "content" &&
                     "md:justify-items-start md:justify-start"
             )}
@@ -41,7 +41,11 @@ export function InfoSection({
     children: React.ReactNode;
     className?: string;
 }) {
-    return <div className={cn("space-y-1", className)}>{children}</div>;
+    return (
+        <div className={cn("min-w-0 w-full max-w-full space-y-1", className)}>
+            {children}
+        </div>
+    );
 }
 
 export function InfoSectionTitle({
@@ -51,7 +55,11 @@ export function InfoSectionTitle({
     children: React.ReactNode;
     className?: string;
 }) {
-    return <div className={cn("font-semibold", className)}>{children}</div>;
+    return (
+        <div className={cn("min-w-0 truncate font-semibold", className)}>
+            {children}
+        </div>
+    );
 }
 
 export function InfoSectionContent({
@@ -62,8 +70,13 @@ export function InfoSectionContent({
     className?: string;
 }) {
     return (
-        <div className={cn("min-w-0 overflow-hidden", className)}>
-            <div className="w-full truncate [&>div.flex]:min-w-0 [&>div.flex]:!whitespace-normal [&>div.flex>span]:truncate [&>div.flex>a]:truncate">
+        <div
+            className={cn(
+                "w-full min-w-0 max-w-full overflow-hidden",
+                className
+            )}
+        >
+            <div className="w-full min-w-0 max-w-full truncate [&>div.flex]:min-w-0 [&>div.flex]:!whitespace-normal [&>div.flex>span]:truncate [&>div.flex>a]:truncate">
                 {children}
             </div>
         </div>

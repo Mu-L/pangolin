@@ -100,6 +100,7 @@ export type QueryConnectionAuditLogResponse = {
         orgId: string | null;
         siteId: number | null;
         clientId: number | null;
+        clientEndpoint: string | null;
         userId: string | null;
         sourceAddr: string;
         destAddr: string;

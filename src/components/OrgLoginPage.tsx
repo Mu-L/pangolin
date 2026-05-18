@@ -16,6 +16,7 @@ import Link from "next/link";
 import { replacePlaceholder } from "@app/lib/replacePlaceholder";
 import { getTranslations } from "next-intl/server";
 import { pullEnv } from "@app/lib/pullEnv";
+import { build } from "@server/build";
 
 type OrgLoginPageProps = {
     loginPage: LoadLoginPageResponse | undefined;
@@ -52,19 +53,21 @@ export default async function OrgLoginPage({
     const t = await getTranslations();
     return (
         <div>
-            <div className="text-center mb-2">
-                <span className="text-sm text-muted-foreground">
-                    {t("poweredBy")}{" "}
-                    <Link
-                        href="https://pangolin.net/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                    >
-                        {env.branding.appName || "Pangolin"}
-                    </Link>
-                </span>
-            </div>
+            {build !== "enterprise" || !env.branding.hidePoweredBy ? (
+                <div className="text-center mb-2">
+                    <span className="text-sm text-muted-foreground">
+                        {t("poweredBy")}{" "}
+                        <Link
+                            href="https://pangolin.net/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                        >
+                            {env.branding.appName || "Pangolin"}
+                        </Link>
+                    </span>
+                </div>
+            ) : null}
             <Card className="w-full max-w-md">
                 <CardHeader>
                     {branding?.logoUrl && (

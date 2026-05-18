@@ -16,6 +16,7 @@ import { formatAxiosError } from "@app/lib/api";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { Badge } from "@app/components/ui/badge";
+import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import CreateDomainForm from "@app/components/CreateDomainForm";
 import { useToast } from "@app/hooks/useToast";
@@ -72,7 +73,11 @@ export default function DomainsTable({ domains, orgId }: Props) {
     const { org } = useOrgContext();
     const queryClient = useQueryClient();
 
-    const { data: rawDomains, isRefetching, refetch } = useQuery({
+    const {
+        data: rawDomains,
+        isRefetching,
+        refetch
+    } = useQuery({
         ...orgQueries.domains({ orgId }),
         initialData: domains as any,
         refetchInterval: durationToMs(10, "seconds")
@@ -80,12 +85,15 @@ export default function DomainsTable({ domains, orgId }: Props) {
 
     const tableData = useMemo(
         () =>
-            (rawDomains ?? []).map((d) => ({
-                ...d,
-                baseDomain: toUnicode(d.baseDomain),
-                type: d.type ?? "",
-                errorMessage: d.errorMessage ?? null
-            } as DomainRow)),
+            (rawDomains ?? []).map(
+                (d) =>
+                    ({
+                        ...d,
+                        baseDomain: toUnicode(d.baseDomain),
+                        type: d.type ?? "",
+                        errorMessage: d.errorMessage ?? null
+                    }) as DomainRow
+            ),
         [rawDomains]
     );
 
@@ -198,12 +206,17 @@ export default function DomainsTable({ domains, orgId }: Props) {
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Badge variant="red" className="cursor-help">
+                                    <Badge
+                                        variant="red"
+                                        className="cursor-help"
+                                    >
                                         {t("failed", { fallback: "Failed" })}
                                     </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
-                                    <p className="break-words">{errorMessage}</p>
+                                    <p className="break-words">
+                                        {errorMessage}
+                                    </p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -220,12 +233,17 @@ export default function DomainsTable({ domains, orgId }: Props) {
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Badge variant="yellow" className="cursor-help">
+                                    <Badge
+                                        variant="yellow"
+                                        className="cursor-help"
+                                    >
                                         {t("pending")}
                                     </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
-                                    <p className="break-words">{errorMessage}</p>
+                                    <p className="break-words">
+                                        {errorMessage}
+                                    </p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -252,6 +270,25 @@ export default function DomainsTable({ domains, orgId }: Props) {
                         {t("domain")}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const domain = row.original;
+                return (
+                    <span className="flex items-center gap-2">
+                        {domain.baseDomain}
+                        {domain.configManaged && (
+                            <Badge
+                                variant="secondary"
+                                className="flex items-center gap-1 text-xs font-normal"
+                            >
+                                <Lock className="h-3 w-3" />
+                                {t("configManaged", {
+                                    fallback: "Config Managed"
+                                })}
+                            </Badge>
+                        )}
+                    </span>
                 );
             }
         },
@@ -283,16 +320,18 @@ export default function DomainsTable({ domains, orgId }: Props) {
                                         {t("viewSettings")}
                                     </DropdownMenuItem>
                                 </Link>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedDomain(domain);
-                                        setIsDeleteModalOpen(true);
-                                    }}
-                                >
-                                    <span className="text-red-500">
-                                        {t("delete")}
-                                    </span>
-                                </DropdownMenuItem>
+                                {!domain.configManaged && (
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setSelectedDomain(domain);
+                                            setIsDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        <span className="text-red-500">
+                                            {t("delete")}
+                                        </span>
+                                    </DropdownMenuItem>
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                         {domain.failed && (
@@ -315,7 +354,9 @@ export default function DomainsTable({ domains, orgId }: Props) {
                             href={`/${orgId}/settings/domains/${domain.domainId}`}
                         >
                             <Button variant={"outline"}>
-                                {t("edit")}
+                                {domain.configManaged
+                                    ? t("view", { fallback: "View" })
+                                    : t("edit")}
                                 <ArrowRight className="ml-2 w-4 h-4" />
                             </Button>
                         </Link>

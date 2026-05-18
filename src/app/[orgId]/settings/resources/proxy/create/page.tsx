@@ -82,8 +82,8 @@ import { AxiosResponse } from "axios";
 import {
     CircleCheck,
     CircleX,
+    ExternalLink,
     Info,
-    InfoIcon,
     Plus,
     Settings,
     SquareArrowOutUpRight
@@ -303,6 +303,8 @@ export default function Page() {
             hcMode: null,
             hcUnhealthyInterval: null,
             hcTlsServerName: null,
+            hcHealthyThreshold: null,
+            hcUnhealthyThreshold: null,
             siteType: sites.length > 0 ? sites[0].type : null,
             new: true,
             updated: false
@@ -552,7 +554,11 @@ export default function Page() {
                                 hcUnhealthyInterval:
                                     target.hcUnhealthyInterval || null,
                                 hcMode: target.hcMode || null,
-                                hcTlsServerName: target.hcTlsServerName
+                                hcTlsServerName: target.hcTlsServerName,
+                                hcHealthyThreshold:
+                                    target.hcHealthyThreshold || null,
+                                hcUnhealthyThreshold:
+                                    target.hcUnhealthyThreshold || null
                             };
 
                             // Only include path-related fields for HTTP resources
@@ -1419,16 +1425,22 @@ export default function Page() {
                                             </Button>
                                         </div>
                                     )}
-                                    {build === "enterprise" &&
+                                    {build === "saas" &&
                                         targets.length > 1 &&
-                                        new Set(targets.map((t) => t.siteId)).size > 1 && (
-                                            <p className="text-sm text-muted-foreground mt-3 flex items-start gap-1.5">
-                                                <InfoIcon className="h-4 w-4 shrink-0 mt-0.5" />
-                                                <span>
-                                                    Round robin routing will not work between
-                                                    sites that are not connected to the same
-                                                    node, but failover will work.
-                                                </span>
+                                        new Set(targets.map((t) => t.siteId)).size >
+                                            1 && (
+                                            <p className="text-sm text-muted-foreground mt-3">
+                                                {t("proxyMultiSiteRoundRobinNodeHelp")}{" "}
+                                                <a
+                                                    href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                                >
+                                                    {t("learnMore")}
+                                                    <ExternalLink className="size-3.5 shrink-0" />
+                                                </a>
+                                                .
                                             </p>
                                         )}
                                 </SettingsSectionBody>
@@ -1520,7 +1532,13 @@ export default function Page() {
                                             30,
                                         hcTlsServerName:
                                             selectedTargetForHealthCheck.hcTlsServerName ||
-                                            undefined
+                                            undefined,
+                                        hcHealthyThreshold:
+                                            selectedTargetForHealthCheck.hcHealthyThreshold ||
+                                            1,
+                                        hcUnhealthyThreshold:
+                                            selectedTargetForHealthCheck.hcUnhealthyThreshold ||
+                                            1
                                     }}
                                     onChanges={async (config) => {
                                         if (selectedTargetForHealthCheck) {

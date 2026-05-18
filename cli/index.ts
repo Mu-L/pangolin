@@ -9,6 +9,8 @@ import { rotateServerSecret } from "./commands/rotateServerSecret";
 import { clearLicenseKeys } from "./commands/clearLicenseKeys";
 import { deleteClient } from "./commands/deleteClient";
 import { generateOrgCaKeys } from "./commands/generateOrgCaKeys";
+import { clearCertificates } from "./commands/clearCertificates";
+import { disableUser2fa } from "./commands/disableUser2fa";
 
 yargs(hideBin(process.argv))
     .scriptName("pangctl")
@@ -19,5 +21,7 @@ yargs(hideBin(process.argv))
     .command(clearLicenseKeys)
     .command(deleteClient)
     .command(generateOrgCaKeys)
+    .command(clearCertificates)
+    .command(disableUser2fa)
     .demandCommand()
     .help().argv;

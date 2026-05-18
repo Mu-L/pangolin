@@ -13,6 +13,8 @@ import DomainCertForm from "@app/components/DomainCertForm";
 import { build } from "@server/build";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
+import { Lock } from "lucide-react";
+import { Badge } from "@app/components/ui/badge";
 
 interface DomainPageClientProps {
     initialDomain: GetDomainResponse;
@@ -49,7 +51,22 @@ export default function DomainPageClient({
         <>
             <div className="flex justify-between">
                 <SettingsSectionTitle
-                    title={domain.baseDomain}
+                    title={
+                        <span className="flex items-center gap-2">
+                            {domain.baseDomain}
+                            {domain.configManaged && (
+                                <Badge
+                                    variant="secondary"
+                                    className="flex items-center gap-1 text-sm font-normal"
+                                >
+                                    <Lock className="h-3 w-3" />
+                                    {t("configManaged", {
+                                        fallback: "Config Managed"
+                                    })}
+                                </Badge>
+                            )}
+                        </span>
+                    }
                     description={t("domainSettingDescription")}
                 />
                 {env.flags.usePangolinDns && domain.failed ? (

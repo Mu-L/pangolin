@@ -20,9 +20,7 @@ import {
 } from "@server/db";
 import { and, eq, inArray, ne } from "drizzle-orm";
 
-import {
-    deletePeer as newtDeletePeer
-} from "@server/routers/newt/peers";
+import { deletePeer as newtDeletePeer } from "@server/routers/newt/peers";
 import {
     initPeerAddHandshake,
     deletePeer as olmDeletePeer
@@ -33,7 +31,7 @@ import {
     generateAliasConfig,
     generateRemoteSubnets,
     generateSubnetProxyTargetV2,
-    parseEndpoint,
+    parseEndpoint
 } from "@server/lib/ip";
 import {
     addPeerData,
@@ -51,10 +49,7 @@ export async function getClientSiteResourceAccess(
         ? await trx
               .select()
               .from(sites)
-              .innerJoin(
-                  siteNetworks,
-                  eq(siteNetworks.siteId, sites.siteId)
-              )
+              .innerJoin(siteNetworks, eq(siteNetworks.siteId, sites.siteId))
               .where(eq(siteNetworks.networkId, siteResource.networkId))
               .then((rows) => rows.map((row) => row.sites))
         : [];
@@ -362,7 +357,8 @@ export async function rebuildClientAssociationsFromSiteResource(
                       .where(inArray(clients.clientId, existingClientSiteIds))
                 : [];
 
-        const otherResourceClientIds = clientsFromOtherResourcesBySite.get(siteId) ?? new Set<number>();
+        const otherResourceClientIds =
+            clientsFromOtherResourcesBySite.get(siteId) ?? new Set<number>();
 
         logger.debug(
             `rebuildClientAssociations: [rebuildClientAssociationsFromSiteResource] siteId=${siteId} otherResourceClientIds=[${[...otherResourceClientIds].join(", ")}] mergedAllClientIds=[${mergedAllClientIds.join(", ")}]`
@@ -709,7 +705,7 @@ export async function updateClientSiteDestinations(
             sourcePort: destination.sourcePort,
             destinations: destination.destinations
         };
-        logger.info(
+        logger.debug(
             `Payload for update-destinations: ${JSON.stringify(payload, null, 2)}`
         );
 

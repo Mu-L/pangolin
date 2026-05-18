@@ -55,7 +55,9 @@ export default async function ProxyResourcesPage(
         pagination = responseData.pagination;
     } catch (e) {}
 
-    const siteIdParam = parsePositiveInt(searchParams.get("siteId") ?? undefined);
+    const siteIdParam = parsePositiveInt(
+        searchParams.get("siteId") ?? undefined
+    );
 
     let initialFilterSite: {
         siteId: number;
@@ -122,6 +124,7 @@ export default async function ProxyResourcesPage(
             domainId: resource.domainId || undefined,
             fullDomain: resource.fullDomain ?? null,
             ssl: resource.ssl,
+            wildcard: resource.wildcard,
             targets: resource.targets?.map((target) => ({
                 targetId: target.targetId,
                 ip: target.ip,

@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { clients, db } from "@server/db";
+import { clients, db, primaryDb, Client } from "@server/db";
 import { userOrgRoles, userOrgs, roles } from "@server/db";
 import { eq, and, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -87,17 +87,8 @@ export async function setUserOrgRoles(
             );
         }
 
-        if (existingUser.isOwner) {
-            return next(
-                createHttpError(
-                    HttpCode.FORBIDDEN,
-                    "Cannot change the roles of the owner of the organization"
-                )
-            );
-        }
-
         const orgRoles = await db
-            .select({ roleId: roles.roleId })
+            .select({ roleId: roles.roleId, isAdmin: roles.isAdmin })
             .from(roles)
             .where(
                 and(
@@ -115,6 +106,19 @@ export async function setUserOrgRoles(
             );
         }
 
+        if (existingUser.isOwner) {
+            const hasAdminRole = orgRoles.some((r) => r.isAdmin === true);
+            if (!hasAdminRole) {
+                return next(
+                    createHttpError(
+                        HttpCode.FORBIDDEN,
+                        "The organization owner must retain an administrator role"
+                    )
+                );
+            }
+        }
+
+        let orgClientsToRebuild: Client[] = [];
         await db.transaction(async (trx) => {
             await trx
                 .delete(userOrgRoles)
@@ -142,10 +146,18 @@ export async function setUserOrgRoles(
                     and(eq(clients.userId, userId), eq(clients.orgId, orgId))
                 );
 
-            for (const orgClient of orgClients) {
-                await rebuildClientAssociationsFromClient(orgClient, trx);
-            }
+            orgClientsToRebuild = orgClients;
         });
+
+        for (const orgClient of orgClientsToRebuild) {
+            rebuildClientAssociationsFromClient(orgClient, primaryDb).catch(
+                (e) => {
+                    logger.error(
+                        `Failed to rebuild client associations for client ${orgClient.clientId} after setting roles: ${e}`
+                    );
+                }
+            );
+        }
 
         return response(res, {
             data: { userId, orgId, roleIds: uniqueRoleIds },
