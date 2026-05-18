@@ -32,6 +32,7 @@ import { LabelBadge } from "./label-badge";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { cn } from "@app/lib/cn";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import { CreateOrgLabelDialog } from "./CreateOrgLabelDialog";
 
 export type LabelRow = {
     labelId: number;
@@ -62,6 +63,8 @@ export default function OrgLabelsTable({
 
     const [selectedLabel, setSelectedLabel] = useState<LabelRow | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const [isRefreshing, startTransition] = useTransition();
 
@@ -171,27 +174,39 @@ export default function OrgLabelsTable({
     return (
         <>
             {selectedLabel && (
-                <ConfirmDeleteDialog
-                    open={isDeleteModalOpen}
-                    setOpen={(val) => {
-                        setIsDeleteModalOpen(val);
-                        setSelectedLabel(null);
-                    }}
-                    dialog={
-                        <div className="space-y-2">
-                            <p>{t("labelQuestionRemove")}</p>
-                            <p>{t("labelMessageRemove")}</p>
-                        </div>
-                    }
-                    buttonText={t("labelDeleteConfirm")}
-                    onConfirm={async () => deleteLabel(selectedLabel)}
-                    string={selectedLabel.name}
-                    title={t("labelDelete")}
-                />
+                <>
+                    <ConfirmDeleteDialog
+                        open={isDeleteModalOpen}
+                        setOpen={(val) => {
+                            setIsDeleteModalOpen(val);
+                            setSelectedLabel(null);
+                        }}
+                        dialog={
+                            <div className="space-y-2">
+                                <p>{t("labelQuestionRemove")}</p>
+                                <p>{t("labelMessageRemove")}</p>
+                            </div>
+                        }
+                        buttonText={t("labelDeleteConfirm")}
+                        onConfirm={async () => deleteLabel(selectedLabel)}
+                        string={selectedLabel.name}
+                        title={t("labelDelete")}
+                    />
+                </>
             )}
+
+            <CreateOrgLabelDialog
+                open={isCreateModalOpen}
+                setOpen={setIsCreateModalOpen}
+                orgId={orgId}
+                onSuccess={() => startTransition(() => router.refresh())}
+            />
+
             <ControlledDataTable
                 columns={columns}
                 rows={labels}
+                addButtonText={t("labelAdd")}
+                onAdd={() => setIsCreateModalOpen(true)}
                 tableId="org-labels-table"
                 searchPlaceholder={t("labelSearch")}
                 pagination={pagination}

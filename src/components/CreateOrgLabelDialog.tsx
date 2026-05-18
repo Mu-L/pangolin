@@ -1,9 +1,12 @@
 "use client";
 
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import { createApiClient } from "@app/lib/api";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import type { CreateOrEditLabelResponse } from "@server/routers/labels/types";
+import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import {
     Credenza,
     CredenzaBody,
@@ -14,6 +17,7 @@ import {
     CredenzaHeader,
     CredenzaTitle
 } from "./Credenza";
+import { OrgLabelForm } from "./OrgLabelForm";
 import { Button } from "./ui/button";
 
 export type CreateOrgLabelDialogProps = {
@@ -33,21 +37,45 @@ export function CreateOrgLabelDialog({
     const api = createApiClient(useEnvContext());
     const [isSubmitting, startTransition] = useTransition();
 
+    async function createOrgLabel(data: { name: string; color: string }) {
+        try {
+            const res = await api.post<
+                AxiosResponse<CreateOrEditLabelResponse>
+            >(`/org/${orgId}/labels`, data);
+
+            if (res.status === 201) {
+                setOpen(false);
+                onSuccess?.();
+
+                toast({
+                    title: t("success"),
+                    description: t("labelCreateSuccessMessage")
+                });
+            }
+        } catch (e) {
+            toast({
+                title: t("error"),
+                description: formatAxiosError(e, t("errorOccurred")),
+                variant: "destructive"
+            });
+        }
+    }
+
     return (
         <Credenza open={open} onOpenChange={setOpen}>
-            <CredenzaContent className="max-w-3xl">
+            <CredenzaContent className="max-w-md">
                 <CredenzaHeader>
-                    <CredenzaTitle>
-                        {t("createInternalResourceDialogCreateClientResource")}
-                    </CredenzaTitle>
+                    <CredenzaTitle>{t("createLabelDialogTitle")}</CredenzaTitle>
                     <CredenzaDescription>
-                        {t(
-                            "createInternalResourceDialogCreateClientResourceDescription"
-                        )}
+                        {t("createLabelDialogDescription")}
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
-                    <></>
+                    <OrgLabelForm
+                        onSubmit={(data) => {
+                            startTransition(async () => createOrgLabel(data));
+                        }}
+                    />
                 </CredenzaBody>
                 <CredenzaFooter>
                     <CredenzaClose asChild>
@@ -56,16 +84,16 @@ export function CreateOrgLabelDialog({
                             onClick={() => setOpen(false)}
                             disabled={isSubmitting}
                         >
-                            {t("createInternalResourceDialogCancel")}
+                            {t("cancel")}
                         </Button>
                     </CredenzaClose>
                     <Button
                         type="submit"
-                        form="create-internal-resource-form"
+                        form="org-label-form"
                         disabled={isSubmitting}
                         loading={isSubmitting}
                     >
-                        {t("createInternalResourceDialogCreateResource")}
+                        {t("labelCreate")}
                     </Button>
                 </CredenzaFooter>
             </CredenzaContent>

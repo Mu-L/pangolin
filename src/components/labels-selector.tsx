@@ -38,7 +38,7 @@ export type LabelsSelectorProps = {
     toggleLabel: (newlabel: SelectedLabel, action: "detach" | "attach") => void;
 };
 
-const LABEL_COLORS = {
+export const LABEL_COLORS = {
     red: "#ff6467",
     green: "#05df72",
     blue: "#51a2ff",
