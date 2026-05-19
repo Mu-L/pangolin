@@ -9,12 +9,14 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { useTranslations } from "next-intl";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
+import { logQueries } from "@app/lib/queries";
 import { ColumnDef } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { ArrowUpRight, Key, Lock, Unlock, User } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { build } from "@server/build";
 
@@ -25,36 +27,11 @@ export default function GeneralPage() {
     const { orgId } = useParams();
     const searchParams = useSearchParams();
 
-    const [rows, setRows] = useState<any[]>([]);
-    const [isRefreshing, startRefreshingTransition] = useTransition();
     const [isExporting, startTransition] = useTransition();
 
-    // Pagination state
-    const [totalCount, setTotalCount] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(0);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Initialize page size from storage or default
     const [pageSize, setPageSize] = useStoredPageSize("request-audit-logs", 20);
 
-    const [filterAttributes, setFilterAttributes] = useState<{
-        actors: string[];
-        resources: {
-            id: number;
-            name: string | null;
-        }[];
-        locations: string[];
-        hosts: string[];
-        paths: string[];
-    }>({
-        actors: [],
-        resources: [],
-        locations: [],
-        hosts: [],
-        paths: []
-    });
-
-    // Filter states - unified object for all filters
     const [filters, setFilters] = useState<{
         action?: string;
         resourceId?: string;
@@ -75,32 +52,18 @@ export default function GeneralPage() {
         path: searchParams.get("path") || undefined
     });
 
-    // Set default date range to last 24 hours
     const getDefaultDateRange = () => {
-        // if the time is in the url params, use that instead
         const startParam = searchParams.get("start");
         const endParam = searchParams.get("end");
         if (startParam && endParam) {
             return {
-                startDate: {
-                    date: new Date(startParam)
-                },
-                endDate: {
-                    date: new Date(endParam)
-                }
+                startDate: { date: new Date(startParam) },
+                endDate: { date: new Date(endParam) }
             };
         }
-
-        const now = new Date();
-        const lastWeek = getSevenDaysAgo();
-
         return {
-            startDate: {
-                date: lastWeek
-            },
-            endDate: {
-                date: now
-            }
+            startDate: { date: getSevenDaysAgo() },
+            endDate: { date: new Date() }
         };
     };
 
@@ -109,80 +72,95 @@ export default function GeneralPage() {
         endDate: DateTimeValue;
     }>(getDefaultDateRange());
 
-    // Trigger search with default values on component mount
-    useEffect(() => {
-        if (build === "oss") {
-            return;
+    const queryFilters = useMemo(() => {
+        let timeStart: string | undefined;
+        let timeEnd: string | undefined;
+
+        if (dateRange.startDate?.date) {
+            const dt = new Date(dateRange.startDate.date);
+            if (dateRange.startDate.time) {
+                const [h, m, s] = dateRange.startDate.time.split(":").map(Number);
+                dt.setHours(h, m, s || 0);
+            }
+            timeStart = dt.toISOString();
         }
-        const defaultRange = getDefaultDateRange();
-        queryDateTime(
-            defaultRange.startDate,
-            defaultRange.endDate,
-            0,
-            pageSize
-        );
-    }, [orgId]); // Re-run if orgId changes
+
+        if (dateRange.endDate?.date) {
+            const dt = new Date(dateRange.endDate.date);
+            if (dateRange.endDate.time) {
+                const [h, m, s] = dateRange.endDate.time.split(":").map(Number);
+                dt.setHours(h, m, s || 0);
+            } else {
+                const now = new Date();
+                dt.setHours(
+                    now.getHours(),
+                    now.getMinutes(),
+                    now.getSeconds(),
+                    now.getMilliseconds()
+                );
+            }
+            timeEnd = dt.toISOString();
+        }
+
+        return {
+            timeStart,
+            timeEnd,
+            page: currentPage,
+            pageSize,
+            ...filters,
+            resourceId: filters.resourceId
+                ? Number(filters.resourceId)
+                : undefined
+        };
+    }, [dateRange, currentPage, pageSize, filters]);
+
+    const { data, isFetching, refetch } = useQuery({
+        ...logQueries.requests({
+            orgId: orgId as string,
+            filters: queryFilters
+        }),
+        enabled: build !== "oss"
+    });
+
+    const rows = data?.log ?? [];
+    const totalCount = data?.pagination?.total ?? 0;
+    const filterAttributes = data?.filterAttributes ?? {
+        actors: [],
+        resources: [],
+        locations: [],
+        hosts: [],
+        paths: []
+    };
 
     const handleDateRangeChange = (
         startDate: DateTimeValue,
         endDate: DateTimeValue
     ) => {
         setDateRange({ startDate, endDate });
-        setCurrentPage(0); // Reset to first page when filtering
-        // put the search params in the url for the time
+        setCurrentPage(0);
         updateUrlParamsForAllFilters({
             start: startDate.date?.toISOString() || "",
             end: endDate.date?.toISOString() || ""
         });
-
-        queryDateTime(startDate, endDate, 0, pageSize);
     };
 
-    // Handle page changes
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
-        queryDateTime(
-            dateRange.startDate,
-            dateRange.endDate,
-            newPage,
-            pageSize
-        );
     };
 
-    // Handle page size changes
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
-        setCurrentPage(0); // Reset to first page when changing page size
-        queryDateTime(dateRange.startDate, dateRange.endDate, 0, newPageSize);
+        setCurrentPage(0);
     };
 
-    // Handle filter changes generically
     const handleFilterChange = (
         filterType: keyof typeof filters,
         value: string | undefined
     ) => {
-        console.log(`${filterType} filter changed:`, value);
-
-        // Create new filters object with updated value
-        const newFilters = {
-            ...filters,
-            [filterType]: value
-        };
-
+        const newFilters = { ...filters, [filterType]: value };
         setFilters(newFilters);
-        setCurrentPage(0); // Reset to first page when filtering
-
-        // Update URL params
+        setCurrentPage(0);
         updateUrlParamsForAllFilters(newFilters);
-
-        // Trigger new query with updated filters (pass directly to avoid async state issues)
-        queryDateTime(
-            dateRange.startDate,
-            dateRange.endDate,
-            0,
-            pageSize,
-            newFilters
-        );
     };
 
     const updateUrlParamsForAllFilters = (
@@ -202,98 +180,6 @@ export default function GeneralPage() {
             }
         });
         router.replace(`?${params.toString()}`, { scroll: false });
-    };
-
-    const queryDateTime = async (
-        startDate: DateTimeValue,
-        endDate: DateTimeValue,
-        page: number = currentPage,
-        size: number = pageSize,
-        filtersParam?: {
-            action?: string;
-            type?: string;
-        }
-    ) => {
-        console.log("Date range changed:", { startDate, endDate, page, size });
-        setIsLoading(true);
-
-        try {
-            // Use the provided filters or fall back to current state
-            const activeFilters = filtersParam || filters;
-
-            // Convert the date/time values to API parameters
-            const params: any = {
-                limit: size,
-                offset: page * size,
-                ...activeFilters
-            };
-
-            if (startDate?.date) {
-                const startDateTime = new Date(startDate.date);
-                if (startDate.time) {
-                    const [hours, minutes, seconds] = startDate.time
-                        .split(":")
-                        .map(Number);
-                    startDateTime.setHours(hours, minutes, seconds || 0);
-                }
-                params.timeStart = startDateTime.toISOString();
-            }
-
-            if (endDate?.date) {
-                const endDateTime = new Date(endDate.date);
-                if (endDate.time) {
-                    const [hours, minutes, seconds] = endDate.time
-                        .split(":")
-                        .map(Number);
-                    endDateTime.setHours(hours, minutes, seconds || 0);
-                } else {
-                    // If no time is specified, set to NOW
-                    const now = new Date();
-                    endDateTime.setHours(
-                        now.getHours(),
-                        now.getMinutes(),
-                        now.getSeconds(),
-                        now.getMilliseconds()
-                    );
-                }
-                params.timeEnd = endDateTime.toISOString();
-            }
-
-            const res = await api.get(`/org/${orgId}/logs/request`, { params });
-            if (res.status === 200) {
-                setRows(res.data.data.log || []);
-                setTotalCount(res.data.data.pagination?.total || 0);
-                setFilterAttributes(res.data.data.filterAttributes);
-                console.log("Fetched logs:", res.data);
-            }
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("Failed to filter logs"),
-                variant: "destructive"
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const refreshData = async () => {
-        console.log("Data refreshed");
-        try {
-            // Refresh data with current date range and pagination
-            await queryDateTime(
-                dateRange.startDate,
-                dateRange.endDate,
-                currentPage,
-                pageSize
-            );
-        } catch (error) {
-            toast({
-                title: t("error"),
-                description: t("refreshError"),
-                variant: "destructive"
-            });
-        }
     };
 
     const exportData = async () => {
@@ -778,8 +664,8 @@ export default function GeneralPage() {
                 title={t("requestLogs")}
                 searchPlaceholder={t("searchLogs")}
                 searchColumn="host"
-                onRefresh={() => startRefreshingTransition(refreshData)}
-                isRefreshing={isRefreshing}
+                onRefresh={() => refetch()}
+                isRefreshing={isFetching}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}
                 onDateRangeChange={handleDateRangeChange}
@@ -791,12 +677,11 @@ export default function GeneralPage() {
                     id: "timestamp",
                     desc: true
                 }}
-                // Server-side pagination props
                 totalCount={totalCount}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}
                 onPageSizeChange={handlePageSizeChange}
-                isLoading={isLoading}
+                isLoading={isFetching}
                 pageSize={pageSize}
                 // Row expansion props
                 expandable={true}
