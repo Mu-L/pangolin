@@ -61,7 +61,9 @@ export function MultiSelectTagInput<T extends TagValue>({
                                 )}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                {option.text}
+                                <span className="max-w-40 text-ellipsis overflow-hidden">
+                                    {option.text}
+                                </span>
                                 <button
                                     className="p-0.5 flex-none cursor-pointer"
                                     type="button"
