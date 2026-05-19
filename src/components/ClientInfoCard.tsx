@@ -61,14 +61,14 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
                         <InfoSectionTitle>{t("status")}</InfoSectionTitle>
                         <InfoSectionContent>
                             {client.online ? (
-                                <div className="text-green-500 flex items-center space-x-2">
+                                <div className="flex items-center space-x-2">
                                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>{t("online")}</span>
+                                    <span>{t("connected")}</span>
                                 </div>
                             ) : (
-                                <div className="text-neutral-500 flex items-center space-x-2">
+                                <div className="flex items-center space-x-2">
                                     <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
-                                    <span>{t("offline")}</span>
+                                    <span>{t("disconnected")}</span>
                                 </div>
                             )}
                         </InfoSectionContent>

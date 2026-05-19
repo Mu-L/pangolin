@@ -89,12 +89,12 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     <InfoSectionTitle>Socket</InfoSectionTitle>
                                     <InfoSectionContent>
                                         {isAvailable ? (
-                                            <span className="text-green-500 flex items-center space-x-2">
+                                            <span className="flex items-center space-x-2">
                                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                                 <span>Online</span>
                                             </span>
                                         ) : (
-                                            <span className="text-neutral-500 flex items-center space-x-2">
+                                            <span className="flex items-center space-x-2">
                                                 <div className="w-2 h-2 bg-neutral-500 rounded-full"></div>
                                                 <span>Offline</span>
                                             </span>
