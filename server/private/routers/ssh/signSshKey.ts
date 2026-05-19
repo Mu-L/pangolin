@@ -19,6 +19,7 @@ import {
     logsDb,
     newts,
     roles,
+    roleSiteResources,
     roundTripMessageTracker,
     siteResources,
     siteNetworks,
@@ -361,9 +362,26 @@ export async function signSshKey(
         }
 
         const roleRows = await db
-            .select()
+            .select({
+                sshSudoCommands: roles.sshSudoCommands,
+                sshUnixGroups: roles.sshUnixGroups,
+                sshCreateHomeDir: roles.sshCreateHomeDir,
+                sshSudoMode: roles.sshSudoMode
+            })
             .from(roles)
-            .where(inArray(roles.roleId, roleIds));
+            .innerJoin(
+                roleSiteResources,
+                eq(roleSiteResources.roleId, roles.roleId)
+            )
+            .where(
+                and(
+                    inArray(roles.roleId, roleIds),
+                    eq(
+                        roleSiteResources.siteResourceId,
+                        resource.siteResourceId
+                    )
+                )
+            );
 
         const parsedSudoCommands: string[] = [];
         const parsedGroupsSet = new Set<string>();
@@ -379,13 +397,17 @@ export async function signSshKey(
             }
             try {
                 const grps = JSON.parse(roleRow?.sshUnixGroups ?? "[]");
-                if (Array.isArray(grps)) grps.forEach((g: string) => parsedGroupsSet.add(g));
+                if (Array.isArray(grps))
+                    grps.forEach((g: string) => parsedGroupsSet.add(g));
             } catch {
                 // skip
             }
             if (roleRow?.sshCreateHomeDir === true) homedir = true;
             const m = roleRow?.sshSudoMode ?? "none";
-            if (sudoModeOrder[m as keyof typeof sudoModeOrder] > sudoModeOrder[sudoMode]) {
+            if (
+                sudoModeOrder[m as keyof typeof sudoModeOrder] >
+                sudoModeOrder[sudoMode]
+            ) {
                 sudoMode = m as "none" | "commands" | "full";
             }
         }
