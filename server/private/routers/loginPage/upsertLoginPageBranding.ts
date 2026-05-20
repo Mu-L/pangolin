@@ -33,7 +33,10 @@ const paramsSchema = z.strictObject({
 });
 
 const bodySchema = z.strictObject({
-    logoUrl: z.string().optional(),
+    logoUrl: z
+        .string()
+        .optional()
+        .transform((val) => (val === "" ? null : val)),
     logoWidth: z.coerce.number<number>().min(1),
     logoHeight: z.coerce.number<number>().min(1),
     resourceTitle: z.string(),
