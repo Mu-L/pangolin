@@ -39,6 +39,11 @@ import {
     removePeerData,
     removeTargets as removeSubnetProxyTargets
 } from "@server/routers/client/targets";
+import { lockManager } from "#dynamic/lib/lock";
+
+// TTL for rebuild-association locks. These functions can fan out into many
+// peer/proxy updates, so give them a generous window.
+const REBUILD_ASSOCIATIONS_LOCK_TTL_MS = 120000;
 
 export async function getClientSiteResourceAccess(
     siteResource: SiteResource,
@@ -153,6 +158,23 @@ export async function getClientSiteResourceAccess(
 }
 
 export async function rebuildClientAssociationsFromSiteResource(
+    siteResource: SiteResource,
+    trx: Transaction | typeof db = db
+): Promise<{
+    mergedAllClients: {
+        clientId: number;
+        pubKey: string | null;
+        subnet: string | null;
+    }[];
+}> {
+    return await lockManager.withLock(
+        `rebuild-client-associations:site-resource:${siteResource.siteResourceId}`,
+        () => rebuildClientAssociationsFromSiteResourceImpl(siteResource, trx),
+        REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+    );
+}
+
+async function rebuildClientAssociationsFromSiteResourceImpl(
     siteResource: SiteResource,
     trx: Transaction | typeof db = db
 ): Promise<{
@@ -928,6 +950,17 @@ async function handleSubnetProxyTargetUpdates(
 }
 
 export async function rebuildClientAssociationsFromClient(
+    client: Client,
+    trx: Transaction | typeof db = db
+): Promise<void> {
+    return await lockManager.withLock(
+        `rebuild-client-associations:client:${client.clientId}`,
+        () => rebuildClientAssociationsFromClientImpl(client, trx),
+        REBUILD_ASSOCIATIONS_LOCK_TTL_MS
+    );
+}
+
+async function rebuildClientAssociationsFromClientImpl(
     client: Client,
     trx: Transaction | typeof db = db
 ): Promise<void> {
