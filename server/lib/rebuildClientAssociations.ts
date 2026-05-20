@@ -600,9 +600,24 @@ async function handleMessagesForSiteClients(
         exitNodeJobs.push(updateClientSiteDestinations(client, trx));
     }
 
-    await Promise.all(exitNodeJobs);
-    await Promise.all(newtJobs); // do the servers first to make sure they are ready?
-    await Promise.all(olmJobs);
+    Promise.all(exitNodeJobs).catch((error) => {
+        logger.error(
+            `rebuildClientAssociations: Error updating client site destinations for site ${site.siteId}:`,
+            error
+        );
+    });
+    Promise.all(newtJobs).catch((error) => {
+        logger.error(
+            `rebuildClientAssociations: Error updating Newt peers for site ${site.siteId}:`,
+            error
+        );
+    });
+    Promise.all(olmJobs).catch((error) => {
+        logger.error(
+            `rebuildClientAssociations: Error updating Olm peers for site ${site.siteId}:`,
+            error
+        );
+    });
 }
 
 interface PeerDestination {
@@ -1245,9 +1260,24 @@ async function handleMessagesForClientSites(
         );
     }
 
-    await Promise.all(exitNodeJobs);
-    await Promise.all(newtJobs);
-    await Promise.all(olmJobs);
+    Promise.all(exitNodeJobs).catch((error) => {
+        logger.error(
+            `rebuildClientAssociations: Error updating client site destinations for client ${client.clientId}:`,
+            error
+        );
+    });
+    Promise.all(newtJobs).catch((error) => {
+        logger.error(
+            `rebuildClientAssociations: Error updating Newt peers for client ${client.clientId}:`,
+            error
+        );
+    });
+    Promise.all(olmJobs).catch((error) => {
+        logger.error(
+            `rebuildClientAssociations: Error updating Olm peers for client ${client.clientId}:`,
+            error
+        );
+    });
 }
 
 async function handleMessagesForClientResources(
