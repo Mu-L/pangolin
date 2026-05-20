@@ -1528,3 +1528,195 @@ async function handleMessagesForClientResources(
 
     await Promise.all([...proxyJobs, ...olmJobs]);
 }
+
+export type ClientAssociationsCacheVerification = {
+    clientId: number;
+    consistent: boolean;
+    // What permissions say the cache should contain
+    expectedSiteResourceIds: number[];
+    expectedSiteIds: number[];
+    // What the cache currently contains
+    actualSiteResourceIds: number[];
+    actualSiteIds: number[];
+    // Diff
+    missingSiteResourceIds: number[]; // present in expected, missing from cache
+    extraSiteResourceIds: number[]; // present in cache, not in expected
+    missingSiteIds: number[];
+    extraSiteIds: number[];
+};
+
+// verifyClientAssociationsCache walks the same permission-derivation logic as
+// rebuildClientAssociationsFromClient but does NOT modify the database. It
+// returns the expected vs actual cache contents and a boolean indicating
+// whether the cache is in sync with what permissions imply.
+export async function verifyClientAssociationsCache(
+    client: Client,
+    trx: Transaction | typeof db = db
+): Promise<ClientAssociationsCacheVerification> {
+    let newSiteResourceIds: number[] = [];
+
+    // 1. Direct client associations
+    const directSiteResources = await trx
+        .select({ siteResourceId: clientSiteResources.siteResourceId })
+        .from(clientSiteResources)
+        .innerJoin(
+            siteResources,
+            eq(siteResources.siteResourceId, clientSiteResources.siteResourceId)
+        )
+        .where(
+            and(
+                eq(clientSiteResources.clientId, client.clientId),
+                eq(siteResources.orgId, client.orgId)
+            )
+        );
+
+    newSiteResourceIds.push(
+        ...directSiteResources.map((r) => r.siteResourceId)
+    );
+
+    // 2. User-based and role-based access (if client has a userId)
+    if (client.userId) {
+        const userSiteResourceIds = await trx
+            .select({ siteResourceId: userSiteResources.siteResourceId })
+            .from(userSiteResources)
+            .innerJoin(
+                siteResources,
+                eq(
+                    siteResources.siteResourceId,
+                    userSiteResources.siteResourceId
+                )
+            )
+            .where(
+                and(
+                    eq(userSiteResources.userId, client.userId),
+                    eq(siteResources.orgId, client.orgId)
+                )
+            );
+
+        newSiteResourceIds.push(
+            ...userSiteResourceIds.map((r) => r.siteResourceId)
+        );
+
+        const roleIds = await trx
+            .select({ roleId: userOrgRoles.roleId })
+            .from(userOrgRoles)
+            .where(
+                and(
+                    eq(userOrgRoles.userId, client.userId),
+                    eq(userOrgRoles.orgId, client.orgId)
+                )
+            )
+            .then((rows) => rows.map((row) => row.roleId));
+
+        if (roleIds.length > 0) {
+            const roleSiteResourceIds = await trx
+                .select({ siteResourceId: roleSiteResources.siteResourceId })
+                .from(roleSiteResources)
+                .innerJoin(
+                    siteResources,
+                    eq(
+                        siteResources.siteResourceId,
+                        roleSiteResources.siteResourceId
+                    )
+                )
+                .where(
+                    and(
+                        inArray(roleSiteResources.roleId, roleIds),
+                        eq(siteResources.orgId, client.orgId)
+                    )
+                );
+
+            newSiteResourceIds.push(
+                ...roleSiteResourceIds.map((r) => r.siteResourceId)
+            );
+        }
+    }
+
+    newSiteResourceIds = Array.from(new Set(newSiteResourceIds));
+
+    const newSiteResources =
+        newSiteResourceIds.length > 0
+            ? await trx
+                  .select()
+                  .from(siteResources)
+                  .where(
+                      inArray(siteResources.siteResourceId, newSiteResourceIds)
+                  )
+            : [];
+
+    const networkIds = Array.from(
+        new Set(
+            newSiteResources
+                .map((sr) => sr.networkId)
+                .filter((id): id is number => id !== null)
+        )
+    );
+    const newSiteIds =
+        networkIds.length > 0
+            ? await trx
+                  .select({ siteId: siteNetworks.siteId })
+                  .from(siteNetworks)
+                  .where(inArray(siteNetworks.networkId, networkIds))
+                  .then((rows) =>
+                      Array.from(new Set(rows.map((r) => r.siteId)))
+                  )
+            : [];
+
+    // Read the existing cache state
+    const existingResourceAssociations = await trx
+        .select({
+            siteResourceId: clientSiteResourcesAssociationsCache.siteResourceId
+        })
+        .from(clientSiteResourcesAssociationsCache)
+        .where(
+            eq(clientSiteResourcesAssociationsCache.clientId, client.clientId)
+        );
+    const existingSiteResourceIds = existingResourceAssociations.map(
+        (r) => r.siteResourceId
+    );
+
+    const existingSiteAssociations = await trx
+        .select({ siteId: clientSitesAssociationsCache.siteId })
+        .from(clientSitesAssociationsCache)
+        .where(eq(clientSitesAssociationsCache.clientId, client.clientId));
+    const existingSiteIds = existingSiteAssociations.map((s) => s.siteId);
+
+    const expectedSiteResourceSet = new Set(newSiteResourceIds);
+    const actualSiteResourceSet = new Set(existingSiteResourceIds);
+    const expectedSiteSet = new Set(newSiteIds);
+    const actualSiteSet = new Set(existingSiteIds);
+
+    const missingSiteResourceIds = newSiteResourceIds.filter(
+        (id) => !actualSiteResourceSet.has(id)
+    );
+    const extraSiteResourceIds = existingSiteResourceIds.filter(
+        (id) => !expectedSiteResourceSet.has(id)
+    );
+    const missingSiteIds = newSiteIds.filter((id) => !actualSiteSet.has(id));
+    const extraSiteIds = existingSiteIds.filter(
+        (id) => !expectedSiteSet.has(id)
+    );
+
+    const consistent =
+        missingSiteResourceIds.length === 0 &&
+        extraSiteResourceIds.length === 0 &&
+        missingSiteIds.length === 0 &&
+        extraSiteIds.length === 0;
+
+    return {
+        clientId: client.clientId,
+        consistent,
+        expectedSiteResourceIds: Array.from(expectedSiteResourceSet).sort(
+            (a, b) => a - b
+        ),
+        expectedSiteIds: Array.from(expectedSiteSet).sort((a, b) => a - b),
+        actualSiteResourceIds: Array.from(actualSiteResourceSet).sort(
+            (a, b) => a - b
+        ),
+        actualSiteIds: Array.from(actualSiteSet).sort((a, b) => a - b),
+        missingSiteResourceIds: missingSiteResourceIds.sort((a, b) => a - b),
+        extraSiteResourceIds: extraSiteResourceIds.sort((a, b) => a - b),
+        missingSiteIds: missingSiteIds.sort((a, b) => a - b),
+        extraSiteIds: extraSiteIds.sort((a, b) => a - b)
+    };
+}

@@ -31,6 +31,7 @@ import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
+import * as client from "@server/routers/client";
 
 import {
     verifyOrgAccess,
@@ -774,4 +775,10 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getTarget),
     healthChecks.getHealthCheckStatusHistory
+);
+
+authenticated.get(
+    "/client/:clientId/verify-associations-cache",
+    verifyClientAccess,
+    client.verifyClientAssociationsCache
 );
