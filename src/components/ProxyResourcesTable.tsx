@@ -2,10 +2,12 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
 import {
     ResourceSitesStatusCell,
     type ResourceSiteRow
 } from "@app/components/ResourceSitesStatusCell";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { ExtendedColumnDef } from "@app/components/ui/data-table";
@@ -24,12 +26,14 @@ import {
 import { Switch } from "@app/components/ui/switch";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
-import { Selectedsite, SitesSelector } from "@app/components/site-selector";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { toast } from "@app/hooks/useToast";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
-import { toast } from "@app/hooks/useToast";
-import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import type { PaginationState } from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
@@ -43,6 +47,7 @@ import {
     Clock,
     Funnel,
     MoreHorizontal,
+    PlusIcon,
     ShieldCheck,
     ShieldOff,
     XCircle
@@ -51,6 +56,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+    startTransition,
     useEffect,
     useMemo,
     useOptimistic,
@@ -64,8 +70,8 @@ import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
-import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
-import { build } from "@server/build";
+import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import { LabelBadge } from "./label-badge";
 
 export type TargetHealth = {
     targetId: number;
@@ -98,30 +104,12 @@ export type ResourceRow = {
     health?: "healthy" | "degraded" | "unhealthy" | "unknown";
     sites: ResourceSiteRow[];
     wildcard?: boolean;
+    labels?: Array<{
+        labelId: number;
+        name: string;
+        color: string;
+    }>;
 };
-
-function StatusIcon({
-    status,
-    className = ""
-}: {
-    status: string | undefined | null;
-    className?: string;
-}) {
-    const iconClass = `h-4 w-4 ${className}`;
-
-    switch (status) {
-        case "healthy":
-            return <CheckCircle2 className={`${iconClass} text-green-500`} />;
-        case "degraded":
-            return <CheckCircle2 className={`${iconClass} text-yellow-500`} />;
-        case "unhealthy":
-            return <XCircle className={`${iconClass} text-destructive`} />;
-        case "unknown":
-            return <Clock className={`${iconClass} text-muted-foreground`} />;
-        default:
-            return null;
-    }
-}
 
 type ProxyResourcesTableProps = {
     resources: ResourceRow[];
@@ -130,6 +118,11 @@ type ProxyResourcesTableProps = {
     rowCount: number;
     initialFilterSite?: Selectedsite | null;
 };
+
+const booleanSearchFilterSchema = z
+    .enum(["true", "false"])
+    .optional()
+    .catch(undefined);
 
 export default function ProxyResourcesTable({
     resources,
@@ -153,6 +146,9 @@ export default function ProxyResourcesTable({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] =
         useState<ResourceRow | null>();
+
+    const { isPaidUser } = usePaidStatus();
+    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
@@ -234,494 +230,441 @@ export default function ProxyResourcesTable({
         }
     }
 
-    function TargetStatusCell({
-        targets,
-        healthStatus
-    }: {
-        targets?: TargetHealth[];
-        healthStatus?: string;
-    }) {
-        const overallStatus = healthStatus;
+    const clearSiteFilter = () => {
+        handleFilterChange("siteId", undefined);
+        setSiteFilterOpen(false);
+    };
 
-        if (!targets || targets.length === 0) {
-            return (
-                <div className="flex items-center gap-2">
-                    <StatusIcon status="unknown" />
-                    <span className="text-sm">
-                        {t("resourcesTableNoTargets")}
-                    </span>
-                </div>
-            );
-        }
+    const onPickSite = (site: Selectedsite) => {
+        handleFilterChange("siteId", String(site.siteId));
+        setSiteFilterOpen(false);
+    };
 
-        const monitoredTargets = targets.filter(
-            (t) => t.enabled && t.healthStatus && t.healthStatus !== "unknown"
-        );
-        const unknownTargets = targets.filter(
-            (t) => !t.enabled || !t.healthStatus || t.healthStatus === "unknown"
-        );
+    const siteFilterOpenRef = useRef(siteFilterOpen);
+    siteFilterOpenRef.current = siteFilterOpen;
 
-        return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-2 h-8 px-0 font-normal"
-                    >
-                        <StatusIcon status={overallStatus} />
-                        <span className="text-sm">
-                            {overallStatus === "healthy" &&
-                                t("resourcesTableHealthy")}
-                            {overallStatus === "degraded" &&
-                                t("resourcesTableDegraded")}
-                            {overallStatus === "unhealthy" &&
-                                t("resourcesTableUnhealthy")}
-                            {overallStatus === "unknown" &&
-                                t("resourcesTableUnknown")}
-                        </span>
-                        <ChevronDown className="h-3 w-3" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-70">
-                    {monitoredTargets.length > 0 && (
-                        <>
-                            {monitoredTargets.map((target) => (
-                                <DropdownMenuItem
-                                    key={target.targetId}
-                                    className="flex items-center justify-between gap-4"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <StatusIcon
-                                            status={
-                                                target.healthStatus ===
-                                                "healthy"
-                                                    ? "online"
-                                                    : "offline"
-                                            }
-                                            className="h-3 w-3"
-                                        />
-                                        {target.siteName
-                                            ? `${target.siteName} (${target.ip}:${target.port})`
-                                            : `${target.ip}:${target.port}`}
-                                    </div>
-                                    <span
-                                        className={`capitalize ${
-                                            target.healthStatus === "healthy"
-                                                ? "text-green-500"
-                                                : "text-destructive"
-                                        }`}
-                                    >
-                                        {target.healthStatus}
-                                    </span>
-                                </DropdownMenuItem>
-                            ))}
-                        </>
-                    )}
-                    {unknownTargets.length > 0 && (
-                        <>
-                            {unknownTargets.map((target) => (
-                                <DropdownMenuItem
-                                    key={target.targetId}
-                                    className="flex items-center justify-between gap-4"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <StatusIcon
-                                            status="unknown"
-                                            className="h-3 w-3"
-                                        />
-                                        {target.siteName
-                                            ? `${target.siteName} (${target.ip}:${target.port})`
-                                            : `${target.ip}:${target.port}`}
-                                    </div>
-                                    <span className="text-muted-foreground">
-                                        {!target.enabled
-                                            ? t("disabled")
-                                            : t("resourcesTableNotMonitored")}
-                                    </span>
-                                </DropdownMenuItem>
-                            ))}
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        );
-    }
+    const selectedSiteRef = useRef(selectedSite);
+    selectedSiteRef.current = selectedSite;
 
-    const proxyColumns: ExtendedColumnDef<ResourceRow>[] = [
-        {
-            accessorKey: "name",
-            enableHiding: false,
-            friendlyName: t("name"),
-            header: () => {
-                const nameOrder = getSortDirection("name", searchParams);
-                const Icon =
-                    nameOrder === "asc"
-                        ? ArrowDown01Icon
-                        : nameOrder === "desc"
-                          ? ArrowUp10Icon
-                          : ChevronsUpDownIcon;
+    const clearSiteFilterRef = useRef(clearSiteFilter);
+    clearSiteFilterRef.current = clearSiteFilter;
 
-                return (
-                    <Button
-                        variant="ghost"
-                        className="p-3"
-                        onClick={() => toggleSort("name")}
-                    >
-                        {t("name")}
-                        <Icon className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
-        },
-        {
-            id: "niceId",
-            accessorKey: "nice",
-            friendlyName: t("identifier"),
-            enableHiding: true,
-            header: () => <span className="p-3">{t("identifier")}</span>,
-            cell: ({ row }) => {
-                return <span>{row.original.nice || "-"}</span>;
-            }
-        },
-        {
-            id: "sites",
-            accessorFn: (row) => row.sites.map((s) => s.siteName).join(", "),
-            friendlyName: t("sites"),
-            header: () => (
-                <Popover open={siteFilterOpen} onOpenChange={setSiteFilterOpen}>
-                    <PopoverTrigger asChild>
+    const onPickSiteRef = useRef(onPickSite);
+    onPickSiteRef.current = onPickSite;
+
+    const proxyColumns = useMemo<ExtendedColumnDef<ResourceRow>[]>(() => {
+        const cols: ExtendedColumnDef<ResourceRow>[] = [
+            {
+                accessorKey: "name",
+                enableHiding: false,
+                friendlyName: t("name"),
+                header: () => {
+                    const nameOrder = getSortDirection("name", searchParams);
+                    const Icon =
+                        nameOrder === "asc"
+                            ? ArrowDown01Icon
+                            : nameOrder === "desc"
+                              ? ArrowUp10Icon
+                              : ChevronsUpDownIcon;
+
+                    return (
                         <Button
-                            type="button"
                             variant="ghost"
-                            role="combobox"
-                            className={cn(
-                                "justify-between text-sm h-8 px-2 w-full p-3",
-                                !selectedSite && "text-muted-foreground"
-                            )}
+                            className="p-3"
+                            onClick={() => toggleSort("name")}
                         >
-                            <div className="flex items-center gap-2 min-w-0">
-                                {t("sites")}
-                                <Funnel className="size-4 flex-none" />
-                                {selectedSite && (
-                                    <Badge
-                                        className="truncate max-w-[10rem]"
-                                        variant="secondary"
-                                    >
-                                        {selectedSite.name}
-                                    </Badge>
-                                )}
-                            </div>
+                            {t("name")}
+                            <Icon className="ml-2 h-4 w-4" />
                         </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                        className={dataTableFilterPopoverContentClassName}
-                        align="start"
+                    );
+                }
+            },
+            {
+                id: "niceId",
+                accessorKey: "nice",
+                friendlyName: t("identifier"),
+                enableHiding: true,
+                header: () => <span className="p-3">{t("identifier")}</span>,
+                cell: ({ row }) => {
+                    return <span>{row.original.nice || "-"}</span>;
+                }
+            },
+            {
+                id: "sites",
+                accessorFn: (row) =>
+                    row.sites.map((s) => s.siteName).join(", "),
+                friendlyName: t("sites"),
+                header: () => (
+                    <Popover
+                        open={siteFilterOpenRef.current}
+                        onOpenChange={setSiteFilterOpen}
                     >
-                        <div className="border-b p-1">
+                        <PopoverTrigger asChild>
                             <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                className="h-8 w-full justify-start font-normal"
-                                onClick={clearSiteFilter}
+                                role="combobox"
+                                className={cn(
+                                    "justify-between text-sm h-8 px-2 w-full p-3",
+                                    !selectedSiteRef.current &&
+                                        "text-muted-foreground"
+                                )}
                             >
-                                {t("standaloneHcFilterAnySite")}
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {t("sites")}
+                                    <Funnel className="size-4 flex-none" />
+                                    {selectedSiteRef.current && (
+                                        <Badge
+                                            className="truncate max-w-[10rem]"
+                                            variant="secondary"
+                                        >
+                                            {selectedSiteRef.current.name}
+                                        </Badge>
+                                    )}
+                                </div>
                             </Button>
-                        </div>
-                        <SitesSelector
-                            orgId={orgId}
-                            selectedSite={selectedSite}
-                            onSelectSite={onPickSite}
-                        />
-                    </PopoverContent>
-                </Popover>
-            ),
-            cell: ({ row }) => (
-                <ResourceSitesStatusCell
-                    orgId={row.original.orgId}
-                    resourceSites={row.original.sites}
-                />
-            )
-        },
-        {
-            accessorKey: "protocol",
-            friendlyName: t("protocol"),
-            enableHiding: true,
-            header: () => <span className="p-3">{t("protocol")}</span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <span>
-                        {resourceRow.http
-                            ? resourceRow.ssl
-                                ? "HTTPS"
-                                : "HTTP"
-                            : resourceRow.protocol.toUpperCase()}
-                    </span>
-                );
-            }
-        },
-        {
-            id: "status",
-            accessorKey: "status",
-            friendlyName: t("health"),
-            header: () => (
-                <ColumnFilterButton
-                    options={[
-                        { value: "healthy", label: t("resourcesTableHealthy") },
-                        {
-                            value: "degraded",
-                            label: t("resourcesTableDegraded")
-                        },
-                        {
-                            value: "unhealthy",
-                            label: t("resourcesTableUnhealthy")
-                        },
-                        { value: "unknown", label: t("resourcesTableUnknown") }
-                    ]}
-                    selectedValue={
-                        searchParams.get("healthStatus") ?? undefined
-                    }
-                    onValueChange={(value) =>
-                        handleFilterChange("healthStatus", value)
-                    }
-                    searchPlaceholder={t("searchPlaceholder")}
-                    emptyMessage={t("emptySearchOptions")}
-                    label={t("health")}
-                    className="p-3"
-                />
-            ),
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                if (
-                    !resourceRow.http ||
-                    resourceRow.browserAccessType !== "http"
-                ) {
-                    return <span>-</span>;
-                }
-                return (
-                    <TargetStatusCell
-                        targets={resourceRow.targets}
-                        healthStatus={resourceRow.health}
+                        </PopoverTrigger>
+                        <PopoverContent
+                            className={dataTableFilterPopoverContentClassName}
+                            align="start"
+                        >
+                            <div className="border-b p-1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-full justify-start font-normal"
+                                    onClick={() => clearSiteFilterRef.current()}
+                                >
+                                    {t("standaloneHcFilterAnySite")}
+                                </Button>
+                            </div>
+                            <SitesSelector
+                                orgId={orgId}
+                                selectedSite={selectedSiteRef.current}
+                                onSelectSite={(site) =>
+                                    onPickSiteRef.current(site)
+                                }
+                            />
+                        </PopoverContent>
+                    </Popover>
+                ),
+                cell: ({ row }) => (
+                    <ResourceSitesStatusCell
+                        orgId={row.original.orgId}
+                        resourceSites={row.original.sites}
                     />
-                );
+                )
             },
-            sortingFn: (rowA, rowB) => {
-                const statusA = rowA.original.health;
-                const statusB = rowB.original.health;
-                if (!statusA && !statusB) return 0;
-                if (!statusA) return 1;
-                if (!statusB) return -1;
-                const statusOrder = {
-                    healthy: 3,
-                    degraded: 2,
-                    unhealthy: 1,
-                    unknown: 0
-                };
-                return statusOrder[statusA] - statusOrder[statusB];
-            }
-        },
-        {
-            id: "statusHistory",
-            friendlyName: t("uptime30d"),
-            header: () => <span className="p-3">{t("uptime30d")}</span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                if (
-                    !resourceRow.http ||
-                    resourceRow.browserAccessType !== "http"
-                ) {
-                    return <span>-</span>;
-                }
-                return <UptimeMiniBar resourceId={resourceRow.id} days={30} />;
-            }
-        },
-        {
-            accessorKey: "domain",
-            friendlyName: t("access"),
-            header: () => <span className="p-3">{t("access")}</span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-
-                if (!resourceRow.http) {
+            {
+                accessorKey: "protocol",
+                friendlyName: t("protocol"),
+                enableHiding: true,
+                header: () => <span className="p-3">{t("protocol")}</span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
                     return (
-                        <div className="flex items-center gap-2 min-w-0">
-                            <CopyToClipboard
-                                text={resourceRow.proxyPort?.toString() || ""}
-                                isLink={false}
-                            />
-                        </div>
+                        <span>
+                            {resourceRow.http
+                                ? resourceRow.ssl
+                                    ? "HTTPS"
+                                    : "HTTP"
+                                : resourceRow.protocol.toUpperCase()}
+                        </span>
                     );
                 }
-
-                if (!resourceRow.domainId) {
+            },
+            {
+                id: "status",
+                accessorKey: "status",
+                friendlyName: t("health"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            {
+                                value: "healthy",
+                                label: t("resourcesTableHealthy")
+                            },
+                            {
+                                value: "degraded",
+                                label: t("resourcesTableDegraded")
+                            },
+                            {
+                                value: "unhealthy",
+                                label: t("resourcesTableUnhealthy")
+                            },
+                            {
+                                value: "unknown",
+                                label: t("resourcesTableUnknown")
+                            }
+                        ]}
+                        selectedValue={
+                            searchParams.get("healthStatus") ?? undefined
+                        }
+                        onValueChange={(value) =>
+                            handleFilterChange("healthStatus", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("health")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    if (
+                        !resourceRow.http ||
+                        resourceRow.browserAccessType !== "http"
+                    ) {
+                        return <span>-</span>;
+                    }
                     return (
-                        <div className="flex items-center gap-2 min-w-0">
-                            <InfoPopup
-                                info={t("domainNotFoundDescription")}
-                                text={t("domainNotFound")}
-                            />
-                        </div>
+                        <TargetStatusCell
+                            targets={resourceRow.targets}
+                            healthStatus={resourceRow.health}
+                        />
+                    );
+                },
+                sortingFn: (rowA, rowB) => {
+                    const statusA = rowA.original.health;
+                    const statusB = rowB.original.health;
+                    if (!statusA && !statusB) return 0;
+                    if (!statusA) return 1;
+                    if (!statusB) return -1;
+                    const statusOrder = {
+                        healthy: 3,
+                        degraded: 2,
+                        unhealthy: 1,
+                        unknown: 0
+                    };
+                    return statusOrder[statusA] - statusOrder[statusB];
+                }
+            },
+            {
+                id: "statusHistory",
+                friendlyName: t("uptime30d"),
+                header: () => <span className="p-3">{t("uptime30d")}</span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    if (
+                        !resourceRow.http ||
+                        resourceRow.browserAccessType !== "http"
+                    ) {
+                        return <span>-</span>;
+                    }
+                    return (
+                        <UptimeMiniBar resourceId={resourceRow.id} days={30} />
                     );
                 }
+            },
+            {
+                accessorKey: "domain",
+                friendlyName: t("access"),
+                header: () => <span className="p-3">{t("access")}</span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
 
-                const domainId = resourceRow.domainId;
-                const certHostname = resourceRow.fullDomain;
-                const showHttpsCertIndicator =
-                    build !== "oss" &&
-                    resourceRow.ssl &&
-                    certHostname != null &&
-                    certHostname !== "";
-
-                return (
-                    <div className="flex items-center gap-2 min-w-0">
-                        {showHttpsCertIndicator ? (
-                            <ResourceAccessCertIndicator
-                                orgId={resourceRow.orgId}
-                                domainId={domainId}
-                                fullDomain={certHostname}
-                            />
-                        ) : null}
-                        <div className="">
-                            {!resourceRow.wildcard ? (
+                    if (!resourceRow.http) {
+                        return (
+                            <div className="flex items-center gap-2 min-w-0">
                                 <CopyToClipboard
-                                    text={resourceRow.domain}
-                                    isLink={true}
+                                    text={
+                                        resourceRow.proxyPort?.toString() || ""
+                                    }
+                                    isLink={false}
                                 />
+                            </div>
+                        );
+                    }
+
+                    if (!resourceRow.domainId) {
+                        return (
+                            <div className="flex items-center gap-2 min-w-0">
+                                <InfoPopup
+                                    info={t("domainNotFoundDescription")}
+                                    text={t("domainNotFound")}
+                                />
+                            </div>
+                        );
+                    }
+
+                    const domainId = resourceRow.domainId;
+                    const certHostname = resourceRow.fullDomain;
+                    const showHttpsCertIndicator =
+                        build !== "oss" &&
+                        resourceRow.ssl &&
+                        certHostname != null &&
+                        certHostname !== "";
+
+                    return (
+                        <div className="flex items-center gap-2 min-w-0">
+                            {showHttpsCertIndicator ? (
+                                <ResourceAccessCertIndicator
+                                    orgId={resourceRow.orgId}
+                                    domainId={domainId}
+                                    fullDomain={certHostname}
+                                />
+                            ) : null}
+                            <div className="">
+                                {!resourceRow.wildcard ? (
+                                    <CopyToClipboard
+                                        text={resourceRow.domain}
+                                        isLink={true}
+                                    />
+                                ) : (
+                                    <span>{resourceRow.domain}</span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+            },
+            {
+                accessorKey: "authState",
+                friendlyName: t("authentication"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            { value: "protected", label: t("protected") },
+                            {
+                                value: "not_protected",
+                                label: t("notProtected")
+                            },
+                            { value: "none", label: t("none") }
+                        ]}
+                        selectedValue={
+                            searchParams.get("authState") ?? undefined
+                        }
+                        onValueChange={(value) =>
+                            handleFilterChange("authState", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("authentication")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    return (
+                        <div>
+                            {resourceRow.authState === "protected" ? (
+                                <span className="flex items-center space-x-2">
+                                    <ShieldCheck className="w-4 h-4 text-green-500" />
+                                    <span>{t("protected")}</span>
+                                </span>
+                            ) : resourceRow.authState === "not_protected" ? (
+                                <span className="flex items-center space-x-2">
+                                    <ShieldOff className="w-4 h-4 text-yellow-500" />
+                                    <span>{t("notProtected")}</span>
+                                </span>
                             ) : (
-                                <span>{resourceRow.domain}</span>
+                                <span>-</span>
                             )}
                         </div>
-                    </div>
-                );
-            }
-        },
-        {
-            accessorKey: "authState",
-            friendlyName: t("authentication"),
-            header: () => (
-                <ColumnFilterButton
-                    options={[
-                        { value: "protected", label: t("protected") },
-                        { value: "not_protected", label: t("notProtected") },
-                        { value: "none", label: t("none") }
-                    ]}
-                    selectedValue={searchParams.get("authState") ?? undefined}
-                    onValueChange={(value) =>
-                        handleFilterChange("authState", value)
-                    }
-                    searchPlaceholder={t("searchPlaceholder")}
-                    emptyMessage={t("emptySearchOptions")}
-                    label={t("authentication")}
-                    className="p-3"
-                />
-            ),
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <div>
-                        {resourceRow.authState === "protected" ? (
-                            <span className="flex items-center space-x-2">
-                                <ShieldCheck className="w-4 h-4 text-green-500" />
-                                <span>{t("protected")}</span>
-                            </span>
-                        ) : resourceRow.authState === "not_protected" ? (
-                            <span className="flex items-center space-x-2">
-                                <ShieldOff className="w-4 h-4 text-yellow-500" />
-                                <span>{t("notProtected")}</span>
-                            </span>
-                        ) : (
-                            <span>-</span>
+                    );
+                }
+            },
+            {
+                accessorKey: "enabled",
+                friendlyName: t("enabled"),
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            { value: "true", label: t("enabled") },
+                            { value: "false", label: t("disabled") }
+                        ]}
+                        selectedValue={booleanSearchFilterSchema.parse(
+                            searchParams.get("enabled")
                         )}
-                    </div>
-                );
-            }
-        },
-        {
-            accessorKey: "enabled",
-            friendlyName: t("enabled"),
-            header: () => (
-                <ColumnFilterButton
-                    options={[
-                        { value: "true", label: t("enabled") },
-                        { value: "false", label: t("disabled") }
-                    ]}
-                    selectedValue={booleanSearchFilterSchema.parse(
-                        searchParams.get("enabled")
-                    )}
-                    onValueChange={(value) =>
-                        handleFilterChange("enabled", value)
-                    }
-                    searchPlaceholder={t("searchPlaceholder")}
-                    emptyMessage={t("emptySearchOptions")}
-                    label={t("enabled")}
-                    className="p-3"
-                />
-            ),
-            cell: ({ row }) => (
-                <ResourceEnabledForm
-                    resource={row.original}
-                    onToggleResourceEnabled={toggleResourceEnabled}
-                />
-            )
-        },
-        {
-            id: "actions",
-            enableHiding: false,
-            header: () => <span className="p-3"></span>,
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                return (
-                    <div className="flex items-center gap-2 justify-end">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">
-                                        {t("openMenu")}
-                                    </span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <Link
-                                    className="block w-full"
-                                    href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
-                                >
-                                    <DropdownMenuItem>
-                                        {t("viewSettings")}
+                        onValueChange={(value) =>
+                            handleFilterChange("enabled", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("enabled")}
+                        className="p-3"
+                    />
+                ),
+                cell: ({ row }) => (
+                    <ResourceEnabledForm
+                        resource={row.original}
+                        onToggleResourceEnabled={toggleResourceEnabled}
+                    />
+                )
+            },
+            {
+                id: "actions",
+                enableHiding: false,
+                header: () => <span className="p-3"></span>,
+                cell: ({ row }) => {
+                    const resourceRow = row.original;
+                    return (
+                        <div className="flex items-center gap-2 justify-end">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        <span className="sr-only">
+                                            {t("openMenu")}
+                                        </span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <Link
+                                        className="block w-full"
+                                        href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
+                                    >
+                                        <DropdownMenuItem>
+                                            {t("viewSettings")}
+                                        </DropdownMenuItem>
+                                    </Link>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setSelectedResource(resourceRow);
+                                            setIsDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        <span className="text-red-500">
+                                            {t("delete")}
+                                        </span>
                                     </DropdownMenuItem>
-                                </Link>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedResource(resourceRow);
-                                        setIsDeleteModalOpen(true);
-                                    }}
-                                >
-                                    <span className="text-red-500">
-                                        {t("delete")}
-                                    </span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Link
-                            href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
-                        >
-                            <Button variant={"outline"}>
-                                {t("edit")}
-                                <ArrowRight className="ml-2 w-4 h-4" />
-                            </Button>
-                        </Link>
-                    </div>
-                );
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Link
+                                href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
+                            >
+                                <Button variant={"outline"}>
+                                    {t("edit")}
+                                    <ArrowRight className="ml-2 w-4 h-4" />
+                                </Button>
+                            </Link>
+                        </div>
+                    );
+                }
             }
-        }
-    ];
+        ];
 
-    const booleanSearchFilterSchema = z
-        .enum(["true", "false"])
-        .optional()
-        .catch(undefined);
+        if (isLabelFeatureEnabled) {
+            cols.splice(cols.length - 1, 0, {
+                id: "labels",
+                accessorKey: "labels",
+                header: () => (
+                    <span className="p-3 text-end w-full inline-block">
+                        {t("labels")}
+                    </span>
+                ),
+                cell: ({ row }: { row: { original: ResourceRow } }) => (
+                    <ResourceLabelCell resource={row.original} orgId={orgId} />
+                )
+            });
+        }
+
+        return cols;
+    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
 
     function handleFilterChange(
         column: string,
@@ -737,16 +680,6 @@ export default function ProxyResourcesTable({
             searchParams
         });
     }
-
-    const clearSiteFilter = () => {
-        handleFilterChange("siteId", undefined);
-        setSiteFilterOpen(false);
-    };
-
-    const onPickSite = (site: Selectedsite) => {
-        handleFilterChange("siteId", String(site.siteId));
-        setSiteFilterOpen(false);
-    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
@@ -813,11 +746,226 @@ export default function ProxyResourcesTable({
                 isRefreshing={isRefreshing || isFiltering}
                 isNavigatingToAddPage={isNavigatingToAddPage}
                 enableColumnVisibility
-                columnVisibility={{ niceId: false, protocol: false }}
+                columnVisibility={{
+                    niceId: false,
+                    protocol: false,
+                    labels: false
+                }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
             />
         </>
+    );
+}
+
+type ResourceLabelCellProps = {
+    resource: ResourceRow;
+    orgId: string;
+};
+
+function ResourceLabelCell({ resource, orgId }: ResourceLabelCellProps) {
+    const t = useTranslations();
+
+    const api = createApiClient(useEnvContext());
+
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    const router = useRouter();
+
+    const labels = resource.labels ?? [];
+    const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
+
+    function toggleSiteLabel(
+        label: SelectedLabel,
+        action: "attach" | "detach"
+    ) {
+        startTransition(async () => {
+            try {
+                if (action === "attach") {
+                    setOptimisticLabels([...optimisticLabels, label]);
+
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/attach`,
+                        { resourceId: resource.id }
+                    );
+                } else {
+                    setOptimisticLabels(
+                        optimisticLabels.filter(
+                            (lb) => lb.labelId !== label.labelId
+                        )
+                    );
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/detach`,
+                        { resourceId: resource.id }
+                    );
+                }
+            } catch (e) {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e, t("errorOccurred")),
+                    variant: "destructive"
+                });
+            } finally {
+                router.refresh();
+            }
+        });
+    }
+
+    return (
+        <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
+            {optimisticLabels.slice(0, 3).map((label) => (
+                <LabelBadge
+                    key={label.labelId}
+                    onClick={() => setIsPopoverOpen(true)}
+                    {...label}
+                />
+            ))}
+            {optimisticLabels.length > 3 && (
+                <Button
+                    variant="outline"
+                    className={cn(
+                        "inline-flex gap-1 items-center",
+                        "rounded-full text-sm cursor-pointer",
+                        "px-1.5 py-0 h-auto"
+                    )}
+                    onClick={() => setIsPopoverOpen(true)}
+                >
+                    +{optimisticLabels.length - 3}
+                </Button>
+            )}
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        className="p-1 size-auto rounded-full"
+                        title={t("addLabels")}
+                    >
+                        <span className="sr-only">{t("addLabels")}</span>
+                        <PlusIcon className="size-3" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="p-0 w-full">
+                    <LabelsSelector
+                        orgId={orgId}
+                        selectedLabels={optimisticLabels}
+                        toggleLabel={toggleSiteLabel}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
+    );
+}
+
+function TargetStatusCell({
+    targets,
+    healthStatus
+}: {
+    targets?: TargetHealth[];
+    healthStatus?: string;
+}) {
+    const overallStatus = healthStatus;
+    const t = useTranslations();
+
+    if (!targets || targets.length === 0) {
+        return (
+            <div className="flex items-center gap-2 px-2">
+                <StatusIcon status="unknown" />
+                <span className="text-sm">{t("resourcesTableNoTargets")}</span>
+            </div>
+        );
+    }
+
+    const monitoredTargets = targets.filter(
+        (t) => t.enabled && t.healthStatus && t.healthStatus !== "unknown"
+    );
+    const unknownTargets = targets.filter(
+        (t) => !t.enabled || !t.healthStatus || t.healthStatus === "unknown"
+    );
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 h-8 px-2 font-normal"
+                >
+                    <StatusIcon status={overallStatus} />
+                    <span className="text-sm">
+                        {overallStatus === "healthy" &&
+                            t("resourcesTableHealthy")}
+                        {overallStatus === "degraded" &&
+                            t("resourcesTableDegraded")}
+                        {overallStatus === "unhealthy" &&
+                            t("resourcesTableUnhealthy")}
+                        {overallStatus === "unknown" &&
+                            t("resourcesTableUnknown")}
+                    </span>
+                    <ChevronDown className="h-3 w-3" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-70">
+                {monitoredTargets.length > 0 && (
+                    <>
+                        {monitoredTargets.map((target) => (
+                            <DropdownMenuItem
+                                key={target.targetId}
+                                className="flex items-center justify-between gap-4"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <StatusIcon
+                                        status={
+                                            target.healthStatus === "healthy"
+                                                ? "online"
+                                                : "offline"
+                                        }
+                                        className="h-3 w-3"
+                                    />
+                                    {target.siteName
+                                        ? `${target.siteName} (${target.ip}:${target.port})`
+                                        : `${target.ip}:${target.port}`}
+                                </div>
+                                <span
+                                    className={`capitalize ${
+                                        target.healthStatus === "healthy"
+                                            ? "text-green-500"
+                                            : "text-destructive"
+                                    }`}
+                                >
+                                    {target.healthStatus}
+                                </span>
+                            </DropdownMenuItem>
+                        ))}
+                    </>
+                )}
+                {unknownTargets.length > 0 && (
+                    <>
+                        {unknownTargets.map((target) => (
+                            <DropdownMenuItem
+                                key={target.targetId}
+                                className="flex items-center justify-between gap-4"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <StatusIcon
+                                        status="unknown"
+                                        className="h-3 w-3"
+                                    />
+                                    {target.siteName
+                                        ? `${target.siteName} (${target.ip}:${target.port})`
+                                        : `${target.ip}:${target.port}`}
+                                </div>
+                                <span className="text-muted-foreground">
+                                    {!target.enabled
+                                        ? t("disabled")
+                                        : t("resourcesTableNotMonitored")}
+                                </span>
+                            </DropdownMenuItem>
+                        ))}
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -859,4 +1007,27 @@ function ResourceEnabledForm({
             />
         </form>
     );
+}
+
+function StatusIcon({
+    status,
+    className = ""
+}: {
+    status: string | undefined | null;
+    className?: string;
+}) {
+    const iconClass = `h-4 w-4 ${className}`;
+
+    switch (status) {
+        case "healthy":
+            return <CheckCircle2 className={`${iconClass} text-green-500`} />;
+        case "degraded":
+            return <CheckCircle2 className={`${iconClass} text-yellow-500`} />;
+        case "unhealthy":
+            return <XCircle className={`${iconClass} text-destructive`} />;
+        case "unknown":
+            return <Clock className={`${iconClass} text-muted-foreground`} />;
+        default:
+            return null;
+    }
 }

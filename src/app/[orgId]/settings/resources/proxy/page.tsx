@@ -111,6 +111,7 @@ export default async function ProxyResourcesPage(
             protocol: resource.protocol,
             proxyPort: resource.proxyPort,
             http: resource.http,
+            labels: resource.labels,
             authState: !resource.http
                 ? "none"
                 : resource.sso ||

@@ -9,7 +9,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { toast } from "@app/hooks/useToast";
-import { createApiClient } from "@app/lib/api";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getSevenDaysAgo } from "@app/lib/getSevenDaysAgo";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -294,7 +294,7 @@ export default function ConnectionLogsPage() {
         } catch (error) {
             toast({
                 title: t("error"),
-                description: t("Failed to filter logs"),
+                description: formatAxiosError(error),
                 variant: "destructive"
             });
         } finally {

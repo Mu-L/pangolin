@@ -25,7 +25,7 @@ export function verifyValidSubscription(tiers: Tier[]) {
         next: NextFunction
     ): Promise<any> {
         try {
-            if (build != "saas") {
+            if (build !== "saas") {
                 return next();
             }
 

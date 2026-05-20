@@ -163,6 +163,89 @@ export const resources = pgTable("resources", {
     browserAccessType: text("browserAccessType").default("http") // rdp, ssh, http, vnc
 });
 
+export const labels = pgTable("labels", {
+    labelId: serial("labelId").primaryKey(),
+    name: varchar("name").notNull(),
+    color: varchar("color").notNull(),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteLabels = pgTable(
+    "siteLabels",
+    {
+        siteLabelId: serial("siteLabelId").primaryKey(),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_label_uniq").on(t.siteId, t.labelId)]
+);
+
+export const resourceLabels = pgTable(
+    "resourceLabels",
+    {
+        resourceLabelId: serial("resourceLabelId").primaryKey(),
+        resourceId: integer("resourceId")
+            .references(() => resources.resourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
+);
+
+export const siteResourceLabels = pgTable(
+    "siteResourceLabels",
+    {
+        siteResourceLabelId: serial("siteResourceLabelId").primaryKey(),
+        siteResourceId: integer("siteResourceId")
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_resource_label_uniq").on(t.siteResourceId, t.labelId)]
+);
+
+export const clientLabels = pgTable(
+    "clientLabels",
+    {
+        clientLabelId: serial("clientLabelId").primaryKey(),
+        clientId: integer("clientId")
+            .references(() => clients.clientId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("client_label_uniq").on(t.clientId, t.labelId)]
+);
+
 export const targets = pgTable("targets", {
     targetId: serial("targetId").primaryKey(),
     resourceId: integer("resourceId")
@@ -1193,3 +1276,4 @@ export type RoundTripMessageTracker = InferSelectModel<
 >;
 export type Network = InferSelectModel<typeof networks>;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
+export type Label = InferSelectModel<typeof labels>;

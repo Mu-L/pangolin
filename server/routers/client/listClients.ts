@@ -1,15 +1,20 @@
 import {
+    clientLabels,
     clients,
     clientSitesAssociationsCache,
     currentFingerprint,
     db,
+    labels,
     olms,
     orgs,
     roleClients,
     sites,
     userClients,
-    users
+    users,
+    type Label
 } from "@server/db";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -169,6 +174,7 @@ type ClientWithSites = Awaited<ReturnType<typeof queryClientsBase>>[0] & {
         siteNiceId: string | null;
     }>;
     olmUpdateAvailable?: boolean;
+    labels?: Array<Pick<Label, "labelId" | "name" | "color">>;
 };
 
 type OlmWithUpdateAvailable = ClientWithSites;
@@ -255,6 +261,11 @@ export async function listClients(
             (client) => client.clientId
         );
 
+        const isLabelFeatureEnabled = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.labels
+        );
+
         // Get client count with filter
         const conditions = [
             and(
@@ -288,18 +299,29 @@ export async function listClients(
         }
 
         if (query) {
-            conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${clients.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${clients.niceId})`,
-                        "%" + query.toLowerCase() + "%"
+            const q = "%" + query.toLowerCase() + "%";
+            const queryList = [
+                like(sql`LOWER(${clients.name})`, q),
+                like(sql`LOWER(${clients.niceId})`, q)
+            ];
+
+            if (isLabelFeatureEnabled) {
+                queryList.push(
+                    inArray(
+                        clients.clientId,
+                        db
+                            .select({ id: clientLabels.clientId })
+                            .from(clientLabels)
+                            .innerJoin(
+                                labels,
+                                eq(labels.labelId, clientLabels.labelId)
+                            )
+                            .where(like(sql`LOWER(${labels.name})`, q))
                     )
-                )
-            );
+                );
+            }
+
+            conditions.push(or(...queryList));
         }
 
         const baseQuery = queryClientsBase().where(and(...conditions));
@@ -325,6 +347,30 @@ export async function listClients(
         // Get associated sites for all clients
         const clientIds = clientsList.map((client) => client.clientId);
         const siteAssociations = await getSiteAssociations(clientIds);
+
+        let labelsForClients: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            clientId: number;
+        }> = [];
+
+        if (isLabelFeatureEnabled && clientIds.length > 0) {
+            labelsForClients = await db
+                .select({
+                    labelId: labels.labelId,
+                    name: labels.name,
+                    color: labels.color,
+                    clientId: clientLabels.clientId
+                })
+                .from(labels)
+                .innerJoin(
+                    clientLabels,
+                    eq(clientLabels.labelId, labels.labelId)
+                )
+                .where(inArray(clientLabels.clientId, clientIds))
+                .orderBy(asc(clientLabels.clientLabelId));
+        }
 
         // Group site associations by client ID
         const sitesByClient = siteAssociations.reduce(
@@ -353,7 +399,10 @@ export async function listClients(
         const clientsWithSites = clientsList.map((client) => {
             return {
                 ...client,
-                sites: sitesByClient[client.clientId] || []
+                sites: sitesByClient[client.clientId] || [],
+                labels: labelsForClients.filter(
+                    (l) => l.clientId === client.clientId
+                )
             };
         });
 

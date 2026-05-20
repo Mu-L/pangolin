@@ -184,6 +184,95 @@ export const resources = sqliteTable("resources", {
     browserAccessType: text("browserAccessType").default("http") // rdp, ssh, http, vnc
 });
 
+export const labels = sqliteTable("labels", {
+    labelId: integer("labelId").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    color: text("color").notNull(),
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteLabels = sqliteTable(
+    "siteLabels",
+    {
+        siteLabelId: integer("siteLabelId").primaryKey({ autoIncrement: true }),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_label_uniq").on(t.siteId, t.labelId)]
+);
+
+export const resourceLabels = sqliteTable(
+    "resourceLabels",
+    {
+        resourceLabelId: integer("resourceLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        resourceId: integer("resourceId")
+            .references(() => resources.resourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
+);
+
+export const siteResourceLabels = sqliteTable(
+    "siteResourceLabels",
+    {
+        siteResourceLabelId: integer("siteResourceLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        siteResourceId: integer("siteResourceId")
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_resource_label_uniq").on(t.siteResourceId, t.labelId)]
+);
+
+export const clientLabels = sqliteTable(
+    "clientLabels",
+    {
+        clientLabelId: integer("clientLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        clientId: integer("clientId")
+            .references(() => clients.clientId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("client_label_uniq").on(t.clientId, t.labelId)]
+);
+
 export const targets = sqliteTable("targets", {
     targetId: integer("targetId").primaryKey({ autoIncrement: true }),
     resourceId: integer("resourceId")
@@ -1292,3 +1381,4 @@ export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
+export type Label = InferSelectModel<typeof labels>;
