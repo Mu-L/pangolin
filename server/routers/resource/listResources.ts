@@ -1,7 +1,9 @@
 import {
     db,
+    labels,
     resourceHeaderAuth,
     resourceHeaderAuthExtendedCompatibility,
+    resourceLabels,
     resourcePassword,
     resourcePincode,
     resources,
@@ -9,8 +11,11 @@ import {
     sites,
     targetHealthCheck,
     targets,
-    userResources
+    userResources,
+    type Label
 } from "@server/db";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -154,6 +159,7 @@ export type ResourceWithTargets = {
         siteNiceId: string;
         online?: boolean; // undefined for local sites
     }>;
+    labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
 };
 
 function queryResourcesBase() {
@@ -288,6 +294,11 @@ export async function listResources(
             );
         }
 
+        const isLabelFeatureEnabled = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.labels
+        );
+
         let accessibleResources: Array<{ resourceId: number }>;
         if (req.user) {
             accessibleResources = await db
@@ -325,24 +336,6 @@ export async function listResources(
             )
         ];
 
-        if (query) {
-            conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${resources.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${resources.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${resources.fullDomain})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
-                )
-            );
-        }
         if (typeof enabled !== "undefined") {
             conditions.push(eq(resources.enabled, enabled));
         }
@@ -386,6 +379,32 @@ export async function listResources(
                 .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
             conditions.push(inArray(resources.resourceId, resourcesWithSite));
         }
+        if (query) {
+            const q = "%" + query.toLowerCase() + "%";
+            const queryList = [
+                like(sql`LOWER(${resources.name})`, q),
+                like(sql`LOWER(${resources.niceId})`, q),
+                like(sql`LOWER(${resources.fullDomain})`, q)
+            ];
+
+            if (isLabelFeatureEnabled) {
+                queryList.push(
+                    inArray(
+                        resources.resourceId,
+                        db
+                            .select({ id: resourceLabels.resourceId })
+                            .from(resourceLabels)
+                            .innerJoin(
+                                labels,
+                                eq(labels.labelId, resourceLabels.labelId)
+                            )
+                            .where(like(sql`LOWER(${labels.name})`, q))
+                    )
+                );
+            }
+
+            conditions.push(or(...queryList));
+        }
 
         const baseQuery = queryResourcesBase().where(and(...conditions));
 
@@ -407,6 +426,36 @@ export async function listResources(
         ]);
 
         const resourceIdList = rows.map((row) => row.resourceId);
+
+        let labelsForResources: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            resourceId: number;
+        }> = [];
+
+        if (isLabelFeatureEnabled) {
+            labelsForResources =
+                resourceIdList.length === 0
+                    ? []
+                    : await db
+                          .select({
+                              labelId: labels.labelId,
+                              name: labels.name,
+                              color: labels.color,
+                              resourceId: resourceLabels.resourceId
+                          })
+                          .from(labels)
+                          .innerJoin(
+                              resourceLabels,
+                              eq(resourceLabels.labelId, labels.labelId)
+                          )
+                          .where(
+                              inArray(resourceLabels.resourceId, resourceIdList)
+                          )
+                          .orderBy(asc(resourceLabels.resourceLabelId));
+        }
+
         const allResourceTargets =
             resourceIdList.length === 0
                 ? []
@@ -458,7 +507,10 @@ export async function listResources(
                     headerAuthId: row.headerAuthId,
                     health: row.health ?? null,
                     targets: [],
-                    sites: []
+                    sites: [],
+                    labels: labelsForResources.filter(
+                        (l) => l.resourceId === row.resourceId
+                    )
                 };
                 map.set(row.resourceId, entry);
             }

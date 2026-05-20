@@ -60,6 +60,7 @@ export default async function SitesPage(props: SitesPageProps) {
         return {
             name: site.name,
             id: site.siteId,
+            labels: site.labels,
             nice: site.niceId.toString(),
             address: site.address?.split("/")[0],
             mbIn: formatSize(site.megabytesIn || 0, site.type),

@@ -3,6 +3,16 @@
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import UptimeMiniBar from "@app/components/UptimeMiniBar";
 
+import {
+    Credenza,
+    CredenzaBody,
+    CredenzaContent,
+    CredenzaDescription,
+    CredenzaFooter,
+    CredenzaHeader,
+    CredenzaTitle
+} from "@app/components/Credenza";
+import SiteResourcesOverview from "@app/components/SiteResourcesOverview";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import {
@@ -14,9 +24,9 @@ import {
 import { InfoPopup } from "@app/components/ui/info-popup";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
-import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { build } from "@server/build";
 import { type PaginationState } from "@tanstack/react-table";
 import {
@@ -26,29 +36,34 @@ import {
     ArrowUpRight,
     ChevronDown,
     ChevronsUpDownIcon,
-    MoreHorizontal
+    MoreHorizontal,
+    PlusIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import {
+    startTransition,
+    useEffect,
+    useMemo,
+    useOptimistic,
+    useState,
+    useTransition
+} from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
-import SiteResourcesOverview from "@app/components/SiteResourcesOverview";
-import {
-    Credenza,
-    CredenzaBody,
-    CredenzaContent,
-    CredenzaDescription,
-    CredenzaFooter,
-    CredenzaHeader,
-    CredenzaTitle
-} from "@app/components/Credenza";
 import {
     ControlledDataTable,
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
+
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { cn } from "@app/lib/cn";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { LabelBadge } from "./label-badge";
+import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 export type SiteRow = {
     id: number;
@@ -66,6 +81,11 @@ export type SiteRow = {
     exitNodeEndpoint?: string;
     remoteExitNodeId?: string;
     resourceCount: number;
+    labels?: Array<{
+        labelId: number;
+        name: string;
+        color: string;
+    }>;
 };
 
 type SitesTableProps = {
@@ -95,6 +115,9 @@ export default function SitesTable({
         useState<SiteRow | null>(null);
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
+
+    const { isPaidUser } = usePaidStatus();
+    const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
     const api = createApiClient(useEnvContext());
     const t = useTranslations();
@@ -158,7 +181,8 @@ export default function SitesTable({
         });
     }
 
-    const columns: ExtendedColumnDef<SiteRow>[] = [
+    const columns = useMemo<ExtendedColumnDef<SiteRow>[]>(() => {
+        const cols: ExtendedColumnDef<SiteRow>[] = [
         {
             accessorKey: "name",
             enableHiding: false,
@@ -366,7 +390,7 @@ export default function SitesTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => setResourcesDialogSite(siteRow)}
-                        className="flex h-8 items-center gap-2 px-0 font-normal"
+                        className="flex h-8 items-center gap-2 px-2 font-normal"
                     >
                         <span className="text-sm tabular-nums">
                             {siteRow.resourceCount} {t("resources")}
@@ -437,7 +461,7 @@ export default function SitesTable({
             header: () => {
                 return <span className="p-3">{t("address")}</span>;
             },
-            cell: ({ row }: { row: any }) => {
+            cell: ({ row }) => {
                 const originalRow = row.original;
                 return originalRow.address ? (
                     <div className="flex items-center space-x-2">
@@ -488,16 +512,6 @@ export default function SitesTable({
                                         {t("sitesTableViewPrivateResources")}
                                     </DropdownMenuItem>
                                 </Link>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        setSelectedSite(siteRow);
-                                        setIsDeleteModalOpen(true);
-                                    }}
-                                >
-                                    <span className="text-red-500">
-                                        {t("delete")}
-                                    </span>
-                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
@@ -512,7 +526,24 @@ export default function SitesTable({
                 );
             }
         }
-    ];
+        ];
+
+        if (isLabelFeatureEnabled) {
+            cols.splice(cols.length - 1, 0, {
+                accessorKey: "labels",
+                header: () => (
+                    <span className="p-3 text-end w-full inline-block">
+                        {t("labels")}
+                    </span>
+                ),
+                cell: ({ row }: { row: { original: SiteRow } }) => (
+                    <SiteLabelCell site={row.original} orgId={orgId} />
+                )
+            });
+        }
+
+        return cols;
+    }, [isLabelFeatureEnabled, orgId, t, searchParams]);
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
@@ -622,12 +653,112 @@ export default function SitesTable({
                     niceId: false,
                     nice: false,
                     exitNode: false,
-                    address: false
+                    address: false,
+                    labels: false
                 }}
                 enableColumnVisibility
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
             />
         </>
+    );
+}
+
+type SiteLabelCellProps = {
+    site: SiteRow;
+    orgId: string;
+};
+
+function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
+    const t = useTranslations();
+
+    const api = createApiClient(useEnvContext());
+
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    const router = useRouter();
+
+    const labels = site.labels ?? [];
+    const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
+
+    function toggleSiteLabel(
+        label: SelectedLabel,
+        action: "attach" | "detach"
+    ) {
+        startTransition(async () => {
+            try {
+                if (action === "attach") {
+                    setOptimisticLabels([...optimisticLabels, label]);
+
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/attach`,
+                        { siteId: site.id }
+                    );
+                } else {
+                    setOptimisticLabels(
+                        optimisticLabels.filter(
+                            (lb) => lb.labelId !== label.labelId
+                        )
+                    );
+                    await api.put(
+                        `/org/${orgId}/label/${label.labelId}/detach`,
+                        { siteId: site.id }
+                    );
+                }
+            } catch (e) {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(e, t("errorOccurred")),
+                    variant: "destructive"
+                });
+            } finally {
+                router.refresh();
+            }
+        });
+    }
+
+    return (
+        <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
+            {optimisticLabels.slice(0, 3).map((label) => (
+                <LabelBadge
+                    key={label.labelId}
+                    onClick={() => setIsPopoverOpen(true)}
+                    {...label}
+                />
+            ))}
+            {optimisticLabels.length > 3 && (
+                <Button
+                    variant="outline"
+                    className={cn(
+                        "inline-flex gap-1 items-center",
+                        "rounded-full text-sm cursor-pointer",
+                        "px-1.5 py-0 h-auto"
+                    )}
+                    onClick={() => setIsPopoverOpen(true)}
+                >
+                    +{optimisticLabels.length - 3}
+                </Button>
+            )}
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        className="p-1 size-auto rounded-full"
+                        title={t("addLabels")}
+                    >
+                        <span className="sr-only">{t("addLabels")}</span>
+                        <PlusIcon className="size-3" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="p-0 w-full">
+                    <LabelsSelector
+                        orgId={orgId}
+                        selectedLabels={optimisticLabels}
+                        toggleLabel={toggleSiteLabel}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
     );
 }

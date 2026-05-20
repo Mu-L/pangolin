@@ -16,7 +16,7 @@ import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
     cleanForFQDN,
     InternalResourceForm,
@@ -39,30 +39,30 @@ export default function CreateInternalResourceDialog({
 }: CreateInternalResourceDialogProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isHttpModeDisabled, setIsHttpModeDisabled] = useState(false);
+    const [isSubmitting, startTransition] = useTransition();
 
-    async function handleSubmit(values: InternalResourceFormValues) {
-        setIsSubmitting(true);
-        try {
-            let data = { ...values };
-            if (
-                (data.mode === "host" || data.mode === "http") &&
-                isHostname(data.destination)
-            ) {
-                const currentAlias = data.alias?.trim() || "";
-                if (!currentAlias) {
-                    let aliasValue = data.destination;
-                    if (data.destination.toLowerCase() === "localhost") {
-                        aliasValue = `${cleanForFQDN(data.name)}.internal`;
+    function handleSubmit(values: InternalResourceFormValues) {
+        startTransition(async () => {
+            try {
+                let data = { ...values };
+                if (
+                    (data.mode === "host" || data.mode === "http") &&
+                    isHostname(data.destination)
+                ) {
+                    const currentAlias = data.alias?.trim() || "";
+                    if (!currentAlias) {
+                        let aliasValue = data.destination;
+                        if (data.destination.toLowerCase() === "localhost") {
+                            aliasValue = `${cleanForFQDN(data.name)}.internal`;
+                        }
+                        data = { ...data, alias: aliasValue };
                     }
-                    data = { ...data, alias: aliasValue };
                 }
-            }
 
-            await api.put<AxiosResponse<{ data: { siteResourceId: number } }>>(
-                `/org/${orgId}/site-resource`,
-                {
+                await api.put<
+                    AxiosResponse<{ data: { siteResourceId: number } }>
+                >(`/org/${orgId}/site-resource`, {
                     name: data.name,
                     siteIds: data.siteIds,
                     mode: data.mode,
@@ -106,32 +106,30 @@ export default function CreateInternalResourceDialog({
                     clientIds: data.clients
                         ? data.clients.map((c) => parseInt(c.id))
                         : []
-                }
-            );
+                });
 
-            toast({
-                title: t("createInternalResourceDialogSuccess"),
-                description: t(
-                    "createInternalResourceDialogInternalResourceCreatedSuccessfully"
-                ),
-                variant: "default"
-            });
-            setOpen(false);
-            onSuccess?.();
-        } catch (error) {
-            toast({
-                title: t("createInternalResourceDialogError"),
-                description: formatAxiosError(
-                    error,
-                    t(
-                        "createInternalResourceDialogFailedToCreateInternalResource"
-                    )
-                ),
-                variant: "destructive"
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
+                toast({
+                    title: t("createInternalResourceDialogSuccess"),
+                    description: t(
+                        "createInternalResourceDialogInternalResourceCreatedSuccessfully"
+                    ),
+                    variant: "default"
+                });
+                setOpen(false);
+                onSuccess?.();
+            } catch (error) {
+                toast({
+                    title: t("createInternalResourceDialogError"),
+                    description: formatAxiosError(
+                        error,
+                        t(
+                            "createInternalResourceDialogFailedToCreateInternalResource"
+                        )
+                    ),
+                    variant: "destructive"
+                });
+            }
+        });
     }
 
     return (
