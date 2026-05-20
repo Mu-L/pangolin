@@ -165,6 +165,34 @@ export default function GeneralPage() {
         actualSiteIds: number[];
     }>(null);
     const [isCheckingCache, setIsCheckingCache] = useState(false);
+    const [isRebuildingCache, setIsRebuildingCache] = useState(false);
+
+    const handleRebuildCache = async () => {
+        if (!client.clientId) return;
+        setIsRebuildingCache(true);
+        try {
+            await api.post(
+                `/client/${client.clientId}/rebuild-associations-cache`
+            );
+            // Re-verify after rebuild so the result refreshes
+            const res = await api.get(
+                `/client/${client.clientId}/verify-associations-cache`
+            );
+            setCacheCheck(res.data.data);
+            toast({
+                title: "Cache rebuilt",
+                description: "Association cache rebuilt successfully."
+            });
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: "Rebuild failed",
+                description: formatAxiosError(e, "Failed to rebuild cache")
+            });
+        } finally {
+            setIsRebuildingCache(false);
+        }
+    };
 
     const handleVerifyCache = async () => {
         if (!client.clientId) return;
@@ -904,7 +932,7 @@ export default function GeneralPage() {
                                 Cache is consistent
                             </span>
                         ) : (
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 <div className="flex items-center gap-1 font-semibold">
                                     <XCircle className="h-3 w-3" />
                                     Cache is INCONSISTENT
@@ -929,6 +957,16 @@ export default function GeneralPage() {
                                     Extra sites: [
                                     {cacheCheck.extraSiteIds.join(", ")}]
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRebuildCache}
+                                    disabled={isRebuildingCache}
+                                    className="mt-1 text-xs underline font-semibold disabled:opacity-50"
+                                >
+                                    {isRebuildingCache
+                                        ? "Rebuilding…"
+                                        : "Rebuild cache now"}
+                                </button>
                             </div>
                         )}
                     </div>

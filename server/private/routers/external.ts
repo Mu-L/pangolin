@@ -782,3 +782,9 @@ authenticated.get(
     verifyClientAccess,
     client.verifyClientAssociationsCache
 );
+
+authenticated.post(
+    "/client/:clientId/rebuild-associations-cache",
+    verifyClientAccess,
+    client.rebuildClientAssociationsCacheRoute
+);
