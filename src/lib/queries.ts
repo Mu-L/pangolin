@@ -1,18 +1,20 @@
 import { build } from "@server/build";
+import { StatusHistoryResponse } from "@server/lib/statusHistory";
+import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
 import type { ListClientsResponse } from "@server/routers/client";
 import type {
-    ListDomainsResponse,
-    GetDNSRecordsResponse
+    GetDNSRecordsResponse,
+    ListDomainsResponse
 } from "@server/routers/domain";
 import type { GetDomainResponse } from "@server/routers/domain/getDomain";
+import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
 import type {
     GetResourceWhitelistResponse,
     ListResourceNamesResponse,
     ListResourcesResponse
 } from "@server/routers/resource";
-import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -32,8 +34,6 @@ import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
-import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
-import { StatusHistoryResponse } from "@server/lib/statusHistory";
 
 export type ProductUpdate = {
     link: string | null;
