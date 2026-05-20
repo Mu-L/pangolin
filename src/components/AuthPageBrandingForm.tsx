@@ -98,16 +98,6 @@ const AuthPageFormSchema = z.object({
                 let errorMessage =
                     "Unable to verify image URL. Please check that the URL is accessible and points to an image file.";
 
-                if (
-                    error instanceof TypeError &&
-                    error.message.includes("fetch")
-                ) {
-                    errorMessage =
-                        "Network error: Unable to reach the URL. Please check your internet connection and verify the URL is correct.";
-                } else if (error instanceof Error) {
-                    errorMessage = `Error verifying URL: ${error.message}`;
-                }
-
                 ctx.addIssue({
                     code: "custom",
                     message: errorMessage
