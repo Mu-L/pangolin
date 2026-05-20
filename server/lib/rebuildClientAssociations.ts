@@ -18,7 +18,7 @@ import {
     userOrgRoles,
     userSiteResources
 } from "@server/db";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 
 import { deletePeer as newtDeletePeer } from "@server/routers/newt/peers";
 import {
@@ -539,6 +539,29 @@ async function handleMessagesForSiteClients(
         }
     }
 
+    // get the number of sites on each of these clients so we can log it and make decisions about whether to send messages based on it
+    const clientSiteCounts: Record<number, number> = {};
+    if (clientsToProcess.size > 0) {
+        const clientIdsToProcess = Array.from(clientsToProcess.keys());
+        const siteCounts = await trx
+            .select({
+                clientId: clientSitesAssociationsCache.clientId,
+                siteCount: count(clientSitesAssociationsCache.siteId)
+            })
+            .from(clientSitesAssociationsCache)
+            .where(
+                inArray(
+                    clientSitesAssociationsCache.clientId,
+                    clientIdsToProcess
+                )
+            )
+            .groupBy(clientSitesAssociationsCache.clientId);
+
+        for (const row of siteCounts) {
+            clientSiteCounts[row.clientId] = Number(row.siteCount);
+        }
+    }
+
     for (const client of clientsToProcess.values()) {
         // UPDATE THE NEWT
         if (!client.subnet || !client.pubKey) {
@@ -582,7 +605,14 @@ async function handleMessagesForSiteClients(
         }
 
         if (isAdd) {
-            // TODO: if we are in jit mode here should we really be sending this?
+            if (clientSiteCounts[client.clientId] > 250) {
+                // skip adding the peer if we have more than 250 sites because we are in jit mode anyway
+                logger.info(
+                    `rebuildClientAssociations: Client ${client.clientId} has ${clientSiteCounts[client.clientId]} sites so skipping adding peer to newt and olm because it is likely in jit mode`
+                );
+                continue;
+            }
+
             await initPeerAddHandshake(
                 // this will kick off the add peer process for the client
                 client.clientId,
@@ -1172,6 +1202,12 @@ async function handleMessagesForClientSites(
     const olmJobs: Promise<any>[] = [];
     const exitNodeJobs: Promise<any>[] = [];
 
+    const totalSitesOnClient = await trx
+        .select({ count: count(clientSitesAssociationsCache.siteId) })
+        .from(clientSitesAssociationsCache)
+        .where(eq(clientSitesAssociationsCache.clientId, client.clientId))
+        .then((rows) => Number(rows[0].count));
+
     for (const siteData of sitesData) {
         const site = siteData.sites;
         const exitNode = siteData.exitNodes;
@@ -1232,7 +1268,14 @@ async function handleMessagesForClientSites(
                 continue;
             }
 
-            // TODO: if we are in jit mode here should we really be sending this?
+            if (totalSitesOnClient > 250) {
+                // skip adding the site if we have more than 250 because we are in jit mode anyway
+                logger.info(
+                    `rebuildClientAssociations: Client ${client.clientId} has ${totalSitesOnClient} sites so skipping adding peer to newt and olm because it is likely in jit mode`
+                );
+                continue;
+            }
+
             await initPeerAddHandshake(
                 // this will kick off the add peer process for the client
                 client.clientId,
