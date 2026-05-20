@@ -82,7 +82,7 @@ export const RuleSchema = z
     .object({
         action: z.enum(["allow", "deny", "pass"]),
         match: z.enum(["cidr", "path", "ip", "country", "asn", "region"]),
-        value: z.string(),
+        value: z.coerce.string(),
         priority: z.int().optional()
     })
     .refine(
@@ -340,7 +340,8 @@ export const ResourceSchema = z
             if (parts.includes("*", 1)) return false; // no further wildcards
             if (parts.length < 3) return false; // need at least *.label.tld
 
-            const labelRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
+            const labelRegex =
+                /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
             return parts.slice(1).every((label) => labelRegex.test(label));
         },
         {
