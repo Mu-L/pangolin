@@ -4,6 +4,7 @@ import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
 import type {
     QueryAccessAuditLogResponse,
+    QueryActionAuditLogResponse,
     QueryRequestAuditLogResponse
 } from "@server/routers/auditLogs/types";
 import type { ListClientsResponse } from "@server/routers/client";
@@ -650,6 +651,29 @@ export const accessLogsFiltersSchema = z.object({
 
 export type AccessLogFilters = z.output<typeof accessLogsFiltersSchema>;
 
+export const actionLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    action: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined)
+});
+
+export type ActionLogFilters = z.output<typeof actionLogsFiltersSchema>;
+
 export const logQueries = {
     requestAnalytics: ({
         orgId,
@@ -716,6 +740,37 @@ export const logQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryAccessAuditLogResponse>
                 >(`/org/${orgId}/logs/access`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    action: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: ActionLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["ACTION_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryActionAuditLogResponse>
+                >(`/org/${orgId}/logs/action`, {
                     params: {
                         ...rest,
                         limit: pageSize,
