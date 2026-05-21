@@ -25,7 +25,8 @@ export enum TierFeature {
     StandaloneHealthChecks = "standaloneHealthChecks",
     AlertingRules = "alertingRules",
     WildcardSubdomain = "wildcardSubdomain",
-    Labels = "labels"
+    Labels = "labels",
+    NewtAutoUpdate = "newtAutoUpdate"
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
@@ -68,5 +69,6 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.DomainNamespaces]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.StandaloneHealthChecks]: ["tier3", "enterprise"],
     [TierFeature.AlertingRules]: ["tier3", "enterprise"],
-    [TierFeature.WildcardSubdomain]: ["tier1", "tier2", "tier3", "enterprise"]
+    [TierFeature.WildcardSubdomain]: ["tier1", "tier2", "tier3", "enterprise"],
+    [TierFeature.NewtAutoUpdate]: ["tier1", "tier2", "tier3", "enterprise"]
 };

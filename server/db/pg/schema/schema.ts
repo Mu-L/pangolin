@@ -65,7 +65,12 @@ export const orgs = pgTable("orgs", {
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
     sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
     isBillingOrg: boolean("isBillingOrg"),
-    billingOrgId: varchar("billingOrgId")
+    billingOrgId: varchar("billingOrgId"),
+    settingsEnableGlobalNewtAutoUpdate: boolean(
+        "settingsEnableGlobalNewtAutoUpdate"
+    )
+        .notNull()
+        .default(false)
 });
 
 export const orgDomains = pgTable("orgDomains", {
@@ -103,6 +108,10 @@ export const sites = pgTable("sites", {
     lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
     listenPort: integer("listenPort"),
     dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true),
+    autoUpdateEnabled: boolean("autoUpdateEnabled").notNull().default(false),
+    autoUpdateOverrideOrg: boolean("autoUpdateOverrideOrg")
+        .notNull()
+        .default(false),
     status: varchar("status")
         .$type<"pending" | "approved">()
         .default("approved")

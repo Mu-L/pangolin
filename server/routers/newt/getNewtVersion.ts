@@ -1,4 +1,4 @@
-import { db } from "@server/db";
+import { db, orgs, sites } from "@server/db";
 import { newts } from "@server/db";
 import { eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
@@ -148,12 +148,13 @@ export async function getNewtVersion(
 
     try {
         // Verify newt credentials
-        const existingNewtRes = await db
+        const [existingNewt] = await db
             .select()
             .from(newts)
-            .where(eq(newts.newtId, newtId));
+            .where(eq(newts.newtId, newtId))
+            .limit(1);
 
-        if (!existingNewtRes || !existingNewtRes.length) {
+        if (!existingNewt) {
             if (config.getRawConfig().app.log_failed_attempts) {
                 logger.info(
                     `Newt version check: no newt found with ID ${newtId}. IP: ${req.ip}.`
@@ -164,7 +165,15 @@ export async function getNewtVersion(
             );
         }
 
-        const existingNewt = existingNewtRes[0];
+        if (!existingNewt.siteId) {
+            logger.warn(`Newt ${newtId} has no associated site`);
+            return next(
+                createHttpError(
+                    HttpCode.UNAUTHORIZED,
+                    "Not associated with a site"
+                )
+            );
+        }
 
         const validSecret = await verifyPassword(
             secret,
@@ -179,6 +188,64 @@ export async function getNewtVersion(
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "Invalid credentials")
             );
+        }
+
+        // check if udpates are enabled for the org or the site
+        const [site] = await db
+            .select()
+            .from(sites)
+            .where(eq(sites.siteId, existingNewt.siteId))
+            .limit(1);
+
+        if (!site) {
+            logger.warn(`Site with ID ${existingNewt.siteId} not found`);
+            return next(
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Associated site not found"
+                )
+            );
+        }
+
+        const [org] = await db
+            .select()
+            .from(orgs)
+            .where(eq(orgs.orgId, site.orgId))
+            .limit(1);
+
+        if (!org) {
+            logger.warn(`Org with ID ${site.orgId} not found`);
+            return next(
+                createHttpError(
+                    HttpCode.INTERNAL_SERVER_ERROR,
+                    "Associated organization not found"
+                )
+            );
+        }
+
+        let doUpdate = false;
+
+        if (site.autoUpdateOverrideOrg) {
+            doUpdate = site.autoUpdateEnabled;
+        } else {
+            doUpdate = org.settingsEnableGlobalNewtAutoUpdate;
+        }
+
+        if (!doUpdate) {
+            // return no content http code
+            return response(res, {
+                data: {
+                    latestVersion: existingNewt.version ?? "",
+                    currentIsLatest: true,
+                    downloadUrl: "",
+                    sha256: ""
+                },
+                success: true,
+                error: false,
+                message:
+                    "Auto-updates are disabled for this site and organization",
+                status: HttpCode.NO_CONTENT
+            });
         }
 
         // Fetch latest release info (version + asset digests) in one API call.
