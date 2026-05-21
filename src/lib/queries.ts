@@ -34,6 +34,7 @@ import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
+import type { ListOrgLabelsResponse } from "@server/routers/labels/types";
 
 export type ProductUpdate = {
     link: string | null;
@@ -206,6 +207,33 @@ export const orgQueries = {
                     AxiosResponse<ListSitesResponse>
                 >(`/org/${orgId}/sites?${sp.toString()}`, { signal });
                 return res.data.data.sites;
+            }
+        }),
+
+    labels: ({
+        orgId,
+        query,
+        perPage = 10_000
+    }: {
+        orgId: string;
+        query?: string;
+        perPage?: number;
+    }) =>
+        queryOptions({
+            queryKey: ["ORG", orgId, "LABELS", { query, perPage }] as const,
+            queryFn: async ({ signal, meta }) => {
+                const sp = new URLSearchParams({
+                    pageSize: perPage.toString()
+                });
+
+                if (query?.trim()) {
+                    sp.set("query", query);
+                }
+
+                const res = await meta!.api.get<
+                    AxiosResponse<ListOrgLabelsResponse>
+                >(`/org/${orgId}/labels?${sp.toString()}`, { signal });
+                return res.data.data.labels;
             }
         }),
 

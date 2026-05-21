@@ -24,10 +24,12 @@ export enum TierFeature {
     DomainNamespaces = "domainNamespaces", // handle downgrade by removing custom domain namespaces
     StandaloneHealthChecks = "standaloneHealthChecks",
     AlertingRules = "alertingRules",
-    WildcardSubdomain = "wildcardSubdomain"
+    WildcardSubdomain = "wildcardSubdomain",
+    Labels = "labels"
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
+    [TierFeature.Labels]: ["tier2", "tier3", "enterprise"],
     [TierFeature.OrgOidc]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.LoginPageDomain]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.DeviceApprovals]: ["tier1", "tier3", "enterprise"],

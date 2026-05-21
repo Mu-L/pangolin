@@ -9,7 +9,10 @@ import {
     siteResources,
     targets,
     sites,
-    userSites
+    userSites,
+    labels,
+    siteLabels,
+    type Label
 } from "@server/db";
 import cache from "#dynamic/lib/cache";
 import response from "@server/lib/response";
@@ -23,6 +26,8 @@ import createHttpError from "http-errors";
 import semver from "semver";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 // Stale-while-revalidate: keeps the last successfully fetched version so that
 // a transient network failure / timeout does not flip every site back to
@@ -187,7 +192,7 @@ const listSitesSchema = z.object({
 
 function querySitesBase() {
     return db
-        .select({
+        .selectDistinct({
             siteId: sites.siteId,
             niceId: sites.niceId,
             name: sites.name,
@@ -233,6 +238,7 @@ type SiteRowBase = Awaited<ReturnType<typeof querySitesBase>>[0];
 type SiteWithUpdateAvailable = Omit<SiteRowBase, "online"> & {
     online?: SiteRowBase["online"]; // undefined for local sites
     newtUpdateAvailable?: boolean;
+    labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
 };
 
 export type ListSitesResponse = PaginatedResponse<{
@@ -308,6 +314,11 @@ export async function listSites(
                 .where(eq(sites.orgId, orgId));
         }
 
+        const isLabelFeatureEnabled = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.labels
+        );
+
         const { pageSize, page, query, sort_by, order, online, status } =
             parsedQuery.data;
 
@@ -319,33 +330,43 @@ export async function listSites(
                 eq(sites.orgId, orgId)
             )
         ];
-        if (query) {
-            conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${sites.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${sites.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
-                )
-            );
-        }
+
         if (typeof online !== "undefined") {
             conditions.push(eq(sites.online, online));
         }
         if (typeof status !== "undefined") {
             conditions.push(eq(sites.status, status));
         }
+        if (query) {
+            const q = "%" + query.toLowerCase() + "%";
+            const queryList = [
+                like(sql`LOWER(${sites.name})`, q),
+                like(sql`LOWER(${sites.niceId})`, q)
+            ];
+
+            if (isLabelFeatureEnabled) {
+                queryList.push(
+                    inArray(
+                        sites.siteId,
+                        db
+                            .select({ id: siteLabels.siteId })
+                            .from(siteLabels)
+                            .innerJoin(
+                                labels,
+                                eq(labels.labelId, siteLabels.labelId)
+                            )
+                            .where(like(sql`LOWER(${labels.name})`, q))
+                    )
+                );
+            }
+            conditions.push(or(...queryList));
+        }
+
         const baseQuery = querySitesBase().where(and(...conditions));
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase()
-                .where(and(...conditions))
-                .as("filtered_sites")
+            querySitesBase().where(and(...conditions)).as("filtered_sites")
         );
 
         const siteListQuery = baseQuery
@@ -367,11 +388,46 @@ export async function listSites(
         // Get latest version asynchronously without blocking the response
         const latestNewtVersionPromise = getLatestNewtVersion();
 
+        const siteIds = rows.map((site) => site.siteId);
+
+        let labelsForSites: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            siteId: number;
+        }> = [];
+
+        if (isLabelFeatureEnabled) {
+            labelsForSites =
+                siteIds.length === 0
+                    ? []
+                    : await db
+                          .select({
+                              labelId: labels.labelId,
+                              name: labels.name,
+                              color: labels.color,
+                              siteId: siteLabels.siteId
+                          })
+                          .from(labels)
+                          .innerJoin(
+                              siteLabels,
+                              eq(siteLabels.labelId, labels.labelId)
+                          )
+                          .where(inArray(siteLabels.siteId, siteIds))
+                          .orderBy(asc(siteLabels.siteLabelId));
+        }
+
         const sitesWithUpdates: SiteWithUpdateAvailable[] = rows.map((site) => {
             const siteWithUpdate: SiteWithUpdateAvailable = { ...site };
             // Initially set to false, will be updated if version check succeeds
             siteWithUpdate.newtUpdateAvailable = false;
-            return siteWithUpdate;
+
+            // associate labels
+            const labelsForSite = labelsForSites.filter(
+                (label) => label.siteId === site.siteId
+            );
+
+            return { ...siteWithUpdate, labels: labelsForSite };
         });
 
         // Try to get the latest version, but don't block if it fails

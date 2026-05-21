@@ -41,7 +41,7 @@ export function MultiSelectTagInput<T extends TagValue>({
                             variant: "outline"
                         }),
                         "justify-between w-full inline-flex",
-                        "text-muted-foreground pl-1.5 cursor-text",
+                        "text-muted-foreground pl-1.5 cursor-text h-auto py-1",
                         "hover:bg-transparent hover:text-muted-foreground",
                         props.disabled && "pointer-events-none opacity-50"
                     )}
@@ -49,7 +49,7 @@ export function MultiSelectTagInput<T extends TagValue>({
                     <span
                         className={cn(
                             "inline-flex items-center gap-1",
-                            "overflow-x-auto"
+                            "overflow-x-auto flex-wrap h-auto"
                         )}
                     >
                         {props.value.map((option) => (
@@ -61,7 +61,9 @@ export function MultiSelectTagInput<T extends TagValue>({
                                 )}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                {option.text}
+                                <span className="max-w-40 text-ellipsis overflow-hidden">
+                                    {option.text}
+                                </span>
                                 <button
                                     className="p-0.5 flex-none cursor-pointer"
                                     type="button"

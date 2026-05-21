@@ -127,7 +127,8 @@ export default async function ClientResourcesPage(
                 authDaemonPort: siteResource.authDaemonPort ?? null,
                 subdomain: siteResource.subdomain ?? null,
                 domainId: siteResource.domainId ?? null,
-                fullDomain: siteResource.fullDomain ?? null
+                fullDomain: siteResource.fullDomain ?? null,
+                labels: siteResource.labels ?? []
             };
         }
     );

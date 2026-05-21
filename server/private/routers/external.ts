@@ -31,6 +31,8 @@ import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
+import * as labels from "#private/routers/labels";
+import * as client from "@server/routers/client";
 
 import {
     verifyOrgAccess,
@@ -733,6 +735,59 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.listOrgLabels),
+    labels.listOrgLabels
+);
+
+authenticated.post(
+    "/org/:orgId/labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.createOrgLabel),
+    labels.createOrgLabel
+);
+
+authenticated.patch(
+    "/org/:orgId/label/:labelId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.updateOrgLabel),
+    labels.updateOrgLabel
+);
+
+authenticated.delete(
+    "/org/:orgId/label/:labelId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteOrgLabel),
+    labels.deleteOrgLabel
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/attach",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.attachLabelToItem),
+    labels.attachLabelToItem
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/detach",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.detachLabelFromItem),
+    labels.detachLabelFromItem
+);
+
+authenticated.get(
     "/org/:orgId/health-checks",
     verifyValidLicense,
     verifyOrgAccess,
@@ -774,4 +829,16 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.getTarget),
     healthChecks.getHealthCheckStatusHistory
+);
+
+authenticated.get(
+    "/client/:clientId/verify-associations-cache",
+    verifyClientAccess,
+    client.verifyClientAssociationsCache
+);
+
+authenticated.post(
+    "/client/:clientId/rebuild-associations-cache",
+    verifyClientAccess,
+    client.rebuildClientAssociationsCacheRoute
 );

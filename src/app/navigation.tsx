@@ -23,6 +23,7 @@ import {
     Server,
     Settings,
     SquareMousePointer,
+    TagIcon,
     TicketCheck,
     Unplug,
     User,
@@ -99,7 +100,7 @@ export const orgNavSections = (
                 href: "/{orgId}/settings/domains",
                 icon: <Globe className="size-4 flex-none" />
             },
-            ...(build == "saas"
+            ...(build === "saas"
                 ? [
                       {
                           title: "sidebarRemoteExitNodes",
@@ -237,10 +238,19 @@ export const orgNavSections = (
                         title: "sidebarApiKeys",
                         href: "/{orgId}/settings/api-keys",
                         icon: <KeyRound className="size-4 flex-none" />
-                    }
+                    },
+                    ...(build !== "oss"
+                        ? [
+                              {
+                                  title: "labels",
+                                  href: "/{orgId}/settings/labels",
+                                  icon: <TagIcon className="size-4 flex-none" />
+                              }
+                          ]
+                        : [])
                 ]
             },
-            ...(build == "saas" && options?.isPrimaryOrg
+            ...(build === "saas" && options?.isPrimaryOrg
                 ? [
                       {
                           title: "sidebarBillingAndLicenses",

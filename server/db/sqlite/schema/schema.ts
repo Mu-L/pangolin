@@ -183,6 +183,95 @@ export const resources = sqliteTable("resources", {
     wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false)
 });
 
+export const labels = sqliteTable("labels", {
+    labelId: integer("labelId").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    color: text("color").notNull(),
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteLabels = sqliteTable(
+    "siteLabels",
+    {
+        siteLabelId: integer("siteLabelId").primaryKey({ autoIncrement: true }),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_label_uniq").on(t.siteId, t.labelId)]
+);
+
+export const resourceLabels = sqliteTable(
+    "resourceLabels",
+    {
+        resourceLabelId: integer("resourceLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        resourceId: integer("resourceId")
+            .references(() => resources.resourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
+);
+
+export const siteResourceLabels = sqliteTable(
+    "siteResourceLabels",
+    {
+        siteResourceLabelId: integer("siteResourceLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        siteResourceId: integer("siteResourceId")
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_resource_label_uniq").on(t.siteResourceId, t.labelId)]
+);
+
+export const clientLabels = sqliteTable(
+    "clientLabels",
+    {
+        clientLabelId: integer("clientLabelId").primaryKey({
+            autoIncrement: true
+        }),
+        clientId: integer("clientId")
+            .references(() => clients.clientId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("client_label_uniq").on(t.clientId, t.labelId)]
+);
+
 export const targets = sqliteTable("targets", {
     targetId: integer("targetId").primaryKey({ autoIncrement: true }),
     resourceId: integer("resourceId")
@@ -219,9 +308,11 @@ export const targetHealthCheck = sqliteTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
-    siteId: integer("siteId").references(() => sites.siteId, {
-        onDelete: "cascade"
-    }).notNull(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
     name: text("name"),
     hcEnabled: integer("hcEnabled", { mode: "boolean" })
         .notNull()
@@ -1196,19 +1287,30 @@ export const roundTripMessageTracker = sqliteTable("roundTripMessageTracker", {
     complete: integer("complete", { mode: "boolean" }).notNull().default(false)
 });
 
-export const statusHistory = sqliteTable("statusHistory", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    entityType: text("entityType").notNull(), // "site" | "healthCheck"
-    entityId: integer("entityId").notNull(),  // siteId or targetHealthCheckId
-    orgId: text("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    status: text("status").notNull(), // "online"/"offline" for sites; "healthy"/"unhealthy"/"unknown" for healthChecks
-    timestamp: integer("timestamp").notNull(), // unix epoch seconds
-}, (table) => [
-    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
-    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
-]);
+export const statusHistory = sqliteTable(
+    "statusHistory",
+    {
+        id: integer("id").primaryKey({ autoIncrement: true }),
+        entityType: text("entityType").notNull(), // "site" | "healthCheck"
+        entityId: integer("entityId").notNull(), // siteId or targetHealthCheckId
+        orgId: text("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        status: text("status").notNull(), // "online"/"offline" for sites; "healthy"/"unhealthy"/"unknown" for healthChecks
+        timestamp: integer("timestamp").notNull() // unix epoch seconds
+    },
+    (table) => [
+        index("idx_statusHistory_entity").on(
+            table.entityType,
+            table.entityId,
+            table.timestamp
+        ),
+        index("idx_statusHistory_org_timestamp").on(
+            table.orgId,
+            table.timestamp
+        )
+    ]
+);
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
@@ -1278,3 +1380,4 @@ export type RoundTripMessageTracker = InferSelectModel<
     typeof roundTripMessageTracker
 >;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
+export type Label = InferSelectModel<typeof labels>;
