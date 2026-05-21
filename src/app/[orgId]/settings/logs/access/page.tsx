@@ -31,7 +31,7 @@ export default function GeneralPage() {
     const { isPaidUser } = usePaidStatus();
 
     const [rows, setRows] = useState<any[]>([]);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isRefreshing, startRefreshTransition] = useTransition();
     const [isExporting, startTransition] = useTransition();
     const [filterAttributes, setFilterAttributes] = useState<{
         actors: string[];
@@ -277,8 +277,6 @@ export default function GeneralPage() {
     };
 
     const refreshData = async () => {
-        console.log("Data refreshed");
-        setIsRefreshing(true);
         try {
             // Refresh data with current date range and pagination
             await queryDateTime(
@@ -293,8 +291,6 @@ export default function GeneralPage() {
                 description: t("refreshError"),
                 variant: "destructive"
             });
-        } finally {
-            setIsRefreshing(false);
         }
     };
 
@@ -614,7 +610,7 @@ export default function GeneralPage() {
                 columns={columns}
                 data={rows}
                 title={t("accessLogs")}
-                onRefresh={refreshData}
+                onRefresh={() => startRefreshTransition(refreshData)}
                 isRefreshing={isRefreshing}
                 onExport={() => startTransition(exportData)}
                 isExporting={isExporting}
