@@ -217,6 +217,7 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                 title: t("orgUpdated"),
                 description: t("orgUpdatedDescription")
             });
+
             router.refresh();
         } catch (e) {
             toast({
@@ -260,6 +261,9 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                                 )}
                             />
 
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.newtAutoUpdate}
+                            />
                             <FormField
                                 control={form.control}
                                 name="settingsEnableGlobalNewtAutoUpdate"
@@ -271,17 +275,11 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                                                 label={t("newtAutoUpdate")}
                                                 checked={field.value}
                                                 onCheckedChange={field.onChange}
-                                                disabled={
-                                                    !hasAutoUpdateFeature
-                                                }
+                                                disabled={!hasAutoUpdateFeature}
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            {hasAutoUpdateFeature
-                                                ? t("newtAutoUpdateDescription")
-                                                : t(
-                                                      "newtAutoUpdateDisabledDescription"
-                                                  )}
+                                            {t("newtAutoUpdateDescription")}
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>

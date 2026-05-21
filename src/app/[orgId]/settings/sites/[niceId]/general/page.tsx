@@ -40,6 +40,7 @@ import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { Button as ButtonUI } from "@/components/ui/button";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 
 const GeneralFormSchema = z.object({
     name: z.string().nonempty("Name is required"),
@@ -70,8 +71,7 @@ export default function GeneralPage() {
         null
     );
 
-    const orgAutoUpdate =
-        org.org.settingsEnableGlobalNewtAutoUpdate ?? false;
+    const orgAutoUpdate = org.org.settingsEnableGlobalNewtAutoUpdate ?? false;
 
     const form = useForm({
         resolver: zodResolver(GeneralFormSchema),
@@ -221,7 +221,9 @@ export default function GeneralPage() {
                                                     {t.rich(
                                                         "enableDockerSocketDescription",
                                                         {
-                                                            docsLink: (chunks) => (
+                                                            docsLink: (
+                                                                chunks
+                                                            ) => (
                                                                 <a
                                                                     href="https://docs.pangolin.net/manage/sites/configure-site#docker-socket-integration"
                                                                     target="_blank"
@@ -240,53 +242,50 @@ export default function GeneralPage() {
                                     />
                                 )}
 
+                                <PaidFeaturesAlert
+                                    tiers={tierMatrix.newtAutoUpdate}
+                                />
                                 {site && site.type === "newt" && (
                                     <FormField
                                         control={form.control}
                                         name="autoUpdateEnabled"
                                         render={({ field }) => {
-                                            const isOverriding =
-                                                form.watch(
-                                                    "autoUpdateOverrideOrg"
-                                                );
+                                            const isOverriding = form.watch(
+                                                "autoUpdateOverrideOrg"
+                                            );
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <SwitchInput
-                                                            id="auto-update-enabled"
-                                                            label={t(
-                                                                "siteAutoUpdateLabel"
-                                                            )}
-                                                            checked={
-                                                                field.value
-                                                            }
-                                                            onCheckedChange={(checked) => {
-                                                                field.onChange(
+                                                        <div className="flex items-center gap-3">
+                                                            <SwitchInput
+                                                                id="auto-update-enabled"
+                                                                label={t(
+                                                                    "siteAutoUpdateLabel"
+                                                                )}
+                                                                checked={
+                                                                    field.value
+                                                                }
+                                                                onCheckedChange={(
                                                                     checked
-                                                                );
-                                                                form.setValue(
-                                                                    "autoUpdateOverrideOrg",
-                                                                    true
-                                                                );
-                                                            }}
-                                                            disabled={
-                                                                !hasAutoUpdateFeature
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        {isOverriding ? (
-                                                            <span className="flex items-center gap-2">
-                                                                <span>
-                                                                    {t(
-                                                                        "siteAutoUpdateOverriding"
-                                                                    )}
-                                                                </span>
+                                                                ) => {
+                                                                    field.onChange(
+                                                                        checked
+                                                                    );
+                                                                    form.setValue(
+                                                                        "autoUpdateOverrideOrg",
+                                                                        true
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    !hasAutoUpdateFeature
+                                                                }
+                                                            />
+                                                            {isOverriding && (
                                                                 <ButtonUI
                                                                     type="button"
                                                                     variant="link"
                                                                     size="sm"
-                                                                    className="h-auto p-0 text-xs"
+                                                                    className="h-auto p-0 pb-2 text-xs"
                                                                     onClick={() => {
                                                                         form.setValue(
                                                                             "autoUpdateOverrideOrg",
@@ -302,20 +301,12 @@ export default function GeneralPage() {
                                                                         "siteAutoUpdateResetToOrg"
                                                                     )}
                                                                 </ButtonUI>
-                                                            </span>
-                                                        ) : (
-                                                            t(
-                                                                "siteAutoUpdateOrgDefault",
-                                                                {
-                                                                    state: orgAutoUpdate
-                                                                        ? t(
-                                                                              "siteAutoUpdateEnabled"
-                                                                          )
-                                                                        : t(
-                                                                              "siteAutoUpdateDisabled"
-                                                                          )
-                                                                }
-                                                            )
+                                                            )}
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {t(
+                                                            "siteAutoUpdateDescription"
                                                         )}
                                                     </FormDescription>
                                                     <FormMessage />
