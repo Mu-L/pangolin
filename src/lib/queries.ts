@@ -644,7 +644,8 @@ export const accessLogsFiltersSchema = z.object({
     resourceId: z.coerce.number().optional().catch(undefined),
     action: z.string().optional().catch(undefined),
     location: z.string().optional().catch(undefined),
-    actor: z.string().optional().catch(undefined)
+    actor: z.string().optional().catch(undefined),
+    type: z.string().optional().catch(undefined)
 });
 
 export type AccessLogFilters = z.output<typeof accessLogsFiltersSchema>;
@@ -707,7 +708,7 @@ export const logQueries = {
             }
         }),
 
-    access: ({ orgId, filters }: { orgId: string; filters: HttpLogFilters }) =>
+    access: ({ orgId, filters }: { orgId: string; filters: AccessLogFilters }) =>
         queryOptions({
             queryKey: ["ACCESS_LOGS", orgId, "ALL", filters] as const,
             queryFn: async ({ signal, meta }) => {

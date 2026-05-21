@@ -539,7 +539,7 @@ export function LogDataTable<TData, TValue>({
 
                     {isLoading && (
                         <>
-                            <div className="backdrop-blur-[2px] z-10 absolute inset-0 top-10"></div>
+                            <div className="backdrop-blur-[3px] z-10 absolute inset-0 top-10"></div>
                             <div className="absolute z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border border-border rounded-md bg-muted">
                                 <div className="flex items-center gap-2 p-6">
                                     <LoaderIcon className="size-4 animate-spin" />
