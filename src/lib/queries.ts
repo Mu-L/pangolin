@@ -2,7 +2,10 @@ import { build } from "@server/build";
 import { StatusHistoryResponse } from "@server/lib/statusHistory";
 import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
-import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
+import type {
+    QueryAccessAuditLogResponse,
+    QueryRequestAuditLogResponse
+} from "@server/routers/auditLogs/types";
 import type { ListClientsResponse } from "@server/routers/client";
 import type {
     GetDNSRecordsResponse,
@@ -592,7 +595,7 @@ export const logAnalyticsFiltersSchema = z.object({
 
 export type LogAnalyticsFilters = z.output<typeof logAnalyticsFiltersSchema>;
 
-export const logsFiltersSchema = z.object({
+export const httpLogsFiltersSchema = z.object({
     timeStart: z
         .string()
         .refine((val) => !isNaN(Date.parse(val)), {
@@ -619,7 +622,32 @@ export const logsFiltersSchema = z.object({
     path: z.string().optional().catch(undefined)
 });
 
-export type LogFilters = z.output<typeof logsFiltersSchema>;
+export type HttpLogFilters = z.output<typeof httpLogsFiltersSchema>;
+
+export const accessLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    action: z.string().optional().catch(undefined),
+    location: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined)
+});
+
+export type AccessLogFilters = z.output<typeof accessLogsFiltersSchema>;
 
 export const logQueries = {
     requestAnalytics: ({
@@ -648,7 +676,13 @@ export const logQueries = {
             }
         }),
 
-    requests: ({ orgId, filters }: { orgId: string; filters: LogFilters }) =>
+    requests: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: HttpLogFilters;
+    }) =>
         queryOptions({
             queryKey: ["REQUEST_LOGS", orgId, "ALL", filters] as const,
             queryFn: async ({ signal, meta }) => {
@@ -656,6 +690,31 @@ export const logQueries = {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryRequestAuditLogResponse>
                 >(`/org/${orgId}/logs/request`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    access: ({ orgId, filters }: { orgId: string; filters: HttpLogFilters }) =>
+        queryOptions({
+            queryKey: ["ACCESS_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAccessAuditLogResponse>
+                >(`/org/${orgId}/logs/access`, {
                     params: {
                         ...rest,
                         limit: pageSize,
