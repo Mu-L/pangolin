@@ -13,23 +13,31 @@ import logger from "@server/logger";
 import cache from "#dynamic/lib/cache";
 import config from "@server/lib/config";
 
-// Stale-while-revalidate cache for the latest newt version.
-let staleNewtVersion: string | null = null;
+// Stale-while-revalidate in-memory fallback for the releases API.
+type ReleaseInfo = {
+    version: string;
+    // binary filename -> sha256 hex (sourced from asset `digest` field in GitHub API)
+    assetDigests: Record<string, string>;
+};
+let staleReleaseInfo: ReleaseInfo | null = null;
 
-async function getLatestNewtVersion(): Promise<string | null> {
+/**
+ * Fetches the latest stable newt release from GitHub and returns the version
+ * tag together with a map of asset-name → sha256 hex digest.
+ * Results are cached for one hour; stale data is returned on failure.
+ */
+async function getLatestReleaseInfo(): Promise<ReleaseInfo | null> {
     try {
-        const cachedVersion = await cache.get<string>(
-            "cache:latestNewtVersion"
-        );
-        if (cachedVersion) {
-            return cachedVersion;
+        const cached = await cache.get<ReleaseInfo>("cache:newtReleaseInfo");
+        if (cached) {
+            return cached;
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const fetchResponse = await fetch(
-            "https://api.github.com/repos/fosrl/newt/tags",
+            "https://api.github.com/repos/fosrl/newt/releases",
             { signal: controller.signal }
         );
 
@@ -37,57 +45,71 @@ async function getLatestNewtVersion(): Promise<string | null> {
 
         if (!fetchResponse.ok) {
             logger.warn(
-                `Failed to fetch latest Newt version from GitHub: ${fetchResponse.status} ${fetchResponse.statusText}`
+                `Failed to fetch Newt releases from GitHub: ${fetchResponse.status} ${fetchResponse.statusText}`
             );
-            return staleNewtVersion;
+            return staleReleaseInfo;
         }
 
-        let tags = await fetchResponse.json();
-        if (!Array.isArray(tags) || tags.length === 0) {
-            logger.warn("No tags found for Newt repository");
-            return staleNewtVersion;
+        let releases: any[] = await fetchResponse.json();
+        if (!Array.isArray(releases) || releases.length === 0) {
+            logger.warn("No releases found for Newt repository");
+            return staleReleaseInfo;
         }
 
-        tags = tags.filter((tag: any) => !tag.name.includes("rc"));
-        tags.sort((a: any, b: any) => {
-            const va = semver.coerce(a.name);
-            const vb = semver.coerce(b.name);
+        // Drop drafts, pre-releases, and anything with "rc" in the tag name.
+        releases = releases.filter(
+            (r: any) => !r.draft && !r.prerelease && !r.tag_name.includes("rc")
+        );
+
+        // Sort descending by semver to find the true latest stable release.
+        releases.sort((a: any, b: any) => {
+            const va = semver.coerce(a.tag_name);
+            const vb = semver.coerce(b.tag_name);
             if (!va && !vb) return 0;
             if (!va) return 1;
             if (!vb) return -1;
             return semver.rcompare(va, vb);
         });
 
-        const seen = new Set<string>();
-        tags = tags.filter((tag: any) => {
-            const normalised = semver.coerce(tag.name)?.version;
-            if (!normalised || seen.has(normalised)) return false;
-            seen.add(normalised);
-            return true;
-        });
-
-        if (tags.length === 0) {
-            logger.warn("No valid semver tags found for Newt repository");
-            return staleNewtVersion;
+        if (releases.length === 0) {
+            logger.warn("No stable releases found for Newt repository");
+            return staleReleaseInfo;
         }
 
-        const latestVersion = tags[0].name;
-        staleNewtVersion = latestVersion;
-        await cache.set("cache:latestNewtVersion", latestVersion, 3600);
+        const latest = releases[0];
+        const version: string = latest.tag_name;
 
-        return latestVersion;
+        // Build a map of binary filename → sha256 hex from the asset `digest`
+        // field returned by the GitHub API (format: "sha256:<hex>").
+        const assetDigests: Record<string, string> = {};
+        if (Array.isArray(latest.assets)) {
+            for (const asset of latest.assets) {
+                if (
+                    typeof asset.name === "string" &&
+                    typeof asset.digest === "string" &&
+                    asset.digest.startsWith("sha256:")
+                ) {
+                    assetDigests[asset.name] = asset.digest.slice(
+                        "sha256:".length
+                    );
+                }
+            }
+        }
+
+        const info: ReleaseInfo = { version, assetDigests };
+        staleReleaseInfo = info;
+        await cache.set("cache:newtReleaseInfo", info, 3600);
+        return info;
     } catch (error: any) {
         if (error.name === "AbortError") {
-            logger.warn(
-                "Request to fetch latest Newt version timed out (1.5s)"
-            );
+            logger.warn("Request to fetch Newt releases timed out (5s)");
         } else {
             logger.warn(
-                "Error fetching latest Newt version:",
+                "Error fetching Newt releases:",
                 error.message || error
             );
         }
-        return staleNewtVersion;
+        return staleReleaseInfo;
     }
 }
 
@@ -103,6 +125,7 @@ export type GetNewtVersionResponse = {
     latestVersion: string;
     currentIsLatest: boolean;
     downloadUrl: string;
+    sha256: string;
 };
 
 export async function getNewtVersion(
@@ -137,10 +160,7 @@ export async function getNewtVersion(
                 );
             }
             return next(
-                createHttpError(
-                    HttpCode.UNAUTHORIZED,
-                    "Invalid credentials"
-                )
+                createHttpError(HttpCode.UNAUTHORIZED, "Invalid credentials")
             );
         }
 
@@ -157,17 +177,14 @@ export async function getNewtVersion(
                 );
             }
             return next(
-                createHttpError(
-                    HttpCode.UNAUTHORIZED,
-                    "Invalid credentials"
-                )
+                createHttpError(HttpCode.UNAUTHORIZED, "Invalid credentials")
             );
         }
 
-        // Fetch latest version
-        const latestVersion = await getLatestNewtVersion();
+        // Fetch latest release info (version + asset digests) in one API call.
+        const releaseInfo = await getLatestReleaseInfo();
 
-        if (!latestVersion) {
+        if (!releaseInfo) {
             return next(
                 createHttpError(
                     HttpCode.INTERNAL_SERVER_ERROR,
@@ -176,18 +193,23 @@ export async function getNewtVersion(
             );
         }
 
-        // Normalise the tag (strip leading 'v' for the URL, but keep original for comparison)
+        const latestVersion = releaseInfo.version;
+
+        // Normalise the tag (ensure leading 'v') for the download URL.
         const tagForUrl = latestVersion.startsWith("v")
             ? latestVersion
             : `v${latestVersion}`;
 
         // Binary name follows the get-newt.sh convention: newt_<platform>[.exe]
-        const binaryName =
-            platform.includes("windows")
-                ? `newt_${platform}.exe`
-                : `newt_${platform}`;
+        const binaryName = platform.includes("windows")
+            ? `newt_${platform}.exe`
+            : `newt_${platform}`;
 
         const downloadUrl = `https://github.com/fosrl/newt/releases/download/${tagForUrl}/${binaryName}`;
+
+        // Look up the SHA256 digest for this specific binary from the GitHub
+        // release asset metadata (the `digest` field, format "sha256:<hex>").
+        const sha256 = releaseInfo.assetDigests[binaryName] ?? "";
 
         // Determine whether the newt that's asking is already up to date.
         // We store the current version on the newt row when it registers.
@@ -209,7 +231,8 @@ export async function getNewtVersion(
             data: {
                 latestVersion,
                 currentIsLatest,
-                downloadUrl
+                downloadUrl,
+                sha256
             },
             success: true,
             error: false,
