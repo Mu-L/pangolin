@@ -71,7 +71,7 @@ const listResourcesSchema = z.object({
         }),
     query: z.string().optional(),
     sort_by: z
-        .enum(["name"])
+        .literal("name")
         .optional()
         .catch(undefined)
         .openapi({
