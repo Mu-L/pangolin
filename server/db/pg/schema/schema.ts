@@ -352,8 +352,11 @@ export const siteResources = pgTable("siteResources", {
     udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
     disableIcmp: boolean("disableIcmp").notNull().default(false),
     authDaemonPort: integer("authDaemonPort").default(22123),
+    pamMode: varchar("pamMode", { length: 32 })
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
-        .$type<"site" | "remote">()
+        .$type<"site" | "remote" | "native">()
         .default("site"),
     domainId: varchar("domainId").references(() => domains.domainId, {
         onDelete: "set null"

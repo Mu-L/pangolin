@@ -387,8 +387,11 @@ export const siteResources = sqliteTable("siteResources", {
         .notNull()
         .default(false),
     authDaemonPort: integer("authDaemonPort").default(22123),
+    pamMode: text("pamMode")
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
     authDaemonMode: text("authDaemonMode")
-        .$type<"site" | "remote">()
+        .$type<"site" | "remote" | "native">()
         .default("site"),
     domainId: text("domainId").references(() => domains.domainId, {
         onDelete: "set null"
