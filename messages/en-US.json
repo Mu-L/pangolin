@@ -1872,6 +1872,7 @@
     "billingManageLicenseSubscription": "Manage your subscription for paid self-hosted license keys",
     "billingCurrentKeys": "Current Keys",
     "billingModifyCurrentPlan": "Modify Current Plan",
+    "billingManageLicenseSubscriptionDescription": "Manage your subscription for paid self-hosted license keys and download invoices.",
     "billingConfirmUpgrade": "Confirm Upgrade",
     "billingConfirmDowngrade": "Confirm Downgrade",
     "billingConfirmUpgradeDescription": "You are about to upgrade your plan. Review the new limits and pricing below.",
