@@ -187,7 +187,8 @@ export const resources = sqliteTable("resources", {
         .default("passthrough"),
     authDaemonMode: text("authDaemonMode")
         .$type<"site" | "remote" | "native">()
-        .default("site")
+        .default("site"),
+    authDaemonPort: integer("authDaemonPort").default(22123)
 });
 
 export const labels = sqliteTable("labels", {

@@ -147,7 +147,6 @@ export const resources = pgTable("resources", {
     headers: text("headers"), // comma-separated list of headers to add to the request
     proxyProtocol: boolean("proxyProtocol").notNull().default(false),
     proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
-
     maintenanceModeEnabled: boolean("maintenanceModeEnabled")
         .notNull()
         .default(false),
@@ -166,7 +165,8 @@ export const resources = pgTable("resources", {
         .default("passthrough"),
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
         .$type<"site" | "remote" | "native">()
-        .default("site")
+        .default("site"),
+    authDaemonPort: integer("authDaemonPort").default(22123)
 });
 
 export const labels = pgTable("labels", {

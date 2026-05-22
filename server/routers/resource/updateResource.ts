@@ -72,7 +72,11 @@ const updateHttpResourceBodySchema = z
         maintenanceMessage: z.string().max(2000).nullable().optional(),
         maintenanceEstimatedTime: z.string().max(100).nullable().optional(),
         postAuthPath: z.string().nullable().optional(),
-        browserAccessType: z.enum(["http", "ssh", "rdp", "vnc"]).optional()
+        browserAccessType: z.enum(["http", "ssh", "rdp", "vnc"]).optional(),
+        // SSH settings
+        pamMode: z.enum(["passthrough", "push"]).optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
+        authDaemonPort: z.int().min(1).max(65535).nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
