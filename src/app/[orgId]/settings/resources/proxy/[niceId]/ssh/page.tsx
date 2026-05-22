@@ -5,32 +5,62 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
 import { StrategySelect, StrategyOption } from "@app/components/StrategySelect";
+import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
+import {
+    SitesSelector,
+    type Selectedsite
+} from "@app/components/site-selector";
 import { Button } from "@app/components/ui/button";
 import { Input } from "@app/components/ui/input";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
-import { ExternalLink } from "lucide-react";
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
+import { ChevronsUpDown, ExternalLink } from "lucide-react";
 import { toast } from "@app/hooks/useToast";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient } from "@app/lib/api";
 import { formatAxiosError } from "@app/lib/api/formatAxiosError";
-import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { use, useActionState, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { GetResourceResponse } from "@server/routers/resource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
+
+type ExistingTarget = {
+    browserGatewayTargetId: number;
+    siteId: number;
+};
+
+const sshFormSchema = z.object({
+    authDaemonPort: z.string().refine(
+        (val) => {
+            if (!val) return true;
+            const n = Number(val);
+            return Number.isInteger(n) && n >= 1 && n <= 65535;
+        },
+        { message: "Port must be between 1 and 65535" }
+    )
+});
 
 export default function SshSettingsPage(props: {
     params: Promise<{ orgId: string }>;
@@ -62,24 +92,48 @@ function SshServerForm({
     const api = createApiClient(useEnvContext());
     const router = useRouter();
 
+    const isNativeInitially = resource.authDaemonMode === "native";
+
+    const [sshServerMode, setSshServerMode] = useState<"standard" | "native">(
+        isNativeInitially ? "native" : "standard"
+    );
+    const isNative = sshServerMode === "native";
+
     const [pamMode, setPamMode] = useState<"passthrough" | "push">(
         (resource.pamMode as "passthrough" | "push") || "passthrough"
     );
-    const [authDaemonMode, setAuthDaemonMode] = useState<"site" | "remote">(
-        (resource.authDaemonMode as "site" | "remote") || "site"
-    );
-    const [authDaemonPort, setAuthDaemonPort] = useState<string>(
-        (resource as any).authDaemonPort
-            ? String((resource as any).authDaemonPort)
-            : "22123"
+
+    const [standardDaemonLocation, setStandardDaemonLocation] = useState<
+        "site" | "remote"
+    >(
+        isNativeInitially
+            ? "site"
+            : (resource.authDaemonMode as "site" | "remote") || "site"
     );
 
+    const form = useForm({
+        resolver: zodResolver(sshFormSchema),
+        defaultValues: {
+            authDaemonPort: (resource as any).authDaemonPort
+                ? String((resource as any).authDaemonPort)
+                : "22123"
+        }
+    });
+
+    // Standard mode: multi-site
+    const [selectedSites, setSelectedSites] = useState<Selectedsite[]>([]);
     const [bgDestination, setBgDestination] = useState("");
     const [bgDestinationPort, setBgDestinationPort] = useState("22");
-    const [bgSiteId, setBgSiteId] = useState<number | null>(null);
-    const [bgTargetId, setBgTargetId] = useState<number | null>(null);
+    const [existingTargets, setExistingTargets] = useState<ExistingTarget[]>(
+        []
+    );
 
-    const { data: sites = [] } = useQuery(orgQueries.sites({ orgId }));
+    // Native mode: single site
+    const [selectedNativeSite, setSelectedNativeSite] =
+        useState<Selectedsite | null>(null);
+    const [nativeExistingTarget, setNativeExistingTarget] =
+        useState<ExistingTarget | null>(null);
+    const [nativeSiteOpen, setNativeSiteOpen] = useState(false);
 
     const { data: bgTargetsResponse } = useQuery({
         queryKey: ["browserGatewayTargets", resource.resourceId, orgId],
@@ -92,6 +146,7 @@ function SshServerForm({
                     browserGatewayTargetId: number;
                     resourceId: number;
                     siteId: number;
+                    siteName?: string;
                     type: string;
                     destination: string;
                     destinationPort: number;
@@ -102,53 +157,154 @@ function SshServerForm({
 
     useEffect(() => {
         if (!bgTargetsResponse?.targets?.length) return;
-        const bgt = bgTargetsResponse.targets[0];
-        setBgDestination(bgt.destination);
-        setBgDestinationPort(String(bgt.destinationPort));
-        setBgSiteId(bgt.siteId);
-        setBgTargetId(bgt.browserGatewayTargetId);
-    }, [bgTargetsResponse]);
-
-    useEffect(() => {
-        if (sites.length > 0 && bgSiteId === null) {
-            setBgSiteId(sites[0].siteId);
+        const targets = bgTargetsResponse.targets;
+        const first = targets[0];
+        if (isNativeInitially) {
+            setSelectedNativeSite({
+                siteId: first.siteId,
+                name: first.siteName ?? String(first.siteId),
+                type: "newt" as const
+            });
+            setNativeExistingTarget({
+                browserGatewayTargetId: first.browserGatewayTargetId,
+                siteId: first.siteId
+            });
+        } else {
+            setBgDestination(first.destination);
+            setBgDestinationPort(String(first.destinationPort));
+            setExistingTargets(
+                targets.map((t) => ({
+                    browserGatewayTargetId: t.browserGatewayTargetId,
+                    siteId: t.siteId
+                }))
+            );
+            setSelectedSites(
+                targets.map((t) => ({
+                    siteId: t.siteId,
+                    name: t.siteName ?? String(t.siteId),
+                    type: "newt" as const
+                }))
+            );
         }
-    }, [sites, bgSiteId]);
+    }, [bgTargetsResponse]);
 
     const [, formAction, isSubmitting] = useActionState(save, null);
 
     async function save() {
+        const isValid = await form.trigger();
+        if (!isValid) return;
+
+        const effectiveMode = isNative ? "native" : standardDaemonLocation;
+        const portVal = form.getValues().authDaemonPort;
+        const effectivePort =
+            !isNative && standardDaemonLocation === "remote" && portVal
+                ? Number(portVal)
+                : null;
+
         try {
             await api.post(`/resource/${resource.resourceId}`, {
                 pamMode,
-                authDaemonMode,
-                authDaemonPort: authDaemonPort ? Number(authDaemonPort) : null
+                authDaemonMode: effectiveMode,
+                authDaemonPort: effectivePort
             });
 
-            updateResource({ ...resource, pamMode, authDaemonMode });
+            updateResource({
+                ...resource,
+                pamMode,
+                authDaemonMode: effectiveMode
+            });
 
-            if (bgDestination && bgDestinationPort) {
-                if (bgTargetId) {
-                    await api.post(
-                        `/org/${orgId}/browser-gateway-target/${bgTargetId}`,
-                        {
-                            type: "ssh",
-                            destination: bgDestination,
-                            destinationPort: Number(bgDestinationPort),
-                            siteId: bgSiteId
-                        }
+            if (isNative) {
+                if (selectedNativeSite) {
+                    if (nativeExistingTarget) {
+                        await api.post(
+                            `/org/${orgId}/browser-gateway-target/${nativeExistingTarget.browserGatewayTargetId}`,
+                            {
+                                type: "ssh",
+                                destination: "localhost",
+                                destinationPort: 22,
+                                siteId: selectedNativeSite.siteId
+                            }
+                        );
+                    } else {
+                        const res = await api.put(
+                            `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
+                            {
+                                siteId: selectedNativeSite.siteId,
+                                type: "ssh",
+                                destination: "localhost",
+                                destinationPort: 22
+                            }
+                        );
+                        setNativeExistingTarget({
+                            browserGatewayTargetId:
+                                res.data.data.browserGatewayTargetId,
+                            siteId: selectedNativeSite.siteId
+                        });
+                    }
+                }
+            } else {
+                if (bgDestination && bgDestinationPort) {
+                    const selectedSiteIds = new Set(
+                        selectedSites.map((s) => s.siteId)
                     );
-                } else {
-                    const res = await api.put(
-                        `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
-                        {
-                            siteId: bgSiteId ?? sites[0]?.siteId,
-                            type: "ssh",
-                            destination: bgDestination,
-                            destinationPort: Number(bgDestinationPort)
-                        }
+                    const existingSiteIds = new Set(
+                        existingTargets.map((t) => t.siteId)
                     );
-                    setBgTargetId(res.data.data.browserGatewayTargetId);
+
+                    const toDelete = existingTargets.filter(
+                        (t) => !selectedSiteIds.has(t.siteId)
+                    );
+                    await Promise.all(
+                        toDelete.map((t) =>
+                            api.delete(
+                                `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`
+                            )
+                        )
+                    );
+
+                    const toUpdate = existingTargets.filter((t) =>
+                        selectedSiteIds.has(t.siteId)
+                    );
+                    await Promise.all(
+                        toUpdate.map((t) =>
+                            api.post(
+                                `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`,
+                                {
+                                    type: "ssh",
+                                    destination: bgDestination,
+                                    destinationPort: Number(bgDestinationPort),
+                                    siteId: t.siteId
+                                }
+                            )
+                        )
+                    );
+
+                    const toCreate = selectedSites.filter(
+                        (s) => !existingSiteIds.has(s.siteId)
+                    );
+                    const created = await Promise.all(
+                        toCreate.map((s) =>
+                            api.put(
+                                `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
+                                {
+                                    siteId: s.siteId,
+                                    type: "ssh",
+                                    destination: bgDestination,
+                                    destinationPort: Number(bgDestinationPort)
+                                }
+                            )
+                        )
+                    );
+
+                    const newTargets: ExistingTarget[] = created.map(
+                        (res, i) => ({
+                            browserGatewayTargetId:
+                                res.data.data.browserGatewayTargetId,
+                            siteId: toCreate[i].siteId
+                        })
+                    );
+                    setExistingTargets([...toUpdate, ...newTargets]);
                 }
             }
 
@@ -196,48 +352,47 @@ function SshServerForm({
         }
     ];
 
+    const showDaemonLocation = !isNative && pamMode === "push";
+    const showDaemonPort =
+        !isNative && pamMode === "push" && standardDaemonLocation === "remote";
+
     return (
-        <>
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>
-                        {t("sshServer")}
-                    </SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        {t("sshServerDescription")}
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
-                <SettingsSectionBody>
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <p className="text-sm font-semibold">
-                                {t("sshServerMode")}
-                            </p>
-                            <span className="inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium">
-                                {t("sshServerModeStandard")}
-                            </span>
-                        </div>
+        <SettingsSection>
+            <SettingsSectionHeader>
+                <SettingsSectionTitle>{t("sshServer")}</SettingsSectionTitle>
+                <SettingsSectionDescription>
+                    {t("sshServerDescription")}
+                </SettingsSectionDescription>
+            </SettingsSectionHeader>
+            <SettingsSectionBody>
+                <SettingsSectionForm>
+                    <div className="space-y-3">
+                        <p className="text-sm font-semibold">
+                            {t("sshServerMode")}
+                        </p>
+                    </div>
 
-                        <div className="space-y-3">
-                            <p className="text-sm font-semibold">
-                                {t("sshAuthenticationMethod")}
-                            </p>
-                            <StrategySelect<"passthrough" | "push">
-                                value={pamMode}
-                                options={authMethodOptions}
-                                onChange={setPamMode}
-                                cols={2}
-                            />
-                        </div>
+                    <div className="space-y-3">
+                        <p className="text-sm font-semibold">
+                            {t("sshAuthenticationMethod")}
+                        </p>
+                        <StrategySelect<"passthrough" | "push">
+                            value={pamMode}
+                            options={authMethodOptions}
+                            onChange={setPamMode}
+                            cols={2}
+                        />
+                    </div>
 
+                    {showDaemonLocation && (
                         <div className="space-y-3">
                             <p className="text-sm font-semibold">
                                 {t("sshAuthDaemonLocation")}
                             </p>
                             <StrategySelect<"site" | "remote">
-                                value={authDaemonMode}
+                                value={standardDaemonLocation}
                                 options={daemonLocationOptions}
-                                onChange={setAuthDaemonMode}
+                                onChange={setStandardDaemonLocation}
                                 cols={2}
                             />
                             <p className="text-sm text-muted-foreground">
@@ -253,104 +408,96 @@ function SshServerForm({
                                 </a>
                             </p>
                         </div>
+                    )}
 
-                        <div className="space-y-2 max-w-xs">
-                            <label className="text-sm font-semibold">
-                                {t("sshDaemonPort")}
-                            </label>
-                            <Input
-                                type="number"
-                                min={1}
-                                max={65535}
-                                value={authDaemonPort}
-                                onChange={(e) =>
-                                    setAuthDaemonPort(e.target.value)
-                                }
+                    {showDaemonPort && (
+                        <Form {...form}>
+                            <FormField
+                                control={form.control}
+                                name="authDaemonPort"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>
+                                            {t("sshDaemonPort")}
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                max={65535}
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                        </div>
-                    </div>
-                </SettingsSectionBody>
-            </SettingsSection>
+                        </Form>
+                    )}
+                </SettingsSectionForm>
 
-            <SettingsSection>
-                <SettingsSectionHeader>
-                    <SettingsSectionTitle>
-                        {t("sshServerDestination")}
-                    </SettingsSectionTitle>
-                    <SettingsSectionDescription>
-                        {t("sshServerDestinationDescription")}
-                    </SettingsSectionDescription>
-                </SettingsSectionHeader>
-                <SettingsSectionBody>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold">
-                                    {t("destination")}
-                                </label>
-                                <Input
-                                    placeholder="192.168.1.1"
-                                    value={bgDestination}
-                                    onChange={(e) =>
-                                        setBgDestination(e.target.value)
-                                    }
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold">
-                                    {t("port")}
-                                </label>
-                                <Input
-                                    type="number"
-                                    placeholder="22"
-                                    value={bgDestinationPort}
-                                    onChange={(e) =>
-                                        setBgDestinationPort(e.target.value)
-                                    }
-                                />
-                            </div>
-                        </div>
-                        {sites.length > 0 && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold">
-                                    {t("site")}
-                                </label>
-                                <Select
-                                    value={bgSiteId ? String(bgSiteId) : ""}
-                                    onValueChange={(v) =>
-                                        setBgSiteId(Number(v))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue
-                                            placeholder={t("siteSelect")}
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sites.map((site) => (
-                                            <SelectItem
-                                                key={site.siteId}
-                                                value={String(site.siteId)}
-                                            >
-                                                {site.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
+                <div className="space-y-3">
+                    <div>
+                        <h2 className="text-1xl font-semibold tracking-tight flex items-center gap-2">
+                            {t("sshServerDestination")}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {t("sshServerDestinationDescription")}
+                        </p>
                     </div>
-                </SettingsSectionBody>
-                <form action={formAction} className="flex justify-end mt-4">
-                    <Button
-                        disabled={isSubmitting}
-                        loading={isSubmitting}
-                        type="submit"
-                    >
-                        {t("saveSettings")}
-                    </Button>
-                </form>
-            </SettingsSection>
-        </>
+                    {isNative ? (
+                        <Popover
+                            open={nativeSiteOpen}
+                            onOpenChange={setNativeSiteOpen}
+                        >
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className="w-full max-w-xs justify-between font-normal"
+                                >
+                                    <span className="truncate">
+                                        {selectedNativeSite?.name ??
+                                            t("siteSelect")}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                <SitesSelector
+                                    orgId={orgId}
+                                    selectedSite={selectedNativeSite}
+                                    onSelectSite={(site) => {
+                                        setSelectedNativeSite(site);
+                                        setNativeSiteOpen(false);
+                                    }}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    ) : (
+                        <BrowserGatewayTargetForm
+                            orgId={orgId}
+                            multiSite={true}
+                            selectedSites={selectedSites}
+                            onSitesChange={setSelectedSites}
+                            destination={bgDestination}
+                            destinationPort={bgDestinationPort}
+                            onDestinationChange={setBgDestination}
+                            onDestinationPortChange={setBgDestinationPort}
+                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                        />
+                    )}
+                </div>
+            </SettingsSectionBody>
+            <form action={formAction} className="flex justify-end mt-4">
+                <Button
+                    disabled={isSubmitting}
+                    loading={isSubmitting}
+                    type="submit"
+                >
+                    {t("saveSettings")}
+                </Button>
+            </form>
+        </SettingsSection>
     );
 }
