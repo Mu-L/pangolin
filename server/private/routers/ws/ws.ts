@@ -522,13 +522,13 @@ const sendToClientLocal = async (
 
     const messageString = JSON.stringify(messageWithVersion);
     if (options.compress) {
-        logger.debug(
-            `Message size before compression: ${messageString.length} bytes`
-        );
+        // logger.debug(
+        //     `Message size before compression: ${messageString.length} bytes`
+        // );
         const compressed = zlib.gzipSync(Buffer.from(messageString, "utf8"));
-        logger.debug(
-            `Message size after compression: ${compressed.length} bytes`
-        );
+        // logger.debug(
+        //     `Message size after compression: ${compressed.length} bytes`
+        // );
         clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(compressed);

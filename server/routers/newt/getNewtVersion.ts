@@ -58,7 +58,11 @@ async function getLatestReleaseInfo(): Promise<ReleaseInfo | null> {
 
         // Drop drafts, pre-releases, and anything with "rc" in the tag name.
         releases = releases.filter(
-            (r: any) => !r.draft && !r.prerelease && !r.tag_name.includes("rc")
+            (r: any) =>
+                !r.draft &&
+                !r.prerelease &&
+                !r.tag_name.includes("rc") &&
+                !r.tag_name.includes("v")
         );
 
         // Sort descending by semver to find the true latest stable release.
@@ -262,17 +266,12 @@ export async function getNewtVersion(
 
         const latestVersion = releaseInfo.version;
 
-        // Normalise the tag (ensure leading 'v') for the download URL.
-        const tagForUrl = latestVersion.startsWith("v")
-            ? latestVersion
-            : `v${latestVersion}`;
-
         // Binary name follows the get-newt.sh convention: newt_<platform>[.exe]
         const binaryName = platform.includes("windows")
             ? `newt_${platform}.exe`
             : `newt_${platform}`;
 
-        const downloadUrl = `https://github.com/fosrl/newt/releases/download/${tagForUrl}/${binaryName}`;
+        const downloadUrl = `https://github.com/fosrl/newt/releases/download/${latestVersion}/${binaryName}`;
 
         // Look up the SHA256 digest for this specific binary from the GitHub
         // release asset metadata (the `digest` field, format "sha256:<hex>").
