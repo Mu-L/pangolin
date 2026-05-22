@@ -5,12 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@app/hooks/useToast";
-
-type Target = {
-    ip: string;
-    port: number;
-    authToken: string;
-};
+import { GetBrowserTargetResponse } from "@server/routers/resource";
 
 type FormState = {
     password: string;
@@ -20,7 +15,7 @@ export default function VncClient({
     target,
     error
 }: {
-    target: Target | null;
+    target: GetBrowserTargetResponse | null;
     error: string | null;
 }) {
     const STORAGE_KEY = "pangolin_vnc_credentials";

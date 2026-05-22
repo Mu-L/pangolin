@@ -14,6 +14,7 @@ import type {
     RdpFileTransferProvider,
     FileInfo
 } from "@devolutions/iron-remote-desktop-rdp/dist";
+import { GetBrowserTargetResponse } from "@server/routers/resource";
 
 declare module "react" {
     namespace JSX {
@@ -30,12 +31,6 @@ declare module "react" {
         }
     }
 }
-
-type Target = {
-    ip: string;
-    port: number;
-    authToken: string;
-};
 
 type FormState = {
     username: string;
@@ -59,7 +54,7 @@ export default function RdpClient({
     target,
     error
 }: {
-    target: Target | null;
+    target: GetBrowserTargetResponse | null;
     error: string | null;
 }) {
     const STORAGE_KEY = "pangolin_rdp_credentials";

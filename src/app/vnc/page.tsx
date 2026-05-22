@@ -15,7 +15,7 @@ export default async function VncPage() {
     const host = headersList.get("host") || "";
     const hostname = host.split(":")[0];
 
-    let target: { ip: string; port: number; authToken: string } | null = null;
+    let target: GetBrowserTargetResponse | null = null;
     let error: string | null = null;
 
     try {
