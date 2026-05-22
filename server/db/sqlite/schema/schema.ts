@@ -181,7 +181,13 @@ export const resources = sqliteTable("resources", {
     postAuthPath: text("postAuthPath"),
     health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
     wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
-    browserAccessType: text("browserAccessType").default("http") // rdp, ssh, http, vnc
+    browserAccessType: text("browserAccessType").default("http"), // rdp, ssh, http, vnc
+    pamMode: text("pamMode")
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
+    authDaemonMode: text("authDaemonMode")
+        .$type<"site" | "remote" | "native">()
+        .default("site")
 });
 
 export const labels = sqliteTable("labels", {

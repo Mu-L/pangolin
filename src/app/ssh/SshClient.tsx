@@ -6,12 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
-type Target = {
-    ip: string;
-    port: number;
-    authToken: string;
-};
+import type { SignSshKeyResponse } from "@server/private/routers/ssh";
+import { GetBrowserTargetResponse } from "@server/routers/resource";
 
 type FormState = {
     username: string;
@@ -19,12 +15,23 @@ type FormState = {
     privateKey: string;
 };
 
+type ConnectCredentials = {
+    username: string;
+    password?: string;
+    privateKey?: string;
+    certificate?: string;
+};
+
 export default function SshClient({
     target,
-    error
+    error,
+    signedKeyData,
+    privateKey: signedPrivateKey
 }: {
-    target: Target | null;
+    target: GetBrowserTargetResponse | null;
     error: string | null;
+    signedKeyData?: SignSshKeyResponse | null;
+    privateKey?: string | null;
 }) {
     const STORAGE_KEY = "pangolin_ssh_credentials";
 
@@ -148,7 +155,19 @@ export default function SshClient({
         };
     }, []);
 
-    function connect() {
+    // Auto-connect when signed key data is provided (push PAM mode).
+    useEffect(() => {
+        if (signedKeyData && signedPrivateKey && target) {
+            connect({
+                username: signedKeyData.sshUsername,
+                privateKey: signedPrivateKey,
+                certificate: signedKeyData.certificate
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    function connect(override?: ConnectCredentials) {
         setConnectError(null);
         setConnecting(true);
 
@@ -158,11 +177,16 @@ export default function SshClient({
             return;
         }
 
+        const username = override?.username ?? form.username;
+        const password = override?.password ?? form.password;
+        const privateKey = override?.privateKey ?? form.privateKey;
+        const certificate = override?.certificate;
+
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
         const url = new URL(proxyAddress);
         url.searchParams.set("host", target.ip ?? "");
         url.searchParams.set("port", String(target.port ?? 22));
-        url.searchParams.set("username", form.username);
+        url.searchParams.set("username", username);
         url.searchParams.set("authToken", target.authToken ?? "");
 
         const ws = new WebSocket(url.toString(), ["ssh"]);
@@ -174,14 +198,17 @@ export default function SshClient({
             ws.send(
                 JSON.stringify({
                     type: "auth",
-                    password: form.password,
-                    privateKey: form.privateKey
+                    password,
+                    privateKey,
+                    certificate
                 })
             );
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-            } catch {
-                // ignore
+            if (!override) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                } catch {
+                    // ignore
+                }
             }
             setConnecting(false);
             setConnected(true);
@@ -236,6 +263,43 @@ export default function SshClient({
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <p className="text-destructive">{error}</p>
+            </div>
+        );
+    }
+
+    // In push mode, show a connecting/connected state without the login form.
+    if (signedKeyData && signedPrivateKey) {
+        return (
+            <div className="min-h-screen bg-background">
+                {!connected && (
+                    <div className="flex min-h-screen items-center justify-center">
+                        <p className="text-muted-foreground">
+                            {connectError
+                                ? connectError
+                                : connecting
+                                  ? "Connecting…"
+                                  : "Initializing…"}
+                        </p>
+                    </div>
+                )}
+                {connected && (
+                    <div className="flex h-screen flex-col bg-neutral-900">
+                        <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={disconnect}
+                            >
+                                Terminate
+                            </Button>
+                        </div>
+                        <div
+                            ref={terminalRef}
+                            className="flex-1 overflow-hidden"
+                            style={{ minHeight: 0 }}
+                        />
+                    </div>
+                )}
             </div>
         );
     }
@@ -335,7 +399,7 @@ export default function SshClient({
                         )}
 
                         <Button
-                            onClick={connect}
+                            onClick={() => connect()}
                             loading={connecting}
                             disabled={
                                 !form.username ||

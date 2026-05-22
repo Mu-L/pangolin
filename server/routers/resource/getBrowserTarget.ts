@@ -21,6 +21,11 @@ export type GetBrowserTargetResponse = {
     ip: string;
     port: number;
     authToken: string;
+    orgId: string;
+    resourceId: number;
+    niceId: string;
+    pamMode: "passthrough" | "push" | null;
+    authDaemonMode: "site" | "remote" | "native" | null;
 };
 
 export async function getBrowserTarget(
@@ -47,7 +52,12 @@ export async function getBrowserTarget(
             .select({
                 destination: browserGatewayTarget.destination,
                 destinationPort: browserGatewayTarget.destinationPort,
-                authToken: browserGatewayTarget.authToken
+                authToken: browserGatewayTarget.authToken,
+                resourceId: resources.resourceId,
+                niceId: resources.niceId,
+                orgId: resources.orgId,
+                pamMode: resources.pamMode,
+                authDaemonMode: resources.authDaemonMode
             })
             .from(browserGatewayTarget)
             .innerJoin(
@@ -57,7 +67,7 @@ export async function getBrowserTarget(
             .where(eq(resources.fullDomain, fullDomain))
             .limit(1);
 
-        const decryptAuthToken = decrypt(
+        const decryptedAuthToken = decrypt(
             browserTarget.authToken,
             config.getRawConfig().server.secret!
         );
@@ -75,7 +85,12 @@ export async function getBrowserTarget(
             data: {
                 ip: browserTarget.destination,
                 port: browserTarget.destinationPort,
-                authToken: decryptAuthToken
+                authToken: decryptedAuthToken,
+                pamMode: browserTarget.pamMode,
+                authDaemonMode: browserTarget.authDaemonMode,
+                orgId: browserTarget.orgId,
+                resourceId: browserTarget.resourceId,
+                niceId: browserTarget.niceId
             },
             success: true,
             error: false,

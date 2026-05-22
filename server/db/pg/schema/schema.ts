@@ -160,7 +160,13 @@ export const resources = pgTable("resources", {
     postAuthPath: text("postAuthPath"),
     health: varchar("health").default("unknown"), // "healthy", "unhealthy", "unknown"
     wildcard: boolean("wildcard").notNull().default(false),
-    browserAccessType: text("browserAccessType").default("http") // rdp, ssh, http, vnc
+    browserAccessType: text("browserAccessType").default("http"), // rdp, ssh, http, vnc
+    pamMode: varchar("pamMode", { length: 32 })
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
+    authDaemonMode: varchar("authDaemonMode", { length: 32 })
+        .$type<"site" | "remote" | "native">()
+        .default("site")
 });
 
 export const labels = pgTable("labels", {
