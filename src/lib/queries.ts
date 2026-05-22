@@ -1,17 +1,25 @@
 import { build } from "@server/build";
+import { StatusHistoryResponse } from "@server/lib/statusHistory";
+import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { QueryRequestAnalyticsResponse } from "@server/routers/auditLogs";
+import type {
+    QueryAccessAuditLogResponse,
+    QueryActionAuditLogResponse,
+    QueryConnectionAuditLogResponse,
+    QueryRequestAuditLogResponse
+} from "@server/routers/auditLogs/types";
 import type { ListClientsResponse } from "@server/routers/client";
 import type {
-    ListDomainsResponse,
-    GetDNSRecordsResponse
+    GetDNSRecordsResponse,
+    ListDomainsResponse
 } from "@server/routers/domain";
 import type { GetDomainResponse } from "@server/routers/domain/getDomain";
+import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
 import type {
     GetResourceWhitelistResponse,
     ListResourceNamesResponse,
     ListResourcesResponse
 } from "@server/routers/resource";
-import type { ListAlertRulesResponse } from "@server/routers/alertRule/types";
 import type { ListRolesResponse } from "@server/routers/role";
 import type { ListSitesResponse } from "@server/routers/site";
 import type {
@@ -31,8 +39,6 @@ import type { AxiosResponse } from "axios";
 import z from "zod";
 import { remote } from "./api";
 import { durationToMs } from "./durationToMs";
-import { ListHealthChecksResponse } from "@server/routers/healthChecks/types";
-import { StatusHistoryResponse } from "@server/lib/statusHistory";
 import type { ListOrgLabelsResponse } from "@server/routers/labels/types";
 
 export type ProductUpdate = {
@@ -589,7 +595,111 @@ export const logAnalyticsFiltersSchema = z.object({
     resourceId: z.coerce.number().optional().catch(undefined)
 });
 
-export type LogAnalyticsFilters = z.TypeOf<typeof logAnalyticsFiltersSchema>;
+export type LogAnalyticsFilters = z.output<typeof logAnalyticsFiltersSchema>;
+
+export const httpLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    action: z.string().optional().catch(undefined),
+    host: z.string().optional().catch(undefined),
+    location: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined),
+    method: z.string().optional().catch(undefined),
+    reason: z.string().optional().catch(undefined),
+    path: z.string().optional().catch(undefined)
+});
+
+export type HttpLogFilters = z.output<typeof httpLogsFiltersSchema>;
+
+export const accessLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    resourceId: z.coerce.number().optional().catch(undefined),
+    action: z.string().optional().catch(undefined),
+    location: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined),
+    type: z.string().optional().catch(undefined)
+});
+
+export type AccessLogFilters = z.output<typeof accessLogsFiltersSchema>;
+
+export const actionLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    action: z.string().optional().catch(undefined),
+    actor: z.string().optional().catch(undefined)
+});
+
+export type ActionLogFilters = z.output<typeof actionLogsFiltersSchema>;
+
+export const connectionLogsFiltersSchema = z.object({
+    timeStart: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeStart must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    timeEnd: z
+        .string()
+        .refine((val) => !isNaN(Date.parse(val)), {
+            error: "timeEnd must be a valid ISO date string"
+        })
+        .optional()
+        .catch(undefined),
+    page: z.coerce.number().optional().catch(0).default(0),
+    pageSize: z.coerce.number().optional().catch(20).default(20),
+    protocol: z.string().optional().catch(undefined),
+    destAddr: z.string().optional().catch(undefined),
+    clientId: z.coerce.number().optional().catch(undefined),
+    siteResourceId: z.coerce.number().optional().catch(undefined),
+    userId: z.string().optional().catch(undefined)
+});
+
+export type ConnectionLogFilters = z.output<typeof connectionLogsFiltersSchema>;
 
 export const logQueries = {
     requestAnalytics: ({
@@ -600,12 +710,130 @@ export const logQueries = {
         filters: LogAnalyticsFilters;
     }) =>
         queryOptions({
-            queryKey: ["REQUEST_LOG_ANALYTICS", orgId, filters] as const,
+            queryKey: ["REQUEST_LOGS", orgId, "ANALYTICS", filters] as const,
             queryFn: async ({ signal, meta }) => {
                 const res = await meta!.api.get<
                     AxiosResponse<QueryRequestAnalyticsResponse>
                 >(`/org/${orgId}/logs/analytics`, {
                     params: filters,
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    requests: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: HttpLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["REQUEST_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryRequestAuditLogResponse>
+                >(`/org/${orgId}/logs/request`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    access: ({ orgId, filters }: { orgId: string; filters: AccessLogFilters }) =>
+        queryOptions({
+            queryKey: ["ACCESS_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryAccessAuditLogResponse>
+                >(`/org/${orgId}/logs/access`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    action: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: ActionLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["ACTION_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryActionAuditLogResponse>
+                >(`/org/${orgId}/logs/action`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
+                    signal
+                });
+                return res.data.data;
+            },
+            refetchInterval: (query) => {
+                if (query.state.data) {
+                    return durationToMs(30, "seconds");
+                }
+                return false;
+            }
+        }),
+
+    connection: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: ConnectionLogFilters;
+    }) =>
+        queryOptions({
+            queryKey: ["CONNECTION_LOGS", orgId, "ALL", filters] as const,
+            queryFn: async ({ signal, meta }) => {
+                const { page, pageSize, ...rest } = filters;
+                const res = await meta!.api.get<
+                    AxiosResponse<QueryConnectionAuditLogResponse>
+                >(`/org/${orgId}/logs/connection`, {
+                    params: {
+                        ...rest,
+                        limit: pageSize,
+                        offset: page * pageSize
+                    },
                     signal
                 });
                 return res.data.data;
