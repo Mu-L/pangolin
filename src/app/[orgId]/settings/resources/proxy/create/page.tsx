@@ -713,7 +713,7 @@ export default function Page() {
                     }
                 };
 
-                   return (
+                return (
                     <div className="flex items-center justify-center w-full">
                         {row.original.siteType === "newt" ? (
                             <Button
@@ -732,7 +732,6 @@ export default function Page() {
                                     {getStatusText(status)}
                                 </div>
                             </Button>
-
                         ) : (
                             <span>-</span>
                         )}
@@ -1427,10 +1426,12 @@ export default function Page() {
                                     )}
                                     {build === "saas" &&
                                         targets.length > 1 &&
-                                        new Set(targets.map((t) => t.siteId)).size >
-                                            1 && (
+                                        new Set(targets.map((t) => t.siteId))
+                                            .size > 1 && (
                                             <p className="text-sm text-muted-foreground mt-3">
-                                                {t("proxyMultiSiteRoundRobinNodeHelp")}{" "}
+                                                {t(
+                                                    "proxyMultiSiteRoundRobinNodeHelp"
+                                                )}{" "}
                                                 <a
                                                     href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
                                                     target="_blank"
@@ -1627,7 +1628,7 @@ export default function Page() {
                                     type="button"
                                     onClick={() =>
                                         router.push(
-                                            `/${orgId}/settings/resources/proxy/${niceId}/proxy`
+                                            `/${orgId}/settings/resources/proxy/${niceId}`
                                         )
                                     }
                                 >

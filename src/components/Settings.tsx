@@ -22,13 +22,24 @@ export function SettingsSectionHeader({
 
 export function SettingsSectionForm({
     children,
-    className
+    className,
+    variant = "compact"
 }: {
     children: React.ReactNode;
+    variant?: "half" | "compact";
     className?: string;
 }) {
     return (
-        <div className={cn("max-w-xl space-y-4", className)}>{children}</div>
+        <div
+            className={cn(
+                variant === "half"
+                    ? "max-w-3xl space-y-4"
+                    : "max-w-xl space-y-4",
+                className
+            )}
+        >
+            {children}
+        </div>
     );
 }
 

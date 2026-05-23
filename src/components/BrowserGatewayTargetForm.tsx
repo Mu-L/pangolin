@@ -27,6 +27,7 @@ type MultiSiteProps = {
 export type BrowserGatewayTargetFormProps = {
     orgId: string;
     destination: string;
+    defaultPort: number;
     destinationPort: string;
     onDestinationChange: (v: string) => void;
     onDestinationPortChange: (v: string) => void;
@@ -115,7 +116,7 @@ export function BrowserGatewayTargetForm(props: BrowserGatewayTargetFormProps) {
                     <label className="text-sm font-semibold">{t("port")}</label>
                     <Input
                         type="number"
-                        placeholder="22"
+                        placeholder={props.defaultPort.toString()}
                         value={props.destinationPort}
                         onChange={(e) =>
                             props.onDestinationPortChange(e.target.value)
@@ -123,7 +124,7 @@ export function BrowserGatewayTargetForm(props: BrowserGatewayTargetFormProps) {
                     />
                 </div>
             </div>
-            {props.multiSite && (
+            {props.multiSite === true && props.selectedSites.length > 1 && (
                 <p className="text-sm text-muted-foreground">
                     {t("bgTargetMultiSiteDisclaimer")}{" "}
                     <a

@@ -584,43 +584,44 @@ export default function GeneralForm() {
                                     className="space-y-4"
                                     id="general-settings-form"
                                 >
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("name")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("name")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
-                                    <FormField
-                                        control={form.control}
-                                        name="niceId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("identifier")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        placeholder={t(
-                                                            "enterIdentifier"
-                                                        )}
-                                                        className="flex-1"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                        <FormField
+                                            control={form.control}
+                                            name="niceId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("identifier")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            placeholder={t(
+                                                                "enterIdentifier"
+                                                            )}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
 
                                     {!resource.http && (
                                         <>
@@ -730,28 +731,31 @@ export default function GeneralForm() {
                                         control={form.control}
                                         name="enabled"
                                         render={() => (
-                                            <FormItem className="col-span-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <FormControl>
-                                                        <SwitchInput
-                                                            id="enable-resource"
-                                                            defaultChecked={
-                                                                resource.enabled
-                                                            }
-                                                            label={t(
-                                                                "resourceEnable"
-                                                            )}
-                                                            onCheckedChange={(
+                                            <FormItem>
+                                                <FormControl>
+                                                    <SwitchInput
+                                                        id="enable-resource"
+                                                        defaultChecked={
+                                                            resource.enabled
+                                                        }
+                                                        label={t(
+                                                            "resourceEnable"
+                                                        )}
+                                                        onCheckedChange={(
+                                                            val
+                                                        ) =>
+                                                            form.setValue(
+                                                                "enabled",
                                                                 val
-                                                            ) =>
-                                                                form.setValue(
-                                                                    "enabled",
-                                                                    val
-                                                                )
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                </div>
+                                                            )
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "disabledResourceDescription"
+                                                    )}
+                                                </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}

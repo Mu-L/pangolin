@@ -31,6 +31,7 @@ import {
     PopoverTrigger
 } from "@app/components/ui/popover";
 import { ChevronsUpDown, ExternalLink } from "lucide-react";
+import { Badge } from "@app/components/ui/badge";
 import { toast } from "@app/hooks/useToast";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -122,6 +123,7 @@ function SshServerForm({
 
     // Standard mode: multi-site
     const [selectedSites, setSelectedSites] = useState<Selectedsite[]>([]);
+    const [selectedSite, setSelectedSite] = useState<Selectedsite | null>(null);
     const [bgDestination, setBgDestination] = useState("");
     const [bgDestinationPort, setBgDestinationPort] = useState("22");
     const [existingTargets, setExistingTargets] = useState<ExistingTarget[]>(
@@ -365,11 +367,16 @@ function SshServerForm({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <SettingsSectionForm>
+                <SettingsSectionForm variant="half">
                     <div className="space-y-3">
                         <p className="text-sm font-semibold">
                             {t("sshServerMode")}
                         </p>
+                        <Badge variant="secondary">
+                            {sshServerMode == "standard"
+                                ? t("sshServerModeStandard")
+                                : t("sshServerModePangolin")}
+                        </Badge>
                     </div>
 
                     <div className="space-y-3">
@@ -434,60 +441,74 @@ function SshServerForm({
                             />
                         </Form>
                     )}
-                </SettingsSectionForm>
 
-                <div className="space-y-3">
-                    <div>
-                        <h2 className="text-1xl font-semibold tracking-tight flex items-center gap-2">
-                            {t("sshServerDestination")}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {t("sshServerDestinationDescription")}
-                        </p>
+                    <div className="space-y-3">
+                        <div>
+                            <h2 className="text-1xl font-semibold tracking-tight flex items-center gap-2">
+                                {t("sshServerDestination")}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                {t("sshServerDestinationDescription")}
+                            </p>
+                        </div>
+                        {isNative ? (
+                            <Popover
+                                open={nativeSiteOpen}
+                                onOpenChange={setNativeSiteOpen}
+                            >
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className="w-full max-w-xs justify-between font-normal"
+                                    >
+                                        <span className="truncate">
+                                            {selectedNativeSite?.name ??
+                                                t("siteSelect")}
+                                        </span>
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                    <SitesSelector
+                                        orgId={orgId}
+                                        selectedSite={selectedNativeSite}
+                                        onSelectSite={(site) => {
+                                            setSelectedNativeSite(site);
+                                            setNativeSiteOpen(false);
+                                        }}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        ) : standardDaemonLocation !== "site" ? (
+                            <BrowserGatewayTargetForm
+                                orgId={orgId}
+                                multiSite={true}
+                                selectedSites={selectedSites}
+                                onSitesChange={setSelectedSites}
+                                destination={bgDestination}
+                                destinationPort={bgDestinationPort}
+                                onDestinationChange={setBgDestination}
+                                onDestinationPortChange={setBgDestinationPort}
+                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                defaultPort={22}
+                            />
+                        ) : (
+                            <BrowserGatewayTargetForm
+                                orgId={orgId}
+                                multiSite={false}
+                                selectedSite={selectedSite}
+                                onSiteChange={setSelectedSite}
+                                destination={bgDestination}
+                                destinationPort={bgDestinationPort}
+                                onDestinationChange={setBgDestination}
+                                onDestinationPortChange={setBgDestinationPort}
+                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                defaultPort={22}
+                            />
+                        )}
                     </div>
-                    {isNative ? (
-                        <Popover
-                            open={nativeSiteOpen}
-                            onOpenChange={setNativeSiteOpen}
-                        >
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className="w-full max-w-xs justify-between font-normal"
-                                >
-                                    <span className="truncate">
-                                        {selectedNativeSite?.name ??
-                                            t("siteSelect")}
-                                    </span>
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                <SitesSelector
-                                    orgId={orgId}
-                                    selectedSite={selectedNativeSite}
-                                    onSelectSite={(site) => {
-                                        setSelectedNativeSite(site);
-                                        setNativeSiteOpen(false);
-                                    }}
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    ) : (
-                        <BrowserGatewayTargetForm
-                            orgId={orgId}
-                            multiSite={true}
-                            selectedSites={selectedSites}
-                            onSitesChange={setSelectedSites}
-                            destination={bgDestination}
-                            destinationPort={bgDestinationPort}
-                            onDestinationChange={setBgDestination}
-                            onDestinationPortChange={setBgDestinationPort}
-                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                        />
-                    )}
-                </div>
+                </SettingsSectionForm>
             </SettingsSectionBody>
             <form action={formAction} className="flex justify-end mt-4">
                 <Button

@@ -84,22 +84,12 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
         {
             title: t("general"),
             href: `/{orgId}/settings/resources/proxy/{niceId}/general`
+        },
+        {
+            title: t(`${resource.browserAccessType}Settings`),
+            href: `/{orgId}/settings/resources/proxy/{niceId}/${resource.browserAccessType}`
         }
     ];
-
-    if (resource.browserAccessType === "http") {
-        navItems.push({
-            title: t("httpSettings"),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/http`
-        });
-    }
-
-    if (resource.browserAccessType === "ssh") {
-        navItems.push({
-            title: t("sshSettings"),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/ssh`
-        });
-    }
 
     if (resource.http) {
         navItems.push({
