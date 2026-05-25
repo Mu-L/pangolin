@@ -1,4 +1,4 @@
-import { logsDb, primaryLogsDb, requestAuditLog, resources, siteResources, db, primaryDb } from "@server/db";
+import { logsDb, requestAuditLog, resources, siteResources, db, primaryDb } from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -110,7 +110,7 @@ function getWhere(data: Q) {
 }
 
 export function queryRequest(data: Q) {
-    return primaryLogsDb
+    return logsDb
         .select({
             id: requestAuditLog.id,
                 timestamp: requestAuditLog.timestamp,
@@ -211,7 +211,7 @@ async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryRe
 }
 
 export function countRequestQuery(data: Q) {
-    const countQuery = primaryLogsDb
+    const countQuery = logsDb
         .select({ count: count() })
         .from(requestAuditLog)
         .where(getWhere(data));
@@ -254,34 +254,34 @@ async function queryUniqueFilterAttributes(
         uniqueResources,
         uniqueSiteResources
     ] = await Promise.all([
-        primaryLogsDb
+        logsDb
             .selectDistinct({ actor: requestAuditLog.actor })
             .from(requestAuditLog)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        primaryLogsDb
+        logsDb
             .selectDistinct({ locations: requestAuditLog.location })
             .from(requestAuditLog)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        primaryLogsDb
+        logsDb
             .selectDistinct({ hosts: requestAuditLog.host })
             .from(requestAuditLog)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        primaryLogsDb
+        logsDb
             .selectDistinct({ paths: requestAuditLog.path })
             .from(requestAuditLog)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        primaryLogsDb
+        logsDb
             .selectDistinct({
                 id: requestAuditLog.resourceId
             })
             .from(requestAuditLog)
             .where(baseConditions)
             .limit(DISTINCT_LIMIT + 1),
-        primaryLogsDb
+        logsDb
             .selectDistinct({
                 id: requestAuditLog.siteResourceId
             })
