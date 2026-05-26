@@ -813,10 +813,10 @@ func downloadMaxMindDatabase() error {
     
 	// Clean up the downloaded files
 	if err := run("sh", "-c", "rm -rf GeoLite2-Country.tar.gz GeoLite2-Country_*"); err != nil {
-		fmt.Printf("Warning: failed to clean up temporary files: %v\n", err)
+		fmt.Printf("Warning: failed to clean up temporary country files: %v\n", err)
 	}
 	if err := run("sh", "-c", "rm -rf GeoLite2-ASN.tar.gz GeoLite2-ASN_*"); err != nil {
-		fmt.Printf("Warning: failed to clean up temporary files: %v\n", err)
+		fmt.Printf("Warning: failed to clean up temporary ASN files: %v\n", err)
 	}
     
 	fmt.Println("MaxMind GeoLite2 Country and ASN database downloaded successfully!")
