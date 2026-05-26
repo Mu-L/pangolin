@@ -529,8 +529,7 @@ func collectUserInput() Config {
 	fmt.Println("\n=== Advanced Configuration ===")
 
 	config.EnableIPv6 = readBool("Is your server IPv6 capable?", true)
-	config.EnableGeoblocking = readBool("Do you want to download the MaxMind GeoLite2 Country database for geoblocking functionality?", true)
-	config.EnableASNblocking = readBool("Do you want to download the MaxMind GeoLite2 ASN database for rule-blocking functionality?", true)
+	config.EnableMaxMind = readBool("Do you want to download the MaxMind GeoLite2 Country and ADN databases for blocking functionality?", true)
     
 	if config.DashboardDomain == "" {
 		fmt.Println("Error: Dashboard Domain name is required")
