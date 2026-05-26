@@ -3,7 +3,6 @@
 import type { SidebarNavSection } from "@app/app/navigation";
 import { OrgSelector } from "@app/components/OrgSelector";
 import { SidebarNav } from "@app/components/SidebarNav";
-import SupporterStatus from "@app/components/SupporterStatus";
 import {
     Tooltip,
     TooltipContent,
@@ -256,11 +255,6 @@ export function LayoutSidebar({
                         <SidebarLicenseButton
                             isCollapsed={isSidebarCollapsed}
                         />
-                    </div>
-                )}
-                {build === "oss" && (
-                    <div className="px-4">
-                        <SupporterStatus isCollapsed={isSidebarCollapsed} />
                     </div>
                 )}
                 {build === "saas" && (

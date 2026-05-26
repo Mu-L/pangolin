@@ -27,7 +27,6 @@ import SecurityKeyForm from "./SecurityKeyForm";
 import Enable2FaDialog from "./Enable2FaDialog";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import ViewDevicesDialog from "./ViewDevicesDialog";
-import SupporterStatus from "./SupporterStatus";
 import { UserType } from "@server/types/UserTypes";
 import LocaleSwitcher from "@app/components/LocaleSwitcher";
 import { useTranslations } from "next-intl";
