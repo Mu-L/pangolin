@@ -794,6 +794,7 @@ export default function UserDevicesTable({
                 columnVisibility={defaultUserColumnVisibility}
                 onSearch={handleSearchChange}
                 onPaginationChange={handlePaginationChange}
+                searchQuery={searchParams.get("query")?.toString()}
                 pagination={pagination}
                 rowCount={rowCount}
                 stickyLeftColumn="name"
