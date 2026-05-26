@@ -250,7 +250,7 @@ export default function Page() {
 
     // SSH-specific state
     const [sshServerMode, setSshServerMode] = useState<"standard" | "native">(
-        "standard"
+        "native"
     );
     const [pamMode, setPamMode] = useState<"passthrough" | "push">(
         "passthrough"
@@ -544,7 +544,8 @@ export default function Page() {
         try {
             const payload: any = {
                 name: baseData.name,
-                http: isHttpResource
+                http: isHttpResource,
+                browserAccessType: resourceType
             };
 
             let sanitizedSubdomain: string | undefined;
@@ -1265,7 +1266,7 @@ export default function Page() {
                                         {t("resourceCreateGeneral")}
                                     </SettingsSectionTitle>
                                     <SettingsSectionDescription>
-                                        {t("resourceCreateDescription")}
+                                        {t("resourceCreateGeneralDescription")}
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>

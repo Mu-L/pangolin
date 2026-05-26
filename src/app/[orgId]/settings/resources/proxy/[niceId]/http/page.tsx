@@ -121,10 +121,6 @@ export default function ReverseProxyTargetsPage(props: {
     const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
 
-    const [targetMode, setTargetMode] = useState<
-        "http" | "ssh" | "rdp" | "vnc"
-    >((resource.browserAccessType as "http" | "ssh" | "rdp" | "vnc") || "http");
-
     const { data: remoteTargets = [], isLoading: isLoadingTargets } = useQuery(
         resourceQueries.resourceTargets({
             resourceId: resource.resourceId
@@ -141,12 +137,10 @@ export default function ReverseProxyTargetsPage(props: {
                 orgId={params.orgId}
                 initialTargets={remoteTargets}
                 resource={resource}
-                targetMode={targetMode}
-                setTargetMode={setTargetMode}
                 updateResource={updateResource}
             />
 
-            {resource.http && targetMode === "http" && (
+            {resource.http && (
                 <ProxyResourceHttpForm
                     resource={resource}
                     updateResource={updateResource}
@@ -167,15 +161,11 @@ function ProxyResourceTargetsForm({
     orgId,
     initialTargets,
     resource,
-    targetMode,
-    setTargetMode,
     updateResource
 }: {
     initialTargets: LocalTarget[];
     orgId: string;
     resource: GetResourceResponse;
-    targetMode: "http" | "ssh" | "rdp" | "vnc";
-    setTargetMode: (mode: "http" | "ssh" | "rdp" | "vnc") => void;
     updateResource: ResourceContextType["updateResource"];
 }) {
     const t = useTranslations();
@@ -310,7 +300,6 @@ function ProxyResourceTargetsForm({
     useEffect(() => {
         if (!bgTargetsResponse?.targets?.length) return;
         const bgt = bgTargetsResponse.targets[0];
-        setTargetMode(bgt.type as "ssh" | "rdp" | "vnc");
         setBgDestination(bgt.destination);
         setBgDestinationPort(String(bgt.destinationPort));
         setBgSiteId(bgt.siteId);
@@ -781,55 +770,6 @@ function ProxyResourceTargetsForm({
     const [, formAction, isSubmitting] = useActionState(saveTargets, null);
 
     async function saveTargets() {
-        if (targetMode !== "http") {
-            try {
-                if (!bgDestination || !bgDestinationPort) {
-                    if (bgTargetId) {
-                        await api.delete(
-                            `/org/${orgId}/browser-gateway-target/${bgTargetId}`
-                        );
-                        setBgTargetId(null);
-                    }
-                } else if (bgTargetId) {
-                    await api.post(
-                        `/org/${orgId}/browser-gateway-target/${bgTargetId}`,
-                        {
-                            type: targetMode,
-                            destination: bgDestination,
-                            destinationPort: Number(bgDestinationPort),
-                            siteId: bgSiteId
-                        }
-                    );
-                } else {
-                    const res = await api.put(
-                        `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
-                        {
-                            siteId: bgSiteId ?? sites[0]?.siteId,
-                            type: targetMode,
-                            destination: bgDestination,
-                            destinationPort: Number(bgDestinationPort)
-                        }
-                    );
-                    setBgTargetId(res.data.data.browserGatewayTargetId);
-                }
-                toast({
-                    title: t("settingsUpdated"),
-                    description: t("settingsUpdatedDescription")
-                });
-            } catch (err) {
-                console.error(err);
-                toast({
-                    variant: "destructive",
-                    title: t("settingsErrorUpdate"),
-                    description: formatAxiosError(
-                        err,
-                        t("settingsErrorUpdateDescription")
-                    )
-                });
-            }
-            return;
-        }
-
         // Validate that no targets have blank IPs or invalid ports
         const targetsWithInvalidFields = targets.filter(
             (target) =>
@@ -944,187 +884,102 @@ function ProxyResourceTargetsForm({
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-sm font-medium">Target Type</span>
-                        <Select
-                            value={targetMode}
-                            onValueChange={async (v) => {
-                                const mode = v as
-                                    | "http"
-                                    | "ssh"
-                                    | "rdp"
-                                    | "vnc";
-                                setTargetMode(mode);
-                                try {
-                                    await api.post(
-                                        `/resource/${resource.resourceId}`,
-                                        { browserAccessType: mode }
-                                    );
-                                    updateResource({ browserAccessType: mode });
-                                } catch (err) {
-                                    toast({
-                                        variant: "destructive",
-                                        title: t("settingsErrorUpdate"),
-                                        description: formatAxiosError(
-                                            err,
-                                            t("settingsErrorUpdateDescription")
-                                        )
-                                    });
-                                }
-                            }}
-                        >
-                            <SelectTrigger className="w-36">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="http">HTTP</SelectItem>
-                                <SelectItem value="ssh">SSH</SelectItem>
-                                <SelectItem value="rdp">RDP</SelectItem>
-                                <SelectItem value="vnc">VNC</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {targetMode === "http" ? (
+                    {targets.length > 0 ? (
                         <>
-                            {targets.length > 0 ? (
-                                <>
-                                    <div className="overflow-x-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                {table
-                                                    .getHeaderGroups()
-                                                    .map((headerGroup) => (
-                                                        <TableRow
-                                                            key={headerGroup.id}
-                                                        >
-                                                            {headerGroup.headers.map(
-                                                                (header) => {
-                                                                    const isActionsColumn =
-                                                                        header
-                                                                            .column
-                                                                            .id ===
-                                                                        "actions";
-                                                                    return (
-                                                                        <TableHead
-                                                                            key={
-                                                                                header.id
-                                                                            }
-                                                                            className={
-                                                                                isActionsColumn
-                                                                                    ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                                    : ""
-                                                                            }
-                                                                        >
-                                                                            {header.isPlaceholder
-                                                                                ? null
-                                                                                : flexRender(
-                                                                                      header
-                                                                                          .column
-                                                                                          .columnDef
-                                                                                          .header,
-                                                                                      header.getContext()
-                                                                                  )}
-                                                                        </TableHead>
-                                                                    );
-                                                                }
-                                                            )}
-                                                        </TableRow>
-                                                    ))}
-                                            </TableHeader>
-                                            <TableBody>
-                                                {table.getRowModel().rows
-                                                    ?.length ? (
-                                                    table
-                                                        .getRowModel()
-                                                        .rows.map((row) => (
-                                                            <TableRow
-                                                                key={row.id}
-                                                            >
-                                                                {row
-                                                                    .getVisibleCells()
-                                                                    .map(
-                                                                        (
-                                                                            cell
-                                                                        ) => {
-                                                                            const isActionsColumn =
-                                                                                cell
-                                                                                    .column
-                                                                                    .id ===
-                                                                                "actions";
-                                                                            return (
-                                                                                <TableCell
-                                                                                    key={
-                                                                                        cell.id
-                                                                                    }
-                                                                                    className={
-                                                                                        isActionsColumn
-                                                                                            ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                                            : ""
-                                                                                    }
-                                                                                >
-                                                                                    {flexRender(
-                                                                                        cell
-                                                                                            .column
-                                                                                            .columnDef
-                                                                                            .cell,
-                                                                                        cell.getContext()
-                                                                                    )}
-                                                                                </TableCell>
-                                                                            );
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        {table
+                                            .getHeaderGroups()
+                                            .map((headerGroup) => (
+                                                <TableRow key={headerGroup.id}>
+                                                    {headerGroup.headers.map(
+                                                        (header) => {
+                                                            const isActionsColumn =
+                                                                header.column
+                                                                    .id ===
+                                                                "actions";
+                                                            return (
+                                                                <TableHead
+                                                                    key={
+                                                                        header.id
+                                                                    }
+                                                                    className={
+                                                                        isActionsColumn
+                                                                            ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
+                                                                            : ""
+                                                                    }
+                                                                >
+                                                                    {header.isPlaceholder
+                                                                        ? null
+                                                                        : flexRender(
+                                                                              header
+                                                                                  .column
+                                                                                  .columnDef
+                                                                                  .header,
+                                                                              header.getContext()
+                                                                          )}
+                                                                </TableHead>
+                                                            );
+                                                        }
+                                                    )}
+                                                </TableRow>
+                                            ))}
+                                    </TableHeader>
+                                    <TableBody>
+                                        {table.getRowModel().rows?.length ? (
+                                            table
+                                                .getRowModel()
+                                                .rows.map((row) => (
+                                                    <TableRow key={row.id}>
+                                                        {row
+                                                            .getVisibleCells()
+                                                            .map((cell) => {
+                                                                const isActionsColumn =
+                                                                    cell.column
+                                                                        .id ===
+                                                                    "actions";
+                                                                return (
+                                                                    <TableCell
+                                                                        key={
+                                                                            cell.id
                                                                         }
-                                                                    )}
-                                                            </TableRow>
-                                                        ))
-                                                ) : (
-                                                    <TableRow>
-                                                        <TableCell
-                                                            colSpan={
-                                                                columns.length
-                                                            }
-                                                            className="h-24 text-center"
-                                                        >
-                                                            {t("targetNoOne")}
-                                                        </TableCell>
+                                                                        className={
+                                                                            isActionsColumn
+                                                                                ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
+                                                                                : ""
+                                                                        }
+                                                                    >
+                                                                        {flexRender(
+                                                                            cell
+                                                                                .column
+                                                                                .columnDef
+                                                                                .cell,
+                                                                            cell.getContext()
+                                                                        )}
+                                                                    </TableCell>
+                                                                );
+                                                            })}
                                                     </TableRow>
-                                                )}
-                                            </TableBody>
-                                            {/* <TableCaption> */}
-                                            {/*     {t('targetNoOneDescription')} */}
-                                            {/* </TableCaption> */}
-                                        </Table>
-                                    </div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center justify-between w-full gap-2">
-                                            <Button
-                                                onClick={addNewTarget}
-                                                variant="outline"
-                                            >
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                {t("addTarget")}
-                                            </Button>
-                                            <div className="flex items-center gap-2">
-                                                <Switch
-                                                    id="advanced-mode-toggle"
-                                                    checked={isAdvancedMode}
-                                                    onCheckedChange={
-                                                        setIsAdvancedMode
-                                                    }
-                                                />
-                                                <label
-                                                    htmlFor="advanced-mode-toggle"
-                                                    className="text-sm"
+                                                ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={columns.length}
+                                                    className="h-24 text-center"
                                                 >
-                                                    {t("advancedMode")}
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg p-4">
-                                    <p className="text-muted-foreground mb-4">
-                                        {t("targetNoOne")}
-                                    </p>
+                                                    {t("targetNoOne")}
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                    {/* <TableCaption> */}
+                                    {/*     {t('targetNoOneDescription')} */}
+                                    {/* </TableCaption> */}
+                                </Table>
+                            </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between w-full gap-2">
                                     <Button
                                         onClick={addNewTarget}
                                         variant="outline"
@@ -1132,91 +987,50 @@ function ProxyResourceTargetsForm({
                                         <Plus className="h-4 w-4 mr-2" />
                                         {t("addTarget")}
                                     </Button>
-                                </div>
-                            )}
-                            {build === "saas" &&
-                                targets.length > 1 &&
-                                new Set(targets.map((t) => t.siteId)).size >
-                                    1 && (
-                                    <p className="text-sm text-muted-foreground mt-3">
-                                        {t("proxyMultiSiteRoundRobinNodeHelp")}{" "}
-                                        <a
-                                            href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            id="advanced-mode-toggle"
+                                            checked={isAdvancedMode}
+                                            onCheckedChange={setIsAdvancedMode}
+                                        />
+                                        <label
+                                            htmlFor="advanced-mode-toggle"
+                                            className="text-sm"
                                         >
-                                            {t("learnMore")}
-                                            <ExternalLink className="size-3.5 shrink-0" />
-                                        </a>
-                                        .
-                                    </p>
-                                )}
-                        </>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">
-                                        Destination
-                                    </label>
-                                    <Input
-                                        placeholder="192.168.1.1"
-                                        value={bgDestination}
-                                        onChange={(e) =>
-                                            setBgDestination(e.target.value)
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">
-                                        Port
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        placeholder={
-                                            targetMode === "rdp"
-                                                ? "3389"
-                                                : targetMode === "ssh"
-                                                  ? "22"
-                                                  : "5900"
-                                        }
-                                        value={bgDestinationPort}
-                                        onChange={(e) =>
-                                            setBgDestinationPort(e.target.value)
-                                        }
-                                    />
+                                            {t("advancedMode")}
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                            {sites.length > 1 && (
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">
-                                        Site
-                                    </label>
-                                    <Select
-                                        value={bgSiteId ? String(bgSiteId) : ""}
-                                        onValueChange={(v) =>
-                                            setBgSiteId(Number(v))
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a site" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {sites.map((site) => (
-                                                <SelectItem
-                                                    key={site.siteId}
-                                                    value={String(site.siteId)}
-                                                >
-                                                    {site.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
+                        </>
+                    ) : (
+                        <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg p-4">
+                            <p className="text-muted-foreground mb-4">
+                                {t("targetNoOne")}
+                            </p>
+                            <Button onClick={addNewTarget} variant="outline">
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t("addTarget")}
+                            </Button>
                         </div>
                     )}
+                    {build === "saas" &&
+                        targets.length > 1 &&
+                        new Set(targets.map((t) => t.siteId)).size > 1 && (
+                            <p className="text-sm text-muted-foreground mt-3">
+                                {t("proxyMultiSiteRoundRobinNodeHelp")}{" "}
+                                <a
+                                    href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                >
+                                    {t("learnMore")}
+                                    <ExternalLink className="size-3.5 shrink-0" />
+                                </a>
+                                .
+                            </p>
+                        )}
                 </SettingsSectionBody>
 
                 <form className="self-end mt-4" action={formAction}>

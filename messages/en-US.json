@@ -240,6 +240,7 @@
     "domainType": "Domain Type",
     "subdomain": "Subdomain",
     "baseDomain": "Base Domain",
+    "configure": "Configure",
     "subdomnainDescription": "The subdomain where the resource will be accessible.",
     "resourceRawSettings": "TCP/UDP Settings",
     "resourceRawSettingsDescription": "Configure how the resource will be accessed over TCP/UDP",

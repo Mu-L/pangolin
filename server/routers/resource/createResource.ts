@@ -23,7 +23,10 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { getUniqueResourceName } from "@server/db/names";
-import { validateAndConstructDomain, checkWildcardDomainConflict } from "@server/lib/domainUtils";
+import {
+    validateAndConstructDomain,
+    checkWildcardDomainConflict
+} from "@server/lib/domainUtils";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -40,7 +43,8 @@ const createHttpResourceSchema = z
         protocol: z.enum(["tcp", "udp"]),
         domainId: z.string(),
         stickySession: z.boolean().optional(),
-        postAuthPath: z.string().nullable().optional()
+        postAuthPath: z.string().nullable().optional(),
+        browserAccessType: z.enum(["http", "ssh", "rdp", "vnc"]).optional()
     })
     .refine(
         (data) => {
@@ -198,7 +202,7 @@ async function createHttpResource(
         );
     }
 
-    const { name, domainId, postAuthPath } = parsedBody.data;
+    const { name, domainId, postAuthPath, browserAccessType } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
 
@@ -323,6 +327,7 @@ async function createHttpResource(
                 name,
                 subdomain: finalSubdomain,
                 http: true,
+                browserAccessType: browserAccessType,
                 protocol: "tcp",
                 ssl: true,
                 stickySession: stickySession,
