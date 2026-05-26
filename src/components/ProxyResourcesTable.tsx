@@ -72,6 +72,7 @@ import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
 import { LabelsSelector, type SelectedLabel } from "./labels-selector";
 import { LabelBadge } from "./label-badge";
+import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 
 export type TargetHealth = {
     targetId: number;
@@ -640,9 +641,15 @@ export default function ProxyResourcesTable({
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
-                    <span className="p-3 text-end w-full inline-block">
-                        {t("labels")}
-                    </span>
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
                 ),
                 cell: ({ row }: { row: { original: ResourceRow } }) => (
                     <ResourceLabelCell resource={row.original} orgId={orgId} />
@@ -655,13 +662,15 @@ export default function ProxyResourcesTable({
 
     function handleFilterChange(
         column: string,
-        value: string | undefined | null
+        value: string | undefined | null | string[]
     ) {
         searchParams.delete(column);
         searchParams.delete("page");
 
-        if (value) {
+        if (typeof value === "string") {
             searchParams.set(column, value);
+        } else if (value) {
+            value.forEach((val) => searchParams.append(column, val));
         }
         filter({
             searchParams
