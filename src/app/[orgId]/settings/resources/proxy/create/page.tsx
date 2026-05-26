@@ -19,8 +19,13 @@ import {
     SettingsSectionTitle
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
-import { StrategySelect } from "@app/components/StrategySelect";
+import { StrategySelect, type StrategyOption } from "@app/components/StrategySelect";
 import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
+import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
+import {
+    SitesSelector,
+    type Selectedsite
+} from "@app/components/site-selector";
 import { Button } from "@app/components/ui/button";
 import {
     Form,
@@ -32,6 +37,11 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from "@app/components/ui/popover";
 import {
     Select,
     SelectContent,
@@ -80,6 +90,7 @@ import {
 } from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
 import {
+    ChevronsUpDown,
     CircleCheck,
     CircleX,
     ExternalLink,
@@ -95,6 +106,7 @@ import { toASCII } from "punycode";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { cn } from "@app/lib/cn";
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
@@ -109,7 +121,17 @@ const httpResourceFormSchema = z.object({
 const tcpUdpResourceFormSchema = z.object({
     protocol: z.string(),
     proxyPort: z.int().min(1).max(65535)
-    // enableProxy: z.boolean().default(false)
+});
+
+const sshDaemonPortSchema = z.object({
+    authDaemonPort: z.string().refine(
+        (val) => {
+            if (!val) return true;
+            const n = Number(val);
+            return Number.isInteger(n) && n >= 1 && n <= 65535;
+        },
+        { message: "Port must be between 1 and 65535" }
+    )
 });
 
 const addTargetSchema = z
@@ -132,23 +154,18 @@ const addTargetSchema = z
     })
     .refine(
         (data) => {
-            // If path is provided, pathMatchType must be provided
             if (data.path && !data.pathMatchType) {
                 return false;
             }
-            // If pathMatchType is provided, path must be provided
             if (data.pathMatchType && !data.path) {
                 return false;
             }
-            // Validate path based on pathMatchType
             if (data.path && data.pathMatchType) {
                 switch (data.pathMatchType) {
                     case "exact":
                     case "prefix":
-                        // Path should start with /
                         return data.path.startsWith("/");
                     case "regex":
-                        // Validate regex
                         try {
                             new RegExp(data.path);
                             return true;
@@ -165,14 +182,10 @@ const addTargetSchema = z
     )
     .refine(
         (data) => {
-            // If rewritePath is provided, rewritePathType must be provided
             if (data.rewritePath && !data.rewritePathType) {
                 return false;
             }
-            // If rewritePathType is provided, rewritePath must be provided
-            // Exception: stripPrefix can have an empty rewritePath (to just strip the prefix)
             if (data.rewritePathType && !data.rewritePath) {
-                // Allow empty rewritePath for stripPrefix type
                 if (data.rewritePathType !== "stripPrefix") {
                     return false;
                 }
@@ -184,14 +197,7 @@ const addTargetSchema = z
         }
     );
 
-type ResourceType = "http" | "raw";
-
-interface ResourceTypeOption {
-    id: ResourceType;
-    title: string;
-    description: string;
-    disabled?: boolean;
-}
+type NewResourceType = "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
 
 export type LocalTarget = Omit<
     ArrayElement<ListTargetsResponse["targets"]> & {
@@ -222,6 +228,9 @@ export default function Page() {
     const [showSnippets, setShowSnippets] = useState(false);
     const [niceId, setNiceId] = useState<string>("");
 
+    // Resource type state
+    const [resourceType, setResourceType] = useState<NewResourceType>("http");
+
     // Target management state
     const [targets, setTargets] = useState<LocalTarget[]>([]);
     const [dockerStates, setDockerStates] = useState<Map<number, DockerState>>(
@@ -231,6 +240,43 @@ export default function Page() {
     const [selectedTargetForHealthCheck, setSelectedTargetForHealthCheck] =
         useState<LocalTarget | null>(null);
     const [healthCheckDialogOpen, setHealthCheckDialogOpen] = useState(false);
+
+    // SSH-specific state
+    const [sshServerMode, setSshServerMode] = useState<"standard" | "native">(
+        "standard"
+    );
+    const [pamMode, setPamMode] = useState<"passthrough" | "push">(
+        "passthrough"
+    );
+    const [standardDaemonLocation, setStandardDaemonLocation] = useState<
+        "site" | "remote"
+    >("site");
+    const [nativeSelectedSite, setNativeSelectedSite] =
+        useState<Selectedsite | null>(null);
+    const [nativeSiteOpen, setNativeSiteOpen] = useState(false);
+
+    // Browser-gateway targets state (SSH standard, RDP, VNC)
+    const [bgSelectedSites, setBgSelectedSites] = useState<Selectedsite[]>([]);
+    const [bgSelectedSite, setBgSelectedSite] = useState<Selectedsite | null>(
+        null
+    );
+    const [bgDestination, setBgDestination] = useState("");
+    const [bgDestinationPort, setBgDestinationPort] = useState("22");
+
+    // Reset BG state when resource type changes
+    useEffect(() => {
+        if (resourceType === "rdp") {
+            setBgDestinationPort("3389");
+        } else if (resourceType === "vnc") {
+            setBgDestinationPort("5900");
+        } else if (resourceType === "ssh") {
+            setBgDestinationPort("22");
+        }
+        setBgDestination("");
+        setBgSelectedSites([]);
+        setBgSelectedSite(null);
+        setNativeSelectedSite(null);
+    }, [resourceType]);
 
     useEffect(() => {
         if (build !== "saas") return;
@@ -261,7 +307,6 @@ export default function Page() {
         return false;
     });
 
-    // Save advanced mode preference to localStorage
     useEffect(() => {
         if (typeof window !== "undefined") {
             localStorage.setItem(
@@ -271,20 +316,31 @@ export default function Page() {
         }
     }, [isAdvancedMode]);
 
+    // Derived flags
+    const isHttpResource = resourceType !== "tcp" && resourceType !== "udp";
+    const isNative = sshServerMode === "native";
+    const showDaemonLocation =
+        resourceType === "ssh" && !isNative && pamMode === "push";
+    const showDaemonPort =
+        resourceType === "ssh" &&
+        !isNative &&
+        pamMode === "push" &&
+        standardDaemonLocation === "remote";
+
     function addNewTarget() {
-        const isHttp = baseForm.watch("http");
+        const isHttp = resourceType === "http";
 
         const newTarget: LocalTarget = {
-            targetId: -Date.now(), // Use negative timestamp as temporary ID
+            targetId: -Date.now(),
             ip: "",
             method: isHttp ? "http" : null,
             port: 0,
             siteId: sites.length > 0 ? sites[0].siteId : 0,
             siteName: sites.length > 0 ? sites[0].name : "",
-            path: isHttp ? null : null,
-            pathMatchType: isHttp ? null : null,
-            rewritePath: isHttp ? null : null,
-            rewritePathType: isHttp ? null : null,
+            path: null,
+            pathMatchType: null,
+            rewritePath: null,
+            rewritePathType: null,
             priority: isHttp ? 100 : 100,
             enabled: true,
             resourceId: 0,
@@ -313,31 +369,18 @@ export default function Page() {
         setTargets((prev) => [...prev, newTarget]);
     }
 
-    const resourceTypes: ReadonlyArray<ResourceTypeOption> = [
-        {
-            id: "http",
-            title: t("resourceHTTP"),
-            description: t("resourceHTTPDescription")
-        },
-        ...(!env.flags.allowRawResources
-            ? []
-            : build === "saas" && remoteExitNodes.length === 0
-              ? []
-              : [
-                    {
-                        id: "raw" as ResourceType,
-                        title: t("resourceRaw"),
-                        description:
-                            build == "saas"
-                                ? t("resourceRawDescriptionCloud")
-                                : t("resourceRawDescription")
-                    }
-                ])
-    ];
+    // Whether raw (TCP/UDP) resources are available
+    const rawResourcesAllowed =
+        env.flags.allowRawResources &&
+        (build !== "saas" || remoteExitNodes.length > 0);
 
-    // In saas mode with no exit nodes, force HTTP
-    const showTypeSelector =
-        build !== "saas" || (!loadingExitNodes && remoteExitNodes.length > 0);
+    const availableTypes = useMemo((): NewResourceType[] => {
+        const base: NewResourceType[] = ["http", "ssh", "rdp", "vnc"];
+        if (rawResourcesAllowed) {
+            base.push("tcp", "udp");
+        }
+        return base;
+    }, [rawResourcesAllowed]);
 
     const baseForm = useForm({
         resolver: zodResolver(baseResourceFormSchema),
@@ -357,7 +400,13 @@ export default function Page() {
         defaultValues: {
             protocol: "tcp",
             proxyPort: undefined
-            // enableProxy: false
+        }
+    });
+
+    const sshDaemonPortForm = useForm({
+        resolver: zodResolver(sshDaemonPortSchema),
+        defaultValues: {
+            authDaemonPort: "22123"
         }
     });
 
@@ -365,23 +414,32 @@ export default function Page() {
         resolver: zodResolver(addTargetSchema),
         defaultValues: {
             ip: "",
-            method: baseForm.watch("http") ? "http" : null,
+            method: "http",
             port: "" as any as number,
             path: null,
             pathMatchType: null,
             rewritePath: null,
             rewritePathType: null,
-            priority: baseForm.watch("http") ? 100 : undefined
+            priority: 100
         } as z.infer<typeof addTargetSchema>
     });
 
-    // Helper function to check if all targets have required fields using schema validation
+    // Sync form http field with resourceType
+    useEffect(() => {
+        baseForm.setValue("http", isHttpResource);
+        if (resourceType === "tcp") {
+            tcpUdpForm.setValue("protocol", "tcp");
+        } else if (resourceType === "udp") {
+            tcpUdpForm.setValue("protocol", "udp");
+        }
+    }, [resourceType, isHttpResource]);
+
     const areAllTargetsValid = () => {
-        if (targets.length === 0) return true; // No targets is valid
+        if (targets.length === 0) return true;
 
         return targets.every((target) => {
             try {
-                const isHttp = baseForm.watch("http");
+                const isHttp = resourceType === "http";
                 const targetData: any = {
                     ip: target.ip,
                     method: target.method,
@@ -393,7 +451,6 @@ export default function Page() {
                     rewritePathType: target.rewritePathType
                 };
 
-                // Only include priority for HTTP resources
                 if (isHttp) {
                     targetData.priority = target.priority;
                 }
@@ -408,7 +465,7 @@ export default function Page() {
 
     const initializeDockerForSite = async (siteId: number) => {
         if (dockerStates.has(siteId)) {
-            return; // Already initialized
+            return;
         }
 
         const dockerManager = new DockerManager(api, siteId);
@@ -476,17 +533,16 @@ export default function Page() {
         setCreateLoading(true);
 
         const baseData = baseForm.getValues();
-        const isHttp = baseData.http;
 
         try {
-            const payload = {
+            const payload: any = {
                 name: baseData.name,
-                http: baseData.http
+                http: isHttpResource
             };
 
             let sanitizedSubdomain: string | undefined;
 
-            if (isHttp) {
+            if (isHttpResource) {
                 const httpData = httpForm.getValues();
 
                 sanitizedSubdomain = httpData.subdomain
@@ -505,14 +561,11 @@ export default function Page() {
                 Object.assign(payload, {
                     protocol: tcpUdpData.protocol,
                     proxyPort: tcpUdpData.proxyPort
-                    // enableProxy: tcpUdpData.enableProxy
                 });
             }
 
             const res = await api
-                .put<
-                    AxiosResponse<Resource>
-                >(`/org/${orgId}/resource/`, payload)
+                .put<AxiosResponse<Resource>>(`/org/${orgId}/resource/`, payload)
                 .catch((e) => {
                     toast({
                         variant: "destructive",
@@ -526,77 +579,187 @@ export default function Page() {
 
             if (res && res.status === 201) {
                 const id = res.data.data.resourceId;
-                const niceId = res.data.data.niceId;
-                setNiceId(niceId);
+                const newNiceId = res.data.data.niceId;
+                setNiceId(newNiceId);
 
-                // Create targets if any exist
-                if (targets.length > 0) {
-                    try {
-                        for (const target of targets) {
-                            const data: any = {
-                                ip: target.ip,
-                                port: target.port,
-                                method: target.method,
-                                enabled: target.enabled,
-                                siteId: target.siteId,
-                                hcEnabled: target.hcEnabled,
-                                hcPath: target.hcPath || null,
-                                hcMethod: target.hcMethod || null,
-                                hcInterval: target.hcInterval || null,
-                                hcTimeout: target.hcTimeout || null,
-                                hcHeaders: target.hcHeaders || null,
-                                hcScheme: target.hcScheme || null,
-                                hcHostname: target.hcHostname || null,
-                                hcPort: target.hcPort || null,
-                                hcFollowRedirects:
-                                    target.hcFollowRedirects || null,
-                                hcStatus: target.hcStatus || null,
-                                hcUnhealthyInterval:
-                                    target.hcUnhealthyInterval || null,
-                                hcMode: target.hcMode || null,
-                                hcTlsServerName: target.hcTlsServerName,
-                                hcHealthyThreshold:
-                                    target.hcHealthyThreshold || null,
-                                hcUnhealthyThreshold:
-                                    target.hcUnhealthyThreshold || null
-                            };
-
-                            // Only include path-related fields for HTTP resources
-                            if (isHttp) {
-                                data.path = target.path;
-                                data.pathMatchType = target.pathMatchType;
-                                data.rewritePath = target.rewritePath;
-                                data.rewritePathType = target.rewritePathType;
-                                data.priority = target.priority;
+                if (resourceType === "http") {
+                    if (targets.length > 0) {
+                        try {
+                            for (const target of targets) {
+                                const data: any = {
+                                    ip: target.ip,
+                                    port: target.port,
+                                    method: target.method,
+                                    enabled: target.enabled,
+                                    siteId: target.siteId,
+                                    hcEnabled: target.hcEnabled,
+                                    hcPath: target.hcPath || null,
+                                    hcMethod: target.hcMethod || null,
+                                    hcInterval: target.hcInterval || null,
+                                    hcTimeout: target.hcTimeout || null,
+                                    hcHeaders: target.hcHeaders || null,
+                                    hcScheme: target.hcScheme || null,
+                                    hcHostname: target.hcHostname || null,
+                                    hcPort: target.hcPort || null,
+                                    hcFollowRedirects:
+                                        target.hcFollowRedirects || null,
+                                    hcStatus: target.hcStatus || null,
+                                    hcUnhealthyInterval:
+                                        target.hcUnhealthyInterval || null,
+                                    hcMode: target.hcMode || null,
+                                    hcTlsServerName: target.hcTlsServerName,
+                                    hcHealthyThreshold:
+                                        target.hcHealthyThreshold || null,
+                                    hcUnhealthyThreshold:
+                                        target.hcUnhealthyThreshold || null,
+                                    path: target.path,
+                                    pathMatchType: target.pathMatchType,
+                                    rewritePath: target.rewritePath,
+                                    rewritePathType: target.rewritePathType,
+                                    priority: target.priority
+                                };
+                                await api.put(`/resource/${id}/target`, data);
                             }
-
-                            await api.put(`/resource/${id}/target`, data);
+                        } catch (targetError) {
+                            console.error(
+                                "Error creating targets:",
+                                targetError
+                            );
+                            toast({
+                                variant: "destructive",
+                                title: t("targetErrorCreate"),
+                                description: formatAxiosError(
+                                    targetError,
+                                    t("targetErrorCreateDescription")
+                                )
+                            });
                         }
-                    } catch (targetError) {
-                        console.error("Error creating targets:", targetError);
-                        toast({
-                            variant: "destructive",
-                            title: t("targetErrorCreate"),
-                            description: formatAxiosError(
-                                targetError,
-                                t("targetErrorCreateDescription")
-                            )
-                        });
                     }
-                }
+                    router.push(
+                        `/${orgId}/settings/resources/proxy/${newNiceId}`
+                    );
+                } else if (resourceType === "ssh") {
+                    const effectiveMode = isNative
+                        ? "native"
+                        : standardDaemonLocation;
+                    const portVal =
+                        sshDaemonPortForm.getValues().authDaemonPort;
+                    const effectivePort =
+                        !isNative &&
+                        standardDaemonLocation === "remote" &&
+                        pamMode === "push" &&
+                        portVal
+                            ? Number(portVal)
+                            : null;
 
-                if (isHttp) {
-                    router.push(`/${orgId}/settings/resources/proxy/${niceId}`);
+                    await api.post(`/resource/${id}`, {
+                        pamMode,
+                        authDaemonMode: effectiveMode,
+                        authDaemonPort: effectivePort
+                    });
+
+                    if (isNative) {
+                        if (nativeSelectedSite) {
+                            await api.put(
+                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                {
+                                    siteId: nativeSelectedSite.siteId,
+                                    type: "ssh",
+                                    destination: "localhost",
+                                    destinationPort: 22
+                                }
+                            );
+                        }
+                    } else {
+                        const sitesToCreate =
+                            standardDaemonLocation !== "site"
+                                ? bgSelectedSites
+                                : bgSelectedSite
+                                  ? [bgSelectedSite]
+                                  : [];
+                        for (const site of sitesToCreate) {
+                            await api.put(
+                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                {
+                                    siteId: site.siteId,
+                                    type: "ssh",
+                                    destination: bgDestination,
+                                    destinationPort: Number(bgDestinationPort)
+                                }
+                            );
+                        }
+                    }
+
+                    router.push(
+                        `/${orgId}/settings/resources/proxy/${newNiceId}`
+                    );
+                } else if (resourceType === "rdp" || resourceType === "vnc") {
+                    for (const site of bgSelectedSites) {
+                        await api.put(
+                            `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                            {
+                                siteId: site.siteId,
+                                type: resourceType,
+                                destination: bgDestination,
+                                destinationPort: Number(bgDestinationPort)
+                            }
+                        );
+                    }
+
+                    router.push(
+                        `/${orgId}/settings/resources/proxy/${newNiceId}`
+                    );
                 } else {
-                    const tcpUdpData = tcpUdpForm.getValues();
-                    // Only show config snippets if enableProxy is explicitly true
-                    // if (tcpUdpData.enableProxy === true) {
+                    // TCP / UDP — create targets then show snippets
+                    if (targets.length > 0) {
+                        try {
+                            for (const target of targets) {
+                                const data: any = {
+                                    ip: target.ip,
+                                    port: target.port,
+                                    method: target.method,
+                                    enabled: target.enabled,
+                                    siteId: target.siteId,
+                                    hcEnabled: target.hcEnabled,
+                                    hcPath: target.hcPath || null,
+                                    hcMethod: target.hcMethod || null,
+                                    hcInterval: target.hcInterval || null,
+                                    hcTimeout: target.hcTimeout || null,
+                                    hcHeaders: target.hcHeaders || null,
+                                    hcScheme: target.hcScheme || null,
+                                    hcHostname: target.hcHostname || null,
+                                    hcPort: target.hcPort || null,
+                                    hcFollowRedirects:
+                                        target.hcFollowRedirects || null,
+                                    hcStatus: target.hcStatus || null,
+                                    hcUnhealthyInterval:
+                                        target.hcUnhealthyInterval || null,
+                                    hcMode: target.hcMode || null,
+                                    hcTlsServerName: target.hcTlsServerName,
+                                    hcHealthyThreshold:
+                                        target.hcHealthyThreshold || null,
+                                    hcUnhealthyThreshold:
+                                        target.hcUnhealthyThreshold || null
+                                };
+                                await api.put(`/resource/${id}/target`, data);
+                            }
+                        } catch (targetError) {
+                            console.error(
+                                "Error creating targets:",
+                                targetError
+                            );
+                            toast({
+                                variant: "destructive",
+                                title: t("targetErrorCreate"),
+                                description: formatAxiosError(
+                                    targetError,
+                                    t("targetErrorCreateDescription")
+                                )
+                            });
+                        }
+                    }
                     setShowSnippets(true);
                     router.refresh();
-                    // } else {
-                    //     // If enableProxy is false or undefined, go directly to resource page
-                    //     router.push(`/${orgId}/settings/resources/proxy/${id}`);
-                    // }
                 }
             }
         } catch (e) {
@@ -615,14 +778,12 @@ export default function Page() {
     }
 
     useEffect(() => {
-        // Initialize Docker for newt sites
         for (const site of sites) {
             if (site.type === "newt") {
                 initializeDockerForSite(site.siteId);
             }
         }
 
-        // If there's at least one site, set it as the default in the form
         if (sites.length > 0) {
             addTargetForm.setValue("siteId", sites[0].siteId);
         }
@@ -648,7 +809,7 @@ export default function Page() {
         setHealthCheckDialogOpen(true);
     }, []);
 
-    const isHttp = baseForm.watch("http");
+    const isHttp = resourceType === "http";
 
     const columns = useMemo((): ColumnDef<LocalTarget>[] => {
         const priorityColumn: ColumnDef<LocalTarget> = {
@@ -658,11 +819,13 @@ export default function Page() {
                     {t("priority")}
                     <TooltipProvider>
                         <Tooltip>
-                            <TooltipTrigger>
-                                <Info className="h-4 w-4 text-muted-foreground" />
+                            <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                                <p>{t("priorityDescription")}</p>
+                            <TooltipContent>
+                                <p className="max-w-xs">
+                                    {t("priorityDescription")}
+                                </p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -670,19 +833,18 @@ export default function Page() {
             ),
             cell: ({ row }) => {
                 return (
-                    <div className="flex items-center justify-center w-full">
+                    <div className="p-3">
                         <Input
                             type="number"
-                            min="1"
-                            max="1000"
-                            defaultValue={row.original.priority || 100}
-                            className="w-full max-w-20"
-                            onBlur={(e) => {
-                                const value = parseInt(e.target.value, 10);
-                                if (value >= 1 && value <= 1000) {
+                            defaultValue={row.original.priority ?? 100}
+                            min={1}
+                            max={1000}
+                            className="w-20 h-7 text-sm"
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val) && val >= 1 && val <= 1000) {
                                     updateTarget(row.original.targetId, {
-                                        ...row.original,
-                                        priority: value
+                                        priority: val
                                     });
                                 }
                             }}
@@ -704,37 +866,42 @@ export default function Page() {
                 const getStatusText = (status: string) => {
                     switch (status) {
                         case "healthy":
-                            return t("healthCheckHealthy");
+                            return t("healthy");
                         case "unhealthy":
-                            return t("healthCheckUnhealthy");
-                        case "unknown":
+                            return t("unhealthy");
                         default:
-                            return t("healthCheckUnknown");
+                            return t("unknown");
                     }
                 };
 
                 return (
-                    <div className="flex items-center justify-center w-full">
-                        {row.original.siteType === "newt" ? (
-                            <Button
-                                variant="outline"
-                                className="flex items-center gap-2 w-full text-left cursor-pointer"
-                                onClick={() =>
-                                    openHealthCheckDialog(row.original)
-                                }
-                            >
-                                <div
-                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : "text-neutral-500"}`}
-                                >
-                                    <div
-                                        className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
-                                    ></div>
+                    <div className="flex items-center gap-2 p-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={() =>
+                                openHealthCheckDialog(row.original)
+                            }
+                        >
+                            <Settings className="h-3.5 w-3.5" />
+                            {row.original.hcEnabled ? (
+                                <>
+                                    {status === "healthy" && (
+                                        <CircleCheck className="h-3.5 w-3.5 text-green-500" />
+                                    )}
+                                    {status === "unhealthy" && (
+                                        <CircleX className="h-3.5 w-3.5 text-red-500" />
+                                    )}
+                                    {status === "unknown" && (
+                                        <Info className="h-3.5 w-3.5 text-yellow-500" />
+                                    )}
                                     {getStatusText(status)}
-                                </div>
-                            </Button>
-                        ) : (
-                            <span>-</span>
-                        )}
+                                </>
+                            ) : (
+                                t("configure")
+                            )}
+                        </Button>
                     </div>
                 );
             },
@@ -752,7 +919,7 @@ export default function Page() {
                 );
 
                 return (
-                    <div className="flex items-center justify-center w-full">
+                    <div className="p-3">
                         {hasPathMatch ? (
                             <PathMatchModal
                                 value={{
@@ -775,7 +942,7 @@ export default function Page() {
                                 trigger={
                                     <Button
                                         variant="outline"
-                                        className="flex items-center gap-2 p-2 w-full text-left cursor-pointer max-w-50"
+                                        className="flex items-center gap-2 p-2 w-full text-left cursor-pointer max-w-[200px]"
                                     >
                                         <PathMatchDisplay
                                             value={{
@@ -809,7 +976,7 @@ export default function Page() {
                                 trigger={
                                     <Button
                                         variant="outline"
-                                        className="w-full max-w-50"
+                                        className="w-full max-w-[200px]"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
                                         {t("matchPath")}
@@ -832,7 +999,6 @@ export default function Page() {
                 <ResourceTargetAddressItem
                     isHttp={isHttp}
                     orgId={orgId!.toString()}
-                    // sites={sites}
                     getDockerStateForSite={getDockerStateForSite}
                     proxyTarget={row.original}
                     refreshContainersForSite={refreshContainersForSite}
@@ -897,7 +1063,7 @@ export default function Page() {
                                     <Button
                                         variant="outline"
                                         disabled={noPathMatch}
-                                        className="w-full max-w-50"
+                                        className="w-full max-w-[200px]"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
                                         {t("rewritePath")}
@@ -941,10 +1107,11 @@ export default function Page() {
             cell: ({ row }) => (
                 <div className="flex items-center justify-end w-full">
                     <Button
-                        variant="outline"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => removeTarget(row.original.targetId)}
                     >
-                        {t("delete")}
+                        <CircleX className="h-4 w-4" />
                     </Button>
                 </div>
             ),
@@ -954,20 +1121,24 @@ export default function Page() {
         };
 
         if (isAdvancedMode) {
-            const columns = [
+            const cols = [
                 addressColumn,
                 healthCheckColumn,
                 enabledColumn,
                 actionsColumn
             ];
 
-            // Only include path-related columns for HTTP resources
             if (isHttp) {
-                columns.unshift(matchPathColumn);
-                columns.splice(3, 0, rewritePathColumn, priorityColumn);
+                cols.splice(
+                    1,
+                    0,
+                    matchPathColumn,
+                    rewritePathColumn,
+                    priorityColumn
+                );
             }
 
-            return columns;
+            return cols;
         } else {
             return [
                 addressColumn,
@@ -1004,6 +1175,55 @@ export default function Page() {
         }
     });
 
+    // SSH strategy options
+    const sshModeOptions: StrategyOption<"standard" | "native">[] = [
+        {
+            id: "native",
+            title: t("sshServerModePangolin"),
+            description: t("sshServerModeNativeDescription")
+        },
+        {
+            id: "standard",
+            title: t("sshServerModeStandard"),
+            description: t("sshServerModeStandardDescription")
+        }
+    ];
+
+    const authMethodOptions: StrategyOption<"passthrough" | "push">[] = [
+        {
+            id: "passthrough",
+            title: t("sshAuthMethodManual"),
+            description: t("sshAuthMethodManualDescription")
+        },
+        {
+            id: "push",
+            title: t("sshAuthMethodAutomated"),
+            description: t("sshAuthMethodAutomatedDescription")
+        }
+    ];
+
+    const daemonLocationOptions: StrategyOption<"site" | "remote">[] = [
+        {
+            id: "site",
+            title: t("internalResourceAuthDaemonSite"),
+            description: t("sshDaemonLocationSiteDescription")
+        },
+        {
+            id: "remote",
+            title: t("sshDaemonLocationRemote"),
+            description: t("sshDaemonLocationRemoteDescription")
+        }
+    ];
+
+    const typeLabels: Record<NewResourceType, string> = {
+        http: "HTTP",
+        ssh: "SSH",
+        rdp: "RDP",
+        vnc: "VNC",
+        tcp: "TCP",
+        udp: "UDP"
+    };
+
     return (
         <>
             <div className="flex justify-between">
@@ -1025,49 +1245,24 @@ export default function Page() {
                 <div>
                     {!showSnippets ? (
                         <SettingsContainer>
+                            {/* General Section */}
                             <SettingsSection>
                                 <SettingsSectionHeader>
                                     <SettingsSectionTitle>
                                         {t("resourceInfo")}
                                     </SettingsSectionTitle>
+                                    <SettingsSectionDescription>
+                                        {t("resourceCreateDescription")}
+                                    </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    {showTypeSelector &&
-                                        resourceTypes.length > 1 && (
-                                            <>
-                                                <div className="mb-2">
-                                                    <span className="text-sm font-medium">
-                                                        {t("type")}
-                                                    </span>
-                                                </div>
-
-                                                <StrategySelect
-                                                    options={resourceTypes}
-                                                    defaultValue="http"
-                                                    onChange={(value) => {
-                                                        baseForm.setValue(
-                                                            "http",
-                                                            value === "http"
-                                                        );
-                                                        // Update method default when switching resource type
-                                                        addTargetForm.setValue(
-                                                            "method",
-                                                            value === "http"
-                                                                ? "http"
-                                                                : null
-                                                        );
-                                                    }}
-                                                    cols={3}
-                                                />
-                                            </>
-                                        )}
-
                                     <SettingsSectionForm>
+                                        {/* Name */}
                                         <Form {...baseForm}>
                                             <form
                                                 onKeyDown={(e) => {
                                                     if (e.key === "Enter") {
-                                                        e.preventDefault(); // block default enter refresh
+                                                        e.preventDefault();
                                                     }
                                                 }}
                                                 className="space-y-4"
@@ -1097,24 +1292,41 @@ export default function Page() {
                                                 />
                                             </form>
                                         </Form>
-                                    </SettingsSectionForm>
-                                </SettingsSectionBody>
-                            </SettingsSection>
 
-                            {baseForm.watch("http") ? (
-                                <SettingsSection>
-                                    <SettingsSectionHeader>
-                                        <SettingsSectionTitle>
-                                            {t("resourceHTTPSSettings")}
-                                        </SettingsSectionTitle>
-                                        <SettingsSectionDescription>
-                                            {t(
-                                                "resourceHTTPSSettingsDescription"
-                                            )}
-                                        </SettingsSectionDescription>
-                                    </SettingsSectionHeader>
-                                    <SettingsSectionBody>
-                                        <SettingsSectionForm>
+                                        {/* Inline Type Selector */}
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-medium">
+                                                {t("type")}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {availableTypes.map((type) => (
+                                                    <button
+                                                        key={type}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setResourceType(
+                                                                type
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            "px-4 py-1.5 rounded-md border text-sm font-medium transition-colors",
+                                                            resourceType ===
+                                                                type
+                                                                ? "border-primary bg-primary/10 text-primary"
+                                                                : "border-input bg-background hover:bg-accent text-foreground"
+                                                        )}
+                                                    >
+                                                        {typeLabels[type]}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t("resourceTypeDescription")}
+                                            </p>
+                                        </div>
+
+                                        {/* Domain/Subdomain (HTTP-based types) */}
+                                        {isHttpResource && (
                                             <DomainPicker
                                                 allowWildcard={true}
                                                 orgId={orgId as string}
@@ -1123,7 +1335,6 @@ export default function Page() {
                                                 }
                                                 onDomainChange={(res) => {
                                                     if (!res) return;
-
                                                     httpForm.setValue(
                                                         "subdomain",
                                                         res.subdomain
@@ -1132,80 +1343,22 @@ export default function Page() {
                                                         "domainId",
                                                         res.domainId
                                                     );
-                                                    console.log(
-                                                        "Domain changed:",
-                                                        res
-                                                    );
                                                 }}
                                             />
-                                        </SettingsSectionForm>
-                                    </SettingsSectionBody>
-                                </SettingsSection>
-                            ) : (
-                                <SettingsSection>
-                                    <SettingsSectionHeader>
-                                        <SettingsSectionTitle>
-                                            {t("resourceRawSettings")}
-                                        </SettingsSectionTitle>
-                                        <SettingsSectionDescription>
-                                            {t(
-                                                "resourceRawSettingsDescription"
-                                            )}
-                                        </SettingsSectionDescription>
-                                    </SettingsSectionHeader>
-                                    <SettingsSectionBody>
-                                        <SettingsSectionForm>
+                                        )}
+
+                                        {/* Proxy Port (TCP/UDP types) */}
+                                        {!isHttpResource && (
                                             <Form {...tcpUdpForm}>
                                                 <form
                                                     onKeyDown={(e) => {
                                                         if (e.key === "Enter") {
-                                                            e.preventDefault(); // block default enter refresh
+                                                            e.preventDefault();
                                                         }
                                                     }}
-                                                    className="space-y-4 grid gap-4 grid-cols-1 md:grid-cols-2 items-start"
+                                                    className="space-y-4"
                                                     id="tcp-udp-settings-form"
                                                 >
-                                                    <Controller
-                                                        control={
-                                                            tcpUdpForm.control
-                                                        }
-                                                        name="protocol"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t(
-                                                                        "protocol"
-                                                                    )}
-                                                                </FormLabel>
-                                                                <Select
-                                                                    onValueChange={
-                                                                        field.onChange
-                                                                    }
-                                                                    {...field}
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue
-                                                                                placeholder={t(
-                                                                                    "protocolSelect"
-                                                                                )}
-                                                                            />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="tcp">
-                                                                            TCP
-                                                                        </SelectItem>
-                                                                        <SelectItem value="udp">
-                                                                            UDP
-                                                                        </SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
                                                     <FormField
                                                         control={
                                                             tcpUdpForm.control
@@ -1248,204 +1401,527 @@ export default function Page() {
                                                     />
                                                 </form>
                                             </Form>
+                                        )}
+                                    </SettingsSectionForm>
+                                </SettingsSectionBody>
+                            </SettingsSection>
+
+                            {/* SSH Server Section */}
+                            {resourceType === "ssh" && (
+                                <SettingsSection>
+                                    <SettingsSectionHeader>
+                                        <SettingsSectionTitle>
+                                            {t("sshServer")}
+                                        </SettingsSectionTitle>
+                                        <SettingsSectionDescription>
+                                            {t("sshServerDescription")}
+                                        </SettingsSectionDescription>
+                                    </SettingsSectionHeader>
+                                    <SettingsSectionBody>
+                                        <SettingsSectionForm variant="half">
+                                            {/* Mode */}
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-semibold">
+                                                    {t("sshServerMode")}
+                                                </p>
+                                                <StrategySelect<
+                                                    "standard" | "native"
+                                                >
+                                                    value={sshServerMode}
+                                                    options={sshModeOptions}
+                                                    onChange={setSshServerMode}
+                                                    cols={2}
+                                                />
+                                            </div>
+
+                                            {/* Auth Method (standard only) */}
+                                            {!isNative && (
+                                                <div className="space-y-3">
+                                                    <p className="text-sm font-semibold">
+                                                        {t(
+                                                            "sshAuthenticationMethod"
+                                                        )}
+                                                    </p>
+                                                    <StrategySelect<
+                                                        "passthrough" | "push"
+                                                    >
+                                                        value={pamMode}
+                                                        options={
+                                                            authMethodOptions
+                                                        }
+                                                        onChange={setPamMode}
+                                                        cols={2}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Daemon Location (standard + push) */}
+                                            {showDaemonLocation && (
+                                                <div className="space-y-3">
+                                                    <p className="text-sm font-semibold">
+                                                        {t(
+                                                            "sshAuthDaemonLocation"
+                                                        )}
+                                                    </p>
+                                                    <StrategySelect<
+                                                        "site" | "remote"
+                                                    >
+                                                        value={
+                                                            standardDaemonLocation
+                                                        }
+                                                        options={
+                                                            daemonLocationOptions
+                                                        }
+                                                        onChange={
+                                                            setStandardDaemonLocation
+                                                        }
+                                                        cols={2}
+                                                    />
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {t(
+                                                            "sshDaemonDisclaimer"
+                                                        )}{" "}
+                                                        <a
+                                                            href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                                        >
+                                                            {t("learnMore")}
+                                                            <ExternalLink className="size-3.5 shrink-0" />
+                                                        </a>
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Daemon Port (standard + push + remote) */}
+                                            {showDaemonPort && (
+                                                <Form {...sshDaemonPortForm}>
+                                                    <FormField
+                                                        control={
+                                                            sshDaemonPortForm.control
+                                                        }
+                                                        name="authDaemonPort"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>
+                                                                    {t(
+                                                                        "sshDaemonPort"
+                                                                    )}
+                                                                </FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        type="number"
+                                                                        min={1}
+                                                                        max={
+                                                                            65535
+                                                                        }
+                                                                        {...field}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </Form>
+                                            )}
+
+                                            {/* Server Destination */}
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <h2 className="text-sm font-semibold">
+                                                        {t(
+                                                            "sshServerDestination"
+                                                        )}
+                                                    </h2>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {t(
+                                                            "sshServerDestinationDescription"
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                {isNative ? (
+                                                    <Popover
+                                                        open={nativeSiteOpen}
+                                                        onOpenChange={
+                                                            setNativeSiteOpen
+                                                        }
+                                                    >
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                role="combobox"
+                                                                className="w-full max-w-xs justify-between font-normal"
+                                                            >
+                                                                <span className="truncate">
+                                                                    {nativeSelectedSite?.name ??
+                                                                        t(
+                                                                            "siteSelect"
+                                                                        )}
+                                                                </span>
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                                            <SitesSelector
+                                                                orgId={
+                                                                    orgId as string
+                                                                }
+                                                                selectedSite={
+                                                                    nativeSelectedSite
+                                                                }
+                                                                onSelectSite={(
+                                                                    site
+                                                                ) => {
+                                                                    setNativeSelectedSite(
+                                                                        site
+                                                                    );
+                                                                    setNativeSiteOpen(
+                                                                        false
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                ) : standardDaemonLocation !==
+                                                  "site" ? (
+                                                    <BrowserGatewayTargetForm
+                                                        orgId={orgId as string}
+                                                        multiSite={true}
+                                                        selectedSites={
+                                                            bgSelectedSites
+                                                        }
+                                                        onSitesChange={
+                                                            setBgSelectedSites
+                                                        }
+                                                        destination={
+                                                            bgDestination
+                                                        }
+                                                        destinationPort={
+                                                            bgDestinationPort
+                                                        }
+                                                        onDestinationChange={
+                                                            setBgDestination
+                                                        }
+                                                        onDestinationPortChange={
+                                                            setBgDestinationPort
+                                                        }
+                                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                        defaultPort={22}
+                                                    />
+                                                ) : (
+                                                    <BrowserGatewayTargetForm
+                                                        orgId={orgId as string}
+                                                        multiSite={false}
+                                                        selectedSite={
+                                                            bgSelectedSite
+                                                        }
+                                                        onSiteChange={
+                                                            setBgSelectedSite
+                                                        }
+                                                        destination={
+                                                            bgDestination
+                                                        }
+                                                        destinationPort={
+                                                            bgDestinationPort
+                                                        }
+                                                        onDestinationChange={
+                                                            setBgDestination
+                                                        }
+                                                        onDestinationPortChange={
+                                                            setBgDestinationPort
+                                                        }
+                                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                        defaultPort={22}
+                                                    />
+                                                )}
+                                            </div>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
                                 </SettingsSection>
                             )}
 
-                            <SettingsSection>
-                                <SettingsSectionHeader>
-                                    <SettingsSectionTitle>
-                                        {t("targets")}
-                                    </SettingsSectionTitle>
-                                    <SettingsSectionDescription>
-                                        {t("targetsDescription")}
-                                    </SettingsSectionDescription>
-                                </SettingsSectionHeader>
-                                <SettingsSectionBody>
-                                    {targets.length > 0 ? (
-                                        <>
-                                            <div className="overflow-x-auto">
-                                                <Table>
-                                                    <TableHeader>
-                                                        {table
-                                                            .getHeaderGroups()
-                                                            .map(
-                                                                (
-                                                                    headerGroup
-                                                                ) => (
-                                                                    <TableRow
-                                                                        key={
-                                                                            headerGroup.id
-                                                                        }
-                                                                    >
-                                                                        {headerGroup.headers.map(
-                                                                            (
-                                                                                header
-                                                                            ) => {
-                                                                                const isActionsColumn =
-                                                                                    header
-                                                                                        .column
-                                                                                        .id ===
-                                                                                    "actions";
-                                                                                return (
-                                                                                    <TableHead
-                                                                                        key={
-                                                                                            header.id
-                                                                                        }
-                                                                                        className={
-                                                                                            isActionsColumn
-                                                                                                ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                                                : ""
-                                                                                        }
-                                                                                    >
-                                                                                        {header.isPlaceholder
-                                                                                            ? null
-                                                                                            : flexRender(
-                                                                                                  header
-                                                                                                      .column
-                                                                                                      .columnDef
-                                                                                                      .header,
-                                                                                                  header.getContext()
-                                                                                              )}
-                                                                                    </TableHead>
-                                                                                );
-                                                                            }
-                                                                        )}
-                                                                    </TableRow>
-                                                                )
-                                                            )}
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {table.getRowModel()
-                                                            .rows?.length ? (
-                                                            table
-                                                                .getRowModel()
-                                                                .rows.map(
-                                                                    (row) => (
+                            {/* RDP Server Section */}
+                            {resourceType === "rdp" && (
+                                <SettingsSection>
+                                    <SettingsSectionHeader>
+                                        <SettingsSectionTitle>
+                                            {t("rdpServer")}
+                                        </SettingsSectionTitle>
+                                        <SettingsSectionDescription>
+                                            {t("rdpServerDescription")}
+                                        </SettingsSectionDescription>
+                                    </SettingsSectionHeader>
+                                    <SettingsSectionBody>
+                                        <SettingsSectionForm variant="half">
+                                            <BrowserGatewayTargetForm
+                                                orgId={orgId as string}
+                                                multiSite={true}
+                                                selectedSites={bgSelectedSites}
+                                                onSitesChange={
+                                                    setBgSelectedSites
+                                                }
+                                                destination={bgDestination}
+                                                destinationPort={
+                                                    bgDestinationPort
+                                                }
+                                                onDestinationChange={
+                                                    setBgDestination
+                                                }
+                                                onDestinationPortChange={
+                                                    setBgDestinationPort
+                                                }
+                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                                defaultPort={3389}
+                                            />
+                                        </SettingsSectionForm>
+                                    </SettingsSectionBody>
+                                </SettingsSection>
+                            )}
+
+                            {/* VNC Server Section */}
+                            {resourceType === "vnc" && (
+                                <SettingsSection>
+                                    <SettingsSectionHeader>
+                                        <SettingsSectionTitle>
+                                            {t("vncServer")}
+                                        </SettingsSectionTitle>
+                                        <SettingsSectionDescription>
+                                            {t("vncServerDescription")}
+                                        </SettingsSectionDescription>
+                                    </SettingsSectionHeader>
+                                    <SettingsSectionBody>
+                                        <SettingsSectionForm variant="half">
+                                            <BrowserGatewayTargetForm
+                                                orgId={orgId as string}
+                                                multiSite={true}
+                                                selectedSites={bgSelectedSites}
+                                                onSitesChange={
+                                                    setBgSelectedSites
+                                                }
+                                                destination={bgDestination}
+                                                destinationPort={
+                                                    bgDestinationPort
+                                                }
+                                                onDestinationChange={
+                                                    setBgDestination
+                                                }
+                                                onDestinationPortChange={
+                                                    setBgDestinationPort
+                                                }
+                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
+                                                defaultPort={5900}
+                                            />
+                                        </SettingsSectionForm>
+                                    </SettingsSectionBody>
+                                </SettingsSection>
+                            )}
+
+                            {/* Targets Section (HTTP / TCP / UDP) */}
+                            {(resourceType === "http" ||
+                                resourceType === "tcp" ||
+                                resourceType === "udp") && (
+                                <SettingsSection>
+                                    <SettingsSectionHeader>
+                                        <SettingsSectionTitle>
+                                            {t("targets")}
+                                        </SettingsSectionTitle>
+                                        <SettingsSectionDescription>
+                                            {t("targetsDescription")}
+                                        </SettingsSectionDescription>
+                                    </SettingsSectionHeader>
+                                    <SettingsSectionBody>
+                                        {targets.length > 0 ? (
+                                            <>
+                                                <div className="overflow-x-auto">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            {table
+                                                                .getHeaderGroups()
+                                                                .map(
+                                                                    (
+                                                                        headerGroup
+                                                                    ) => (
                                                                         <TableRow
                                                                             key={
-                                                                                row.id
+                                                                                headerGroup.id
                                                                             }
                                                                         >
-                                                                            {row
-                                                                                .getVisibleCells()
-                                                                                .map(
-                                                                                    (
-                                                                                        cell
-                                                                                    ) => {
-                                                                                        const isActionsColumn =
-                                                                                            cell
-                                                                                                .column
-                                                                                                .id ===
-                                                                                            "actions";
-                                                                                        return (
-                                                                                            <TableCell
-                                                                                                key={
-                                                                                                    cell.id
-                                                                                                }
-                                                                                                className={
-                                                                                                    isActionsColumn
-                                                                                                        ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                                                        : ""
-                                                                                                }
-                                                                                            >
-                                                                                                {flexRender(
-                                                                                                    cell
-                                                                                                        .column
-                                                                                                        .columnDef
-                                                                                                        .cell,
-                                                                                                    cell.getContext()
-                                                                                                )}
-                                                                                            </TableCell>
-                                                                                        );
-                                                                                    }
-                                                                                )}
+                                                                            {headerGroup.headers.map(
+                                                                                (
+                                                                                    header
+                                                                                ) => {
+                                                                                    const isActionsColumn =
+                                                                                        header
+                                                                                            .column
+                                                                                            .id ===
+                                                                                        "actions";
+                                                                                    return (
+                                                                                        <TableHead
+                                                                                            key={
+                                                                                                header.id
+                                                                                            }
+                                                                                            className={
+                                                                                                isActionsColumn
+                                                                                                    ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
+                                                                                                    : ""
+                                                                                            }
+                                                                                        >
+                                                                                            {header.isPlaceholder
+                                                                                                ? null
+                                                                                                : flexRender(
+                                                                                                      header
+                                                                                                          .column
+                                                                                                          .columnDef
+                                                                                                          .header,
+                                                                                                      header.getContext()
+                                                                                                  )}
+                                                                                        </TableHead>
+                                                                                    );
+                                                                                }
+                                                                            )}
                                                                         </TableRow>
                                                                     )
-                                                                )
-                                                        ) : (
-                                                            <TableRow>
-                                                                <TableCell
-                                                                    colSpan={
-                                                                        columns.length
-                                                                    }
-                                                                    className="h-24 text-center"
-                                                                >
-                                                                    {t(
-                                                                        "targetNoOne"
-                                                                    )}
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center justify-between w-full gap-2">
-                                                    <Button
-                                                        onClick={addNewTarget}
-                                                        variant="outline"
-                                                    >
-                                                        <Plus className="h-4 w-4 mr-2" />
-                                                        {t("addTarget")}
-                                                    </Button>
-                                                    <div className="flex items-center gap-2">
-                                                        <Switch
-                                                            id="advanced-mode-toggle"
-                                                            checked={
-                                                                isAdvancedMode
+                                                                )}
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {table.getRowModel()
+                                                                .rows?.length ? (
+                                                                table
+                                                                    .getRowModel()
+                                                                    .rows.map(
+                                                                        (
+                                                                            row
+                                                                        ) => (
+                                                                            <TableRow
+                                                                                key={
+                                                                                    row.id
+                                                                                }
+                                                                            >
+                                                                                {row
+                                                                                    .getVisibleCells()
+                                                                                    .map(
+                                                                                        (
+                                                                                            cell
+                                                                                        ) => {
+                                                                                            const isActionsColumn =
+                                                                                                cell
+                                                                                                    .column
+                                                                                                    .id ===
+                                                                                                "actions";
+                                                                                            return (
+                                                                                                <TableCell
+                                                                                                    key={
+                                                                                                        cell.id
+                                                                                                    }
+                                                                                                    className={
+                                                                                                        isActionsColumn
+                                                                                                            ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
+                                                                                                            : ""
+                                                                                                    }
+                                                                                                >
+                                                                                                    {flexRender(
+                                                                                                        cell
+                                                                                                            .column
+                                                                                                            .columnDef
+                                                                                                            .cell,
+                                                                                                        cell.getContext()
+                                                                                                    )}
+                                                                                                </TableCell>
+                                                                                            );
+                                                                                        }
+                                                                                    )}
+                                                                            </TableRow>
+                                                                        )
+                                                                    )
+                                                            ) : (
+                                                                <TableRow>
+                                                                    <TableCell
+                                                                        colSpan={
+                                                                            columns.length
+                                                                        }
+                                                                        className="h-24 text-center"
+                                                                    >
+                                                                        {t(
+                                                                            "targetNoOne"
+                                                                        )}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center justify-between w-full gap-2">
+                                                        <Button
+                                                            onClick={
+                                                                addNewTarget
                                                             }
-                                                            onCheckedChange={
-                                                                setIsAdvancedMode
-                                                            }
-                                                        />
-                                                        <label
-                                                            htmlFor="advanced-mode-toggle"
-                                                            className="text-sm"
+                                                            variant="outline"
                                                         >
-                                                            {t("advancedMode")}
-                                                        </label>
+                                                            <Plus className="h-4 w-4 mr-2" />
+                                                            {t("addTarget")}
+                                                        </Button>
+                                                        <div className="flex items-center gap-2">
+                                                            <Switch
+                                                                id="advanced-mode-toggle"
+                                                                checked={
+                                                                    isAdvancedMode
+                                                                }
+                                                                onCheckedChange={
+                                                                    setIsAdvancedMode
+                                                                }
+                                                            />
+                                                            <label
+                                                                htmlFor="advanced-mode-toggle"
+                                                                className="text-sm"
+                                                            >
+                                                                {t(
+                                                                    "advancedMode"
+                                                                )}
+                                                            </label>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg p-4">
-                                            <p className="text-muted-foreground mb-4">
-                                                {t("targetNoOne")}
-                                            </p>
-                                            <Button
-                                                onClick={addNewTarget}
-                                                variant="outline"
-                                            >
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                {t("addTarget")}
-                                            </Button>
-                                        </div>
-                                    )}
-                                    {build === "saas" &&
-                                        targets.length > 1 &&
-                                        new Set(targets.map((t) => t.siteId))
-                                            .size > 1 && (
-                                            <p className="text-sm text-muted-foreground mt-3">
-                                                {t(
-                                                    "proxyMultiSiteRoundRobinNodeHelp"
-                                                )}{" "}
-                                                <a
-                                                    href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                            </>
+                                        ) : (
+                                            <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg p-4">
+                                                <p className="text-muted-foreground mb-4">
+                                                    {t("targetNoOne")}
+                                                </p>
+                                                <Button
+                                                    onClick={addNewTarget}
+                                                    variant="outline"
                                                 >
-                                                    {t("learnMore")}
-                                                    <ExternalLink className="size-3.5 shrink-0" />
-                                                </a>
-                                                .
-                                            </p>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    {t("addTarget")}
+                                                </Button>
+                                            </div>
                                         )}
-                                </SettingsSectionBody>
-                            </SettingsSection>
+                                        {build === "saas" &&
+                                            targets.length > 1 &&
+                                            new Set(
+                                                targets.map((t) => t.siteId)
+                                            ).size > 1 && (
+                                                <p className="text-sm text-muted-foreground mt-3">
+                                                    {t(
+                                                        "proxyMultiSiteRoundRobinNodeHelp"
+                                                    )}{" "}
+                                                    <a
+                                                        href="https://docs.pangolin.net/manage/resources/public/targets#distributing-sites-load-across-servers"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary hover:underline inline-flex items-center gap-1"
+                                                    >
+                                                        {t("learnMore")}
+                                                        <ExternalLink className="size-3.5 shrink-0" />
+                                                    </a>
+                                                    .
+                                                </p>
+                                            )}
+                                    </SettingsSectionBody>
+                                </SettingsSection>
+                            )}
 
                             <div className="flex justify-end space-x-2 mt-8">
                                 <Button
@@ -1462,16 +1938,24 @@ export default function Page() {
                                 <Button
                                     type="button"
                                     onClick={async () => {
-                                        const isHttp = baseForm.watch("http");
                                         const baseValid =
                                             await baseForm.trigger();
-                                        const settingsValid = isHttp
+                                        const domainValid = isHttpResource
                                             ? await httpForm.trigger()
-                                            : await tcpUdpForm.trigger();
+                                            : true;
+                                        const tcpValid = !isHttpResource
+                                            ? await tcpUdpForm.trigger()
+                                            : true;
+                                        const sshPortValid = showDaemonPort
+                                            ? await sshDaemonPortForm.trigger()
+                                            : true;
 
-                                        console.log(httpForm.getValues());
-
-                                        if (baseValid && settingsValid) {
+                                        if (
+                                            baseValid &&
+                                            domainValid &&
+                                            tcpValid &&
+                                            sshPortValid
+                                        ) {
                                             onSubmit();
                                         }
                                     }}
