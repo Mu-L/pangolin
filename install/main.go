@@ -808,7 +808,7 @@ func downloadMaxMindDatabase() error {
 	}
 
 	// Clean up the downloaded files
-	if err := run("rm", "-rf", "GeoLite2-Country.tar.gz", "GeoLite2-Country_*"); err != nil {
+	if err := run("sh", "-c", "rm -rf GeoLite2-Country.tar.gz GeoLite2-Country_*"); err != nil {
 		fmt.Printf("Warning: failed to clean up temporary files: %v\n", err)
 	}
 
@@ -831,12 +831,12 @@ func downloadMaxMindASNDatabase() error {
 	}
 
 	// Find the .mmdb file and move it to the config directory
-	if err := run("bash", "-c", "mv GeoLite2-ASN*/GeoLite2-ASN.mmdb config/"); err != nil {
+	if err := run("bash", "-c", "mv GeoLite2-ASN_*/GeoLite2-ASN.mmdb config/"); err != nil {
 		return fmt.Errorf("failed to move GeoLite2 ASN database to config directory: %v", err)
 	}
 
 	// Clean up the downloaded files
-	if err := run("rm", "-rf", "GeoLite2-ASN.tar.gz", "GeoLite2-ASN*"); err != nil {
+	if err := run("sh", "-c", "rm -rf GeoLite2-ASN.tar.gz GeoLite2-ASN_*"); err != nil {
 		fmt.Printf("Warning: failed to clean up temporary files: %v\n", err)
 	}
 
