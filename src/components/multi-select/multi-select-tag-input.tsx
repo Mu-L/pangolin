@@ -41,23 +41,23 @@ export function MultiSelectTagInput<T extends TagValue>({
                             variant: "outline"
                         }),
                         "justify-between w-full inline-flex",
-                        "text-muted-foreground pl-1.5 cursor-text h-auto py-1",
+                        "text-muted-foreground pl-1.5 cursor-text h-9 py-0",
                         "hover:bg-transparent hover:text-muted-foreground",
                         props.disabled && "pointer-events-none opacity-50"
                     )}
                 >
                     <span
                         className={cn(
-                            "inline-flex items-center gap-1",
-                            "overflow-x-auto flex-wrap h-auto"
+                            "inline-flex items-center gap-1 min-w-0 flex-1",
+                            "overflow-x-auto flex-nowrap h-full"
                         )}
                     >
                         {props.value.map((option) => (
                             <span
                                 key={option.id}
                                 className={cn(
-                                    "bg-muted-foreground/10 font-normal text-foreground rounded-sm",
-                                    "py-1 pl-1.5 pr-0.5 text-xs inline-flex items-center gap-0.5"
+                                    "bg-muted-foreground/10 font-normal text-foreground rounded-sm flex-none",
+                                    "py-0.5 pl-1.5 pr-0.5 text-xs inline-flex items-center gap-0.5"
                                 )}
                                 onClick={(e) => e.stopPropagation()}
                             >
