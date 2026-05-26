@@ -280,10 +280,14 @@ export default function GeneralPage() {
         console.log("Data refreshed");
         setIsRefreshing(true);
         try {
+            const endDate = searchParams.get("end")
+                ? dateRange.endDate
+                : { date: new Date() };
+            setDateRange((current) => ({ ...current, endDate }));
             // Refresh data with current date range and pagination
             await queryDateTime(
                 dateRange.startDate,
-                dateRange.endDate,
+                endDate,
                 currentPage,
                 pageSize
             );
