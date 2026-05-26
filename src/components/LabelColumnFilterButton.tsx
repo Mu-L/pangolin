@@ -94,91 +94,94 @@ export function LabelColumnFilterButton({
     }
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="ghost"
-                    role="combobox"
-                    aria-expanded={open}
-                    className={cn(
-                        "justify-between text-sm h-8 px-2",
-                        selectedValues.length === 0 && "text-muted-foreground",
-                        className
-                    )}
-                >
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="shrink-0">{label}</span>
-                        <Funnel className="size-4 flex-none shrink-0" />
-                        {summary && (
-                            <Badge
-                                className={cn(
-                                    "truncate max-w-40",
-                                    selectedValues.length === 1 &&
-                                        "pl-1.5 pr-2 h-auto"
-                                )}
-                                variant="secondary"
-                            >
-                                {summary}
-                            </Badge>
+        <div className="flex items-center justify-end">
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                            "justify-between text-sm h-8 px-2",
+                            selectedValues.length === 0 &&
+                                "text-muted-foreground",
+                            className
                         )}
-                    </div>
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent
-                className={dataTableFilterPopoverContentClassName}
-                align="start"
-            >
-                <Command shouldFilter={false}>
-                    <CommandInput
-                        placeholder={t("labelSearch")}
-                        value={labelSearchQuery}
-                        onValueChange={setlabelsSearchQuery}
-                    />
-                    <CommandList>
-                        <CommandEmpty>{t("labelsNotFound")}</CommandEmpty>
-                        <CommandGroup>
-                            {selectedValues.length > 0 && (
-                                <CommandItem
-                                    onSelect={() => {
-                                        onSelectedValuesChange([]);
-                                        setOpen(false);
-                                    }}
-                                    className="text-muted-foreground"
+                    >
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="shrink-0">{label}</span>
+                            <Funnel className="size-4 flex-none shrink-0" />
+                            {summary && (
+                                <Badge
+                                    className={cn(
+                                        "truncate max-w-40",
+                                        selectedValues.length === 1 &&
+                                            "pl-1.5 pr-2 h-auto"
+                                    )}
+                                    variant="secondary"
                                 >
-                                    {t("accessLabelFilterClear")}
-                                </CommandItem>
+                                    {summary}
+                                </Badge>
                             )}
-                            {labels.map((label) => (
-                                <CommandItem
-                                    key={label.name}
-                                    value={label.name}
-                                    onSelect={() => {
-                                        toggle(label.name);
-                                    }}
-                                    className="flex items-center gap-2"
-                                >
-                                    <CheckIcon
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedSet.has(label.name)
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                        )}
-                                    />
-                                    <div
-                                        className="size-4 rounded-full bg-(--color) flex-none"
-                                        style={{
-                                            // @ts-expect-error css color
-                                            "--color": label.color
+                        </div>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                    className={dataTableFilterPopoverContentClassName}
+                    align="start"
+                >
+                    <Command shouldFilter={false}>
+                        <CommandInput
+                            placeholder={t("labelSearch")}
+                            value={labelSearchQuery}
+                            onValueChange={setlabelsSearchQuery}
+                        />
+                        <CommandList>
+                            <CommandEmpty>{t("labelsNotFound")}</CommandEmpty>
+                            <CommandGroup>
+                                {selectedValues.length > 0 && (
+                                    <CommandItem
+                                        onSelect={() => {
+                                            onSelectedValuesChange([]);
+                                            setOpen(false);
                                         }}
-                                    />
-                                    {label.name}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+                                        className="text-muted-foreground"
+                                    >
+                                        {t("accessLabelFilterClear")}
+                                    </CommandItem>
+                                )}
+                                {labels.map((label) => (
+                                    <CommandItem
+                                        key={label.name}
+                                        value={label.name}
+                                        onSelect={() => {
+                                            toggle(label.name);
+                                        }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <CheckIcon
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                selectedSet.has(label.name)
+                                                    ? "opacity-100"
+                                                    : "opacity-0"
+                                            )}
+                                        />
+                                        <div
+                                            className="size-4 rounded-full bg-(--color) flex-none"
+                                            style={{
+                                                // @ts-expect-error css color
+                                                "--color": label.color
+                                            }}
+                                        />
+                                        {label.name}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+        </div>
     );
 }
