@@ -19,7 +19,6 @@ import { Laptop, LogOut, Moon, Sun, Smartphone, Trash2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { build } from "@server/build";
 import { useState } from "react";
 import { useUserContext } from "@app/hooks/useUserContext";
 import Disable2FaForm from "./Disable2FaForm";
