@@ -19,7 +19,14 @@ import {
     SettingsSectionTitle
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
-import { StrategySelect, type StrategyOption } from "@app/components/StrategySelect";
+import {
+    OptionSelect,
+    type OptionSelectOption
+} from "@app/components/OptionSelect";
+import {
+    StrategySelect,
+    type StrategyOption
+} from "@app/components/StrategySelect";
 import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
 import {
@@ -565,7 +572,9 @@ export default function Page() {
             }
 
             const res = await api
-                .put<AxiosResponse<Resource>>(`/org/${orgId}/resource/`, payload)
+                .put<
+                    AxiosResponse<Resource>
+                >(`/org/${orgId}/resource/`, payload)
                 .catch((e) => {
                     toast({
                         variant: "destructive",
@@ -880,9 +889,7 @@ export default function Page() {
                             variant="outline"
                             size="sm"
                             className="h-7 text-xs gap-1"
-                            onClick={() =>
-                                openHealthCheckDialog(row.original)
-                            }
+                            onClick={() => openHealthCheckDialog(row.original)}
                         >
                             <Settings className="h-3.5 w-3.5" />
                             {row.original.hcEnabled ? (
@@ -1224,6 +1231,12 @@ export default function Page() {
         udp: "UDP"
     };
 
+    const typeOptions: OptionSelectOption<NewResourceType>[] =
+        availableTypes.map((type) => ({
+            value: type,
+            label: typeLabels[type]
+        }));
+
     return (
         <>
             <div className="flex justify-between">
@@ -1249,14 +1262,14 @@ export default function Page() {
                             <SettingsSection>
                                 <SettingsSectionHeader>
                                     <SettingsSectionTitle>
-                                        {t("resourceInfo")}
+                                        {t("resourceCreateGeneral")}
                                     </SettingsSectionTitle>
                                     <SettingsSectionDescription>
                                         {t("resourceCreateDescription")}
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    <SettingsSectionForm>
+                                    <SettingsSectionForm variant="half">
                                         {/* Name */}
                                         <Form {...baseForm}>
                                             <form
@@ -1298,28 +1311,12 @@ export default function Page() {
                                             <p className="text-sm font-medium">
                                                 {t("type")}
                                             </p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {availableTypes.map((type) => (
-                                                    <button
-                                                        key={type}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setResourceType(
-                                                                type
-                                                            )
-                                                        }
-                                                        className={cn(
-                                                            "px-4 py-1.5 rounded-md border text-sm font-medium transition-colors",
-                                                            resourceType ===
-                                                                type
-                                                                ? "border-primary bg-primary/10 text-primary"
-                                                                : "border-input bg-background hover:bg-accent text-foreground"
-                                                        )}
-                                                    >
-                                                        {typeLabels[type]}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            <OptionSelect<NewResourceType>
+                                                options={typeOptions}
+                                                value={resourceType}
+                                                onChange={setResourceType}
+                                                cols={6}
+                                            />
                                             <p className="text-sm text-muted-foreground">
                                                 {t("resourceTypeDescription")}
                                             </p>
@@ -1327,24 +1324,32 @@ export default function Page() {
 
                                         {/* Domain/Subdomain (HTTP-based types) */}
                                         {isHttpResource && (
-                                            <DomainPicker
-                                                allowWildcard={true}
-                                                orgId={orgId as string}
-                                                warnOnProvidedDomain={
-                                                    remoteExitNodes.length >= 1
-                                                }
-                                                onDomainChange={(res) => {
-                                                    if (!res) return;
-                                                    httpForm.setValue(
-                                                        "subdomain",
-                                                        res.subdomain
-                                                    );
-                                                    httpForm.setValue(
-                                                        "domainId",
-                                                        res.domainId
-                                                    );
-                                                }}
-                                            />
+                                            <div className="space-y-2">
+                                                <DomainPicker
+                                                    allowWildcard={true}
+                                                    orgId={orgId as string}
+                                                    warnOnProvidedDomain={
+                                                        remoteExitNodes.length >=
+                                                        1
+                                                    }
+                                                    onDomainChange={(res) => {
+                                                        if (!res) return;
+                                                        httpForm.setValue(
+                                                            "subdomain",
+                                                            res.subdomain
+                                                        );
+                                                        httpForm.setValue(
+                                                            "domainId",
+                                                            res.domainId
+                                                        );
+                                                    }}
+                                                />
+                                                <p className="text-sm text-muted-foreground">
+                                                    {t(
+                                                        "resourceDomainDescription"
+                                                    )}
+                                                </p>
+                                            </div>
                                         )}
 
                                         {/* Proxy Port (TCP/UDP types) */}
@@ -1396,6 +1401,11 @@ export default function Page() {
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
+                                                                <FormDescription>
+                                                                    {t(
+                                                                        "resourcePortDescription"
+                                                                    )}
+                                                                </FormDescription>
                                                             </FormItem>
                                                         )}
                                                     />
@@ -1786,7 +1796,8 @@ export default function Page() {
                                                         </TableHeader>
                                                         <TableBody>
                                                             {table.getRowModel()
-                                                                .rows?.length ? (
+                                                                .rows
+                                                                ?.length ? (
                                                                 table
                                                                     .getRowModel()
                                                                     .rows.map(
