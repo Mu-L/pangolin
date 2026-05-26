@@ -1648,6 +1648,7 @@
     "certificateStatus": "Certificate",
     "certificateStatusAutoRefreshHint": "Status refreshes automatically.",
     "loading": "Loading",
+    "loadingEllipsis": "Loading...",
     "loadingAnalytics": "Loading Analytics",
     "restart": "Restart",
     "domains": "Domains",

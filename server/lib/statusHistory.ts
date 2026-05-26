@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db, logsDb, statusHistory } from "@server/db";
 import { and, eq, gte, asc } from "drizzle-orm";
-import { regionalCache as cache } from "@server/private/lib/cache";
+import { regionalCache as cache } from "#dynamic/lib/cache";
 
 const STATUS_HISTORY_CACHE_TTL = 60; // seconds
 
