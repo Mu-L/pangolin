@@ -582,6 +582,7 @@ export default function MachineClientsTable({
                 rows={machineClients}
                 tableId="machine-clients"
                 searchPlaceholder={t("machinesSearch")}
+                searchQuery={searchParams.get("query")?.toString()}
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(`/${orgId}/settings/clients/machine/create`)
@@ -599,35 +600,6 @@ export default function MachineClientsTable({
                 columnVisibility={defaultMachineColumnVisibility}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-                filters={[
-                    {
-                        id: "status",
-                        label: t("status") || "Status",
-                        multiSelect: true,
-                        displayMode: "calculated",
-                        options: [
-                            {
-                                id: "active",
-                                label: t("active") || "Active",
-                                value: "active"
-                            },
-                            {
-                                id: "archived",
-                                label: t("archived") || "Archived",
-                                value: "archived"
-                            },
-                            {
-                                id: "blocked",
-                                label: t("blocked") || "Blocked",
-                                value: "blocked"
-                            }
-                        ],
-                        onValueChange(selectedValues: string[]) {
-                            handleFilterChange("status", selectedValues);
-                        },
-                        values: searchParams.getAll("status")
-                    }
-                ]}
             />
         </>
     );

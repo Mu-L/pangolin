@@ -730,6 +730,7 @@ export default function ProxyResourcesTable({
                 searchPlaceholder={t("resourcesSearch")}
                 pagination={pagination}
                 rowCount={rowCount}
+                searchQuery={searchParams.get("query")?.toString()}
                 onSearch={handleSearchChange}
                 onPaginationChange={handlePaginationChange}
                 onAdd={() =>

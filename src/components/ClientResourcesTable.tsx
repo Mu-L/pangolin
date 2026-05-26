@@ -638,7 +638,7 @@ export default function ClientResourcesTable({
                 rows={internalResources}
                 tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
-                searchQuery={searchParams.get("query") ?? ""}
+                searchQuery={searchParams.get("query")?.toString()}
                 onAdd={() => setIsCreateDialogOpen(true)}
                 addButtonText={t("resourceAdd")}
                 onSearch={handleSearchChange}

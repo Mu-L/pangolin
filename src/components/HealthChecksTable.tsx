@@ -109,7 +109,6 @@ export default function HealthChecksTable({
     const [siteFilterOpen, setSiteFilterOpen] = useState(false);
     const [resourceFilterOpen, setResourceFilterOpen] = useState(false);
 
-    const pageSize = pagination.pageSize;
     const query = searchParams.get("query") ?? undefined;
 
     const siteIdQ = searchParams.get("siteId");
@@ -586,7 +585,9 @@ export default function HealthChecksTable({
                     <Switch
                         checked={r.hcEnabled}
                         disabled={
-                            !isPaid || togglingId === r.targetHealthCheckId || !!r.resourceId
+                            !isPaid ||
+                            togglingId === r.targetHealthCheckId ||
+                            !!r.resourceId
                         }
                         onCheckedChange={(v) => handleToggleEnabled(r, v)}
                     />
