@@ -16,7 +16,8 @@ import {
     PopoverTrigger
 } from "./ui/popover";
 
-const MAX_VISIBLE_LABELS = 3;
+const MAX_VISIBLE_LABELS = 4;
+const MAX_VISIBLE_BEFORE_OVERFLOW = MAX_VISIBLE_LABELS - 1;
 
 type TableLabelsCellProps = {
     orgId: string;
@@ -36,8 +37,14 @@ export function TableLabelsCell({
         getBoundingClientRect: () => new DOMRect()
     });
 
-    const visibleLabels = localLabels.slice(0, MAX_VISIBLE_LABELS);
-    const overflowLabels = localLabels.slice(MAX_VISIBLE_LABELS);
+    const hasOverflow = localLabels.length > MAX_VISIBLE_LABELS;
+    const visibleLabels = localLabels.slice(
+        0,
+        hasOverflow ? MAX_VISIBLE_BEFORE_OVERFLOW : MAX_VISIBLE_LABELS
+    );
+    const overflowLabels = hasOverflow
+        ? localLabels.slice(MAX_VISIBLE_BEFORE_OVERFLOW)
+        : [];
 
     function handleOpenChange(open: boolean) {
         if (open && triggerRef.current) {
@@ -88,10 +95,12 @@ export function TableLabelsCell({
                         {...label}
                     />
                 ))}
-                <LabelOverflowBadge
-                    labels={overflowLabels}
-                    onClick={() => handleOpenChange(true)}
-                />
+                {overflowLabels.length > 0 && (
+                    <LabelOverflowBadge
+                        labels={overflowLabels}
+                        onClick={() => handleOpenChange(true)}
+                    />
+                )}
             </div>
         </div>
     );

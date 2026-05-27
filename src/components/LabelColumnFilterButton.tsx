@@ -26,8 +26,6 @@ import { LabelBadge } from "./label-badge";
 import { LabelOverflowBadge } from "./label-overflow-badge";
 import { LABEL_COLORS } from "./labels-selector";
 
-const MAX_VISIBLE_SUMMARY_LABELS = 3;
-
 function areSelectionsEqual(a: string[], b: string[]) {
     if (a.length !== b.length) {
         return false;
@@ -85,28 +83,24 @@ export function LabelColumnFilterButton({
             return null;
         }
 
-        const visibleLabels = selectedLabels.slice(0, MAX_VISIBLE_SUMMARY_LABELS);
-        const overflowLabels = selectedLabels.slice(MAX_VISIBLE_SUMMARY_LABELS);
+        if (selectedLabels.length === 1) {
+            const label = selectedLabels[0];
+            return (
+                <LabelBadge
+                    displayOnly
+                    name={label.name}
+                    color={label.color}
+                    className="shrink-0"
+                />
+            );
+        }
 
         return (
-            <div className="flex min-w-0 flex-nowrap items-center gap-1">
-                {visibleLabels.map((label) => (
-                    <LabelBadge
-                        key={label.name}
-                        displayOnly
-                        name={label.name}
-                        color={label.color}
-                        className="shrink-0"
-                    />
-                ))}
-                {overflowLabels.length > 0 && (
-                    <LabelOverflowBadge
-                        labels={overflowLabels}
-                        displayOnly
-                        className="shrink-0"
-                    />
-                )}
-            </div>
+            <LabelOverflowBadge
+                labels={selectedLabels}
+                displayOnly
+                className="shrink-0"
+            />
         );
     }, [selectedLabels]);
 
