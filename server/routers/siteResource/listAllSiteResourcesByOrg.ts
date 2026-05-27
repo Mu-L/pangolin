@@ -85,7 +85,27 @@ const listAllSiteResourcesByOrgQuerySchema = z.object({
         type: "integer",
         description:
             "When set, only site resources associated with this site (via network) are returned"
-    })
+    }),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by resource labels"
+        })
 });
 
 export type ListAllSiteResourcesByOrgResponse = PaginatedResponse<{
@@ -239,8 +259,16 @@ export async function listAllSiteResourcesByOrg(
         }
 
         const { orgId } = parsedParams.data;
-        const { page, pageSize, query, mode, sort_by, order, siteId } =
-            parsedQuery.data;
+        const {
+            page,
+            pageSize,
+            query,
+            mode,
+            sort_by,
+            order,
+            siteId,
+            labels: labelFilter
+        } = parsedQuery.data;
 
         const isLabelFeatureEnabled = await isLicensedOrSubscribed(
             orgId,
@@ -274,6 +302,22 @@ export async function listAllSiteResourcesByOrg(
 
         if (mode) {
             conditions.push(eq(siteResources.mode, mode));
+        }
+
+        if (isLabelFeatureEnabled && labelFilter && labelFilter.length > 0) {
+            conditions.push(
+                inArray(
+                    siteResources.siteResourceId,
+                    db
+                        .select({ id: siteResourceLabels.siteResourceId })
+                        .from(siteResourceLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, siteResourceLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
+                )
+            );
         }
 
         if (query) {

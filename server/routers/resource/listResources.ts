@@ -71,7 +71,7 @@ const listResourcesSchema = z.object({
         }),
     query: z.string().optional(),
     sort_by: z
-        .enum(["name"])
+        .literal("name")
         .optional()
         .catch(undefined)
         .openapi({
@@ -123,7 +123,27 @@ const listResourcesSchema = z.object({
         type: "integer",
         description:
             "When set, only resources that have at least one target on this site are returned"
-    })
+    }),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by resource labels"
+        })
 });
 
 // grouped by resource with targets[])
@@ -261,7 +281,8 @@ export async function listResources(
             healthStatus,
             sort_by,
             order,
-            siteId
+            siteId,
+            labels: labelFilter
         } = parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
@@ -379,6 +400,23 @@ export async function listResources(
                 .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
             conditions.push(inArray(resources.resourceId, resourcesWithSite));
         }
+
+        if (isLabelFeatureEnabled && labelFilter && labelFilter.length > 0) {
+            conditions.push(
+                inArray(
+                    resources.resourceId,
+                    db
+                        .select({ id: resourceLabels.resourceId })
+                        .from(resourceLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, resourceLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
+                )
+            );
+        }
+
         if (query) {
             const q = "%" + query.toLowerCase() + "%";
             const queryList = [

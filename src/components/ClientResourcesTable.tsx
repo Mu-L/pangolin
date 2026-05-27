@@ -64,6 +64,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { LabelBadge } from "./label-badge";
 import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -219,59 +220,6 @@ export default function ClientResourcesTable({
             });
         }
     };
-
-    function SiteCell({ resourceRow }: { resourceRow: InternalResourceRow }) {
-        const { siteNames, siteNiceIds, orgId } = resourceRow;
-
-        if (!siteNames || siteNames.length === 0) {
-            return (
-                <span className="text-muted-foreground">
-                    {t("noSites", { defaultValue: "No sites" })}
-                </span>
-            );
-        }
-
-        if (siteNames.length === 1) {
-            return (
-                <Link href={`/${orgId}/settings/sites/${siteNiceIds[0]}`}>
-                    <Button variant="outline">
-                        {siteNames[0]}
-                        <ArrowUpRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </Link>
-            );
-        }
-
-        return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                    >
-                        <span>
-                            {siteNames.length} {t("sites")}
-                        </span>
-                        <ChevronDown className="h-3 w-3" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                    {siteNames.map((siteName, idx) => (
-                        <DropdownMenuItem key={siteNiceIds[idx]} asChild>
-                            <Link
-                                href={`/${orgId}/settings/sites/${siteNiceIds[idx]}`}
-                                className="flex items-center gap-2 cursor-pointer"
-                            >
-                                {siteName}
-                                <ArrowUpRight className="h-3 w-3" />
-                            </Link>
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        );
-    }
 
     const internalColumns = useMemo<
         ExtendedColumnDef<InternalResourceRow>[]
@@ -585,9 +533,15 @@ export default function ClientResourcesTable({
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
-                    <span className="p-3 text-end w-full inline-block">
-                        {t("labels")}
-                    </span>
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
                 ),
                 cell: ({ row }: { row: { original: InternalResourceRow } }) => (
                     <ClientResourceLabelCell
@@ -603,13 +557,15 @@ export default function ClientResourcesTable({
 
     function handleFilterChange(
         column: string,
-        value: string | undefined | null
+        value: string | undefined | null | string[]
     ) {
         searchParams.delete(column);
         searchParams.delete("page");
 
-        if (value) {
+        if (typeof value === "string") {
             searchParams.set(column, value);
+        } else if (value) {
+            value.forEach((val) => searchParams.append(column, val));
         }
         filter({
             searchParams
@@ -682,7 +638,7 @@ export default function ClientResourcesTable({
                 rows={internalResources}
                 tableId="internal-resources"
                 searchPlaceholder={t("resourcesSearch")}
-                searchQuery={searchParams.get("query") ?? ""}
+                searchQuery={searchParams.get("query")?.toString()}
                 onAdd={() => setIsCreateDialogOpen(true)}
                 addButtonText={t("resourceAdd")}
                 onSearch={handleSearchChange}

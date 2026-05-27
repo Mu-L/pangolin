@@ -2,7 +2,7 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import { Button } from "@app/components/ui/button";
-import { DataTable, ExtendedColumnDef } from "@app/components/ui/data-table";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,19 +10,21 @@ import {
     DropdownMenuTrigger
 } from "@app/components/ui/dropdown-menu";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { cn } from "@app/lib/cn";
+import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { PaginationState } from "@tanstack/react-table";
 import {
-    ArrowRight,
-    ArrowUpDown,
-    MoreHorizontal,
-    CircleSlash,
     ArrowDown01Icon,
+    ArrowRight,
     ArrowUp10Icon,
     ChevronsUpDownIcon,
+    CircleSlash,
+    MoreHorizontal,
     PlusIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -35,21 +37,15 @@ import {
     useState,
     useTransition
 } from "react";
-import { LabelBadge } from "./label-badge";
-import { LabelsSelector, type SelectedLabel } from "./labels-selector";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger
-} from "./ui/popover";
-import { Badge } from "./ui/badge";
-import type { PaginationState } from "@tanstack/react-table";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
-import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
 import { ColumnFilterButton } from "./ColumnFilterButton";
+import { LabelBadge } from "./label-badge";
+import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import { Badge } from "./ui/badge";
+import { ControlledDataTable } from "./ui/controlled-data-table";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 
 export type ClientRow = {
     id: number;
@@ -415,9 +411,15 @@ export default function MachineClientsTable({
                 id: "labels",
                 accessorKey: "labels",
                 header: () => (
-                    <span className="p-3 text-end w-full inline-block">
-                        {t("labels")}
-                    </span>
+                    <LabelColumnFilterButton
+                        orgId={orgId}
+                        selectedValues={searchParams.getAll("labels")}
+                        onSelectedValuesChange={(value) =>
+                            handleFilterChange("labels", value)
+                        }
+                        label={t("labels")}
+                        className="p-3"
+                    />
                 ),
                 cell: ({ row }: { row: { original: ClientRow } }) => (
                     <MachineClientLabelCell
@@ -510,11 +512,6 @@ export default function MachineClientsTable({
         return baseColumns;
     }, [hasRowsWithoutUserId, isLabelFeatureEnabled, orgId, t, searchParams]);
 
-    const booleanSearchFilterSchema = z
-        .enum(["true", "false"])
-        .optional()
-        .catch(undefined);
-
     function handleFilterChange(
         column: string,
         value: string | null | undefined | string[]
@@ -585,6 +582,7 @@ export default function MachineClientsTable({
                 rows={machineClients}
                 tableId="machine-clients"
                 searchPlaceholder={t("machinesSearch")}
+                searchQuery={searchParams.get("query")?.toString()}
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(`/${orgId}/settings/clients/machine/create`)
@@ -602,35 +600,6 @@ export default function MachineClientsTable({
                 columnVisibility={defaultMachineColumnVisibility}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
-                filters={[
-                    {
-                        id: "status",
-                        label: t("status") || "Status",
-                        multiSelect: true,
-                        displayMode: "calculated",
-                        options: [
-                            {
-                                id: "active",
-                                label: t("active") || "Active",
-                                value: "active"
-                            },
-                            {
-                                id: "archived",
-                                label: t("archived") || "Archived",
-                                value: "archived"
-                            },
-                            {
-                                id: "blocked",
-                                label: t("blocked") || "Blocked",
-                                value: "blocked"
-                            }
-                        ],
-                        onValueChange(selectedValues: string[]) {
-                            handleFilterChange("status", selectedValues);
-                        },
-                        values: searchParams.getAll("status")
-                    }
-                ]}
             />
         </>
     );
@@ -641,7 +610,10 @@ type MachineClientLabelCellProps = {
     orgId: string;
 };
 
-function MachineClientLabelCell({ client, orgId }: MachineClientLabelCellProps) {
+function MachineClientLabelCell({
+    client,
+    orgId
+}: MachineClientLabelCellProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -650,7 +622,10 @@ function MachineClientLabelCell({ client, orgId }: MachineClientLabelCellProps) 
     const labels = client.labels ?? [];
     const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
 
-    function toggleClientLabel(label: SelectedLabel, action: "attach" | "detach") {
+    function toggleClientLabel(
+        label: SelectedLabel,
+        action: "attach" | "detach"
+    ) {
         startTransition(async () => {
             try {
                 if (action === "attach") {

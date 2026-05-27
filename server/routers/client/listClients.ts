@@ -118,7 +118,27 @@ const listClientsSchema = z.object({
                 description:
                     "Filter by client status. Can be a comma-separated list of values. Defaults to 'active'."
             })
-    )
+    ),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by client labels"
+        })
 });
 
 function queryClientsBase() {
@@ -210,8 +230,16 @@ export async function listClients(
                 )
             );
         }
-        const { page, pageSize, online, query, status, sort_by, order } =
-            parsedQuery.data;
+        const {
+            page,
+            pageSize,
+            online,
+            query,
+            status,
+            sort_by,
+            order,
+            labels: labelFilter
+        } = parsedQuery.data;
 
         const parsedParams = listClientsParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -296,6 +324,22 @@ export async function listClients(
             }
 
             conditions.push(or(...filterAggregates));
+        }
+
+        if (isLabelFeatureEnabled && labelFilter && labelFilter.length > 0) {
+            conditions.push(
+                inArray(
+                    clients.clientId,
+                    db
+                        .select({ id: clientLabels.clientId })
+                        .from(clientLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, clientLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
+                )
+            );
         }
 
         if (query) {

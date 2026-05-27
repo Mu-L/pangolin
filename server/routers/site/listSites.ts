@@ -187,6 +187,26 @@ const listSitesSchema = z.object({
             type: "string",
             enum: ["pending", "approved"],
             description: "Filter by site status"
+        }),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by site labels"
         })
 });
 
@@ -319,8 +339,16 @@ export async function listSites(
             tierMatrix.labels
         );
 
-        const { pageSize, page, query, sort_by, order, online, status } =
-            parsedQuery.data;
+        const {
+            pageSize,
+            page,
+            query,
+            sort_by,
+            order,
+            online,
+            status,
+            labels: labelFilter
+        } = parsedQuery.data;
 
         const accessibleSiteIds = accessibleSites.map((site) => site.siteId);
 
@@ -337,6 +365,23 @@ export async function listSites(
         if (typeof status !== "undefined") {
             conditions.push(eq(sites.status, status));
         }
+
+        if (isLabelFeatureEnabled && labelFilter && labelFilter.length > 0) {
+            conditions.push(
+                inArray(
+                    sites.siteId,
+                    db
+                        .select({ id: siteLabels.siteId })
+                        .from(siteLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, siteLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
+                )
+            );
+        }
+
         if (query) {
             const q = "%" + query.toLowerCase() + "%";
             const queryList = [
@@ -366,7 +411,9 @@ export async function listSites(
 
         // we need to add `as` so that drizzle filters the result as a subquery
         const countQuery = db.$count(
-            querySitesBase().where(and(...conditions)).as("filtered_sites")
+            querySitesBase()
+                .where(and(...conditions))
+                .as("filtered_sites")
         );
 
         const siteListQuery = baseQuery
