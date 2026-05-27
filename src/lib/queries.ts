@@ -759,7 +759,13 @@ export const logQueries = {
             }
         }),
 
-    access: ({ orgId, filters }: { orgId: string; filters: AccessLogFilters }) =>
+    access: ({
+        orgId,
+        filters
+    }: {
+        orgId: string;
+        filters: AccessLogFilters;
+    }) =>
         queryOptions({
             queryKey: ["ACCESS_LOGS", orgId, "ALL", filters] as const,
             queryFn: async ({ signal, meta }) => {

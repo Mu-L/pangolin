@@ -36,15 +36,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
         <Alert>
             <AlertDescription>
                 {/* 4 cols because of the certs */}
-                <InfoSections cols={resource.http && build != "oss" ? 6 : 5}>
-                    <InfoSection>
-                        <InfoSectionTitle>{t("identifier")}</InfoSectionTitle>
-                        <InfoSectionContent>
-                            <span className="inline-flex items-center">
-                                {resource.niceId}
-                            </span>
-                        </InfoSectionContent>
-                    </InfoSection>
+                <InfoSections cols={resource.http && build != "oss" ? 5 : 4}>
                     {resource.http ? (
                         <>
                             <InfoSection>

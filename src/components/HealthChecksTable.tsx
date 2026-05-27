@@ -163,12 +163,12 @@ export default function HealthChecksTable({
         });
     }
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            router.refresh();
-        }, 30_000);
-        return () => clearInterval(interval);
-    }, [router]);
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         router.refresh();
+    //     }, 30_000);
+    //     return () => clearInterval(interval);
+    // }, [router]);
 
     const handlePaginationChange = (newState: PaginationState) => {
         searchParams.set("page", (newState.pageIndex + 1).toString());

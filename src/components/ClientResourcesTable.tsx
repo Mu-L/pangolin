@@ -29,8 +29,7 @@ import {
     ChevronDown,
     ChevronsUpDownIcon,
     Funnel,
-    MoreHorizontal,
-    PlusIcon
+    MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -40,7 +39,6 @@ import {
     startTransition,
     useEffect,
     useMemo,
-    useOptimistic,
     useState,
     useTransition
 } from "react";
@@ -62,10 +60,10 @@ import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertI
 import { build } from "@server/build";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { LabelBadge } from "./label-badge";
-import { LabelOverflowBadge } from "./label-overflow-badge";
-import { LabelsSelector, type SelectedLabel } from "./labels-selector";
+import { type SelectedLabel } from "./labels-selector";
+import { TableLabelsCell } from "./TableLabelsCell";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
+import { useLocalLabels } from "@app/hooks/useLocalLabels";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -164,12 +162,12 @@ export default function ClientResourcesTable({
     const { isPaidUser } = usePaidStatus();
     const isLabelFeatureEnabled = isPaidUser(tierMatrix.labels);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            router.refresh();
-        }, 30_000);
-        return () => clearInterval(interval);
-    }, [router]);
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         router.refresh();
+    //     }, 30_000);
+    //     return () => clearInterval(interval);
+    // }, [router]);
 
     const siteIdQ = searchParams.get("siteId");
     const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
@@ -700,27 +698,28 @@ function ClientResourceLabelCell({
 }: ClientResourceLabelCellProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-    const router = useRouter();
-
-    const labels = resource.labels ?? [];
-    const [optimisticLabels, setOptimisticLabels] = useOptimistic(labels);
+    const [localLabels, setLocalLabels] = useLocalLabels(
+        resource.labels,
+        resource.id
+    );
 
     function toggleResourceLabel(
         label: SelectedLabel,
         action: "attach" | "detach"
     ) {
-        startTransition(async () => {
+        const previousLabels = localLabels;
+
+        void (async () => {
             try {
                 if (action === "attach") {
-                    setOptimisticLabels([...optimisticLabels, label]);
+                    setLocalLabels([...previousLabels, label]);
                     await api.put(
                         `/org/${orgId}/label/${label.labelId}/attach`,
                         { siteResourceId: resource.id }
                     );
                 } else {
-                    setOptimisticLabels(
-                        optimisticLabels.filter(
+                    setLocalLabels(
+                        previousLabels.filter(
                             (lb) => lb.labelId !== label.labelId
                         )
                     );
@@ -730,54 +729,21 @@ function ClientResourceLabelCell({
                     );
                 }
             } catch (e) {
+                setLocalLabels(previousLabels);
                 toast({
                     title: t("error"),
                     description: formatAxiosError(e, t("errorOccurred")),
                     variant: "destructive"
                 });
-            } finally {
-                router.refresh();
             }
-        });
+        })();
     }
 
-    const visibleLabels = optimisticLabels.slice(0, 3);
-    const overflowLabels = optimisticLabels.slice(3);
-
     return (
-        <div className="inline-flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-hidden">
-            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        size="icon"
-                        variant="outline"
-                        className="size-auto shrink-0 rounded-full p-1"
-                        title={t("addLabels")}
-                    >
-                        <span className="sr-only">{t("addLabels")}</span>
-                        <PlusIcon className="size-3" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent align="center" className="p-0 w-full">
-                    <LabelsSelector
-                        orgId={orgId}
-                        selectedLabels={optimisticLabels}
-                        toggleLabel={toggleResourceLabel}
-                    />
-                </PopoverContent>
-            </Popover>
-            {visibleLabels.map((label) => (
-                <LabelBadge
-                    key={label.labelId}
-                    className="shrink-0"
-                    onClick={() => setIsPopoverOpen(true)}
-                    {...label}
-                />
-            ))}
-            <LabelOverflowBadge
-                labels={overflowLabels}
-                onClick={() => setIsPopoverOpen(true)}
-            />
-        </div>
+        <TableLabelsCell
+            orgId={orgId}
+            localLabels={localLabels}
+            toggleLabel={toggleResourceLabel}
+        />
     );
 }
