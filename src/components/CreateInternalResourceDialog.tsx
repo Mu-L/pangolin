@@ -76,7 +76,7 @@ export default function CreateInternalResourceDialog({
                     ...(data.mode === "http" && {
                         scheme: data.scheme,
                         ssl: data.ssl ?? false,
-                        destinationPort: data.httpHttpsPort ?? undefined,
+                        destinationPort: data.destinationPort ?? undefined,
                         domainId: data.httpConfigDomainId
                             ? data.httpConfigDomainId
                             : undefined,

@@ -54,6 +54,7 @@ import {
     MultiSitesSelector,
     formatMultiSitesSelectorLabel
 } from "./multi-site-selector";
+import { SitesSelector } from "./site-selector";
 import type { Selectedsite } from "./site-selector";
 
 import { MachinesSelector } from "./machines-selector";
@@ -154,7 +155,7 @@ export type InternalResourceData = {
     authDaemonMode?: "site" | "remote" | "native" | null;
     authDaemonPort?: number | null;
     pamMode?: "passthrough" | "push" | null;
-    httpHttpsPort?: number | null;
+    destinationPort?: number | null;
     scheme?: "http" | "https" | null;
     ssl?: boolean;
     subdomain?: string | null;
@@ -187,7 +188,7 @@ export type InternalResourceFormValues = {
     authDaemonMode?: "site" | "remote" | "native" | null;
     authDaemonPort?: number | null;
     pamMode?: "passthrough" | "push" | null;
-    httpHttpsPort?: number | null;
+    destinationPort?: number | null;
     scheme?: "http" | "https";
     ssl?: boolean;
     httpConfigSubdomain?: string | null;
@@ -286,7 +287,7 @@ export function InternalResourceForm({
         variant === "create"
             ? "createInternalResourceDialogAlias"
             : "editInternalResourceDialogAlias";
-    const httpHttpsPortLabelKey =
+    const destinationPortLabelKey =
         variant === "create"
             ? "createInternalResourceDialogModePort"
             : "editInternalResourceDialogModePort";
@@ -308,16 +309,9 @@ export function InternalResourceForm({
             name: z.string().min(1, t(nameRequiredKey)).max(255, t(nameMaxKey)),
             siteIds: siteIdsSchema,
             mode: z.enum(["host", "cidr", "http", "ssh"]),
-            destination: z
-                .string()
-                .min(
-                    1,
-                    destinationRequiredKey
-                        ? { message: t(destinationRequiredKey) }
-                        : undefined
-                ),
+            destination: z.string(),
             alias: z.string().nullish(),
-            httpHttpsPort: z
+            destinationPort: z
                 .number()
                 .int()
                 .min(1)
@@ -356,6 +350,20 @@ export function InternalResourceForm({
                 .optional()
         })
         .superRefine((data, ctx) => {
+            const isNativeSsh =
+                data.mode === "ssh" && data.authDaemonMode === "native";
+            if (
+                !isNativeSsh &&
+                (!data.destination || data.destination.length < 1)
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: destinationRequiredKey
+                        ? t(destinationRequiredKey)
+                        : "Destination is required",
+                    path: ["destination"]
+                });
+            }
             if (data.mode !== "http") return;
             if (!data.scheme) {
                 ctx.addIssue({
@@ -365,14 +373,15 @@ export function InternalResourceForm({
                 });
             }
             if (
-                data.httpHttpsPort == null ||
-                !Number.isFinite(data.httpHttpsPort) ||
-                data.httpHttpsPort < 1
+                !isNativeSsh &&
+                (data.destinationPort == null ||
+                    !Number.isFinite(data.destinationPort) ||
+                    data.destinationPort < 1)
             ) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: t("internalResourceHttpPortRequired"),
-                    path: ["httpHttpsPort"]
+                    path: ["destinationPort"]
                 });
             }
         });
@@ -523,7 +532,7 @@ export function InternalResourceForm({
                           : (resource.authDaemonMode ?? "site"),
                   authDaemonPort: resource.authDaemonPort ?? null,
                   pamMode: resource.pamMode ?? "passthrough",
-                  httpHttpsPort: resource.httpHttpsPort ?? null,
+                  destinationPort: resource.destinationPort ?? null,
                   scheme: resource.scheme ?? "http",
                   ssl: resource.ssl ?? false,
                   httpConfigSubdomain: resource.subdomain ?? null,
@@ -540,7 +549,7 @@ export function InternalResourceForm({
                   mode: "host",
                   destination: "",
                   alias: null,
-                  httpHttpsPort: null,
+                  destinationPort: null,
                   scheme: "http",
                   ssl: true,
                   httpConfigSubdomain: null,
@@ -605,7 +614,7 @@ export function InternalResourceForm({
                 mode: "host",
                 destination: "",
                 alias: null,
-                httpHttpsPort: null,
+                destinationPort: null,
                 scheme: "http",
                 ssl: true,
                 httpConfigSubdomain: null,
@@ -641,7 +650,7 @@ export function InternalResourceForm({
                     mode: resource.mode ?? "host",
                     destination: resource.destination ?? "",
                     alias: resource.alias ?? null,
-                    httpHttpsPort: resource.httpHttpsPort ?? null,
+                    destinationPort: resource.destinationPort ?? null,
                     scheme: resource.scheme ?? "http",
                     ssl: resource.ssl ?? false,
                     httpConfigSubdomain: resource.subdomain ?? null,
@@ -812,56 +821,120 @@ export function InternalResourceForm({
                                                     <FormLabel>
                                                         {t("sites")}
                                                     </FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className={cn(
-                                                                        "w-full justify-between",
-                                                                        selectedSites.length ===
-                                                                            0 &&
-                                                                            "text-muted-foreground"
-                                                                    )}
-                                                                >
-                                                                    <span className="truncate text-left">
-                                                                        {formatMultiSitesSelectorLabel(
-                                                                            selectedSites,
-                                                                            t
+                                                    {mode === "ssh" &&
+                                                    sshServerMode ===
+                                                        "native" ? (
+                                                        <Popover>
+                                                            <PopoverTrigger
+                                                                asChild
+                                                            >
+                                                                <FormControl>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        role="combobox"
+                                                                        className={cn(
+                                                                            "w-full justify-between",
+                                                                            selectedSites.length ===
+                                                                                0 &&
+                                                                                "text-muted-foreground"
                                                                         )}
-                                                                    </span>
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-full p-0">
-                                                            <MultiSitesSelector
-                                                                orgId={orgId}
-                                                                selectedSites={
-                                                                    selectedSites
-                                                                }
-                                                                filterTypes={[
-                                                                    "newt"
-                                                                ]}
-                                                                onSelectionChange={(
-                                                                    sites
-                                                                ) => {
-                                                                    setSelectedSites(
+                                                                    >
+                                                                        <span className="truncate text-left">
+                                                                            {selectedSites[0]
+                                                                                ?.name ??
+                                                                                t(
+                                                                                    "selectSite"
+                                                                                )}
+                                                                        </span>
+                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                    </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-full p-0">
+                                                                <SitesSelector
+                                                                    orgId={
+                                                                        orgId
+                                                                    }
+                                                                    selectedSite={
+                                                                        selectedSites[0] ??
+                                                                        null
+                                                                    }
+                                                                    filterTypes={[
+                                                                        "newt"
+                                                                    ]}
+                                                                    onSelectSite={(
+                                                                        site
+                                                                    ) => {
+                                                                        setSelectedSites(
+                                                                            [
+                                                                                site
+                                                                            ]
+                                                                        );
+                                                                        field.onChange(
+                                                                            [
+                                                                                site.siteId
+                                                                            ]
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    ) : (
+                                                        <Popover>
+                                                            <PopoverTrigger
+                                                                asChild
+                                                            >
+                                                                <FormControl>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        role="combobox"
+                                                                        className={cn(
+                                                                            "w-full justify-between",
+                                                                            selectedSites.length ===
+                                                                                0 &&
+                                                                                "text-muted-foreground"
+                                                                        )}
+                                                                    >
+                                                                        <span className="truncate text-left">
+                                                                            {formatMultiSitesSelectorLabel(
+                                                                                selectedSites,
+                                                                                t
+                                                                            )}
+                                                                        </span>
+                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                    </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-full p-0">
+                                                                <MultiSitesSelector
+                                                                    orgId={
+                                                                        orgId
+                                                                    }
+                                                                    selectedSites={
+                                                                        selectedSites
+                                                                    }
+                                                                    filterTypes={[
+                                                                        "newt"
+                                                                    ]}
+                                                                    onSelectionChange={(
                                                                         sites
-                                                                    );
-                                                                    field.onChange(
-                                                                        sites.map(
-                                                                            (
-                                                                                s
-                                                                            ) =>
-                                                                                s.siteId
-                                                                        )
-                                                                    );
-                                                                }}
-                                                            />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                                    ) => {
+                                                                        setSelectedSites(
+                                                                            sites
+                                                                        );
+                                                                        field.onChange(
+                                                                            sites.map(
+                                                                                (
+                                                                                    s
+                                                                                ) =>
+                                                                                    s.siteId
+                                                                            )
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    )}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -950,8 +1023,10 @@ export function InternalResourceForm({
                                     "grid gap-4 items-start",
                                     mode === "cidr" && "grid-cols-1",
                                     mode === "http" && "grid-cols-3",
-                                    (mode === "host" || mode === "ssh") &&
-                                        "grid-cols-2"
+                                    mode === "host" && "grid-cols-2",
+                                    mode === "ssh" &&
+                                        sshServerMode !== "native" &&
+                                        "grid-cols-3"
                                 )}
                             >
                                 {mode === "http" && (
@@ -996,7 +1071,11 @@ export function InternalResourceForm({
                                         />
                                     </div>
                                 )}
-                                {sshServerMode !== "native" && (
+                                {((mode === "ssh" &&
+                                    sshServerMode !== "native") ||
+                                    mode === "http" ||
+                                    mode === "host" ||
+                                    mode === "cidr") && (
                                     <div
                                         className={cn(
                                             mode === "cidr" && "col-span-1",
@@ -1030,43 +1109,46 @@ export function InternalResourceForm({
                                         />
                                     </div>
                                 )}
-                                {(mode === "host" || mode === "ssh") &&
-                                    sshServerMode !== "native" && (
-                                        <div className="min-w-0">
-                                            <FormField
-                                                control={form.control}
-                                                name="alias"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>
-                                                            {t(aliasLabelKey)}
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                className="w-full"
-                                                                value={
-                                                                    field.value ??
-                                                                    ""
-                                                                }
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    )}
-                                {mode === "http" && (
+                                {(mode === "host" ||
+                                    (mode === "ssh" &&
+                                        sshServerMode !== "native")) && (
                                     <div className="min-w-0">
                                         <FormField
                                             control={form.control}
-                                            name="httpHttpsPort"
+                                            name="alias"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t(aliasLabelKey)}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            className="w-full"
+                                                            value={
+                                                                field.value ??
+                                                                ""
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                )}
+                                {(mode === "http" ||
+                                    (mode === "ssh" &&
+                                        sshServerMode !== "native")) && (
+                                    <div className="min-w-0">
+                                        <FormField
+                                            control={form.control}
+                                            name="destinationPort"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
                                                         {t(
-                                                            httpHttpsPortLabelKey
+                                                            destinationPortLabelKey
                                                         )}
                                                     </FormLabel>
                                                     <FormControl>
@@ -1690,6 +1772,16 @@ export function InternalResourceForm({
                                                 "authDaemonPort",
                                                 null
                                             );
+                                            // Trim to single site
+                                            if (selectedSites.length > 1) {
+                                                const first =
+                                                    selectedSites.slice(0, 1);
+                                                setSelectedSites(first);
+                                                form.setValue(
+                                                    "siteIds",
+                                                    first.map((s) => s.siteId)
+                                                );
+                                            }
                                         } else {
                                             form.setValue(
                                                 "authDaemonMode",

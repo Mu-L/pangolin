@@ -120,7 +120,7 @@ export default async function ClientResourcesPage(
                 // proxyPort: siteResource.proxyPort,
                 siteIds: siteResource.siteIds,
                 destination: siteResource.destination,
-                httpHttpsPort: siteResource.destinationPort ?? null,
+                destinationPort: siteResource.destinationPort ?? null,
                 alias: siteResource.alias || null,
                 aliasAddress: siteResource.aliasAddress || null,
                 siteNiceIds: siteResource.siteNiceIds,

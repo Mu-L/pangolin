@@ -56,7 +56,7 @@ const updateSiteResourceSchema = z
             )
             .optional(),
         // mode: z.enum(["host", "cidr", "port"]).optional(),
-        mode: z.enum(["host", "cidr", "http"]).optional(),
+        mode: z.enum(["host", "cidr", "http", "ssh"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
         // proxyPort: z.int().positive().nullish(),
@@ -85,7 +85,10 @@ const updateSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host" && data.destination) {
+            if (
+                (data.mode === "host" || data.mode == "ssh") &&
+                data.destination
+            ) {
                 const isValidIP = z
                     // .union([z.ipv4(), z.ipv6()])
                     .union([z.ipv4()]) // for now lets just do ipv4 until we verify ipv6 works everywhere
@@ -126,15 +129,24 @@ const updateSiteResourceSchema = z
     )
     .refine(
         (data) => {
-            if (data.mode !== "http") return true;
-            return (
-                data.scheme !== undefined &&
-                data.scheme !== null &&
-                data.destinationPort !== undefined &&
-                data.destinationPort !== null &&
-                data.destinationPort >= 1 &&
-                data.destinationPort <= 65535
-            );
+            if (data.mode === "http") {
+                return (
+                    data.scheme !== undefined &&
+                    data.scheme !== null &&
+                    data.destinationPort !== undefined &&
+                    data.destinationPort !== null &&
+                    data.destinationPort >= 1 &&
+                    data.destinationPort <= 65535
+                );
+            } else if (data.mode === "ssh") {
+                // just check the destinationPort
+                return (
+                    data.destinationPort === undefined ||
+                    (data.destinationPort !== null &&
+                        data.destinationPort >= 1 &&
+                        data.destinationPort <= 65535)
+                );
+            }
         },
         {
             message:
@@ -446,6 +458,16 @@ export async function updateSiteResource(
                               })
                           }
                         : {};
+
+                let tcpPortRangeStringAdjusted = tcpPortRangeString;
+                if (mode === "http") {
+                    tcpPortRangeStringAdjusted = "443,80";
+                } else if (mode === "ssh") {
+                    tcpPortRangeStringAdjusted = destinationPort
+                        ? destinationPort.toString()
+                        : "22";
+                }
+
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
@@ -458,12 +480,14 @@ export async function updateSiteResource(
                         destinationPort,
                         enabled,
                         alias: alias ? alias.trim() : null,
-                        tcpPortRangeString:
-                            mode == "http" ? "443,80" : tcpPortRangeString,
+                        tcpPortRangeString: tcpPortRangeStringAdjusted,
                         udpPortRangeString:
-                            mode == "http" ? "" : udpPortRangeString,
+                            mode == "http" || mode == "ssh"
+                                ? ""
+                                : udpPortRangeString,
                         disableIcmp:
-                            disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
+                            disableIcmp ||
+                            (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
                         domainId,
                         subdomain: finalSubdomain,
                         fullDomain,

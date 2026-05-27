@@ -44,7 +44,7 @@ const createSiteResourceSchema = z
         name: z.string().min(1).max(255),
         niceId: z.string().optional(),
         // protocol: z.enum(["tcp", "udp"]).optional(),
-        mode: z.enum(["host", "cidr", "http"]),
+        mode: z.enum(["host", "cidr", "http", "ssh"]),
         ssl: z.boolean().optional(), // only used for http mode
         scheme: z.enum(["http", "https"]).optional(),
         siteIds: z.array(z.int()).optional(),
@@ -75,7 +75,7 @@ const createSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host") {
+            if (data.mode === "host" || data.mode === "ssh") {
                 // Check if it's a valid IP address using zod (v4 or v6)
                 const isValidIP = z
                     // .union([z.ipv4(), z.ipv6()])
@@ -117,13 +117,24 @@ const createSiteResourceSchema = z
     )
     .refine(
         (data) => {
-            if (data.mode !== "http") return true;
-            return (
-                data.scheme !== undefined &&
-                data.destinationPort !== undefined &&
-                data.destinationPort >= 1 &&
-                data.destinationPort <= 65535
-            );
+            if (data.mode === "http") {
+                return (
+                    data.scheme !== undefined &&
+                    data.scheme !== null &&
+                    data.destinationPort !== undefined &&
+                    data.destinationPort !== null &&
+                    data.destinationPort >= 1 &&
+                    data.destinationPort <= 65535
+                );
+            } else if (data.mode === "ssh") {
+                // just check the destinationPort
+                return (
+                    data.destinationPort === undefined ||
+                    (data.destinationPort !== null &&
+                        data.destinationPort >= 1 &&
+                        data.destinationPort <= 65535)
+                );
+            }
         },
         {
             message:
@@ -391,6 +402,15 @@ export async function createSiteResource(
                 );
             }
 
+            let tcpPortRangeStringAdjusted = tcpPortRangeString;
+            if (mode === "http") {
+                tcpPortRangeStringAdjusted = "443,80";
+            } else if (mode === "ssh") {
+                tcpPortRangeStringAdjusted = destinationPort
+                    ? destinationPort.toString()
+                    : "22";
+            }
+
             // Create the site resource
             const insertValues: typeof siteResources.$inferInsert = {
                 niceId: updatedNiceId!,
@@ -405,10 +425,12 @@ export async function createSiteResource(
                 enabled,
                 alias: alias ? alias.trim() : null,
                 aliasAddress,
-                tcpPortRangeString:
-                    mode == "http" ? "443,80" : tcpPortRangeString,
-                udpPortRangeString: mode == "http" ? "" : udpPortRangeString,
-                disableIcmp: disableIcmp || (mode == "http" ? true : false), // default to true for http resources, otherwise false
+                tcpPortRangeString: tcpPortRangeStringAdjusted,
+                udpPortRangeString:
+                    mode == "http" || mode == "ssh" ? "" : udpPortRangeString,
+                disableIcmp:
+                    disableIcmp ||
+                    (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
                 domainId,
                 subdomain: finalSubdomain,
                 fullDomain

@@ -78,7 +78,7 @@ export default function EditInternalResourceDialog({
                 ...(data.mode === "http" && {
                     scheme: data.scheme,
                     ssl: data.ssl ?? false,
-                    destinationPort: data.httpHttpsPort ?? null,
+                    destinationPort: data.destinationPort ?? null,
                     domainId: data.httpConfigDomainId
                         ? data.httpConfigDomainId
                         : undefined,

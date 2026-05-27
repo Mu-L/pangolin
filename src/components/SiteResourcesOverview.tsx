@@ -73,7 +73,7 @@ function PrivateResourceMeta({ row }: { row: SiteResourceRow }) {
     const dest = formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
-        httpHttpsPort: row.destinationPort ?? null,
+        destinationPort: row.destinationPort ?? null,
         scheme: row.scheme
     });
     return (
@@ -149,7 +149,7 @@ function PrivateAccessMethod({ row }: { row: SiteResourceRow }) {
     const dest = formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
-        httpHttpsPort: row.destinationPort,
+        destinationPort: row.destinationPort,
         scheme: row.scheme
     });
     return (

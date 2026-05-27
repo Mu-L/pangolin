@@ -83,7 +83,7 @@ export type InternalResourceRow = {
     // protocol: string | null;
     // proxyPort: number | null;
     destination: string;
-    httpHttpsPort: number | null;
+    destinationPort: number | null;
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
@@ -107,7 +107,7 @@ function formatDestinationDisplay(row: InternalResourceRow): string {
     return formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
-        httpHttpsPort: row.httpHttpsPort,
+        destinationPort: row.destinationPort,
         scheme: row.scheme
     });
 }
