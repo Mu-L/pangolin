@@ -28,6 +28,14 @@ import { LABEL_COLORS } from "./labels-selector";
 
 const MAX_VISIBLE_SUMMARY_LABELS = 3;
 
+function areSelectionsEqual(a: string[], b: string[]) {
+    if (a.length !== b.length) {
+        return false;
+    }
+    const setB = new Set(b);
+    return a.every((value) => setB.has(value));
+}
+
 type LabelColumnFilterButtonProps = {
     selectedValues: string[];
     onSelectedValuesChange: (values: string[]) => void;
@@ -44,6 +52,7 @@ export function LabelColumnFilterButton({
     orgId
 }: LabelColumnFilterButtonProps) {
     const [open, setOpen] = useState(false);
+    const [draftValues, setDraftValues] = useState<string[]>(selectedValues);
     const t = useTranslations();
 
     const [labelSearchQuery, setlabelsSearchQuery] = useState("");
@@ -57,10 +66,7 @@ export function LabelColumnFilterButton({
         })
     );
 
-    const selectedSet = useMemo(
-        () => new Set(selectedValues),
-        [selectedValues]
-    );
+    const draftSet = useMemo(() => new Set(draftValues), [draftValues]);
 
     const selectedLabels = useMemo(
         () =>
@@ -105,15 +111,29 @@ export function LabelColumnFilterButton({
     }, [selectedLabels]);
 
     function toggle(value: string) {
-        const next = selectedSet.has(value)
-            ? selectedValues.filter((v) => v !== value)
-            : [...selectedValues, value];
-        onSelectedValuesChange(next);
+        setDraftValues((current) =>
+            current.includes(value)
+                ? current.filter((v) => v !== value)
+                : [...current, value]
+        );
+    }
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (nextOpen) {
+            setDraftValues(selectedValues);
+            setOpen(true);
+            return;
+        }
+
+        setOpen(false);
+        if (!areSelectionsEqual(draftValues, selectedValues)) {
+            onSelectedValuesChange(draftValues);
+        }
     }
 
     return (
         <div className="flex items-center">
-            <Popover open={open} onOpenChange={setOpen}>
+            <Popover open={open} onOpenChange={handleOpenChange}>
                 <PopoverTrigger asChild>
                     <Button
                         variant="ghost"
@@ -146,11 +166,10 @@ export function LabelColumnFilterButton({
                         <CommandList>
                             <CommandEmpty>{t("labelsNotFound")}</CommandEmpty>
                             <CommandGroup>
-                                {selectedValues.length > 0 && (
+                                {draftValues.length > 0 && (
                                     <CommandItem
                                         onSelect={() => {
-                                            onSelectedValuesChange([]);
-                                            setOpen(false);
+                                            setDraftValues([]);
                                         }}
                                         className="text-muted-foreground"
                                     >
@@ -169,7 +188,7 @@ export function LabelColumnFilterButton({
                                         <CheckIcon
                                             className={cn(
                                                 "mr-2 h-4 w-4",
-                                                selectedSet.has(label.name)
+                                                draftSet.has(label.name)
                                                     ? "opacity-100"
                                                     : "opacity-0"
                                             )}
