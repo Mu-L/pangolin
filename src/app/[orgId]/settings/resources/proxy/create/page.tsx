@@ -423,7 +423,7 @@ export default function Page() {
                         : undefined,
                     domainId: httpData.domainId,
                     protocol: "tcp",
-                    browserAccessType: resourceType,
+                    mode: resourceType,
                     pamMode,
                     authDaemonMode: effectiveMode,
                     authDaemonPort: effectivePort

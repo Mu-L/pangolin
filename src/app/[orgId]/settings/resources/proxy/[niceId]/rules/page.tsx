@@ -149,10 +149,7 @@ export default function ResourceRules(props: {
         resolver: zodResolver(addRuleSchema),
         defaultValues: {
             action: "ACCEPT",
-            match:
-                resource.http && resource.browserAccessType == "http"
-                    ? "PATH"
-                    : "IP",
+            match: resource.http && resource.mode == "http" ? "PATH" : "IP",
             value: ""
         }
     });
@@ -580,12 +577,11 @@ export default function ResourceRules(props: {
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        {resource.http &&
-                            resource.browserAccessType == "http" && (
-                                <SelectItem value="PATH">
-                                    {RuleMatch.PATH}
-                                </SelectItem>
-                            )}
+                        {resource.http && resource.mode == "http" && (
+                            <SelectItem value="PATH">
+                                {RuleMatch.PATH}
+                            </SelectItem>
+                        )}
                         <SelectItem value="IP">{RuleMatch.IP}</SelectItem>
                         <SelectItem value="CIDR">{RuleMatch.CIDR}</SelectItem>
                         {isMaxmindAvailable && (
@@ -1042,7 +1038,7 @@ export default function ResourceRules(props: {
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {resource.http &&
-                                                                resource.browserAccessType ==
+                                                                resource.mode ==
                                                                     "http" && (
                                                                     <SelectItem value="PATH">
                                                                         {

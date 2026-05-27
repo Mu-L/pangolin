@@ -88,7 +88,7 @@ export type ResourceRow = {
     name: string;
     orgId: string;
     domain: string;
-    browserAccessType: string | null;
+    mode: string | null;
     authState: string;
     http: boolean;
     protocol: string;
@@ -412,10 +412,7 @@ export default function ProxyResourcesTable({
                 ),
                 cell: ({ row }) => {
                     const resourceRow = row.original;
-                    if (
-                        !resourceRow.http ||
-                        resourceRow.browserAccessType !== "http"
-                    ) {
+                    if (!resourceRow.http || resourceRow.mode !== "http") {
                         return <span>-</span>;
                     }
                     return (
@@ -446,10 +443,7 @@ export default function ProxyResourcesTable({
                 header: () => <span className="p-3">{t("uptime30d")}</span>,
                 cell: ({ row }) => {
                     const resourceRow = row.original;
-                    if (
-                        !resourceRow.http ||
-                        resourceRow.browserAccessType !== "http"
-                    ) {
+                    if (!resourceRow.http || resourceRow.mode !== "http") {
                         return <span>-</span>;
                     }
                     return (

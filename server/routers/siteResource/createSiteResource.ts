@@ -146,6 +146,21 @@ const createSiteResourceSchema = z
     )
     .refine(
         (data) => {
+            // destination is only optional for ssh mode with native authDaemonMode
+            if (data.mode === "ssh" && data.authDaemonMode === "native") {
+                return true;
+            }
+            return (
+                data.destination !== undefined && data.destination.trim() !== ""
+            );
+        },
+        {
+            message:
+                "Destination is required unless mode is ssh with authDaemonMode native"
+        }
+    )
+    .refine(
+        (data) => {
             return (
                 (data.siteIds !== undefined && data.siteIds.length > 0) ||
                 data.siteId !== undefined

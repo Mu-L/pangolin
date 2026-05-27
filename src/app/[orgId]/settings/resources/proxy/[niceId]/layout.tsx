@@ -86,8 +86,8 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
             href: `/{orgId}/settings/resources/proxy/{niceId}/general`
         },
         {
-            title: t(`${resource.browserAccessType}Settings`),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/${resource.browserAccessType}`
+            title: t(`${resource.mode}Settings`),
+            href: `/{orgId}/settings/resources/proxy/{niceId}/${resource.mode}`
         }
     ];
 

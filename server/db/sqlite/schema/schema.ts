@@ -142,8 +142,6 @@ export const resources = sqliteTable("resources", {
         .notNull()
         .default(false),
     sso: integer("sso", { mode: "boolean" }).notNull().default(true),
-    http: integer("http", { mode: "boolean" }).notNull().default(true),
-    protocol: text("protocol").notNull(),
     proxyPort: integer("proxyPort"),
     emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: "boolean" })
         .notNull()
@@ -166,7 +164,6 @@ export const resources = sqliteTable("resources", {
         .notNull()
         .default(false),
     proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
-
     maintenanceModeEnabled: integer("maintenanceModeEnabled", {
         mode: "boolean"
     })
@@ -181,7 +178,7 @@ export const resources = sqliteTable("resources", {
     postAuthPath: text("postAuthPath"),
     health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
     wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
-    browserAccessType: text("browserAccessType").default("http"), // rdp, ssh, http, vnc
+    mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
     pamMode: text("pamMode")
         .$type<"passthrough" | "push">()
         .default("passthrough"),

@@ -137,8 +137,6 @@ export type ResourceWithTargets = {
     sso: boolean;
     pincodeId: number | null;
     whitelist: boolean;
-    http: boolean;
-    protocol: string;
     proxyPort: number | null;
     enabled: boolean;
     domainId: string | null;
@@ -146,7 +144,7 @@ export type ResourceWithTargets = {
     headerAuthId: number | null;
     wildcard: boolean;
     health: string | null;
-    browserAccessType: string | null;
+    mode: string | null;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -175,8 +173,6 @@ function queryResourcesBase() {
             sso: resources.sso,
             pincodeId: resourcePincode.pincodeId,
             whitelist: resources.emailWhitelistEnabled,
-            http: resources.http,
-            protocol: resources.protocol,
             proxyPort: resources.proxyPort,
             enabled: resources.enabled,
             domainId: resources.domainId,
@@ -186,7 +182,7 @@ function queryResourcesBase() {
             headerAuthExtendedCompatibilityId:
                 resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
             health: resources.health,
-            browserAccessType: resources.browserAccessType
+            mode: resources.mode
         })
         .from(resources)
         .leftJoin(
@@ -346,7 +342,9 @@ export async function listResources(
         if (typeof authState !== "undefined") {
             switch (authState) {
                 case "none":
-                    conditions.push(eq(resources.http, false));
+                    conditions.push(
+                        or(eq(resources.mode, "tcp"), eq(resources.mode, "udp"))
+                    );
                     break;
                 case "protected":
                     conditions.push(
@@ -525,11 +523,9 @@ export async function listResources(
                     sso: row.sso,
                     pincodeId: row.pincodeId,
                     whitelist: row.whitelist,
-                    http: row.http,
-                    protocol: row.protocol,
                     proxyPort: row.proxyPort,
                     wildcard: row.wildcard,
-                    browserAccessType: row.browserAccessType,
+                    mode: row.mode,
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,

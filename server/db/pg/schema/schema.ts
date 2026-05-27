@@ -129,8 +129,6 @@ export const resources = pgTable("resources", {
     ssl: boolean("ssl").notNull().default(false),
     blockAccess: boolean("blockAccess").notNull().default(false),
     sso: boolean("sso").notNull().default(true),
-    http: boolean("http").notNull().default(true),
-    protocol: varchar("protocol").notNull(),
     proxyPort: integer("proxyPort"),
     emailWhitelistEnabled: boolean("emailWhitelistEnabled")
         .notNull()
@@ -159,7 +157,7 @@ export const resources = pgTable("resources", {
     postAuthPath: text("postAuthPath"),
     health: varchar("health").default("unknown"), // "healthy", "unhealthy", "unknown"
     wildcard: boolean("wildcard").notNull().default(false),
-    browserAccessType: text("browserAccessType").default("http"), // rdp, ssh, http, vnc
+    mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
     pamMode: varchar("pamMode", { length: 32 })
         .$type<"passthrough" | "push">()
         .default("passthrough"),

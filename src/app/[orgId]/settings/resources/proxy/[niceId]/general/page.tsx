@@ -559,7 +559,7 @@ export default function GeneralForm() {
             <SettingsContainer>
                 {resource?.resourceId &&
                     resource?.orgId &&
-                    resource.browserAccessType == "http" && (
+                    resource.mode == "http" && (
                         <UptimeAlertSection
                             orgId={resource.orgId}
                             resourceId={resource.resourceId}

@@ -36,9 +36,9 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
         resource.fullDomain &&
         build != "oss"
     );
-    const showType = !!(resource.http && resource.browserAccessType);
+    const showType = !!(resource.http && resource.mode);
     const showHealth =
-        !["ssh", "rdp", "vnc"].includes(resource.browserAccessType || "") &&
+        !["ssh", "rdp", "vnc"].includes(resource.mode || "") &&
         !!resource.health &&
         resource.health !== "unknown";
     const showVisibility = !resource.enabled;
@@ -88,7 +88,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                     </InfoSectionTitle>
                                     <InfoSectionContent>
                                         <span className="inline-flex items-center">
-                                            {resource.browserAccessType!.toUpperCase()}
+                                            {resource.mode!.toUpperCase()}
                                         </span>
                                     </InfoSectionContent>
                                 </InfoSection>
