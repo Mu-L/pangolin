@@ -77,7 +77,8 @@ const updateSiteResourceSchema = z
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().nullish(),
-        authDaemonMode: z.enum(["site", "remote"]).optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
+        pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(),
         subdomain: z.string().optional()
     })
@@ -222,6 +223,7 @@ export async function updateSiteResource(
             disableIcmp,
             authDaemonPort,
             authDaemonMode,
+            pamMode,
             domainId,
             subdomain
         } = parsedBody.data;
@@ -430,13 +432,17 @@ export async function updateSiteResource(
                 const sshPamSet =
                     isLicensedSshPam &&
                     (authDaemonPort !== undefined ||
-                        authDaemonMode !== undefined)
+                        authDaemonMode !== undefined ||
+                        pamMode !== undefined)
                         ? {
                               ...(authDaemonPort !== undefined && {
                                   authDaemonPort
                               }),
                               ...(authDaemonMode !== undefined && {
                                   authDaemonMode
+                              }),
+                              ...(pamMode !== undefined && {
+                                  pamMode
                               })
                           }
                         : {};
@@ -554,13 +560,17 @@ export async function updateSiteResource(
                 const sshPamSet =
                     isLicensedSshPam &&
                     (authDaemonPort !== undefined ||
-                        authDaemonMode !== undefined)
+                        authDaemonMode !== undefined ||
+                        pamMode !== undefined)
                         ? {
                               ...(authDaemonPort !== undefined && {
                                   authDaemonPort
                               }),
                               ...(authDaemonMode !== undefined && {
                                   authDaemonMode
+                              }),
+                              ...(pamMode !== undefined && {
+                                  pamMode
                               })
                           }
                         : {};

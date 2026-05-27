@@ -56,7 +56,9 @@ export default async function ClientResourcesPage(
         pagination = responseData.pagination;
     } catch (e) {}
 
-    const siteIdParam = parsePositiveInt(searchParams.get("siteId") ?? undefined);
+    const siteIdParam = parsePositiveInt(
+        searchParams.get("siteId") ?? undefined
+    );
 
     let initialFilterSite: {
         siteId: number;
@@ -106,7 +108,10 @@ export default async function ClientResourcesPage(
                     siteNiceId: siteResource.siteNiceIds[idx],
                     online: siteResource.siteOnlines[idx]
                 })),
-                mode: siteResource.mode,
+                mode:
+                    siteResource.pamMode && siteResource.mode === "host"
+                        ? "ssh"
+                        : siteResource.mode,
                 scheme: siteResource.scheme,
                 ssl: siteResource.ssl,
                 siteNames: siteResource.siteNames,
@@ -125,6 +130,7 @@ export default async function ClientResourcesPage(
                 disableIcmp: siteResource.disableIcmp || false,
                 authDaemonMode: siteResource.authDaemonMode ?? null,
                 authDaemonPort: siteResource.authDaemonPort ?? null,
+                pamMode: siteResource.pamMode ?? null,
                 subdomain: siteResource.subdomain ?? null,
                 domainId: siteResource.domainId ?? null,
                 fullDomain: siteResource.fullDomain ?? null,

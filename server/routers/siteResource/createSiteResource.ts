@@ -67,7 +67,7 @@ const createSiteResourceSchema = z
         udpPortRangeString: portRangeStringSchema,
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().optional(),
-        authDaemonMode: z.enum(["site", "remote"]).optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
         subdomain: z.string().optional() // only used for http mode, we need this to verify the alias is unique within the org
@@ -213,6 +213,7 @@ export async function createSiteResource(
             disableIcmp,
             authDaemonPort,
             authDaemonMode,
+            pamMode,
             domainId,
             subdomain
         } = parsedBody.data;
@@ -417,6 +418,7 @@ export async function createSiteResource(
                     insertValues.authDaemonPort = authDaemonPort;
                 if (authDaemonMode !== undefined)
                     insertValues.authDaemonMode = authDaemonMode;
+                if (pamMode !== undefined) insertValues.pamMode = pamMode;
             }
             [newSiteResource] = await trx
                 .insert(siteResources)
