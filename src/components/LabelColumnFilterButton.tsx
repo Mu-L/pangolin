@@ -19,10 +19,14 @@ import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilter
 import { CheckIcon, Funnel } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Badge } from "./ui/badge";
 import { orgQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
+import { LabelBadge } from "./label-badge";
+import { LabelOverflowBadge } from "./label-overflow-badge";
+import { LABEL_COLORS } from "./labels-selector";
+
+const MAX_VISIBLE_SUMMARY_LABELS = 3;
 
 type LabelColumnFilterButtonProps = {
     selectedValues: string[];
@@ -58,33 +62,47 @@ export function LabelColumnFilterButton({
         [selectedValues]
     );
 
+    const selectedLabels = useMemo(
+        () =>
+            selectedValues.map((name) => {
+                const foundLabel = labels.find((label) => label.name === name);
+                return {
+                    name,
+                    color: foundLabel?.color ?? LABEL_COLORS.gray
+                };
+            }),
+        [selectedValues, labels]
+    );
+
     const summary = useMemo(() => {
-        if (selectedValues.length === 0) {
+        if (selectedLabels.length === 0) {
             return null;
         }
-        if (selectedValues.length === 1) {
-            const foundLabel = labels.find((o) => o.name === selectedValues[0]);
 
-            if (foundLabel) {
-                return (
-                    <div className="inline-flex items-center gap-1">
-                        <div
-                            className="size-3 rounded-full bg-(--color) flex-none"
-                            style={{
-                                // @ts-expect-error css color
-                                "--color": foundLabel.color
-                            }}
-                        />
-                        {foundLabel.name}
-                    </div>
-                );
-            }
-            return selectedValues[0];
-        }
-        return t("accessLabelFilterCount", {
-            count: selectedValues.length
-        });
-    }, [selectedValues, labels, t]);
+        const visibleLabels = selectedLabels.slice(0, MAX_VISIBLE_SUMMARY_LABELS);
+        const overflowLabels = selectedLabels.slice(MAX_VISIBLE_SUMMARY_LABELS);
+
+        return (
+            <div className="flex min-w-0 flex-nowrap items-center gap-1">
+                {visibleLabels.map((label) => (
+                    <LabelBadge
+                        key={label.name}
+                        displayOnly
+                        name={label.name}
+                        color={label.color}
+                        className="shrink-0"
+                    />
+                ))}
+                {overflowLabels.length > 0 && (
+                    <LabelOverflowBadge
+                        labels={overflowLabels}
+                        displayOnly
+                        className="shrink-0"
+                    />
+                )}
+            </div>
+        );
+    }, [selectedLabels]);
 
     function toggle(value: string) {
         const next = selectedSet.has(value)
@@ -94,7 +112,7 @@ export function LabelColumnFilterButton({
     }
 
     return (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center">
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
@@ -111,18 +129,7 @@ export function LabelColumnFilterButton({
                         <div className="flex items-center gap-2 min-w-0">
                             <span className="shrink-0">{label}</span>
                             <Funnel className="size-4 flex-none shrink-0" />
-                            {summary && (
-                                <Badge
-                                    className={cn(
-                                        "truncate max-w-40",
-                                        selectedValues.length === 1 &&
-                                            "pl-1.5 pr-2 h-auto"
-                                    )}
-                                    variant="secondary"
-                                >
-                                    {summary}
-                                </Badge>
-                            )}
+                            {summary}
                         </div>
                     </Button>
                 </PopoverTrigger>
@@ -168,7 +175,7 @@ export function LabelColumnFilterButton({
                                             )}
                                         />
                                         <div
-                                            className="size-4 rounded-full bg-(--color) flex-none"
+                                            className="size-2 rounded-full bg-(--color) flex-none"
                                             style={{
                                                 // @ts-expect-error css color
                                                 "--color": label.color

@@ -72,6 +72,7 @@ import { ControlledDataTable } from "./ui/controlled-data-table";
 import UptimeMiniBar from "./UptimeMiniBar";
 import { LabelsSelector, type SelectedLabel } from "./labels-selector";
 import { LabelBadge } from "./label-badge";
+import { LabelOverflowBadge } from "./label-overflow-badge";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 
 export type TargetHealth = {
@@ -808,34 +809,17 @@ function ResourceLabelCell({ resource, orgId }: ResourceLabelCellProps) {
         });
     }
 
+    const visibleLabels = optimisticLabels.slice(0, 3);
+    const overflowLabels = optimisticLabels.slice(3);
+
     return (
-        <div className="inline-flex flex-wrap items-center justify-end w-full gap-1">
-            {optimisticLabels.slice(0, 3).map((label) => (
-                <LabelBadge
-                    key={label.labelId}
-                    onClick={() => setIsPopoverOpen(true)}
-                    {...label}
-                />
-            ))}
-            {optimisticLabels.length > 3 && (
-                <Button
-                    variant="outline"
-                    className={cn(
-                        "inline-flex gap-1 items-center",
-                        "rounded-full text-sm cursor-pointer",
-                        "px-1.5 py-0 h-auto"
-                    )}
-                    onClick={() => setIsPopoverOpen(true)}
-                >
-                    +{optimisticLabels.length - 3}
-                </Button>
-            )}
+        <div className="inline-flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-hidden">
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         size="icon"
                         variant="outline"
-                        className="p-1 size-auto rounded-full"
+                        className="size-auto shrink-0 rounded-full p-1"
                         title={t("addLabels")}
                     >
                         <span className="sr-only">{t("addLabels")}</span>
@@ -850,6 +834,18 @@ function ResourceLabelCell({ resource, orgId }: ResourceLabelCellProps) {
                     />
                 </PopoverContent>
             </Popover>
+            {visibleLabels.map((label) => (
+                <LabelBadge
+                    key={label.labelId}
+                    className="shrink-0"
+                    onClick={() => setIsPopoverOpen(true)}
+                    {...label}
+                />
+            ))}
+            <LabelOverflowBadge
+                labels={overflowLabels}
+                onClick={() => setIsPopoverOpen(true)}
+            />
         </div>
     );
 }

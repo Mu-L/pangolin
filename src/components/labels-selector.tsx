@@ -215,9 +215,9 @@ export function LabelsSelector({
                                 aria-hidden
                                 tabIndex={-1}
                             />
-                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
                                 <span
-                                    className="inline-block size-3 flex-none rounded-full bg-(--label-color)"
+                                    className="inline-block size-2 flex-none rounded-full bg-(--label-color)"
                                     style={{
                                         // @ts-expect-error CSS variable
                                         "--label-color": label.color

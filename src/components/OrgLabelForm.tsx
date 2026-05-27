@@ -72,7 +72,6 @@ export function OrgLabelForm({ onSubmit, defaultValue }: OrgLabelFormProps) {
                             <FormControl>
                                 <Input
                                     {...field}
-                                    placeholder={t("labelPlaceholder")}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -104,13 +103,16 @@ export function OrgLabelForm({ onSubmit, defaultValue }: OrgLabelFormProps) {
                                                 className="flex items-center gap-2"
                                             >
                                                 <div
-                                                    className="size-4 rounded-full bg-(--color) flex-none"
+                                                    className="size-2 rounded-full bg-(--color) flex-none"
                                                     style={{
                                                         // @ts-expect-error css color
                                                         "--color": value
                                                     }}
                                                 />
-                                                <span data-name>{color}</span>
+                                                <span data-name>
+                                                    {color.charAt(0).toUpperCase() +
+                                                        color.slice(1)}
+                                                </span>
                                             </SelectItem>
                                         )
                                     )}

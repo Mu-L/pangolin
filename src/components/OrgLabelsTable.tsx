@@ -121,11 +121,9 @@ export default function OrgLabelsTable({
                 )
             },
             {
-                accessorKey: "actions",
+                id: "actions",
                 enableHiding: false,
-                header: () => {
-                    return <span className="p-3">{t("actions")}</span>;
-                },
+                header: () => <span className="p-3"></span>,
                 cell: ({ row }) => (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -234,6 +232,7 @@ export default function OrgLabelsTable({
                 onRefresh={refreshData}
                 isRefreshing={isRefreshing || isFiltering}
                 rowCount={rowCount}
+                stickyRightColumn="actions"
             />
         </>
     );
