@@ -2004,7 +2004,6 @@
     "sshServerDestinationDescription": "Configure the destination and port of the SSH server",
     "destination": "Destination",
     "bgTargetMultiSiteDisclaimer": "Selecting multiple sites enables resilient routing and failover for high availability.",
-    "sshAccess": "SSH Access",
     "roleAllowSsh": "Allow SSH",
     "roleAllowSshAllow": "Allow",
     "roleAllowSshDisallow": "Disallow",

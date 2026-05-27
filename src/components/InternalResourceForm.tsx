@@ -622,7 +622,7 @@ export function InternalResourceForm({
                 clients: []
             });
             setSelectedSites([]);
-            setSshServerMode("standard");
+            setSshServerMode("native");
             setTcpPortMode("all");
             setUdpPortMode("all");
             setTcpCustomPorts("");
@@ -784,7 +784,7 @@ export function InternalResourceForm({
                         },
                         ...(disableEnterpriseFeatures || mode !== "ssh"
                             ? []
-                            : [{ title: t("sshAccess"), href: "#" }])
+                            : [{ title: t("sshSettings"), href: "#" }])
                     ]}
                 >
                     <div className="space-y-4 mt-4 p-1">
@@ -996,55 +996,31 @@ export function InternalResourceForm({
                                         />
                                     </div>
                                 )}
-                                <div
-                                    className={cn(
-                                        mode === "cidr" && "col-span-1",
-                                        (mode === "http" ||
-                                            mode === "host" ||
-                                            mode === "ssh") &&
-                                            "min-w-0"
-                                    )}
-                                >
-                                    <FormField
-                                        control={form.control}
-                                        name="destination"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t(destinationLabelKey)}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        className="w-full"
-                                                        disabled={
-                                                            isHttpMode &&
-                                                            httpSectionDisabled
-                                                        }
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
+                                {sshServerMode !== "native" && (
+                                    <div
+                                        className={cn(
+                                            mode === "cidr" && "col-span-1",
+                                            (mode === "http" ||
+                                                mode === "host" ||
+                                                mode === "ssh") &&
+                                                "min-w-0"
                                         )}
-                                    />
-                                </div>
-                                {(mode === "host" || mode === "ssh") && (
-                                    <div className="min-w-0">
+                                    >
                                         <FormField
                                             control={form.control}
-                                            name="alias"
+                                            name="destination"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
-                                                        {t(aliasLabelKey)}
+                                                        {t(destinationLabelKey)}
                                                     </FormLabel>
                                                     <FormControl>
                                                         <Input
                                                             {...field}
                                                             className="w-full"
-                                                            value={
-                                                                field.value ??
-                                                                ""
+                                                            disabled={
+                                                                isHttpMode &&
+                                                                httpSectionDisabled
                                                             }
                                                         />
                                                     </FormControl>
@@ -1054,6 +1030,33 @@ export function InternalResourceForm({
                                         />
                                     </div>
                                 )}
+                                {(mode === "host" || mode === "ssh") &&
+                                    sshServerMode !== "native" && (
+                                        <div className="min-w-0">
+                                            <FormField
+                                                control={form.control}
+                                                name="alias"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(aliasLabelKey)}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                className="w-full"
+                                                                value={
+                                                                    field.value ??
+                                                                    ""
+                                                                }
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    )}
                                 {mode === "http" && (
                                     <div className="min-w-0">
                                         <FormField
