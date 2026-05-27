@@ -393,8 +393,7 @@ export default function Page() {
         try {
             const payload: any = {
                 name: baseData.name,
-                http: isHttpResource,
-                browserAccessType: resourceType
+                http: isHttpResource
             };
 
             let sanitizedSubdomain: string | undefined;
@@ -406,12 +405,28 @@ export default function Page() {
                     ? finalizeSubdomainSanitize(httpData.subdomain, true)
                     : undefined;
 
+                const effectiveMode = isNative
+                    ? "native"
+                    : standardDaemonLocation;
+                const portVal = sshDaemonPortForm.getValues().authDaemonPort;
+                const effectivePort =
+                    !isNative &&
+                    standardDaemonLocation === "remote" &&
+                    pamMode === "push" &&
+                    portVal
+                        ? Number(portVal)
+                        : null;
+
                 Object.assign(payload, {
                     subdomain: sanitizedSubdomain
                         ? toASCII(sanitizedSubdomain)
                         : undefined,
                     domainId: httpData.domainId,
-                    protocol: "tcp"
+                    protocol: "tcp",
+                    browserAccessType: resourceType,
+                    pamMode,
+                    authDaemonMode: effectiveMode,
+                    authDaemonPort: effectivePort
                 });
             } else {
                 const tcpUdpData = tcpUdpForm.getValues();
@@ -498,25 +513,6 @@ export default function Page() {
                         `/${orgId}/settings/resources/proxy/${newNiceId}`
                     );
                 } else if (resourceType === "ssh") {
-                    const effectiveMode = isNative
-                        ? "native"
-                        : standardDaemonLocation;
-                    const portVal =
-                        sshDaemonPortForm.getValues().authDaemonPort;
-                    const effectivePort =
-                        !isNative &&
-                        standardDaemonLocation === "remote" &&
-                        pamMode === "push" &&
-                        portVal
-                            ? Number(portVal)
-                            : null;
-
-                    await api.post(`/resource/${id}`, {
-                        pamMode,
-                        authDaemonMode: effectiveMode,
-                        authDaemonPort: effectivePort
-                    });
-
                     if (isNative) {
                         if (nativeSelectedSite) {
                             await api.put(

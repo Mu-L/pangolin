@@ -44,7 +44,11 @@ const createHttpResourceSchema = z
         domainId: z.string(),
         stickySession: z.boolean().optional(),
         postAuthPath: z.string().nullable().optional(),
-        browserAccessType: z.enum(["http", "ssh", "rdp", "vnc"]).optional()
+        browserAccessType: z.enum(["http", "ssh", "rdp", "vnc"]).optional(),
+        // SSH Settings
+        pamMode: z.enum(["passthrough", "push"]).optional(),
+        authDaemonPort: z.int().positive().optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional()
     })
     .refine(
         (data) => {
@@ -202,7 +206,15 @@ async function createHttpResource(
         );
     }
 
-    const { name, domainId, postAuthPath, browserAccessType } = parsedBody.data;
+    const {
+        name,
+        domainId,
+        postAuthPath,
+        browserAccessType,
+        authDaemonPort,
+        authDaemonMode,
+        pamMode
+    } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
 
@@ -328,6 +340,9 @@ async function createHttpResource(
                 subdomain: finalSubdomain,
                 http: true,
                 browserAccessType: browserAccessType,
+                pamMode: pamMode,
+                authDaemonMode: authDaemonMode,
+                authDaemonPort: authDaemonPort,
                 protocol: "tcp",
                 ssl: true,
                 stickySession: stickySession,

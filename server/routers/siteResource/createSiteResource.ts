@@ -68,6 +68,7 @@ const createSiteResourceSchema = z
         disableIcmp: z.boolean().optional(),
         authDaemonPort: z.int().positive().optional(),
         authDaemonMode: z.enum(["site", "remote"]).optional(),
+        pamMode: z.enum(["passthrough", "push"]).optional(),
         domainId: z.string().optional(), // only used for http mode, we need this to verify the alias is unique within the org
         subdomain: z.string().optional() // only used for http mode, we need this to verify the alias is unique within the org
     })
