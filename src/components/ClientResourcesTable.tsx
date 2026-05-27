@@ -82,7 +82,7 @@ export type InternalResourceRow = {
     ssl: boolean;
     // protocol: string | null;
     // proxyPort: number | null;
-    destination: string;
+    destination: string | null;
     destinationPort: number | null;
     alias: string | null;
     aliasAddress: string | null;

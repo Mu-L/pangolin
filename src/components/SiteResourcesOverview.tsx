@@ -68,7 +68,8 @@ function PrivateResourceMeta({ row }: { row: SiteResourceRow }) {
     const modeLabel: Record<SiteResourceRow["mode"], string> = {
         host: t("editInternalResourceDialogModeHost"),
         cidr: t("editInternalResourceDialogModeCidr"),
-        http: t("editInternalResourceDialogModeHttp")
+        http: t("editInternalResourceDialogModeHttp"),
+        ssh: t("editInternalResourceDialogModeSsh")
     };
     const dest = formatSiteResourceDestinationDisplay({
         mode: row.mode,

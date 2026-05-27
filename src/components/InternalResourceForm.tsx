@@ -124,8 +124,8 @@ export const getPortStringFromMode = (
     return customValue;
 };
 
-export const isHostname = (destination: string): boolean =>
-    /[a-zA-Z]/.test(destination);
+export const isHostname = (destination: string | null): boolean =>
+    !!destination && /[a-zA-Z]/.test(destination);
 
 export const cleanForFQDN = (name: string): string =>
     name
@@ -147,7 +147,7 @@ export type InternalResourceData = {
     mode: InternalResourceMode;
     siteIds: number[];
     niceId: string;
-    destination: string;
+    destination: string | null;
     alias?: string | null;
     tcpPortRangeString?: string | null;
     udpPortRangeString?: string | null;
@@ -179,7 +179,7 @@ export type InternalResourceFormValues = {
     name: string;
     siteIds: number[];
     mode: InternalResourceMode;
-    destination: string;
+    destination: string | null;
     alias?: string | null;
     niceId?: string;
     tcpPortRangeString?: string | null;
@@ -309,7 +309,7 @@ export function InternalResourceForm({
             name: z.string().min(1, t(nameRequiredKey)).max(255, t(nameMaxKey)),
             siteIds: siteIdsSchema,
             mode: z.enum(["host", "cidr", "http", "ssh"]),
-            destination: z.string(),
+            destination: z.string().nullish(),
             alias: z.string().nullish(),
             destinationPort: z
                 .number()
@@ -352,9 +352,10 @@ export function InternalResourceForm({
         .superRefine((data, ctx) => {
             const isNativeSsh =
                 data.mode === "ssh" && data.authDaemonMode === "native";
+            const trimmedDestination = data.destination?.trim();
             if (
                 !isNativeSsh &&
-                (!data.destination || data.destination.length < 1)
+                (!trimmedDestination || trimmedDestination.length < 1)
             ) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
@@ -735,9 +736,14 @@ export function InternalResourceForm({
             <form
                 onSubmit={form.handleSubmit((values) => {
                     const siteIds = values.siteIds;
+                    const trimmedDestination = values.destination?.trim();
                     onSubmit({
                         ...values,
                         siteIds,
+                        destination:
+                            trimmedDestination && trimmedDestination.length > 0
+                                ? trimmedDestination
+                                : null,
                         clients: (values.clients ?? []).map((c) => ({
                             id: c.clientId.toString(),
                             text: c.name
@@ -1097,9 +1103,24 @@ export function InternalResourceForm({
                                                         <Input
                                                             {...field}
                                                             className="w-full"
+                                                            value={
+                                                                field.value ??
+                                                                ""
+                                                            }
                                                             disabled={
                                                                 isHttpMode &&
                                                                 httpSectionDisabled
+                                                            }
+                                                            onChange={(e) =>
+                                                                field.onChange(
+                                                                    e.target
+                                                                        .value ===
+                                                                        ""
+                                                                        ? null
+                                                                        : e
+                                                                              .target
+                                                                              .value
+                                                                )
                                                             }
                                                         />
                                                     </FormControl>

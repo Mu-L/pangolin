@@ -59,7 +59,7 @@ export default function EditInternalResourceDialog({
                 const currentAlias = data.alias?.trim() || "";
                 if (!currentAlias) {
                     let aliasValue = data.destination;
-                    if (data.destination.toLowerCase() === "localhost") {
+                    if (data.destination?.toLowerCase() === "localhost") {
                         aliasValue = `${cleanForFQDN(data.name)}.internal`;
                     }
                     data = { ...data, alias: aliasValue };

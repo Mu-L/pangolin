@@ -350,7 +350,7 @@ export const siteResources = pgTable("siteResources", {
     scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
-    destination: varchar("destination").notNull(), // ip, cidr, hostname; validate against the mode
+    destination: varchar("destination"), // ip, cidr, hostname; validate against the mode
     enabled: boolean("enabled").notNull().default(true),
     alias: varchar("alias"),
     aliasAddress: varchar("aliasAddress"),

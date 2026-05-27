@@ -390,7 +390,7 @@ export async function getTraefikConfig(
     let siteResourcesWithFullDomain: {
         siteResourceId: number;
         fullDomain: string | null;
-        mode: "http" | "host" | "cidr";
+        mode: "http" | "host" | "cidr" | "ssh";
     }[] = [];
     if (build == "enterprise") {
         // we dont want to do this on the cloud

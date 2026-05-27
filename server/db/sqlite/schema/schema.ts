@@ -384,7 +384,7 @@ export const siteResources = sqliteTable("siteResources", {
     scheme: text("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
-    destination: text("destination").notNull(), // ip, cidr, hostname
+    destination: text("destination"), // ip, cidr, hostname
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     alias: text("alias"),
     aliasAddress: text("aliasAddress"),

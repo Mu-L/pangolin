@@ -866,6 +866,10 @@ export async function handleMessagingForUpdatedSiteResource(
             for (const client of mergedAllClients) {
                 // does this client have access to another resource on this site that has the same destination still? if so we dont want to remove it from their olm yet
                 // todo: optimize this query if needed
+                if (!existingSiteResource.destination) {
+                    continue;
+                }
+
                 const oldDestinationStillInUseSites = await trx
                     .select()
                     .from(siteResources)

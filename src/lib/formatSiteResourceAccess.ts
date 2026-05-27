@@ -1,6 +1,6 @@
 export type SiteResourceDestinationInput = {
-    mode: "host" | "cidr" | "http";
-    destination: string;
+    mode: "host" | "cidr" | "http" | "ssh";
+    destination: string | null;
     destinationPort: number | null;
     scheme: "http" | "https" | null;
 };
@@ -18,6 +18,9 @@ export function resolveHttpHttpsDisplayPort(
 export function formatSiteResourceDestinationDisplay(
     row: SiteResourceDestinationInput
 ): string {
+    if (!row.destination) {
+        return "";
+    }
     const { mode, destination, destinationPort, scheme } = row;
     if (mode !== "http") {
         return destination;

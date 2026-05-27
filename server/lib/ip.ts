@@ -475,6 +475,8 @@ export function generateRemoteSubnets(
 ): string[] {
     const remoteSubnets = allSiteResources
         .filter((sr) => {
+            if (!sr.destination) return false;
+
             if (sr.mode === "cidr") {
                 // check if its a valid CIDR using zod
                 const cidrSchema = z.union([z.cidrv4(), z.cidrv6()]);
@@ -496,7 +498,7 @@ export function generateRemoteSubnets(
             }
             return ""; // This should never be reached due to filtering, but satisfies TypeScript
         })
-        .filter((subnet) => subnet !== ""); // Remove empty strings just to be safe
+        .filter((subnet): subnet is string => subnet !== "" && subnet !== null); // Remove invalid values just to be safe
     // remove duplicates
     return Array.from(new Set(remoteSubnets));
 }
@@ -581,7 +583,7 @@ export function generateSubnetProxyTargets(
                 targets.push({
                     sourcePrefix: clientPrefix,
                     destPrefix: `${siteResource.aliasAddress}/32`,
-                    rewriteTo: destination,
+                    rewriteTo: destination!,
                     portRange,
                     disableIcmp
                 });
@@ -589,7 +591,7 @@ export function generateSubnetProxyTargets(
         } else if (siteResource.mode == "cidr") {
             targets.push({
                 sourcePrefix: clientPrefix,
-                destPrefix: siteResource.destination,
+                destPrefix: siteResource.destination!,
                 portRange,
                 disableIcmp
             });
@@ -671,7 +673,7 @@ export async function generateSubnetProxyTargetV2(
             targets.push({
                 sourcePrefixes: [],
                 destPrefix: `${siteResource.aliasAddress}/32`,
-                rewriteTo: destination,
+                rewriteTo: destination!,
                 portRange,
                 disableIcmp,
                 resourceId: siteResource.siteResourceId
@@ -680,7 +682,7 @@ export async function generateSubnetProxyTargetV2(
     } else if (siteResource.mode == "cidr") {
         targets.push({
             sourcePrefixes: [],
-            destPrefix: siteResource.destination,
+            destPrefix: siteResource.destination!,
             portRange,
             disableIcmp,
             resourceId: siteResource.siteResourceId
@@ -738,7 +740,7 @@ export async function generateSubnetProxyTargetV2(
             protocol: siteResource.ssl ? "https" : "http",
             httpTargets: [
                 {
-                    destAddr: siteResource.destination,
+                    destAddr: siteResource.destination!,
                     destPort: siteResource.destinationPort,
                     scheme: siteResource.scheme
                 }

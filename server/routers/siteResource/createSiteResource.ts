@@ -51,7 +51,7 @@ const createSiteResourceSchema = z
         siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
         // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
-        destination: z.string().min(1),
+        destination: z.string().min(1).optional(),
         enabled: z.boolean().default(true),
         alias: z
             .string()
@@ -75,7 +75,10 @@ const createSiteResourceSchema = z
     .strict()
     .refine(
         (data) => {
-            if (data.mode === "host" || data.mode === "ssh") {
+            if (
+                (data.mode === "host" || data.mode === "ssh") &&
+                data.destination
+            ) {
                 // Check if it's a valid IP address using zod (v4 or v6)
                 const isValidIP = z
                     // .union([z.ipv4(), z.ipv6()])
@@ -289,8 +292,8 @@ export async function createSiteResource(
             .safeParse(destination).success;
         if (
             isIp &&
-            (isIpInCidr(destination, org.subnet) ||
-                isIpInCidr(destination, org.utilitySubnet))
+            (isIpInCidr(destination!, org.subnet) ||
+                isIpInCidr(destination!, org.utilitySubnet))
         ) {
             return next(
                 createHttpError(
@@ -419,7 +422,7 @@ export async function createSiteResource(
                 mode,
                 ssl,
                 networkId: network.networkId,
-                destination,
+                destination: destination, // the ssh can be null
                 scheme,
                 destinationPort,
                 enabled,
