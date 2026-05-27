@@ -75,6 +75,7 @@ export function TableLabelsCell({
                         orgId={orgId}
                         selectedLabels={localLabels}
                         toggleLabel={toggleLabel}
+                        onClose={() => handleOpenChange(false)}
                     />
                 </PopoverContent>
             </Popover>

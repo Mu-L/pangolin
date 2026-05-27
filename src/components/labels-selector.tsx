@@ -36,6 +36,7 @@ export type LabelsSelectorProps = {
     orgId: string;
     selectedLabels: SelectedLabel[];
     toggleLabel: (newlabel: SelectedLabel, action: "detach" | "attach") => void;
+    onClose?: () => void;
 };
 
 export const LABEL_COLORS = {
@@ -51,7 +52,8 @@ export const LABEL_COLORS = {
 export function LabelsSelector({
     orgId,
     selectedLabels,
-    toggleLabel
+    toggleLabel,
+    onClose
 }: LabelsSelectorProps) {
     const t = useTranslations();
     const [labelSearchQuery, setlabelsSearchQuery] = useState("");
@@ -200,18 +202,24 @@ export function LabelsSelector({
                                         ? "detach"
                                         : "attach"
                                 );
-                                // } else {
-                                //     onSelectionChange([
-                                //         ...selectedLabels,
-                                //         label
-                                //     ]);
-                                // }
+                                onClose?.();
                             }}
                         >
                             <Checkbox
-                                className="pointer-events-none shrink-0"
+                                className="shrink-0"
                                 checked={selectedIds.has(label.labelId)}
-                                onCheckedChange={() => {}}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                }}
+                                onPointerDown={(e) => {
+                                    e.stopPropagation();
+                                }}
+                                onCheckedChange={(checked) => {
+                                    toggleLabel(
+                                        label,
+                                        checked ? "attach" : "detach"
+                                    );
+                                }}
                                 aria-hidden
                                 tabIndex={-1}
                             />
