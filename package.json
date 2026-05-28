@@ -131,9 +131,9 @@
         "zod-validation-error": "5.0.0"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "1.66.0",
+        "@dotenvx/dotenvx": "1.69.1",
         "@esbuild-plugins/tsconfig-paths": "0.1.2",
-        "@react-email/ui": "^6.1.4",
+        "@react-email/ui": "^6.5.0",
         "@tailwindcss/postcss": "4.3.0",
         "@tanstack/react-query-devtools": "5.100.10",
         "@types/better-sqlite3": "7.6.13",
@@ -146,7 +146,7 @@
         "@types/jmespath": "0.15.2",
         "@types/js-yaml": "4.0.9",
         "@types/jsonwebtoken": "9.0.10",
-        "@types/node": "25.8.0",
+        "@types/node": "25.9.1",
         "@types/nodemailer": "8.0.0",
         "@types/nprogress": "0.2.3",
         "@types/pg": "8.20.0",
@@ -162,16 +162,16 @@
         "drizzle-kit": "0.31.10",
         "esbuild": "0.28.0",
         "esbuild-node-externals": "1.22.0",
-        "eslint": "10.3.0",
+        "eslint": "10.4.0",
         "eslint-config-next": "16.2.6",
         "postcss": "8.5.14",
         "prettier": "3.8.3",
-        "react-email": "6.1.4",
+        "react-email": "6.5.0",
         "tailwindcss": "4.3.0",
         "tsc-alias": "1.8.17",
         "tsx": "4.22.0",
         "typescript": "6.0.3",
-        "typescript-eslint": "8.59.3"
+        "typescript-eslint": "8.60.0"
     },
     "overrides": {
         "esbuild": "0.28.0",
