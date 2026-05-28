@@ -8,7 +8,6 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
-import { domain } from "zod/v4/core/regexes";
 
 const getDomainSchema = z.strictObject({
     domainId: z.string().optional(),
