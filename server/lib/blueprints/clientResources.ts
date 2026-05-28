@@ -225,7 +225,11 @@ export async function updateClientResources(
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
                     subdomain: domainInfo ? domainInfo.subdomain : null,
-                    domainId: domainInfo ? domainInfo.domainId : null
+                    domainId: domainInfo ? domainInfo.domainId : null,
+                    pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
+                    authDaemonMode:
+                        resourceData["auth-daemon"]?.mode || "native",
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
                 })
                 .where(
                     eq(
@@ -415,7 +419,11 @@ export async function updateClientResources(
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
                     subdomain: domainInfo ? domainInfo.subdomain : null,
-                    domainId: domainInfo ? domainInfo.domainId : null
+                    domainId: domainInfo ? domainInfo.domainId : null,
+                    pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
+                    authDaemonMode:
+                        resourceData["auth-daemon"]?.mode || "native",
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
                 })
                 .returning();
 

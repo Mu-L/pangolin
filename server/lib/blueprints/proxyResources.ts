@@ -275,6 +275,12 @@ export async function updateProxyResources(
                         headers: headers || null,
                         applyRules:
                             resourceData.rules && resourceData.rules.length > 0,
+                        pamMode:
+                            resourceData["auth-daemon"]?.pam || "passthrough",
+                        authDaemonMode:
+                            resourceData["auth-daemon"]?.mode || "native",
+                        authDaemonPort:
+                            resourceData["auth-daemon"]?.port || 22123,
                         maintenanceModeEnabled:
                             resourceData.maintenance?.enabled,
                         maintenanceModeType: resourceData.maintenance?.type,
@@ -746,6 +752,10 @@ export async function updateProxyResources(
                     headers: headers || null,
                     applyRules:
                         resourceData.rules && resourceData.rules.length > 0,
+                    pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
+                    authDaemonMode:
+                        resourceData["auth-daemon"]?.mode || "native",
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
                     maintenanceModeEnabled: resourceData.maintenance?.enabled,
                     maintenanceModeType: resourceData.maintenance?.type,
                     maintenanceTitle: resourceData.maintenance?.title,

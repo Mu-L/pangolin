@@ -161,6 +161,25 @@ export const HeaderSchema = z.object({
     value: z.string().min(1)
 });
 
+export const AuthDaemonSchema = z
+    .object({
+        pam: z.enum(["passthrough", "push"]).optional().default("passthrough"),
+        mode: z.enum(["site", "remote", "native"]).optional().default("site"),
+        port: z.int().min(1).max(65535).optional()
+    })
+    .refine(
+        (data) => {
+            if (data.mode === "remote") {
+                return data.port !== undefined;
+            }
+            return true;
+        },
+        {
+            path: ["port"],
+            message: "port is required when auth-daemon mode is 'remote'"
+        }
+    );
+
 // Schema for individual resource
 export const PublicResourceSchema = z
     .object({
@@ -180,7 +199,8 @@ export const PublicResourceSchema = z
         "tls-server-name": z.string().optional(),
         headers: z.array(HeaderSchema).optional(),
         rules: z.array(RuleSchema).optional(),
-        maintenance: MaintenanceSchema.optional()
+        maintenance: MaintenanceSchema.optional(),
+        "auth-daemon": AuthDaemonSchema.optional()
     })
     .refine(
         (resource) => {
@@ -401,7 +421,8 @@ export const PrivateResourceSchema = z
                 error: "Admin role cannot be included in roles"
             }),
         users: z.array(z.string()).optional().default([]),
-        machines: z.array(z.string()).optional().default([])
+        machines: z.array(z.string()).optional().default([]),
+        "auth-daemon": AuthDaemonSchema.optional()
     })
     .refine(
         (data) => {
