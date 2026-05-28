@@ -55,7 +55,7 @@ type Config struct {
 	TraefikBouncerKey         string
 	DoCrowdsecInstall         bool
 	EnableMaxMind             bool
-    Secret                    string
+	Secret                    string
 	IsEnterprise              bool
 }
 
@@ -131,7 +131,7 @@ func main() {
 				fmt.Println("You can download it manually later if needed.")
 			}
 		}
-        
+
 		fmt.Println("\n=== Starting installation ===")
 
 		if readBool("Would you like to install and start the containers?", true) {
@@ -205,10 +205,10 @@ func main() {
 				fmt.Print("Please remember to update your config/config.yml file to enable geoblocking! \n\n")
 				// add   maxmind_db_path: "./config/GeoLite2-Country.mmdb" under server
 				// add   maxmind_asn_path: "./config/GeoLite2-ASN.mmdb" under server
-                fmt.Println("Add the following lines under the 'server' section:")
+				fmt.Println("Add the following lines under the 'server' section:")
 				fmt.Println("  maxmind_db_path: \"./config/GeoLite2-Country.mmdb\"")
 				fmt.Println("  maxmind_asn_path: \"./config/GeoLite2-ASN.mmdb\"")
-            }
+			}
 		}
 	}
 
@@ -530,7 +530,7 @@ func collectUserInput() Config {
 
 	config.EnableIPv6 = readBool("Is your server IPv6 capable?", true)
 	config.EnableMaxMind = readBool("Do you want to download the MaxMind GeoLite2 Country and ADN databases for blocking functionality?", true)
-    
+
 	if config.DashboardDomain == "" {
 		fmt.Println("Error: Dashboard Domain name is required")
 		os.Exit(1)
@@ -793,7 +793,7 @@ func downloadMaxMindDatabase() error {
 		"https://github.com/GitSquared/node-geolite2-redist/raw/refs/heads/master/redist/GeoLite2-ASN.tar.gz"); err != nil {
 		return fmt.Errorf("failed to download GeoLite2 ASN database: %v", err)
 	}
-    
+
 	// Extract the Country database
 	if err := run("tar", "-xzf", "GeoLite2-Country.tar.gz"); err != nil {
 		return fmt.Errorf("failed to extract GeoLite2 Country database: %v", err)
@@ -801,7 +801,7 @@ func downloadMaxMindDatabase() error {
 	if err := run("tar", "-xzf", "GeoLite2-ASN.tar.gz"); err != nil {
 		return fmt.Errorf("failed to extract GeoLite2 ASN database: %v", err)
 	}
-    
+
 	// Find the .mmdb file and move it to the config directory
 	if err := run("bash", "-c", "mv GeoLite2-Country_*/GeoLite2-Country.mmdb config/"); err != nil {
 		return fmt.Errorf("failed to move GeoLite2 Country database to config directory: %v", err)
@@ -809,7 +809,7 @@ func downloadMaxMindDatabase() error {
 	if err := run("bash", "-c", "mv GeoLite2-ASN_*/GeoLite2-ASN.mmdb config/"); err != nil {
 		return fmt.Errorf("failed to move GeoLite2 ASN database to config directory: %v", err)
 	}
-    
+
 	// Clean up the downloaded files
 	if err := run("sh", "-c", "rm -rf GeoLite2-Country.tar.gz GeoLite2-Country_*"); err != nil {
 		fmt.Printf("Warning: failed to clean up temporary country files: %v\n", err)
@@ -817,7 +817,7 @@ func downloadMaxMindDatabase() error {
 	if err := run("sh", "-c", "rm -rf GeoLite2-ASN.tar.gz GeoLite2-ASN_*"); err != nil {
 		fmt.Printf("Warning: failed to clean up temporary ASN files: %v\n", err)
 	}
-    
+
 	fmt.Println("MaxMind GeoLite2 Country and ASN database downloaded successfully!")
 	return nil
 }
