@@ -1232,6 +1232,22 @@ authRouter.post(
 );
 
 authRouter.post(
+    "/newt/version",
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 60,
+        keyGenerator: (req) =>
+            `newtVersion:${req.body.newtId || ipKeyGenerator(req.ip || "")}`,
+        handler: (req, res, next) => {
+            const message = `You can only check the Newt version ${60} times every ${15} minutes. Please try again later.`;
+            return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
+        },
+        store: createStore()
+    }),
+    newt.getNewtVersion
+);
+
+authRouter.post(
     "/newt/register",
     rateLimit({
         windowMs: 15 * 60 * 1000,

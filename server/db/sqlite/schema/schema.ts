@@ -62,7 +62,13 @@ export const orgs = sqliteTable("orgs", {
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
     sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
     isBillingOrg: integer("isBillingOrg", { mode: "boolean" }),
-    billingOrgId: text("billingOrgId")
+    billingOrgId: text("billingOrgId"),
+    settingsEnableGlobalNewtAutoUpdate: integer(
+        "settingsEnableGlobalNewtAutoUpdate",
+        { mode: "boolean" }
+    )
+        .notNull()
+        .default(false)
 });
 
 export const userDomains = sqliteTable("userDomains", {
@@ -116,6 +122,14 @@ export const sites = sqliteTable("sites", {
     dockerSocketEnabled: integer("dockerSocketEnabled", { mode: "boolean" })
         .notNull()
         .default(true),
+    autoUpdateEnabled: integer("autoUpdateEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    autoUpdateOverrideOrg: integer("autoUpdateOverrideOrg", {
+        mode: "boolean"
+    })
+        .notNull()
+        .default(false),
     status: text("status").$type<"pending" | "approved">().default("approved")
 });
 
