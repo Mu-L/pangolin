@@ -34,6 +34,8 @@ import * as healthChecks from "#private/routers/healthChecks";
 import * as browserGatewayTarget from "#private/routers/browserGatewayTarget";
 import * as labels from "#private/routers/labels";
 import * as client from "@server/routers/client";
+import * as resource from "#private/routers/resource";
+import * as policy from "#private/routers/policy";
 
 import {
     verifyOrgAccess,
@@ -47,7 +49,8 @@ import {
     verifyUserCanSetUserOrgRoles,
     verifySiteProvisioningKeyAccess,
     verifyIsLoggedInUser,
-    verifyAdmin
+    verifyAdmin,
+    verifyResourcePolicyAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -383,6 +386,39 @@ authenticated.get(
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listApprovals),
     approval.countApprovals
+);
+
+authenticated.delete(
+    "/resource-policy/:resourcePolicyId",
+    verifyResourcePolicyAccess,
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.deleteResourcePolicy),
+    logActionAudit(ActionsEnum.deleteResourcePolicy),
+    policy.deleteResourcePolicy
+);
+
+authenticated.get(
+    "/org/:orgId/resource-policies",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.listResourcePolicies),
+    logActionAudit(ActionsEnum.listResourcePolicies),
+    policy.listResourcePolicies
+);
+
+authenticated.post(
+    "/org/:orgId/resource-policy",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createResourcePolicy),
+    logActionAudit(ActionsEnum.createResourcePolicy),
+    policy.createResourcePolicy
 );
 
 authenticated.put(

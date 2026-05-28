@@ -5,6 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
+import logger from "@server/logger";
 
 export enum ActionsEnum {
     createOrgUser = "createOrgUser",
@@ -163,7 +164,21 @@ export enum ActionsEnum {
     updateBrowserGatewayTarget = "updateBrowserGatewayTarget",
     deleteBrowserGatewayTarget = "deleteBrowserGatewayTarget",
     getBrowserGatewayTarget = "getBrowserGatewayTarget",
-    listBrowserGatewayTargets = "listBrowserGatewayTargets"
+    listBrowserGatewayTargets = "listBrowserGatewayTargets",
+    listResourcePolicies = "listResourcePolicies",
+    getResourcePolicy = "getResourcePolicy",
+    createResourcePolicy = "createResourcePolicy",
+    updateResourcePolicy = "updateResourcePolicy",
+    deleteResourcePolicy = "deleteResourcePolicy",
+    listResourcePolicyRoles = "listResourcePolicyRoles",
+    setResourcePolicyRoles = "setResourcePolicyRoles",
+    listResourcePolicyUsers = "listResourcePolicyUsers",
+    setResourcePolicyUsers = "setResourcePolicyUsers",
+    setResourcePolicyPassword = "setResourcePolicyPassword",
+    setResourcePolicyPincode = "setResourcePolicyPincode",
+    setResourcePolicyHeaderAuth = "setResourcePolicyHeaderAuth",
+    setResourcePolicyWhitelist = "setResourcePolicyWhitelist",
+    setResourcePolicyRules = "setResourcePolicyRules"
 }
 
 export async function checkUserActionPermission(
@@ -196,6 +211,23 @@ export async function checkUserActionPermission(
             }
         }
 
+        // If no direct permission, check role-based permission (any of user's roles)
+        const roleActionPermission = await db
+            .select()
+            .from(roleActions)
+            .where(
+                and(
+                    eq(roleActions.actionId, actionId),
+                    inArray(roleActions.roleId, userOrgRoleIds),
+                    eq(roleActions.orgId, req.userOrgId!)
+                )
+            )
+            .limit(1);
+
+        if (roleActionPermission.length > 0) {
+            return true;
+        }
+
         // Check if the user has direct permission for the action in the current org
         const userActionPermission = await db
             .select()
@@ -213,20 +245,7 @@ export async function checkUserActionPermission(
             return true;
         }
 
-        // If no direct permission, check role-based permission (any of user's roles)
-        const roleActionPermission = await db
-            .select()
-            .from(roleActions)
-            .where(
-                and(
-                    eq(roleActions.actionId, actionId),
-                    inArray(roleActions.roleId, userOrgRoleIds),
-                    eq(roleActions.orgId, req.userOrgId!)
-                )
-            )
-            .limit(1);
-
-        return roleActionPermission.length > 0;
+        return false;
     } catch (error) {
         console.error("Error checking user action permission:", error);
         throw createHttpError(

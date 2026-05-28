@@ -671,7 +671,8 @@ export async function verifyResourceSession(
                             resourceData.org
                         );
 
-                        localCache.set(userAccessCacheKey, allowedUserData, 5);
+                        // this is query intensive so let it cache a little longer
+                        localCache.set(userAccessCacheKey, allowedUserData, 12);
                     }
 
                     if (
@@ -1003,11 +1004,7 @@ async function checkRules(
             isIpInCidr(clientIp, rule.value)
         ) {
             return rule.action as any;
-        } else if (
-            clientIp &&
-            rule.match == "IP" &&
-            clientIp == rule.value
-        ) {
+        } else if (clientIp && rule.match == "IP" && clientIp == rule.value) {
             return rule.action as any;
         } else if (
             path &&
@@ -1015,10 +1012,7 @@ async function checkRules(
             isPathAllowed(rule.value, path)
         ) {
             return rule.action as any;
-        } else if (
-            clientIp &&
-            rule.match == "COUNTRY"
-        ) {
+        } else if (clientIp && rule.match == "COUNTRY") {
             // COUNTRY=ALL should not affect local/private/CGNAT addresses.
             if (
                 rule.value.toUpperCase() === "ALL" &&
@@ -1030,10 +1024,7 @@ async function checkRules(
             if (await isIpInGeoIP(ipCC, rule.value)) {
                 return rule.action as any;
             }
-        } else if (
-            clientIp &&
-            rule.match == "ASN"
-        ) {
+        } else if (clientIp && rule.match == "ASN") {
             // ASN=ALL/AS0 should not affect local/private/CGNAT addresses.
             if (
                 (rule.value.toUpperCase() === "ALL" ||
@@ -1272,11 +1263,15 @@ export async function isIpInRegion(
         if (region.id === checkRegionCode) {
             for (const subregion of region.includes) {
                 if (subregion.countries.includes(upperCode)) {
-                    logger.debug(`Country ${upperCode} is in region ${region.id} (${region.name})`);
+                    logger.debug(
+                        `Country ${upperCode} is in region ${region.id} (${region.name})`
+                    );
                     return true;
                 }
             }
-            logger.debug(`Country ${upperCode} is not in region ${region.id} (${region.name})`);
+            logger.debug(
+                `Country ${upperCode} is not in region ${region.id} (${region.name})`
+            );
             return false;
         }
 
@@ -1284,10 +1279,14 @@ export async function isIpInRegion(
         for (const subregion of region.includes) {
             if (subregion.id === checkRegionCode) {
                 if (subregion.countries.includes(upperCode)) {
-                    logger.debug(`Country ${upperCode} is in region ${subregion.id} (${subregion.name})`);
+                    logger.debug(
+                        `Country ${upperCode} is in region ${subregion.id} (${subregion.name})`
+                    );
                     return true;
                 }
-                logger.debug(`Country ${upperCode} is not in region ${subregion.id} (${subregion.name})`);
+                logger.debug(
+                    `Country ${upperCode} is not in region ${subregion.id} (${subregion.name})`
+                );
                 return false;
             }
         }

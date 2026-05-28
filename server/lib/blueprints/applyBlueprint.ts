@@ -16,7 +16,6 @@ import logger from "@server/logger";
 import { sites } from "@server/db";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { addTargets as addProxyTargets } from "@server/routers/newt/targets";
-import { addTargets as addClientTargets } from "@server/routers/client/targets";
 import {
     ClientResourcesResults,
     updateClientResources

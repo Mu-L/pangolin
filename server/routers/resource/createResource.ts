@@ -1,15 +1,19 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, domainNamespaces, loginPage } from "@server/db";
+import { build } from "@server/build";
 import {
-    domains,
-    orgDomains,
+    db,
+    loginPage,
     orgs,
     Resource,
     resources,
+    resourcePolicies,
     roleResources,
+    rolePolicies,
     roles,
-    userResources
+    userPolicies,
+    userResources,
+    domainNamespaces
 } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -20,9 +24,7 @@ import logger from "@server/logger";
 import { subdomainSchema, wildcardSubdomainSchema } from "@server/lib/schemas";
 import config from "@server/lib/config";
 import { OpenAPITags, registry } from "@server/openApi";
-import { build } from "@server/build";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { getUniqueResourceName } from "@server/db/names";
 import {
     validateAndConstructDomain,
     checkWildcardDomainConflict
@@ -30,6 +32,10 @@ import {
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import {
+    getUniqueResourceName,
+    getUniqueResourcePolicyName
+} from "@server/db/names";
 
 const createResourceParamsSchema = z.strictObject({
     orgId: z.string()
@@ -391,8 +397,46 @@ async function createHttpResource(
     let resource: Resource | undefined;
 
     const niceId = await getUniqueResourceName(orgId);
+    const policyNiceId = await getUniqueResourcePolicyName(orgId);
 
     await db.transaction(async (trx) => {
+        const adminRole = await trx
+            .select()
+            .from(roles)
+            .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
+            .limit(1);
+
+        if (adminRole.length === 0) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, `Admin role not found`)
+            );
+        }
+
+        const [defaultPolicy] = await trx
+            .insert(resourcePolicies)
+            .values({
+                niceId: policyNiceId,
+                orgId,
+                name: `default policy for ${niceId}`,
+                sso: true,
+                scope: "resource"
+            })
+            .returning();
+
+        // make this policy visible by the admin role
+        await trx.insert(rolePolicies).values({
+            roleId: adminRole[0].roleId,
+            resourcePolicyId: defaultPolicy.resourcePolicyId
+        });
+
+        // make this policy visible by the current user
+        if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
+            await trx.insert(userPolicies).values({
+                userId: req.user?.userId!,
+                resourcePolicyId: defaultPolicy.resourcePolicyId
+            });
+        }
+
         const newResource = await trx
             .insert(resources)
             .values({
@@ -410,21 +454,10 @@ async function createHttpResource(
                 stickySession: stickySession,
                 postAuthPath: postAuthPath,
                 wildcard,
-                health: "unknown"
+                health: "unknown",
+                defaultResourcePolicyId: defaultPolicy.resourcePolicyId
             })
             .returning();
-
-        const adminRole = await db
-            .select()
-            .from(roles)
-            .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
-            .limit(1);
-
-        if (adminRole.length === 0) {
-            return next(
-                createHttpError(HttpCode.NOT_FOUND, `Admin role not found`)
-            );
-        }
 
         await trx.insert(roleResources).values({
             roleId: adminRole[0].roleId,
@@ -451,7 +484,7 @@ async function createHttpResource(
         );
     }
 
-    if (build != "oss") {
+    if (build !== "oss") {
         await createCertificate(domainId, fullDomain, db);
     }
 
@@ -502,21 +535,10 @@ async function createRawResource(
     let resource: Resource | undefined;
 
     const niceId = await getUniqueResourceName(orgId);
+    const policyNiceId = await getUniqueResourcePolicyName(orgId);
 
     await db.transaction(async (trx) => {
-        const newResource = await trx
-            .insert(resources)
-            .values({
-                niceId,
-                orgId,
-                name,
-                proxyPort,
-                mode: resolvedMode.mode
-                // enableProxy
-            })
-            .returning();
-
-        const adminRole = await db
+        const adminRole = await trx
             .select()
             .from(roles)
             .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
@@ -527,6 +549,43 @@ async function createRawResource(
                 createHttpError(HttpCode.NOT_FOUND, `Admin role not found`)
             );
         }
+
+        const [defaultPolicy] = await trx
+            .insert(resourcePolicies)
+            .values({
+                niceId: policyNiceId,
+                orgId,
+                name: `default policy for ${niceId}`,
+                sso: true,
+                scope: "resource"
+            })
+            .returning();
+
+        // make this policy visible by the admin role
+        await trx.insert(rolePolicies).values({
+            roleId: adminRole[0].roleId,
+            resourcePolicyId: defaultPolicy.resourcePolicyId
+        });
+
+        // make this policy visible by the current user
+        if (req.user && !req.userOrgRoleIds?.includes(adminRole[0].roleId)) {
+            await trx.insert(userPolicies).values({
+                userId: req.user?.userId!,
+                resourcePolicyId: defaultPolicy.resourcePolicyId
+            });
+        }
+
+        const newResource = await trx
+            .insert(resources)
+            .values({
+                niceId,
+                orgId,
+                name,
+                mode: resolvedMode.mode,
+                proxyPort,
+                defaultResourcePolicyId: defaultPolicy.resourcePolicyId
+            })
+            .returning();
 
         await trx.insert(roleResources).values({
             roleId: adminRole[0].roleId,

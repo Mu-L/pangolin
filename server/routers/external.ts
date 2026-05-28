@@ -3,6 +3,7 @@ import config from "@server/lib/config";
 import * as site from "./site";
 import * as org from "./org";
 import * as resource from "./resource";
+import * as policy from "./policy";
 import * as domain from "./domain";
 import * as target from "./target";
 import * as user from "./user";
@@ -42,7 +43,8 @@ import {
     verifyUserIsOrgOwner,
     verifySiteResourceAccess,
     verifyOlmAccess,
-    verifyLimits
+    verifyLimits,
+    verifyResourcePolicyAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -102,7 +104,6 @@ authenticated.put(
     logActionAudit(ActionsEnum.createSite),
     site.createSite
 );
-
 
 authenticated.get(
     "/org/:orgId/sites",
@@ -540,6 +541,7 @@ authenticated.get(
     verifyUserHasAction(ActionsEnum.getResource),
     resource.getResource
 );
+
 authenticated.post(
     "/resource/:resourceId",
     verifyResourceAccess,
@@ -646,6 +648,29 @@ authenticated.post(
     logActionAudit(ActionsEnum.updateRole),
     role.updateRole
 );
+
+authenticated.get(
+    "/org/:orgId/resource-policy/:niceId",
+    verifyOrgAccess,
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.getResourcePolicy),
+    policy.getResourcePolicy
+);
+
+authenticated.get(
+    "/resource/:resourceId/policies",
+    verifyResourceAccess,
+    verifyUserHasAction(ActionsEnum.getResourcePolicy),
+    resource.getResourcePolicies
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId",
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.updateResourcePolicy),
+    policy.updateResourcePolicy
+);
+
 // authenticated.get(
 //     "/role/:roleId",
 //     verifyRoleAccess,
@@ -695,6 +720,59 @@ authenticated.post(
     verifyUserHasAction(ActionsEnum.setResourceUsers),
     logActionAudit(ActionsEnum.setResourceUsers),
     resource.setResourceUsers
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/access-control",
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyUsers),
+    logActionAudit(ActionsEnum.setResourcePolicyUsers),
+    policy.setResourcePolicyAccessControl
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/password",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyPassword),
+    logActionAudit(ActionsEnum.setResourcePolicyPassword),
+    policy.setResourcePolicyPassword
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/pincode",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyPincode),
+    logActionAudit(ActionsEnum.setResourcePolicyPincode),
+    policy.setResourcePolicyPincode
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/header-auth",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyHeaderAuth),
+    logActionAudit(ActionsEnum.setResourcePolicyHeaderAuth),
+    policy.setResourcePolicyHeaderAuth
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/whitelist",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyWhitelist),
+    logActionAudit(ActionsEnum.setResourcePolicyWhitelist),
+    policy.setResourcePolicyWhitelist
+);
+
+authenticated.put(
+    "/resource-policy/:resourcePolicyId/rules",
+    verifyResourcePolicyAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.setResourcePolicyRules),
+    logActionAudit(ActionsEnum.setResourcePolicyRules),
+    policy.setResourcePolicyRules
 );
 
 authenticated.post(

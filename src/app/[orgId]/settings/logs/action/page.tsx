@@ -169,8 +169,6 @@ export default function GeneralPage() {
         router.replace(`?${params.toString()}`, { scroll: false });
     };
 
-<<<<<<< HEAD
-=======
     const queryDateTime = async (
         startDate: DateTimeValue,
         endDate: DateTimeValue,
@@ -276,7 +274,6 @@ export default function GeneralPage() {
         }
     };
 
->>>>>>> main
     const exportData = async () => {
         try {
             const params: any = {

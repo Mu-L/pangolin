@@ -191,22 +191,17 @@ export default function ProxyResourcesTable({
         });
     };
 
-    const deleteResource = (resourceId: number) => {
-        api.delete(`/resource/${resourceId}`)
-            .catch((e) => {
-                console.error(t("resourceErrorDelte"), e);
-                toast({
-                    variant: "destructive",
-                    title: t("resourceErrorDelte"),
-                    description: formatAxiosError(e, t("resourceErrorDelte"))
-                });
-            })
-            .then(() => {
-                startTransition(() => {
-                    router.refresh();
-                    setIsDeleteModalOpen(false);
-                });
+    const deleteResource = async (resourceId: number) => {
+        await api.delete(`/resource/${resourceId}`).catch((e) => {
+            console.error(t("resourceErrorDelte"), e);
+            toast({
+                variant: "destructive",
+                title: t("resourceErrorDelte"),
+                description: formatAxiosError(e, t("resourceErrorDelte"))
             });
+        });
+        router.refresh();
+        setIsDeleteModalOpen(false);
     };
 
     async function toggleResourceEnabled(val: boolean, resourceId: number) {
@@ -727,7 +722,11 @@ export default function ProxyResourcesTable({
                         </div>
                     }
                     buttonText={t("resourceDeleteConfirm")}
-                    onConfirm={async () => deleteResource(selectedResource!.id)}
+                    onConfirm={async () =>
+                        startTransition(() =>
+                            deleteResource(selectedResource!.id)
+                        )
+                    }
                     string={selectedResource.name}
                     title={t("resourceDelete")}
                 />

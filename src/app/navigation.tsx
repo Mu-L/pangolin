@@ -11,6 +11,7 @@ import {
     CreditCard,
     Fingerprint,
     Globe,
+    GlobeIcon,
     GlobeLock,
     KeyRound,
     Laptop,
@@ -22,6 +23,7 @@ import {
     ScanEye,
     Server,
     Settings,
+    ShieldIcon,
     SquareMousePointer,
     TagIcon,
     TicketCheck,
@@ -135,6 +137,24 @@ export const orgNavSections = (
                     }
                 ]
             },
+            ...(build !== "oss"
+                ? [
+                      {
+                          title: "sidebarPolicies",
+
+                          icon: <ShieldIcon className="size-4 flex-none" />,
+                          items: [
+                              {
+                                  title: "sidebarResourcePolicies",
+                                  href: "/{orgId}/settings/policies/resource",
+                                  icon: (
+                                      <GlobeIcon className="size-4 flex-none" />
+                                  )
+                              }
+                          ]
+                      }
+                  ]
+                : []),
             // PaidFeaturesAlert
             ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
             build === "saas" ||

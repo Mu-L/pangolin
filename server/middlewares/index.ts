@@ -32,3 +32,4 @@ export * from "./verifySiteResourceAccess";
 export * from "./logActionAudit";
 export * from "./verifyOlmAccess";
 export * from "./verifyLimits";
+export * from "./verifyResourcePolicyAccess";

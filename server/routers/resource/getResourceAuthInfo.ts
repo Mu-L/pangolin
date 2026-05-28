@@ -2,13 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import {
     db,
-    resourceHeaderAuth,
-    resourceHeaderAuthExtendedCompatibility,
-    resourcePassword,
-    resourcePincode,
+    resourcePolicies,
+    resourcePolicyHeaderAuth,
+    resourcePolicyPassword,
+    resourcePolicyPincode,
     resources
 } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -60,64 +60,53 @@ export async function getResourceAuthInfo(
 
         const isGuidInteger = /^\d+$/.test(resourceGuid);
 
+        const buildQuery = (whereClause: ReturnType<typeof eq>) =>
+            db
+                .select()
+                .from(resources)
+                .leftJoin(
+                    resourcePolicies,
+                    or(
+                        eq(
+                            resourcePolicies.resourcePolicyId,
+                            resources.resourcePolicyId
+                        ),
+                        eq(
+                            resourcePolicies.resourcePolicyId,
+                            resources.defaultResourcePolicyId
+                        )
+                    )
+                )
+                .leftJoin(
+                    resourcePolicyPincode,
+                    eq(
+                        resourcePolicyPincode.resourcePolicyId,
+                        resourcePolicies.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    resourcePolicyPassword,
+                    eq(
+                        resourcePolicyPassword.resourcePolicyId,
+                        resourcePolicies.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    resourcePolicyHeaderAuth,
+                    eq(
+                        resourcePolicyHeaderAuth.resourcePolicyId,
+                        resourcePolicies.resourcePolicyId
+                    )
+                )
+                .where(whereClause)
+                .limit(1);
+
         const [result] =
             isGuidInteger && build === "saas"
-                ? await db
-                      .select()
-                      .from(resources)
-                      .leftJoin(
-                          resourcePincode,
-                          eq(resourcePincode.resourceId, resources.resourceId)
-                      )
-                      .leftJoin(
-                          resourcePassword,
-                          eq(resourcePassword.resourceId, resources.resourceId)
-                      )
-
-                      .leftJoin(
-                          resourceHeaderAuth,
-                          eq(
-                              resourceHeaderAuth.resourceId,
-                              resources.resourceId
-                          )
-                      )
-                      .leftJoin(
-                          resourceHeaderAuthExtendedCompatibility,
-                          eq(
-                              resourceHeaderAuthExtendedCompatibility.resourceId,
-                              resources.resourceId
-                          )
-                      )
-                      .where(eq(resources.resourceId, Number(resourceGuid)))
-                      .limit(1)
-                : await db
-                      .select()
-                      .from(resources)
-                      .leftJoin(
-                          resourcePincode,
-                          eq(resourcePincode.resourceId, resources.resourceId)
-                      )
-                      .leftJoin(
-                          resourcePassword,
-                          eq(resourcePassword.resourceId, resources.resourceId)
-                      )
-
-                      .leftJoin(
-                          resourceHeaderAuth,
-                          eq(
-                              resourceHeaderAuth.resourceId,
-                              resources.resourceId
-                          )
-                      )
-                      .leftJoin(
-                          resourceHeaderAuthExtendedCompatibility,
-                          eq(
-                              resourceHeaderAuthExtendedCompatibility.resourceId,
-                              resources.resourceId
-                          )
-                      )
-                      .where(eq(resources.resourceGuid, resourceGuid))
-                      .limit(1);
+                ? await buildQuery(
+                      eq(resources.resourceId, Number(resourceGuid))
+                  )
+                : await buildQuery(eq(resources.resourceGuid, resourceGuid));
 
         const resource = result?.resources;
         if (!resource) {
@@ -126,11 +115,10 @@ export async function getResourceAuthInfo(
             );
         }
 
-        const pincode = result?.resourcePincode;
-        const password = result?.resourcePassword;
-        const headerAuth = result?.resourceHeaderAuth;
-        const headerAuthExtendedCompatibility =
-            result?.resourceHeaderAuthExtendedCompatibility;
+        const policy = result?.resourcePolicies;
+        const pincode = result?.resourcePolicyPincode;
+        const password = result?.resourcePolicyPassword;
+        const headerAuth = result?.resourcePolicyHeaderAuth;
 
         const url = resource.fullDomain
             ? `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
@@ -146,13 +134,13 @@ export async function getResourceAuthInfo(
                 pincode: pincode !== null,
                 headerAuth: headerAuth !== null,
                 headerAuthExtendedCompatibility:
-                    headerAuthExtendedCompatibility !== null,
-                sso: resource.sso,
+                    headerAuth?.extendedCompatibility ?? false,
+                sso: policy?.sso ?? false,
                 blockAccess: resource.blockAccess,
                 url: url ?? "",
                 wildcard: resource.wildcard ?? false,
                 fullDomain: resource.fullDomain,
-                whitelist: resource.emailWhitelistEnabled,
+                whitelist: policy?.emailWhitelistEnabled ?? false,
                 skipToIdpId: resource.skipToIdpId,
                 orgId: resource.orgId,
                 postAuthPath: resource.postAuthPath ?? null

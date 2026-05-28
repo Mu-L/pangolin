@@ -143,9 +143,7 @@ export default function ConnectionLogsPage() {
         enabled: isPaidUser(tierMatrix.connectionLogs) && build !== "oss"
     });
 
-    const rows = isLoading
-        ? generateSampleConnectionLogs()
-        : (data?.log ?? []);
+    const rows = isLoading ? generateSampleConnectionLogs() : (data?.log ?? []);
     const totalCount = data?.pagination?.total ?? 0;
     const filterAttributes = data?.filterAttributes ?? {
         protocols: [],
@@ -205,8 +203,6 @@ export default function ConnectionLogsPage() {
         router.replace(`?${params.toString()}`, { scroll: false });
     };
 
-<<<<<<< HEAD
-=======
     const queryDateTime = async (
         startDate: DateTimeValue,
         endDate: DateTimeValue,
@@ -311,7 +307,6 @@ export default function ConnectionLogsPage() {
         }
     };
 
->>>>>>> main
     const exportData = async () => {
         try {
             const params: any = {
@@ -729,10 +724,11 @@ function generateSampleConnectionLogs(): QueryConnectionAuditLogResponse["log"] 
             userId: i % 2 === 0 ? `user-${i}` : null,
             sourceAddr: `192.168.1.${i + 1}:${40000 + i}`,
             destAddr: destAddrs[Math.floor(Math.random() * destAddrs.length)],
-            protocol:
-                protocols[Math.floor(Math.random() * protocols.length)],
+            protocol: protocols[Math.floor(Math.random() * protocols.length)],
             startedAt,
-            endedAt: active ? null : startedAt + Math.floor(Math.random() * 3600),
+            endedAt: active
+                ? null
+                : startedAt + Math.floor(Math.random() * 3600),
             bytesTx: active ? null : Math.floor(Math.random() * 1024 * 1024),
             bytesRx: active ? null : Math.floor(Math.random() * 1024 * 1024),
             resourceName: `Resource ${(i % 3) + 1}`,

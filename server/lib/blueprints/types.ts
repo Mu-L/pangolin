@@ -188,6 +188,7 @@ export const PublicResourceSchema = z
             .enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"])
             .optional(), // this was the old one and is now DEPRECATED in favor of the mode
         mode: z.enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"]).optional(),
+        policy: z.string().optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).optional(),
         "full-domain": z.string().optional(),

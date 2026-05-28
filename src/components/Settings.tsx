@@ -72,12 +72,19 @@ export function SettingsSectionBody({
 }
 
 export function SettingsSectionFooter({
-    children
+    children,
+    className
 }: {
     children: React.ReactNode;
+    className?: string;
 }) {
     return (
-        <div className="flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-2 mt-auto pt-6">
+        <div
+            className={cn(
+                "flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-2 mt-auto pt-6",
+                className
+            )}
+        >
             {children}
         </div>
     );

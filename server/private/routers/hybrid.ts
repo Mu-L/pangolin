@@ -45,8 +45,11 @@ import {
     users,
     userOrgs,
     roleResources,
+    rolePolicies,
     userResources,
+    userPolicies,
     resourceRules,
+    resourcePolicyRules,
     userOrgRoles,
     roles
 } from "@server/db";
@@ -430,7 +433,10 @@ hybridRouter.get(
                 );
 
                 // Decrypt and save key file
-                const decryptedKey = decrypt(cert.keyFile!, config.getRawConfig().server.secret!);
+                const decryptedKey = decrypt(
+                    cert.keyFile!,
+                    config.getRawConfig().server.secret!
+                );
 
                 // Return only the certificate data without org information
                 return {
@@ -531,7 +537,10 @@ hybridRouter.get(
                         wildcardCandidates.length > 0
                             ? and(
                                   eq(resources.wildcard, true),
-                                  inArray(resources.fullDomain, wildcardCandidates)
+                                  inArray(
+                                      resources.fullDomain,
+                                      wildcardCandidates
+                                  )
                               )
                             : sql`false`
                     )
@@ -545,10 +554,10 @@ hybridRouter.get(
 
             if (
                 result &&
-                await checkExitNodeOrg(
+                (await checkExitNodeOrg(
                     remoteExitNode.exitNodeId,
                     result.resources.orgId
-                )
+                ))
             ) {
                 // If the exit node is not allowed for the org, return an error
                 return next(
@@ -1132,22 +1141,43 @@ hybridRouter.get(
                 );
             }
 
-            const roleResourceAccess = await db
-                .select()
-                .from(roleResources)
-                .where(
-                    and(
-                        eq(roleResources.resourceId, resourceId),
-                        eq(roleResources.roleId, roleId)
+            const [direct, viaPolicies] = await Promise.all([
+                db
+                    .select()
+                    .from(roleResources)
+                    .where(
+                        and(
+                            eq(roleResources.resourceId, resourceId),
+                            eq(roleResources.roleId, roleId)
+                        )
                     )
-                )
-                .limit(1);
+                    .limit(1),
+                db
+                    .select({
+                        roleId: rolePolicies.roleId,
+                        resourcePolicyId: rolePolicies.resourcePolicyId
+                    })
+                    .from(rolePolicies)
+                    .innerJoin(
+                        resources,
+                        eq(
+                            resources.resourcePolicyId,
+                            rolePolicies.resourcePolicyId
+                        )
+                    )
+                    .where(
+                        and(
+                            eq(resources.resourceId, resourceId),
+                            eq(rolePolicies.roleId, roleId)
+                        )
+                    )
+                    .limit(1)
+            ]);
 
-            const result =
-                roleResourceAccess.length > 0 ? roleResourceAccess[0] : null;
+            const result = direct[0] ?? viaPolicies[0] ?? null;
 
             return response<typeof roleResources.$inferSelect | null>(res, {
-                data: result,
+                data: result as any,
                 success: true,
                 error: false,
                 message: result
@@ -1222,21 +1252,44 @@ hybridRouter.get(
                 );
             }
 
-            const roleResourceAccess = await db
-                .select({
-                    resourceId: roleResources.resourceId,
-                    roleId: roleResources.roleId
-                })
-                .from(roleResources)
-                .where(
-                    and(
-                        eq(roleResources.resourceId, resourceId),
-                        inArray(roleResources.roleId, roleIds)
-                    )
-                );
+            const [direct, viaPolicies] = await Promise.all([
+                db
+                    .select({
+                        resourceId: roleResources.resourceId,
+                        roleId: roleResources.roleId
+                    })
+                    .from(roleResources)
+                    .where(
+                        and(
+                            eq(roleResources.resourceId, resourceId),
+                            inArray(roleResources.roleId, roleIds)
+                        )
+                    ),
+                roleIds.length > 0
+                    ? db
+                          .select({
+                              resourceId: sql<number>`${resourceId}`,
+                              roleId: rolePolicies.roleId
+                          })
+                          .from(rolePolicies)
+                          .innerJoin(
+                              resources,
+                              eq(
+                                  resources.resourcePolicyId,
+                                  rolePolicies.resourcePolicyId
+                              )
+                          )
+                          .where(
+                              and(
+                                  eq(resources.resourceId, resourceId),
+                                  inArray(rolePolicies.roleId, roleIds)
+                              )
+                          )
+                    : Promise.resolve([])
+            ]);
 
-            const result =
-                roleResourceAccess.length > 0 ? roleResourceAccess : null;
+            const combined = [...direct, ...viaPolicies];
+            const result = combined.length > 0 ? combined : null;
 
             return response<{ resourceId: number; roleId: number }[] | null>(
                 res,
@@ -1397,10 +1450,45 @@ hybridRouter.get(
                 );
             }
 
-            const rules = await db
-                .select()
-                .from(resourceRules)
-                .where(eq(resourceRules.resourceId, resourceId));
+            const [directRules, policyRules] = await Promise.all([
+                db
+                    .select()
+                    .from(resourceRules)
+                    .where(eq(resourceRules.resourceId, resourceId)),
+                db
+                    .select({
+                        ruleId: resourcePolicyRules.ruleId,
+                        resourceId: sql<number>`${resourceId}`,
+                        enabled: resourcePolicyRules.enabled,
+                        priority: resourcePolicyRules.priority,
+                        action: resourcePolicyRules.action,
+                        match: resourcePolicyRules.match,
+                        value: resourcePolicyRules.value
+                    })
+                    .from(resourcePolicyRules)
+                    .innerJoin(
+                        resources,
+                        eq(
+                            resources.resourcePolicyId,
+                            resourcePolicyRules.resourcePolicyId
+                        )
+                    )
+                    .where(eq(resources.resourceId, resourceId))
+            ]);
+
+            const maxDirectPriority = directRules.reduce(
+                (max, r) => Math.max(max, r.priority),
+                0
+            );
+            const offsetPolicyRules = policyRules.map((r) => ({
+                ...r,
+                priority: maxDirectPriority + r.priority
+            }));
+
+            const rules = [
+                ...directRules,
+                ...offsetPolicyRules
+            ] as (typeof resourceRules.$inferSelect)[];
 
             // backward compatibility: COUNTRY -> GEOIP
             // TODO: remove this after a few versions once all exit nodes are updated

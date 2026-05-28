@@ -144,7 +144,7 @@ export async function getOrgUser(
                 return next(
                     createHttpError(
                         HttpCode.FORBIDDEN,
-                        "User does not have permission perform this action"
+                        "User does not have permission to get organization user details"
                     )
                 );
             }
