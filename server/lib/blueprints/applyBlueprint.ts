@@ -23,7 +23,6 @@ import {
 } from "./clientResources";
 import { BlueprintSource } from "@server/routers/blueprints/types";
 import { stringify as stringifyYaml } from "yaml";
-import { faker } from "@faker-js/faker";
 import { handleMessagingForUpdatedSiteResource } from "@server/routers/siteResource";
 import { rebuildClientAssociationsFromSiteResource } from "../rebuildClientAssociations";
 
@@ -106,7 +105,7 @@ export async function applyBlueprint({
                             site.newt.newtId,
                             [target],
                             matchingHealthcheck ? [matchingHealthcheck] : [],
-                            result.proxyResource.protocol,
+                            result.proxyResource.mode === "udp" ? "udp" : "tcp",
                             site.newt.version
                         );
                     }

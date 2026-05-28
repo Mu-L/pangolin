@@ -1,4 +1,6 @@
 import {
+    browserGatewayTarget,
+    BrowserGatewayTarget,
     clients,
     clientSiteResourcesAssociationsCache,
     clientSitesAssociationsCache,
@@ -16,6 +18,7 @@ import logger from "@server/logger";
 import { initPeerAddHandshake, updatePeer } from "../olm/peers";
 import { eq, and } from "drizzle-orm";
 import config from "@server/lib/config";
+import { decrypt } from "@server/lib/crypto";
 import {
     formatEndpoint,
     generateSubnetProxyTargetV2,
@@ -194,7 +197,7 @@ export async function buildTargetConfigurationForNewtClient(
     siteId: number,
     version?: string | null
 ) {
-    // Get all enabled targets with their resource protocol information
+    // Get all enabled targets with their resource mode information
     const allTargets = await db
         .select({
             resourceId: targets.resourceId,
@@ -204,7 +207,7 @@ export async function buildTargetConfigurationForNewtClient(
             port: targets.port,
             internalPort: targets.internalPort,
             enabled: targets.enabled,
-            protocol: resources.protocol
+            mode: resources.mode
         })
         .from(targets)
         .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
@@ -233,6 +236,11 @@ export async function buildTargetConfigurationForNewtClient(
         .from(targetHealthCheck)
         .where(eq(targetHealthCheck.siteId, siteId));
 
+    const allBrowserGatewayTargets = await db
+        .select()
+        .from(browserGatewayTarget)
+        .where(eq(browserGatewayTarget.siteId, siteId));
+
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
             // Filter out invalid targets
@@ -244,10 +252,11 @@ export async function buildTargetConfigurationForNewtClient(
             const formattedTarget = `${target.internalPort}:${formatEndpoint(target.ip, target.port)}`;
 
             // Add to the appropriate protocol array
-            if (target.protocol === "tcp") {
-                acc.tcpTargets.push(formattedTarget);
-            } else {
+            if (target.mode === "udp") {
                 acc.udpTargets.push(formattedTarget);
+            } else {
+                // all other modes are tcp
+                acc.tcpTargets.push(formattedTarget);
             }
 
             return acc;
@@ -304,9 +313,22 @@ export async function buildTargetConfigurationForNewtClient(
         (target) => target !== null
     );
 
+    const serverSecret = config.getRawConfig().server.secret!;
+    const browserGatewayTargets = allBrowserGatewayTargets.map((t) => {
+        const decryptAuthToken = decrypt(t.authToken, serverSecret);
+        return {
+            id: t.browserGatewayTargetId,
+            type: t.type,
+            destination: t.destination,
+            destinationPort: t.destinationPort,
+            authToken: decryptAuthToken
+        };
+    });
+
     return {
         validHealthCheckTargets,
         tcpTargets,
-        udpTargets
+        udpTargets,
+        browserGatewayTargets
     };
 }

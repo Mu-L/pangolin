@@ -86,12 +86,12 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
             href: `/{orgId}/settings/resources/proxy/{niceId}/general`
         },
         {
-            title: t("proxy"),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/proxy`
+            title: t(`${resource.mode}Settings`),
+            href: `/{orgId}/settings/resources/proxy/{niceId}/${resource.mode}`
         }
     ];
 
-    if (resource.http) {
+    if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
         navItems.push({
             title: t("authentication"),
             href: `/{orgId}/settings/resources/proxy/{niceId}/authentication`

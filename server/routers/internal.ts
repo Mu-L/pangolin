@@ -42,6 +42,8 @@ internalRouter.get("/idp", idp.listIdps);
 
 internalRouter.get("/idp/:idpId", idp.getIdp);
 
+internalRouter.get("/resource/browser-target", resource.getBrowserTarget);
+
 // Gerbil routes
 const gerbilRouter = Router();
 internalRouter.use("/gerbil", gerbilRouter);

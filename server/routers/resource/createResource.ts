@@ -23,7 +23,10 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { build } from "@server/build";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { getUniqueResourceName } from "@server/db/names";
-import { validateAndConstructDomain, checkWildcardDomainConflict } from "@server/lib/domainUtils";
+import {
+    validateAndConstructDomain,
+    checkWildcardDomainConflict
+} from "@server/lib/domainUtils";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -32,15 +35,58 @@ const createResourceParamsSchema = z.strictObject({
     orgId: z.string()
 });
 
+function resolveModeFromLegacyFields(data: {
+    mode?: "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+    http?: boolean;
+    protocol?: "tcp" | "udp";
+}): {
+    mode?: "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+    error?: string;
+} {
+    if (data.mode) {
+        return { mode: data.mode };
+    }
+
+    if (typeof data.http === "boolean" && data.protocol) {
+        if (data.http && data.protocol === "tcp") {
+            return { mode: "http" };
+        }
+        if (!data.http && data.protocol === "tcp") {
+            return { mode: "tcp" };
+        }
+        if (!data.http && data.protocol === "udp") {
+            return { mode: "udp" };
+        }
+        return {
+            error: "Invalid deprecated http/protocol combination"
+        };
+    }
+
+    return { mode: undefined };
+}
+
 const createHttpResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
         subdomain: z.string().nullable().optional(),
-        http: z.boolean(),
-        protocol: z.enum(["tcp", "udp"]),
+        http: z.boolean().optional().openapi({
+            deprecated: true,
+            description:
+                "Deprecated. Use `mode` instead. Legacy compatibility only."
+        }),
+        protocol: z.enum(["tcp", "udp"]).optional().openapi({
+            deprecated: true,
+            description:
+                "Deprecated. Use `mode` instead. Legacy compatibility only."
+        }),
         domainId: z.string(),
         stickySession: z.boolean().optional(),
-        postAuthPath: z.string().nullable().optional()
+        postAuthPath: z.string().nullable().optional(),
+        mode: z.enum(["http", "ssh", "rdp", "vnc", "tcp", "udp"]).optional(),
+        // SSH Settings
+        pamMode: z.enum(["passthrough", "push"]).optional(),
+        authDaemonPort: z.int().positive().optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional()
     })
     .refine(
         (data) => {
@@ -60,13 +106,27 @@ const createHttpResourceSchema = z
 const createRawResourceSchema = z
     .strictObject({
         name: z.string().min(1).max(255),
-        http: z.boolean(),
-        protocol: z.enum(["tcp", "udp"]),
+        http: z.boolean().optional().openapi({
+            deprecated: true,
+            description:
+                "Deprecated. Use `mode` instead. Legacy compatibility only."
+        }),
+        protocol: z.enum(["tcp", "udp"]).optional().openapi({
+            deprecated: true,
+            description:
+                "Deprecated. Use `mode` instead. Legacy compatibility only."
+        }),
+        mode: z.enum(["tcp", "udp"]).optional(),
         proxyPort: z.int().min(1).max(65535)
         // enableProxy: z.boolean().default(true) // always true now
     })
     .refine(
         (data) => {
+            const resolved = resolveModeFromLegacyFields(data);
+            if (resolved.error || !resolved.mode) {
+                return false;
+            }
+
             if (!config.getRawConfig().flags?.allow_raw_resources) {
                 if (data.proxyPort !== undefined) {
                     return false;
@@ -143,17 +203,18 @@ export async function createResource(
             );
         }
 
-        if (typeof req.body.http !== "boolean") {
+        const resolvedMode = resolveModeFromLegacyFields(req.body);
+        if (resolvedMode.error) {
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, "http field is required")
+                createHttpError(HttpCode.BAD_REQUEST, resolvedMode.error)
             );
         }
 
-        const { http } = req.body;
+        if (resolvedMode.mode) {
+            req.body.mode = resolvedMode.mode;
+        }
 
-        if (http) {
-            return await createHttpResource({ req, res, next }, { orgId });
-        } else {
+        if (typeof req.body.proxyPort === "number") {
             if (
                 !config.getRawConfig().flags?.allow_raw_resources &&
                 build == "oss"
@@ -166,6 +227,17 @@ export async function createResource(
                 );
             }
             return await createRawResource({ req, res, next }, { orgId });
+        }
+
+        if (req.body.mode) {
+            return await createHttpResource({ req, res, next }, { orgId });
+        } else {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    "mode is required when deprecated fields are not provided"
+                )
+            );
         }
     } catch (error) {
         logger.error(error);
@@ -198,7 +270,15 @@ async function createHttpResource(
         );
     }
 
-    const { name, domainId, postAuthPath } = parsedBody.data;
+    const {
+        name,
+        domainId,
+        postAuthPath,
+        mode,
+        authDaemonPort,
+        authDaemonMode,
+        pamMode
+    } = parsedBody.data;
     const subdomain = parsedBody.data.subdomain;
     const stickySession = parsedBody.data.stickySession;
 
@@ -322,8 +402,10 @@ async function createHttpResource(
                 orgId,
                 name,
                 subdomain: finalSubdomain,
-                http: true,
-                protocol: "tcp",
+                mode: mode,
+                pamMode: pamMode,
+                authDaemonMode: authDaemonMode,
+                authDaemonPort: authDaemonPort,
                 ssl: true,
                 stickySession: stickySession,
                 postAuthPath: postAuthPath,
@@ -405,7 +487,17 @@ async function createRawResource(
         );
     }
 
-    const { name, http, protocol, proxyPort } = parsedBody.data;
+    const { name, proxyPort } = parsedBody.data;
+    const resolvedMode = resolveModeFromLegacyFields(parsedBody.data);
+    if (resolvedMode.error || !resolvedMode.mode) {
+        return next(
+            createHttpError(
+                HttpCode.BAD_REQUEST,
+                resolvedMode.error ||
+                    "mode is required when deprecated fields are not provided"
+            )
+        );
+    }
 
     let resource: Resource | undefined;
 
@@ -418,9 +510,8 @@ async function createRawResource(
                 niceId,
                 orgId,
                 name,
-                http,
-                protocol,
-                proxyPort
+                proxyPort,
+                mode: resolvedMode.mode
                 // enableProxy
             })
             .returning();

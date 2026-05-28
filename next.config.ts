@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin();
 const nextConfig: NextConfig = {
     reactStrictMode: false,
     reactCompiler: true,
+    transpilePackages: ["@novnc/novnc"],
     output: "standalone"
 };
 

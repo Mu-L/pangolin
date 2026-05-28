@@ -51,29 +51,34 @@ export default function EditInternalResourceDialog({
         try {
             let data = { ...values };
             if (
-                (data.mode === "host" || data.mode === "http") &&
+                (data.mode === "host" ||
+                    data.mode === "http" ||
+                    data.mode === "ssh") &&
                 isHostname(data.destination)
             ) {
                 const currentAlias = data.alias?.trim() || "";
                 if (!currentAlias) {
                     let aliasValue = data.destination;
-                    if (data.destination.toLowerCase() === "localhost") {
+                    if (data.destination?.toLowerCase() === "localhost") {
                         aliasValue = `${cleanForFQDN(data.name)}.internal`;
                     }
                     data = { ...data, alias: aliasValue };
                 }
             }
 
+            // "ssh" mode maps to "host" in the backend with SSH settings
+            const backendMode = data.mode === "ssh" ? "host" : data.mode;
+
             await api.post(`/site-resource/${resource.id}`, {
                 name: data.name,
                 siteIds: data.siteIds,
-                mode: data.mode,
+                mode: backendMode,
                 niceId: data.niceId,
                 destination: data.destination,
                 ...(data.mode === "http" && {
                     scheme: data.scheme,
                     ssl: data.ssl ?? false,
-                    destinationPort: data.httpHttpsPort ?? null,
+                    destinationPort: data.destinationPort ?? null,
                     domainId: data.httpConfigDomainId
                         ? data.httpConfigDomainId
                         : undefined,
@@ -95,7 +100,24 @@ export default function EditInternalResourceDialog({
                         authDaemonPort: data.authDaemonPort || null
                     })
                 }),
-                ...((data.mode === "host" || data.mode === "cidr") && {
+                ...(data.mode === "ssh" && {
+                    alias:
+                        data.alias &&
+                        typeof data.alias === "string" &&
+                        data.alias.trim()
+                            ? data.alias
+                            : null,
+                    pamMode: data.pamMode ?? undefined,
+                    ...(data.authDaemonMode != null && {
+                        authDaemonMode: data.authDaemonMode
+                    }),
+                    ...(data.authDaemonMode === "remote" && {
+                        authDaemonPort: data.authDaemonPort || null
+                    })
+                }),
+                ...((data.mode === "host" ||
+                    data.mode === "ssh" ||
+                    data.mode === "cidr") && {
                     tcpPortRangeString: data.tcpPortRangeString,
                     udpPortRangeString: data.udpPortRangeString,
                     disableIcmp: data.disableIcmp ?? false

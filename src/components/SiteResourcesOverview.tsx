@@ -44,13 +44,13 @@ function isSafeUrlForLink(href: string): boolean {
 const OVERVIEW_META_CLASS = "w-full min-w-0 text-muted-foreground text-sm";
 
 function publicProtocolLabel(r: PublicResourceRow): string {
-    if (r.http) {
+    if (r.mode == "http") {
         return r.ssl ? "HTTPS" : "HTTP";
     }
-    const p = (r.protocol || "").toLowerCase();
+    const p = (r.mode || "").toLowerCase();
     if (p === "tcp") return "TCP";
     if (p === "udp") return "UDP";
-    return (r.protocol || "—").toUpperCase();
+    return (r.mode || "—").toUpperCase();
 }
 
 function PublicResourceMeta({ resource: r }: { resource: PublicResourceRow }) {
@@ -68,12 +68,13 @@ function PrivateResourceMeta({ row }: { row: SiteResourceRow }) {
     const modeLabel: Record<SiteResourceRow["mode"], string> = {
         host: t("editInternalResourceDialogModeHost"),
         cidr: t("editInternalResourceDialogModeCidr"),
-        http: t("editInternalResourceDialogModeHttp")
+        http: t("editInternalResourceDialogModeHttp"),
+        ssh: t("editInternalResourceDialogModeSsh")
     };
     const dest = formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
-        httpHttpsPort: row.destinationPort ?? null,
+        destinationPort: row.destinationPort ?? null,
         scheme: row.scheme
     });
     return (
@@ -90,7 +91,7 @@ function PrivateResourceMeta({ row }: { row: SiteResourceRow }) {
 
 function PublicAccessMethod({ resource: r }: { resource: PublicResourceRow }) {
     const t = useTranslations();
-    if (!r.http) {
+    if (!["http", "ssh", "rdp", "vnc"].includes(r.mode || "")) {
         return (
             <CopyToClipboard
                 text={r.proxyPort?.toString() ?? ""}
@@ -149,7 +150,7 @@ function PrivateAccessMethod({ row }: { row: SiteResourceRow }) {
     const dest = formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
-        httpHttpsPort: row.destinationPort,
+        destinationPort: row.destinationPort,
         scheme: row.scheme
     });
     return (

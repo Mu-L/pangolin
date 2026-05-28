@@ -142,8 +142,6 @@ export const resources = sqliteTable("resources", {
         .notNull()
         .default(false),
     sso: integer("sso", { mode: "boolean" }).notNull().default(true),
-    http: integer("http", { mode: "boolean" }).notNull().default(true),
-    protocol: text("protocol").notNull(),
     proxyPort: integer("proxyPort"),
     emailWhitelistEnabled: integer("emailWhitelistEnabled", { mode: "boolean" })
         .notNull()
@@ -166,7 +164,6 @@ export const resources = sqliteTable("resources", {
         .notNull()
         .default(false),
     proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
-
     maintenanceModeEnabled: integer("maintenanceModeEnabled", {
         mode: "boolean"
     })
@@ -180,7 +177,15 @@ export const resources = sqliteTable("resources", {
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
     health: text("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false)
+    wildcard: integer("wildcard", { mode: "boolean" }).notNull().default(false),
+    mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
+    pamMode: text("pamMode")
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
+    authDaemonMode: text("authDaemonMode")
+        .$type<"site" | "remote" | "native">()
+        .default("site"),
+    authDaemonPort: integer("authDaemonPort").default(22123)
 });
 
 export const labels = sqliteTable("labels", {
@@ -372,11 +377,11 @@ export const siteResources = sqliteTable("siteResources", {
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
     ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
-    mode: text("mode").$type<"host" | "cidr" | "http">().notNull(), // "host" | "cidr" | "http"
+    mode: text("mode").$type<"host" | "cidr" | "http" | "ssh">().notNull(), // "host" | "cidr" | "http"
     scheme: text("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
-    destination: text("destination").notNull(), // ip, cidr, hostname
+    destination: text("destination"), // ip, cidr, hostname
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     alias: text("alias"),
     aliasAddress: text("aliasAddress"),
@@ -386,8 +391,11 @@ export const siteResources = sqliteTable("siteResources", {
         .notNull()
         .default(false),
     authDaemonPort: integer("authDaemonPort").default(22123),
+    pamMode: text("pamMode")
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
     authDaemonMode: text("authDaemonMode")
-        .$type<"site" | "remote">()
+        .$type<"site" | "remote" | "native">()
         .default("site"),
     domainId: text("domainId").references(() => domains.domainId, {
         onDelete: "set null"

@@ -49,7 +49,7 @@ type Resource = {
     domain: string;
     enabled: boolean;
     protected: boolean;
-    protocol: string;
+    mode: string; // "http", "tcp", "udp", "rdp", "vnc", "ssh"
     // Auth method fields
     sso?: boolean;
     password?: boolean;
@@ -64,7 +64,6 @@ type SiteResource = {
     name: string;
     destination: string;
     mode: string;
-    protocol: string | null;
     ssl: boolean;
     fullDomain: string | null;
     enabled: boolean;
@@ -882,21 +881,6 @@ export default function MemberResourcesPortal({
                                                                     }
                                                                 </span>
                                                             </div>
-                                                            {siteResource.protocol && (
-                                                                <div>
-                                                                    <span className="font-medium">
-                                                                        {t(
-                                                                            "protocol"
-                                                                        )}
-                                                                        :
-                                                                    </span>
-                                                                    <span className="ml-2 text-muted-foreground uppercase">
-                                                                        {
-                                                                            siteResource.protocol
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                            )}
                                                             <div>
                                                                 <span className="font-medium">
                                                                     {t(
@@ -954,7 +938,7 @@ export default function MemberResourcesPortal({
                                                 siteResource.fullDomain ? (
                                                     /* HTTP mode - show as clickable link */
                                                     <CopyToClipboard
-                                                        text={`${siteResource.ssl ? "https" : (siteResource.protocol ?? "http")}://${siteResource.fullDomain}`}
+                                                        text={`${siteResource.ssl ? "https" : (siteResource.mode ?? "http")}://${siteResource.fullDomain}`}
                                                         isLink={true}
                                                     />
                                                 ) : siteResource.alias ? (
@@ -1037,7 +1021,7 @@ export default function MemberResourcesPortal({
                                                 <Button
                                                     onClick={() =>
                                                         window.open(
-                                                            `${siteResource.ssl ? "https" : (siteResource.protocol ?? "http")}://${siteResource.fullDomain}`,
+                                                            `${siteResource.ssl ? "https" : (siteResource.mode ?? "http")}://${siteResource.fullDomain}`,
                                                             "_blank"
                                                         )
                                                     }

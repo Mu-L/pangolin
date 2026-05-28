@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
-    SelectGroup,
     SelectItem,
-    SelectLabel,
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
@@ -36,7 +34,6 @@ import {
 import {
     Table,
     TableBody,
-    TableCaption,
     TableCell,
     TableHead,
     TableHeader,
@@ -55,18 +52,11 @@ import {
     SettingsSectionTitle,
     SettingsSectionDescription,
     SettingsSectionBody,
-    SettingsSectionFooter,
-    SettingsSectionForm
+    SettingsSectionFooter
 } from "@app/components/Settings";
 import { ListResourceRulesResponse } from "@server/routers/resource/listResourceRules";
 import { SwitchInput } from "@app/components/SwitchInput";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { ArrowUpDown, Check, InfoIcon, X, ChevronsUpDown } from "lucide-react";
-import {
-    InfoSection,
-    InfoSections,
-    InfoSectionTitle
-} from "@app/components/InfoSection";
 import { InfoPopup } from "@app/components/ui/info-popup";
 import {
     isValidCIDR,
@@ -78,7 +68,11 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { COUNTRIES } from "@server/db/countries";
 import { MAJOR_ASNS } from "@server/db/asns";
-import { REGIONS, getRegionNameById, isValidRegionId } from "@server/db/regions";
+import {
+    REGIONS,
+    getRegionNameById,
+    isValidRegionId
+} from "@server/db/regions";
 import {
     Command,
     CommandEmpty,
@@ -109,25 +103,23 @@ type LocalRule = ArrayElement<ListResourceRulesResponse["rules"]> & {
 export default function ResourceRules(props: {
     params: Promise<{ resourceId: number }>;
 }) {
-    const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
     const api = createApiClient(useEnvContext());
     const [rules, setRules] = useState<LocalRule[]>([]);
     const [rulesToRemove, setRulesToRemove] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
-    const [rulesEnabled, setRulesEnabled] = useState(resource.applyRules ?? false);
+    const [rulesEnabled, setRulesEnabled] = useState(
+        resource.applyRules ?? false
+    );
 
     useEffect(() => {
         setRulesEnabled(resource.applyRules);
     }, [resource.applyRules]);
 
-    const [openCountrySelect, setOpenCountrySelect] = useState(false);
-    const [countrySelectValue, setCountrySelectValue] = useState("");
     const [openAddRuleCountrySelect, setOpenAddRuleCountrySelect] =
         useState(false);
-    const [openAddRuleAsnSelect, setOpenAddRuleAsnSelect] =
-        useState(false);
+    const [openAddRuleAsnSelect, setOpenAddRuleAsnSelect] = useState(false);
     const [openAddRuleRegionSelect, setOpenAddRuleRegionSelect] =
         useState(false);
     const router = useRouter();
@@ -157,7 +149,7 @@ export default function ResourceRules(props: {
         resolver: zodResolver(addRuleSchema),
         defaultValues: {
             action: "ACCEPT",
-            match: "PATH",
+            match: resource.mode == "http" ? "PATH" : "IP",
             value: ""
         }
     });
@@ -270,16 +262,12 @@ export default function ResourceRules(props: {
             setLoading(false);
             return;
         }
-        if (
-            data.match === "REGION" &&
-            !isValidRegionId(data.value)
-        ) {
+        if (data.match === "REGION" && !isValidRegionId(data.value)) {
             toast({
                 variant: "destructive",
                 title: t("rulesErrorInvalidRegion"),
                 description:
-                    t("rulesErrorInvalidRegionDescription") ||
-                    "Invalid region."
+                    t("rulesErrorInvalidRegionDescription") || "Invalid region."
             });
             setLoading(false);
             return;
@@ -564,12 +552,24 @@ export default function ResourceRules(props: {
                 <Select
                     defaultValue={row.original.match}
                     onValueChange={(
-                        value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN" | "REGION"
+                        value:
+                            | "CIDR"
+                            | "IP"
+                            | "PATH"
+                            | "COUNTRY"
+                            | "ASN"
+                            | "REGION"
                     ) =>
                         updateRule(row.original.ruleId, {
                             match: value,
                             value:
-                                value === "COUNTRY" ? "US" : value === "ASN" ? "AS15169" : value === "REGION" ? "021" : row.original.value
+                                value === "COUNTRY"
+                                    ? "US"
+                                    : value === "ASN"
+                                      ? "AS15169"
+                                      : value === "REGION"
+                                        ? "021"
+                                        : row.original.value
                         })
                     }
                 >
@@ -577,7 +577,11 @@ export default function ResourceRules(props: {
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="PATH">{RuleMatch.PATH}</SelectItem>
+                        {resource.mode == "http" && (
+                            <SelectItem value="PATH">
+                                {RuleMatch.PATH}
+                            </SelectItem>
+                        )}
                         <SelectItem value="IP">{RuleMatch.IP}</SelectItem>
                         <SelectItem value="CIDR">{RuleMatch.CIDR}</SelectItem>
                         {isMaxmindAvailable && (
@@ -669,14 +673,14 @@ export default function ResourceRules(props: {
                             >
                                 {row.original.value
                                     ? (() => {
-                                    const found = MAJOR_ASNS.find(
+                                          const found = MAJOR_ASNS.find(
                                               (asn) =>
                                                   asn.code ===
                                                   row.original.value
-                                    );
-                                    return found
-                                        ? `${found.name} (${row.original.value})`
-                                        : `Custom (${row.original.value})`;
+                                          );
+                                          return found
+                                              ? `${found.name} (${row.original.value})`
+                                              : `Custom (${row.original.value})`;
                                       })()
                                     : "Select ASN"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -755,7 +759,9 @@ export default function ResourceRules(props: {
                                 className="min-w-[200px] justify-between"
                             >
                                 {(() => {
-                                    const regionName = getRegionNameById(row.original.value);
+                                    const regionName = getRegionNameById(
+                                        row.original.value
+                                    );
                                     if (!regionName) {
                                         return t("selectRegion");
                                     }
@@ -774,7 +780,10 @@ export default function ResourceRules(props: {
                                         {t("noRegionFound")}
                                     </CommandEmpty>
                                     {REGIONS.map((continent) => (
-                                        <CommandGroup key={continent.id} heading={t(continent.name)}>
+                                        <CommandGroup
+                                            key={continent.id}
+                                            heading={t(continent.name)}
+                                        >
                                             <CommandItem
                                                 value={continent.id}
                                                 keywords={[
@@ -790,38 +799,48 @@ export default function ResourceRules(props: {
                                             >
                                                 <Check
                                                     className={`mr-2 h-4 w-4 ${
-                                                        row.original.value === continent.id
+                                                        row.original.value ===
+                                                        continent.id
                                                             ? "opacity-100"
                                                             : "opacity-0"
                                                     }`}
                                                 />
-                                                {t(continent.name)} ({continent.id})
+                                                {t(continent.name)} (
+                                                {continent.id})
                                             </CommandItem>
-                                            {continent.includes.map((subregion) => (
-                                                <CommandItem
-                                                    key={subregion.id}
-                                                    value={subregion.id}
-                                                    keywords={[
-                                                        t(subregion.name),
-                                                        subregion.id
-                                                    ]}
-                                                    onSelect={() => {
-                                                        updateRule(
-                                                            row.original.ruleId,
-                                                            { value: subregion.id }
-                                                        );
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={`mr-2 h-4 w-4 ${
-                                                            row.original.value === subregion.id
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        }`}
-                                                    />
-                                                    {t(subregion.name)} ({subregion.id})
-                                                </CommandItem>
-                                            ))}
+                                            {continent.includes.map(
+                                                (subregion) => (
+                                                    <CommandItem
+                                                        key={subregion.id}
+                                                        value={subregion.id}
+                                                        keywords={[
+                                                            t(subregion.name),
+                                                            subregion.id
+                                                        ]}
+                                                        onSelect={() => {
+                                                            updateRule(
+                                                                row.original
+                                                                    .ruleId,
+                                                                {
+                                                                    value: subregion.id
+                                                                }
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={`mr-2 h-4 w-4 ${
+                                                                row.original
+                                                                    .value ===
+                                                                subregion.id
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            }`}
+                                                        />
+                                                        {t(subregion.name)} (
+                                                        {subregion.id})
+                                                    </CommandItem>
+                                                )
+                                            )}
                                         </CommandGroup>
                                     ))}
                                 </CommandList>
@@ -1018,7 +1037,8 @@ export default function ResourceRules(props: {
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {resource.http && (
+                                                            {resource.mode ==
+                                                                "http" && (
                                                                 <SelectItem value="PATH">
                                                                     {
                                                                         RuleMatch.PATH
@@ -1311,8 +1331,8 @@ export default function ResourceRules(props: {
                                                             </PopoverContent>
                                                         </Popover>
                                                     ) : addRuleForm.watch(
-                                                        "match"
-                                                    ) === "REGION" ? (
+                                                          "match"
+                                                      ) === "REGION" ? (
                                                         <Popover
                                                             open={
                                                                 openAddRuleRegionSelect
@@ -1334,8 +1354,16 @@ export default function ResourceRules(props: {
                                                                 >
                                                                     {field.value
                                                                         ? (() => {
-                                                                              const regionName = getRegionNameById(field.value);
-                                                                              const translatedName = regionName ? t(regionName) : field.value;
+                                                                              const regionName =
+                                                                                  getRegionNameById(
+                                                                                      field.value
+                                                                                  );
+                                                                              const translatedName =
+                                                                                  regionName
+                                                                                      ? t(
+                                                                                            regionName
+                                                                                        )
+                                                                                      : field.value;
                                                                               return `${translatedName} (${field.value})`;
                                                                           })()
                                                                         : t(
@@ -1357,43 +1385,31 @@ export default function ResourceRules(props: {
                                                                                 "noRegionFound"
                                                                             )}
                                                                         </CommandEmpty>
-                                                                        {REGIONS.map((continent) => (
-                                                                            <CommandGroup key={continent.id} heading={t(continent.name)}>
-                                                                                <CommandItem
-                                                                                    value={continent.id}
-                                                                                    keywords={[
-                                                                                        t(continent.name),
+                                                                        {REGIONS.map(
+                                                                            (
+                                                                                continent
+                                                                            ) => (
+                                                                                <CommandGroup
+                                                                                    key={
                                                                                         continent.id
-                                                                                    ]}
-                                                                                    onSelect={() => {
-                                                                                        field.onChange(
-                                                                                            continent.id
-                                                                                        );
-                                                                                        setOpenAddRuleRegionSelect(
-                                                                                            false
-                                                                                        );
-                                                                                    }}
+                                                                                    }
+                                                                                    heading={t(
+                                                                                        continent.name
+                                                                                    )}
                                                                                 >
-                                                                                    <Check
-                                                                                        className={`mr-2 h-4 w-4 ${
-                                                                                            field.value === continent.id
-                                                                                                ? "opacity-100"
-                                                                                                : "opacity-0"
-                                                                                        }`}
-                                                                                    />
-                                                                                    {t(continent.name)} ({continent.id})
-                                                                                </CommandItem>
-                                                                                {continent.includes.map((subregion) => (
                                                                                     <CommandItem
-                                                                                        key={subregion.id}
-                                                                                        value={subregion.id}
+                                                                                        value={
+                                                                                            continent.id
+                                                                                        }
                                                                                         keywords={[
-                                                                                            t(subregion.name),
-                                                                                            subregion.id
+                                                                                            t(
+                                                                                                continent.name
+                                                                                            ),
+                                                                                            continent.id
                                                                                         ]}
                                                                                         onSelect={() => {
                                                                                             field.onChange(
-                                                                                                subregion.id
+                                                                                                continent.id
                                                                                             );
                                                                                             setOpenAddRuleRegionSelect(
                                                                                                 false
@@ -1402,16 +1418,71 @@ export default function ResourceRules(props: {
                                                                                     >
                                                                                         <Check
                                                                                             className={`mr-2 h-4 w-4 ${
-                                                                                                field.value === subregion.id
+                                                                                                field.value ===
+                                                                                                continent.id
                                                                                                     ? "opacity-100"
                                                                                                     : "opacity-0"
                                                                                             }`}
                                                                                         />
-                                                                                        {t(subregion.name)} ({subregion.id})
+                                                                                        {t(
+                                                                                            continent.name
+                                                                                        )}{" "}
+                                                                                        (
+                                                                                        {
+                                                                                            continent.id
+                                                                                        }
+
+                                                                                        )
                                                                                     </CommandItem>
-                                                                                ))}
-                                                                            </CommandGroup>
-                                                                        ))}
+                                                                                    {continent.includes.map(
+                                                                                        (
+                                                                                            subregion
+                                                                                        ) => (
+                                                                                            <CommandItem
+                                                                                                key={
+                                                                                                    subregion.id
+                                                                                                }
+                                                                                                value={
+                                                                                                    subregion.id
+                                                                                                }
+                                                                                                keywords={[
+                                                                                                    t(
+                                                                                                        subregion.name
+                                                                                                    ),
+                                                                                                    subregion.id
+                                                                                                ]}
+                                                                                                onSelect={() => {
+                                                                                                    field.onChange(
+                                                                                                        subregion.id
+                                                                                                    );
+                                                                                                    setOpenAddRuleRegionSelect(
+                                                                                                        false
+                                                                                                    );
+                                                                                                }}
+                                                                                            >
+                                                                                                <Check
+                                                                                                    className={`mr-2 h-4 w-4 ${
+                                                                                                        field.value ===
+                                                                                                        subregion.id
+                                                                                                            ? "opacity-100"
+                                                                                                            : "opacity-0"
+                                                                                                    }`}
+                                                                                                />
+                                                                                                {t(
+                                                                                                    subregion.name
+                                                                                                )}{" "}
+                                                                                                (
+                                                                                                {
+                                                                                                    subregion.id
+                                                                                                }
+
+                                                                                                )
+                                                                                            </CommandItem>
+                                                                                        )
+                                                                                    )}
+                                                                                </CommandGroup>
+                                                                            )
+                                                                        )}
                                                                     </CommandList>
                                                                 </Command>
                                                             </PopoverContent>

@@ -129,8 +129,6 @@ export const resources = pgTable("resources", {
     ssl: boolean("ssl").notNull().default(false),
     blockAccess: boolean("blockAccess").notNull().default(false),
     sso: boolean("sso").notNull().default(true),
-    http: boolean("http").notNull().default(true),
-    protocol: varchar("protocol").notNull(),
     proxyPort: integer("proxyPort"),
     emailWhitelistEnabled: boolean("emailWhitelistEnabled")
         .notNull()
@@ -147,7 +145,6 @@ export const resources = pgTable("resources", {
     headers: text("headers"), // comma-separated list of headers to add to the request
     proxyProtocol: boolean("proxyProtocol").notNull().default(false),
     proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
-
     maintenanceModeEnabled: boolean("maintenanceModeEnabled")
         .notNull()
         .default(false),
@@ -159,7 +156,15 @@ export const resources = pgTable("resources", {
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
     health: varchar("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-    wildcard: boolean("wildcard").notNull().default(false)
+    wildcard: boolean("wildcard").notNull().default(false),
+    mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
+    pamMode: varchar("pamMode", { length: 32 })
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
+    authDaemonMode: varchar("authDaemonMode", { length: 32 })
+        .$type<"site" | "remote" | "native">()
+        .default("site"),
+    authDaemonPort: integer("authDaemonPort").default(22123)
 });
 
 export const labels = pgTable("labels", {
@@ -339,11 +344,11 @@ export const siteResources = pgTable("siteResources", {
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
     ssl: boolean("ssl").notNull().default(false),
-    mode: varchar("mode").$type<"host" | "cidr" | "http">().notNull(), // "host" | "cidr" | "http"
+    mode: varchar("mode").$type<"host" | "cidr" | "http" | "ssh">().notNull(), // "host" | "cidr" | "http"
     scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
-    destination: varchar("destination").notNull(), // ip, cidr, hostname; validate against the mode
+    destination: varchar("destination"), // ip, cidr, hostname; validate against the mode
     enabled: boolean("enabled").notNull().default(true),
     alias: varchar("alias"),
     aliasAddress: varchar("aliasAddress"),
@@ -351,8 +356,11 @@ export const siteResources = pgTable("siteResources", {
     udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
     disableIcmp: boolean("disableIcmp").notNull().default(false),
     authDaemonPort: integer("authDaemonPort").default(22123),
+    pamMode: varchar("pamMode", { length: 32 })
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
-        .$type<"site" | "remote">()
+        .$type<"site" | "remote" | "native">()
         .default("site"),
     domainId: varchar("domainId").references(() => domains.domainId, {
         onDelete: "set null"

@@ -90,9 +90,8 @@ export type ResourceRow = {
     name: string;
     orgId: string;
     domain: string;
+    mode: string | null;
     authState: string;
-    http: boolean;
-    protocol: string;
     proxyPort: number | null;
     enabled: boolean;
     domainId?: string;
@@ -366,11 +365,11 @@ export default function ProxyResourcesTable({
                     const resourceRow = row.original;
                     return (
                         <span>
-                            {resourceRow.http
+                            {resourceRow.mode == "http"
                                 ? resourceRow.ssl
                                     ? "HTTPS"
                                     : "HTTP"
-                                : resourceRow.protocol.toUpperCase()}
+                                : resourceRow.mode?.toUpperCase()}
                         </span>
                     );
                 }
@@ -413,6 +412,9 @@ export default function ProxyResourcesTable({
                 ),
                 cell: ({ row }) => {
                     const resourceRow = row.original;
+                    if (resourceRow.mode !== "http") {
+                        return <span>-</span>;
+                    }
                     return (
                         <TargetStatusCell
                             targets={resourceRow.targets}
@@ -441,6 +443,9 @@ export default function ProxyResourcesTable({
                 header: () => <span className="p-3">{t("uptime30d")}</span>,
                 cell: ({ row }) => {
                     const resourceRow = row.original;
+                    if (resourceRow.mode !== "http") {
+                        return <span>-</span>;
+                    }
                     return (
                         <UptimeMiniBar resourceId={resourceRow.id} days={30} />
                     );
@@ -453,7 +458,11 @@ export default function ProxyResourcesTable({
                 cell: ({ row }) => {
                     const resourceRow = row.original;
 
-                    if (!resourceRow.http) {
+                    if (
+                        !["http", "ssh", "rdp", "vnc"].includes(
+                            resourceRow.mode || ""
+                        )
+                    ) {
                         return (
                             <div className="flex items-center gap-2 min-w-0">
                                 <CopyToClipboard
@@ -941,7 +950,7 @@ function ResourceEnabledForm({
     resource,
     onToggleResourceEnabled
 }: ResourceEnabledFormProps) {
-    const enabled = resource.http
+    const enabled = ["http", "ssh", "rdp", "vnc"].includes(resource.mode || "")
         ? !!resource.domainId && resource.enabled
         : resource.enabled;
     const [optimisticEnabled, setOptimisticEnabled] = useOptimistic(enabled);
@@ -959,7 +968,10 @@ function ResourceEnabledForm({
             <Switch
                 checked={optimisticEnabled}
                 disabled={
-                    (resource.http && !resource.domainId) ||
+                    (["http", "ssh", "rdp", "vnc"].includes(
+                        resource.mode || ""
+                    ) &&
+                        !resource.domainId) ||
                     optimisticEnabled !== enabled
                 }
                 name="enabled"

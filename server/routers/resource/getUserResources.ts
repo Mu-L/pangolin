@@ -127,7 +127,7 @@ export async function getUserResources(
             ssl: boolean;
             enabled: boolean;
             sso: boolean;
-            protocol: string;
+            mode: string;
             emailWhitelistEnabled: boolean;
         }> = [];
         if (accessibleResourceIds.length > 0) {
@@ -139,7 +139,7 @@ export async function getUserResources(
                     ssl: resources.ssl,
                     enabled: resources.enabled,
                     sso: resources.sso,
-                    protocol: resources.protocol,
+                    mode: resources.mode,
                     emailWhitelistEnabled: resources.emailWhitelistEnabled
                 })
                 .from(resources)
@@ -323,7 +323,7 @@ export async function getUserResources(
                         hasPincode ||
                         hasWhitelist
                     ),
-                    protocol: resource.protocol,
+                    mode: resource.mode,
                     sso: resource.sso,
                     password: hasPassword,
                     pincode: hasPincode,
@@ -339,7 +339,6 @@ export async function getUserResources(
                 name: siteResource.name,
                 destination: siteResource.destination,
                 mode: siteResource.mode,
-                protocol: siteResource.scheme,
                 ssl: siteResource.ssl,
                 fullDomain: siteResource.fullDomain,
                 enabled: siteResource.enabled,
@@ -387,14 +386,13 @@ export type GetUserResourcesResponse = {
             domain: string;
             enabled: boolean;
             protected: boolean;
-            protocol: string;
+            mode: string;
         }>;
         siteResources: Array<{
             siteResourceId: number;
             name: string;
             destination: string;
             mode: string;
-            protocol: string | null;
             tcpPortRangeString: string | null;
             udpPortRangeString: string | null;
             disableIcmp: boolean | null;

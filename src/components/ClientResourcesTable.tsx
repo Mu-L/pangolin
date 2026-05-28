@@ -77,21 +77,22 @@ export type InternalResourceRow = {
     siteIds: number[];
     siteNiceIds: string[];
     // mode: "host" | "cidr" | "port";
-    mode: "host" | "cidr" | "http";
+    mode: "host" | "cidr" | "http" | "ssh";
     scheme: "http" | "https" | null;
     ssl: boolean;
     // protocol: string | null;
     // proxyPort: number | null;
-    destination: string;
-    httpHttpsPort: number | null;
+    destination: string | null;
+    destinationPort: number | null;
     alias: string | null;
     aliasAddress: string | null;
     niceId: string;
     tcpPortRangeString: string | null;
     udpPortRangeString: string | null;
     disableIcmp: boolean;
-    authDaemonMode?: "site" | "remote" | null;
+    authDaemonMode?: "site" | "remote" | "native" | null;
     authDaemonPort?: number | null;
+    pamMode?: "passthrough" | "push" | null;
     subdomain?: string | null;
     domainId?: string | null;
     fullDomain?: string | null;
@@ -106,7 +107,7 @@ function formatDestinationDisplay(row: InternalResourceRow): string {
     return formatSiteResourceDestinationDisplay({
         mode: row.mode,
         destination: row.destination,
-        httpHttpsPort: row.httpHttpsPort,
+        destinationPort: row.destinationPort,
         scheme: row.scheme
     });
 }
@@ -357,6 +358,10 @@ export default function ClientResourcesTable({
                             {
                                 value: "http",
                                 label: t("editInternalResourceDialogModeHttp")
+                            },
+                            {
+                                value: "ssh",
+                                label: t("editInternalResourceDialogModeSsh")
                             }
                         ]}
                         selectedValue={searchParams.get("mode") ?? undefined}
@@ -372,13 +377,14 @@ export default function ClientResourcesTable({
                 cell: ({ row }) => {
                     const resourceRow = row.original;
                     const modeLabels: Record<
-                        "host" | "cidr" | "port" | "http",
+                        "host" | "cidr" | "port" | "http" | "ssh",
                         string
                     > = {
                         host: t("editInternalResourceDialogModeHost"),
                         cidr: t("editInternalResourceDialogModeCidr"),
                         port: t("editInternalResourceDialogModePort"),
-                        http: t("editInternalResourceDialogModeHttp")
+                        http: t("editInternalResourceDialogModeHttp"),
+                        ssh: t("editInternalResourceDialogModeSsh")
                     };
                     return <span>{modeLabels[resourceRow.mode]}</span>;
                 }

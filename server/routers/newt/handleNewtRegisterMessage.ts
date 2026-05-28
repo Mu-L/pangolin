@@ -43,8 +43,13 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
 
     const siteId = newt.siteId;
 
-    const { publicKey, pingResults, newtVersion, backwardsCompatible, chainId } =
-        message.data;
+    const {
+        publicKey,
+        pingResults,
+        newtVersion,
+        backwardsCompatible,
+        chainId
+    } = message.data;
     if (!publicKey) {
         logger.warn("Public key not provided");
         return;
@@ -191,8 +196,12 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
             .where(eq(newts.newtId, newt.newtId));
     }
 
-    const { tcpTargets, udpTargets, validHealthCheckTargets } =
-        await buildTargetConfigurationForNewtClient(siteId, newtVersion);
+    const {
+        tcpTargets,
+        udpTargets,
+        validHealthCheckTargets,
+        browserGatewayTargets
+    } = await buildTargetConfigurationForNewtClient(siteId, newtVersion);
 
     logger.debug(
         `Sending health check targets to newt ${newt.newtId}: ${JSON.stringify(validHealthCheckTargets)}`
@@ -212,6 +221,7 @@ export const handleNewtRegisterMessage: MessageHandler = async (context) => {
                     tcp: tcpTargets
                 },
                 healthCheckTargets: validHealthCheckTargets,
+                browserGatewayTargets: browserGatewayTargets,
                 chainId: chainId
             }
         },

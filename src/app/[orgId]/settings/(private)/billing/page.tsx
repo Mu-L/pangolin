@@ -1352,6 +1352,12 @@ export default function BillingPage() {
                                     {t("billingModifyCurrentPlan") ||
                                         "Modify Current Plan"}
                                 </Button>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    {t(
+                                        "billingManageLicenseSubscriptionDescription"
+                                    ) ||
+                                        "Manage your subscription for paid self-hosted license keys and download invoices."}
+                                </p>
                             </div>
                         </div>
                     </SettingsSectionBody>

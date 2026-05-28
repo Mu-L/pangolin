@@ -55,9 +55,7 @@ export async function getTraefikConfig(
             resourceName: resources.name,
             fullDomain: resources.fullDomain,
             ssl: resources.ssl,
-            http: resources.http,
             proxyPort: resources.proxyPort,
-            protocol: resources.protocol,
             subdomain: resources.subdomain,
             domainId: resources.domainId,
             enabled: resources.enabled,
@@ -68,6 +66,7 @@ export async function getTraefikConfig(
             headers: resources.headers,
             proxyProtocol: resources.proxyProtocol,
             proxyProtocolVersion: resources.proxyProtocolVersion,
+            mode: resources.mode,
 
             // Target fields
             targetId: targets.targetId,
@@ -115,8 +114,8 @@ export async function getTraefikConfig(
                 ),
                 inArray(sites.type, siteTypes),
                 allowRawResources
-                    ? isNotNull(resources.http) // ignore the http check if allow_raw_resources is true
-                    : eq(resources.http, true)
+                    ? inArray(resources.mode, ["http", "udp", "tcp"]) // allow all three
+                    : eq(resources.mode, "http")
             )
         )
         .orderBy(desc(targets.priority), targets.targetId); // stable ordering
@@ -166,9 +165,8 @@ export async function getTraefikConfig(
                 key: key,
                 fullDomain: row.fullDomain,
                 ssl: row.ssl,
-                http: row.http,
+                mode: row.mode,
                 proxyPort: row.proxyPort,
-                protocol: row.protocol,
                 subdomain: row.subdomain,
                 domainId: row.domainId,
                 enabled: row.enabled,
@@ -580,7 +578,7 @@ export async function getTraefikConfig(
                 continue;
             }
 
-            const protocol = resource.protocol.toLowerCase();
+            const protocol = resource.mode === "udp" ? "udp" : "tcp"; // all of the other ones are tcp
             const port = resource.proxyPort;
 
             if (!port) {

@@ -126,7 +126,7 @@ export async function deleteTarget(
                     // [deletedTarget],
                     [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
                     [deletedHealthCheck],
-                    resource.protocol,
+                    resource.mode === "udp" ? "udp" : "tcp",
                     newt.version
                 );
             }

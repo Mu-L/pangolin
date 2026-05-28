@@ -780,9 +780,9 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
             }
         }
 
-        logger.debug(
-            `acmeCertSync: cert for ${mainDomain} covers ${allDomains.size} domain(s): ${[...allDomains].join(", ")}`
-        );
+        // logger.debug(
+        //     `acmeCertSync: cert for ${mainDomain} covers ${allDomains.size} domain(s): ${[...allDomains].join(", ")}`
+        // );
 
         for (const domain of allDomains) {
             try {

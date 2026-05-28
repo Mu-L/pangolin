@@ -108,11 +108,11 @@ export default async function ProxyResourcesPage(
             orgId: params.orgId,
             nice: resource.niceId,
             domain: `${resource.ssl ? "https://" : "http://"}${toUnicode(resource.fullDomain || "")}`,
-            protocol: resource.protocol,
             proxyPort: resource.proxyPort,
-            http: resource.http,
             labels: resource.labels,
-            authState: !resource.http
+            authState: !["http", "ssh", "rdp", "vnc"].includes(
+                resource.mode || ""
+            )
                 ? "none"
                 : resource.sso ||
                     resource.pincodeId !== null ||
@@ -126,6 +126,7 @@ export default async function ProxyResourcesPage(
             fullDomain: resource.fullDomain ?? null,
             ssl: resource.ssl,
             wildcard: resource.wildcard,
+            mode: resource.mode,
             targets: resource.targets?.map((target) => ({
                 targetId: target.targetId,
                 ip: target.ip,

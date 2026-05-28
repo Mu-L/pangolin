@@ -119,7 +119,9 @@ export async function pickSiteDefaults(
             );
         }
 
-        const newClientAddress = await getNextAvailableClientSubnet(orgId);
+        const { value: newClientAddress, release: releaseSubnetLock } =
+            await getNextAvailableClientSubnet(orgId);
+        await releaseSubnetLock(); // release immediately — this endpoint only previews the next available value
         if (!newClientAddress) {
             return next(
                 createHttpError(

@@ -47,31 +47,36 @@ export default function CreateInternalResourceDialog({
             try {
                 let data = { ...values };
                 if (
-                    (data.mode === "host" || data.mode === "http") &&
+                    (data.mode === "host" ||
+                        data.mode === "http" ||
+                        data.mode === "ssh") &&
                     isHostname(data.destination)
                 ) {
                     const currentAlias = data.alias?.trim() || "";
                     if (!currentAlias) {
                         let aliasValue = data.destination;
-                        if (data.destination.toLowerCase() === "localhost") {
+                        if (data.destination?.toLowerCase() === "localhost") {
                             aliasValue = `${cleanForFQDN(data.name)}.internal`;
                         }
                         data = { ...data, alias: aliasValue };
                     }
                 }
 
+                // "ssh" mode maps to "host" in the backend with SSH settings
+                const backendMode = data.mode === "ssh" ? "host" : data.mode;
+
                 await api.put<
                     AxiosResponse<{ data: { siteResourceId: number } }>
                 >(`/org/${orgId}/site-resource`, {
                     name: data.name,
                     siteIds: data.siteIds,
-                    mode: data.mode,
+                    mode: backendMode,
                     destination: data.destination,
                     enabled: true,
                     ...(data.mode === "http" && {
                         scheme: data.scheme,
                         ssl: data.ssl ?? false,
-                        destinationPort: data.httpHttpsPort ?? undefined,
+                        destinationPort: data.destinationPort ?? undefined,
                         domainId: data.httpConfigDomainId
                             ? data.httpConfigDomainId
                             : undefined,
@@ -94,7 +99,25 @@ export default function CreateInternalResourceDialog({
                                 authDaemonPort: data.authDaemonPort
                             })
                     }),
-                    ...((data.mode === "host" || data.mode == "cidr") && {
+                    ...(data.mode === "ssh" && {
+                        alias:
+                            data.alias &&
+                            typeof data.alias === "string" &&
+                            data.alias.trim()
+                                ? data.alias
+                                : undefined,
+                        pamMode: data.pamMode ?? undefined,
+                        ...(data.authDaemonMode != null && {
+                            authDaemonMode: data.authDaemonMode
+                        }),
+                        ...(data.authDaemonMode === "remote" &&
+                            data.authDaemonPort != null && {
+                                authDaemonPort: data.authDaemonPort
+                            })
+                    }),
+                    ...((data.mode === "host" ||
+                        data.mode === "ssh" ||
+                        data.mode === "cidr") && {
                         tcpPortRangeString: data.tcpPortRangeString,
                         udpPortRangeString: data.udpPortRangeString,
                         disableIcmp: data.disableIcmp ?? false

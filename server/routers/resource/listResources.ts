@@ -1,4 +1,5 @@
 import {
+    browserGatewayTarget,
     db,
     labels,
     resourceHeaderAuth,
@@ -156,8 +157,6 @@ export type ResourceWithTargets = {
     sso: boolean;
     pincodeId: number | null;
     whitelist: boolean;
-    http: boolean;
-    protocol: string;
     proxyPort: number | null;
     enabled: boolean;
     domainId: string | null;
@@ -165,6 +164,7 @@ export type ResourceWithTargets = {
     headerAuthId: number | null;
     wildcard: boolean;
     health: string | null;
+    mode: string | null;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -193,8 +193,6 @@ function queryResourcesBase() {
             sso: resources.sso,
             pincodeId: resourcePincode.pincodeId,
             whitelist: resources.emailWhitelistEnabled,
-            http: resources.http,
-            protocol: resources.protocol,
             proxyPort: resources.proxyPort,
             enabled: resources.enabled,
             domainId: resources.domainId,
@@ -203,7 +201,8 @@ function queryResourcesBase() {
             headerAuthId: resourceHeaderAuth.headerAuthId,
             headerAuthExtendedCompatibilityId:
                 resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
-            health: resources.health
+            health: resources.health,
+            mode: resources.mode
         })
         .from(resources)
         .leftJoin(
@@ -364,7 +363,9 @@ export async function listResources(
         if (typeof authState !== "undefined") {
             switch (authState) {
                 case "none":
-                    conditions.push(eq(resources.http, false));
+                    conditions.push(
+                        or(eq(resources.mode, "tcp"), eq(resources.mode, "udp"))
+                    );
                     break;
                 case "protected":
                     conditions.push(
@@ -520,6 +521,30 @@ export async function listResources(
                       )
                       .leftJoin(sites, eq(targets.siteId, sites.siteId));
 
+        const allBgTargetSites =
+            resourceIdList.length === 0
+                ? []
+                : await db
+                      .select({
+                          resourceId: browserGatewayTarget.resourceId,
+                          siteId: browserGatewayTarget.siteId,
+                          siteName: sites.name,
+                          siteNiceId: sites.niceId,
+                          siteOnline: sites.online,
+                          siteType: sites.type
+                      })
+                      .from(browserGatewayTarget)
+                      .where(
+                          inArray(
+                              browserGatewayTarget.resourceId,
+                              resourceIdList
+                          )
+                      )
+                      .leftJoin(
+                          sites,
+                          eq(sites.siteId, browserGatewayTarget.siteId)
+                      );
+
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
 
@@ -536,10 +561,9 @@ export async function listResources(
                     sso: row.sso,
                     pincodeId: row.pincodeId,
                     whitelist: row.whitelist,
-                    http: row.http,
-                    protocol: row.protocol,
                     proxyPort: row.proxyPort,
                     wildcard: row.wildcard,
+                    mode: row.mode,
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,
@@ -572,6 +596,21 @@ export async function listResources(
                 }
             >();
             for (const t of raw) {
+                if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
+                    continue;
+                }
+                const isLocal = t.siteType === "local";
+                siteById.set(t.siteId, {
+                    siteId: t.siteId,
+                    siteName: t.siteName ?? "",
+                    siteNiceId: t.siteNiceId ?? "",
+                    online: isLocal ? undefined : Boolean(t.siteOnline)
+                });
+            }
+            const bgRaw = allBgTargetSites.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
+            for (const t of bgRaw) {
                 if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
                     continue;
                 }

@@ -24,7 +24,10 @@ import {
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { validateAndConstructDomain, checkWildcardDomainConflict } from "@server/lib/domainUtils";
+import {
+    validateAndConstructDomain,
+    checkWildcardDomainConflict
+} from "@server/lib/domainUtils";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -68,7 +71,11 @@ const updateHttpResourceBodySchema = z
         maintenanceTitle: z.string().max(255).nullable().optional(),
         maintenanceMessage: z.string().max(2000).nullable().optional(),
         maintenanceEstimatedTime: z.string().max(100).nullable().optional(),
-        postAuthPath: z.string().nullable().optional()
+        postAuthPath: z.string().nullable().optional(),
+        // SSH settings
+        pamMode: z.enum(["passthrough", "push"]).optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
+        authDaemonPort: z.int().min(1).max(65535).nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -240,7 +247,7 @@ export async function updateResource(
             );
         }
 
-        if (resource.http) {
+        if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
             // HANDLE UPDATING HTTP RESOURCES
             return await updateHttpResource(
                 {

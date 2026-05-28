@@ -146,7 +146,7 @@ function MaintenanceSectionForm({
         }
     }
 
-    if (!resource.http) {
+    if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
         return null;
     }
 
@@ -176,7 +176,9 @@ function MaintenanceSectionForm({
                                 render={({ field }) => {
                                     const isDisabled =
                                         !isPaidUser(tierMatrix.maintencePage) ||
-                                        resource.http === false;
+                                        !["http", "ssh", "rdp", "vnc"].includes(
+                                            resource.mode
+                                        );
 
                                     return (
                                         <FormItem>
@@ -462,14 +464,14 @@ export default function GeneralForm() {
         .refine(
             (data) => {
                 // For non-HTTP resources, proxyPort should be defined
-                if (!resource.http) {
+                if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
                     return data.proxyPort !== undefined;
                 }
                 // For HTTP resources, proxyPort should be undefined
                 return data.proxyPort === undefined;
             },
             {
-                message: !resource.http
+                message: !["http", "ssh", "rdp", "vnc"].includes(resource.mode)
                     ? "Port number is required for non-HTTP resources"
                     : "Port number should not be set for HTTP resources",
                 path: ["proxyPort"]
@@ -507,7 +509,9 @@ export default function GeneralForm() {
                     name: data.name,
                     niceId: data.niceId,
                     subdomain: data.subdomain
-                        ? toASCII(finalizeSubdomainSanitize(data.subdomain, true))
+                        ? toASCII(
+                              finalizeSubdomainSanitize(data.subdomain, true)
+                          )
                         : undefined,
                     domainId: data.domainId,
                     proxyPort: data.proxyPort
@@ -555,13 +559,15 @@ export default function GeneralForm() {
     return (
         <>
             <SettingsContainer>
-                {resource?.resourceId && resource?.orgId && (
-                    <UptimeAlertSection
-                        orgId={resource.orgId}
-                        resourceId={resource.resourceId}
-                        startingName={resource.name}
-                    />
-                )}
+                {resource?.resourceId &&
+                    resource?.orgId &&
+                    resource.mode == "http" && (
+                        <UptimeAlertSection
+                            orgId={resource.orgId}
+                            resourceId={resource.resourceId}
+                            startingName={resource.name}
+                        />
+                    )}
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionTitle>
@@ -580,45 +586,48 @@ export default function GeneralForm() {
                                     className="space-y-4"
                                     id="general-settings-form"
                                 >
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("name")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("name")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
-                                    <FormField
-                                        control={form.control}
-                                        name="niceId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("identifier")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        placeholder={t(
-                                                            "enterIdentifier"
-                                                        )}
-                                                        className="flex-1"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                        <FormField
+                                            control={form.control}
+                                            name="niceId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("identifier")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            placeholder={t(
+                                                                "enterIdentifier"
+                                                            )}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
 
-                                    {!resource.http && (
+                                    {!["http", "ssh", "rdp", "vnc"].includes(
+                                        resource.mode
+                                    ) && (
                                         <>
                                             <FormField
                                                 control={form.control}
@@ -667,7 +676,9 @@ export default function GeneralForm() {
                                         </>
                                     )}
 
-                                    {resource.http && (
+                                    {["http", "ssh", "rdp", "vnc"].includes(
+                                        resource.mode
+                                    ) && (
                                         <div className="space-y-4">
                                             <div id="resource-domain-picker">
                                                 <DomainPicker
@@ -726,28 +737,31 @@ export default function GeneralForm() {
                                         control={form.control}
                                         name="enabled"
                                         render={() => (
-                                            <FormItem className="col-span-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <FormControl>
-                                                        <SwitchInput
-                                                            id="enable-resource"
-                                                            defaultChecked={
-                                                                resource.enabled
-                                                            }
-                                                            label={t(
-                                                                "resourceEnable"
-                                                            )}
-                                                            onCheckedChange={(
+                                            <FormItem>
+                                                <FormControl>
+                                                    <SwitchInput
+                                                        id="enable-resource"
+                                                        defaultChecked={
+                                                            resource.enabled
+                                                        }
+                                                        label={t(
+                                                            "resourceEnable"
+                                                        )}
+                                                        onCheckedChange={(
+                                                            val
+                                                        ) =>
+                                                            form.setValue(
+                                                                "enabled",
                                                                 val
-                                                            ) =>
-                                                                form.setValue(
-                                                                    "enabled",
-                                                                    val
-                                                                )
-                                                            }
-                                                        />
-                                                    </FormControl>
-                                                </div>
+                                                            )
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "disabledResourceDescription"
+                                                    )}
+                                                </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
