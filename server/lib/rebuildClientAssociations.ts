@@ -1826,3 +1826,77 @@ export async function verifyClientAssociationsCache(
         extraSiteIds: extraSiteIds.sort((a, b) => a - b)
     };
 }
+
+// cleanupSiteAssociations efficiently removes all client associations for a
+// site that is being deleted. Instead of calling
+// rebuildClientAssociationsFromSiteResource once per site resource (which is
+// O(resources) in DB round-trips and message fan-out), this function performs
+// a single bulk lookup of affected clients and site resources, deletes all
+// cache rows at once, and fires all peer/proxy removal messages in parallel.
+//
+// The caller is responsible for deleting the site row itself (and for sending
+// the newt/wg/terminate signal to the newt process).
+export async function cleanupSiteAssociations(
+    site: Site,
+    trx: Transaction | typeof db = db
+): Promise<void> {
+    const siteId = site.siteId;
+
+    logger.debug(`cleanupSiteAssociations: START siteId=${siteId}`);
+
+    // 1. Find every client currently cached against this site.
+    const cachedSiteClientRows = await trx
+        .select({ clientId: clientSitesAssociationsCache.clientId })
+        .from(clientSitesAssociationsCache)
+        .where(eq(clientSitesAssociationsCache.siteId, siteId));
+
+    const cachedClientIds = cachedSiteClientRows.map((r) => r.clientId);
+
+    // 2. Load full client details (needed for WireGuard public-key references).
+    const allClients =
+        cachedClientIds.length > 0
+            ? await trx
+                  .select({
+                      clientId: clients.clientId,
+                      pubKey: clients.pubKey,
+                      subnet: clients.subnet
+                  })
+                  .from(clients)
+                  .where(inArray(clients.clientId, cachedClientIds))
+            : [];
+
+    // 6. Bulk-delete all cache entries for this site.  Do this before sending
+    //    destination-update messages so updateClientSiteDestinations computes
+    //    the correct (post-deletion) set of destinations.
+    await trx
+        .delete(clientSitesAssociationsCache)
+        .where(eq(clientSitesAssociationsCache.siteId, siteId));
+
+    logger.debug(
+        `cleanupSiteAssociations: siteId=${siteId} cache cleared. clients=${allClients.length}`
+    );
+
+    // 7. Fire all removal messages in parallel.
+    const jobs: Promise<any>[] = [];
+
+    for (const client of allClients) {
+        // Tell each olm to drop the site's WireGuard peer.
+        if (site.publicKey) {
+            jobs.push(olmDeletePeer(client.clientId, siteId, site.publicKey));
+        }
+
+        // Recompute and push updated relay destinations (now excluding this site).
+        if (client.pubKey && client.subnet) {
+            jobs.push(updateClientSiteDestinations(client, trx));
+        }
+    }
+
+    await Promise.all(jobs).catch((error) => {
+        logger.error(
+            `cleanupSiteAssociations: error sending cleanup messages for siteId=${siteId}:`,
+            error
+        );
+    });
+
+    logger.debug(`cleanupSiteAssociations: DONE siteId=${siteId}`);
+}

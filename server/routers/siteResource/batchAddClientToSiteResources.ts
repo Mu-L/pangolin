@@ -15,10 +15,7 @@ import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { eq, and, inArray } from "drizzle-orm";
 import { OpenAPITags, registry } from "@server/openApi";
-import {
-    rebuildClientAssociationsFromClient,
-    rebuildClientAssociationsFromSiteResource
-} from "@server/lib/rebuildClientAssociations";
+import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAssociations";
 
 const batchAddClientToSiteResourcesParamsSchema = z
     .object({

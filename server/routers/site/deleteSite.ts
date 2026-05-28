@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, Site, siteNetworks, siteResources } from "@server/db";
-import { newts, newtSessions, sites } from "@server/db";
-import { eq, inArray } from "drizzle-orm";
+import { db } from "@server/db";
+import { newts, sites } from "@server/db";
+import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -11,7 +11,7 @@ import { deletePeer } from "../gerbil/peers";
 import { fromError } from "zod-validation-error";
 import { sendToClient } from "#dynamic/routers/ws";
 import { OpenAPITags, registry } from "@server/openApi";
-import { rebuildClientAssociationsFromSiteResource } from "@server/lib/rebuildClientAssociations";
+import { cleanupSiteAssociations } from "@server/lib/rebuildClientAssociations";
 import { usageService } from "@server/lib/billing/usageService";
 import { FeatureId } from "@server/lib/billing";
 
@@ -63,7 +63,11 @@ export async function deleteSite(
             );
         }
 
-        let deletedNewtId: string | null = null;
+        const [deletedNewt] = await db
+            .select()
+            .from(newts)
+            .where(eq(newts.siteId, siteId))
+            .limit(1);
 
         await db.transaction(async (trx) => {
             if (site.type == "wireguard") {
@@ -71,56 +75,24 @@ export async function deleteSite(
                     await deletePeer(site.exitNodeId!, site.pubKey);
                 }
             } else if (site.type == "newt") {
-                const networks = await trx
-                    .select({ networkId: siteNetworks.networkId })
-                    .from(siteNetworks)
-                    .where(eq(siteNetworks.siteId, siteId));
+                // Clean up all client associations and send peer/proxy removal
+                // messages in a single efficient pass before deleting the row.
+                await cleanupSiteAssociations(site, trx);
 
-                // loop through them
-                const updatedSiteResources = await trx
-                    .select()
-                    .from(siteResources)
-                    .where(
-                        inArray(
-                            siteResources.networkId,
-                            networks.map((n) => n.networkId)
-                        )
-                    );
-                for (const siteResource of updatedSiteResources) {
-                    await rebuildClientAssociationsFromSiteResource(
-                        siteResource,
-                        trx
-                    );
-                }
-
-                // get the newt on the site by querying the newt table for siteId
-                const [deletedNewt] = await trx
-                    .delete(newts)
-                    .where(eq(newts.siteId, siteId))
-                    .returning();
-                if (deletedNewt) {
-                    deletedNewtId = deletedNewt.newtId;
-
-                    // delete all of the sessions for the newt
-                    await trx
-                        .delete(newtSessions)
-                        .where(eq(newtSessions.newtId, deletedNewt.newtId));
-                }
+                await trx.delete(sites).where(eq(sites.siteId, siteId));
             }
-
-            await trx.delete(sites).where(eq(sites.siteId, siteId));
 
             await usageService.add(site.orgId, FeatureId.SITES, -1, trx);
         });
 
         // Send termination message outside of transaction to prevent blocking
-        if (deletedNewtId) {
+        if (deletedNewt) {
             const payload = {
                 type: `newt/wg/terminate`,
                 data: {}
             };
             // Don't await this to prevent blocking the response
-            sendToClient(deletedNewtId, payload).catch((error) => {
+            sendToClient(deletedNewt.newtId, payload).catch((error) => {
                 logger.error(
                     "Failed to send termination message to newt:",
                     error
