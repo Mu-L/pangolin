@@ -162,10 +162,13 @@ export const HeaderSchema = z.object({
 });
 
 // Schema for individual resource
-export const ResourceSchema = z
+export const PublicResourceSchema = z
     .object({
         name: z.string().optional(),
-        protocol: z.enum(["http", "tcp", "udp"]).optional(),
+        protocol: z
+            .enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"])
+            .optional(), // this was the old one and is now DEPRECATED in favor of the mode
+        mode: z.enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).optional(),
         "full-domain": z.string().optional(),
@@ -185,9 +188,10 @@ export const ResourceSchema = z
                 return true;
             }
 
-            // Otherwise, require name and protocol for full resource definition
+            // Otherwise, require name and protocol/mode for full resource definition
             return (
-                resource.name !== undefined && resource.protocol !== undefined
+                resource.name !== undefined &&
+                (resource.mode !== undefined || resource.protocol !== undefined)
             );
         },
         {
@@ -201,8 +205,8 @@ export const ResourceSchema = z
                 return true;
             }
 
-            // If protocol is http, all targets must have method field
-            if (resource.protocol === "http") {
+            // If protocol/mode is http, all targets must have method field
+            if ((resource.mode ?? resource.protocol) === "http") {
                 return resource.targets.every(
                     (target) => target == null || target.method !== undefined
                 );
@@ -220,8 +224,9 @@ export const ResourceSchema = z
                 return true;
             }
 
-            // If protocol is tcp or udp, no target should have method field
-            if (resource.protocol === "tcp" || resource.protocol === "udp") {
+            // If protocol/mode is tcp or udp, no target should have method field
+            const effectiveProtocol1 = resource.mode ?? resource.protocol;
+            if (effectiveProtocol1 === "tcp" || effectiveProtocol1 === "udp") {
                 return resource.targets.every(
                     (target) => target == null || target.method === undefined
                 );
@@ -239,8 +244,8 @@ export const ResourceSchema = z
                 return true;
             }
 
-            // If protocol is http, it must have a full-domain
-            if (resource.protocol === "http") {
+            // If protocol/mode is http, it must have a full-domain
+            if ((resource.mode ?? resource.protocol) === "http") {
                 return (
                     resource["full-domain"] !== undefined &&
                     resource["full-domain"].length > 0
@@ -259,8 +264,9 @@ export const ResourceSchema = z
                 return true;
             }
 
-            // If protocol is tcp or udp, it must have both proxy-port
-            if (resource.protocol === "tcp" || resource.protocol === "udp") {
+            // If protocol/mode is tcp or udp, it must have both proxy-port
+            const effectiveProtocol2 = resource.mode ?? resource.protocol;
+            if (effectiveProtocol2 === "tcp" || effectiveProtocol2 === "udp") {
                 return resource["proxy-port"] !== undefined;
             }
             return true;
@@ -277,8 +283,9 @@ export const ResourceSchema = z
                 return true;
             }
 
-            // If protocol is tcp or udp, it must not have auth
-            if (resource.protocol === "tcp" || resource.protocol === "udp") {
+            // If protocol/mode is tcp or udp, it must not have auth
+            const effectiveProtocol3 = resource.mode ?? resource.protocol;
+            if (effectiveProtocol3 === "tcp" || effectiveProtocol3 === "udp") {
                 return resource.auth === undefined;
             }
             return true;
@@ -340,7 +347,8 @@ export const ResourceSchema = z
             if (parts.includes("*", 1)) return false; // no further wildcards
             if (parts.length < 3) return false; // need at least *.label.tld
 
-            const labelRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
+            const labelRegex =
+                /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/;
             return parts.slice(1).every((label) => labelRegex.test(label));
         },
         {
@@ -348,16 +356,23 @@ export const ResourceSchema = z
             message:
                 'Wildcard full-domain must have "*" as the leftmost label only, followed by at least two valid hostname labels (e.g. "*.example.com" or "*.level1.example.com"). Patterns like "*example.com" or "level2.*.example.com" are not supported.'
         }
-    );
+    )
+    .transform((resource) => {
+        // Normalize: prefer mode, fall back to protocol for backwards compatibility
+        if (resource.mode === undefined && resource.protocol !== undefined) {
+            resource.mode = resource.protocol;
+        }
+        return resource;
+    });
 
 export function isTargetsOnlyResource(resource: any): boolean {
     return Object.keys(resource).length === 1 && resource.targets;
 }
 
-export const ClientResourceSchema = z
+export const PrivateResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
-        mode: z.enum(["host", "cidr", "http"]),
+        mode: z.enum(["host", "cidr", "http", "ssh"]),
         site: z.string().optional(), // DEPRECATED IN FAVOR OF sites
         sites: z.array(z.string()).optional().default([]),
         // protocol: z.enum(["tcp", "udp"]).optional(),
@@ -435,19 +450,19 @@ export const ClientResourceSchema = z
 export const ConfigSchema = z
     .object({
         "proxy-resources": z
-            .record(z.string(), ResourceSchema)
+            .record(z.string(), PublicResourceSchema)
             .optional()
             .prefault({}),
         "public-resources": z
-            .record(z.string(), ResourceSchema)
+            .record(z.string(), PublicResourceSchema)
             .optional()
             .prefault({}),
         "client-resources": z
-            .record(z.string(), ClientResourceSchema)
+            .record(z.string(), PrivateResourceSchema)
             .optional()
             .prefault({}),
         "private-resources": z
-            .record(z.string(), ClientResourceSchema)
+            .record(z.string(), PrivateResourceSchema)
             .optional()
             .prefault({}),
         sites: z.record(z.string(), SiteSchema).optional().prefault({})
@@ -472,10 +487,13 @@ export const ConfigSchema = z
         }
 
         return data as {
-            "proxy-resources": Record<string, z.infer<typeof ResourceSchema>>;
+            "proxy-resources": Record<
+                string,
+                z.infer<typeof PublicResourceSchema>
+            >;
             "client-resources": Record<
                 string,
-                z.infer<typeof ClientResourceSchema>
+                z.infer<typeof PrivateResourceSchema>
             >;
             sites: Record<string, z.infer<typeof SiteSchema>>;
         };
@@ -614,5 +632,5 @@ export const ConfigSchema = z
 // Type inference from the schema
 export type Site = z.infer<typeof SiteSchema>;
 export type Target = z.infer<typeof TargetSchema>;
-export type Resource = z.infer<typeof ResourceSchema>;
+export type Resource = z.infer<typeof PublicResourceSchema>;
 export type Config = z.infer<typeof ConfigSchema>;

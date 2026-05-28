@@ -247,7 +247,7 @@ export async function updateResource(
             );
         }
 
-        if (resource.http) {
+        if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
             // HANDLE UPDATING HTTP RESOURCES
             return await updateHttpResource(
                 {

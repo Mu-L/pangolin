@@ -944,7 +944,7 @@ export async function getTraefikConfig(
                 continue;
             }
 
-            const protocol = resource.protocol.toLowerCase();
+            const protocol = resource.mode == "udp" ? "udp" : "tcp";
             const port = resource.proxyPort;
 
             if (!port) {

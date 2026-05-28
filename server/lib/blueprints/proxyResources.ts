@@ -36,6 +36,7 @@ import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
+import { http } from "winston";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -198,9 +199,6 @@ export async function updateProxyResources(
             )
             .limit(1);
 
-        const http = resourceData.protocol == "http";
-        const protocol =
-            resourceData.protocol == "http" ? "tcp" : resourceData.protocol;
         const resourceEnabled =
             resourceData.enabled == undefined || resourceData.enabled == null
                 ? true
@@ -216,7 +214,9 @@ export async function updateProxyResources(
 
         if (existingResource) {
             let domain;
-            if (http) {
+            if (
+                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+            ) {
                 domain = await getDomain(
                     existingResource.resourceId,
                     resourceData["full-domain"]!,
@@ -246,10 +246,17 @@ export async function updateProxyResources(
                     .update(resources)
                     .set({
                         name: resourceData.name || "Unnamed Resource",
-                        protocol: protocol || "tcp",
-                        http: http,
-                        proxyPort: http ? null : resourceData["proxy-port"],
-                        fullDomain: http ? resourceData["full-domain"] : null,
+                        mode: resourceData.mode,
+                        proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                            resourceData.mode || ""
+                        )
+                            ? null
+                            : resourceData["proxy-port"],
+                        fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                            resourceData.mode || ""
+                        )
+                            ? resourceData["full-domain"]
+                            : null,
                         subdomain: domain ? domain.subdomain : null,
                         domainId: domain ? domain.domainId : null,
                         wildcard: domain ? domain.wildcard : false,
@@ -466,7 +473,10 @@ export async function updateProxyResources(
                         .set({
                             siteId: site.siteId,
                             ip: targetData.hostname,
-                            method: http ? targetData.method : null,
+                            method:
+                                resourceData.mode == "http" // the other types of ssh, rdp, and vnc use the browser gateway targets and not this one so this is okay
+                                    ? targetData.method
+                                    : null,
                             port: targetData.port,
                             enabled: targetData.enabled,
                             path: targetData.path,
@@ -687,7 +697,9 @@ export async function updateProxyResources(
         } else {
             // create a brand new resource
             let domain;
-            if (http) {
+            if (
+                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+            ) {
                 domain = await getDomain(
                     undefined,
                     resourceData["full-domain"]!,
@@ -711,10 +723,17 @@ export async function updateProxyResources(
                     orgId,
                     niceId: resourceNiceId,
                     name: resourceData.name || "Unnamed Resource",
-                    protocol: protocol || "tcp",
-                    http: http,
-                    proxyPort: http ? null : resourceData["proxy-port"],
-                    fullDomain: http ? resourceData["full-domain"] : null,
+                    mode: resourceData.mode,
+                    proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                        resourceData.mode || ""
+                    )
+                        ? null
+                        : resourceData["proxy-port"],
+                    fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                        resourceData.mode || ""
+                    )
+                        ? resourceData["full-domain"]
+                        : null,
                     subdomain: domain ? domain.subdomain : null,
                     domainId: domain ? domain.domainId : null,
                     wildcard: domain ? domain.wildcard : false,

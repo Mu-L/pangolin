@@ -197,7 +197,7 @@ export async function buildTargetConfigurationForNewtClient(
     siteId: number,
     version?: string | null
 ) {
-    // Get all enabled targets with their resource protocol information
+    // Get all enabled targets with their resource mode information
     const allTargets = await db
         .select({
             resourceId: targets.resourceId,
@@ -207,7 +207,7 @@ export async function buildTargetConfigurationForNewtClient(
             port: targets.port,
             internalPort: targets.internalPort,
             enabled: targets.enabled,
-            protocol: resources.protocol
+            mode: resources.mode
         })
         .from(targets)
         .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
@@ -252,10 +252,11 @@ export async function buildTargetConfigurationForNewtClient(
             const formattedTarget = `${target.internalPort}:${formatEndpoint(target.ip, target.port)}`;
 
             // Add to the appropriate protocol array
-            if (target.protocol === "tcp") {
-                acc.tcpTargets.push(formattedTarget);
-            } else {
+            if (target.mode === "udp") {
                 acc.udpTargets.push(formattedTarget);
+            } else {
+                // all other modes are tcp
+                acc.tcpTargets.push(formattedTarget);
             }
 
             return acc;

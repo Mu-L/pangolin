@@ -146,7 +146,7 @@ function MaintenanceSectionForm({
         }
     }
 
-    if (!resource.http) {
+    if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
         return null;
     }
 
@@ -176,7 +176,9 @@ function MaintenanceSectionForm({
                                 render={({ field }) => {
                                     const isDisabled =
                                         !isPaidUser(tierMatrix.maintencePage) ||
-                                        resource.http === false;
+                                        !["http", "ssh", "rdp", "vnc"].includes(
+                                            resource.mode
+                                        );
 
                                     return (
                                         <FormItem>
@@ -462,14 +464,14 @@ export default function GeneralForm() {
         .refine(
             (data) => {
                 // For non-HTTP resources, proxyPort should be defined
-                if (!resource.http) {
+                if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
                     return data.proxyPort !== undefined;
                 }
                 // For HTTP resources, proxyPort should be undefined
                 return data.proxyPort === undefined;
             },
             {
-                message: !resource.http
+                message: !["http", "ssh", "rdp", "vnc"].includes(resource.mode)
                     ? "Port number is required for non-HTTP resources"
                     : "Port number should not be set for HTTP resources",
                 path: ["proxyPort"]
@@ -623,7 +625,9 @@ export default function GeneralForm() {
                                         />
                                     </div>
 
-                                    {!resource.http && (
+                                    {!["http", "ssh", "rdp", "vnc"].includes(
+                                        resource.mode
+                                    ) && (
                                         <>
                                             <FormField
                                                 control={form.control}
@@ -672,7 +676,9 @@ export default function GeneralForm() {
                                         </>
                                     )}
 
-                                    {resource.http && (
+                                    {["http", "ssh", "rdp", "vnc"].includes(
+                                        resource.mode
+                                    ) && (
                                         <div className="space-y-4">
                                             <div id="resource-domain-picker">
                                                 <DomainPicker

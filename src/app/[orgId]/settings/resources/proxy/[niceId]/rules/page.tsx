@@ -149,7 +149,7 @@ export default function ResourceRules(props: {
         resolver: zodResolver(addRuleSchema),
         defaultValues: {
             action: "ACCEPT",
-            match: resource.http && resource.mode == "http" ? "PATH" : "IP",
+            match: resource.mode == "http" ? "PATH" : "IP",
             value: ""
         }
     });
@@ -577,7 +577,7 @@ export default function ResourceRules(props: {
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        {resource.http && resource.mode == "http" && (
+                        {resource.mode == "http" && (
                             <SelectItem value="PATH">
                                 {RuleMatch.PATH}
                             </SelectItem>
@@ -1037,15 +1037,14 @@ export default function ResourceRules(props: {
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {resource.http &&
-                                                                resource.mode ==
-                                                                    "http" && (
-                                                                    <SelectItem value="PATH">
-                                                                        {
-                                                                            RuleMatch.PATH
-                                                                        }
-                                                                    </SelectItem>
-                                                                )}
+                                                            {resource.mode ==
+                                                                "http" && (
+                                                                <SelectItem value="PATH">
+                                                                    {
+                                                                        RuleMatch.PATH
+                                                                    }
+                                                                </SelectItem>
+                                                            )}
                                                             <SelectItem value="IP">
                                                                 {RuleMatch.IP}
                                                             </SelectItem>

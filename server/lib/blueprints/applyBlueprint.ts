@@ -106,7 +106,7 @@ export async function applyBlueprint({
                             site.newt.newtId,
                             [target],
                             matchingHealthcheck ? [matchingHealthcheck] : [],
-                            result.proxyResource.protocol,
+                            result.proxyResource.mode === "udp" ? "udp" : "tcp",
                             site.newt.version
                         );
                     }

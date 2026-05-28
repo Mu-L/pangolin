@@ -31,12 +31,14 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
     const fullUrl = `${resource.ssl ? "https" : "http"}://${toUnicode(resource.fullDomain || "")}`;
 
     const showCertificate = !!(
-        resource.http &&
+        ["http", "ssh", "rdp", "vnc"].includes(resource.mode) &&
         resource.domainId &&
         resource.fullDomain &&
         build != "oss"
     );
-    const showType = !!(resource.http && resource.mode);
+    const showType = !!(
+        ["http", "ssh", "rdp", "vnc"].includes(resource.mode) && resource.mode
+    );
     const showHealth =
         !["ssh", "rdp", "vnc"].includes(resource.mode || "") &&
         !!resource.health &&
@@ -64,7 +66,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                             </span>
                         </InfoSectionContent>
                     </InfoSection> */}
-                    {resource.http ? (
+                    {["http", "ssh", "rdp", "vnc"].includes(resource.mode) ? (
                         <>
                             <InfoSection>
                                 <InfoSectionTitle>URL</InfoSectionTitle>
@@ -124,7 +126,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                 </InfoSectionTitle>
                                 <InfoSectionContent>
                                     <span className="inline-flex items-center">
-                                        {resource.protocol.toUpperCase()}
+                                        {resource.mode?.toUpperCase()}
                                     </span>
                                 </InfoSectionContent>
                             </InfoSection>

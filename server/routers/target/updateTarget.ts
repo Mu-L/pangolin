@@ -332,7 +332,7 @@ export async function updateTarget(
                     newt.newtId,
                     [updatedTarget],
                     [updatedHc],
-                    resource.protocol,
+                    resource.mode === "udp" ? "udp" : "tcp",
                     newt.version
                 );
             }

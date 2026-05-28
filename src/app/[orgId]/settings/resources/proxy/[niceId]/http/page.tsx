@@ -130,20 +130,20 @@ export default function ReverseProxyTargetsPage(props: {
         <SettingsContainer>
             <ProxyResourceTargetsForm
                 orgId={params.orgId}
-                isHttp={resource.http}
+                isHttp={["http", "ssh", "rdp", "vnc"].includes(resource.mode)}
                 initialTargets={remoteTargets}
                 resource={resource}
                 updateResource={updateResource}
             />
 
-            {resource.http && (
+            {["http", "ssh", "rdp", "vnc"].includes(resource.mode) && (
                 <ProxyResourceHttpForm
                     resource={resource}
                     updateResource={updateResource}
                 />
             )}
 
-            {!resource.http && resource.protocol == "tcp" && (
+            {resource.mode == "tcp" && (
                 <ProxyResourceProtocolForm
                     resource={resource}
                     updateResource={updateResource}
