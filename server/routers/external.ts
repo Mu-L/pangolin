@@ -1156,7 +1156,7 @@ export const authRouter = Router();
 unauthenticated.use("/auth", authRouter);
 authRouter.use(
     rateLimit({
-        windowMs: config.getRawConfig().rate_limits.auth.window_minutes,
+        windowMs: config.getRawConfig().rate_limits.auth.window_minutes * 60 * 1000,
         max: config.getRawConfig().rate_limits.auth.max_requests,
         keyGenerator: (req) =>
             `authRouterGlobal:${ipKeyGenerator(req.ip || "")}:${req.path}`,
