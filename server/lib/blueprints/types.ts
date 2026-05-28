@@ -398,7 +398,7 @@ export const PrivateResourceSchema = z
         // protocol: z.enum(["tcp", "udp"]).optional(),
         // proxyPort: z.int().positive().optional(),
         "destination-port": z.int().positive().optional(),
-        destination: z.string().min(1),
+        destination: z.string().min(1).optional(),
         // enabled: z.boolean().default(true),
         "tcp-ports": portRangeStringSchema.optional().default("*"),
         "udp-ports": portRangeStringSchema.optional().default("*"),
@@ -426,7 +426,26 @@ export const PrivateResourceSchema = z
     })
     .refine(
         (data) => {
+            // destination is optional only for ssh+native; required for everything else
+            const isNativeSSH =
+                data.mode === "ssh" &&
+                (data["auth-daemon"] === undefined ||
+                    data["auth-daemon"].mode === "native");
+            if (!isNativeSSH && !data.destination) {
+                return false;
+            }
+            return true;
+        },
+        {
+            path: ["destination"],
+            message:
+                "destination is required unless mode is 'ssh' with auth-daemon mode 'native'"
+        }
+    )
+    .refine(
+        (data) => {
             if (data.mode === "host") {
+                if (!data.destination) return true; // caught by the destination-required refine
                 // Check if it's a valid IP address using zod (v4 or v6)
                 const isValidIP = z
                     .union([z.ipv4(), z.ipv6()])
@@ -454,6 +473,7 @@ export const PrivateResourceSchema = z
     .refine(
         (data) => {
             if (data.mode === "cidr") {
+                if (!data.destination) return true; // caught by the destination-required refine
                 // Check if it's a valid CIDR (v4 or v6)
                 const isValidCIDR = z
                     .union([z.cidrv4(), z.cidrv6()])
