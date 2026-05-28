@@ -86,6 +86,20 @@ export const queryRequestAuditLogsCombined = queryAccessAuditLogsQuery.merge(
 );
 type Q = z.infer<typeof queryRequestAuditLogsCombined>;
 
+function sortNamedFilterOptions<T extends { id: number; name: string | null }>(
+    items: T[]
+): T[] {
+    return [...items].sort((a, b) => {
+        const nameA = a.name ?? "";
+        const nameB = b.name ?? "";
+
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+
+        return a.id - b.id;
+    });
+}
+
 function getWhere(data: Q) {
     return and(
         gt(requestAuditLog.timestamp, data.timeStart),
@@ -353,7 +367,7 @@ async function queryUniqueFilterAttributes(
         actors: uniqueActors
             .map((row) => row.actor)
             .filter((actor): actor is string => actor !== null),
-        resources: resourcesWithNames,
+        resources: sortNamedFilterOptions(resourcesWithNames),
         locations: uniqueLocations
             .map((row) => row.locations)
             .filter((location): location is string => location !== null),
