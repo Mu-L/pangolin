@@ -5,12 +5,7 @@ const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
     reactStrictMode: false,
-    eslint: {
-        ignoreDuringBuilds: true
-    },
-    experimental: {
-        reactCompiler: true
-    },
+    reactCompiler: true,
     output: "standalone"
 };
 

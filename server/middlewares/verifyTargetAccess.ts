@@ -7,6 +7,7 @@ import HttpCode from "@server/types/HttpCode";
 import { canUserAccessResource } from "../auth/canUserAccessResource";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
+import { getFirstString } from "@server/lib/requestParams";
 
 export async function verifyTargetAccess(
     req: Request,
@@ -14,7 +15,8 @@ export async function verifyTargetAccess(
     next: NextFunction
 ) {
     const userId = req.user!.userId;
-    const targetId = parseInt(req.params.targetId);
+    const targetIdRaw = getFirstString(req.params.targetId);
+    const targetId = Number.parseInt(targetIdRaw ?? "", 10);
 
     if (!userId) {
         return next(

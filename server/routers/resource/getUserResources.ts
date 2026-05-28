@@ -19,6 +19,7 @@ import {
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { response } from "@server/lib/response";
+import { getFirstString } from "@server/lib/requestParams";
 
 export async function getUserResources(
     req: Request,
@@ -26,12 +27,18 @@ export async function getUserResources(
     next: NextFunction
 ): Promise<any> {
     try {
-        const { orgId } = req.params;
+        const orgId = getFirstString(req.params.orgId);
         const userId = req.user?.userId;
 
         if (!userId) {
             return next(
                 createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated")
+            );
+        }
+
+        if (!orgId) {
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, "Invalid organization ID")
             );
         }
 

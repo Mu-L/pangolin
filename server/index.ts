@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-import "./extendZod.ts";
+import "./extendZod";
 
 import { runSetupFunctions } from "./setup";
 import { createApiServer } from "./apiServer";
