@@ -1252,7 +1252,7 @@ authRouter.post(
         windowMs: 15 * 60 * 1000,
         max: 900,
         keyGenerator: (req) =>
-            `olmGetToken:${req.body.newtId || ipKeyGenerator(req.ip || "")}`,
+            `olmGetToken:${req.body.olmId || ipKeyGenerator(req.ip || "")}`,
         handler: (req, res, next) => {
             const message = `You can only request an Olm token ${900} times every ${15} minutes. Please try again later.`;
             return next(createHttpError(HttpCode.TOO_MANY_REQUESTS, message));
