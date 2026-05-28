@@ -45,7 +45,7 @@ export async function verifyApiKeyOrgAccess(
         }
 
         if (!req.apiKeyOrg) {
-            next(
+            return next(
                 createHttpError(
                     HttpCode.FORBIDDEN,
                     "Key does not have access to this organization"
