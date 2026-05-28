@@ -6,6 +6,7 @@ import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { checkOrgAccessPolicy } from "#dynamic/lib/checkOrgAccessPolicy";
 import { getUserOrgRoleIds } from "@server/lib/userOrgRoles";
+import { getFirstString } from "@server/lib/requestParams";
 
 export async function verifyOrgAccess(
     req: Request,
@@ -13,7 +14,7 @@ export async function verifyOrgAccess(
     next: NextFunction
 ) {
     const userId = req.user!.userId;
-    const orgId = req.params.orgId;
+    const orgId = getFirstString(req.params.orgId);
 
     if (!userId) {
         return next(
