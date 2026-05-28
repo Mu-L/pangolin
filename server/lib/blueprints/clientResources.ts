@@ -364,8 +364,14 @@ export async function updateClientResources(
             });
         } else {
             let aliasAddress: string | null = null;
+            let releaseAliasLock: (() => Promise<void>) | null = null;
             if (resourceData.mode === "host" || resourceData.mode === "http") {
-                aliasAddress = await getNextAvailableAliasAddress(orgId, trx);
+                const { value, release } = await getNextAvailableAliasAddress(
+                    orgId,
+                    trx
+                );
+                aliasAddress = value;
+                releaseAliasLock = release;
             }
 
             let domainInfo:
@@ -426,6 +432,8 @@ export async function updateClientResources(
                     authDaemonPort: resourceData["auth-daemon"]?.port || 22123
                 })
                 .returning();
+
+            await releaseAliasLock?.();
 
             const siteResourceId = newResource.siteResourceId;
 

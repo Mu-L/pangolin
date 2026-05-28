@@ -397,144 +397,163 @@ export async function createSiteResource(
         }
 
         let aliasAddress: string | null = null;
+        let releaseAliasLock: (() => Promise<void>) | null = null;
         if (mode === "host" || mode === "http") {
-            aliasAddress = await getNextAvailableAliasAddress(orgId);
+            const { value, release } =
+                await getNextAvailableAliasAddress(orgId);
+            aliasAddress = value;
+            releaseAliasLock = release;
         }
 
         let newSiteResource: SiteResource | undefined;
-        await db.transaction(async (trx) => {
-            const [network] = await trx
-                .insert(networks)
-                .values({
-                    scope: "resource",
-                    orgId: orgId
-                })
-                .returning();
+        try {
+            await db.transaction(async (trx) => {
+                const [network] = await trx
+                    .insert(networks)
+                    .values({
+                        scope: "resource",
+                        orgId: orgId
+                    })
+                    .returning();
 
-            if (!network) {
-                return next(
-                    createHttpError(
-                        HttpCode.INTERNAL_SERVER_ERROR,
-                        `Failed to create network`
-                    )
-                );
-            }
-
-            let tcpPortRangeStringAdjusted = tcpPortRangeString;
-            if (mode === "http") {
-                tcpPortRangeStringAdjusted = "443,80";
-            } else if (mode === "ssh") {
-                tcpPortRangeStringAdjusted = destinationPort
-                    ? destinationPort.toString()
-                    : "22";
-            }
-
-            // Create the site resource
-            const insertValues: typeof siteResources.$inferInsert = {
-                niceId: updatedNiceId!,
-                orgId,
-                name,
-                mode,
-                ssl,
-                networkId: network.networkId,
-                destination: destination, // the ssh can be null
-                scheme,
-                destinationPort,
-                enabled,
-                alias: alias ? alias.trim() : null,
-                aliasAddress,
-                tcpPortRangeString: tcpPortRangeStringAdjusted,
-                udpPortRangeString:
-                    mode == "http" || mode == "ssh" ? "" : udpPortRangeString,
-                disableIcmp:
-                    disableIcmp ||
-                    (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
-                domainId,
-                subdomain: finalSubdomain,
-                fullDomain
-            };
-            if (isLicensedSshPam) {
-                if (authDaemonPort !== undefined)
-                    insertValues.authDaemonPort = authDaemonPort;
-                if (authDaemonMode !== undefined)
-                    insertValues.authDaemonMode = authDaemonMode;
-                if (pamMode !== undefined) insertValues.pamMode = pamMode;
-            }
-            [newSiteResource] = await trx
-                .insert(siteResources)
-                .values(insertValues)
-                .returning();
-
-            const siteResourceId = newSiteResource.siteResourceId;
-
-            //////////////////// update the associations ////////////////////
-
-            for (const siteId of siteIds) {
-                await trx.insert(siteNetworks).values({
-                    siteId: siteId,
-                    networkId: network.networkId
-                });
-            }
-
-            const [adminRole] = await trx
-                .select()
-                .from(roles)
-                .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
-                .limit(1);
-
-            if (!adminRole) {
-                return next(
-                    createHttpError(HttpCode.NOT_FOUND, `Admin role not found`)
-                );
-            }
-
-            await trx.insert(roleSiteResources).values({
-                roleId: adminRole.roleId,
-                siteResourceId: siteResourceId
-            });
-
-            if (roleIds.length > 0) {
-                await trx
-                    .insert(roleSiteResources)
-                    .values(
-                        roleIds.map((roleId) => ({ roleId, siteResourceId }))
-                    );
-            }
-
-            if (userIds.length > 0) {
-                await trx
-                    .insert(userSiteResources)
-                    .values(
-                        userIds.map((userId) => ({ userId, siteResourceId }))
-                    );
-            }
-
-            if (clientIds.length > 0) {
-                await trx.insert(clientSiteResources).values(
-                    clientIds.map((clientId) => ({
-                        clientId,
-                        siteResourceId
-                    }))
-                );
-            }
-
-            for (const siteToAssign of sitesToAssign) {
-                const [newt] = await trx
-                    .select()
-                    .from(newts)
-                    .where(eq(newts.siteId, siteToAssign.siteId))
-                    .limit(1);
-
-                if (!newt) {
+                if (!network) {
                     return next(
                         createHttpError(
-                            HttpCode.NOT_FOUND,
-                            `Newt not found for site ${siteToAssign.siteId}`
+                            HttpCode.INTERNAL_SERVER_ERROR,
+                            `Failed to create network`
                         )
                     );
                 }
-            }
-        });
+
+                let tcpPortRangeStringAdjusted = tcpPortRangeString;
+                if (mode === "http") {
+                    tcpPortRangeStringAdjusted = "443,80";
+                } else if (mode === "ssh") {
+                    tcpPortRangeStringAdjusted = destinationPort
+                        ? destinationPort.toString()
+                        : "22";
+                }
+
+                // Create the site resource
+                const insertValues: typeof siteResources.$inferInsert = {
+                    niceId: updatedNiceId!,
+                    orgId,
+                    name,
+                    mode,
+                    ssl,
+                    networkId: network.networkId,
+                    destination: destination, // the ssh can be null
+                    scheme,
+                    destinationPort,
+                    enabled,
+                    alias: alias ? alias.trim() : null,
+                    aliasAddress,
+                    tcpPortRangeString: tcpPortRangeStringAdjusted,
+                    udpPortRangeString:
+                        mode == "http" || mode == "ssh"
+                            ? ""
+                            : udpPortRangeString,
+                    disableIcmp:
+                        disableIcmp ||
+                        (mode == "http" || mode == "ssh" ? true : false), // default to true for http resources, otherwise false
+                    domainId,
+                    subdomain: finalSubdomain,
+                    fullDomain
+                };
+                if (isLicensedSshPam) {
+                    if (authDaemonPort !== undefined)
+                        insertValues.authDaemonPort = authDaemonPort;
+                    if (authDaemonMode !== undefined)
+                        insertValues.authDaemonMode = authDaemonMode;
+                    if (pamMode !== undefined) insertValues.pamMode = pamMode;
+                }
+                [newSiteResource] = await trx
+                    .insert(siteResources)
+                    .values(insertValues)
+                    .returning();
+
+                const siteResourceId = newSiteResource.siteResourceId;
+
+                //////////////////// update the associations ////////////////////
+
+                for (const siteId of siteIds) {
+                    await trx.insert(siteNetworks).values({
+                        siteId: siteId,
+                        networkId: network.networkId
+                    });
+                }
+
+                const [adminRole] = await trx
+                    .select()
+                    .from(roles)
+                    .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
+                    .limit(1);
+
+                if (!adminRole) {
+                    return next(
+                        createHttpError(
+                            HttpCode.NOT_FOUND,
+                            `Admin role not found`
+                        )
+                    );
+                }
+
+                await trx.insert(roleSiteResources).values({
+                    roleId: adminRole.roleId,
+                    siteResourceId: siteResourceId
+                });
+
+                if (roleIds.length > 0) {
+                    await trx
+                        .insert(roleSiteResources)
+                        .values(
+                            roleIds.map((roleId) => ({
+                                roleId,
+                                siteResourceId
+                            }))
+                        );
+                }
+
+                if (userIds.length > 0) {
+                    await trx
+                        .insert(userSiteResources)
+                        .values(
+                            userIds.map((userId) => ({
+                                userId,
+                                siteResourceId
+                            }))
+                        );
+                }
+
+                if (clientIds.length > 0) {
+                    await trx.insert(clientSiteResources).values(
+                        clientIds.map((clientId) => ({
+                            clientId,
+                            siteResourceId
+                        }))
+                    );
+                }
+
+                for (const siteToAssign of sitesToAssign) {
+                    const [newt] = await trx
+                        .select()
+                        .from(newts)
+                        .where(eq(newts.siteId, siteToAssign.siteId))
+                        .limit(1);
+
+                    if (!newt) {
+                        return next(
+                            createHttpError(
+                                HttpCode.NOT_FOUND,
+                                `Newt not found for site ${siteToAssign.siteId}`
+                            )
+                        );
+                    }
+                }
+            });
+        } finally {
+            await releaseAliasLock?.();
+        }
 
         if (!newSiteResource) {
             return next(

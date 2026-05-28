@@ -51,7 +51,9 @@ export async function pickClientDefaults(
         const olmId = generateId(15);
         const secret = generateId(48);
 
-        const newSubnet = await getNextAvailableClientSubnet(orgId);
+        const { value: newSubnet, release } =
+            await getNextAvailableClientSubnet(orgId);
+        await release(); // release immediately — this endpoint only previews the next available value
         if (!newSubnet) {
             return next(
                 createHttpError(
