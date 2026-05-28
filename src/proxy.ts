@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { build } from "@server/build";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     return NextResponse.next();
 }
 
