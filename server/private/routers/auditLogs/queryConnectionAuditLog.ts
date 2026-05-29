@@ -107,6 +107,20 @@ export const queryConnectionAuditLogsCombined =
     queryConnectionAuditLogsQuery.merge(queryConnectionAuditLogsParams);
 type Q = z.infer<typeof queryConnectionAuditLogsCombined>;
 
+function sortNamedFilterOptions<T extends { id: number; name: string | null }>(
+    items: T[]
+): T[] {
+    return [...items].sort((a, b) => {
+        const nameA = a.name ?? "";
+        const nameB = b.name ?? "";
+
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+
+        return a.id - b.id;
+    });
+}
+
 function getWhere(data: Q) {
     return and(
         gt(connectionAuditLog.startedAt, data.timeStart),
@@ -425,7 +439,7 @@ async function queryUniqueFilterAttributes(
             .map((row) => row.destAddr)
             .filter((addr): addr is string => addr !== null),
         clients: clientsWithNames,
-        resources: resourcesWithNames,
+        resources: sortNamedFilterOptions(resourcesWithNames),
         users: usersWithEmails
     };
 }
