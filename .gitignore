@@ -55,3 +55,4 @@ CLAUDE.md
 drizzle.config.ts
 server/setup/migrations.ts
 solo.yml
+allowedDevOrigins.json
