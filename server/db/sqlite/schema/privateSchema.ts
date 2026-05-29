@@ -195,6 +195,18 @@ export const remoteExitNodes = sqliteTable("remoteExitNode", {
     })
 });
 
+export const remoteExitNodeResources = sqliteTable("remoteExitNodeResources", {
+    remoteExitNodeResourceId: integer("remoteExitNodeResourceId").primaryKey({
+        autoIncrement: true
+    }),
+    remoteExitNodeId: text("remoteExitNodeId")
+        .notNull()
+        .references(() => remoteExitNodes.remoteExitNodeId, {
+            onDelete: "cascade"
+        }),
+    destination: text("destination").notNull() // a cidr range
+});
+
 export const remoteExitNodeSessions = sqliteTable("remoteExitNodeSession", {
     sessionId: text("id").primaryKey(),
     remoteExitNodeId: text("remoteExitNodeId")

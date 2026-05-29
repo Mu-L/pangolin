@@ -276,11 +276,12 @@ export class UsageService {
             return null;
         }
 
-        const orgIdToUse = await this.getBillingOrg(orgId, trx);
-
-        const usageId = `${orgIdToUse}-${featureId}`;
-
+        let orgIdToUse = orgId;
         try {
+            orgIdToUse = await this.getBillingOrg(orgId, trx);
+
+            const usageId = `${orgIdToUse}-${featureId}`;
+
             const [result] = await trx
                 .select()
                 .from(usage)
@@ -340,8 +341,12 @@ export class UsageService {
                 `Failed to get usage for ${orgIdToUse}/${featureId}:`,
                 error
             );
-            throw error;
+            if (process.env.NODE_ENV !== "development") {
+                throw error;
+            }
         }
+
+        return null;
     }
 
     public async getBillingOrg(
@@ -384,13 +389,13 @@ export class UsageService {
             return false;
         }
 
-        const orgIdToUse = await this.getBillingOrg(orgId, trx);
-
         // This method should check the current usage against the limits set for the organization
         // and kick out all of the sites on the org
         let hasExceededLimits = false;
-
+        let orgIdToUse = orgId;
         try {
+            orgIdToUse = await this.getBillingOrg(orgId, trx);
+
             let orgLimits: Limit[] = [];
             if (featureId) {
                 // Get all limits set for this organization

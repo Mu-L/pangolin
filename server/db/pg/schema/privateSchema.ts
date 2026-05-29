@@ -19,12 +19,12 @@ import {
     roles,
     users,
     exitNodes,
-    sessions,
-    clients,
     resources,
     siteResources,
     targetHealthCheck,
-    sites
+    sites,
+    clients,
+    sessions
 } from "./schema";
 
 export const certificates = pgTable("certificates", {
@@ -195,6 +195,16 @@ export const remoteExitNodes = pgTable("remoteExitNode", {
     exitNodeId: integer("exitNodeId").references(() => exitNodes.exitNodeId, {
         onDelete: "cascade"
     })
+});
+
+export const remoteExitNodeResources = pgTable("remoteExitNodeResources", {
+    remoteExitNodeResourceId: serial("remoteExitNodeResourceId").primaryKey(),
+    remoteExitNodeId: varchar("remoteExitNodeId")
+        .notNull()
+        .references(() => remoteExitNodes.remoteExitNodeId, {
+            onDelete: "cascade"
+        }),
+    destination: varchar("destination").notNull() // a cidr range
 });
 
 export const remoteExitNodeSessions = pgTable("remoteExitNodeSession", {

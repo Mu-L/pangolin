@@ -329,6 +329,25 @@ authenticated.delete(
     remoteExitNode.deleteRemoteExitNode
 );
 
+authenticated.get(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/resources",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.getRemoteExitNode),
+    remoteExitNode.listRemoteExitNodeResources
+);
+
+authenticated.post(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/resources",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.updateRemoteExitNode),
+    logActionAudit(ActionsEnum.updateRemoteExitNode),
+    remoteExitNode.setRemoteExitNodeResources
+);
+
 authenticated.put(
     "/org/:orgId/login-page",
     verifyValidLicense,
