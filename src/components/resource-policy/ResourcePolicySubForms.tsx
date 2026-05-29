@@ -123,7 +123,7 @@ type LocalRule = {
 
 // ─── PolicyNameSection ──────────────────────────────────────────────────
 type PolicyNameSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
+    form: UseFormReturn<PolicyFormValues>;
     isEditing?: boolean;
 };
 
@@ -178,7 +178,7 @@ export function PolicyNameSection({ form }: PolicyNameSectionProps) {
 // ─── PolicyUsersRolesSection ──────────────────────────────────────────────────
 
 type PolicyUsersRolesSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
+    form: UseFormReturn<PolicyFormValues>;
     allRoles: { id: string; text: string }[];
     allUsers: { id: string; text: string }[];
     allIdps: { id: number; text: string }[];
@@ -384,7 +384,7 @@ const setHeaderAuthSchema = z.object({
 });
 
 type PolicyAuthMethodsSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
+    form: UseFormReturn<PolicyFormValues>;
 };
 
 export function PolicyAuthMethodsSection({
@@ -808,7 +808,7 @@ export function PolicyAuthMethodsSection({
 // ─── PolicyOtpEmailSection ────────────────────────────────────────────────────
 
 type PolicyOtpEmailSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
+    form: UseFormReturn<PolicyFormValues>;
     emailEnabled: boolean;
 };
 
@@ -950,7 +950,7 @@ export function PolicyOtpEmailSection({
 // ─── PolicyRulesSection ───────────────────────────────────────────────────────
 
 type PolicyRulesSectionProps = {
-    form: UseFormReturn<PolicyFormValues, any, any>;
+    form: UseFormReturn<PolicyFormValues>;
     isMaxmindAvailable: boolean;
     isMaxmindAsnAvailable: boolean;
 };
