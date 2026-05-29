@@ -15,8 +15,14 @@ import type {
     FileInfo
 } from "@devolutions/iron-remote-desktop-rdp/dist";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
-import { Card, CardContent } from "@app/components/ui/card";
-import LoginCardHeader from "@app/components/LoginCardHeader";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription
+} from "@app/components/ui/card";
+import Link from "next/link";
 
 declare module "react" {
     namespace JSX {
@@ -309,51 +315,87 @@ export default function RdpClient({
 
     if (error) {
         return (
-            <Card className="w-full">
-                <LoginCardHeader subtitle="RDP" />
-                <CardContent className="pt-6">
-                    <p className="text-destructive text-sm">{error}</p>
-                </CardContent>
-            </Card>
+            <div>
+                <div className="text-center mb-2">
+                    <span className="text-sm text-muted-foreground">
+                        Powered by{" "}
+                        <Link
+                            href="https://pangolin.net/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                        >
+                            Pangolin
+                        </Link>
+                    </span>
+                </div>
+                <Card className="w-full">
+                    <CardHeader>
+                        <CardTitle>RDP</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-destructive text-sm">{error}</p>
+                    </CardContent>
+                </Card>
+            </div>
         );
     }
 
     return (
         <>
             {showLogin && (
-                <Card className="w-full">
-                    <LoginCardHeader subtitle="Connect via RDP" />
-                    <CardContent className="pt-6">
-                        <div className="space-y-4">
-                            <Field label="Domain" id="domain">
-                                <Input
-                                    id="domain"
-                                    value={form.domain}
-                                    onChange={(e) =>
-                                        update("domain", e.target.value)
-                                    }
-                                />
-                            </Field>
-                            <Field label="Username" id="username">
-                                <Input
-                                    id="username"
-                                    value={form.username}
-                                    onChange={(e) =>
-                                        update("username", e.target.value)
-                                    }
-                                />
-                            </Field>
-                            <Field label="Password" id="password">
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    value={form.password}
-                                    onChange={(e) =>
-                                        update("password", e.target.value)
-                                    }
-                                />
-                            </Field>
-                            {/* 
+                <div>
+                    <div className="text-center mb-2">
+                        <span className="text-sm text-muted-foreground">
+                            Powered by{" "}
+                            <Link
+                                href="https://pangolin.net/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                Pangolin
+                            </Link>
+                        </span>
+                    </div>
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>Sign in to Remote Desktop</CardTitle>
+                            <CardDescription>
+                                Enter Windows credentials to access xxxx
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <Field label="Domain" id="domain">
+                                    <Input
+                                        id="domain"
+                                        value={form.domain}
+                                        onChange={(e) =>
+                                            update("domain", e.target.value)
+                                        }
+                                    />
+                                </Field>
+                                <Field label="Username" id="username">
+                                    <Input
+                                        id="username"
+                                        value={form.username}
+                                        onChange={(e) =>
+                                            update("username", e.target.value)
+                                        }
+                                    />
+                                </Field>
+                                <Field label="Password" id="password">
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        value={form.password}
+                                        onChange={(e) =>
+                                            update("password", e.target.value)
+                                        }
+                                    />
+                                </Field>
+                                {/* 
                         <Field label="Pre Connection Blob (optional)" id="pcb">
                             <Input
                                 id="pcb"
@@ -362,7 +404,7 @@ export default function RdpClient({
                             />
                         </Field> */}
 
-                            {/* <Field
+                                {/* <Field
                             label="KDC Proxy URL (optional)"
                             id="kdcProxyUrl"
                         >
@@ -374,7 +416,7 @@ export default function RdpClient({
                                 }
                             />
                         </Field> */}
-                            {/* <div className="flex items-center gap-2">
+                                {/* <div className="flex items-center gap-2">
                             <Checkbox
                                 id="enable_clipboard"
                                 checked={form.enableClipboard}
@@ -386,17 +428,20 @@ export default function RdpClient({
                                 Enable Clipboard
                             </Label>
                         </div> */}
-                            <Button
-                                onClick={startSession}
-                                disabled={!moduleReady}
-                                loading={connecting}
-                                className="w-full"
-                            >
-                                {moduleReady ? "Connect" : "Loading module..."}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                                <Button
+                                    onClick={startSession}
+                                    disabled={!moduleReady}
+                                    loading={connecting}
+                                    className="w-full"
+                                >
+                                    {moduleReady
+                                        ? "Connect"
+                                        : "Loading module..."}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             )}
 
             <div

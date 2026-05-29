@@ -6,8 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@app/hooks/useToast";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
-import { Card, CardContent } from "@app/components/ui/card";
-import LoginCardHeader from "@app/components/LoginCardHeader";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription
+} from "@app/components/ui/card";
+import Link from "next/link";
 
 type FormState = {
     password: string;
@@ -148,39 +154,79 @@ export default function VncClient({
 
     if (error) {
         return (
-            <Card className="w-full">
-                <LoginCardHeader subtitle="VNC" />
-                <CardContent className="pt-6">
-                    <p className="text-destructive text-sm">{error}</p>
-                </CardContent>
-            </Card>
+            <div>
+                <div className="text-center mb-2">
+                    <span className="text-sm text-muted-foreground">
+                        Powered by{" "}
+                        <Link
+                            href="https://pangolin.net/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                        >
+                            Pangolin
+                        </Link>
+                    </span>
+                </div>
+                <Card className="w-full">
+                    <CardHeader>
+                        <CardTitle>VNC</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-destructive text-sm">{error}</p>
+                    </CardContent>
+                </Card>
+            </div>
         );
     }
 
     return (
         <>
             {!connected && (
-                <Card className="w-full">
-                    <LoginCardHeader subtitle="Connect via VNC" />
-                    <CardContent className="pt-6">
-                        <div className="space-y-4">
-                            <Field label="Password (optional)" id="password">
-                                <Input
+                <div>
+                    <div className="text-center mb-2">
+                        <span className="text-sm text-muted-foreground">
+                            Powered by{" "}
+                            <Link
+                                href="https://pangolin.net/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                Pangolin
+                            </Link>
+                        </span>
+                    </div>
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>VNC</CardTitle>
+                            <CardDescription>
+                                Enter your credentials to connect
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <Field
+                                    label="Password (optional)"
                                     id="password"
-                                    type="password"
-                                    value={form.password}
-                                    onChange={(e) =>
-                                        update("password", e.target.value)
-                                    }
-                                />
-                            </Field>
+                                >
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        value={form.password}
+                                        onChange={(e) =>
+                                            update("password", e.target.value)
+                                        }
+                                    />
+                                </Field>
 
-                            <Button onClick={connect} className="w-full">
-                                Connect
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                                <Button onClick={connect} className="w-full">
+                                    Connect
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             )}
 
             <div
