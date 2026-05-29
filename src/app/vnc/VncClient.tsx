@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@app/hooks/useToast";
-import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import {
     Card,
     CardContent,

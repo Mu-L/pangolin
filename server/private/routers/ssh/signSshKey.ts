@@ -546,7 +546,7 @@ export async function signSshKey(
             if (resource.alias && resource.alias != "") {
                 sshHost = resource.alias;
             } else {
-                sshHost = resource.destination || ""; // TODO: IF WE HAVE THE NATIVE SSH MODE WHAT SHOULD WE DO HERE?
+                sshHost = resource.destination || "";
             }
         } else if (resource.authDaemonMode === "native") {
             if (siteIds.length > 1) {

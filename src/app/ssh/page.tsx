@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { priv } from "@app/lib/api";
 import { AxiosResponse } from "axios";
-import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import SshClient from "./SshClient";
 import { SignSshKeyResponse } from "@server/private/routers/ssh";
 import crypto from "crypto";

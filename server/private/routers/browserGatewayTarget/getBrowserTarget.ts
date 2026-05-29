@@ -23,23 +23,13 @@ import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
+import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 
 const getBrowserTargetSchema = z
     .object({
         fullDomain: z.string().min(1, "fullDomain is required")
     })
     .strict();
-
-export type GetBrowserTargetResponse = {
-    ip: string;
-    port: number;
-    authToken: string;
-    orgId: string;
-    resourceId: number;
-    niceId: string;
-    pamMode: "passthrough" | "push" | null;
-    authDaemonMode: "site" | "remote" | "native" | null;
-};
 
 export async function getBrowserTarget(
     req: Request,

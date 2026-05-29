@@ -14,7 +14,7 @@ import type {
     RdpFileTransferProvider,
     FileInfo
 } from "@devolutions/iron-remote-desktop-rdp/dist";
-import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import {
     Card,
     CardContent,

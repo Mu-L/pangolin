@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { priv } from "@app/lib/api";
 import { AxiosResponse } from "axios";
-import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import VncClient from "./VncClient";
 import AuthFooter from "@app/components/AuthFooter";
 

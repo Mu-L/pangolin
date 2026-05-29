@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { SignSshKeyResponse } from "@server/private/routers/ssh";
-import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import {
     Card,
     CardContent,
