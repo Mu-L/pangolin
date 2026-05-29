@@ -3,6 +3,7 @@ import { priv } from "@app/lib/api";
 import { AxiosResponse } from "axios";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
 import RdpClient from "./RdpClient";
+import AuthFooter from "@app/components/AuthFooter";
 
 export const dynamic = "force-dynamic";
 
@@ -29,5 +30,14 @@ export default async function RdpPage() {
         error = "No resource found for this domain";
     }
 
-    return <RdpClient target={target} error={error} />;
+    return (
+        <div className="h-full flex flex-col">
+            <div className="flex-1 flex md:items-center justify-center">
+                <div className="w-full max-w-md p-3">
+                    <RdpClient target={target} error={error} />
+                </div>
+            </div>
+            <AuthFooter />
+        </div>
+    );
 }

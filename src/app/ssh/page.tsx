@@ -5,6 +5,7 @@ import { GetBrowserTargetResponse } from "@server/routers/resource";
 import SshClient from "./SshClient";
 import { SignSshKeyResponse } from "@server/private/routers/ssh";
 import crypto from "crypto";
+import AuthFooter from "@app/components/AuthFooter";
 
 function generateEphemeralKeyPair(): {
     privateKeyPem: string;
@@ -82,11 +83,18 @@ export default async function SshPage() {
     }
 
     return (
-        <SshClient
-            target={target}
-            error={error}
-            signedKeyData={signedKeyData}
-            privateKey={privateKey}
-        />
+        <div className="h-full flex flex-col">
+            <div className="flex-1 flex md:items-center justify-center">
+                <div className="w-full max-w-md p-3">
+                    <SshClient
+                        target={target}
+                        error={error}
+                        signedKeyData={signedKeyData}
+                        privateKey={privateKey}
+                    />
+                </div>
+            </div>
+            <AuthFooter />
+        </div>
     );
 }

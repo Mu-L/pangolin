@@ -15,6 +15,8 @@ import type {
     FileInfo
 } from "@devolutions/iron-remote-desktop-rdp/dist";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { Card, CardContent } from "@app/components/ui/card";
+import LoginCardHeader from "@app/components/LoginCardHeader";
 
 declare module "react" {
     namespace JSX {
@@ -307,48 +309,51 @@ export default function RdpClient({
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <p className="text-destructive">{error}</p>
-            </div>
+            <Card className="w-full">
+                <LoginCardHeader subtitle="RDP" />
+                <CardContent className="pt-6">
+                    <p className="text-destructive text-sm">{error}</p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <>
             {showLogin && (
-                <div className="mx-auto max-w-2xl p-6">
-                    <h1 className="mb-4 text-2xl font-semibold">RDP</h1>
-
-                    <div className="space-y-4">
-                        <Field label="Domain" id="domain">
-                            <Input
-                                id="domain"
-                                value={form.domain}
-                                onChange={(e) =>
-                                    update("domain", e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Username" id="username">
-                            <Input
-                                id="username"
-                                value={form.username}
-                                onChange={(e) =>
-                                    update("username", e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Password" id="password">
-                            <Input
-                                id="password"
-                                type="password"
-                                value={form.password}
-                                onChange={(e) =>
-                                    update("password", e.target.value)
-                                }
-                            />
-                        </Field>
-                        {/* 
+                <Card className="w-full">
+                    <LoginCardHeader subtitle="Connect via RDP" />
+                    <CardContent className="pt-6">
+                        <div className="space-y-4">
+                            <Field label="Domain" id="domain">
+                                <Input
+                                    id="domain"
+                                    value={form.domain}
+                                    onChange={(e) =>
+                                        update("domain", e.target.value)
+                                    }
+                                />
+                            </Field>
+                            <Field label="Username" id="username">
+                                <Input
+                                    id="username"
+                                    value={form.username}
+                                    onChange={(e) =>
+                                        update("username", e.target.value)
+                                    }
+                                />
+                            </Field>
+                            <Field label="Password" id="password">
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={form.password}
+                                    onChange={(e) =>
+                                        update("password", e.target.value)
+                                    }
+                                />
+                            </Field>
+                            {/* 
                         <Field label="Pre Connection Blob (optional)" id="pcb">
                             <Input
                                 id="pcb"
@@ -357,7 +362,7 @@ export default function RdpClient({
                             />
                         </Field> */}
 
-                        {/* <Field
+                            {/* <Field
                             label="KDC Proxy URL (optional)"
                             id="kdcProxyUrl"
                         >
@@ -369,7 +374,7 @@ export default function RdpClient({
                                 }
                             />
                         </Field> */}
-                        {/* <div className="flex items-center gap-2">
+                            {/* <div className="flex items-center gap-2">
                             <Checkbox
                                 id="enable_clipboard"
                                 checked={form.enableClipboard}
@@ -381,20 +386,21 @@ export default function RdpClient({
                                 Enable Clipboard
                             </Label>
                         </div> */}
-                        <Button
-                            onClick={startSession}
-                            disabled={!moduleReady}
-                            loading={connecting}
-                            className="w-full"
-                        >
-                            {moduleReady ? "Connect" : "Loading module..."}
-                        </Button>
-                    </div>
-                </div>
+                            <Button
+                                onClick={startSession}
+                                disabled={!moduleReady}
+                                loading={connecting}
+                                className="w-full"
+                            >
+                                {moduleReady ? "Connect" : "Loading module..."}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             <div
-                className="flex h-screen flex-col bg-neutral-900"
+                className="fixed inset-0 z-50 flex flex-col bg-neutral-900"
                 style={{ display: showLogin ? "none" : "flex" }}
             >
                 <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
@@ -500,7 +506,7 @@ export default function RdpClient({
                     />
                 )}
             </div>
-        </div>
+        </>
     );
 }
 

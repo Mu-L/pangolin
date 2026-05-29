@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { SignSshKeyResponse } from "@server/private/routers/ssh";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { Card, CardContent } from "@app/components/ui/card";
+import LoginCardHeader from "@app/components/LoginCardHeader";
 
 type FormState = {
     username: string;
@@ -259,20 +261,12 @@ export default function SshClient({
         setConnected(false);
     }
 
-    if (error) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <p className="text-destructive">{error}</p>
-            </div>
-        );
-    }
-
     // In push mode, show a connecting/connected state without the login form.
     if (signedKeyData && signedPrivateKey) {
         return (
-            <div className="min-h-screen bg-background">
+            <>
                 {!connected && (
-                    <div className="flex min-h-screen items-center justify-center">
+                    <div className="flex items-center justify-center py-12">
                         <p className="text-muted-foreground">
                             {connectError
                                 ? connectError
@@ -283,7 +277,7 @@ export default function SshClient({
                     </div>
                 )}
                 {connected && (
-                    <div className="flex h-screen flex-col bg-neutral-900">
+                    <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900">
                         <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
                             <Button
                                 size="sm"
@@ -300,121 +294,136 @@ export default function SshClient({
                         />
                     </div>
                 )}
-            </div>
+            </>
+        );
+    }
+
+    if (error) {
+        return (
+            <Card className="w-full">
+                <LoginCardHeader subtitle="SSH" />
+                <CardContent className="pt-6">
+                    <p className="text-destructive text-sm">{error}</p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <>
             {!connected && (
-                <div className="mx-auto max-w-2xl p-6">
-                    <h1 className="mb-4 text-2xl font-semibold">SSH</h1>
-
-                    <div className="space-y-4">
-                        <Field label="Username" id="username">
-                            <Input
-                                id="username"
-                                value={form.username}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        username: e.target.value
-                                    })
-                                }
-                                placeholder="root"
-                            />
-                        </Field>
-                        <Field label="Password" id="password">
-                            <Input
-                                id="password"
-                                type="password"
-                                value={form.password}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        password: e.target.value
-                                    })
-                                }
-                                placeholder={
-                                    form.privateKey
-                                        ? "Optional with key auth"
-                                        : ""
-                                }
-                            />
-                        </Field>
-
-                        <Field label="Private Key (optional)" id="privateKey">
-                            <Textarea
-                                id="privateKey"
-                                value={form.privateKey}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        privateKey: e.target.value
-                                    })
-                                }
-                                placeholder="Paste your private key here (PEM format)…"
-                                rows={5}
-                                className="font-mono text-xs"
-                            />
-                            <div className="mt-1.5 flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        fileInputRef.current?.click()
+                <Card className="w-full">
+                    <LoginCardHeader subtitle="Connect via SSH" />
+                    <CardContent className="pt-6">
+                        <div className="space-y-4">
+                            <Field label="Username" id="username">
+                                <Input
+                                    id="username"
+                                    value={form.username}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            username: e.target.value
+                                        })
                                     }
-                                >
-                                    Upload key file
-                                </Button>
-                                {form.privateKey && (
-                                    <button
+                                    placeholder="root"
+                                />
+                            </Field>
+                            <Field label="Password" id="password">
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={form.password}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            password: e.target.value
+                                        })
+                                    }
+                                    placeholder={
+                                        form.privateKey
+                                            ? "Optional with key auth"
+                                            : ""
+                                    }
+                                />
+                            </Field>
+
+                            <Field
+                                label="Private Key (optional)"
+                                id="privateKey"
+                            >
+                                <Textarea
+                                    id="privateKey"
+                                    value={form.privateKey}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            privateKey: e.target.value
+                                        })
+                                    }
+                                    placeholder="Paste your private key here (PEM format)…"
+                                    rows={5}
+                                    className="font-mono text-xs"
+                                />
+                                <div className="mt-1.5 flex items-center gap-2">
+                                    <Button
                                         type="button"
-                                        className="text-xs text-muted-foreground underline"
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() =>
-                                            setForm((prev) => ({
-                                                ...prev,
-                                                privateKey: ""
-                                            }))
+                                            fileInputRef.current?.click()
                                         }
                                     >
-                                        Clear
-                                    </button>
-                                )}
-                            </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                className="hidden"
-                                accept=".pem,.key,.pub,*"
-                                onChange={handleKeyFile}
-                            />
-                        </Field>
+                                        Upload key file
+                                    </Button>
+                                    {form.privateKey && (
+                                        <button
+                                            type="button"
+                                            className="text-xs text-muted-foreground underline"
+                                            onClick={() =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    privateKey: ""
+                                                }))
+                                            }
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept=".pem,.key,.pub,*"
+                                    onChange={handleKeyFile}
+                                />
+                            </Field>
 
-                        {connectError && (
-                            <p className="text-destructive text-sm">
-                                {connectError}
-                            </p>
-                        )}
+                            {connectError && (
+                                <p className="text-destructive text-sm">
+                                    {connectError}
+                                </p>
+                            )}
 
-                        <Button
-                            onClick={() => connect()}
-                            loading={connecting}
-                            disabled={
-                                !form.username ||
-                                (!form.password && !form.privateKey)
-                            }
-                            className="w-full"
-                        >
-                            {connecting ? "Connecting..." : "Connect"}
-                        </Button>
-                    </div>
-                </div>
+                            <Button
+                                onClick={() => connect()}
+                                loading={connecting}
+                                disabled={
+                                    !form.username ||
+                                    (!form.password && !form.privateKey)
+                                }
+                                className="w-full"
+                            >
+                                {connecting ? "Connecting..." : "Connect"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {connected && (
-                <div className="flex h-screen flex-col bg-neutral-900">
+                <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900">
                     <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
                         <Button
                             size="sm"
@@ -431,7 +440,7 @@ export default function SshClient({
                     />
                 </div>
             )}
-        </div>
+        </>
     );
 }
 

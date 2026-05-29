@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@app/hooks/useToast";
 import { GetBrowserTargetResponse } from "@server/routers/resource";
+import { Card, CardContent } from "@app/components/ui/card";
+import LoginCardHeader from "@app/components/LoginCardHeader";
 
 type FormState = {
     password: string;
@@ -146,39 +148,43 @@ export default function VncClient({
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <p className="text-destructive">{error}</p>
-            </div>
+            <Card className="w-full">
+                <LoginCardHeader subtitle="VNC" />
+                <CardContent className="pt-6">
+                    <p className="text-destructive text-sm">{error}</p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <>
             {!connected && (
-                <div className="mx-auto max-w-2xl p-6">
-                    <h1 className="mb-4 text-2xl font-semibold">VNC</h1>
+                <Card className="w-full">
+                    <LoginCardHeader subtitle="Connect via VNC" />
+                    <CardContent className="pt-6">
+                        <div className="space-y-4">
+                            <Field label="Password (optional)" id="password">
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={form.password}
+                                    onChange={(e) =>
+                                        update("password", e.target.value)
+                                    }
+                                />
+                            </Field>
 
-                    <div className="space-y-4">
-                        <Field label="Password (optional)" id="password">
-                            <Input
-                                id="password"
-                                type="password"
-                                value={form.password}
-                                onChange={(e) =>
-                                    update("password", e.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <Button onClick={connect} className="w-full">
-                            Connect
-                        </Button>
-                    </div>
-                </div>
+                            <Button onClick={connect} className="w-full">
+                                Connect
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             <div
-                className="flex h-screen flex-col bg-neutral-900"
+                className="fixed inset-0 z-50 flex flex-col bg-neutral-900"
                 style={{ display: connected ? "flex" : "none" }}
             >
                 <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
@@ -223,7 +229,7 @@ export default function VncClient({
                     style={{ background: "#000" }}
                 />
             </div>
-        </div>
+        </>
     );
 }
 
