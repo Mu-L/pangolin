@@ -17,6 +17,7 @@ import * as orgIdp from "#private/routers/orgIdp";
 import * as billing from "#private/routers/billing";
 import * as license from "#private/routers/license";
 import * as resource from "#private/routers/resource";
+import * as browserTarget from "#private/routers/browserGatewayTarget";
 
 import { verifySessionUserMiddleware } from "@server/middlewares";
 
@@ -40,3 +41,7 @@ internalRouter.post(
 internalRouter.get(`/license/status`, license.getLicenseStatus);
 
 internalRouter.get("/maintenance/info", resource.getMaintenanceInfo);
+
+internalRouter.post("/org/:orgId/ssh/sign-key", ssh.signSshKey);
+
+internalRouter.get("/resource/browser-target", browserTarget.getBrowserTarget);

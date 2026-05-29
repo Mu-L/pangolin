@@ -16,3 +16,4 @@ export * from "./updateBrowserGatewayTarget";
 export * from "./deleteBrowserGatewayTarget";
 export * from "./getBrowserGatewayTarget";
 export * from "./listBrowserGatewayTargets";
+export * from "./getBrowserTarget";
