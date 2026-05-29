@@ -561,6 +561,7 @@ authenticated.delete(
 authenticated.put(
     "/resource/:resourceId/target",
     verifyResourceAccess,
+    verifySiteAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.createTarget),
     logActionAudit(ActionsEnum.createTarget),
@@ -612,6 +613,7 @@ authenticated.get(
 authenticated.post(
     "/target/:targetId",
     verifyTargetAccess,
+    verifySiteAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.updateTarget),
     logActionAudit(ActionsEnum.updateTarget),
@@ -1234,7 +1236,8 @@ export const authRouter = Router();
 unauthenticated.use("/auth", authRouter);
 authRouter.use(
     rateLimit({
-        windowMs: config.getRawConfig().rate_limits.auth.window_minutes * 60 * 1000,
+        windowMs:
+            config.getRawConfig().rate_limits.auth.window_minutes * 60 * 1000,
         max: config.getRawConfig().rate_limits.auth.max_requests,
         keyGenerator: (req) =>
             `authRouterGlobal:${ipKeyGenerator(req.ip || "")}:${req.path}`,
