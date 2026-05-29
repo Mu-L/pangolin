@@ -113,7 +113,7 @@
         "reodotdev": "1.1.0",
         "semver": "7.8.1",
         "sshpk": "1.18.0",
-        "stripe": "20.4.1",
+        "stripe": "22.2.0",
         "swagger-ui-express": "5.0.1",
         "tailwind-merge": "3.6.0",
         "topojson-client": "3.1.0",
