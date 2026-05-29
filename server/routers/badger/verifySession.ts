@@ -61,6 +61,7 @@ export type VerifyResourceSessionSchema = z.infer<
 >;
 
 type BasicUserData = {
+    userId: string;
     username: string;
     email: string | null;
     name: string | null;
@@ -945,6 +946,7 @@ async function isUserAllowedToAccessResource(
     );
     if (roleResourceAccess && roleResourceAccess.length > 0) {
         return {
+            userId: user.userId,
             username: user.username,
             email: user.email,
             name: user.name,
@@ -959,6 +961,7 @@ async function isUserAllowedToAccessResource(
 
     if (userResourceAccess) {
         return {
+            userId: user.userId,
             username: user.username,
             email: user.email,
             name: user.name,
