@@ -16,6 +16,10 @@ import {
     CardDescription
 } from "@app/components/ui/card";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
+import { cn } from "@app/lib/cn";
+
+type AuthTab = "password" | "privateKey";
 
 type FormState = {
     username: string;
@@ -53,7 +57,7 @@ export default function SshClient({
         return { username: "", password: "", privateKey: "" };
     });
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [authTab, setAuthTab] = useState<AuthTab>("password");
 
     function handleKeyFile(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -186,8 +190,11 @@ export default function SshClient({
         }
 
         const username = override?.username ?? form.username;
-        const password = override?.password ?? form.password;
-        const privateKey = override?.privateKey ?? form.privateKey;
+        const password =
+            override?.password ?? (authTab === "password" ? form.password : "");
+        const privateKey =
+            override?.privateKey ??
+            (authTab === "privateKey" ? form.privateKey : "");
         const certificate = override?.certificate;
 
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
@@ -353,95 +360,125 @@ export default function SshClient({
                         <CardHeader>
                             <CardTitle>Sign in to SSH</CardTitle>
                             <CardDescription>
-                                Enter your credentials to access xxxx
+                                Enter credentials to access xxxx
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                <Field label="Username" id="username">
-                                    <Input
-                                        id="username"
-                                        value={form.username}
-                                        onChange={(e) =>
-                                            setForm({
-                                                ...form,
-                                                username: e.target.value
-                                            })
-                                        }
-                                        placeholder="root"
-                                    />
-                                </Field>
-                                <Field label="Password" id="password">
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={form.password}
-                                        onChange={(e) =>
-                                            setForm({
-                                                ...form,
-                                                password: e.target.value
-                                            })
-                                        }
-                                        placeholder={
-                                            form.privateKey
-                                                ? "Optional with key auth"
-                                                : ""
-                                        }
-                                    />
-                                </Field>
-
-                                <Field
-                                    label="Private Key (optional)"
-                                    id="privateKey"
-                                >
-                                    <Textarea
-                                        id="privateKey"
-                                        value={form.privateKey}
-                                        onChange={(e) =>
-                                            setForm({
-                                                ...form,
-                                                privateKey: e.target.value
-                                            })
-                                        }
-                                        placeholder="Paste your private key here (PEM format)…"
-                                        rows={5}
-                                        className="font-mono text-xs"
-                                    />
-                                    <div className="mt-1.5 flex items-center gap-2">
-                                        <Button
+                            {/* Tab row */}
+                            <div className="flex space-x-4 border-b mb-4">
+                                {(["password", "privateKey"] as const).map(
+                                    (tab) => (
+                                        <button
+                                            key={tab}
                                             type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                fileInputRef.current?.click()
-                                            }
+                                            onClick={() => setAuthTab(tab)}
+                                            className={cn(
+                                                "px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative",
+                                                authTab === tab
+                                                    ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
                                         >
-                                            Upload key file
-                                        </Button>
-                                        {form.privateKey && (
-                                            <button
-                                                type="button"
-                                                className="text-xs text-muted-foreground underline"
-                                                onClick={() =>
-                                                    setForm((prev) => ({
-                                                        ...prev,
-                                                        privateKey: ""
-                                                    }))
-                                                }
-                                            >
-                                                Clear
-                                            </button>
-                                        )}
-                                    </div>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        className="hidden"
-                                        accept=".pem,.key,.pub,*"
-                                        onChange={handleKeyFile}
-                                    />
-                                </Field>
+                                            {tab === "password"
+                                                ? "Password"
+                                                : "Private Key"}
+                                        </button>
+                                    )
+                                )}
+                            </div>
 
+                            {authTab === "password" && (
+                                <div className="space-y-4">
+                                    <Field label="Username" id="username-pw">
+                                        <Input
+                                            id="username-pw"
+                                            value={form.username}
+                                            onChange={(e) =>
+                                                setForm({
+                                                    ...form,
+                                                    username: e.target.value
+                                                })
+                                            }
+                                            placeholder="root"
+                                        />
+                                    </Field>
+                                    <Field label="Password" id="password">
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            value={form.password}
+                                            onChange={(e) =>
+                                                setForm({
+                                                    ...form,
+                                                    password: e.target.value
+                                                })
+                                            }
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+
+                            {authTab === "privateKey" && (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        Your private key is not stored or
+                                        visible to Pangolin. Alternatively, you
+                                        can use short-lived certificates for
+                                        seamless authentication using your
+                                        existing Pangolin identity.{" "}
+                                        <Link
+                                            href="https://docs.pangolin.net/"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline inline-flex items-center gap-1"
+                                        >
+                                            Learn more
+                                            <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                    </p>
+                                    <Field label="Username" id="username-key">
+                                        <Input
+                                            id="username-key"
+                                            value={form.username}
+                                            onChange={(e) =>
+                                                setForm({
+                                                    ...form,
+                                                    username: e.target.value
+                                                })
+                                            }
+                                            placeholder="root"
+                                        />
+                                    </Field>
+                                    <Field label="Private Key" id="privateKey">
+                                        <Textarea
+                                            id="privateKey"
+                                            value={form.privateKey}
+                                            onChange={(e) =>
+                                                setForm({
+                                                    ...form,
+                                                    privateKey: e.target.value
+                                                })
+                                            }
+                                            placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                                            rows={5}
+                                            className="font-mono text-xs"
+                                        />
+                                    </Field>
+                                    <Field
+                                        label="Private Key File"
+                                        id="privateKeyFile"
+                                    >
+                                        <Input
+                                            id="privateKeyFile"
+                                            type="file"
+                                            accept=".pem,.key,.pub,*"
+                                            onChange={handleKeyFile}
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+
+                            <div className="mt-4 space-y-3">
                                 {connectError && (
                                     <p className="text-destructive text-sm">
                                         {connectError}
@@ -453,11 +490,15 @@ export default function SshClient({
                                     loading={connecting}
                                     disabled={
                                         !form.username ||
-                                        (!form.password && !form.privateKey)
+                                        (authTab === "password"
+                                            ? !form.password
+                                            : !form.privateKey)
                                     }
                                     className="w-full"
                                 >
-                                    {connecting ? "Connecting..." : "Connect"}
+                                    {connecting
+                                        ? "Connecting..."
+                                        : "Authenticate"}
                                 </Button>
                             </div>
                         </CardContent>

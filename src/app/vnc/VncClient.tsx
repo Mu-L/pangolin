@@ -201,7 +201,7 @@ export default function VncClient({
                         <CardHeader>
                             <CardTitle>VNC</CardTitle>
                             <CardDescription>
-                                Enter your credentials to connect
+                                Enter your credentials to access xxxx
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
