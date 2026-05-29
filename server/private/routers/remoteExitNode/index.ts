@@ -25,3 +25,5 @@ export * from "./offlineChecker";
 export * from "./exitNodeReconnectScheduler";
 export * from "./listRemoteExitNodeResources";
 export * from "./setRemoteExitNodeResources";
+export * from "./listRemoteExitNodePreferenceLabels";
+export * from "./setRemoteExitNodePreferenceLabels";

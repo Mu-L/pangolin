@@ -12,6 +12,7 @@ import {
     clients,
     domains,
     exitNodes,
+    labels,
     orgs,
     resources,
     roles,
@@ -21,9 +22,6 @@ import {
     targetHealthCheck,
     users
 } from "./schema";
-import { serial, varchar } from "drizzle-orm/mysql-core";
-import { pgTable } from "drizzle-orm/pg-core";
-import { bigint } from "zod";
 
 export const certificates = sqliteTable("certificates", {
     certId: integer("certId").primaryKey({ autoIncrement: true }),
@@ -206,6 +204,32 @@ export const remoteExitNodeResources = sqliteTable("remoteExitNodeResources", {
         }),
     destination: text("destination").notNull() // a cidr range
 });
+
+export const remoteExitNodePreferenceLabels = sqliteTable(
+    // this controls what sites are enforced to connect to this node
+    "remoteExitNodePreferenceLabels",
+    {
+        remoteExitNodePreferenceLabelId: integer(
+            "remoteExitNodePreferenceLabelId"
+        ).primaryKey({ autoIncrement: true }),
+        remoteExitNodeId: text("remoteExitNodeId")
+            .references(() => remoteExitNodes.remoteExitNodeId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [
+        uniqueIndex("remote_exit_node_preference_label_uniq").on(
+            t.remoteExitNodeId,
+            t.labelId
+        )
+    ]
+);
 
 export const remoteExitNodeSessions = sqliteTable("remoteExitNodeSession", {
     sessionId: text("id").primaryKey(),

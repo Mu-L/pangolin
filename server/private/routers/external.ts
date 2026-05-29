@@ -348,6 +348,25 @@ authenticated.post(
     remoteExitNode.setRemoteExitNodeResources
 );
 
+authenticated.get(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/preference-labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.getRemoteExitNode),
+    remoteExitNode.listRemoteExitNodePreferenceLabels
+);
+
+authenticated.post(
+    "/org/:orgId/remote-exit-node/:remoteExitNodeId/preference-labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyRemoteExitNodeAccess,
+    verifyUserHasAction(ActionsEnum.updateRemoteExitNode),
+    logActionAudit(ActionsEnum.updateRemoteExitNode),
+    remoteExitNode.setRemoteExitNodePreferenceLabels
+);
+
 authenticated.put(
     "/org/:orgId/login-page",
     verifyValidLicense,

@@ -2,6 +2,7 @@ import {
     pgTable,
     serial,
     varchar,
+    unique,
     boolean,
     integer,
     bigint,
@@ -24,7 +25,8 @@ import {
     targetHealthCheck,
     sites,
     clients,
-    sessions
+    sessions,
+    labels
 } from "./schema";
 
 export const certificates = pgTable("certificates", {
@@ -206,6 +208,32 @@ export const remoteExitNodeResources = pgTable("remoteExitNodeResources", {
         }),
     destination: varchar("destination").notNull() // a cidr range
 });
+
+export const remoteExitNodePreferenceLabels = pgTable(
+    // this controls what sites are enforced to connect to this node
+    "remoteExitNodePreferenceLabels",
+    {
+        remoteExitNodePreferenceLabelId: serial(
+            "remoteExitNodePreferenceLabelId"
+        ).primaryKey(),
+        remoteExitNode: integer("remoteExitNode")
+            .references(() => remoteExitNodes.remoteExitNodeId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [
+        unique("remote_exit_node_preference_label_uniq").on(
+            t.remoteExitNode,
+            t.labelId
+        )
+    ]
+);
 
 export const remoteExitNodeSessions = pgTable("remoteExitNodeSession", {
     sessionId: varchar("id").primaryKey(),

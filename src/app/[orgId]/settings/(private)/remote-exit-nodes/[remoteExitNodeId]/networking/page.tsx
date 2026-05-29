@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     SettingsContainer,
     SettingsSection,
@@ -18,8 +18,15 @@ import { useParams } from "next/navigation";
 import { AxiosResponse } from "axios";
 import { useRemoteExitNodeContext } from "@app/hooks/useRemoteExitNodeContext";
 import { TagInput, type Tag } from "@app/components/tags/tag-input";
+import { MultiSelectTagInput } from "@app/components/multi-select/multi-select-tag-input";
+import type { TagValue } from "@app/components/multi-select/multi-select-content";
+import { orgQueries } from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
+import { useDebounce } from "use-debounce";
 import type { ListRemoteExitNodeResourcesResponse } from "@server/private/routers/remoteExitNode/listRemoteExitNodeResources";
 import type { SetRemoteExitNodeResourcesResponse } from "@server/private/routers/remoteExitNode/setRemoteExitNodeResources";
+import type { ListRemoteExitNodePreferenceLabelsResponse } from "@server/private/routers/remoteExitNode/listRemoteExitNodePreferenceLabels";
+import type { SetRemoteExitNodePreferenceLabelsResponse } from "@server/private/routers/remoteExitNode/setRemoteExitNodePreferenceLabels";
 
 const cidrRegex =
     /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$|^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4})?:)?((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))(\/([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))$/;
@@ -33,22 +40,50 @@ export default function NetworkingPage() {
     }>();
     const { remoteExitNode } = useRemoteExitNodeContext();
 
+    // Subnets state
     const [subnets, setSubnets] = useState<Tag[]>([]);
     const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [loadingSubnets, setLoadingSubnets] = useState(true);
+    const [savingSubnets, setSavingSubnets] = useState(false);
+
+    // Labels state
+    const [selectedLabels, setSelectedLabels] = useState<TagValue[]>([]);
+    const [labelSearchQuery, setLabelSearchQuery] = useState("");
+    const [loadingLabels, setLoadingLabels] = useState(true);
+    const [savingLabels, setSavingLabels] = useState(false);
+
+    const [debouncedLabelQuery] = useDebounce(labelSearchQuery, 150);
+
+    const { data: availableLabels = [] } = useQuery(
+        orgQueries.labels({ orgId, query: debouncedLabelQuery, perPage: 10 })
+    );
+
+    const labelsShown = useMemo<TagValue[]>(() => {
+        const base: TagValue[] = availableLabels.map((l) => ({
+            id: l.labelId.toString(),
+            text: l.name,
+            color: l.color
+        }));
+        if (debouncedLabelQuery.trim().length === 0) {
+            for (const sel of selectedLabels) {
+                if (!base.find((b) => b.id === sel.id)) {
+                    base.unshift(sel);
+                }
+            }
+        }
+        return base;
+    }, [availableLabels, selectedLabels, debouncedLabelQuery]);
 
     useEffect(() => {
-        async function loadResources() {
+        async function loadSubnets() {
             try {
                 const res = await api.get<
                     AxiosResponse<ListRemoteExitNodeResourcesResponse>
                 >(
                     `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/resources`
                 );
-                const resources = res.data.data.resources;
                 setSubnets(
-                    resources.map((r) => ({
+                    res.data.data.resources.map((r) => ({
                         id: r.destination,
                         text: r.destination
                     }))
@@ -61,21 +96,46 @@ export default function NetworkingPage() {
                         formatAxiosError(error) || "Failed to load subnets"
                 });
             } finally {
-                setLoading(false);
+                setLoadingSubnets(false);
             }
         }
 
-        loadResources();
+        async function loadLabels() {
+            try {
+                const res = await api.get<
+                    AxiosResponse<ListRemoteExitNodePreferenceLabelsResponse>
+                >(
+                    `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/preference-labels`
+                );
+                setSelectedLabels(
+                    res.data.data.labels.map((l) => ({
+                        id: l.labelId.toString(),
+                        text: l.name,
+                        color: l.color
+                    }))
+                );
+            } catch (error) {
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description:
+                        formatAxiosError(error) || "Failed to load labels"
+                });
+            } finally {
+                setLoadingLabels(false);
+            }
+        }
+
+        loadSubnets();
+        loadLabels();
     }, [remoteExitNode.remoteExitNodeId]);
 
-    const handleSave = async () => {
-        setSaving(true);
+    const handleSaveSubnets = async () => {
+        setSavingSubnets(true);
         try {
             await api.post<AxiosResponse<SetRemoteExitNodeResourcesResponse>>(
                 `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/resources`,
-                {
-                    destinations: subnets.map((s) => s.text)
-                }
+                { destinations: subnets.map((s) => s.text) }
             );
             toast({
                 title: "Subnets saved",
@@ -88,7 +148,31 @@ export default function NetworkingPage() {
                 description: formatAxiosError(error) || "Failed to save subnets"
             });
         } finally {
-            setSaving(false);
+            setSavingSubnets(false);
+        }
+    };
+
+    const handleSaveLabels = async () => {
+        setSavingLabels(true);
+        try {
+            await api.post<
+                AxiosResponse<SetRemoteExitNodePreferenceLabelsResponse>
+            >(
+                `/org/${orgId}/remote-exit-node/${remoteExitNode.remoteExitNodeId}/preference-labels`,
+                { labelIds: selectedLabels.map((l) => parseInt(l.id)) }
+            );
+            toast({
+                title: "Labels saved",
+                description: "Preference labels have been updated successfully."
+            });
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: formatAxiosError(error) || "Failed to save labels"
+            });
+        } finally {
+            setSavingLabels(false);
         }
     };
 
@@ -111,14 +195,43 @@ export default function NetworkingPage() {
                         validateTag={(tag) => cidrRegex.test(tag.trim())}
                         activeTagIndex={activeTagIndex}
                         setActiveTagIndex={setActiveTagIndex}
-                        disabled={loading}
+                        disabled={loadingSubnets}
                         allowDuplicates={false}
                         inlineTags={true}
                     />
                 </SettingsSectionBody>
                 <SettingsSectionFooter>
-                    <Button onClick={handleSave} loading={saving}>
+                    <Button onClick={handleSaveSubnets} loading={savingSubnets}>
                         Save Subnets
+                    </Button>
+                </SettingsSectionFooter>
+            </SettingsSection>
+
+            <SettingsSection>
+                <SettingsSectionHeader>
+                    <SettingsSectionTitle>
+                        Preference Labels
+                    </SettingsSectionTitle>
+                    <SettingsSectionDescription>
+                        Sites with these labels will be enforced to connect
+                        through this remote exit node.
+                    </SettingsSectionDescription>
+                </SettingsSectionHeader>
+                <SettingsSectionBody>
+                    <MultiSelectTagInput
+                        value={selectedLabels}
+                        options={labelsShown}
+                        onChange={setSelectedLabels}
+                        onSearch={setLabelSearchQuery}
+                        searchQuery={labelSearchQuery}
+                        disabled={loadingLabels}
+                        buttonText="Select labels..."
+                        searchPlaceholder="Search labels..."
+                    />
+                </SettingsSectionBody>
+                <SettingsSectionFooter>
+                    <Button onClick={handleSaveLabels} loading={savingLabels}>
+                        Save Labels
                     </Button>
                 </SettingsSectionFooter>
             </SettingsSection>
