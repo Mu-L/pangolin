@@ -45,7 +45,6 @@ import { isValidRegionId } from "@server/db/regions";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
-import { http } from "winston";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -476,10 +475,14 @@ export async function updateProxyResources(
                         .update(resources)
                         .set({
                             name: resourceData.name || "Unnamed Resource",
-                            protocol: protocol || "tcp",
-                            http: http,
-                            proxyPort: http ? null : resourceData["proxy-port"],
-                            fullDomain: http
+                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                                resourceData.mode || ""
+                            )
+                                ? null
+                                : resourceData["proxy-port"],
+                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                                resourceData.mode || ""
+                            )
                                 ? resourceData["full-domain"]
                                 : null,
                             subdomain: domain ? domain.subdomain : null,

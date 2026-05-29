@@ -1,7 +1,7 @@
 import { sendToClient } from "#dynamic/routers/ws";
 import { processContainerLabels } from "./parseDockerContainers";
 import { applyBlueprint } from "./applyBlueprint";
-import { ResourceSchema, ClientResourceSchema } from "./types";
+import { PrivateResourceSchema, PublicResourceSchema } from "./types";
 import { db, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
@@ -17,7 +17,7 @@ function filterInvalidResources(blueprint: BlueprintResult): {
     for (const section of ["proxy-resources", "public-resources"] as const) {
         const resources = blueprint[section];
         for (const [key, value] of Object.entries(resources)) {
-            const result = ResourceSchema.safeParse(value);
+            const result = PublicResourceSchema.safeParse(value);
             if (!result.success) {
                 const errors = result.error.issues
                     .map((i) => `${i.path.join(".")}: ${i.message}`)
@@ -34,7 +34,7 @@ function filterInvalidResources(blueprint: BlueprintResult): {
     for (const section of ["client-resources", "private-resources"] as const) {
         const resources = blueprint[section];
         for (const [key, value] of Object.entries(resources)) {
-            const result = ClientResourceSchema.safeParse(value);
+            const result = PrivateResourceSchema.safeParse(value);
             if (!result.success) {
                 const errors = result.error.issues
                     .map((i) => `${i.path.join(".")}: ${i.message}`)

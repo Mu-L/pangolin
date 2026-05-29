@@ -22,6 +22,7 @@ import {
 } from "./clientResources";
 import { BlueprintSource } from "@server/routers/blueprints/types";
 import { stringify as stringifyYaml } from "yaml";
+import { generateName } from "@server/db/names";
 import { handleMessagingForUpdatedSiteResource } from "@server/routers/siteResource";
 import { rebuildClientAssociationsFromSiteResource } from "../rebuildClientAssociations";
 
@@ -289,9 +290,7 @@ export async function applyBlueprint({
             .insert(blueprints)
             .values({
                 orgId,
-                name:
-                    name ??
-                    `${faker.word.adjective()}-${faker.word.adjective()}-${faker.word.noun()}`,
+                name: name ?? generateName(),
                 contents: stringifyYaml(configData),
                 createdAt: Math.floor(Date.now() / 1000),
                 succeeded: blueprintSucceeded,
