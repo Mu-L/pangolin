@@ -64,18 +64,23 @@ export default async function SshPage() {
         target = res.data.data;
 
         if (target.pamMode === "push") {
-            const { privateKeyPem, publicKeyOpenSSH } =
-                generateEphemeralKeyPair();
-            privateKey = privateKeyPem;
-            const res = await priv.post<AxiosResponse<SignSshKeyResponse>>(
-                `/org/${target.orgId}/ssh/sign-key`,
-                {
-                    publicKey: publicKeyOpenSSH,
-                    resource: target.niceId
-                }
-            );
-            signedKeyData = res.data.data;
-            console.log("Received signed SSH key:", signedKeyData);
+            try {
+                const { privateKeyPem, publicKeyOpenSSH } =
+                    generateEphemeralKeyPair();
+                privateKey = privateKeyPem;
+                const res = await priv.post<AxiosResponse<SignSshKeyResponse>>(
+                    `/org/${target.orgId}/ssh/sign-key`,
+                    {
+                        publicKey: publicKeyOpenSSH,
+                        resource: target.niceId
+                    }
+                );
+                signedKeyData = res.data.data;
+                console.log("Received signed SSH key:", signedKeyData);
+            } catch (err) {
+                console.error("Error signing SSH key:", err);
+                error = "Failed to sign SSH key for PAM push authentication.";
+            }
         }
     } catch (error) {
         console.error("Error fetching browser target:", error);
