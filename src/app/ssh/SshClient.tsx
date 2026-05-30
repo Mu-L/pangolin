@@ -213,9 +213,16 @@ export default function SshClient({
         const ws = new WebSocket(url.toString(), ["ssh"]);
         wsRef.current = ws;
 
+        // Track whether the server has confirmed auth by sending the first
+        // data frame. Until then, errors are shown in the login form.
+        let authConfirmed = false;
+        let authErrorShown = false;
+
         ws.onopen = () => {
             // Send credentials as the first frame so the proxy can complete
-            // SSH authentication before piping pty data.
+            // SSH authentication before piping pty data. Stay in "connecting"
+            // state until the server responds — this prevents the flash to the
+            // terminal page that would occur if we set connected=true here.
             ws.send(
                 JSON.stringify({
                     type: "auth",
@@ -231,8 +238,6 @@ export default function SshClient({
                     // ignore
                 }
             }
-            setConnecting(false);
-            setConnected(true);
         };
 
         ws.onmessage = (evt) => {
@@ -244,17 +249,43 @@ export default function SshClient({
                         error?: string;
                     };
                     if (msg.type === "data" && msg.data) {
+                        if (!authConfirmed) {
+                            authConfirmed = true;
+                            setConnecting(false);
+                            setConnected(true);
+                        }
                         xtermRef.current?.write(msg.data);
                     } else if (msg.type === "error") {
-                        xtermRef.current?.writeln(
-                            `\r\n\x1b[31mError: ${msg.error}\x1b[0m\r\n`
-                        );
+                        if (!authConfirmed) {
+                            // Auth-phase error — show in the login form.
+                            authErrorShown = true;
+                            setConnecting(false);
+                            setConnectError(
+                                msg.error ?? "Authentication failed"
+                            );
+                        } else {
+                            xtermRef.current?.writeln(
+                                `\r\n\x1b[31mError: ${msg.error}\x1b[0m\r\n`
+                            );
+                        }
                     }
                 } catch {
+                    if (!authConfirmed) {
+                        authConfirmed = true;
+                        setConnecting(false);
+                        setConnected(true);
+                    }
                     xtermRef.current?.write(evt.data);
                 }
             } else if (evt.data instanceof Blob) {
-                evt.data.text().then((t) => xtermRef.current?.write(t));
+                evt.data.text().then((t) => {
+                    if (!authConfirmed) {
+                        authConfirmed = true;
+                        setConnecting(false);
+                        setConnected(true);
+                    }
+                    xtermRef.current?.write(t);
+                });
             }
         };
 
@@ -266,10 +297,19 @@ export default function SshClient({
 
         ws.onclose = (evt) => {
             setConnecting(false);
-            setConnected(false);
-            xtermRef.current?.writeln(
-                `\r\n\x1b[33mConnection closed (code ${evt.code})\x1b[0m\r\n`
-            );
+            if (authConfirmed) {
+                setConnected(false);
+                xtermRef.current?.writeln(
+                    `\r\n\x1b[33mConnection closed (code ${evt.code})\x1b[0m\r\n`
+                );
+            }
+            // If auth was never confirmed the login form is already visible;
+            // a generic error is shown only when no specific error was received.
+            if (!authConfirmed && !authErrorShown) {
+                setConnectError(
+                    "Connection closed before authentication completed"
+                );
+            }
         };
     }
 
