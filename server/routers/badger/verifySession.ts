@@ -61,6 +61,7 @@ export type VerifyResourceSessionSchema = z.infer<
 >;
 
 type BasicUserData = {
+    dontStripSession?: boolean;
     userId: string;
     username: string;
     email: string | null;
@@ -74,6 +75,7 @@ export type VerifyUserResponse = {
     redirectUrl?: string;
     userData?: BasicUserData;
     pangolinVersion?: string;
+    dontStripSession?: boolean;
 };
 
 export async function verifyResourceSession(
@@ -191,7 +193,8 @@ export async function verifyResourceSession(
             return notAllowed(res);
         }
 
-        const { sso, blockAccess } = resource;
+        const { sso, blockAccess, mode } = resource;
+        const dontStripSession = ["ssh", "rdp", "vnc"].includes(mode);
 
         if (blockAccess) {
             logger.debug("Resource blocked", host);
@@ -234,7 +237,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             } else if (action == "DROP") {
                 logger.debug("Resource denied by rule");
 
@@ -282,7 +285,7 @@ export async function verifyResourceSession(
                 parsedBody.data
             );
 
-            return allowed(res);
+            return allowed(res, undefined, dontStripSession);
         }
 
         const redirectPath = `/auth/resource/${encodeURIComponent(
@@ -348,7 +351,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             }
         }
 
@@ -399,7 +402,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             }
         }
 
@@ -422,7 +425,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             } else if (
                 await verifyPassword(
                     clientHeaderAuth,
@@ -443,7 +446,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             }
 
             if (
@@ -590,7 +593,7 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (password && resourceSession.passwordId) {
@@ -609,7 +612,7 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (
@@ -631,7 +634,7 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (resourceSession.accessTokenId) {
@@ -654,7 +657,7 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (resourceSession.userSessionId && sso) {
@@ -699,7 +702,11 @@ export async function verifyResourceSession(
                             parsedBody.data
                         );
 
-                        return allowed(res, allowedUserData);
+                        return allowed(
+                            res,
+                            { ...allowedUserData, dontStripSession },
+                            dontStripSession
+                        );
                     }
                 }
             }
@@ -832,16 +839,23 @@ async function notAllowed(
         message: "Access denied",
         status: HttpCode.OK
     };
-    logger.debug(JSON.stringify(data));
+    // logger.debug(JSON.stringify(data));
     return response<VerifyUserResponse>(res, data);
 }
 
-function allowed(res: Response, userData?: BasicUserData) {
+function allowed(
+    res: Response,
+    userData?: BasicUserData,
+    dontStripSession?: boolean
+) {
+    const baseData =
+        userData !== undefined && userData !== null
+            ? { valid: true, ...userData, pangolinVersion: APP_VERSION }
+            : { valid: true, pangolinVersion: APP_VERSION };
     const data = {
-        data:
-            userData !== undefined && userData !== null
-                ? { valid: true, ...userData, pangolinVersion: APP_VERSION }
-                : { valid: true, pangolinVersion: APP_VERSION },
+        data: dontStripSession
+            ? { ...baseData, dontStripSession: true }
+            : baseData,
         success: true,
         error: false,
         message: "Access allowed",
@@ -894,7 +908,7 @@ async function headerAuthChallenged(
         message: "Access denied",
         status: HttpCode.OK
     };
-    logger.debug(JSON.stringify(data));
+    // logger.debug(JSON.stringify(data));
     return response<VerifyUserResponse>(res, data);
 }
 
