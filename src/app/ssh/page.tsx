@@ -82,8 +82,8 @@ export default async function SshPage() {
                 error = "Failed to sign SSH key for PAM push authentication.";
             }
         }
-    } catch (error) {
-        console.error("Error fetching browser target:", error);
+    } catch (err) {
+        console.error("Error fetching browser target:", err);
         error = "No resource found for this domain";
     }
 

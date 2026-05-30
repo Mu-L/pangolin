@@ -419,7 +419,7 @@ export default function Page() {
                     pamMode === "push" &&
                     portVal
                         ? Number(portVal)
-                        : null;
+                        : undefined;
 
                 Object.assign(payload, {
                     subdomain: sanitizedSubdomain
@@ -430,7 +430,7 @@ export default function Page() {
                     mode: resourceType,
                     pamMode,
                     authDaemonMode: effectiveMode,
-                    authDaemonPort: effectivePort
+                    authDaemonPort: effectivePort || undefined
                 });
             } else {
                 const tcpUdpData = tcpUdpForm.getValues();
