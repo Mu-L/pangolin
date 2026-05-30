@@ -199,8 +199,14 @@ export default function SshClient({
 
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
         const url = new URL(proxyAddress);
-        url.searchParams.set("host", target.ip ?? "");
-        url.searchParams.set("port", String(target.port ?? 22));
+        url.searchParams.set(
+            "mode",
+            target.authDaemonMode === "native" ? "native" : "proxy"
+        );
+        if (target.authDaemonMode !== "native") {
+            url.searchParams.set("host", target.ip ?? "");
+            url.searchParams.set("port", String(target.port ?? 22));
+        }
         url.searchParams.set("username", username);
         url.searchParams.set("authToken", target.authToken ?? "");
 
