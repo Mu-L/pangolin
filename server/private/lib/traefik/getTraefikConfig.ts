@@ -291,6 +291,12 @@ export async function getTraefikConfig(
             domainCertResolver: domains.certResolver,
             preferWildcardCert: domains.preferWildcardCert,
             domainNamespaceId: domainNamespaces.domainNamespaceId,
+            // Maintenance fields
+            maintenanceModeEnabled: resources.maintenanceModeEnabled,
+            maintenanceModeType: resources.maintenanceModeType,
+            maintenanceTitle: resources.maintenanceTitle,
+            maintenanceMessage: resources.maintenanceMessage,
+            maintenanceEstimatedTime: resources.maintenanceEstimatedTime,
             // Browser gateway target fields
             browserGatewayTargetId: browserGatewayTarget.browserGatewayTargetId,
             bgType: browserGatewayTarget.type,
@@ -340,6 +346,11 @@ export async function getTraefikConfig(
         wildcard: boolean | null;
         domainCertResolver: string | null;
         preferWildcardCert: boolean | null;
+        maintenanceModeEnabled: boolean | null;
+        maintenanceModeType: string | null;
+        maintenanceTitle: string | null;
+        maintenanceMessage: string | null;
+        maintenanceEstimatedTime: string | null;
         targets: {
             browserGatewayTargetId: number;
             bgType: string;
@@ -371,6 +382,11 @@ export async function getTraefikConfig(
                 wildcard: row.wildcard,
                 domainCertResolver: row.domainCertResolver,
                 preferWildcardCert: row.preferWildcardCert,
+                maintenanceModeEnabled: row.maintenanceModeEnabled,
+                maintenanceModeType: row.maintenanceModeType,
+                maintenanceTitle: row.maintenanceTitle,
+                maintenanceMessage: row.maintenanceMessage,
+                maintenanceEstimatedTime: row.maintenanceEstimatedTime,
                 targets: []
             });
         }
@@ -1117,6 +1133,75 @@ export async function getTraefikConfig(
 
         // Collect online sites for this resource (for any type)
         const anySiteOnline = bgResource.targets.some((t) => t.siteOnline);
+
+        // Maintenance page logic for browser gateway resources
+        let showBgMaintenancePage = false;
+        if (bgResource.maintenanceModeEnabled) {
+            if (bgResource.maintenanceModeType === "forced") {
+                showBgMaintenancePage = true;
+            } else if (bgResource.maintenanceModeType === "automatic") {
+                showBgMaintenancePage = !anySiteOnline;
+            }
+        }
+
+        if (showBgMaintenancePage && allowMaintenancePage) {
+            const bgMaintenanceServiceName = `bg-r${bgResource.resourceId}-maintenance-service`;
+            const bgMaintenanceRouterName = `bg-r${bgResource.resourceId}-maintenance-router`;
+            const bgRewriteMiddlewareName = `bg-r${bgResource.resourceId}-maintenance-rewrite`;
+
+            const entrypointHttp =
+                config.getRawConfig().traefik.http_entrypoint;
+            const entrypointHttps =
+                config.getRawConfig().traefik.https_entrypoint;
+
+            const maintenancePort = config.getRawConfig().server.next_port;
+            const maintenanceHost =
+                config.getRawConfig().server.internal_hostname;
+
+            if (!config_output.http.services) config_output.http.services = {};
+            if (!config_output.http.middlewares)
+                config_output.http.middlewares = {};
+            if (!config_output.http.routers) config_output.http.routers = {};
+
+            config_output.http.services![bgMaintenanceServiceName] = {
+                loadBalancer: {
+                    servers: [
+                        { url: `http://${maintenanceHost}:${maintenancePort}` }
+                    ],
+                    passHostHeader: true
+                }
+            };
+
+            config_output.http.middlewares![bgRewriteMiddlewareName] = {
+                replacePathRegex: {
+                    regex: "^/(.*)",
+                    replacement: "/maintenance-screen"
+                }
+            };
+
+            config_output.http.routers![bgMaintenanceRouterName] = {
+                entryPoints: [
+                    bgResource.ssl ? entrypointHttps : entrypointHttp
+                ],
+                service: bgMaintenanceServiceName,
+                middlewares: [bgRewriteMiddlewareName],
+                rule: hostRule,
+                priority: 2000,
+                ...(bgResource.ssl ? { tls } : {})
+            };
+
+            config_output.http.routers![`${bgMaintenanceRouterName}-assets`] = {
+                entryPoints: [
+                    bgResource.ssl ? entrypointHttps : entrypointHttp
+                ],
+                service: bgMaintenanceServiceName,
+                rule: `${hostRule} && (PathPrefix(\`/_next\`) || PathRegexp(\`^/__nextjs*\`) || Path(\`/favicon.ico\`))`,
+                priority: 2001,
+                ...(bgResource.ssl ? { tls } : {})
+            };
+
+            continue;
+        }
 
         // Group targets by type and generate per-type websocket routers and services
         const typeMap = new Map<string, typeof bgResource.targets>();

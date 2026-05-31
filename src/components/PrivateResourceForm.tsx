@@ -1812,74 +1812,68 @@ export function PrivateResourceForm({
                                 />
                             </div>
 
-                            {/* Auth Method (standard only) */}
-                            {!isNative && (
-                                <div className="space-y-3">
-                                    <p className="text-sm font-semibold">
-                                        {t("sshAuthenticationMethod")}
-                                    </p>
-                                    <FormField
-                                        control={form.control}
-                                        name="pamMode"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormControl>
-                                                    <StrategySelect<
-                                                        "passthrough" | "push"
-                                                    >
-                                                        value={
-                                                            field.value ??
-                                                            "passthrough"
-                                                        }
-                                                        options={[
-                                                            {
-                                                                id: "passthrough",
-                                                                title: t(
-                                                                    "sshAuthMethodManual"
-                                                                ),
-                                                                description: t(
-                                                                    "sshAuthMethodManualDescription"
-                                                                ),
-                                                                disabled:
-                                                                    sshSectionDisabled
-                                                            },
-                                                            {
-                                                                id: "push",
-                                                                title: t(
-                                                                    "sshAuthMethodAutomated"
-                                                                ),
-                                                                description: t(
-                                                                    "sshAuthMethodAutomatedDescription"
-                                                                ),
-                                                                disabled:
-                                                                    sshSectionDisabled
-                                                            }
-                                                        ]}
-                                                        onChange={(v) => {
-                                                            if (
+                            <div className="space-y-3">
+                                <p className="text-sm font-semibold">
+                                    {t("sshAuthenticationMethod")}
+                                </p>
+                                <FormField
+                                    control={form.control}
+                                    name="pamMode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <StrategySelect<
+                                                    "passthrough" | "push"
+                                                >
+                                                    value={
+                                                        field.value ??
+                                                        "passthrough"
+                                                    }
+                                                    options={[
+                                                        {
+                                                            id: "passthrough",
+                                                            title: t(
+                                                                "sshAuthMethodManual"
+                                                            ),
+                                                            description: t(
+                                                                "sshAuthMethodManualDescription"
+                                                            ),
+                                                            disabled:
                                                                 sshSectionDisabled
-                                                            )
-                                                                return;
-                                                            field.onChange(v);
-                                                            if (
-                                                                v ===
-                                                                "passthrough"
-                                                            ) {
-                                                                form.setValue(
-                                                                    "authDaemonPort",
-                                                                    null
-                                                                );
-                                                            }
-                                                        }}
-                                                        cols={2}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            )}
+                                                        },
+                                                        {
+                                                            id: "push",
+                                                            title: t(
+                                                                "sshAuthMethodAutomated"
+                                                            ),
+                                                            description: t(
+                                                                "sshAuthMethodAutomatedDescription"
+                                                            ),
+                                                            disabled:
+                                                                sshSectionDisabled
+                                                        }
+                                                    ]}
+                                                    onChange={(v) => {
+                                                        if (sshSectionDisabled)
+                                                            return;
+                                                        field.onChange(v);
+                                                        if (
+                                                            v === "passthrough"
+                                                        ) {
+                                                            form.setValue(
+                                                                "authDaemonPort",
+                                                                null
+                                                            );
+                                                        }
+                                                    }}
+                                                    cols={2}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
 
                             {/* Daemon Location (standard + push) */}
                             {showDaemonLocation && (
