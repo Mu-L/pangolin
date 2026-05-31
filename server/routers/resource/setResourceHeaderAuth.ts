@@ -15,7 +15,7 @@ import { hashPassword } from "@server/auth/password";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const setResourceAuthMethodsParamsSchema = z.object({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 const setResourceAuthMethodsBodySchema = z.strictObject({
@@ -40,7 +40,22 @@ registry.registerPath({
             }
         }
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function setResourceHeaderAuth(

@@ -14,7 +14,7 @@ import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAs
 
 /** Legacy path param order: /role/:roleId/add/:userId */
 const addUserRoleLegacyParamsSchema = z.strictObject({
-    roleId: z.string().transform(stoi).pipe(z.number()),
+    roleId: z.coerce.number(),
     userId: z.string()
 });
 
@@ -27,7 +27,22 @@ registry.registerPath({
     request: {
         params: addUserRoleLegacyParamsSchema
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function addUserRoleLegacy(

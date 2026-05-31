@@ -13,6 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 import { db, targetHealthCheck, newts, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
@@ -52,6 +53,10 @@ const bodySchema = z.strictObject({
 export type CreateHealthCheckResponse = {
     targetHealthCheckId: number;
 };
+const CreateHealthCheckResponseDataSchema = z.object({
+    targetHealthCheckId: z.number()
+});
+
 
 registry.registerPath({
     method: "put",
@@ -68,7 +73,16 @@ registry.registerPath({
             }
         }
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: createApiResponseSchema(CreateHealthCheckResponseDataSchema)
+                }
+            }
+        }
+    }
 });
 
 export async function createHealthCheck(

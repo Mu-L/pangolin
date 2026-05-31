@@ -14,7 +14,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 const updateRoleParamsSchema = z.strictObject({
-    roleId: z.string().transform(Number).pipe(z.int().positive())
+    roleId: z.coerce.number().int().positive()
 });
 
 const sshSudoModeSchema = z.enum(["none", "full", "commands"]);
@@ -53,7 +53,22 @@ registry.registerPath({
             }
         }
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function updateRole(

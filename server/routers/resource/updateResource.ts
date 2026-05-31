@@ -45,7 +45,7 @@ import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 
 const updateResourceParamsSchema = z.strictObject({
-    resourceId: z.string().transform(Number).pipe(z.int().positive())
+    resourceId: z.coerce.number().int().positive()
 });
 
 const updateHttpResourceBodySchema = z
@@ -221,7 +221,22 @@ registry.registerPath({
             }
         }
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function updateResource(

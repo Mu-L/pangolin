@@ -896,7 +896,13 @@ export const portRangeStringSchema = z
             message:
                 'Port range must be "*" for all ports, or a comma-separated list of ports and ranges (e.g., "80,443,8000-9000"). Ports must be between 1 and 65535, and ranges must have start <= end.'
         }
-    );
+    )
+    .openapi({
+        type: "string",
+        description:
+            'Port range string. Use "*" for all ports, a comma-separated list of ports, or ranges (e.g., "80,443,8000-9000"). Ports must be between 1 and 65535.',
+        example: "80,443,8000-9000"
+    });
 
 /**
  * Parses a port range string into an array of port range objects

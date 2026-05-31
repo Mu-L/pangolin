@@ -13,7 +13,7 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { targetHealthCheck } from "@server/db";
 
 const deleteTargetSchema = z.strictObject({
-    targetId: z.string().transform(Number).pipe(z.int().positive())
+    targetId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
@@ -24,7 +24,22 @@ registry.registerPath({
     request: {
         params: deleteTargetSchema
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function deleteTarget(
