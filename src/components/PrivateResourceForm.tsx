@@ -478,14 +478,12 @@ export function PrivateResourceForm({
 
     const [sshServerMode, setSshServerMode] = useState<"standard" | "native">(
         () => {
-            if (
-                variant === "edit" &&
-                resource &&
-                resource.authDaemonMode === "native"
-            ) {
-                return "native";
+            if (variant === "edit" && resource) {
+                return resource.authDaemonMode === "native"
+                    ? "native"
+                    : "standard";
             }
-            return "standard";
+            return "native";
         }
     );
 
@@ -559,7 +557,7 @@ export function PrivateResourceForm({
                   tcpPortRangeString: "*",
                   udpPortRangeString: "*",
                   disableIcmp: false,
-                  authDaemonMode: "site",
+                  authDaemonMode: "native",
                   authDaemonPort: null,
                   pamMode: "passthrough",
                   roles: [],
@@ -624,7 +622,7 @@ export function PrivateResourceForm({
                 tcpPortRangeString: "*",
                 udpPortRangeString: "*",
                 disableIcmp: false,
-                authDaemonMode: "site",
+                authDaemonMode: "native",
                 authDaemonPort: null,
                 pamMode: "passthrough",
                 roles: [],

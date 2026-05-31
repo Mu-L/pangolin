@@ -14,7 +14,6 @@ if (fs.existsSync(allowedDevOriginsPath)) {
     try {
         const data = fs.readFileSync(allowedDevOriginsPath, "utf-8");
         allowedDevOrigins = JSON.parse(data);
-        console.log("Loaded allowed development origins:", allowedDevOrigins);
     } catch {}
 }
 

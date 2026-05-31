@@ -66,15 +66,12 @@ export default function EditPrivateResourceDialog({
                 }
             }
 
-            // "ssh" mode maps to "host" in the backend with SSH settings
-            const backendMode = data.mode === "ssh" ? "host" : data.mode;
-
             await api.post(`/site-resource/${resource.id}`, {
                 name: data.name,
                 siteIds: data.siteIds,
-                mode: backendMode,
+                mode: data.mode,
                 niceId: data.niceId,
-                destination: data.destination,
+                destination: data.destination ?? undefined,
                 ...(data.mode === "http" && {
                     scheme: data.scheme,
                     ssl: data.ssl ?? false,

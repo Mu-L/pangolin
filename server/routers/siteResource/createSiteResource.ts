@@ -524,25 +524,21 @@ export async function createSiteResource(
                 });
 
                 if (roleIds.length > 0) {
-                    await trx
-                        .insert(roleSiteResources)
-                        .values(
-                            roleIds.map((roleId) => ({
-                                roleId,
-                                siteResourceId
-                            }))
-                        );
+                    await trx.insert(roleSiteResources).values(
+                        roleIds.map((roleId) => ({
+                            roleId,
+                            siteResourceId
+                        }))
+                    );
                 }
 
                 if (userIds.length > 0) {
-                    await trx
-                        .insert(userSiteResources)
-                        .values(
-                            userIds.map((userId) => ({
-                                userId,
-                                siteResourceId
-                            }))
-                        );
+                    await trx.insert(userSiteResources).values(
+                        userIds.map((userId) => ({
+                            userId,
+                            siteResourceId
+                        }))
+                    );
                 }
 
                 if (clientIds.length > 0) {

@@ -28,7 +28,7 @@ export * from "./verifyApiKeyAccess";
 export * from "./verifySiteProvisioningKeyAccess";
 export * from "./verifyDomainAccess";
 export * from "./verifyUserIsOrgOwner";
-export * from "./verifyUserFromSessionOrHeaders";
+export * from "./verifyUserFromResourceSession";
 export * from "./verifySiteResourceAccess";
 export * from "./logActionAudit";
 export * from "./verifyOlmAccess";

@@ -117,17 +117,28 @@ export async function listBrowserGatewayTargets(
             );
         }
 
-        const targets = await db
-            .select()
+        const rows = await db
+            .select({
+                browserGatewayTargetId:
+                    browserGatewayTarget.browserGatewayTargetId,
+                resourceId: browserGatewayTarget.resourceId,
+                siteId: browserGatewayTarget.siteId,
+                authToken: browserGatewayTarget.authToken,
+                type: browserGatewayTarget.type,
+                destination: browserGatewayTarget.destination,
+                destinationPort: browserGatewayTarget.destinationPort,
+                siteName: sites.name
+            })
             .from(browserGatewayTarget)
+            .leftJoin(sites, eq(sites.siteId, browserGatewayTarget.siteId))
             .where(eq(browserGatewayTarget.resourceId, resourceId))
             .limit(limit)
             .offset(offset);
 
         return response<ListBrowserGatewayTargetsResponse>(res, {
             data: {
-                targets: targets,
-                total: targets.length,
+                targets: rows as any,
+                total: rows.length,
                 limit,
                 offset
             },

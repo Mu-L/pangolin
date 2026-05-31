@@ -62,16 +62,13 @@ export default function CreatePrivateResourceDialog({
                     }
                 }
 
-                // "ssh" mode maps to "host" in the backend with SSH settings
-                const backendMode = data.mode === "ssh" ? "host" : data.mode;
-
                 await api.put<
                     AxiosResponse<{ data: { siteResourceId: number } }>
                 >(`/org/${orgId}/site-resource`, {
                     name: data.name,
                     siteIds: data.siteIds,
-                    mode: backendMode,
-                    destination: data.destination,
+                    mode: data.mode,
+                    destination: data.destination ?? undefined,
                     enabled: true,
                     ...(data.mode === "http" && {
                         scheme: data.scheme,

@@ -42,7 +42,7 @@ import {
     useState,
     useTransition
 } from "react";
-import CreatePrivateResourceDialog from "@app/components/CreateInternalResourceDialog";
+import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
 import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
 import type { PaginationState } from "@tanstack/react-table";
 import { ControlledDataTable } from "./ui/controlled-data-table";
