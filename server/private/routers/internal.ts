@@ -22,7 +22,7 @@ import * as ssh from "#private/routers/ssh";
 
 import {
     verifySessionUserMiddleware,
-    verifyUserFromSessionOrHeadersMiddleware
+    verifyUserFromResourceSessionMiddleware
 } from "@server/middlewares";
 
 import { internalRouter as ir } from "@server/routers/internal";
@@ -48,7 +48,7 @@ internalRouter.get("/maintenance/info", resource.getMaintenanceInfo);
 
 internalRouter.post(
     "/org/:orgId/ssh/sign-key",
-    verifyUserFromSessionOrHeadersMiddleware,
+    verifyUserFromResourceSessionMiddleware,
     ssh.signSshKey
 );
 
