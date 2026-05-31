@@ -11,7 +11,7 @@ import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
 
 const listSiteResourcesParamsSchema = z.strictObject({
-    siteId: z.string().transform(Number).pipe(z.int().positive()),
+    siteId: z.coerce.number().int().positive(),
     orgId: z.string()
 });
 
@@ -63,7 +63,22 @@ registry.registerPath({
         params: listSiteResourcesParamsSchema,
         query: listSiteResourcesQuerySchema
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function listSiteResources(

@@ -14,7 +14,7 @@ import { sendTerminateClient } from "./terminate";
 import { OlmErrorCodes } from "../olm/error";
 
 const deleteClientSchema = z.strictObject({
-    clientId: z.string().transform(Number).pipe(z.int().positive())
+    clientId: z.coerce.number().int().positive()
 });
 
 registry.registerPath({
@@ -25,7 +25,22 @@ registry.registerPath({
     request: {
         params: deleteClientSchema
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function deleteClient(

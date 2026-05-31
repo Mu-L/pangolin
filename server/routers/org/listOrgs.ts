@@ -9,6 +9,7 @@ import { sql, inArray, eq } from "drizzle-orm";
 import logger from "@server/logger";
 import { fromZodError } from "zod-validation-error";
 import { OpenAPITags, registry } from "@server/openApi";
+import { createApiResponseSchema } from "@server/lib/openapi/createApiResponseSchema";
 
 const listOrgsSchema = z.object({
     limit: z
@@ -33,13 +34,31 @@ registry.registerPath({
     request: {
         query: listOrgsSchema
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: createApiResponseSchema(ListOrgsResponseDataSchema)
+                }
+            }
+        }
+    }
 });
 
 export type ListOrgsResponse = {
     orgs: Org[];
     pagination: { total: number; limit: number; offset: number };
 };
+
+const ListOrgsResponseDataSchema = z.object({
+    orgs: z.array(z.object({}).passthrough()),
+    pagination: z.object({
+        total: z.number(),
+        limit: z.number(),
+        offset: z.number()
+    })
+});
 
 export async function listOrgs(
     req: Request,

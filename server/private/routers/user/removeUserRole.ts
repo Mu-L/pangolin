@@ -27,7 +27,7 @@ import { rebuildClientAssociationsFromClient } from "@server/lib/rebuildClientAs
 
 const removeUserRoleParamsSchema = z.strictObject({
     userId: z.string(),
-    roleId: z.string().transform(stoi).pipe(z.number())
+    roleId: z.coerce.number()
 });
 
 registry.registerPath({
@@ -39,7 +39,22 @@ registry.registerPath({
     request: {
         params: removeUserRoleParamsSchema
     },
-    responses: {}
+    responses: {
+        200: {
+            description: "Successful response",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        data: z.unknown().nullable(),
+                        success: z.boolean(),
+                        error: z.boolean(),
+                        message: z.string(),
+                        status: z.number()
+                    })
+                }
+            }
+        }
+    }
 });
 
 export async function removeUserRole(
