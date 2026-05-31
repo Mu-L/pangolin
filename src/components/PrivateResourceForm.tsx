@@ -210,7 +210,7 @@ type InternalResourceFormProps = {
     onSubmitDisabledChange?: (disabled: boolean) => void;
 };
 
-export function InternalResourceForm({
+export function PrivateResourceForm({
     variant,
     resource,
     open,

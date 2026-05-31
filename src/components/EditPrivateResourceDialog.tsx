@@ -20,11 +20,11 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
     cleanForFQDN,
-    InternalResourceForm,
+    PrivateResourceForm,
     type InternalResourceData,
     type InternalResourceFormValues,
     isHostname
-} from "./InternalResourceForm";
+} from "./PrivateResourceForm";
 
 type EditInternalResourceDialogProps = {
     open: boolean;
@@ -34,7 +34,7 @@ type EditInternalResourceDialogProps = {
     onSuccess?: () => void;
 };
 
-export default function EditInternalResourceDialog({
+export default function EditPrivateResourceDialog({
     open,
     setOpen,
     resource,
@@ -188,7 +188,7 @@ export default function EditInternalResourceDialog({
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
-                    <InternalResourceForm
+                    <PrivateResourceForm
                         variant="edit"
                         open={open}
                         resource={resource}

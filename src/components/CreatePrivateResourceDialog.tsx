@@ -19,10 +19,10 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
     cleanForFQDN,
-    InternalResourceForm,
+    PrivateResourceForm,
     isHostname,
     type InternalResourceFormValues
-} from "./InternalResourceForm";
+} from "./PrivateResourceForm";
 
 type CreateInternalResourceDialogProps = {
     open: boolean;
@@ -31,7 +31,7 @@ type CreateInternalResourceDialogProps = {
     onSuccess?: () => void;
 };
 
-export default function CreateInternalResourceDialog({
+export default function CreatePrivateResourceDialog({
     open,
     setOpen,
     orgId,
@@ -169,7 +169,7 @@ export default function CreateInternalResourceDialog({
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
-                    <InternalResourceForm
+                    <PrivateResourceForm
                         variant="create"
                         open={open}
                         orgId={orgId}

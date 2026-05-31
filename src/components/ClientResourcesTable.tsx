@@ -42,8 +42,8 @@ import {
     useState,
     useTransition
 } from "react";
-import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
-import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
+import CreatePrivateResourceDialog from "@app/components/CreateInternalResourceDialog";
+import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
 import type { PaginationState } from "@tanstack/react-table";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { useNavigationContext } from "@app/hooks/useNavigationContext";
@@ -663,7 +663,7 @@ export default function ClientResourcesTable({
             />
 
             {editingResource && (
-                <EditInternalResourceDialog
+                <EditPrivateResourceDialog
                     open={isEditDialogOpen}
                     setOpen={setIsEditDialogOpen}
                     resource={editingResource}
@@ -678,7 +678,7 @@ export default function ClientResourcesTable({
                 />
             )}
 
-            <CreateInternalResourceDialog
+            <CreatePrivateResourceDialog
                 open={isCreateDialogOpen}
                 setOpen={setIsCreateDialogOpen}
                 orgId={orgId}
