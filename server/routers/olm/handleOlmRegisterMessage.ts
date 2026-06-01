@@ -327,6 +327,7 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             `[handleOlmRegisterMessage] Client last hole punch is too old and we have sites to send; skipping this register. The client is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`,
             { orgId: client.orgId, clientId: client.clientId }
         );
+        sendOlmError(OlmErrorCodes.HOLEPUNCH_MISSING, olm.olmId);
         return;
     }
 
