@@ -386,7 +386,7 @@ export type GetUserResourcesResponse = {
             domain: string;
             enabled: boolean;
             protected: boolean;
-            mode: string;
+            ode: string;
         }>;
         siteResources: Array<{
             siteResourceId: number;

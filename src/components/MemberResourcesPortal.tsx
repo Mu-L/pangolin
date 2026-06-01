@@ -49,7 +49,7 @@ type Resource = {
     domain: string;
     enabled: boolean;
     protected: boolean;
-    mode: string; // "http", "tcp", "udp", "rdp", "vnc", "ssh"
+    // mode: string; // "http", "tcp", "udp", "rdp", "vnc", "ssh"
     // Auth method fields
     sso?: boolean;
     password?: boolean;

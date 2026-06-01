@@ -467,14 +467,14 @@ export async function signSshKey(
             const validFor = 300n;
             expiresIn = Number(validFor); // seconds
 
-            const cert = signPublicKey(caKeys.privateKeyPem, publicKey, {
+            cert = signPublicKey(caKeys.privateKeyPem, publicKey, {
                 keyId: `${usernameToUse}@${resource.niceId}`,
                 validPrincipals: [usernameToUse, resource.niceId],
                 validAfter: now - 60n, // Start 1 min ago for clock skew
                 validBefore: now + validFor
             });
 
-            const messageIds: number[] = [];
+            messageIds = [];
             for (const siteId of siteIds) {
                 // get the site
                 const [newt] = await db

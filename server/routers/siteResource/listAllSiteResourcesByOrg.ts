@@ -196,6 +196,7 @@ function querySiteResourcesBase() {
             disableIcmp: siteResources.disableIcmp,
             authDaemonMode: siteResources.authDaemonMode,
             authDaemonPort: siteResources.authDaemonPort,
+            pamMode: siteResources.pamMode,
             subdomain: siteResources.subdomain,
             domainId: siteResources.domainId,
             fullDomain: siteResources.fullDomain,
