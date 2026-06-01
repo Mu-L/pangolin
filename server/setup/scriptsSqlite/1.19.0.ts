@@ -1,12 +1,36 @@
-import { APP_PATH } from "@server/lib/consts";
+import { APP_PATH, __DIRNAME } from "@server/lib/consts";
 import Database from "better-sqlite3";
 import z from "zod";
 import { fromZodError } from "zod-validation-error";
 import fs from "fs";
 import yaml from "js-yaml";
-import path from "path";
+import path, { join } from "path";
 
 const version = "1.19.0";
+
+const dev = process.env.ENVIRONMENT !== "prod";
+let namesFile;
+if (!dev) {
+    namesFile = join(__DIRNAME, "names.json");
+} else {
+    namesFile = join("server/db/names.json");
+}
+export const names = JSON.parse(fs.readFileSync(namesFile, "utf-8"));
+
+export function generateName(): string {
+    const name = (
+        names.descriptors[
+            Math.floor(Math.random() * names.descriptors.length)
+        ] +
+        "-" +
+        names.animals[Math.floor(Math.random() * names.animals.length)]
+    )
+        .toLowerCase()
+        .replace(/\s/g, "-");
+
+    // Clean out non-alphanumeric characters except dashes.
+    return name.replace(/[^a-z0-9-]/g, "");
+}
 
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
@@ -312,6 +336,270 @@ export default async function migration() {
                 `
             ).run();
         })();
+
+        const existingResources = db
+            .prepare(
+                `SELECT
+                    "resourceId",
+                    "orgId",
+                    "niceId",
+                    COALESCE("sso", 1) AS "sso",
+                    COALESCE("applyRules", 0) AS "applyRules",
+                    COALESCE("emailWhitelistEnabled", 0) AS "emailWhitelistEnabled",
+                    "skipToIdpId"
+                 FROM 'resources'`
+            )
+            .all() as {
+            resourceId: number;
+            orgId: string;
+            niceId: string;
+            sso: number;
+            applyRules: number;
+            emailWhitelistEnabled: number;
+            skipToIdpId: number | null;
+        }[];
+
+        if (existingResources.length > 0) {
+            const insertResourcePolicy = db.prepare(
+                `INSERT INTO 'resourcePolicies' (
+                    "sso",
+                    "applyRules",
+                    "scope",
+                    "emailWhitelistEnabled",
+                    "niceId",
+                    "idpId",
+                    "name",
+                    "orgId"
+                ) VALUES (?, ?, 'resource', ?, ?, ?, ?, ?)`
+            );
+            const updateResourcePolicyRefs = db.prepare(
+                `UPDATE 'resources'
+                 "defaultResourcePolicyId" = ?
+                 WHERE "resourceId" = ?`
+            );
+            const policyNiceIdExists = db.prepare(
+                `SELECT 1
+                 FROM 'resourcePolicies'
+                 WHERE "niceId" = ? AND "orgId" = ?
+                 LIMIT 1`
+            );
+
+            const selectResourcePincodes = db.prepare(
+                `SELECT "pincodeHash", "digitLength"
+                 FROM 'resourcePincode'
+                 WHERE "resourceId" = ?`
+            );
+            const insertResourcePolicyPincode = db.prepare(
+                `INSERT INTO 'resourcePolicyPincode' (
+                    "pincodeHash",
+                    "digitLength",
+                    "resourcePolicyId"
+                ) VALUES (?, ?, ?)`
+            );
+
+            const selectResourcePasswords = db.prepare(
+                `SELECT "passwordHash"
+                 FROM 'resourcePassword'
+                 WHERE "resourceId" = ?`
+            );
+            const insertResourcePolicyPassword = db.prepare(
+                `INSERT INTO 'resourcePolicyPassword' (
+                    "passwordHash",
+                    "resourcePolicyId"
+                ) VALUES (?, ?)`
+            );
+
+            const selectResourceHeaderAuth = db.prepare(
+                `SELECT "headerAuthHash"
+                 FROM 'resourceHeaderAuth'
+                 WHERE "resourceId" = ?`
+            );
+            const selectResourceHeaderCompatibility = db.prepare(
+                `SELECT COALESCE("extendedCompatibilityIsActivated", 1) AS "extendedCompatibility"
+                 FROM 'resourceHeaderAuthExtendedCompatibility'
+                 WHERE "resourceId" = ?
+                 LIMIT 1`
+            );
+            const insertResourcePolicyHeaderAuth = db.prepare(
+                `INSERT INTO 'resourcePolicyHeaderAuth' (
+                    "headerAuthHash",
+                    "extendedCompatibility",
+                    "resourcePolicyId"
+                ) VALUES (?, ?, ?)`
+            );
+
+            const selectResourceRules = db.prepare(
+                `SELECT "enabled", "priority", "action", "match", "value"
+                 FROM 'resourceRules'
+                 WHERE "resourceId" = ?`
+            );
+            const insertResourcePolicyRule = db.prepare(
+                `INSERT INTO 'resourcePolicyRules' (
+                    "resourcePolicyId",
+                    "enabled",
+                    "priority",
+                    "action",
+                    "match",
+                    "value"
+                ) VALUES (?, ?, ?, ?, ?, ?)`
+            );
+
+            const selectResourceWhitelist = db.prepare(
+                `SELECT "email"
+                 FROM 'resourceWhitelist'
+                 WHERE "resourceId" = ?`
+            );
+            const insertResourcePolicyWhitelist = db.prepare(
+                `INSERT INTO 'resourcePolicyWhitelist' (
+                    "email",
+                    "resourcePolicyId"
+                ) VALUES (?, ?)`
+            );
+
+            const deleteResourcePincodes = db.prepare(
+                `DELETE FROM 'resourcePincode' WHERE "resourceId" = ?`
+            );
+            const deleteResourcePasswords = db.prepare(
+                `DELETE FROM 'resourcePassword' WHERE "resourceId" = ?`
+            );
+            const deleteResourceHeaderAuth = db.prepare(
+                `DELETE FROM 'resourceHeaderAuth' WHERE "resourceId" = ?`
+            );
+            const deleteResourceHeaderCompatibility = db.prepare(
+                `DELETE FROM 'resourceHeaderAuthExtendedCompatibility' WHERE "resourceId" = ?`
+            );
+            const deleteResourceRules = db.prepare(
+                `DELETE FROM 'resourceRules' WHERE "resourceId" = ?`
+            );
+            const deleteResourceWhitelist = db.prepare(
+                `DELETE FROM 'resourceWhitelist' WHERE "resourceId" = ?`
+            );
+
+            const usedPolicyNiceIds = new Set<string>();
+
+            const migrateInlinePolicies = db.transaction(() => {
+                for (const resource of existingResources) {
+                    let policyNiceId = "";
+                    let loops = 0;
+                    while (true) {
+                        if (loops > 100) {
+                            throw new Error(
+                                `Could not generate a unique policy name for resource ${resource.resourceId}`
+                            );
+                        }
+
+                        const candidate = generateName();
+                        const exists = policyNiceIdExists.get(
+                            candidate,
+                            resource.orgId
+                        ) as { 1: number } | undefined;
+                        if (!usedPolicyNiceIds.has(candidate) && !exists) {
+                            usedPolicyNiceIds.add(candidate);
+                            policyNiceId = candidate;
+                            break;
+                        }
+
+                        loops++;
+                    }
+
+                    const policyName = `default policy for ${resource.niceId}`;
+
+                    const inserted = insertResourcePolicy.run(
+                        resource.sso,
+                        resource.applyRules,
+                        resource.emailWhitelistEnabled,
+                        policyNiceId,
+                        resource.skipToIdpId,
+                        policyName,
+                        resource.orgId
+                    );
+                    const policyId = inserted.lastInsertRowid as number;
+
+                    updateResourcePolicyRefs.run(policyId, resource.resourceId);
+
+                    const resourcePincodes = selectResourcePincodes.all(
+                        resource.resourceId
+                    ) as { pincodeHash: string; digitLength: number }[];
+                    for (const pincode of resourcePincodes) {
+                        insertResourcePolicyPincode.run(
+                            pincode.pincodeHash,
+                            pincode.digitLength,
+                            policyId
+                        );
+                    }
+
+                    const resourcePasswords = selectResourcePasswords.all(
+                        resource.resourceId
+                    ) as { passwordHash: string }[];
+                    for (const password of resourcePasswords) {
+                        insertResourcePolicyPassword.run(
+                            password.passwordHash,
+                            policyId
+                        );
+                    }
+
+                    const compatibilityRow =
+                        selectResourceHeaderCompatibility.get(
+                            resource.resourceId
+                        ) as { extendedCompatibility: number } | undefined;
+                    const extendedCompatibility =
+                        compatibilityRow?.extendedCompatibility ?? 1;
+
+                    const resourceHeaderAuthRows = selectResourceHeaderAuth.all(
+                        resource.resourceId
+                    ) as { headerAuthHash: string }[];
+                    for (const headerAuth of resourceHeaderAuthRows) {
+                        insertResourcePolicyHeaderAuth.run(
+                            headerAuth.headerAuthHash,
+                            extendedCompatibility,
+                            policyId
+                        );
+                    }
+
+                    const resourceRules = selectResourceRules.all(
+                        resource.resourceId
+                    ) as {
+                        enabled: number;
+                        priority: number;
+                        action: string;
+                        match: string;
+                        value: string;
+                    }[];
+                    for (const rule of resourceRules) {
+                        insertResourcePolicyRule.run(
+                            policyId,
+                            rule.enabled,
+                            rule.priority,
+                            rule.action,
+                            rule.match,
+                            rule.value
+                        );
+                    }
+
+                    const resourceWhitelist = selectResourceWhitelist.all(
+                        resource.resourceId
+                    ) as { email: string }[];
+                    for (const whitelistRow of resourceWhitelist) {
+                        insertResourcePolicyWhitelist.run(
+                            whitelistRow.email,
+                            policyId
+                        );
+                    }
+
+                    deleteResourcePincodes.run(resource.resourceId);
+                    deleteResourcePasswords.run(resource.resourceId);
+                    deleteResourceHeaderAuth.run(resource.resourceId);
+                    deleteResourceHeaderCompatibility.run(resource.resourceId);
+                    deleteResourceRules.run(resource.resourceId);
+                    deleteResourceWhitelist.run(resource.resourceId);
+                }
+            });
+
+            migrateInlinePolicies();
+            console.log(
+                `Migrated inline resource policies for ${existingResources.length} resource(s)`
+            );
+        }
 
         console.log("Migrated database");
     } catch (e) {

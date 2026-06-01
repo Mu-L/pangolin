@@ -1,13 +1,37 @@
 import { db } from "@server/db/pg/driver";
-import { APP_PATH } from "@server/lib/consts";
+import { APP_PATH, __DIRNAME } from "@server/lib/consts";
 import { sql } from "drizzle-orm";
 import fs from "fs";
 import yaml from "js-yaml";
-import path from "path";
+import path, { join } from "path";
 import z from "zod";
 import { fromZodError } from "zod-validation-error";
 
 const version = "1.19.0";
+
+const dev = process.env.ENVIRONMENT !== "prod";
+let namesFile;
+if (!dev) {
+    namesFile = join(__DIRNAME, "names.json");
+} else {
+    namesFile = join("server/db/names.json");
+}
+export const names = JSON.parse(fs.readFileSync(namesFile, "utf-8"));
+
+export function generateName(): string {
+    const name = (
+        names.descriptors[
+            Math.floor(Math.random() * names.descriptors.length)
+        ] +
+        "-" +
+        names.animals[Math.floor(Math.random() * names.animals.length)]
+    )
+        .toLowerCase()
+        .replace(/\s/g, "-");
+
+    // Clean out non-alphanumeric characters except dashes.
+    return name.replace(/[^a-z0-9-]/g, "");
+}
 
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
@@ -271,6 +295,267 @@ export default async function migration() {
     } catch (e) {
         await db.execute(sql`ROLLBACK`);
         console.log("Unable to migrate database");
+        console.log(e);
+        throw e;
+    }
+
+    try {
+        const existingResourcesQuery = await db.execute(sql`
+            SELECT
+                "resourceId",
+                "orgId",
+                "niceId",
+                COALESCE("sso", true) AS "sso",
+                COALESCE("applyRules", false) AS "applyRules",
+                COALESCE("emailWhitelistEnabled", false) AS "emailWhitelistEnabled",
+                "skipToIdpId"
+            FROM "resources"
+        `);
+        const existingResources = existingResourcesQuery.rows as {
+            resourceId: number;
+            orgId: string;
+            niceId: string;
+            sso: boolean;
+            applyRules: boolean;
+            emailWhitelistEnabled: boolean;
+            skipToIdpId: number | null;
+        }[];
+
+        if (existingResources.length > 0) {
+            const usedPolicyNiceIds = new Set<string>();
+
+            await db.execute(sql`BEGIN`);
+            try {
+                for (const resource of existingResources) {
+                    let policyNiceId = "";
+                    let loops = 0;
+                    while (true) {
+                        if (loops > 100) {
+                            throw new Error(
+                                `Could not generate a unique policy name for resource ${resource.resourceId}`
+                            );
+                        }
+
+                        const candidate = generateName();
+                        const existingPolicy = await db.execute(sql`
+                            SELECT 1
+                            FROM "resourcePolicies"
+                            WHERE "orgId" = ${resource.orgId}
+                            AND "niceId" = ${candidate}
+                            LIMIT 1
+                        `);
+
+                        if (
+                            !usedPolicyNiceIds.has(candidate) &&
+                            existingPolicy.rows.length === 0
+                        ) {
+                            usedPolicyNiceIds.add(candidate);
+                            policyNiceId = candidate;
+                            break;
+                        }
+
+                        loops++;
+                    }
+
+                    const policyName = `default policy for ${resource.niceId}`;
+
+                    const insertedPolicy = await db.execute(sql`
+                        INSERT INTO "resourcePolicies" (
+                            "sso",
+                            "applyRules",
+                            "scope",
+                            "emailWhitelistEnabled",
+                            "niceId",
+                            "idpId",
+                            "name",
+                            "orgId"
+                        ) VALUES (
+                            ${resource.sso},
+                            ${resource.applyRules},
+                            'resource',
+                            ${resource.emailWhitelistEnabled},
+                            ${policyNiceId},
+                            ${resource.skipToIdpId},
+                            ${policyName},
+                            ${resource.orgId}
+                        )
+                        RETURNING "resourcePolicyId"
+                    `);
+                    const resourcePolicyId = (
+                        insertedPolicy.rows[0] as { resourcePolicyId: number }
+                    ).resourcePolicyId;
+
+                    await db.execute(sql`
+                        UPDATE "resources"
+                        SET
+                            "defaultResourcePolicyId" = ${resourcePolicyId}
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+
+                    const existingPincodes = await db.execute(sql`
+                        SELECT "pincodeHash", "digitLength"
+                        FROM "resourcePincode"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const pincode of existingPincodes.rows as {
+                        pincodeHash: string;
+                        digitLength: number;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "resourcePolicyPincode" (
+                                "pincodeHash",
+                                "digitLength",
+                                "resourcePolicyId"
+                            ) VALUES (
+                                ${pincode.pincodeHash},
+                                ${pincode.digitLength},
+                                ${resourcePolicyId}
+                            )
+                        `);
+                    }
+
+                    const existingPasswords = await db.execute(sql`
+                        SELECT "passwordHash"
+                        FROM "resourcePassword"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const password of existingPasswords.rows as {
+                        passwordHash: string;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "resourcePolicyPassword" (
+                                "passwordHash",
+                                "resourcePolicyId"
+                            ) VALUES (
+                                ${password.passwordHash},
+                                ${resourcePolicyId}
+                            )
+                        `);
+                    }
+
+                    const headerCompatibilityQuery = await db.execute(sql`
+                        SELECT COALESCE("extendedCompatibilityIsActivated", true) AS "extendedCompatibility"
+                        FROM "resourceHeaderAuthExtendedCompatibility"
+                        WHERE "resourceId" = ${resource.resourceId}
+                        LIMIT 1
+                    `);
+                    const extendedCompatibility =
+                        headerCompatibilityQuery.rows.length > 0
+                            ? (
+                                  headerCompatibilityQuery.rows[0] as {
+                                      extendedCompatibility: boolean;
+                                  }
+                              ).extendedCompatibility
+                            : true;
+
+                    const existingHeaderAuth = await db.execute(sql`
+                        SELECT "headerAuthHash"
+                        FROM "resourceHeaderAuth"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const headerAuth of existingHeaderAuth.rows as {
+                        headerAuthHash: string;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "resourcePolicyHeaderAuth" (
+                                "headerAuthHash",
+                                "extendedCompatibility",
+                                "resourcePolicyId"
+                            ) VALUES (
+                                ${headerAuth.headerAuthHash},
+                                ${extendedCompatibility},
+                                ${resourcePolicyId}
+                            )
+                        `);
+                    }
+
+                    const existingRules = await db.execute(sql`
+                        SELECT "enabled", "priority", "action", "match", "value"
+                        FROM "resourceRules"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const rule of existingRules.rows as {
+                        enabled: boolean;
+                        priority: number;
+                        action: string;
+                        match: string;
+                        value: string;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "resourcePolicyRules" (
+                                "resourcePolicyId",
+                                "enabled",
+                                "priority",
+                                "action",
+                                "match",
+                                "value"
+                            ) VALUES (
+                                ${resourcePolicyId},
+                                ${rule.enabled},
+                                ${rule.priority},
+                                ${rule.action},
+                                ${rule.match},
+                                ${rule.value}
+                            )
+                        `);
+                    }
+
+                    const existingWhitelist = await db.execute(sql`
+                        SELECT "email"
+                        FROM "resourceWhitelist"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const whitelistRow of existingWhitelist.rows as {
+                        email: string;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "resourcePolicyWhitelist" (
+                                "email",
+                                "resourcePolicyId"
+                            ) VALUES (
+                                ${whitelistRow.email},
+                                ${resourcePolicyId}
+                            )
+                        `);
+                    }
+
+                    await db.execute(sql`
+                        DELETE FROM "resourcePincode"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    await db.execute(sql`
+                        DELETE FROM "resourcePassword"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    await db.execute(sql`
+                        DELETE FROM "resourceHeaderAuth"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    await db.execute(sql`
+                        DELETE FROM "resourceHeaderAuthExtendedCompatibility"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    await db.execute(sql`
+                        DELETE FROM "resourceRules"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    await db.execute(sql`
+                        DELETE FROM "resourceWhitelist"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                }
+
+                await db.execute(sql`COMMIT`);
+                console.log(
+                    `Migrated inline resource policies for ${existingResources.length} resource(s)`
+                );
+            } catch (e) {
+                await db.execute(sql`ROLLBACK`);
+                throw e;
+            }
+        }
+    } catch (e) {
+        console.log("Unable to migrate inline resource policies");
         console.log(e);
         throw e;
     }
