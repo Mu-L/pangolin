@@ -3430,5 +3430,7 @@
     "memberPortalShowingResources": "Showing {start}-{end} of {total} resources",
     "memberPortalPrevious": "Previous",
     "memberPortalNext": "Next",
-    "httpSettings": "HTTP Settings"
+    "httpSettings": "HTTP Settings",
+    "tcpSettings": "TCP Settings",
+    "udpSettings": "UDP Settings"
 }

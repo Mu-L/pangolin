@@ -32,6 +32,8 @@ export function generateName(): string {
     return name.replace(/[^a-z0-9-]/g, "");
 }
 
+await migration();
+
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
 
@@ -456,6 +458,42 @@ export default async function migration() {
                 ) VALUES (?, ?)`
             );
 
+            const selectRoleResources = db.prepare(
+                `SELECT "roleId"
+                 FROM 'roleResources'
+                 WHERE "resourceId" = ?`
+            );
+            const rolePolicyExists = db.prepare(
+                `SELECT 1
+                 FROM 'rolePolicies'
+                 WHERE "roleId" = ? AND "resourcePolicyId" = ?
+                 LIMIT 1`
+            );
+            const insertRolePolicy = db.prepare(
+                `INSERT INTO 'rolePolicies' (
+                    "roleId",
+                    "resourcePolicyId"
+                ) VALUES (?, ?)`
+            );
+
+            const selectUserResources = db.prepare(
+                `SELECT "userId"
+                 FROM 'userResources'
+                 WHERE "resourceId" = ?`
+            );
+            const userPolicyExists = db.prepare(
+                `SELECT 1
+                 FROM 'userPolicies'
+                 WHERE "userId" = ? AND "resourcePolicyId" = ?
+                 LIMIT 1`
+            );
+            const insertUserPolicy = db.prepare(
+                `INSERT INTO 'userPolicies' (
+                    "userId",
+                    "resourcePolicyId"
+                ) VALUES (?, ?)`
+            );
+
             const deleteResourcePincodes = db.prepare(
                 `DELETE FROM 'resourcePincode' WHERE "resourceId" = ?`
             );
@@ -584,6 +622,32 @@ export default async function migration() {
                             whitelistRow.email,
                             policyId
                         );
+                    }
+
+                    const resourceRoles = selectRoleResources.all(
+                        resource.resourceId
+                    ) as { roleId: number }[];
+                    for (const role of resourceRoles) {
+                        const exists = rolePolicyExists.get(
+                            role.roleId,
+                            policyId
+                        ) as { 1: number } | undefined;
+                        if (!exists) {
+                            insertRolePolicy.run(role.roleId, policyId);
+                        }
+                    }
+
+                    const resourceUsers = selectUserResources.all(
+                        resource.resourceId
+                    ) as { userId: string }[];
+                    for (const user of resourceUsers) {
+                        const exists = userPolicyExists.get(
+                            user.userId,
+                            policyId
+                        ) as { 1: number } | undefined;
+                        if (!exists) {
+                            insertUserPolicy.run(user.userId, policyId);
+                        }
                     }
 
                     deleteResourcePincodes.run(resource.resourceId);

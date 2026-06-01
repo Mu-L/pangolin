@@ -519,6 +519,46 @@ export default async function migration() {
                         `);
                     }
 
+                    const existingRoleResources = await db.execute(sql`
+                        SELECT "roleId"
+                        FROM "roleResources"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const roleRow of existingRoleResources.rows as {
+                        roleId: number;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "rolePolicies" ("roleId", "resourcePolicyId")
+                            SELECT ${roleRow.roleId}, ${resourcePolicyId}
+                            WHERE NOT EXISTS (
+                                SELECT 1
+                                FROM "rolePolicies"
+                                WHERE "roleId" = ${roleRow.roleId}
+                                  AND "resourcePolicyId" = ${resourcePolicyId}
+                            )
+                        `);
+                    }
+
+                    const existingUserResources = await db.execute(sql`
+                        SELECT "userId"
+                        FROM "userResources"
+                        WHERE "resourceId" = ${resource.resourceId}
+                    `);
+                    for (const userRow of existingUserResources.rows as {
+                        userId: string;
+                    }[]) {
+                        await db.execute(sql`
+                            INSERT INTO "userPolicies" ("userId", "resourcePolicyId")
+                            SELECT ${userRow.userId}, ${resourcePolicyId}
+                            WHERE NOT EXISTS (
+                                SELECT 1
+                                FROM "userPolicies"
+                                WHERE "userId" = ${userRow.userId}
+                                  AND "resourcePolicyId" = ${resourcePolicyId}
+                            )
+                        `);
+                    }
+
                     await db.execute(sql`
                         DELETE FROM "resourcePincode"
                         WHERE "resourceId" = ${resource.resourceId}
