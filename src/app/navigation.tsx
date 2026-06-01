@@ -71,12 +71,12 @@ export const orgNavSections = (
                 items: [
                     {
                         title: "sidebarProxyResources",
-                        href: "/{orgId}/settings/resources/proxy",
+                        href: "/{orgId}/settings/resources/public",
                         icon: <Globe className="size-4 flex-none" />
                     },
                     {
                         title: "sidebarClientResources",
-                        href: "/{orgId}/settings/resources/client",
+                        href: "/{orgId}/settings/resources/private",
                         icon: <GlobeLock className="size-4 flex-none" />
                     }
                 ]

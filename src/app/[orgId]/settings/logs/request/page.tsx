@@ -400,8 +400,8 @@ export default function GeneralPage() {
                     <Link
                         href={
                             row.original.reason == 108 // for now the client will only have reason 108 so we know where to go
-                                ? `/${row.original.orgId}/settings/resources/client?query=${row.original.resourceNiceId}`
-                                : `/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`
+                                ? `/${row.original.orgId}/settings/resources/private?query=${row.original.resourceNiceId}`
+                                : `/${row.original.orgId}/settings/resources/public/${row.original.resourceNiceId}`
                         }
                         onClick={(e) => e.stopPropagation()}
                     >

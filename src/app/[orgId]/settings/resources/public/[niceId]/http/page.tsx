@@ -39,69 +39,27 @@ import {
     FormLabel,
     FormMessage
 } from "@app/components/ui/form";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@app/components/ui/table";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient } from "@app/lib/api";
 import { formatAxiosError } from "@app/lib/api/formatAxiosError";
-import { DockerManager, DockerState } from "@app/lib/docker";
-import { orgQueries, resourceQueries } from "@app/lib/queries";
+import { resourceQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { build } from "@server/build";
 import { tlsNameSchema } from "@server/lib/schemas";
-import { type GetResourceResponse } from "@server/routers/resource";
-import type { ListSitesResponse } from "@server/routers/site";
-import { CreateTargetResponse } from "@server/routers/target";
-import { ListTargetsResponse } from "@server/routers/target/listTargets";
-import { ArrayElement } from "@server/types/ArrayElement";
 import { useQuery } from "@tanstack/react-query";
 import {
-    LocalTarget,
     ProxyResourceTargetsForm
-} from "@app/app/[orgId]/settings/resources/proxy/ProxyResourceTargetsForm";
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable
-} from "@tanstack/react-table";
-import { AxiosResponse } from "axios";
+} from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
 import {
     AlertTriangle,
-    CircleCheck,
-    CircleX,
-    ExternalLink,
-    Info,
-    Plus,
-    Settings
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
     use,
     useActionState,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";

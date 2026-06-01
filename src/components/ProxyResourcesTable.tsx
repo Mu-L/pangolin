@@ -609,7 +609,7 @@ export default function ProxyResourcesTable({
                                 <DropdownMenuContent align="end">
                                     <Link
                                         className="block w-full"
-                                        href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
+                                        href={`/${resourceRow.orgId}/settings/resources/public/${resourceRow.nice}`}
                                     >
                                         <DropdownMenuItem>
                                             {t("viewSettings")}
@@ -628,7 +628,7 @@ export default function ProxyResourcesTable({
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <Link
-                                href={`/${resourceRow.orgId}/settings/resources/proxy/${resourceRow.nice}`}
+                                href={`/${resourceRow.orgId}/settings/resources/public/${resourceRow.nice}`}
                             >
                                 <Button variant={"outline"}>
                                     {t("edit")}
@@ -744,7 +744,9 @@ export default function ProxyResourcesTable({
                 onPaginationChange={handlePaginationChange}
                 onAdd={() =>
                     startNavigation(() =>
-                        router.push(`/${orgId}/settings/resources/proxy/create`)
+                        router.push(
+                            `/${orgId}/settings/resources/public/create`
+                        )
                     )
                 }
                 addButtonText={t("resourceAdd")}

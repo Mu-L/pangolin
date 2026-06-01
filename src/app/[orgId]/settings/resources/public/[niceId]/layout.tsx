@@ -83,22 +83,22 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
     const navItems = [
         {
             title: t("general"),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/general`
+            href: `/{orgId}/settings/resources/public/{niceId}/general`
         },
         {
             title: t(`${resource.mode}Settings`),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/${resource.mode}`
+            href: `/{orgId}/settings/resources/public/{niceId}/${resource.mode}`
         }
     ];
 
     if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
         navItems.push({
             title: t("authentication"),
-            href: `/{orgId}/settings/resources/proxy/{niceId}/authentication`
+            href: `/{orgId}/settings/resources/public/{niceId}/authentication`
         });
         // navItems.push({
         //     title: t("rules"),
-        //     href: `/{orgId}/settings/resources/proxy/{niceId}/rules`
+        //     href: `/{orgId}/settings/resources/public/{niceId}/rules`
         // });
     }
 

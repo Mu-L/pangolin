@@ -10,6 +10,6 @@ export default async function ResourcePage(props: {
 }) {
     const params = await props.params;
     redirect(
-        `/${params.orgId}/settings/resources/proxy/${params.niceId}/general`
+        `/${params.orgId}/settings/resources/public/${params.niceId}/general`
     );
 }

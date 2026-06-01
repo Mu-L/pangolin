@@ -22,7 +22,21 @@ const nextConfig: NextConfig = {
     reactCompiler: true,
     transpilePackages: ["@novnc/novnc"],
     output: "standalone",
-    allowedDevOrigins
+    allowedDevOrigins,
+    async redirects() {
+        return [
+            {
+                source: "/:orgId/settings/resources/proxy/:path*",
+                destination: "/:orgId/settings/resources/public/:path*",
+                permanent: true
+            },
+            {
+                source: "/:orgId/settings/resources/client/:path*",
+                destination: "/:orgId/settings/resources/private/:path*",
+                permanent: true
+            }
+        ];
+    }
 };
 
 export default withNextIntl(nextConfig);

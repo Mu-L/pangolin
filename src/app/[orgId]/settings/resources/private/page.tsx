@@ -1,5 +1,5 @@
-import type { InternalResourceRow } from "@app/components/ClientResourcesTable";
-import PrivateResourcesTable from "@app/components/ClientResourcesTable";
+import type { InternalResourceRow } from "@app/components/PrivateResourcesTable";
+import PrivateResourcesTable from "@app/components/PrivateResourcesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import PrivateResourcesBanner from "@app/components/PrivateResourcesBanner";
 import { internal } from "@app/lib/api";

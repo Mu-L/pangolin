@@ -89,7 +89,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
     LocalTarget,
     ProxyResourceTargetsForm
-} from "@app/app/[orgId]/settings/resources/proxy/ProxyResourceTargetsForm";
+} from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
 import {
     ColumnDef,
     flexRender,
@@ -514,7 +514,7 @@ export default function Page() {
                         }
                     }
                     router.push(
-                        `/${orgId}/settings/resources/proxy/${newNiceId}`
+                        `/${orgId}/settings/resources/public/${newNiceId}`
                     );
                 } else if (resourceType === "ssh") {
                     if (isNative) {
@@ -550,7 +550,7 @@ export default function Page() {
                     }
 
                     router.push(
-                        `/${orgId}/settings/resources/proxy/${newNiceId}`
+                        `/${orgId}/settings/resources/public/${newNiceId}`
                     );
                 } else if (resourceType === "rdp" || resourceType === "vnc") {
                     for (const site of bgSelectedSites) {
@@ -566,7 +566,7 @@ export default function Page() {
                     }
 
                     router.push(
-                        `/${orgId}/settings/resources/proxy/${newNiceId}`
+                        `/${orgId}/settings/resources/public/${newNiceId}`
                     );
                 } else {
                     // TCP / UDP — create targets then show snippets
@@ -1308,7 +1308,7 @@ export default function Page() {
                                     type="button"
                                     onClick={() =>
                                         router.push(
-                                            `/${orgId}/settings/resources/proxy/${niceId}`
+                                            `/${orgId}/settings/resources/public/${niceId}`
                                         )
                                     }
                                 >

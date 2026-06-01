@@ -506,7 +506,7 @@ export default function SitesTable({
                                     </Link>
                                     <Link
                                         className="block w-full"
-                                        href={`/${siteRow.orgId}/settings/resources/proxy?siteId=${siteRow.id}`}
+                                        href={`/${siteRow.orgId}/settings/resources/public?siteId=${siteRow.id}`}
                                     >
                                         <DropdownMenuItem>
                                             {t("sitesTableViewPublicResources")}
@@ -514,7 +514,7 @@ export default function SitesTable({
                                     </Link>
                                     <Link
                                         className="block w-full"
-                                        href={`/${siteRow.orgId}/settings/resources/client?siteId=${siteRow.id}`}
+                                        href={`/${siteRow.orgId}/settings/resources/private?siteId=${siteRow.id}`}
                                     >
                                         <DropdownMenuItem>
                                             {t(

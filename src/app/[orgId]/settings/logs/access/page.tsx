@@ -343,8 +343,8 @@ export default function GeneralPage() {
                     <Link
                         href={
                             row.original.type === "ssh"
-                                ? `/${row.original.orgId}/settings/resources/client?query=${row.original.resourceNiceId}`
-                                : `/${row.original.orgId}/settings/resources/proxy/${row.original.resourceNiceId}`
+                                ? `/${row.original.orgId}/settings/resources/private?query=${row.original.resourceNiceId}`
+                                : `/${row.original.orgId}/settings/resources/public/${row.original.resourceNiceId}`
                         }
                     >
                         <Button variant="outline" size="sm">

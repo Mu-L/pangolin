@@ -421,15 +421,15 @@ export default function SiteResourcesOverview({
         publicList.length === 0 &&
         privateList.length === 0;
 
-    const publicViewAllHref = `/${orgId}/settings/resources/proxy?siteId=${siteId}`;
-    const privateViewAllHref = `/${orgId}/settings/resources/client?siteId=${siteId}`;
+    const publicViewAllHref = `/${orgId}/settings/resources/public?siteId=${siteId}`;
+    const privateViewAllHref = `/${orgId}/settings/resources/private?siteId=${siteId}`;
 
     const publicRows = publicList.map((r) => ({
         key: r.resourceId,
         meta: <PublicResourceMeta resource={r} />,
         name: r.name,
         access: <PublicAccessMethod resource={r} />,
-        editHref: `/${orgId}/settings/resources/proxy/${r.niceId}`
+        editHref: `/${orgId}/settings/resources/public/${r.niceId}`
     }));
 
     const privateRows = privateList.map((row) => {
@@ -442,7 +442,7 @@ export default function SiteResourcesOverview({
             meta: <PrivateResourceMeta row={row} />,
             name: row.name,
             access: <PrivateAccessMethod row={row} />,
-            editHref: `/${orgId}/settings/resources/client?${qs.toString()}`
+            editHref: `/${orgId}/settings/resources/private?${qs.toString()}`
         };
     });
 

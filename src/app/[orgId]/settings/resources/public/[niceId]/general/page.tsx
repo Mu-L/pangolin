@@ -548,7 +548,7 @@ export default function GeneralForm() {
 
             if (data.niceId && data.niceId !== resource?.niceId) {
                 router.replace(
-                    `/${updated.orgId}/settings/resources/proxy/${data.niceId}/general`
+                    `/${updated.orgId}/settings/resources/public/${data.niceId}/general`
                 );
             }
 
