@@ -93,7 +93,7 @@ export const OlmErrorCodes = {
     },
     HOLEPUNCH_MISSING: {
         code: "HOLEPUNCH_MISSING",
-        message: `Hole punch information is missing. Please ensure your client can reach the server on UDP port ${udpPort} and try registering again.`
+        message: `Unable to coordinate client P2P connection. Please ensure your client can reach the server on UDP port ${udpPort} and try registering again.`
     }
 } as const;
 
