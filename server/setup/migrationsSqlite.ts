@@ -169,7 +169,7 @@ async function executeScripts() {
         console.log(`Starting migrations from version ${startVersion}`);
 
         const migrationsToRun = migrations.filter((migration) =>
-            semver.gt(migration.version, startVersion)
+            shouldRunMigration(migration.version, startVersion)
         );
 
         console.log(
@@ -222,4 +222,24 @@ async function executeScripts() {
         console.error("Migration process failed:", error);
         throw error;
     }
+}
+
+function shouldRunMigration(migrationVersion: string, currentVersion: string) {
+    const migration = semver.parse(migrationVersion);
+    const current = semver.parse(currentVersion);
+
+    // Treat x.y.z-rc.* as equivalent to x.y.z so restarts on RC builds do not re-run the same migration.
+    if (
+        migration &&
+        current &&
+        migration.prerelease.length === 0 &&
+        current.prerelease[0] === "rc" &&
+        migration.major === current.major &&
+        migration.minor === current.minor &&
+        migration.patch === current.patch
+    ) {
+        return false;
+    }
+
+    return semver.gt(migrationVersion, currentVersion);
 }
