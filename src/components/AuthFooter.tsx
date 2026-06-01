@@ -91,7 +91,7 @@ export default async function AuthFooter() {
                     <>
                         <Separator orientation="vertical" />
                         <a
-                            href="https://pangolin.net/terms-of-service.html"
+                            href="https://pangolin.net/tos"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="GitHub"
@@ -101,7 +101,7 @@ export default async function AuthFooter() {
                         </a>
                         <Separator orientation="vertical" />
                         <a
-                            href="https://pangolin.net/privacy-policy.html"
+                            href="https://pangolin.net/privacy"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="GitHub"
