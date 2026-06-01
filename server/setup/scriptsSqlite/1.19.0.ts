@@ -267,6 +267,17 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
+            UPDATE 'resources'
+            SET "mode" = CASE
+                WHEN COALESCE("http", 1) = 1 THEN 'http'
+                WHEN COALESCE("http", 0) = 0 AND LOWER(COALESCE("protocol", '')) = 'tcp' THEN 'tcp'
+                WHEN COALESCE("http", 0) = 0 AND LOWER(COALESCE("protocol", '')) = 'udp' THEN 'udp'
+                ELSE 'http'
+            END;
+                `
+            ).run();
+            db.prepare(
+                `
             ALTER TABLE 'resources' ADD 'pamMode' text DEFAULT 'passthrough';
                 `
             ).run();

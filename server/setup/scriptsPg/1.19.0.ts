@@ -164,6 +164,15 @@ export default async function migration() {
         await db.execute(
             sql`ALTER TABLE "resources" ADD COLUMN "mode" text DEFAULT 'http' NOT NULL;`
         );
+        await db.execute(sql`
+            UPDATE "resources"
+            SET "mode" = CASE
+                WHEN COALESCE("http", true) = true THEN 'http'
+                WHEN COALESCE("http", false) = false AND LOWER(COALESCE("protocol", '')) = 'tcp' THEN 'tcp'
+                WHEN COALESCE("http", false) = false AND LOWER(COALESCE("protocol", '')) = 'udp' THEN 'udp'
+                ELSE 'http'
+            END;
+        `);
         await db.execute(
             sql`ALTER TABLE "resources" ADD COLUMN "pamMode" varchar(32) DEFAULT 'passthrough';`
         );
