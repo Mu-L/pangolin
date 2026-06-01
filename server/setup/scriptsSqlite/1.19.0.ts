@@ -374,7 +374,7 @@ export default async function migration() {
             );
             const updateResourcePolicyRefs = db.prepare(
                 `UPDATE 'resources'
-                 "defaultResourcePolicyId" = ?
+                 SET "defaultResourcePolicyId" = ?
                  WHERE "resourceId" = ?`
             );
             const policyNiceIdExists = db.prepare(
