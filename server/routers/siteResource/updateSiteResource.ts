@@ -144,14 +144,13 @@ const updateSiteResourceSchema = z
                     data.destinationPort <= 65535
                 );
             } else if (data.mode === "ssh") {
-                // just check the destinationPort
+                // destinationPort is optional for native mode; allow null/undefined
                 return (
-                    data.destinationPort === undefined ||
-                    (data.destinationPort !== null &&
-                        data.destinationPort >= 1 &&
-                        data.destinationPort <= 65535)
+                    data.destinationPort == null ||
+                    (data.destinationPort >= 1 && data.destinationPort <= 65535)
                 );
             }
+            return true;
         },
         {
             message:

@@ -24,17 +24,12 @@ import {
     ArrowUp10Icon,
     ChevronsUpDownIcon,
     CircleSlash,
-    MoreHorizontal,
+    MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-    startTransition,
-    useMemo,
-    useState,
-    useTransition
-} from "react";
+import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
@@ -110,7 +105,7 @@ export default function MachineClientsTable({
         subnet: false,
         userId: false,
         niceId: false,
-        labels: false
+        labels: true
     };
 
     const refreshData = () => {
@@ -614,7 +609,10 @@ function MachineClientLabelCell({
 }: MachineClientLabelCellProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
-    const [localLabels, setLocalLabels] = useLocalLabels(client.labels, client.id);
+    const [localLabels, setLocalLabels] = useLocalLabels(
+        client.labels,
+        client.id
+    );
 
     function toggleClientLabel(
         label: SelectedLabel,

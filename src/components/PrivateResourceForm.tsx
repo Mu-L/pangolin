@@ -1128,9 +1128,7 @@ export function PrivateResourceForm({
                                         />
                                     </div>
                                 )}
-                                {(mode === "host" ||
-                                    (mode === "ssh" &&
-                                        sshServerMode !== "native")) && (
+                                {(mode === "host" || mode === "ssh") && (
                                     <div className="min-w-0">
                                         <FormField
                                             control={form.control}

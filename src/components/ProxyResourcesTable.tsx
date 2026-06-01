@@ -755,7 +755,7 @@ export default function ProxyResourcesTable({
                 columnVisibility={{
                     niceId: false,
                     protocol: false,
-                    labels: false
+                    labels: true
                 }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"

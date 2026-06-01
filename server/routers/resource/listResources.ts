@@ -434,7 +434,16 @@ export async function listResources(
                 .from(targets)
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
                 .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
-            conditions.push(inArray(resources.resourceId, resourcesWithSite));
+            const resourcesWithBrowserGateway = db
+                .select({ resourceId: browserGatewayTarget.resourceId })
+                .from(browserGatewayTarget)
+                .where(eq(browserGatewayTarget.siteId, siteId));
+            conditions.push(
+                or(
+                    inArray(resources.resourceId, resourcesWithSite),
+                    inArray(resources.resourceId, resourcesWithBrowserGateway)
+                )
+            );
         }
 
         if (isLabelFeatureEnabled && labelFilter && labelFilter.length > 0) {

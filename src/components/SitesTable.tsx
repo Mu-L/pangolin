@@ -36,7 +36,7 @@ import {
     ArrowUpRight,
     ChevronDown,
     ChevronsUpDownIcon,
-    MoreHorizontal,
+    MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -670,7 +670,7 @@ export default function SitesTable({
                     nice: false,
                     exitNode: false,
                     address: false,
-                    labels: false
+                    labels: true
                 }}
                 enableColumnVisibility
                 stickyLeftColumn="name"

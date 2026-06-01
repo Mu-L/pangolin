@@ -1,5 +1,5 @@
 import type { InternalResourceRow } from "@app/components/ClientResourcesTable";
-import ClientResourcesTable from "@app/components/ClientResourcesTable";
+import PrivateResourcesTable from "@app/components/ClientResourcesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import PrivateResourcesBanner from "@app/components/PrivateResourcesBanner";
 import { internal } from "@app/lib/api";
@@ -148,7 +148,7 @@ export default async function ClientResourcesPage(
             <PrivateResourcesBanner orgId={params.orgId} />
 
             <OrgProvider org={org}>
-                <ClientResourcesTable
+                <PrivateResourcesTable
                     internalResources={internalResourceRows}
                     orgId={params.orgId}
                     rowCount={pagination.total}

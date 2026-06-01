@@ -129,7 +129,7 @@ type ClientResourcesTableProps = {
     initialFilterSite?: Selectedsite | null;
 };
 
-export default function ClientResourcesTable({
+export default function PrivateResourcesTable({
     internalResources,
     orgId,
     pagination,
@@ -400,13 +400,16 @@ export default function ClientResourcesTable({
                 cell: ({ row }) => {
                     const resourceRow = row.original;
                     const display = formatDestinationDisplay(resourceRow);
-                    return (
-                        <CopyToClipboard
-                            text={display}
-                            isLink={false}
-                            displayText={display}
-                        />
-                    );
+                    if (resourceRow.destination) {
+                        return (
+                            <CopyToClipboard
+                                text={display}
+                                isLink={false}
+                                displayText={display}
+                            />
+                        );
+                    }
+                    return <span>-</span>;
                 }
             },
             {
@@ -656,7 +659,7 @@ export default function ClientResourcesTable({
                 columnVisibility={{
                     niceId: false,
                     aliasAddress: false,
-                    labels: false
+                    labels: true
                 }}
                 stickyLeftColumn="name"
                 stickyRightColumn="actions"
