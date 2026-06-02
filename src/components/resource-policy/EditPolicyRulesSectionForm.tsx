@@ -171,7 +171,7 @@ export function EditPolicyRulesSectionForm({
     });
 
     const [rules, setRules] = useState<LocalRule[]>(
-        policy.rules.map((r) => ({ ...r, fromPolicy: !isResourceOverlay }))
+        policy.rules.map((r) => ({ ...r, fromPolicy: isResourceOverlay }))
     );
     const [isExpanded, setIsExpanded] = useState(
         rulesEnabled || isResourceOverlay

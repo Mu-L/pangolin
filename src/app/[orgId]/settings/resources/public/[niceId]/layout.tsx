@@ -96,10 +96,6 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
             title: t("authentication"),
             href: `/{orgId}/settings/resources/public/{niceId}/authentication`
         });
-        // navItems.push({
-        //     title: t("rules"),
-        //     href: `/{orgId}/settings/resources/public/{niceId}/rules`
-        // });
     }
 
     return (

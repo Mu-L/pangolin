@@ -5,6 +5,8 @@ import {
     resources,
     userResources,
     roleResources,
+    userPolicies,
+    rolePolicies,
     userOrgRoles,
     userOrgs,
     resourcePassword,
@@ -80,6 +82,30 @@ export async function getUserResources(
                       .where(inArray(roleResources.roleId, userRoleIds))
                 : Promise.resolve([]);
 
+        const directPolicyResourcesQuery = db
+            .select({ resourceId: resources.resourceId })
+            .from(resources)
+            .innerJoin(
+                userPolicies,
+                eq(resources.resourcePolicyId, userPolicies.resourcePolicyId)
+            )
+            .where(eq(userPolicies.userId, userId));
+
+        const rolePolicyResourcesQuery =
+            userRoleIds.length > 0
+                ? db
+                      .select({ resourceId: resources.resourceId })
+                      .from(resources)
+                      .innerJoin(
+                          rolePolicies,
+                          eq(
+                              resources.resourcePolicyId,
+                              rolePolicies.resourcePolicyId
+                          )
+                      )
+                      .where(inArray(rolePolicies.roleId, userRoleIds))
+                : Promise.resolve([]);
+
         const directSiteResourcesQuery = db
             .select({ siteResourceId: userSiteResources.siteResourceId })
             .from(userSiteResources)
@@ -98,11 +124,15 @@ export async function getUserResources(
         const [
             directResources,
             roleResourceResults,
+            directPolicyResourceResults,
+            rolePolicyResourceResults,
             directSiteResourceResults,
             roleSiteResourceResults
         ] = await Promise.all([
             directResourcesQuery,
             roleResourcesQuery,
+            directPolicyResourcesQuery,
+            rolePolicyResourcesQuery,
             directSiteResourcesQuery,
             roleSiteResourcesQuery
         ]);
@@ -110,7 +140,9 @@ export async function getUserResources(
         // Combine all accessible resource IDs
         const accessibleResourceIds = [
             ...directResources.map((r) => r.resourceId),
-            ...roleResourceResults.map((r) => r.resourceId)
+            ...roleResourceResults.map((r) => r.resourceId),
+            ...directPolicyResourceResults.map((r) => r.resourceId),
+            ...rolePolicyResourceResults.map((r) => r.resourceId)
         ];
 
         // Combine all accessible site resource IDs
