@@ -27,7 +27,6 @@ import {
     StrategySelect,
     type StrategyOption
 } from "@app/components/StrategySelect";
-import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
 import {
     SitesSelector,
@@ -896,26 +895,23 @@ export default function Page() {
                                                 />
                                             </div>
 
-                                            {/* Auth Method (standard only) */}
-                                            {!isNative && (
-                                                <div className="space-y-3">
-                                                    <p className="text-sm font-semibold">
-                                                        {t(
-                                                            "sshAuthenticationMethod"
-                                                        )}
-                                                    </p>
-                                                    <StrategySelect<
-                                                        "passthrough" | "push"
-                                                    >
-                                                        value={pamMode}
-                                                        options={
-                                                            authMethodOptions
-                                                        }
-                                                        onChange={setPamMode}
-                                                        cols={2}
-                                                    />
-                                                </div>
-                                            )}
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-semibold">
+                                                    {t(
+                                                        "sshAuthenticationMethod"
+                                                    )}
+                                                </p>
+                                                <StrategySelect<
+                                                    "passthrough" | "push"
+                                                >
+                                                    value={pamMode}
+                                                    options={
+                                                        authMethodOptions
+                                                    }
+                                                    onChange={setPamMode}
+                                                    cols={2}
+                                                />
+                                            </div>
 
                                             {/* Daemon Location (standard + push) */}
                                             {showDaemonLocation && (
@@ -1046,7 +1042,9 @@ export default function Page() {
                                                         </PopoverContent>
                                                     </Popover>
                                                 ) : standardDaemonLocation !==
-                                                  "site" ? (
+                                                      "site" ||
+                                                  pamMode ===
+                                                      "passthrough" ? (
                                                     <BrowserGatewayTargetForm
                                                         orgId={orgId as string}
                                                         multiSite={true}

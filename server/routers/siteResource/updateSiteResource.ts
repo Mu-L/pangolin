@@ -59,7 +59,6 @@ const updateSiteResourceSchema = z
         mode: z.enum(["host", "cidr", "http", "ssh"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
-        // proxyPort: z.int().positive().nullish(),
         destinationPort: z.int().positive().nullish(),
         destination: z.string().min(1).optional(),
         enabled: z.boolean().optional(),
@@ -632,6 +631,15 @@ export async function updateSiteResource(
                               })
                           }
                         : {};
+                let tcpPortRangeStringAdjusted = tcpPortRangeString;
+                if (mode === "http") {
+                    tcpPortRangeStringAdjusted = "443,80";
+                } else if (mode === "ssh") {
+                    tcpPortRangeStringAdjusted = destinationPort
+                        ? destinationPort.toString()
+                        : "22";
+                }
+
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
@@ -644,9 +652,14 @@ export async function updateSiteResource(
                         destinationPort: destinationPort,
                         enabled: enabled,
                         alias: alias ? alias.trim() : null,
-                        tcpPortRangeString: tcpPortRangeString,
-                        udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp,
+                        tcpPortRangeString: tcpPortRangeStringAdjusted,
+                        udpPortRangeString:
+                            mode == "http" || mode == "ssh"
+                                ? ""
+                                : udpPortRangeString,
+                        disableIcmp:
+                            disableIcmp ||
+                            (mode == "http" || mode == "ssh" ? true : false),
                         domainId,
                         subdomain: finalSubdomain,
                         fullDomain,

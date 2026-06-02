@@ -480,7 +480,8 @@ function SshServerForm({
                                     />
                                 </PopoverContent>
                             </Popover>
-                        ) : standardDaemonLocation !== "site" ? (
+                        ) : standardDaemonLocation !== "site" ||
+                          pamMode === "passthrough" ? (
                             <BrowserGatewayTargetForm
                                 orgId={orgId}
                                 multiSite={true}

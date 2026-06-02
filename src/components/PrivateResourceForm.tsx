@@ -365,6 +365,19 @@ export function PrivateResourceForm({
                     path: ["destination"]
                 });
             }
+            if (data.mode === "ssh" && !isNativeSsh) {
+                if (
+                    data.destinationPort == null ||
+                    !Number.isFinite(data.destinationPort) ||
+                    data.destinationPort < 1
+                ) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: t("internalResourceHttpPortRequired"),
+                        path: ["destinationPort"]
+                    });
+                }
+            }
             if (data.mode !== "http") return;
             if (!data.scheme) {
                 ctx.addIssue({
@@ -548,7 +561,7 @@ export function PrivateResourceForm({
                   mode: "host",
                   destination: "",
                   alias: null,
-                  destinationPort: null,
+                  destinationPort: 22,
                   scheme: "http",
                   ssl: true,
                   httpConfigSubdomain: null,
@@ -735,6 +748,7 @@ export function PrivateResourceForm({
                 onSubmit={form.handleSubmit((values) => {
                     const siteIds = values.siteIds;
                     const trimmedDestination = values.destination?.trim();
+                    const isSshMode = values.mode === "ssh";
                     onSubmit({
                         ...values,
                         siteIds,
@@ -742,6 +756,12 @@ export function PrivateResourceForm({
                             trimmedDestination && trimmedDestination.length > 0
                                 ? trimmedDestination
                                 : null,
+                        tcpPortRangeString: isSshMode
+                            ? undefined
+                            : values.tcpPortRangeString,
+                        udpPortRangeString: isSshMode
+                            ? undefined
+                            : values.udpPortRangeString,
                         clients: (values.clients ?? []).map((c) => ({
                             id: c.clientId.toString(),
                             text: c.name
@@ -826,8 +846,11 @@ export function PrivateResourceForm({
                                                         {t("sites")}
                                                     </FormLabel>
                                                     {mode === "ssh" &&
-                                                    sshServerMode ===
-                                                        "native" ? (
+                                                    (sshServerMode ===
+                                                        "native" ||
+                                                        (pamMode === "push" &&
+                                                            authDaemonMode ===
+                                                                "site")) ? (
                                                         <Popover>
                                                             <PopoverTrigger
                                                                 asChild

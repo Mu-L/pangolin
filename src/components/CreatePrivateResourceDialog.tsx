@@ -103,6 +103,7 @@ export default function CreatePrivateResourceDialog({
                             data.alias.trim()
                                 ? data.alias
                                 : undefined,
+                        destinationPort: data.destinationPort ?? undefined,
                         pamMode: data.pamMode ?? undefined,
                         ...(data.authDaemonMode != null && {
                             authDaemonMode: data.authDaemonMode
@@ -112,11 +113,12 @@ export default function CreatePrivateResourceDialog({
                                 authDaemonPort: data.authDaemonPort
                             })
                     }),
-                    ...((data.mode === "host" ||
-                        data.mode === "ssh" ||
-                        data.mode === "cidr") && {
+                    ...((data.mode === "host" || data.mode === "cidr") && {
                         tcpPortRangeString: data.tcpPortRangeString,
                         udpPortRangeString: data.udpPortRangeString,
+                        disableIcmp: data.disableIcmp ?? false
+                    }),
+                    ...(data.mode === "ssh" && {
                         disableIcmp: data.disableIcmp ?? false
                     }),
                     roleIds: data.roles

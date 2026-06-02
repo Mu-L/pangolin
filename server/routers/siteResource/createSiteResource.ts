@@ -49,7 +49,6 @@ const createSiteResourceSchema = z
         scheme: z.enum(["http", "https"]).optional(),
         siteIds: z.array(z.int()).optional(),
         siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
-        // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1).optional(),
         enabled: z.boolean().default(true),
@@ -248,7 +247,6 @@ export async function createSiteResource(
             siteId,
             mode,
             scheme,
-            // proxyPort,
             destinationPort,
             destination,
             enabled,
