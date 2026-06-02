@@ -44,6 +44,11 @@ export function EditPolicyForm({
 
     const router = useRouter();
 
+    // In overlay mode (resourceId provided), policy-level sections are locked.
+    // Rules and users/roles sections handle their own hybrid logic via resourceId.
+    const isOverlay = resourceId !== undefined;
+    const policyLevelReadonly = readonly || isOverlay;
+
     const isMaxmindAvailable = !!(
         env.server.maxmind_db_path && env.server.maxmind_db_path.length > 0
     );
@@ -79,7 +84,7 @@ export function EditPolicyForm({
     return (
         <SettingsContainer>
             {!hidePolicyNameForm && (
-                <EditPolicyNameSectionForm readonly={readonly} />
+                <EditPolicyNameSectionForm readonly={policyLevelReadonly} />
             )}
 
             <EditPolicyUsersRolesSectionForm
@@ -89,11 +94,11 @@ export function EditPolicyForm({
                 resourceId={resourceId}
             />
 
-            <EditPolicyAuthMethodsSectionForm readonly={readonly} />
+            <EditPolicyAuthMethodsSectionForm readonly={policyLevelReadonly} />
 
             <EditPolicyOtpEmailSectionForm
                 emailEnabled={env.email.emailEnabled}
-                readonly={readonly}
+                readonly={policyLevelReadonly}
             />
 
             <EditPolicyRulesSectionForm

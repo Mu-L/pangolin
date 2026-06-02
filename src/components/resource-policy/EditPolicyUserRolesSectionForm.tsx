@@ -268,59 +268,29 @@ export function EditPolicyUsersRolesSectionForm({
         setIsSavingOverlay(true);
         try {
             // Compute which roles/users are resource-specific (non-locked)
-            const currentResourceRoleIds = new Set(
-                combinedRoles
-                    .filter((r) => !policyRoleLockedIds.has(r.id))
-                    .map((r) => r.id)
-            );
-            const currentResourceUserIds = new Set(
-                combinedUsers
-                    .filter((u) => !policyUserLockedIds.has(u.id))
-                    .map((u) => u.id)
-            );
+            const currentResourceRoleIds = combinedRoles
+                .filter((r) => !policyRoleLockedIds.has(r.id))
+                .map((r) => Number(r.id));
+            const currentResourceUserIds = combinedUsers
+                .filter((u) => !policyUserLockedIds.has(u.id))
+                .map((u) => u.id);
 
-            const initialRoleIds = initialResourceRoleIdsRef.current;
-            const initialUserIds = initialResourceUserIdsRef.current;
-
-            const addedRoleIds = [...currentResourceRoleIds].filter(
-                (id) => !initialRoleIds.has(id)
-            );
-            const removedRoleIds = [...initialRoleIds].filter(
-                (id) => !currentResourceRoleIds.has(id)
-            );
-            const addedUserIds = [...currentResourceUserIds].filter(
-                (id) => !initialUserIds.has(id)
-            );
-            const removedUserIds = [...initialUserIds].filter(
-                (id) => !currentResourceUserIds.has(id)
-            );
-
+            // Use bulk-set endpoints (session-authenticated) which replace
+            // all resource-specific roles/users in one call
             await Promise.all([
-                ...addedRoleIds.map((id) =>
-                    api.post(`/resource/${resourceId}/roles/add`, {
-                        roleId: Number(id)
-                    })
-                ),
-                ...removedRoleIds.map((id) =>
-                    api.post(`/resource/${resourceId}/roles/remove`, {
-                        roleId: Number(id)
-                    })
-                ),
-                ...addedUserIds.map((id) =>
-                    api.post(`/resource/${resourceId}/users/add`, {
-                        userId: id
-                    })
-                ),
-                ...removedUserIds.map((id) =>
-                    api.post(`/resource/${resourceId}/users/remove`, {
-                        userId: id
-                    })
-                )
+                api.post(`/resource/${resourceId}/roles`, {
+                    roleIds: currentResourceRoleIds
+                }),
+                api.post(`/resource/${resourceId}/users`, {
+                    userIds: currentResourceUserIds
+                })
             ]);
 
             // Update refs to reflect new state
-            initialResourceRoleIdsRef.current = currentResourceRoleIds;
-            initialResourceUserIdsRef.current = currentResourceUserIds;
+            initialResourceRoleIdsRef.current = new Set(
+                currentResourceRoleIds.map(String)
+            );
+            initialResourceUserIdsRef.current = new Set(currentResourceUserIds);
 
             toast({
                 title: t("success"),

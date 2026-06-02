@@ -315,13 +315,13 @@ export default function ResourceAuthenticationPage() {
                             key={policies.sharedPolicy.resourcePolicyId}
                         >
                             <ActionBanner
-                                variant="warning"
-                                title={t("resourcePolicyReadOnly")}
+                                variant="info"
+                                title={t("resourcePolicyShared")}
                                 titleIcon={
                                     <ShieldAlertIcon className="w-5 h-5" />
                                 }
                                 description={t(
-                                    "resourcePolicyReadOnlyDescription"
+                                    "resourcePolicySharedDescription"
                                 )}
                                 actions={
                                     <Button
@@ -332,14 +332,13 @@ export default function ResourceAuthenticationPage() {
                                         <Link
                                             href={`/${org.org.orgId}/settings/policies/resource/${policies.sharedPolicy.niceId}`}
                                         >
-                                            {t("edit")}
+                                            {t("editSharedPolicy")}
                                             <ArrowRightIcon className="size-4" />
                                         </Link>
                                     </Button>
                                 }
                             />
                             <EditPolicyForm
-                                readonly
                                 resourceId={resource.resourceId}
                             />
                         </ResourcePolicyProvider>
