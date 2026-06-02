@@ -35,7 +35,14 @@ import {
     ResourceHeaderAuthExtendedCompatibility,
     orgs,
     requestAuditLog,
-    Org
+    Org,
+    resourcePolicies,
+    resourcePolicyPincode,
+    ResourcePolicyPincode,
+    resourcePolicyPassword,
+    ResourcePolicyPassword,
+    resourcePolicyHeaderAuth,
+    ResourcePolicyHeaderAuth
 } from "@server/db";
 import {
     resources,
@@ -204,9 +211,9 @@ export type ValidateResourceSessionTokenBody = z.infer<
 // Type definitions for API responses
 export type ResourceWithAuth = {
     resource: Resource | null;
-    pincode: ResourcePincode | null;
-    password: ResourcePassword | null;
-    headerAuth: ResourceHeaderAuth | null;
+    pincode: ResourcePincode | ResourcePolicyPincode | null;
+    password: ResourcePassword | ResourcePolicyPassword | null;
+    headerAuth: ResourceHeaderAuth | ResourcePolicyHeaderAuth | null;
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
     org: Org;
 };
@@ -529,6 +536,34 @@ hybridRouter.get(
                         resources.resourceId
                     )
                 )
+                .leftJoin(
+                    resourcePolicies,
+                    eq(
+                        resourcePolicies.resourcePolicyId,
+                        resources.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    resourcePolicyPincode,
+                    eq(
+                        resourcePolicyPincode.resourcePolicyId,
+                        resourcePolicies.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    resourcePolicyPassword,
+                    eq(
+                        resourcePolicyPassword.resourcePolicyId,
+                        resourcePolicies.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    resourcePolicyHeaderAuth,
+                    eq(
+                        resourcePolicyHeaderAuth.resourcePolicyId,
+                        resourcePolicies.resourcePolicyId
+                    )
+                )
                 .innerJoin(orgs, eq(orgs.orgId, resources.orgId))
                 .where(
                     or(
@@ -581,11 +616,21 @@ hybridRouter.get(
 
             const resourceWithAuth: ResourceWithAuth = {
                 resource: result.resources,
-                pincode: result.resourcePincode,
-                password: result.resourcePassword,
-                headerAuth: result.resourceHeaderAuth,
-                headerAuthExtendedCompatibility:
-                    result.resourceHeaderAuthExtendedCompatibility,
+                pincode: result.resourcePolicyPincode ?? result.resourcePincode,
+                password:
+                    result.resourcePolicyPassword ?? result.resourcePassword,
+                headerAuth:
+                    result.resourcePolicyHeaderAuth ??
+                    result.resourceHeaderAuth,
+                headerAuthExtendedCompatibility: result.resourcePolicyHeaderAuth
+                    ? ({
+                          headerAuthExtendedCompatibilityId: 0,
+                          resourceId: result.resources.resourceId,
+                          extendedCompatibilityIsActivated:
+                              result.resourcePolicyHeaderAuth
+                                  .extendedCompatibility
+                      } as ResourceHeaderAuthExtendedCompatibility)
+                    : result.resourceHeaderAuthExtendedCompatibility,
                 org: result.orgs
             };
 
