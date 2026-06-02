@@ -1885,6 +1885,36 @@ export function PrivateResourceForm({
                                                                 "authDaemonPort",
                                                                 null
                                                             );
+                                                        } else if (
+                                                            v === "push"
+                                                        ) {
+                                                            // push + site (default) = single site
+                                                            const curAuthMode =
+                                                                form.getValues(
+                                                                    "authDaemonMode"
+                                                                );
+                                                            if (
+                                                                curAuthMode !==
+                                                                    "remote" &&
+                                                                selectedSites.length >
+                                                                    1
+                                                            ) {
+                                                                const first =
+                                                                    selectedSites.slice(
+                                                                        0,
+                                                                        1
+                                                                    );
+                                                                setSelectedSites(
+                                                                    first
+                                                                );
+                                                                form.setValue(
+                                                                    "siteIds",
+                                                                    first.map(
+                                                                        (s) =>
+                                                                            s.siteId
+                                                                    )
+                                                                );
+                                                            }
                                                         }
                                                     }}
                                                     cols={2}
@@ -1952,6 +1982,29 @@ export function PrivateResourceForm({
                                                                     "authDaemonPort",
                                                                     null
                                                                 );
+                                                                // site daemon = single site
+                                                                if (
+                                                                    selectedSites.length >
+                                                                    1
+                                                                ) {
+                                                                    const first =
+                                                                        selectedSites.slice(
+                                                                            0,
+                                                                            1
+                                                                        );
+                                                                    setSelectedSites(
+                                                                        first
+                                                                    );
+                                                                    form.setValue(
+                                                                        "siteIds",
+                                                                        first.map(
+                                                                            (
+                                                                                s
+                                                                            ) =>
+                                                                                s.siteId
+                                                                        )
+                                                                    );
+                                                                }
                                                             }
                                                         }}
                                                         cols={2}

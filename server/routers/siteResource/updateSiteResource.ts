@@ -181,6 +181,25 @@ const updateSiteResourceSchema = z
         {
             message: "At least one of siteIds or siteId must be provided"
         }
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "ssh") return true;
+            const isSingleSiteMode =
+                data.authDaemonMode === "native" ||
+                (data.pamMode === "push" && data.authDaemonMode === "site") ||
+                (data.pamMode === "push" && data.authDaemonMode === undefined);
+            if (!isSingleSiteMode) return true;
+            const effectiveSiteIds = [
+                ...(data.siteIds ?? []),
+                ...(data.siteId !== undefined ? [data.siteId] : [])
+            ];
+            const uniqueSiteIds = new Set(effectiveSiteIds);
+            return uniqueSiteIds.size <= 1;
+        },
+        {
+            message: "Only one site is allowed for this SSH daemon mode"
+        }
     );
 
 export type UpdateSiteResourceBody = z.infer<typeof updateSiteResourceSchema>;
