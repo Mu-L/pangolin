@@ -23,7 +23,10 @@ import type { AxiosResponse } from "axios";
 import { useRouter } from "next/navigation";
 import { createPolicySchema } from ".";
 
-import { RolesSelector } from "@app/components/roles-selector";
+import {
+    RolesSelector,
+    type SelectedRole
+} from "@app/components/roles-selector";
 import { UsersSelector } from "@app/components/users-selector";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
@@ -58,6 +61,8 @@ type PolicyUsersRolesSectionProps = {
     readonly?: boolean;
     resourceId?: number;
 };
+
+type OverlaySelectedRole = SelectedRole & { isAdmin: boolean };
 
 export function EditPolicyUsersRolesSectionForm({
     orgId,
@@ -97,11 +102,12 @@ export function EditPolicyUsersRolesSectionForm({
     );
 
     // Policy entries mapped to selector format
-    const policyRoleItems = useMemo(
+    const policyRoleItems = useMemo<OverlaySelectedRole[]>(
         () =>
             policy.roles.map((r) => ({
                 id: r.roleId.toString(),
-                text: r.name
+                text: r.name,
+                isAdmin: false
             })),
         [policy.roles]
     );
@@ -119,7 +125,8 @@ export function EditPolicyUsersRolesSectionForm({
     const initialResourceUserIdsRef = useRef<Set<string>>(new Set());
 
     // Combined selected roles/users (policy + resource-specific)
-    const [combinedRoles, setCombinedRoles] = useState(policyRoleItems);
+    const [combinedRoles, setCombinedRoles] =
+        useState<OverlaySelectedRole[]>(policyRoleItems);
     const [combinedUsers, setCombinedUsers] = useState(policyUserItems);
     const [resourceRolesInitialized, setResourceRolesInitialized] =
         useState(false);
@@ -132,12 +139,20 @@ export function EditPolicyUsersRolesSectionForm({
 
         const resourceSpecific = resourceRolesData
             .filter((r) => !policyRoleLockedIds.has(r.roleId.toString()))
-            .map((r) => ({ id: r.roleId.toString(), text: r.name }));
+            .map((r) => ({
+                id: r.roleId.toString(),
+                text: r.name,
+                isAdmin: Boolean(r.isAdmin)
+            }));
 
         initialResourceRoleIdsRef.current = new Set(
             resourceSpecific.map((r) => r.id)
         );
-        setCombinedRoles([...policyRoleItems, ...resourceSpecific]);
+        setCombinedRoles(
+            [...policyRoleItems, ...resourceSpecific].filter(
+                (role) => !role.isAdmin
+            )
+        );
         setResourceRolesInitialized(true);
     }, [
         isResourceOverlay,
@@ -362,12 +377,27 @@ export function EditPolicyUsersRolesSectionForm({
                                             {isResourceOverlay ? (
                                                 <RolesSelector
                                                     orgId={orgId}
-                                                    selectedRoles={
-                                                        combinedRoles
-                                                    }
-                                                    onSelectRoles={
-                                                        setCombinedRoles
-                                                    }
+                                                    selectedRoles={combinedRoles.filter(
+                                                        (role) => !role.isAdmin
+                                                    )}
+                                                    onSelectRoles={(roles) => {
+                                                        setCombinedRoles(
+                                                            roles
+                                                                .map(
+                                                                    (role) => ({
+                                                                        ...role,
+                                                                        isAdmin:
+                                                                            Boolean(
+                                                                                role.isAdmin
+                                                                            )
+                                                                    })
+                                                                )
+                                                                .filter(
+                                                                    (role) =>
+                                                                        !role.isAdmin
+                                                                )
+                                                        );
+                                                    }}
                                                     disabled={isLoading}
                                                     restrictAdminRole
                                                     lockedIds={
