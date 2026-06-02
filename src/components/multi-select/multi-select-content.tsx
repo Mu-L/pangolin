@@ -10,6 +10,7 @@ import {
 import { cn } from "@app/lib/cn";
 import { CheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Checkbox } from "../ui/checkbox";
 
 export type TagValue = { text: string; id: string; isAdmin?: boolean };
 
@@ -70,13 +71,11 @@ export function MultiSelectContent<T extends TagValue>({
                                     onChange(newValues);
                                 }}
                             >
-                                <CheckIcon
-                                    className={cn(
-                                        "mr-2 h-4 w-4",
-                                        selectedValues.has(option.id)
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                    )}
+                                <Checkbox
+                                    className="pointer-events-none shrink-0"
+                                    checked={selectedValues.has(option.id)}
+                                    aria-hidden
+                                    tabIndex={-1}
                                 />
                                 {`${option.text}`}
                             </CommandItem>
