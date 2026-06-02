@@ -196,8 +196,8 @@ export function EditPolicyRulesSectionForm({
             }));
 
         setRules([
-            ...policy.rules.map((r) => ({ ...r, fromPolicy: true })),
-            ...resourceSpecific
+            ...resourceSpecific,
+            ...policy.rules.map((r) => ({ ...r, fromPolicy: true }))
         ]);
         setResourceRulesInitialized(true);
     }, [
