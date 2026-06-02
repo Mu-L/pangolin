@@ -438,6 +438,7 @@ export async function getUserResources(
             return {
                 siteResourceId: siteResource.siteResourceId,
                 name: siteResource.name,
+                niceId: siteResource.niceId,
                 destination: siteResource.destination,
                 mode: siteResource.mode,
                 ssl: siteResource.ssl,
@@ -492,6 +493,7 @@ export type GetUserResourcesResponse = {
         siteResources: Array<{
             siteResourceId: number;
             name: string;
+            niceId: string;
             destination: string;
             mode: string;
             tcpPortRangeString: string | null;
