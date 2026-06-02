@@ -270,7 +270,8 @@ hybridRouter.get(
                 true, // But don't allow domain namespace resources
                 false, // Dont include login pages,
                 true, // allow raw resources
-                false // dont generate maintenance page
+                false, // dont generate maintenance page
+                false // dont generate browser gateway targets
             );
 
             return response(res, {

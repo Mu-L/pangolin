@@ -1148,6 +1148,24 @@ export const resourceSessions = sqliteTable("resourceSessions", {
             onDelete: "cascade"
         }
     ),
+    policyPasswordId: integer("policyPasswordId").references(
+        () => resourcePolicyPassword.passwordId,
+        {
+            onDelete: "cascade"
+        }
+    ),
+    policyPincodeId: integer("policyPincodeId").references(
+        () => resourcePolicyPincode.pincodeId,
+        {
+            onDelete: "cascade"
+        }
+    ),
+    policyWhitelistId: integer("policyWhitelistId").references(
+        () => resourcePolicyWhiteList.whitelistId,
+        {
+            onDelete: "cascade"
+        }
+    ),
     issuedAt: integer("issuedAt")
 });
 

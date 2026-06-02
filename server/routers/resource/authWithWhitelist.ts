@@ -1,6 +1,6 @@
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { db } from "@server/db";
-import { orgs, resourceOtp, resources, resourceWhitelist } from "@server/db";
+import { orgs, resourceOtp, resources, resourceWhitelist, resourcePolicyWhiteList } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq, and } from "drizzle-orm";
@@ -59,82 +59,21 @@ export async function authWithWhitelist(
     const { email, otp } = parsedBody.data;
 
     try {
-        const [result] = await db
+        // Fetch resource and org first
+        const [resourceResult] = await db
             .select()
-            .from(resourceWhitelist)
-            .where(
-                and(
-                    eq(resourceWhitelist.resourceId, resourceId),
-                    eq(resourceWhitelist.email, email)
-                )
-            )
-            .leftJoin(
-                resources,
-                eq(resources.resourceId, resourceWhitelist.resourceId)
-            )
+            .from(resources)
             .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
+            .where(eq(resources.resourceId, resourceId))
             .limit(1);
 
-        let resource = result?.resources;
-        let org = result?.orgs;
-        let whitelistedEmail = result?.resourceWhitelist;
+        const resource = resourceResult?.resources;
+        const org = resourceResult?.orgs;
 
-        if (!whitelistedEmail) {
-            // if email is not found, check for wildcard email
-            const wildcard = "*@" + email.split("@")[1];
-
-            logger.debug("Checking for wildcard email: " + wildcard);
-
-            const [result] = await db
-                .select()
-                .from(resourceWhitelist)
-                .where(
-                    and(
-                        eq(resourceWhitelist.resourceId, resourceId),
-                        eq(resourceWhitelist.email, wildcard)
-                    )
-                )
-                .leftJoin(
-                    resources,
-                    eq(resources.resourceId, resourceWhitelist.resourceId)
-                )
-                .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
-                .limit(1);
-
-            resource = result?.resources;
-            org = result?.orgs;
-            whitelistedEmail = result?.resourceWhitelist;
-
-            // if wildcard is still not found, return unauthorized
-            if (!whitelistedEmail) {
-                if (config.getRawConfig().app.log_failed_attempts) {
-                    logger.info(
-                        `Email is not whitelisted. Email: ${email}. IP: ${req.ip}.`
-                    );
-                }
-
-                if (org && resource) {
-                    logAccessAudit({
-                        orgId: org.orgId,
-                        resourceId: resource.resourceId,
-                        action: false,
-                        type: "whitelistedEmail",
-                        metadata: { email },
-                        userAgent: req.headers["user-agent"],
-                        requestIp: req.ip
-                    });
-                }
-
-                return next(
-                    createHttpError(
-                        HttpCode.UNAUTHORIZED,
-                        createHttpError(
-                            HttpCode.BAD_REQUEST,
-                            "Email is not whitelisted"
-                        )
-                    )
-                );
-            }
+        if (!resource) {
+            return next(
+                createHttpError(HttpCode.BAD_REQUEST, "Resource does not exist")
+            );
         }
 
         if (!org) {
@@ -143,9 +82,100 @@ export async function authWithWhitelist(
             );
         }
 
-        if (!resource) {
+        const wildcard = "*@" + email.split("@")[1];
+
+        // Check policy whitelist first (policy takes precedence over resource whitelist)
+        let policyWhitelistEntry: { whitelistId: number; email: string } | null = null;
+        if (resource.resourcePolicyId) {
+            const [exact] = await db
+                .select()
+                .from(resourcePolicyWhiteList)
+                .where(
+                    and(
+                        eq(resourcePolicyWhiteList.resourcePolicyId, resource.resourcePolicyId),
+                        eq(resourcePolicyWhiteList.email, email)
+                    )
+                )
+                .limit(1);
+
+            if (exact) {
+                policyWhitelistEntry = exact;
+            } else {
+                logger.debug("Checking for wildcard email in policy: " + wildcard);
+                const [wildcardMatch] = await db
+                    .select()
+                    .from(resourcePolicyWhiteList)
+                    .where(
+                        and(
+                            eq(resourcePolicyWhiteList.resourcePolicyId, resource.resourcePolicyId),
+                            eq(resourcePolicyWhiteList.email, wildcard)
+                        )
+                    )
+                    .limit(1);
+                if (wildcardMatch) policyWhitelistEntry = wildcardMatch;
+            }
+        }
+
+        // Fall back to resource whitelist if not found in policy
+        let resourceWhitelistEntry: { whitelistId: number; email: string } | null = null;
+        if (!policyWhitelistEntry) {
+            const [exact] = await db
+                .select()
+                .from(resourceWhitelist)
+                .where(
+                    and(
+                        eq(resourceWhitelist.resourceId, resourceId),
+                        eq(resourceWhitelist.email, email)
+                    )
+                )
+                .limit(1);
+
+            if (exact) {
+                resourceWhitelistEntry = exact;
+            } else {
+                logger.debug("Checking for wildcard email: " + wildcard);
+                const [wildcardMatch] = await db
+                    .select()
+                    .from(resourceWhitelist)
+                    .where(
+                        and(
+                            eq(resourceWhitelist.resourceId, resourceId),
+                            eq(resourceWhitelist.email, wildcard)
+                        )
+                    )
+                    .limit(1);
+                if (wildcardMatch) resourceWhitelistEntry = wildcardMatch;
+            }
+        }
+
+        const isPolicyWhitelist = !!policyWhitelistEntry;
+        const whitelistedEmail = policyWhitelistEntry ?? resourceWhitelistEntry;
+
+        if (!whitelistedEmail) {
+            if (config.getRawConfig().app.log_failed_attempts) {
+                logger.info(
+                    `Email is not whitelisted. Email: ${email}. IP: ${req.ip}.`
+                );
+            }
+
+            logAccessAudit({
+                orgId: org.orgId,
+                resourceId: resource.resourceId,
+                action: false,
+                type: "whitelistedEmail",
+                metadata: { email },
+                userAgent: req.headers["user-agent"],
+                requestIp: req.ip
+            });
+
             return next(
-                createHttpError(HttpCode.BAD_REQUEST, "Resource does not exist")
+                createHttpError(
+                    HttpCode.UNAUTHORIZED,
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "Email is not whitelisted"
+                    )
+                )
             );
         }
 
@@ -211,7 +241,8 @@ export async function authWithWhitelist(
         await createResourceSession({
             resourceId,
             token,
-            whitelistId: whitelistedEmail.whitelistId,
+            whitelistId: isPolicyWhitelist ? null : whitelistedEmail.whitelistId,
+            policyWhitelistId: isPolicyWhitelist ? whitelistedEmail.whitelistId : null,
             isRequestToken: true,
             expiresAt: Date.now() + 1000 * 30, // 30 seconds
             sessionLength: 1000 * 30,

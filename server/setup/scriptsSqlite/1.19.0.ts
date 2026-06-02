@@ -337,6 +337,21 @@ export default async function migration() {
             ALTER TABLE 'sites' ADD 'autoUpdateOverrideOrg' integer DEFAULT false NOT NULL;
                 `
             ).run();
+            db.prepare(
+                `
+            ALTER TABLE 'resourceSessions' ADD 'policyPasswordId' integer REFERENCES resourcePolicyPassword(passwordId);
+                `
+            ).run();
+            db.prepare(
+                `
+            ALTER TABLE 'resourceSessions' ADD 'policyPincodeId' integer REFERENCES resourcePolicyPincode(pincodeId);
+                `
+            ).run();
+            db.prepare(
+                `
+            ALTER TABLE 'resourceSessions' ADD 'policyWhitelistId' integer REFERENCES resourcePolicyWhitelist(id);
+                `
+            ).run();
         })();
 
         const existingResources = db

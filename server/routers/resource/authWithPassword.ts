@@ -1,7 +1,7 @@
 import { verify } from "@node-rs/argon2";
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { db } from "@server/db";
-import { orgs, resourcePassword, resources } from "@server/db";
+import { orgs, resourcePassword, resourcePolicies, resourcePolicyPassword, resources } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq } from "drizzle-orm";
@@ -61,17 +61,29 @@ export async function authWithPassword(
         const [result] = await db
             .select()
             .from(resources)
+            .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
+            .leftJoin(
+                resourcePolicies,
+                eq(resourcePolicies.resourcePolicyId, resources.resourcePolicyId)
+            )
+            .leftJoin(
+                resourcePolicyPassword,
+                eq(resourcePolicyPassword.resourcePolicyId, resourcePolicies.resourcePolicyId)
+            )
             .leftJoin(
                 resourcePassword,
                 eq(resourcePassword.resourceId, resources.resourceId)
             )
-            .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
             .where(eq(resources.resourceId, resourceId))
             .limit(1);
 
         const resource = result?.resources;
         const org = result?.orgs;
-        const definedPassword = result?.resourcePassword;
+
+        // Policy password takes precedence over resource-level password
+        const policyPassword = result?.resourcePolicyPassword ?? null;
+        const definedPassword = policyPassword ?? result?.resourcePassword ?? null;
+        const isPolicyPassword = !!policyPassword;
 
         if (!org) {
             return next(
@@ -89,10 +101,7 @@ export async function authWithPassword(
             return next(
                 createHttpError(
                     HttpCode.UNAUTHORIZED,
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Resource has no password protection"
-                    )
+                    "Resource has no password protection"
                 )
             );
         }
@@ -126,7 +135,8 @@ export async function authWithPassword(
         await createResourceSession({
             resourceId,
             token,
-            passwordId: definedPassword.passwordId,
+            passwordId: isPolicyPassword ? null : definedPassword.passwordId,
+            policyPasswordId: isPolicyPassword ? definedPassword.passwordId : null,
             isRequestToken: true,
             expiresAt: Date.now() + 1000 * 30, // 30 seconds
             sessionLength: 1000 * 30,

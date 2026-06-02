@@ -1,6 +1,6 @@
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { db } from "@server/db";
-import { orgs, resourcePincode, resources } from "@server/db";
+import { orgs, resourcePincode, resourcePolicies, resourcePolicyPincode, resources } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq } from "drizzle-orm";
@@ -60,17 +60,29 @@ export async function authWithPincode(
         const [result] = await db
             .select()
             .from(resources)
+            .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
+            .leftJoin(
+                resourcePolicies,
+                eq(resourcePolicies.resourcePolicyId, resources.resourcePolicyId)
+            )
+            .leftJoin(
+                resourcePolicyPincode,
+                eq(resourcePolicyPincode.resourcePolicyId, resourcePolicies.resourcePolicyId)
+            )
             .leftJoin(
                 resourcePincode,
                 eq(resourcePincode.resourceId, resources.resourceId)
             )
-            .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
             .where(eq(resources.resourceId, resourceId))
             .limit(1);
 
         const resource = result?.resources;
         const org = result?.orgs;
-        const definedPincode = result?.resourcePincode;
+
+        // Policy pincode takes precedence over resource-level pincode
+        const policyPincode = result?.resourcePolicyPincode ?? null;
+        const definedPincode = policyPincode ?? result?.resourcePincode ?? null;
+        const isPolicyPincode = !!policyPincode;
 
         if (!org) {
             return next(
@@ -125,7 +137,8 @@ export async function authWithPincode(
         await createResourceSession({
             resourceId,
             token,
-            pincodeId: definedPincode.pincodeId,
+            pincodeId: isPolicyPincode ? null : definedPincode.pincodeId,
+            policyPincodeId: isPolicyPincode ? definedPincode.pincodeId : null,
             isRequestToken: true,
             expiresAt: Date.now() + 1000 * 30, // 30 seconds
             sessionLength: 1000 * 30,
