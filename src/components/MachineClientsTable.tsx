@@ -39,6 +39,7 @@ import { Badge } from "./ui/badge";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { useLocalLabels } from "@app/hooks/useLocalLabels";
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
 
 export type ClientRow = {
     id: number;
@@ -607,54 +608,19 @@ function MachineClientLabelCell({
     client,
     orgId
 }: MachineClientLabelCellProps) {
-    const t = useTranslations();
-    const api = createApiClient(useEnvContext());
-    const [localLabels, setLocalLabels] = useLocalLabels(
-        client.labels,
-        client.id
-    );
-
-    function toggleClientLabel(
-        label: SelectedLabel,
-        action: "attach" | "detach"
-    ) {
-        const previousLabels = localLabels;
-
-        void (async () => {
-            try {
-                if (action === "attach") {
-                    setLocalLabels([...previousLabels, label]);
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/attach`,
-                        { clientId: client.id }
-                    );
-                } else {
-                    setLocalLabels(
-                        previousLabels.filter(
-                            (lb) => lb.labelId !== label.labelId
-                        )
-                    );
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/detach`,
-                        { clientId: client.id }
-                    );
-                }
-            } catch (e) {
-                setLocalLabels(previousLabels);
-                toast({
-                    title: t("error"),
-                    description: formatAxiosError(e, t("errorOccurred")),
-                    variant: "destructive"
-                });
-            }
-        })();
-    }
+    const { localLabels, refresh, toggleLabel } = useOptimisticLabels({
+        serverLabels: client.labels,
+        orgId,
+        entityId: client.id,
+        entityIdField: "clientId"
+    });
 
     return (
         <LabelsTableCell
             orgId={orgId}
-            localLabels={localLabels}
-            toggleLabel={toggleClientLabel}
+            selectedLabels={localLabels}
+            onToggleLabel={toggleLabel}
+            onClosePopover={() => startTransition(refresh)}
         />
     );
 }
