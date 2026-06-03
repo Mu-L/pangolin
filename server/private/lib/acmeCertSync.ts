@@ -863,9 +863,9 @@ export function initAcmeCertSync(): void {
                     );
                     return;
                 }
-                logger.debug(
-                    `acmeCertSync: found ${files.length} acme.json file(s) in directory "${acmeJsonPath}"`
-                );
+                // logger.debug(
+                //     `acmeCertSync: found ${files.length} acme.json file(s) in directory "${acmeJsonPath}"`
+                // );
                 for (const file of files) {
                     syncAcmeCerts(file).catch((err) => {
                         logger.error(
