@@ -314,7 +314,7 @@ export async function updateSiteResource(
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
                 existingSiteResource.orgId,
-                tierMatrix[TierFeature.HTTPPrivateResources]
+                tierMatrix[TierFeature.AdvancedPrivateResources]
             );
             if (!hasHttpFeature) {
                 return next(
@@ -328,7 +328,7 @@ export async function updateSiteResource(
 
         const isLicensedSshPam = await isLicensedOrSubscribed(
             existingSiteResource.orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
 
         const [org] = await db

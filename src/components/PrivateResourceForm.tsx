@@ -224,8 +224,10 @@ export function PrivateResourceForm({
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
     const disableEnterpriseFeatures = env.flags.disableEnterpriseFeatures;
-    const sshSectionDisabled = !isPaidUser(tierMatrix.sshPam);
-    const httpSectionDisabled = !isPaidUser(tierMatrix.httpPrivateResources);
+    const sshSectionDisabled = !isPaidUser(tierMatrix.advancedPrivateResources);
+    const httpSectionDisabled = !isPaidUser(
+        tierMatrix.advancedPrivateResources
+    );
 
     const nameRequiredKey =
         variant === "create"
@@ -594,6 +596,7 @@ export function PrivateResourceForm({
     const httpConfigDomainId = form.watch("httpConfigDomainId");
     const httpConfigFullDomain = form.watch("httpConfigFullDomain");
     const isHttpMode = mode === "http";
+    const isSshMode = mode === "ssh";
     const authDaemonMode = form.watch("authDaemonMode") ?? "site";
     const pamMode = form.watch("pamMode") ?? "passthrough";
     const isNative = sshServerMode === "native";
@@ -739,8 +742,17 @@ export function PrivateResourceForm({
     ]);
 
     useEffect(() => {
-        onSubmitDisabledChange?.(isHttpMode && httpSectionDisabled);
-    }, [isHttpMode, httpSectionDisabled, onSubmitDisabledChange]);
+        onSubmitDisabledChange?.(
+            (isHttpMode && httpSectionDisabled) ||
+                (isSshMode && sshSectionDisabled)
+        );
+    }, [
+        isHttpMode,
+        httpSectionDisabled,
+        isSshMode,
+        sshSectionDisabled,
+        onSubmitDisabledChange
+    ]);
 
     return (
         <Form {...form}>
@@ -1129,8 +1141,10 @@ export function PrivateResourceForm({
                                                                 ""
                                                             }
                                                             disabled={
-                                                                isHttpMode &&
-                                                                httpSectionDisabled
+                                                                (isHttpMode &&
+                                                                    httpSectionDisabled) ||
+                                                                (isSshMode &&
+                                                                    sshSectionDisabled)
                                                             }
                                                             onChange={(e) =>
                                                                 field.onChange(
@@ -1169,6 +1183,10 @@ export function PrivateResourceForm({
                                                                 field.value ??
                                                                 ""
                                                             }
+                                                            disabled={
+                                                                isSshMode &&
+                                                                sshSectionDisabled
+                                                            }
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -1202,7 +1220,10 @@ export function PrivateResourceForm({
                                                                 ""
                                                             }
                                                             disabled={
-                                                                httpSectionDisabled
+                                                                (isHttpMode &&
+                                                                    httpSectionDisabled) ||
+                                                                (isSshMode &&
+                                                                    sshSectionDisabled)
                                                             }
                                                             onChange={(e) => {
                                                                 const raw =
@@ -1237,9 +1258,9 @@ export function PrivateResourceForm({
                             </div>
                         </div>
 
-                        {isHttpMode && (
+                        {(isHttpMode || isSshMode) && (
                             <PaidFeaturesAlert
-                                tiers={tierMatrix.httpPrivateResources}
+                                tiers={tierMatrix.advancedPrivateResources}
                             />
                         )}
 
@@ -1773,7 +1794,9 @@ export function PrivateResourceForm({
                     {/* SSH Access tab (ssh mode only) */}
                     {!disableEnterpriseFeatures && mode === "ssh" && (
                         <div className="space-y-4 mt-4 p-1">
-                            <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.advancedPrivateResources}
+                            />
 
                             {/* Mode */}
                             <div className="space-y-3">

@@ -610,7 +610,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/ssh/sign-key",
     verifyValidLicense,
-    verifyValidSubscription(tierMatrix.sshPam),
+    verifyValidSubscription(tierMatrix.advancedPrivateResources),
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.signSshKey),

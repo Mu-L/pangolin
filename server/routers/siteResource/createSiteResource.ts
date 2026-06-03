@@ -293,7 +293,7 @@ export async function createSiteResource(
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
                 orgId,
-                tierMatrix[TierFeature.HTTPPrivateResources]
+                tierMatrix[TierFeature.AdvancedPrivateResources]
             );
             if (!hasHttpFeature) {
                 return next(
@@ -425,8 +425,17 @@ export async function createSiteResource(
 
         const isLicensedSshPam = await isLicensedOrSubscribed(
             orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
+
+        if (mode == "ssh" && !isLicensedSshPam) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "SSH private resources are not included in your current plan. Please upgrade."
+                )
+            );
+        }
 
         let updatedNiceId = niceId;
         if (!niceId) {

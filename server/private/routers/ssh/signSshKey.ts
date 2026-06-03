@@ -149,7 +149,7 @@ export async function signSshKey(
 
         const isLicensed = await isLicensedOrSubscribed(
             orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
         if (!isLicensed) {
             return next(

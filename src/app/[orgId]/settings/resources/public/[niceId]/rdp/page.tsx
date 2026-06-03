@@ -10,11 +10,14 @@ import {
     SettingsSectionTitle
 } from "@app/components/Settings";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { type Selectedsite } from "@app/components/site-selector";
 import { Button } from "@app/components/ui/button";
 import { toast } from "@app/hooks/useToast";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { createApiClient } from "@app/lib/api";
 import { formatAxiosError } from "@app/lib/api/formatAxiosError";
 import { useQuery } from "@tanstack/react-query";
@@ -48,13 +51,21 @@ export default function SshSettingsPage(props: {
 }) {
     const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
+    const { isPaidUser } = usePaidStatus();
+    const disabled = !isPaidUser(
+        tierMatrix[TierFeature.AdvancedPublicResources]
+    );
 
     return (
         <SettingsContainer>
+            <PaidFeaturesAlert
+                tiers={tierMatrix[TierFeature.AdvancedPublicResources]}
+            />
             <SshServerForm
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
+                disabled={disabled}
             />
         </SettingsContainer>
     );
@@ -63,11 +74,13 @@ export default function SshSettingsPage(props: {
 function SshServerForm({
     orgId,
     resource,
-    updateResource
+    updateResource,
+    disabled
 }: {
     orgId: string;
     resource: GetResourceResponse;
     updateResource: ResourceContextType["updateResource"];
+    disabled: boolean;
 }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -220,31 +233,36 @@ function SshServerForm({
                     {t("rdpServerDescription")}
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
-            <SettingsSectionBody>
-                <SettingsSectionForm variant="half">
-                    <BrowserGatewayTargetForm
-                        orgId={orgId}
-                        multiSite={true}
-                        selectedSites={selectedSites}
-                        onSitesChange={setSelectedSites}
-                        destination={bgDestination}
-                        destinationPort={bgDestinationPort}
-                        onDestinationChange={setBgDestination}
-                        onDestinationPortChange={setBgDestinationPort}
-                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
-                        defaultPort={3389}
-                    />
-                </SettingsSectionForm>
-            </SettingsSectionBody>
-            <form action={formAction} className="flex justify-end mt-4">
-                <Button
-                    disabled={isSubmitting}
-                    loading={isSubmitting}
-                    type="submit"
-                >
-                    {t("saveSettings")}
-                </Button>
-            </form>
+            <fieldset
+                disabled={disabled}
+                className={disabled ? "opacity-50 pointer-events-none" : ""}
+            >
+                <SettingsSectionBody>
+                    <SettingsSectionForm variant="half">
+                        <BrowserGatewayTargetForm
+                            orgId={orgId}
+                            multiSite={true}
+                            selectedSites={selectedSites}
+                            onSitesChange={setSelectedSites}
+                            destination={bgDestination}
+                            destinationPort={bgDestinationPort}
+                            onDestinationChange={setBgDestination}
+                            onDestinationPortChange={setBgDestinationPort}
+                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                            defaultPort={3389}
+                        />
+                    </SettingsSectionForm>
+                </SettingsSectionBody>
+                <form action={formAction} className="flex justify-end mt-4">
+                    <Button
+                        disabled={isSubmitting}
+                        loading={isSubmitting}
+                        type="submit"
+                    >
+                        {t("saveSettings")}
+                    </Button>
+                </form>
+            </fieldset>
         </SettingsSection>
     );
 }

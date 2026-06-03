@@ -31,7 +31,7 @@ import {
 } from "@server/lib/domainUtils";
 import { isSubscribed } from "#dynamic/lib/isSubscribed";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import { TierFeature, tierMatrix } from "@server/lib/billing/tierMatrix";
 import {
     getUniqueResourceName,
     getUniqueResourcePolicyName
@@ -340,6 +340,21 @@ async function createHttpResource(
                 );
             }
         }
+    }
+
+    if (
+        ["ssh", "rdp", "vnc"].includes(mode!) &&
+        !isLicensedOrSubscribed(
+            orgId!,
+            tierMatrix[TierFeature.AdvancedPublicResources]
+        )
+    ) {
+        return next(
+            createHttpError(
+                HttpCode.BAD_REQUEST,
+                "Your current subscription does not support browser gateway resources. Please upgrade to access this feature."
+            )
+        );
     }
 
     // Validate domain and construct full domain

@@ -16,10 +16,7 @@ import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import type { Role } from "@server/db";
-import type {
-    UpdateRoleBody,
-    UpdateRoleResponse
-} from "@server/routers/role";
+import type { UpdateRoleBody, UpdateRoleResponse } from "@server/routers/role";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -53,7 +50,7 @@ export default function EditRoleForm({
             payload.name = values.name;
             payload.description = values.description || undefined;
         }
-        if (isPaidUser(tierMatrix.sshPam)) {
+        if (isPaidUser(tierMatrix.advancedPrivateResources)) {
             payload.sshSudoMode = values.sshSudoMode;
             payload.sshCreateHomeDir = values.sshCreateHomeDir;
             payload.sshSudoCommands =
@@ -72,10 +69,9 @@ export default function EditRoleForm({
             }
         }
         const res = await api
-            .post<AxiosResponse<UpdateRoleResponse>>(
-                `/role/${role.roleId}`,
-                payload
-            )
+            .post<
+                AxiosResponse<UpdateRoleResponse>
+            >(`/role/${role.roleId}`, payload)
             .catch((e) => {
                 toast({
                     variant: "destructive",
