@@ -145,6 +145,7 @@ export async function verifyResourceSession(
                       | null;
                   headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
                   applyRules: boolean;
+                  sso: boolean;
                   org: Org;
               }
             | undefined = localCache.get(resourceCacheKey);
@@ -177,6 +178,7 @@ export async function verifyResourceSession(
         const {
             resource,
             applyRules,
+            sso,
             pincode,
             password,
             headerAuth,
@@ -201,7 +203,7 @@ export async function verifyResourceSession(
             return notAllowed(res);
         }
 
-        const { sso, blockAccess, mode } = resource;
+        const { blockAccess, mode } = resource;
         const dontStripSession = ["ssh", "rdp", "vnc"].includes(mode);
 
         if (blockAccess) {

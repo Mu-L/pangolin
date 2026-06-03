@@ -681,16 +681,18 @@ hybridRouter.get(
             const effectivePolicyHeaderAuth = hasSharedPolicy
                 ? result.sharedPolicyHeaderAuth
                 : (result.defaultPolicyHeaderAuth ?? null);
+            const selectedPolicy = hasSharedPolicy
+                ? result.sharedPolicy
+                : result.defaultPolicy;
             const effectiveApplyRules =
-                (hasSharedPolicy
-                    ? (result.sharedPolicy?.applyRules ?? false)
-                    : (result.defaultPolicy?.applyRules ?? false)) ||
-                result.resources.applyRules;
+                selectedPolicy?.applyRules ?? result.resources.applyRules;
+            const effectiveSSO = selectedPolicy?.sso ?? result.resources.sso;
 
             const resourceWithAuth: ResourceWithAuth = {
                 resource: {
                     ...result.resources,
-                    applyRules: effectiveApplyRules
+                    applyRules: effectiveApplyRules,
+                    sso: effectiveSSO
                 },
                 pincode: effectivePolicyPincode ?? result.resourcePincode,
                 password: effectivePolicyPassword ?? result.resourcePassword,

@@ -46,6 +46,7 @@ export type ResourceWithAuth = {
     headerAuth: ResourceHeaderAuth | ResourcePolicyHeaderAuth | null;
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
     applyRules: boolean;
+    sso: boolean;
     org: Org;
 };
 
@@ -215,14 +216,19 @@ export async function getResourceByDomain(
     const effectivePolicyHeaderAuth = hasSharedPolicy
         ? result.sharedPolicyHeaderAuth
         : (result.defaultPolicyHeaderAuth ?? null);
+    const selectedPolicy = hasSharedPolicy
+        ? result.sharedPolicy
+        : result.defaultPolicy;
     const effectiveApplyRules =
-        (hasSharedPolicy
-            ? (result.sharedPolicy?.applyRules ?? false)
-            : (result.defaultPolicy?.applyRules ?? false)) ||
-        result.resources.applyRules;
+        selectedPolicy?.applyRules ?? result.resources.applyRules;
+    const effectiveSSO = selectedPolicy?.sso ?? result.resources.sso;
 
     return {
-        resource: { ...result.resources, applyRules: effectiveApplyRules }, // doing this for backward compatability so the remote nodes get the value as part of the resource struct
+        resource: {
+            ...result.resources,
+            applyRules: effectiveApplyRules,
+            sso: effectiveSSO
+        }, // doing this for backward compatability so the remote nodes get the value as part of the resource struct
         pincode: effectivePolicyPincode ?? result.resourcePincode,
         password: effectivePolicyPassword ?? result.resourcePassword,
         headerAuth: effectivePolicyHeaderAuth ?? result.resourceHeaderAuth,
@@ -235,6 +241,7 @@ export async function getResourceByDomain(
               } as ResourceHeaderAuthExtendedCompatibility)
             : result.resourceHeaderAuthExtendedCompatibility,
         applyRules: effectiveApplyRules,
+        sso: effectiveSSO,
         org: result.orgs
     };
 }
