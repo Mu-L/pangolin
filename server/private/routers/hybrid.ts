@@ -61,6 +61,7 @@ import {
     roles
 } from "@server/db";
 import { eq, and, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { response } from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import { NextFunction, Request, Response } from "express";
@@ -514,6 +515,33 @@ hybridRouter.get(
                 wildcardCandidates.push(`*.${domainParts.slice(i).join(".")}`);
             }
 
+            const sharedPolicy = alias(resourcePolicies, "sharedPolicy");
+            const defaultPolicy = alias(resourcePolicies, "defaultPolicy");
+            const sharedPolicyPincode = alias(
+                resourcePolicyPincode,
+                "sharedPolicyPincode"
+            );
+            const defaultPolicyPincode = alias(
+                resourcePolicyPincode,
+                "defaultPolicyPincode"
+            );
+            const sharedPolicyPassword = alias(
+                resourcePolicyPassword,
+                "sharedPolicyPassword"
+            );
+            const defaultPolicyPassword = alias(
+                resourcePolicyPassword,
+                "defaultPolicyPassword"
+            );
+            const sharedPolicyHeaderAuth = alias(
+                resourcePolicyHeaderAuth,
+                "sharedPolicyHeaderAuth"
+            );
+            const defaultPolicyHeaderAuth = alias(
+                resourcePolicyHeaderAuth,
+                "defaultPolicyHeaderAuth"
+            );
+
             const potentialResults = await db
                 .select()
                 .from(resources)
@@ -537,31 +565,59 @@ hybridRouter.get(
                     )
                 )
                 .leftJoin(
-                    resourcePolicies,
+                    sharedPolicy,
                     eq(
-                        resourcePolicies.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId,
                         resources.resourcePolicyId
                     )
                 )
                 .leftJoin(
-                    resourcePolicyPincode,
+                    sharedPolicyPincode,
                     eq(
-                        resourcePolicyPincode.resourcePolicyId,
-                        resourcePolicies.resourcePolicyId
+                        sharedPolicyPincode.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId
                     )
                 )
                 .leftJoin(
-                    resourcePolicyPassword,
+                    sharedPolicyPassword,
                     eq(
-                        resourcePolicyPassword.resourcePolicyId,
-                        resourcePolicies.resourcePolicyId
+                        sharedPolicyPassword.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId
                     )
                 )
                 .leftJoin(
-                    resourcePolicyHeaderAuth,
+                    sharedPolicyHeaderAuth,
                     eq(
-                        resourcePolicyHeaderAuth.resourcePolicyId,
-                        resourcePolicies.resourcePolicyId
+                        sharedPolicyHeaderAuth.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicy,
+                    eq(
+                        defaultPolicy.resourcePolicyId,
+                        resources.defaultResourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicyPincode,
+                    eq(
+                        defaultPolicyPincode.resourcePolicyId,
+                        defaultPolicy.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicyPassword,
+                    eq(
+                        defaultPolicyPassword.resourcePolicyId,
+                        defaultPolicy.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicyHeaderAuth,
+                    eq(
+                        defaultPolicyHeaderAuth.resourcePolicyId,
+                        defaultPolicy.resourcePolicyId
                     )
                 )
                 .innerJoin(orgs, eq(orgs.orgId, resources.orgId))
@@ -614,21 +670,31 @@ hybridRouter.get(
                 });
             }
 
+            const effectivePolicyPincode =
+                result.sharedPolicyPincode ??
+                result.defaultPolicyPincode ??
+                null;
+            const effectivePolicyPassword =
+                result.sharedPolicyPassword ??
+                result.defaultPolicyPassword ??
+                null;
+            const effectivePolicyHeaderAuth =
+                result.sharedPolicyHeaderAuth ??
+                result.defaultPolicyHeaderAuth ??
+                null;
+
             const resourceWithAuth: ResourceWithAuth = {
                 resource: result.resources,
-                pincode: result.resourcePolicyPincode ?? result.resourcePincode,
-                password:
-                    result.resourcePolicyPassword ?? result.resourcePassword,
+                pincode: effectivePolicyPincode ?? result.resourcePincode,
+                password: effectivePolicyPassword ?? result.resourcePassword,
                 headerAuth:
-                    result.resourcePolicyHeaderAuth ??
-                    result.resourceHeaderAuth,
-                headerAuthExtendedCompatibility: result.resourcePolicyHeaderAuth
+                    effectivePolicyHeaderAuth ?? result.resourceHeaderAuth,
+                headerAuthExtendedCompatibility: effectivePolicyHeaderAuth
                     ? ({
                           headerAuthExtendedCompatibilityId: 0,
                           resourceId: result.resources.resourceId,
                           extendedCompatibilityIsActivated:
-                              result.resourcePolicyHeaderAuth
-                                  .extendedCompatibility
+                              effectivePolicyHeaderAuth.extendedCompatibility
                       } as ResourceHeaderAuthExtendedCompatibility)
                     : result.resourceHeaderAuthExtendedCompatibility,
                 org: result.orgs

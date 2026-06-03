@@ -876,6 +876,10 @@ function allowed(
         message: "Access allowed",
         status: HttpCode.OK
     };
+    logger.debug(
+        "++++++++++++++++++++++++++++++++++Access allowed, response data:",
+        data
+    );
     return response<VerifyUserResponse>(res, data);
 }
 

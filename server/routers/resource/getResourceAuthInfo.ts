@@ -6,9 +6,13 @@ import {
     resourcePolicyHeaderAuth,
     resourcePolicyPassword,
     resourcePolicyPincode,
+    resourcePincode,
+    resourcePassword,
+    resourceHeaderAuth,
     resources
 } from "@server/db";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -60,42 +64,103 @@ export async function getResourceAuthInfo(
 
         const isGuidInteger = /^\d+$/.test(resourceGuid);
 
+        const sharedPolicy = alias(resourcePolicies, "sharedPolicy");
+        const defaultPolicy = alias(resourcePolicies, "defaultPolicy");
+        const sharedPolicyPincode = alias(
+            resourcePolicyPincode,
+            "sharedPolicyPincode"
+        );
+        const defaultPolicyPincode = alias(
+            resourcePolicyPincode,
+            "defaultPolicyPincode"
+        );
+        const sharedPolicyPassword = alias(
+            resourcePolicyPassword,
+            "sharedPolicyPassword"
+        );
+        const defaultPolicyPassword = alias(
+            resourcePolicyPassword,
+            "defaultPolicyPassword"
+        );
+        const sharedPolicyHeaderAuth = alias(
+            resourcePolicyHeaderAuth,
+            "sharedPolicyHeaderAuth"
+        );
+        const defaultPolicyHeaderAuth = alias(
+            resourcePolicyHeaderAuth,
+            "defaultPolicyHeaderAuth"
+        );
+
         const buildQuery = (whereClause: ReturnType<typeof eq>) =>
             db
                 .select()
                 .from(resources)
                 .leftJoin(
-                    resourcePolicies,
-                    or(
-                        eq(
-                            resourcePolicies.resourcePolicyId,
-                            resources.resourcePolicyId
-                        ),
-                        eq(
-                            resourcePolicies.resourcePolicyId,
-                            resources.defaultResourcePolicyId
-                        )
+                    resourcePincode,
+                    eq(resourcePincode.resourceId, resources.resourceId)
+                )
+                .leftJoin(
+                    resourcePassword,
+                    eq(resourcePassword.resourceId, resources.resourceId)
+                )
+                .leftJoin(
+                    resourceHeaderAuth,
+                    eq(resourceHeaderAuth.resourceId, resources.resourceId)
+                )
+                .leftJoin(
+                    sharedPolicy,
+                    eq(
+                        sharedPolicy.resourcePolicyId,
+                        resources.resourcePolicyId
                     )
                 )
                 .leftJoin(
-                    resourcePolicyPincode,
+                    sharedPolicyPincode,
                     eq(
-                        resourcePolicyPincode.resourcePolicyId,
-                        resourcePolicies.resourcePolicyId
+                        sharedPolicyPincode.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId
                     )
                 )
                 .leftJoin(
-                    resourcePolicyPassword,
+                    sharedPolicyPassword,
                     eq(
-                        resourcePolicyPassword.resourcePolicyId,
-                        resourcePolicies.resourcePolicyId
+                        sharedPolicyPassword.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId
                     )
                 )
                 .leftJoin(
-                    resourcePolicyHeaderAuth,
+                    sharedPolicyHeaderAuth,
                     eq(
-                        resourcePolicyHeaderAuth.resourcePolicyId,
-                        resourcePolicies.resourcePolicyId
+                        sharedPolicyHeaderAuth.resourcePolicyId,
+                        sharedPolicy.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicy,
+                    eq(
+                        defaultPolicy.resourcePolicyId,
+                        resources.defaultResourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicyPincode,
+                    eq(
+                        defaultPolicyPincode.resourcePolicyId,
+                        defaultPolicy.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicyPassword,
+                    eq(
+                        defaultPolicyPassword.resourcePolicyId,
+                        defaultPolicy.resourcePolicyId
+                    )
+                )
+                .leftJoin(
+                    defaultPolicyHeaderAuth,
+                    eq(
+                        defaultPolicyHeaderAuth.resourcePolicyId,
+                        defaultPolicy.resourcePolicyId
                     )
                 )
                 .where(whereClause)
@@ -115,10 +180,24 @@ export async function getResourceAuthInfo(
             );
         }
 
-        const policy = result?.resourcePolicies;
-        const pincode = result?.resourcePolicyPincode;
-        const password = result?.resourcePolicyPassword;
-        const headerAuth = result?.resourcePolicyHeaderAuth;
+        // Shared (custom) policy takes precedence over the default policy.
+        // For boolean fields (sso, whitelist), only fall back to defaultPolicy
+        // when there is no shared policy at all.
+        const effectivePolicyPincode =
+            result.sharedPolicyPincode ?? result.defaultPolicyPincode ?? null;
+        const effectivePolicyPassword =
+            result.sharedPolicyPassword ?? result.defaultPolicyPassword ?? null;
+        const effectivePolicyHeaderAuth =
+            result.sharedPolicyHeaderAuth ??
+            result.defaultPolicyHeaderAuth ??
+            null;
+
+        const effectivePolicy = result.sharedPolicy ?? result.defaultPolicy;
+
+        const pincode = effectivePolicyPincode ?? result.resourcePincode;
+        const password = effectivePolicyPassword ?? result.resourcePassword;
+        const headerAuth =
+            effectivePolicyHeaderAuth ?? result.resourceHeaderAuth;
 
         const url = resource.fullDomain
             ? `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
@@ -134,13 +213,13 @@ export async function getResourceAuthInfo(
                 pincode: pincode !== null,
                 headerAuth: headerAuth !== null,
                 headerAuthExtendedCompatibility:
-                    headerAuth?.extendedCompatibility ?? false,
-                sso: policy?.sso ?? false,
+                    effectivePolicyHeaderAuth?.extendedCompatibility ?? false,
+                sso: effectivePolicy?.sso ?? false,
                 blockAccess: resource.blockAccess,
                 url: url ?? "",
                 wildcard: resource.wildcard ?? false,
                 fullDomain: resource.fullDomain,
-                whitelist: policy?.emailWhitelistEnabled ?? false,
+                whitelist: effectivePolicy?.emailWhitelistEnabled ?? false,
                 skipToIdpId: resource.skipToIdpId,
                 orgId: resource.orgId,
                 postAuthPath: resource.postAuthPath ?? null

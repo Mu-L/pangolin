@@ -150,7 +150,8 @@ export default async function SshPage() {
                 await waitForRoundTripCompletion(messageIds, cookieHeader);
             } catch (err) {
                 console.error("Error signing SSH key:", err);
-                error = "Failed to sign SSH key for PAM push authentication.";
+                error =
+                    "Failed to sign SSH key for PAM push authentication. Did you sign in as a user?";
             }
         }
     } catch (err) {

@@ -1,9 +1,16 @@
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { db } from "@server/db";
-import { orgs, resourcePincode, resourcePolicies, resourcePolicyPincode, resources } from "@server/db";
+import {
+    orgs,
+    resourcePincode,
+    resourcePolicies,
+    resourcePolicyPincode,
+    resources
+} from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -57,17 +64,45 @@ export async function authWithPincode(
     const { pincode } = parsedBody.data;
 
     try {
+        const sharedPolicy = alias(resourcePolicies, "sharedPolicy");
+        const defaultPolicy = alias(resourcePolicies, "defaultPolicy");
+        const sharedPolicyPincode = alias(
+            resourcePolicyPincode,
+            "sharedPolicyPincode"
+        );
+        const defaultPolicyPincode = alias(
+            resourcePolicyPincode,
+            "defaultPolicyPincode"
+        );
+
         const [result] = await db
             .select()
             .from(resources)
             .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
             .leftJoin(
-                resourcePolicies,
-                eq(resourcePolicies.resourcePolicyId, resources.resourcePolicyId)
+                sharedPolicy,
+                eq(sharedPolicy.resourcePolicyId, resources.resourcePolicyId)
             )
             .leftJoin(
-                resourcePolicyPincode,
-                eq(resourcePolicyPincode.resourcePolicyId, resourcePolicies.resourcePolicyId)
+                sharedPolicyPincode,
+                eq(
+                    sharedPolicyPincode.resourcePolicyId,
+                    sharedPolicy.resourcePolicyId
+                )
+            )
+            .leftJoin(
+                defaultPolicy,
+                eq(
+                    defaultPolicy.resourcePolicyId,
+                    resources.defaultResourcePolicyId
+                )
+            )
+            .leftJoin(
+                defaultPolicyPincode,
+                eq(
+                    defaultPolicyPincode.resourcePolicyId,
+                    defaultPolicy.resourcePolicyId
+                )
             )
             .leftJoin(
                 resourcePincode,
@@ -79,8 +114,9 @@ export async function authWithPincode(
         const resource = result?.resources;
         const org = result?.orgs;
 
-        // Policy pincode takes precedence over resource-level pincode
-        const policyPincode = result?.resourcePolicyPincode ?? null;
+        // Shared policy takes precedence, then default (inline) policy, then resource-level
+        const policyPincode =
+            result?.sharedPolicyPincode ?? result?.defaultPolicyPincode ?? null;
         const definedPincode = policyPincode ?? result?.resourcePincode ?? null;
         const isPolicyPincode = !!policyPincode;
 

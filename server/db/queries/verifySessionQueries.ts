@@ -35,6 +35,7 @@ import {
     resourcePolicyHeaderAuth,
     ResourcePolicyHeaderAuth
 } from "@server/db";
+import { alias } from "drizzle-orm/sqlite-core";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 export type ResourceWithAuth = {
@@ -67,6 +68,33 @@ export async function getResourceByDomain(
         wildcardCandidates.push(`*.${parts.slice(i).join(".")}`);
     }
 
+    const sharedPolicy = alias(resourcePolicies, "sharedPolicy");
+    const defaultPolicy = alias(resourcePolicies, "defaultPolicy");
+    const sharedPolicyPincode = alias(
+        resourcePolicyPincode,
+        "sharedPolicyPincode"
+    );
+    const defaultPolicyPincode = alias(
+        resourcePolicyPincode,
+        "defaultPolicyPincode"
+    );
+    const sharedPolicyPassword = alias(
+        resourcePolicyPassword,
+        "sharedPolicyPassword"
+    );
+    const defaultPolicyPassword = alias(
+        resourcePolicyPassword,
+        "defaultPolicyPassword"
+    );
+    const sharedPolicyHeaderAuth = alias(
+        resourcePolicyHeaderAuth,
+        "sharedPolicyHeaderAuth"
+    );
+    const defaultPolicyHeaderAuth = alias(
+        resourcePolicyHeaderAuth,
+        "defaultPolicyHeaderAuth"
+    );
+
     const potentialResults = await db
         .select()
         .from(resources)
@@ -90,28 +118,56 @@ export async function getResourceByDomain(
             )
         )
         .leftJoin(
-            resourcePolicies,
-            eq(resourcePolicies.resourcePolicyId, resources.resourcePolicyId)
+            sharedPolicy,
+            eq(sharedPolicy.resourcePolicyId, resources.resourcePolicyId)
         )
         .leftJoin(
-            resourcePolicyPincode,
+            sharedPolicyPincode,
             eq(
-                resourcePolicyPincode.resourcePolicyId,
-                resourcePolicies.resourcePolicyId
+                sharedPolicyPincode.resourcePolicyId,
+                sharedPolicy.resourcePolicyId
             )
         )
         .leftJoin(
-            resourcePolicyPassword,
+            sharedPolicyPassword,
             eq(
-                resourcePolicyPassword.resourcePolicyId,
-                resourcePolicies.resourcePolicyId
+                sharedPolicyPassword.resourcePolicyId,
+                sharedPolicy.resourcePolicyId
             )
         )
         .leftJoin(
-            resourcePolicyHeaderAuth,
+            sharedPolicyHeaderAuth,
             eq(
-                resourcePolicyHeaderAuth.resourcePolicyId,
-                resourcePolicies.resourcePolicyId
+                sharedPolicyHeaderAuth.resourcePolicyId,
+                sharedPolicy.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            defaultPolicy,
+            eq(
+                defaultPolicy.resourcePolicyId,
+                resources.defaultResourcePolicyId
+            )
+        )
+        .leftJoin(
+            defaultPolicyPincode,
+            eq(
+                defaultPolicyPincode.resourcePolicyId,
+                defaultPolicy.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            defaultPolicyPassword,
+            eq(
+                defaultPolicyPassword.resourcePolicyId,
+                defaultPolicy.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            defaultPolicyHeaderAuth,
+            eq(
+                defaultPolicyHeaderAuth.resourcePolicyId,
+                defaultPolicy.resourcePolicyId
             )
         )
         .innerJoin(orgs, eq(orgs.orgId, resources.orgId))
@@ -143,18 +199,24 @@ export async function getResourceByDomain(
         return null;
     }
 
+    const effectivePolicyPincode =
+        result.sharedPolicyPincode ?? result.defaultPolicyPincode ?? null;
+    const effectivePolicyPassword =
+        result.sharedPolicyPassword ?? result.defaultPolicyPassword ?? null;
+    const effectivePolicyHeaderAuth =
+        result.sharedPolicyHeaderAuth ?? result.defaultPolicyHeaderAuth ?? null;
+
     return {
         resource: result.resources,
-        pincode: result.resourcePolicyPincode ?? result.resourcePincode,
-        password: result.resourcePolicyPassword ?? result.resourcePassword,
-        headerAuth:
-            result.resourcePolicyHeaderAuth ?? result.resourceHeaderAuth,
-        headerAuthExtendedCompatibility: result.resourcePolicyHeaderAuth
+        pincode: effectivePolicyPincode ?? result.resourcePincode,
+        password: effectivePolicyPassword ?? result.resourcePassword,
+        headerAuth: effectivePolicyHeaderAuth ?? result.resourceHeaderAuth,
+        headerAuthExtendedCompatibility: effectivePolicyHeaderAuth
             ? ({
                   headerAuthExtendedCompatibilityId: 0,
                   resourceId: result.resources.resourceId,
                   extendedCompatibilityIsActivated:
-                      result.resourcePolicyHeaderAuth.extendedCompatibility
+                      effectivePolicyHeaderAuth.extendedCompatibility
               } as ResourceHeaderAuthExtendedCompatibility)
             : result.resourceHeaderAuthExtendedCompatibility,
         org: result.orgs

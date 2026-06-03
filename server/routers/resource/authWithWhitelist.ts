@@ -1,6 +1,12 @@
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { db } from "@server/db";
-import { orgs, resourceOtp, resources, resourceWhitelist, resourcePolicyWhiteList } from "@server/db";
+import {
+    orgs,
+    resourceOtp,
+    resources,
+    resourceWhitelist,
+    resourcePolicyWhiteList
+} from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq, and } from "drizzle-orm";
@@ -84,15 +90,21 @@ export async function authWithWhitelist(
 
         const wildcard = "*@" + email.split("@")[1];
 
-        // Check policy whitelist first (policy takes precedence over resource whitelist)
-        let policyWhitelistEntry: { whitelistId: number; email: string } | null = null;
+        // Check shared policy whitelist first, then default (inline) policy whitelist
+        let policyWhitelistEntry: {
+            whitelistId: number;
+            email: string;
+        } | null = null;
         if (resource.resourcePolicyId) {
             const [exact] = await db
                 .select()
                 .from(resourcePolicyWhiteList)
                 .where(
                     and(
-                        eq(resourcePolicyWhiteList.resourcePolicyId, resource.resourcePolicyId),
+                        eq(
+                            resourcePolicyWhiteList.resourcePolicyId,
+                            resource.resourcePolicyId
+                        ),
                         eq(resourcePolicyWhiteList.email, email)
                     )
                 )
@@ -101,13 +113,57 @@ export async function authWithWhitelist(
             if (exact) {
                 policyWhitelistEntry = exact;
             } else {
-                logger.debug("Checking for wildcard email in policy: " + wildcard);
+                logger.debug(
+                    "Checking for wildcard email in shared policy: " + wildcard
+                );
                 const [wildcardMatch] = await db
                     .select()
                     .from(resourcePolicyWhiteList)
                     .where(
                         and(
-                            eq(resourcePolicyWhiteList.resourcePolicyId, resource.resourcePolicyId),
+                            eq(
+                                resourcePolicyWhiteList.resourcePolicyId,
+                                resource.resourcePolicyId
+                            ),
+                            eq(resourcePolicyWhiteList.email, wildcard)
+                        )
+                    )
+                    .limit(1);
+                if (wildcardMatch) policyWhitelistEntry = wildcardMatch;
+            }
+        }
+
+        // Fall back to default (inline) policy whitelist if shared policy didn't match
+        if (!policyWhitelistEntry && resource.defaultResourcePolicyId) {
+            const [exact] = await db
+                .select()
+                .from(resourcePolicyWhiteList)
+                .where(
+                    and(
+                        eq(
+                            resourcePolicyWhiteList.resourcePolicyId,
+                            resource.defaultResourcePolicyId
+                        ),
+                        eq(resourcePolicyWhiteList.email, email)
+                    )
+                )
+                .limit(1);
+
+            if (exact) {
+                policyWhitelistEntry = exact;
+            } else {
+                logger.debug(
+                    "Checking for wildcard email in default policy: " + wildcard
+                );
+                const [wildcardMatch] = await db
+                    .select()
+                    .from(resourcePolicyWhiteList)
+                    .where(
+                        and(
+                            eq(
+                                resourcePolicyWhiteList.resourcePolicyId,
+                                resource.defaultResourcePolicyId
+                            ),
                             eq(resourcePolicyWhiteList.email, wildcard)
                         )
                     )
@@ -117,7 +173,10 @@ export async function authWithWhitelist(
         }
 
         // Fall back to resource whitelist if not found in policy
-        let resourceWhitelistEntry: { whitelistId: number; email: string } | null = null;
+        let resourceWhitelistEntry: {
+            whitelistId: number;
+            email: string;
+        } | null = null;
         if (!policyWhitelistEntry) {
             const [exact] = await db
                 .select()
@@ -241,8 +300,12 @@ export async function authWithWhitelist(
         await createResourceSession({
             resourceId,
             token,
-            whitelistId: isPolicyWhitelist ? null : whitelistedEmail.whitelistId,
-            policyWhitelistId: isPolicyWhitelist ? whitelistedEmail.whitelistId : null,
+            whitelistId: isPolicyWhitelist
+                ? null
+                : whitelistedEmail.whitelistId,
+            policyWhitelistId: isPolicyWhitelist
+                ? whitelistedEmail.whitelistId
+                : null,
             isRequestToken: true,
             expiresAt: Date.now() + 1000 * 30, // 30 seconds
             sessionLength: 1000 * 30,

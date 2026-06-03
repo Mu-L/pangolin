@@ -1,10 +1,17 @@
 import { verify } from "@node-rs/argon2";
 import { generateSessionToken } from "@server/auth/sessions/app";
 import { db } from "@server/db";
-import { orgs, resourcePassword, resourcePolicies, resourcePolicyPassword, resources } from "@server/db";
+import {
+    orgs,
+    resourcePassword,
+    resourcePolicies,
+    resourcePolicyPassword,
+    resources
+} from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
@@ -58,17 +65,45 @@ export async function authWithPassword(
     const { password } = parsedBody.data;
 
     try {
+        const sharedPolicy = alias(resourcePolicies, "sharedPolicy");
+        const defaultPolicy = alias(resourcePolicies, "defaultPolicy");
+        const sharedPolicyPassword = alias(
+            resourcePolicyPassword,
+            "sharedPolicyPassword"
+        );
+        const defaultPolicyPassword = alias(
+            resourcePolicyPassword,
+            "defaultPolicyPassword"
+        );
+
         const [result] = await db
             .select()
             .from(resources)
             .leftJoin(orgs, eq(orgs.orgId, resources.orgId))
             .leftJoin(
-                resourcePolicies,
-                eq(resourcePolicies.resourcePolicyId, resources.resourcePolicyId)
+                sharedPolicy,
+                eq(sharedPolicy.resourcePolicyId, resources.resourcePolicyId)
             )
             .leftJoin(
-                resourcePolicyPassword,
-                eq(resourcePolicyPassword.resourcePolicyId, resourcePolicies.resourcePolicyId)
+                sharedPolicyPassword,
+                eq(
+                    sharedPolicyPassword.resourcePolicyId,
+                    sharedPolicy.resourcePolicyId
+                )
+            )
+            .leftJoin(
+                defaultPolicy,
+                eq(
+                    defaultPolicy.resourcePolicyId,
+                    resources.defaultResourcePolicyId
+                )
+            )
+            .leftJoin(
+                defaultPolicyPassword,
+                eq(
+                    defaultPolicyPassword.resourcePolicyId,
+                    defaultPolicy.resourcePolicyId
+                )
             )
             .leftJoin(
                 resourcePassword,
@@ -80,9 +115,13 @@ export async function authWithPassword(
         const resource = result?.resources;
         const org = result?.orgs;
 
-        // Policy password takes precedence over resource-level password
-        const policyPassword = result?.resourcePolicyPassword ?? null;
-        const definedPassword = policyPassword ?? result?.resourcePassword ?? null;
+        // Shared policy takes precedence, then default (inline) policy, then resource-level
+        const policyPassword =
+            result?.sharedPolicyPassword ??
+            result?.defaultPolicyPassword ??
+            null;
+        const definedPassword =
+            policyPassword ?? result?.resourcePassword ?? null;
         const isPolicyPassword = !!policyPassword;
 
         if (!org) {
@@ -136,7 +175,9 @@ export async function authWithPassword(
             resourceId,
             token,
             passwordId: isPolicyPassword ? null : definedPassword.passwordId,
-            policyPasswordId: isPolicyPassword ? definedPassword.passwordId : null,
+            policyPasswordId: isPolicyPassword
+                ? definedPassword.passwordId
+                : null,
             isRequestToken: true,
             expiresAt: Date.now() + 1000 * 30, // 30 seconds
             sessionLength: 1000 * 30,
