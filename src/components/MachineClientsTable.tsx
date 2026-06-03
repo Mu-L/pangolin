@@ -34,7 +34,7 @@ import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import { type SelectedLabel } from "./labels-selector";
-import { TableLabelsCell } from "./TableLabelsCell";
+import { LabelsTableCell } from "./LabelsTableCell";
 import { Badge } from "./ui/badge";
 import { ControlledDataTable } from "./ui/controlled-data-table";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
@@ -651,7 +651,7 @@ function MachineClientLabelCell({
     }
 
     return (
-        <TableLabelsCell
+        <LabelsTableCell
             orgId={orgId}
             localLabels={localLabels}
             toggleLabel={toggleClientLabel}
