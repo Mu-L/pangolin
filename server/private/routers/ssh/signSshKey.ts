@@ -78,40 +78,8 @@ export type SignSshKeyResponse = {
     validAfter?: string;
     validBefore?: string;
     expiresIn?: number;
+    authDaemonMode: "site" | "remote" | "native" | null;
 };
-
-// registry.registerPath({
-//     method: "post",
-//     path: "/org/{orgId}/ssh/sign-key",
-//     description: "Sign an SSH public key for access to a resource.",
-//     tags: [OpenAPITags.Org, OpenAPITags.Ssh],
-//     request: {
-//         params: paramsSchema,
-//         body: {
-//             content: {
-//                 "application/json": {
-//                     schema: bodySchema
-//                 }
-//             }
-//         }
-//     },
-// responses: {
-// 200: {
-// description: "Successful response",
-// content: {
-// "application/json": {
-// schema: z.object({
-// data: z.unknown().nullable(),
-// success: z.boolean(),
-// error: z.boolean(),
-// message: z.string(),
-// status: z.number()
-// })
-// }
-// }
-// }
-// }
-// });
 
 export async function signSshKey(
     req: Request,
@@ -181,7 +149,7 @@ export async function signSshKey(
 
         const isLicensed = await isLicensedOrSubscribed(
             orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
         if (!isLicensed) {
             return next(
@@ -654,6 +622,7 @@ export async function signSshKey(
                 siteIds: siteIds,
                 siteId: siteIds[0], // just pick the first one for backward compatibility with older olms
                 keyId: cert?.keyId,
+                authDaemonMode: resource.authDaemonMode,
                 validPrincipals: cert?.validPrincipals,
                 validAfter: cert?.validAfter.toISOString(),
                 validBefore: cert?.validBefore.toISOString(),

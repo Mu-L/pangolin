@@ -16,10 +16,7 @@ import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
-import type {
-    CreateRoleBody,
-    CreateRoleResponse
-} from "@server/routers/role";
+import type { CreateRoleBody, CreateRoleResponse } from "@server/routers/role";
 import { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -50,7 +47,7 @@ export default function CreateRoleForm({
             requireDeviceApproval: values.requireDeviceApproval,
             allowSsh: values.allowSsh
         };
-        if (isPaidUser(tierMatrix.sshPam)) {
+        if (isPaidUser(tierMatrix.advancedPrivateResources)) {
             payload.sshSudoMode = values.sshSudoMode;
             payload.sshCreateHomeDir = values.sshCreateHomeDir;
             payload.sshSudoCommands =
@@ -69,10 +66,9 @@ export default function CreateRoleForm({
             }
         }
         const res = await api
-            .put<AxiosResponse<CreateRoleResponse>>(
-                `/org/${org?.org.orgId}/role`,
-                payload
-            )
+            .put<
+                AxiosResponse<CreateRoleResponse>
+            >(`/org/${org?.org.orgId}/role`, payload)
             .catch((e) => {
                 toast({
                     variant: "destructive",

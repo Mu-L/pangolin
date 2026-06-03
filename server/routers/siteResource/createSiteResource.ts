@@ -49,7 +49,6 @@ const createSiteResourceSchema = z
         scheme: z.enum(["http", "https"]).optional(),
         siteIds: z.array(z.int()).optional(),
         siteId: z.number().int().positive().optional(), // DEPRECATED: for backward compatibility, we will convert this to siteIds array if provided
-        // proxyPort: z.int().positive().optional(),
         destinationPort: z.int().positive().optional(),
         destination: z.string().min(1).optional(),
         enabled: z.boolean().default(true),
@@ -174,6 +173,25 @@ const createSiteResourceSchema = z
         {
             message: "At least one of siteIds or siteId must be provided"
         }
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "ssh") return true;
+            const isSingleSiteMode =
+                data.authDaemonMode === "native" ||
+                (data.pamMode === "push" && data.authDaemonMode === "site") ||
+                (data.pamMode === "push" && data.authDaemonMode === undefined);
+            if (!isSingleSiteMode) return true;
+            const effectiveSiteIds = [
+                ...(data.siteIds ?? []),
+                ...(data.siteId !== undefined ? [data.siteId] : [])
+            ];
+            const uniqueSiteIds = new Set(effectiveSiteIds);
+            return uniqueSiteIds.size <= 1;
+        },
+        {
+            message: "Only one site is allowed for this SSH daemon mode"
+        }
     );
 
 export type CreateSiteResourceBody = z.infer<typeof createSiteResourceSchema>;
@@ -248,7 +266,6 @@ export async function createSiteResource(
             siteId,
             mode,
             scheme,
-            // proxyPort,
             destinationPort,
             destination,
             enabled,
@@ -276,7 +293,7 @@ export async function createSiteResource(
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
                 orgId,
-                tierMatrix[TierFeature.HTTPPrivateResources]
+                tierMatrix[TierFeature.AdvancedPrivateResources]
             );
             if (!hasHttpFeature) {
                 return next(
@@ -408,8 +425,17 @@ export async function createSiteResource(
 
         const isLicensedSshPam = await isLicensedOrSubscribed(
             orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
+
+        if (mode == "ssh" && !isLicensedSshPam) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "SSH private resources are not included in your current plan. Please upgrade."
+                )
+            );
+        }
 
         let updatedNiceId = niceId;
         if (!niceId) {

@@ -11,10 +11,13 @@ import {
 } from "@app/components/Settings";
 import { StrategySelect, StrategyOption } from "@app/components/StrategySelect";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import {
     SitesSelector,
     type Selectedsite
 } from "@app/components/site-selector";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { Button } from "@app/components/ui/button";
 import { Input } from "@app/components/ui/input";
 import {
@@ -68,13 +71,21 @@ export default function SshSettingsPage(props: {
 }) {
     const params = use(props.params);
     const { resource, updateResource } = useResourceContext();
+    const { isPaidUser } = usePaidStatus();
+    const disabled = !isPaidUser(
+        tierMatrix[TierFeature.AdvancedPublicResources]
+    );
 
     return (
         <SettingsContainer>
+            <PaidFeaturesAlert
+                tiers={tierMatrix[TierFeature.AdvancedPublicResources]}
+            />
             <SshServerForm
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
+                disabled={disabled}
             />
         </SettingsContainer>
     );
@@ -83,11 +94,13 @@ export default function SshSettingsPage(props: {
 function SshServerForm({
     orgId,
     resource,
-    updateResource
+    updateResource,
+    disabled
 }: {
     orgId: string;
     resource: GetResourceResponse;
     updateResource: ResourceContextType["updateResource"];
+    disabled: boolean;
 }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -366,6 +379,10 @@ function SshServerForm({
                     {t("sshServerDescription")}
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
+            <fieldset
+                disabled={disabled}
+                className={disabled ? "opacity-50 pointer-events-none" : ""}
+            >
             <SettingsSectionBody>
                 <SettingsSectionForm variant="half">
                     <div className="space-y-3">
@@ -480,7 +497,8 @@ function SshServerForm({
                                     />
                                 </PopoverContent>
                             </Popover>
-                        ) : standardDaemonLocation !== "site" ? (
+                        ) : standardDaemonLocation !== "site" ||
+                          pamMode === "passthrough" ? (
                             <BrowserGatewayTargetForm
                                 orgId={orgId}
                                 multiSite={true}
@@ -519,6 +537,7 @@ function SshServerForm({
                     {t("saveSettings")}
                 </Button>
             </form>
+            </fieldset>
         </SettingsSection>
     );
 }

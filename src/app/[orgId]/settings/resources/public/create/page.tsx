@@ -27,7 +27,6 @@ import {
     StrategySelect,
     type StrategyOption
 } from "@app/components/StrategySelect";
-import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
 import {
     SitesSelector,
@@ -73,7 +72,10 @@ import {
 } from "@app/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
+import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries } from "@app/lib/queries";
@@ -227,6 +229,8 @@ export default function Page() {
         orgQueries.sites({ orgId: orgId as string })
     );
 
+    const { isPaidUser } = usePaidStatus();
+
     const [remoteExitNodes, setRemoteExitNodes] = useState<
         ListRemoteExitNodesResponse["remoteExitNodes"]
     >([]);
@@ -238,6 +242,14 @@ export default function Page() {
 
     // Resource type state
     const [resourceType, setResourceType] = useState<NewResourceType>("http");
+
+    const isBrowserGatewayType =
+        resourceType === "ssh" ||
+        resourceType === "rdp" ||
+        resourceType === "vnc";
+    const browserGatewayDisabled =
+        isBrowserGatewayType &&
+        !isPaidUser(tierMatrix[TierFeature.AdvancedPublicResources]);
 
     // Target management state (managed by ProxyResourceTargetsForm; mirrored here for onSubmit)
     const [targets, setTargets] = useState<LocalTarget[]>([]);
@@ -871,6 +883,14 @@ export default function Page() {
                             {/* SSH Server Section */}
                             {resourceType === "ssh" && (
                                 <SettingsSection>
+                                    <PaidFeaturesAlert
+                                        tiers={
+                                            tierMatrix[
+                                                TierFeature
+                                                    .AdvancedPublicResources
+                                            ]
+                                        }
+                                    />
                                     <SettingsSectionHeader>
                                         <SettingsSectionTitle>
                                             {t("sshServer")}
@@ -879,6 +899,14 @@ export default function Page() {
                                             {t("sshServerDescription")}
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
+                                    <fieldset
+                                        disabled={browserGatewayDisabled}
+                                        className={
+                                            browserGatewayDisabled
+                                                ? "opacity-50 pointer-events-none"
+                                                : ""
+                                        }
+                                    >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             {/* Mode */}
@@ -896,26 +924,23 @@ export default function Page() {
                                                 />
                                             </div>
 
-                                            {/* Auth Method (standard only) */}
-                                            {!isNative && (
-                                                <div className="space-y-3">
-                                                    <p className="text-sm font-semibold">
-                                                        {t(
-                                                            "sshAuthenticationMethod"
-                                                        )}
-                                                    </p>
-                                                    <StrategySelect<
-                                                        "passthrough" | "push"
-                                                    >
-                                                        value={pamMode}
-                                                        options={
-                                                            authMethodOptions
-                                                        }
-                                                        onChange={setPamMode}
-                                                        cols={2}
-                                                    />
-                                                </div>
-                                            )}
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-semibold">
+                                                    {t(
+                                                        "sshAuthenticationMethod"
+                                                    )}
+                                                </p>
+                                                <StrategySelect<
+                                                    "passthrough" | "push"
+                                                >
+                                                    value={pamMode}
+                                                    options={
+                                                        authMethodOptions
+                                                    }
+                                                    onChange={setPamMode}
+                                                    cols={2}
+                                                />
+                                            </div>
 
                                             {/* Daemon Location (standard + push) */}
                                             {showDaemonLocation && (
@@ -1046,7 +1071,9 @@ export default function Page() {
                                                         </PopoverContent>
                                                     </Popover>
                                                 ) : standardDaemonLocation !==
-                                                  "site" ? (
+                                                      "site" ||
+                                                  pamMode ===
+                                                      "passthrough" ? (
                                                     <BrowserGatewayTargetForm
                                                         orgId={orgId as string}
                                                         multiSite={true}
@@ -1100,12 +1127,21 @@ export default function Page() {
                                             </div>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
+                                    </fieldset>
                                 </SettingsSection>
                             )}
 
                             {/* RDP Server Section */}
                             {resourceType === "rdp" && (
                                 <SettingsSection>
+                                    <PaidFeaturesAlert
+                                        tiers={
+                                            tierMatrix[
+                                                TierFeature
+                                                    .AdvancedPublicResources
+                                            ]
+                                        }
+                                    />
                                     <SettingsSectionHeader>
                                         <SettingsSectionTitle>
                                             {t("rdpServer")}
@@ -1114,6 +1150,14 @@ export default function Page() {
                                             {t("rdpServerDescription")}
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
+                                    <fieldset
+                                        disabled={browserGatewayDisabled}
+                                        className={
+                                            browserGatewayDisabled
+                                                ? "opacity-50 pointer-events-none"
+                                                : ""
+                                        }
+                                    >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             <BrowserGatewayTargetForm
@@ -1138,12 +1182,21 @@ export default function Page() {
                                             />
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
+                                    </fieldset>
                                 </SettingsSection>
                             )}
 
                             {/* VNC Server Section */}
                             {resourceType === "vnc" && (
                                 <SettingsSection>
+                                    <PaidFeaturesAlert
+                                        tiers={
+                                            tierMatrix[
+                                                TierFeature
+                                                    .AdvancedPublicResources
+                                            ]
+                                        }
+                                    />
                                     <SettingsSectionHeader>
                                         <SettingsSectionTitle>
                                             {t("vncServer")}
@@ -1152,6 +1205,14 @@ export default function Page() {
                                             {t("vncServerDescription")}
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
+                                    <fieldset
+                                        disabled={browserGatewayDisabled}
+                                        className={
+                                            browserGatewayDisabled
+                                                ? "opacity-50 pointer-events-none"
+                                                : ""
+                                        }
+                                    >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             <BrowserGatewayTargetForm
@@ -1176,6 +1237,7 @@ export default function Page() {
                                             />
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
+                                    </fieldset>
                                 </SettingsSection>
                             )}
 
@@ -1227,7 +1289,7 @@ export default function Page() {
                                         }
                                     }}
                                     loading={createLoading}
-                                    disabled={!areAllTargetsValid()}
+                                    disabled={!areAllTargetsValid() || browserGatewayDisabled}
                                 >
                                     {t("resourceCreate")}
                                 </Button>

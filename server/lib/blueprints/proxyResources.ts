@@ -337,6 +337,15 @@ export async function updateProxyResources(
                                 resourceData.maintenance?.message,
                             maintenanceEstimatedTime:
                                 resourceData.maintenance?.["estimated-time"],
+                            proxyProtocol:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol"] ?? false)
+                                    : false,
+                            proxyProtocolVersion:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol-version"] ??
+                                      1)
+                                    : 1,
                             resourcePolicyId: sharedPolicy.resourcePolicyId
                         })
                         .where(
@@ -504,6 +513,15 @@ export async function updateProxyResources(
                                 resourceData.maintenance?.message,
                             maintenanceEstimatedTime:
                                 resourceData.maintenance?.["estimated-time"],
+                            proxyProtocol:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol"] ?? false)
+                                    : false,
+                            proxyProtocolVersion:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol-version"] ??
+                                      1)
+                                    : 1,
                             resourcePolicyId: null,
                             defaultResourcePolicyId: inlinePolicyId
                         })
@@ -994,6 +1012,14 @@ export async function updateProxyResources(
                     maintenanceMessage: resourceData.maintenance?.message,
                     maintenanceEstimatedTime:
                         resourceData.maintenance?.["estimated-time"],
+                    proxyProtocol:
+                        resourceData.mode === "tcp"
+                            ? (resourceData["proxy-protocol"] ?? false)
+                            : false,
+                    proxyProtocolVersion:
+                        resourceData.mode === "tcp"
+                            ? (resourceData["proxy-protocol-version"] ?? 1)
+                            : 1,
                     defaultResourcePolicyId: inlinePolicy.resourcePolicyId,
                     resourcePolicyId: sharedPolicyId,
                     // Only set these resource-level fields when using a shared policy
@@ -1231,7 +1257,9 @@ async function syncRoleResources(
                 }))
             );
             role = created;
-            logger.info(`Auto-created role "${roleName}" in org ${orgId} from blueprint`);
+            logger.info(
+                `Auto-created role "${roleName}" in org ${orgId} from blueprint`
+            );
         }
 
         if (role.isAdmin) {

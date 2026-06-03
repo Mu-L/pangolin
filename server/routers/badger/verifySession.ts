@@ -17,6 +17,9 @@ import {
     ResourceHeaderAuthExtendedCompatibility,
     ResourcePassword,
     ResourcePincode,
+    ResourcePolicyPincode,
+    ResourcePolicyPassword,
+    ResourcePolicyHeaderAuth,
     ResourceRule
 } from "@server/db";
 import config from "@server/lib/config";
@@ -134,9 +137,12 @@ export async function verifyResourceSession(
         let resourceData:
             | {
                   resource: Resource | null;
-                  pincode: ResourcePincode | null;
-                  password: ResourcePassword | null;
-                  headerAuth: ResourceHeaderAuth | null;
+                  pincode: ResourcePincode | ResourcePolicyPincode | null;
+                  password: ResourcePassword | ResourcePolicyPassword | null;
+                  headerAuth:
+                      | ResourceHeaderAuth
+                      | ResourcePolicyHeaderAuth
+                      | null;
                   headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
                   org: Org;
               }
@@ -577,7 +583,11 @@ export async function verifyResourceSession(
                     return notAllowed(res, redirectPath, resource.orgId);
                 }
 
-                if (pincode && resourceSession.pincodeId) {
+                if (
+                    pincode &&
+                    (resourceSession.pincodeId ||
+                        resourceSession.policyPincodeId)
+                ) {
                     logger.debug(
                         "Resource allowed because pincode session is valid"
                     );
@@ -596,7 +606,11 @@ export async function verifyResourceSession(
                     return allowed(res, undefined, dontStripSession);
                 }
 
-                if (password && resourceSession.passwordId) {
+                if (
+                    password &&
+                    (resourceSession.passwordId ||
+                        resourceSession.policyPasswordId)
+                ) {
                     logger.debug(
                         "Resource allowed because password session is valid"
                     );
@@ -617,7 +631,8 @@ export async function verifyResourceSession(
 
                 if (
                     resource.emailWhitelistEnabled &&
-                    resourceSession.whitelistId
+                    (resourceSession.whitelistId ||
+                        resourceSession.policyWhitelistId)
                 ) {
                     logger.debug(
                         "Resource allowed because whitelist session is valid"

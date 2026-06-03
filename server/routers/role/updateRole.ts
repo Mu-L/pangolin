@@ -134,12 +134,18 @@ export async function updateRole(
             );
         }
 
-        const isLicensedDeviceApprovals = await isLicensedOrSubscribed(orgId, tierMatrix.deviceApprovals);
+        const isLicensedDeviceApprovals = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.deviceApprovals
+        );
         if (!isLicensedDeviceApprovals) {
             updateData.requireDeviceApproval = undefined;
         }
 
-        const isLicensedSshPam = await isLicensedOrSubscribed(orgId, tierMatrix.sshPam);
+        const isLicensedSshPam = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.advancedPrivateResources
+        );
         if (!isLicensedSshPam) {
             delete updateData.sshSudoMode;
             delete updateData.sshSudoCommands;
@@ -147,10 +153,14 @@ export async function updateRole(
             delete updateData.sshUnixGroups;
         } else {
             if (Array.isArray(updateData.sshSudoCommands)) {
-                updateData.sshSudoCommands = JSON.stringify(updateData.sshSudoCommands);
+                updateData.sshSudoCommands = JSON.stringify(
+                    updateData.sshSudoCommands
+                );
             }
             if (Array.isArray(updateData.sshUnixGroups)) {
-                updateData.sshUnixGroups = JSON.stringify(updateData.sshUnixGroups);
+                updateData.sshUnixGroups = JSON.stringify(
+                    updateData.sshUnixGroups
+                );
             }
         }
 

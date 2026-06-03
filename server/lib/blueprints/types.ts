@@ -201,7 +201,9 @@ export const PublicResourceSchema = z
         headers: z.array(HeaderSchema).optional(),
         rules: z.array(RuleSchema).optional(),
         maintenance: MaintenanceSchema.optional(),
-        "auth-daemon": AuthDaemonSchema.optional()
+        "auth-daemon": AuthDaemonSchema.optional(),
+        "proxy-protocol": z.boolean().optional(),
+        "proxy-protocol-version": z.int().min(1).optional()
     })
     .refine(
         (resource) => {
@@ -376,6 +378,23 @@ export const PublicResourceSchema = z
             path: ["full-domain"],
             message:
                 'Wildcard full-domain must have "*" as the leftmost label only, followed by at least two valid hostname labels (e.g. "*.example.com" or "*.level1.example.com"). Patterns like "*example.com" or "level2.*.example.com" are not supported.'
+        }
+    )
+    .refine(
+        (resource) => {
+            const effectiveMode = resource.mode ?? resource.protocol;
+            if (effectiveMode !== "tcp") {
+                return (
+                    resource["proxy-protocol"] === undefined &&
+                    resource["proxy-protocol-version"] === undefined
+                );
+            }
+            return true;
+        },
+        {
+            path: ["proxy-protocol"],
+            message:
+                "'proxy-protocol' and 'proxy-protocol-version' can only be set when mode is 'tcp'"
         }
     )
     .transform((resource) => {

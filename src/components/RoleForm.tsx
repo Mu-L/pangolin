@@ -164,7 +164,7 @@ export function RoleForm({
         }
     }, [variant, role, form]);
 
-    const sshDisabled = !isPaidUser(tierMatrix.sshPam);
+    const sshDisabled = !isPaidUser(tierMatrix.advancedPrivateResources);
     const sshSudoMode = form.watch("sshSudoMode");
     const isAdminRole = variant === "edit" && role?.isAdmin === true;
 
@@ -319,7 +319,9 @@ export function RoleForm({
                         {/* SSH tab - hidden when enterprise features are disabled */}
                         {!env.flags.disableEnterpriseFeatures && (
                             <div className="space-y-4 mt-4">
-                                <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
+                                <PaidFeaturesAlert
+                                    tiers={tierMatrix.advancedPrivateResources}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="allowSsh"

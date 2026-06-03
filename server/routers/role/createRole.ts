@@ -123,23 +123,40 @@ export async function createRole(
             );
         }
 
-        const isLicensedDeviceApprovals = await isLicensedOrSubscribed(orgId, tierMatrix.deviceApprovals);
+        const isLicensedDeviceApprovals = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.deviceApprovals
+        );
         if (!isLicensedDeviceApprovals) {
             roleData.requireDeviceApproval = undefined;
         }
 
-        const isLicensedSshPam = await isLicensedOrSubscribed(orgId, tierMatrix.sshPam);
+        const isLicensedSshPam = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.advancedPrivateResources
+        );
         const roleInsertValues: Record<string, unknown> = {
             name: roleData.name,
             orgId
         };
-        if (roleData.description !== undefined) roleInsertValues.description = roleData.description;
-        if (roleData.requireDeviceApproval !== undefined) roleInsertValues.requireDeviceApproval = roleData.requireDeviceApproval;
+        if (roleData.description !== undefined)
+            roleInsertValues.description = roleData.description;
+        if (roleData.requireDeviceApproval !== undefined)
+            roleInsertValues.requireDeviceApproval =
+                roleData.requireDeviceApproval;
         if (isLicensedSshPam) {
-            if (roleData.sshSudoMode !== undefined) roleInsertValues.sshSudoMode = roleData.sshSudoMode;
-            if (roleData.sshSudoCommands !== undefined) roleInsertValues.sshSudoCommands = JSON.stringify(roleData.sshSudoCommands);
-            if (roleData.sshCreateHomeDir !== undefined) roleInsertValues.sshCreateHomeDir = roleData.sshCreateHomeDir;
-            if (roleData.sshUnixGroups !== undefined) roleInsertValues.sshUnixGroups = JSON.stringify(roleData.sshUnixGroups);
+            if (roleData.sshSudoMode !== undefined)
+                roleInsertValues.sshSudoMode = roleData.sshSudoMode;
+            if (roleData.sshSudoCommands !== undefined)
+                roleInsertValues.sshSudoCommands = JSON.stringify(
+                    roleData.sshSudoCommands
+                );
+            if (roleData.sshCreateHomeDir !== undefined)
+                roleInsertValues.sshCreateHomeDir = roleData.sshCreateHomeDir;
+            if (roleData.sshUnixGroups !== undefined)
+                roleInsertValues.sshUnixGroups = JSON.stringify(
+                    roleData.sshUnixGroups
+                );
         }
 
         await db.transaction(async (trx) => {

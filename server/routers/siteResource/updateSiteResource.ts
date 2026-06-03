@@ -59,7 +59,6 @@ const updateSiteResourceSchema = z
         mode: z.enum(["host", "cidr", "http", "ssh"]).optional(),
         ssl: z.boolean().optional(),
         scheme: z.enum(["http", "https"]).nullish(),
-        // proxyPort: z.int().positive().nullish(),
         destinationPort: z.int().positive().nullish(),
         destination: z.string().min(1).optional(),
         enabled: z.boolean().optional(),
@@ -182,6 +181,25 @@ const updateSiteResourceSchema = z
         {
             message: "At least one of siteIds or siteId must be provided"
         }
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "ssh") return true;
+            const isSingleSiteMode =
+                data.authDaemonMode === "native" ||
+                (data.pamMode === "push" && data.authDaemonMode === "site") ||
+                (data.pamMode === "push" && data.authDaemonMode === undefined);
+            if (!isSingleSiteMode) return true;
+            const effectiveSiteIds = [
+                ...(data.siteIds ?? []),
+                ...(data.siteId !== undefined ? [data.siteId] : [])
+            ];
+            const uniqueSiteIds = new Set(effectiveSiteIds);
+            return uniqueSiteIds.size <= 1;
+        },
+        {
+            message: "Only one site is allowed for this SSH daemon mode"
+        }
     );
 
 export type UpdateSiteResourceBody = z.infer<typeof updateSiteResourceSchema>;
@@ -296,7 +314,7 @@ export async function updateSiteResource(
         if (mode == "http") {
             const hasHttpFeature = await isLicensedOrSubscribed(
                 existingSiteResource.orgId,
-                tierMatrix[TierFeature.HTTPPrivateResources]
+                tierMatrix[TierFeature.AdvancedPrivateResources]
             );
             if (!hasHttpFeature) {
                 return next(
@@ -310,7 +328,7 @@ export async function updateSiteResource(
 
         const isLicensedSshPam = await isLicensedOrSubscribed(
             existingSiteResource.orgId,
-            tierMatrix.sshPam
+            tierMatrix.advancedPrivateResources
         );
 
         const [org] = await db
@@ -632,6 +650,15 @@ export async function updateSiteResource(
                               })
                           }
                         : {};
+                let tcpPortRangeStringAdjusted = tcpPortRangeString;
+                if (mode === "http") {
+                    tcpPortRangeStringAdjusted = "443,80";
+                } else if (mode === "ssh") {
+                    tcpPortRangeStringAdjusted = destinationPort
+                        ? destinationPort.toString()
+                        : "22";
+                }
+
                 [updatedSiteResource] = await trx
                     .update(siteResources)
                     .set({
@@ -644,9 +671,14 @@ export async function updateSiteResource(
                         destinationPort: destinationPort,
                         enabled: enabled,
                         alias: alias ? alias.trim() : null,
-                        tcpPortRangeString: tcpPortRangeString,
-                        udpPortRangeString: udpPortRangeString,
-                        disableIcmp: disableIcmp,
+                        tcpPortRangeString: tcpPortRangeStringAdjusted,
+                        udpPortRangeString:
+                            mode == "http" || mode == "ssh"
+                                ? ""
+                                : udpPortRangeString,
+                        disableIcmp:
+                            disableIcmp ||
+                            (mode == "http" || mode == "ssh" ? true : false),
                         domainId,
                         subdomain: finalSubdomain,
                         fullDomain,

@@ -224,8 +224,10 @@ export function PrivateResourceForm({
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
     const disableEnterpriseFeatures = env.flags.disableEnterpriseFeatures;
-    const sshSectionDisabled = !isPaidUser(tierMatrix.sshPam);
-    const httpSectionDisabled = !isPaidUser(tierMatrix.httpPrivateResources);
+    const sshSectionDisabled = !isPaidUser(tierMatrix.advancedPrivateResources);
+    const httpSectionDisabled = !isPaidUser(
+        tierMatrix.advancedPrivateResources
+    );
 
     const nameRequiredKey =
         variant === "create"
@@ -364,6 +366,19 @@ export function PrivateResourceForm({
                         : "Destination is required",
                     path: ["destination"]
                 });
+            }
+            if (data.mode === "ssh" && !isNativeSsh) {
+                if (
+                    data.destinationPort == null ||
+                    !Number.isFinite(data.destinationPort) ||
+                    data.destinationPort < 1
+                ) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: t("internalResourceHttpPortRequired"),
+                        path: ["destinationPort"]
+                    });
+                }
             }
             if (data.mode !== "http") return;
             if (!data.scheme) {
@@ -548,7 +563,7 @@ export function PrivateResourceForm({
                   mode: "host",
                   destination: "",
                   alias: null,
-                  destinationPort: null,
+                  destinationPort: 22,
                   scheme: "http",
                   ssl: true,
                   httpConfigSubdomain: null,
@@ -581,6 +596,7 @@ export function PrivateResourceForm({
     const httpConfigDomainId = form.watch("httpConfigDomainId");
     const httpConfigFullDomain = form.watch("httpConfigFullDomain");
     const isHttpMode = mode === "http";
+    const isSshMode = mode === "ssh";
     const authDaemonMode = form.watch("authDaemonMode") ?? "site";
     const pamMode = form.watch("pamMode") ?? "passthrough";
     const isNative = sshServerMode === "native";
@@ -726,8 +742,17 @@ export function PrivateResourceForm({
     ]);
 
     useEffect(() => {
-        onSubmitDisabledChange?.(isHttpMode && httpSectionDisabled);
-    }, [isHttpMode, httpSectionDisabled, onSubmitDisabledChange]);
+        onSubmitDisabledChange?.(
+            (isHttpMode && httpSectionDisabled) ||
+                (isSshMode && sshSectionDisabled)
+        );
+    }, [
+        isHttpMode,
+        httpSectionDisabled,
+        isSshMode,
+        sshSectionDisabled,
+        onSubmitDisabledChange
+    ]);
 
     return (
         <Form {...form}>
@@ -735,6 +760,7 @@ export function PrivateResourceForm({
                 onSubmit={form.handleSubmit((values) => {
                     const siteIds = values.siteIds;
                     const trimmedDestination = values.destination?.trim();
+                    const isSshMode = values.mode === "ssh";
                     onSubmit({
                         ...values,
                         siteIds,
@@ -742,6 +768,12 @@ export function PrivateResourceForm({
                             trimmedDestination && trimmedDestination.length > 0
                                 ? trimmedDestination
                                 : null,
+                        tcpPortRangeString: isSshMode
+                            ? undefined
+                            : values.tcpPortRangeString,
+                        udpPortRangeString: isSshMode
+                            ? undefined
+                            : values.udpPortRangeString,
                         clients: (values.clients ?? []).map((c) => ({
                             id: c.clientId.toString(),
                             text: c.name
@@ -826,8 +858,11 @@ export function PrivateResourceForm({
                                                         {t("sites")}
                                                     </FormLabel>
                                                     {mode === "ssh" &&
-                                                    sshServerMode ===
-                                                        "native" ? (
+                                                    (sshServerMode ===
+                                                        "native" ||
+                                                        (pamMode === "push" &&
+                                                            authDaemonMode ===
+                                                                "site")) ? (
                                                         <Popover>
                                                             <PopoverTrigger
                                                                 asChild
@@ -1106,8 +1141,10 @@ export function PrivateResourceForm({
                                                                 ""
                                                             }
                                                             disabled={
-                                                                isHttpMode &&
-                                                                httpSectionDisabled
+                                                                (isHttpMode &&
+                                                                    httpSectionDisabled) ||
+                                                                (isSshMode &&
+                                                                    sshSectionDisabled)
                                                             }
                                                             onChange={(e) =>
                                                                 field.onChange(
@@ -1146,6 +1183,10 @@ export function PrivateResourceForm({
                                                                 field.value ??
                                                                 ""
                                                             }
+                                                            disabled={
+                                                                isSshMode &&
+                                                                sshSectionDisabled
+                                                            }
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -1179,7 +1220,10 @@ export function PrivateResourceForm({
                                                                 ""
                                                             }
                                                             disabled={
-                                                                httpSectionDisabled
+                                                                (isHttpMode &&
+                                                                    httpSectionDisabled) ||
+                                                                (isSshMode &&
+                                                                    sshSectionDisabled)
                                                             }
                                                             onChange={(e) => {
                                                                 const raw =
@@ -1214,9 +1258,9 @@ export function PrivateResourceForm({
                             </div>
                         </div>
 
-                        {isHttpMode && (
+                        {(isHttpMode || isSshMode) && (
                             <PaidFeaturesAlert
-                                tiers={tierMatrix.httpPrivateResources}
+                                tiers={tierMatrix.advancedPrivateResources}
                             />
                         )}
 
@@ -1750,7 +1794,9 @@ export function PrivateResourceForm({
                     {/* SSH Access tab (ssh mode only) */}
                     {!disableEnterpriseFeatures && mode === "ssh" && (
                         <div className="space-y-4 mt-4 p-1">
-                            <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.advancedPrivateResources}
+                            />
 
                             {/* Mode */}
                             <div className="space-y-3">
@@ -1862,6 +1908,36 @@ export function PrivateResourceForm({
                                                                 "authDaemonPort",
                                                                 null
                                                             );
+                                                        } else if (
+                                                            v === "push"
+                                                        ) {
+                                                            // push + site (default) = single site
+                                                            const curAuthMode =
+                                                                form.getValues(
+                                                                    "authDaemonMode"
+                                                                );
+                                                            if (
+                                                                curAuthMode !==
+                                                                    "remote" &&
+                                                                selectedSites.length >
+                                                                    1
+                                                            ) {
+                                                                const first =
+                                                                    selectedSites.slice(
+                                                                        0,
+                                                                        1
+                                                                    );
+                                                                setSelectedSites(
+                                                                    first
+                                                                );
+                                                                form.setValue(
+                                                                    "siteIds",
+                                                                    first.map(
+                                                                        (s) =>
+                                                                            s.siteId
+                                                                    )
+                                                                );
+                                                            }
                                                         }
                                                     }}
                                                     cols={2}
@@ -1929,6 +2005,29 @@ export function PrivateResourceForm({
                                                                     "authDaemonPort",
                                                                     null
                                                                 );
+                                                                // site daemon = single site
+                                                                if (
+                                                                    selectedSites.length >
+                                                                    1
+                                                                ) {
+                                                                    const first =
+                                                                        selectedSites.slice(
+                                                                            0,
+                                                                            1
+                                                                        );
+                                                                    setSelectedSites(
+                                                                        first
+                                                                    );
+                                                                    form.setValue(
+                                                                        "siteIds",
+                                                                        first.map(
+                                                                            (
+                                                                                s
+                                                                            ) =>
+                                                                                s.siteId
+                                                                        )
+                                                                    );
+                                                                }
                                                             }
                                                         }}
                                                         cols={2}
