@@ -60,7 +60,7 @@ import {
     userOrgRoles,
     roles
 } from "@server/db";
-import { eq, and, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { response } from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -670,21 +670,28 @@ hybridRouter.get(
                 });
             }
 
-            const effectivePolicyPincode =
-                result.sharedPolicyPincode ??
-                result.defaultPolicyPincode ??
-                null;
-            const effectivePolicyPassword =
-                result.sharedPolicyPassword ??
-                result.defaultPolicyPassword ??
-                null;
-            const effectivePolicyHeaderAuth =
-                result.sharedPolicyHeaderAuth ??
-                result.defaultPolicyHeaderAuth ??
-                null;
+            const hasSharedPolicy = result.sharedPolicy !== null;
+
+            const effectivePolicyPincode = hasSharedPolicy
+                ? result.sharedPolicyPincode
+                : (result.defaultPolicyPincode ?? null);
+            const effectivePolicyPassword = hasSharedPolicy
+                ? result.sharedPolicyPassword
+                : (result.defaultPolicyPassword ?? null);
+            const effectivePolicyHeaderAuth = hasSharedPolicy
+                ? result.sharedPolicyHeaderAuth
+                : (result.defaultPolicyHeaderAuth ?? null);
+            const effectiveApplyRules =
+                (hasSharedPolicy
+                    ? (result.sharedPolicy?.applyRules ?? false)
+                    : (result.defaultPolicy?.applyRules ?? false)) ||
+                result.resources.applyRules;
 
             const resourceWithAuth: ResourceWithAuth = {
-                resource: result.resources,
+                resource: {
+                    ...result.resources,
+                    applyRules: effectiveApplyRules
+                },
                 pincode: effectivePolicyPincode ?? result.resourcePincode,
                 password: effectivePolicyPassword ?? result.resourcePassword,
                 headerAuth:
@@ -1272,9 +1279,18 @@ hybridRouter.get(
                     .from(rolePolicies)
                     .innerJoin(
                         resources,
-                        eq(
-                            resources.resourcePolicyId,
-                            rolePolicies.resourcePolicyId
+                        or(
+                            eq(
+                                resources.resourcePolicyId,
+                                rolePolicies.resourcePolicyId
+                            ),
+                            and(
+                                isNull(resources.resourcePolicyId),
+                                eq(
+                                    resources.defaultResourcePolicyId,
+                                    rolePolicies.resourcePolicyId
+                                )
+                            )
                         )
                     )
                     .where(
@@ -1386,9 +1402,18 @@ hybridRouter.get(
                           .from(rolePolicies)
                           .innerJoin(
                               resources,
-                              eq(
-                                  resources.resourcePolicyId,
-                                  rolePolicies.resourcePolicyId
+                              or(
+                                  eq(
+                                      resources.resourcePolicyId,
+                                      rolePolicies.resourcePolicyId
+                                  ),
+                                  and(
+                                      isNull(resources.resourcePolicyId),
+                                      eq(
+                                          resources.defaultResourcePolicyId,
+                                          rolePolicies.resourcePolicyId
+                                      )
+                                  )
                               )
                           )
                           .where(
@@ -1477,19 +1502,52 @@ hybridRouter.get(
                 );
             }
 
-            const userResourceAccess = await db
-                .select()
-                .from(userResources)
-                .where(
-                    and(
-                        eq(userResources.userId, userId),
-                        eq(userResources.resourceId, resourceId)
-                    )
-                )
-                .limit(1);
+            const [directUserAccess, viaPoliciesUserAccess] = await Promise.all(
+                [
+                    db
+                        .select()
+                        .from(userResources)
+                        .where(
+                            and(
+                                eq(userResources.userId, userId),
+                                eq(userResources.resourceId, resourceId)
+                            )
+                        )
+                        .limit(1),
+                    db
+                        .select({
+                            userId: userPolicies.userId,
+                            resourcePolicyId: userPolicies.resourcePolicyId
+                        })
+                        .from(userPolicies)
+                        .innerJoin(
+                            resources,
+                            or(
+                                eq(
+                                    resources.resourcePolicyId,
+                                    userPolicies.resourcePolicyId
+                                ),
+                                and(
+                                    isNull(resources.resourcePolicyId),
+                                    eq(
+                                        resources.defaultResourcePolicyId,
+                                        userPolicies.resourcePolicyId
+                                    )
+                                )
+                            )
+                        )
+                        .where(
+                            and(
+                                eq(resources.resourceId, resourceId),
+                                eq(userPolicies.userId, userId)
+                            )
+                        )
+                        .limit(1)
+                ]
+            );
 
             const result =
-                userResourceAccess.length > 0 ? userResourceAccess[0] : null;
+                directUserAccess[0] ?? viaPoliciesUserAccess[0] ?? null;
 
             return response<typeof userResources.$inferSelect | null>(res, {
                 data: result,
@@ -1580,9 +1638,18 @@ hybridRouter.get(
                     .from(resourcePolicyRules)
                     .innerJoin(
                         resources,
-                        eq(
-                            resources.resourcePolicyId,
-                            resourcePolicyRules.resourcePolicyId
+                        or(
+                            eq(
+                                resources.resourcePolicyId,
+                                resourcePolicyRules.resourcePolicyId
+                            ),
+                            and(
+                                isNull(resources.resourcePolicyId),
+                                eq(
+                                    resources.defaultResourcePolicyId,
+                                    resourcePolicyRules.resourcePolicyId
+                                )
+                            )
                         )
                     )
                     .where(eq(resources.resourceId, resourceId))

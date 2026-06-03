@@ -36,7 +36,8 @@ import {
     ResourcePolicyHeaderAuth
 } from "@server/db";
 import { alias } from "drizzle-orm/sqlite-core";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import logger from "@server/logger";
 
 export type ResourceWithAuth = {
     resource: Resource | null;
@@ -44,6 +45,7 @@ export type ResourceWithAuth = {
     password: ResourcePassword | ResourcePolicyPassword | null;
     headerAuth: ResourceHeaderAuth | ResourcePolicyHeaderAuth | null;
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
+    applyRules: boolean;
     org: Org;
 };
 
@@ -213,9 +215,14 @@ export async function getResourceByDomain(
     const effectivePolicyHeaderAuth = hasSharedPolicy
         ? result.sharedPolicyHeaderAuth
         : (result.defaultPolicyHeaderAuth ?? null);
+    const effectiveApplyRules =
+        (hasSharedPolicy
+            ? (result.sharedPolicy?.applyRules ?? false)
+            : (result.defaultPolicy?.applyRules ?? false)) ||
+        result.resources.applyRules;
 
     return {
-        resource: result.resources,
+        resource: { ...result.resources, applyRules: effectiveApplyRules }, // doing this for backward compatability so the remote nodes get the value as part of the resource struct
         pincode: effectivePolicyPincode ?? result.resourcePincode,
         password: effectivePolicyPassword ?? result.resourcePassword,
         headerAuth: effectivePolicyHeaderAuth ?? result.resourceHeaderAuth,
@@ -227,6 +234,7 @@ export async function getResourceByDomain(
                       effectivePolicyHeaderAuth.extendedCompatibility
               } as ResourceHeaderAuthExtendedCompatibility)
             : result.resourceHeaderAuthExtendedCompatibility,
+        applyRules: effectiveApplyRules,
         org: result.orgs
     };
 }
@@ -290,7 +298,21 @@ export async function getRoleResourceAccess(
             .from(rolePolicies)
             .innerJoin(
                 resources,
-                eq(resources.resourcePolicyId, rolePolicies.resourcePolicyId)
+                // Shared policy wins; only use default policy when no shared
+                // policy is assigned to the resource.
+                or(
+                    eq(
+                        resources.resourcePolicyId,
+                        rolePolicies.resourcePolicyId
+                    ),
+                    and(
+                        isNull(resources.resourcePolicyId),
+                        eq(
+                            resources.defaultResourcePolicyId,
+                            rolePolicies.resourcePolicyId
+                        )
+                    )
+                )
             )
             .where(
                 and(
@@ -330,7 +352,21 @@ export async function getUserResourceAccess(
             .from(userPolicies)
             .innerJoin(
                 resources,
-                eq(resources.resourcePolicyId, userPolicies.resourcePolicyId)
+                // Shared policy wins; only use default policy when no shared
+                // policy is assigned to the resource.
+                or(
+                    eq(
+                        resources.resourcePolicyId,
+                        userPolicies.resourcePolicyId
+                    ),
+                    and(
+                        isNull(resources.resourcePolicyId),
+                        eq(
+                            resources.defaultResourcePolicyId,
+                            userPolicies.resourcePolicyId
+                        )
+                    )
+                )
             )
             .where(
                 and(
@@ -368,9 +404,20 @@ export async function getResourceRules(
             .from(resourcePolicyRules)
             .innerJoin(
                 resources,
-                eq(
-                    resources.resourcePolicyId,
-                    resourcePolicyRules.resourcePolicyId
+                // Shared policy wins; only use default policy when no shared
+                // policy is assigned to the resource.
+                or(
+                    eq(
+                        resources.resourcePolicyId,
+                        resourcePolicyRules.resourcePolicyId
+                    ),
+                    and(
+                        isNull(resources.resourcePolicyId),
+                        eq(
+                            resources.defaultResourcePolicyId,
+                            resourcePolicyRules.resourcePolicyId
+                        )
+                    )
                 )
             )
             .where(eq(resources.resourceId, resourceId))

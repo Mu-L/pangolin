@@ -144,6 +144,7 @@ export async function verifyResourceSession(
                       | ResourcePolicyHeaderAuth
                       | null;
                   headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
+                  applyRules: boolean;
                   org: Org;
               }
             | undefined = localCache.get(resourceCacheKey);
@@ -175,6 +176,7 @@ export async function verifyResourceSession(
 
         const {
             resource,
+            applyRules,
             pincode,
             password,
             headerAuth,
@@ -220,7 +222,7 @@ export async function verifyResourceSession(
         }
 
         // check the rules
-        if (resource.applyRules) {
+        if (applyRules) {
             const action = await checkRules(
                 resource.resourceId,
                 clientIp,
@@ -876,10 +878,7 @@ function allowed(
         message: "Access allowed",
         status: HttpCode.OK
     };
-    logger.debug(
-        "++++++++++++++++++++++++++++++++++Access allowed, response data:",
-        data
-    );
+    logger.debug("Access allowed, response data:", data);
     return response<VerifyUserResponse>(res, data);
 }
 
