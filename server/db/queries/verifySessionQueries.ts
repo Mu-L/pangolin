@@ -47,6 +47,7 @@ export type ResourceWithAuth = {
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
     applyRules: boolean;
     sso: boolean;
+    emailWhitelistEnabled: boolean;
     org: Org;
 };
 
@@ -222,12 +223,16 @@ export async function getResourceByDomain(
     const effectiveApplyRules =
         selectedPolicy?.applyRules ?? result.resources.applyRules;
     const effectiveSSO = selectedPolicy?.sso ?? result.resources.sso;
+    const effectiveEmailWhitelistEnabled =
+        selectedPolicy?.emailWhitelistEnabled ??
+        result.resources.emailWhitelistEnabled;
 
     return {
         resource: {
             ...result.resources,
             applyRules: effectiveApplyRules,
-            sso: effectiveSSO
+            sso: effectiveSSO,
+            emailWhitelistEnabled: effectiveEmailWhitelistEnabled
         }, // doing this for backward compatability so the remote nodes get the value as part of the resource struct
         pincode: effectivePolicyPincode ?? result.resourcePincode,
         password: effectivePolicyPassword ?? result.resourcePassword,
@@ -242,6 +247,7 @@ export async function getResourceByDomain(
             : result.resourceHeaderAuthExtendedCompatibility,
         applyRules: effectiveApplyRules,
         sso: effectiveSSO,
+        emailWhitelistEnabled: effectiveEmailWhitelistEnabled,
         org: result.orgs
     };
 }

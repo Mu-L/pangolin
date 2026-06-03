@@ -80,14 +80,32 @@ export async function getUserResources(
         const directResourcesQuery = db
             .select({ resourceId: userResources.resourceId })
             .from(userResources)
-            .where(eq(userResources.userId, userId));
+            .innerJoin(
+                resources,
+                eq(userResources.resourceId, resources.resourceId)
+            )
+            .where(
+                and(
+                    eq(userResources.userId, userId),
+                    eq(resources.orgId, orgId)
+                )
+            );
 
         const roleResourcesQuery =
             userRoleIds.length > 0
                 ? db
                       .select({ resourceId: roleResources.resourceId })
                       .from(roleResources)
-                      .where(inArray(roleResources.roleId, userRoleIds))
+                      .innerJoin(
+                          resources,
+                          eq(roleResources.resourceId, resources.resourceId)
+                      )
+                      .where(
+                          and(
+                              inArray(roleResources.roleId, userRoleIds),
+                              eq(resources.orgId, orgId)
+                          )
+                      )
                 : Promise.resolve([]);
 
         const directPolicyResourcesQuery = db
@@ -97,7 +115,9 @@ export async function getUserResources(
                 userPolicies,
                 eq(effectiveResourcePolicyId, userPolicies.resourcePolicyId)
             )
-            .where(eq(userPolicies.userId, userId));
+            .where(
+                and(eq(userPolicies.userId, userId), eq(resources.orgId, orgId))
+            );
 
         const rolePolicyResourcesQuery =
             userRoleIds.length > 0
@@ -111,7 +131,12 @@ export async function getUserResources(
                               rolePolicies.resourcePolicyId
                           )
                       )
-                      .where(inArray(rolePolicies.roleId, userRoleIds))
+                      .where(
+                          and(
+                              inArray(rolePolicies.roleId, userRoleIds),
+                              eq(resources.orgId, orgId)
+                          )
+                      )
                 : Promise.resolve([]);
 
         const directSiteResourcesQuery = db

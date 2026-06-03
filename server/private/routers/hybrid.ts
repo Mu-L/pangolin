@@ -216,6 +216,9 @@ export type ResourceWithAuth = {
     password: ResourcePassword | ResourcePolicyPassword | null;
     headerAuth: ResourceHeaderAuth | ResourcePolicyHeaderAuth | null;
     headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
+    applyRules: boolean;
+    sso: boolean;
+    emailWhitelistEnabled: boolean;
     org: Org;
 };
 
@@ -687,12 +690,16 @@ hybridRouter.get(
             const effectiveApplyRules =
                 selectedPolicy?.applyRules ?? result.resources.applyRules;
             const effectiveSSO = selectedPolicy?.sso ?? result.resources.sso;
+            const effectiveEmailWhitelistEnabled =
+                selectedPolicy?.emailWhitelistEnabled ??
+                result.resources.emailWhitelistEnabled;
 
             const resourceWithAuth: ResourceWithAuth = {
                 resource: {
                     ...result.resources,
                     applyRules: effectiveApplyRules,
-                    sso: effectiveSSO
+                    sso: effectiveSSO,
+                    emailWhitelistEnabled: effectiveEmailWhitelistEnabled
                 },
                 pincode: effectivePolicyPincode ?? result.resourcePincode,
                 password: effectivePolicyPassword ?? result.resourcePassword,
@@ -706,6 +713,9 @@ hybridRouter.get(
                               effectivePolicyHeaderAuth.extendedCompatibility
                       } as ResourceHeaderAuthExtendedCompatibility)
                     : result.resourceHeaderAuthExtendedCompatibility,
+                applyRules: effectiveApplyRules,
+                sso: effectiveSSO,
+                emailWhitelistEnabled: effectiveEmailWhitelistEnabled,
                 org: result.orgs
             };
 

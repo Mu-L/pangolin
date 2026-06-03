@@ -146,6 +146,7 @@ export async function verifyResourceSession(
                   headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
                   applyRules: boolean;
                   sso: boolean;
+                  emailWhitelistEnabled: boolean;
                   org: Org;
               }
             | undefined = localCache.get(resourceCacheKey);
@@ -182,6 +183,7 @@ export async function verifyResourceSession(
             pincode,
             password,
             headerAuth,
+            emailWhitelistEnabled,
             headerAuthExtendedCompatibility
         } = resourceData;
 
@@ -279,7 +281,7 @@ export async function verifyResourceSession(
             !sso &&
             !pincode &&
             !password &&
-            !resource.emailWhitelistEnabled &&
+            !emailWhitelistEnabled &&
             !headerAuth
         ) {
             logger.debug("Resource allowed because no auth");
@@ -464,7 +466,7 @@ export async function verifyResourceSession(
                 !sso &&
                 !pincode &&
                 !password &&
-                !resource.emailWhitelistEnabled &&
+                !emailWhitelistEnabled &&
                 !headerAuthExtendedCompatibility?.extendedCompatibilityIsActivated
             ) {
                 logRequestAudit(
@@ -486,7 +488,7 @@ export async function verifyResourceSession(
                 !sso &&
                 !pincode &&
                 !password &&
-                !resource.emailWhitelistEnabled &&
+                !emailWhitelistEnabled &&
                 !headerAuthExtendedCompatibility?.extendedCompatibilityIsActivated
             ) {
                 logRequestAudit(
@@ -634,7 +636,7 @@ export async function verifyResourceSession(
                 }
 
                 if (
-                    resource.emailWhitelistEnabled &&
+                    emailWhitelistEnabled &&
                     (resourceSession.whitelistId ||
                         resourceSession.policyWhitelistId)
                 ) {
