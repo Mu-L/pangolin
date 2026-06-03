@@ -32,8 +32,6 @@ export function generateName(): string {
     return name.replace(/[^a-z0-9-]/g, "");
 }
 
-await migration();
-
 export default async function migration() {
     console.log(`Running setup script ${version}...`);
 
