@@ -21,29 +21,32 @@ const MAX_VISIBLE_BEFORE_OVERFLOW = MAX_VISIBLE_LABELS - 1;
 
 type TableLabelsCellProps = {
     orgId: string;
-    localLabels: SelectedLabel[];
-    toggleLabel: (label: SelectedLabel, action: "attach" | "detach") => void;
+    selectedLabels: SelectedLabel[];
+    onToggleLabel: (label: SelectedLabel, action: "attach" | "detach") => void;
+    onClosePopover: () => void;
 };
 
-export function TableLabelsCell({
+export function LabelsTableCell({
     orgId,
-    localLabels,
-    toggleLabel
+    selectedLabels,
+    onToggleLabel,
+    onClosePopover
 }: TableLabelsCellProps) {
     const t = useTranslations();
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
     const triggerRef = useRef<HTMLButtonElement>(null);
     const frozenAnchorRef = useRef<Measurable>({
         getBoundingClientRect: () => new DOMRect()
     });
 
-    const hasOverflow = localLabels.length > MAX_VISIBLE_LABELS;
-    const visibleLabels = localLabels.slice(
+    const hasOverflow = selectedLabels.length > MAX_VISIBLE_LABELS;
+    const visibleLabels = selectedLabels.slice(
         0,
         hasOverflow ? MAX_VISIBLE_BEFORE_OVERFLOW : MAX_VISIBLE_LABELS
     );
     const overflowLabels = hasOverflow
-        ? localLabels.slice(MAX_VISIBLE_BEFORE_OVERFLOW)
+        ? selectedLabels.slice(MAX_VISIBLE_BEFORE_OVERFLOW)
         : [];
 
     function handleOpenChange(open: boolean) {
@@ -54,10 +57,14 @@ export function TableLabelsCell({
             };
         }
         setIsPopoverOpen(open);
+
+        if (!open) {
+            onClosePopover();
+        }
     }
 
     return (
-        <div className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-1">
+        <div className="flex items-center gap-1">
             <Popover open={isPopoverOpen} onOpenChange={handleOpenChange}>
                 <PopoverAnchor virtualRef={frozenAnchorRef} />
                 <PopoverTrigger asChild>
@@ -80,9 +87,8 @@ export function TableLabelsCell({
                 >
                     <LabelsSelector
                         orgId={orgId}
-                        selectedLabels={localLabels}
-                        toggleLabel={toggleLabel}
-                        onClose={() => handleOpenChange(false)}
+                        selectedLabels={selectedLabels}
+                        toggleLabel={onToggleLabel}
                     />
                 </PopoverContent>
             </Popover>

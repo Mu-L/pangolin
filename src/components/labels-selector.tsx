@@ -36,7 +36,6 @@ export type LabelsSelectorProps = {
     orgId: string;
     selectedLabels: SelectedLabel[];
     toggleLabel: (newlabel: SelectedLabel, action: "detach" | "attach") => void;
-    onClose?: () => void;
 };
 
 export const LABEL_COLORS = {
@@ -52,8 +51,7 @@ export const LABEL_COLORS = {
 export function LabelsSelector({
     orgId,
     selectedLabels,
-    toggleLabel,
-    onClose
+    toggleLabel
 }: LabelsSelectorProps) {
     const t = useTranslations();
     const [labelSearchQuery, setlabelsSearchQuery] = useState("");
@@ -202,7 +200,6 @@ export function LabelsSelector({
                                         ? "detach"
                                         : "attach"
                                 );
-                                onClose?.();
                             }}
                         >
                             <Checkbox

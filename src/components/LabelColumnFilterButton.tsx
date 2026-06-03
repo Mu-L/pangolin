@@ -25,6 +25,7 @@ import { useDebounce } from "use-debounce";
 import { LabelBadge } from "./label-badge";
 import { LabelOverflowBadge } from "./label-overflow-badge";
 import { LABEL_COLORS } from "./labels-selector";
+import { Checkbox } from "./ui/checkbox";
 
 function areSelectionsEqual(a: string[], b: string[]) {
     if (a.length !== b.length) {
@@ -179,13 +180,11 @@ export function LabelColumnFilterButton({
                                         }}
                                         className="flex items-center gap-2"
                                     >
-                                        <CheckIcon
-                                            className={cn(
-                                                "mr-2 h-4 w-4",
-                                                draftSet.has(label.name)
-                                                    ? "opacity-100"
-                                                    : "opacity-0"
-                                            )}
+                                        <Checkbox
+                                            className="pointer-events-none shrink-0"
+                                            checked={draftSet.has(label.name)}
+                                            aria-hidden
+                                            tabIndex={-1}
                                         />
                                         <div
                                             className="size-2 rounded-full bg-(--color) flex-none"

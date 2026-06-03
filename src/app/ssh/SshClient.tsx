@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { SignSshKeyResponse } from "@server/private/routers/ssh";
 import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import {
     Card,
@@ -18,6 +17,7 @@ import {
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@app/lib/cn";
+import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 
 type AuthTab = "password" | "privateKey";
 

@@ -61,9 +61,10 @@ import { build } from "@server/build";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { type SelectedLabel } from "./labels-selector";
-import { TableLabelsCell } from "./TableLabelsCell";
+import { LabelsTableCell } from "./LabelsTableCell";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { useLocalLabels } from "@app/hooks/useLocalLabels";
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -705,54 +706,19 @@ function ClientResourceLabelCell({
     resource,
     orgId
 }: ClientResourceLabelCellProps) {
-    const t = useTranslations();
-    const api = createApiClient(useEnvContext());
-    const [localLabels, setLocalLabels] = useLocalLabels(
-        resource.labels,
-        resource.id
-    );
-
-    function toggleResourceLabel(
-        label: SelectedLabel,
-        action: "attach" | "detach"
-    ) {
-        const previousLabels = localLabels;
-
-        void (async () => {
-            try {
-                if (action === "attach") {
-                    setLocalLabels([...previousLabels, label]);
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/attach`,
-                        { siteResourceId: resource.id }
-                    );
-                } else {
-                    setLocalLabels(
-                        previousLabels.filter(
-                            (lb) => lb.labelId !== label.labelId
-                        )
-                    );
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/detach`,
-                        { siteResourceId: resource.id }
-                    );
-                }
-            } catch (e) {
-                setLocalLabels(previousLabels);
-                toast({
-                    title: t("error"),
-                    description: formatAxiosError(e, t("errorOccurred")),
-                    variant: "destructive"
-                });
-            }
-        })();
-    }
+    const { localLabels, refresh, toggleLabel } = useOptimisticLabels({
+        serverLabels: resource.labels,
+        orgId,
+        entityId: resource.id,
+        entityIdField: "siteResourceId"
+    });
 
     return (
-        <TableLabelsCell
+        <LabelsTableCell
             orgId={orgId}
-            localLabels={localLabels}
-            toggleLabel={toggleResourceLabel}
+            onClosePopover={() => startTransition(refresh)}
+            onToggleLabel={toggleLabel}
+            selectedLabels={localLabels}
         />
     );
 }
