@@ -180,19 +180,24 @@ export async function getResourceAuthInfo(
             );
         }
 
-        // Shared (custom) policy takes precedence over the default policy.
-        // For boolean fields (sso, whitelist), only fall back to defaultPolicy
-        // when there is no shared policy at all.
-        const effectivePolicyPincode =
-            result.sharedPolicyPincode ?? result.defaultPolicyPincode ?? null;
-        const effectivePolicyPassword =
-            result.sharedPolicyPassword ?? result.defaultPolicyPassword ?? null;
-        const effectivePolicyHeaderAuth =
-            result.sharedPolicyHeaderAuth ??
-            result.defaultPolicyHeaderAuth ??
-            null;
+        // If a shared (custom) policy is assigned to the resource, use ONLY
+        // its values — do not fall back to the default policy. The default
+        // policy is only consulted when no shared policy is assigned at all.
+        const hasSharedPolicy = result.sharedPolicy !== null;
 
-        const effectivePolicy = result.sharedPolicy ?? result.defaultPolicy;
+        const effectivePolicyPincode = hasSharedPolicy
+            ? result.sharedPolicyPincode
+            : (result.defaultPolicyPincode ?? null);
+        const effectivePolicyPassword = hasSharedPolicy
+            ? result.sharedPolicyPassword
+            : (result.defaultPolicyPassword ?? null);
+        const effectivePolicyHeaderAuth = hasSharedPolicy
+            ? result.sharedPolicyHeaderAuth
+            : (result.defaultPolicyHeaderAuth ?? null);
+
+        const effectivePolicy = hasSharedPolicy
+            ? result.sharedPolicy
+            : result.defaultPolicy;
 
         const pincode = effectivePolicyPincode ?? result.resourcePincode;
         const password = effectivePolicyPassword ?? result.resourcePassword;
