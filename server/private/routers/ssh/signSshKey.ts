@@ -19,12 +19,18 @@ import {
     logsDb,
     newts,
     roles,
+    roleResources,
     roleSiteResources,
+    resources,
     roundTripMessageTracker,
     siteResources,
     siteNetworks,
+    targets,
     userOrgs,
-    sites
+    sites,
+    Resource,
+    SiteResource,
+    browserGatewayTarget
 } from "@server/db";
 import { logAccessAudit } from "#private/lib/logAccessAudit";
 import { isLicensedOrSubscribed } from "#private/lib/isLicencedOrSubscribed";
@@ -35,6 +41,7 @@ import createHttpError from "http-errors";
 import logger from "@server/logger";
 import { fromError } from "zod-validation-error";
 import { and, eq, inArray, or } from "drizzle-orm";
+import { canUserAccessResource } from "@server/auth/canUserAccessResource";
 import { canUserAccessSiteResource } from "@server/auth/canUserAccessSiteResource";
 import { signPublicKey, getOrgCAKeys } from "@server/lib/sshCA";
 import config from "@server/lib/config";
@@ -50,7 +57,8 @@ const bodySchema = z
         publicKey: z.string().nonempty(),
         resourceId: z.number().int().positive().optional(),
         resource: z.string().nonempty().optional(), // this is either the nice id or the alias
-        username: z.string().nonempty().optional()
+        username: z.string().nonempty().optional(),
+        type: z.enum(["public", "private"]).default("private")
     })
     .refine(
         (data) => {
@@ -111,6 +119,7 @@ export async function signSshKey(
         const {
             publicKey,
             resourceId,
+            type,
             resource: resourceQueryString,
             username
         } = parsedBody.data;
@@ -175,18 +184,25 @@ export async function signSshKey(
             );
         }
 
-        // Verify the resource exists and belongs to the org
-        // Build the where clause dynamically based on which field is provided
+        let matchingResources: SiteResource[] | Resource[] = [];
+        // Verify the resource exists and belongs to the org.
+        // Build the where clause dynamically based on which field is provided.
         let whereClause;
         if (resourceId !== undefined) {
-            whereClause = eq(siteResources.siteResourceId, resourceId);
+            whereClause =
+                type === "private"
+                    ? eq(siteResources.siteResourceId, resourceId)
+                    : eq(resources.resourceId, resourceId);
         } else if (resourceQueryString !== undefined) {
-            whereClause = or(
-                eq(siteResources.niceId, resourceQueryString),
-                eq(siteResources.alias, resourceQueryString)
-            );
+            whereClause =
+                type === "private"
+                    ? or(
+                          eq(siteResources.niceId, resourceQueryString),
+                          eq(siteResources.alias, resourceQueryString)
+                      )
+                    : eq(resources.niceId, resourceQueryString);
         } else {
-            // This should never happen due to the schema validation, but TypeScript doesn't know that
+            // This should never happen due to the schema validation, but TypeScript doesn't know that.
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
@@ -195,18 +211,25 @@ export async function signSshKey(
             );
         }
 
-        const resources = await db
-            .select()
-            .from(siteResources)
-            .where(and(whereClause, eq(siteResources.orgId, orgId)));
+        if (type === "private") {
+            matchingResources = await db
+                .select()
+                .from(siteResources)
+                .where(and(whereClause, eq(siteResources.orgId, orgId)));
+        } else {
+            matchingResources = await db
+                .select()
+                .from(resources)
+                .where(and(whereClause, eq(resources.orgId, orgId)));
+        }
 
-        if (!resources || resources.length === 0) {
+        if (!matchingResources || matchingResources.length === 0) {
             return next(
                 createHttpError(HttpCode.NOT_FOUND, `Resource not found`)
             );
         }
 
-        if (resources.length > 1) {
+        if (matchingResources.length > 1) {
             // error but this should not happen because the nice id cant contain a dot and the alias has to have a dot and both have to be unique within the org so there should never be multiple matches
             return next(
                 createHttpError(
@@ -216,7 +239,11 @@ export async function signSshKey(
             );
         }
 
-        const resource = resources[0];
+        const resource = matchingResources[0];
+        const normalizedResourceId =
+            type === "private"
+                ? (resource as SiteResource).siteResourceId
+                : (resource as Resource).resourceId;
 
         if (resource.orgId !== orgId) {
             return next(
@@ -237,11 +264,18 @@ export async function signSshKey(
         }
 
         // Check if the user has access to the resource
-        const hasAccess = await canUserAccessSiteResource({
-            userId: userId,
-            resourceId: resource.siteResourceId,
-            roleIds
-        });
+        const hasAccess =
+            type === "private"
+                ? await canUserAccessSiteResource({
+                      userId: userId,
+                      resourceId: (resource as SiteResource).siteResourceId,
+                      roleIds
+                  })
+                : await canUserAccessResource({
+                      userId: userId,
+                      resourceId: (resource as Resource).resourceId,
+                      roleIds
+                  });
 
         if (!hasAccess) {
             return next(
@@ -252,12 +286,56 @@ export async function signSshKey(
             );
         }
 
-        const sitesFromNetworks = await db
-            .select({ siteId: siteNetworks.siteId })
-            .from(siteNetworks)
-            .where(eq(siteNetworks.networkId, resource.networkId!));
+        const siteAgentHostMap = new Map<number, string>();
+        let siteIds: number[] = [];
 
-        const siteIds = sitesFromNetworks.map((site) => site.siteId);
+        if (type === "private") {
+            const privateResource = resource as SiteResource;
+            const sitesFromNetworks = await db
+                .select({ siteId: siteNetworks.siteId })
+                .from(siteNetworks)
+                .where(eq(siteNetworks.networkId, privateResource.networkId!));
+
+            siteIds = sitesFromNetworks.map((site) => site.siteId);
+            for (const siteId of siteIds) {
+                if (privateResource.destination) {
+                    siteAgentHostMap.set(siteId, privateResource.destination);
+                }
+            }
+        } else {
+            const publicResource = resource as Resource;
+            const targetRows = await db
+                .select({
+                    siteId: browserGatewayTarget.siteId,
+                    ip: browserGatewayTarget.destination
+                })
+                .from(browserGatewayTarget)
+                .where(
+                    and(
+                        eq(
+                            browserGatewayTarget.resourceId,
+                            publicResource.resourceId
+                        )
+                    )
+                );
+
+            if (targetRows.length === 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        "No enabled targets found for the resource"
+                    )
+                );
+            }
+
+            for (const targetRow of targetRows) {
+                if (!siteAgentHostMap.has(targetRow.siteId)) {
+                    siteAgentHostMap.set(targetRow.siteId, targetRow.ip);
+                }
+            }
+
+            siteIds = Array.from(siteAgentHostMap.keys());
+        }
 
         let expiresIn: number | undefined;
         let messageIds: number[] = [];
@@ -374,27 +452,50 @@ export async function signSshKey(
                 usernameToUse = userOrg.pamUsername;
             }
 
-            const roleRows = await db
-                .select({
-                    sshSudoCommands: roles.sshSudoCommands,
-                    sshUnixGroups: roles.sshUnixGroups,
-                    sshCreateHomeDir: roles.sshCreateHomeDir,
-                    sshSudoMode: roles.sshSudoMode
-                })
-                .from(roles)
-                .innerJoin(
-                    roleSiteResources,
-                    eq(roleSiteResources.roleId, roles.roleId)
-                )
-                .where(
-                    and(
-                        inArray(roles.roleId, roleIds),
-                        eq(
-                            roleSiteResources.siteResourceId,
-                            resource.siteResourceId
-                        )
-                    )
-                );
+            const roleRows =
+                type === "private"
+                    ? await db
+                          .select({
+                              sshSudoCommands: roles.sshSudoCommands,
+                              sshUnixGroups: roles.sshUnixGroups,
+                              sshCreateHomeDir: roles.sshCreateHomeDir,
+                              sshSudoMode: roles.sshSudoMode
+                          })
+                          .from(roles)
+                          .innerJoin(
+                              roleSiteResources,
+                              eq(roleSiteResources.roleId, roles.roleId)
+                          )
+                          .where(
+                              and(
+                                  inArray(roles.roleId, roleIds),
+                                  eq(
+                                      roleSiteResources.siteResourceId,
+                                      (resource as SiteResource).siteResourceId
+                                  )
+                              )
+                          )
+                    : await db
+                          .select({
+                              sshSudoCommands: roles.sshSudoCommands,
+                              sshUnixGroups: roles.sshUnixGroups,
+                              sshCreateHomeDir: roles.sshCreateHomeDir,
+                              sshSudoMode: roles.sshSudoMode
+                          })
+                          .from(roles)
+                          .innerJoin(
+                              roleResources,
+                              eq(roleResources.roleId, roles.roleId)
+                          )
+                          .where(
+                              and(
+                                  inArray(roles.roleId, roleIds),
+                                  eq(
+                                      roleResources.resourceId,
+                                      (resource as Resource).resourceId
+                                  )
+                              )
+                          );
 
             const parsedSudoCommands: string[] = [];
             const parsedGroupsSet = new Set<string>();
@@ -480,6 +581,16 @@ export async function signSshKey(
 
                 messageIds.push(message.messageId);
 
+                const agentHost = siteAgentHostMap.get(siteId);
+                if (!agentHost) {
+                    return next(
+                        createHttpError(
+                            HttpCode.INTERNAL_SERVER_ERROR,
+                            `Unable to determine agent host for site ${siteId}`
+                        )
+                    );
+                }
+
                 await sendToClient(newt.newtId, {
                     type: `newt/pam/connection`,
                     data: {
@@ -489,7 +600,7 @@ export async function signSshKey(
                         authDaemonMode: resource.authDaemonMode, // site, remote, native where native is the pty mode
                         externalAuthDaemon:
                             resource.authDaemonMode === "remote", // keep this for backward compatibility but new newts are using the authDaemonMode field
-                        agentHost: resource.destination,
+                        agentHost,
                         caCert: caKeys.publicKeyOpenSSH,
                         username: usernameToUse,
                         niceId: resource.niceId,
@@ -526,10 +637,19 @@ export async function signSshKey(
             resource.authDaemonMode === "site" ||
             resource.authDaemonMode === "remote"
         ) {
-            if (resource.alias && resource.alias != "") {
-                sshHost = resource.alias;
+            if (type === "private") {
+                const privateResource = resource as SiteResource;
+                if (privateResource.alias && privateResource.alias !== "") {
+                    sshHost = privateResource.alias;
+                } else {
+                    sshHost = privateResource.destination || "";
+                }
             } else {
-                sshHost = resource.destination || "";
+                const publicResource = resource as Resource;
+                sshHost =
+                    publicResource.fullDomain ||
+                    publicResource.subdomain ||
+                    publicResource.niceId;
             }
         } else if (resource.authDaemonMode === "native") {
             if (siteIds.length > 1) {
@@ -587,7 +707,8 @@ export async function signSshKey(
             actorId: req.user?.userId ?? "",
             action: ActionsEnum.signSshKey,
             metadata: JSON.stringify({
-                resourceId: resource.siteResourceId,
+                resourceId: normalizedResourceId,
+                resourceType: type,
                 resource: resource.name,
                 siteIds: siteIds
             })
@@ -597,7 +718,14 @@ export async function signSshKey(
             action: true,
             type: "ssh",
             orgId: orgId,
-            siteResourceId: resource.siteResourceId,
+            resourceId:
+                type === "public"
+                    ? (resource as Resource).resourceId
+                    : undefined,
+            siteResourceId:
+                type === "private"
+                    ? (resource as SiteResource).siteResourceId
+                    : undefined,
             user: req.user
                 ? { username: req.user.username ?? "", userId: req.user.userId }
                 : undefined,
@@ -618,7 +746,7 @@ export async function signSshKey(
                 messageId: messageIds[0], // just pick the first one for backward compatibility with older olms
                 sshUsername: usernameToUse,
                 sshHost: sshHost, // just pick the first one for backward compatibility with older olms
-                resourceId: resource.siteResourceId,
+                resourceId: normalizedResourceId,
                 siteIds: siteIds,
                 siteId: siteIds[0], // just pick the first one for backward compatibility with older olms
                 keyId: cert?.keyId,

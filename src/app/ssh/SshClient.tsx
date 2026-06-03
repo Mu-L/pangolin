@@ -337,15 +337,6 @@ export default function SshClient({
                 )}
                 {connected && (
                     <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900">
-                        <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
-                            <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={disconnect}
-                            >
-                                Terminate
-                            </Button>
-                        </div>
                         <div
                             ref={terminalRef}
                             className="flex-1 overflow-hidden"

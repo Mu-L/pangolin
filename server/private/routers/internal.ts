@@ -19,6 +19,7 @@ import * as license from "#private/routers/license";
 import * as resource from "#private/routers/resource";
 import * as browserTarget from "#private/routers/browserGatewayTarget";
 import * as ssh from "#private/routers/ssh";
+import * as ws from "@server/routers/ws";
 
 import {
     verifySessionUserMiddleware,
@@ -50,6 +51,12 @@ internalRouter.post(
     "/org/:orgId/ssh/sign-key",
     verifyUserFromResourceSessionMiddleware,
     ssh.signSshKey
+);
+
+internalRouter.get(
+    "/ws/round-trip-message/:messageId",
+    verifyUserFromResourceSessionMiddleware,
+    ws.checkRoundTripMessage
 );
 
 internalRouter.get("/resource/browser-target", browserTarget.getBrowserTarget);

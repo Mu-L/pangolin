@@ -7,6 +7,62 @@ import { SignSshKeyResponse } from "@server/private/routers/ssh";
 import crypto from "crypto";
 import AuthFooter from "@app/components/AuthFooter";
 
+const pollInitialDelayMs = 250;
+const pollStartIntervalMs = 250;
+const pollBackoffSteps = 6;
+
+type RoundTripMessageResponse = {
+    messageId: number;
+    complete: boolean;
+    sentAt: number | string;
+    receivedAt: number | string | null;
+    error: string | null;
+};
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForRoundTripCompletion(
+    messageIds: number[],
+    cookieHeader: string
+): Promise<void> {
+    if (messageIds.length === 0) {
+        return;
+    }
+
+    await sleep(pollInitialDelayMs);
+
+    let interval = pollStartIntervalMs;
+    for (let i = 0; i <= pollBackoffSteps; i++) {
+        for (const messageId of messageIds) {
+            const res = await priv.get<AxiosResponse<RoundTripMessageResponse>>(
+                `/ws/round-trip-message/${messageId}`,
+                {
+                    headers: {
+                        Cookie: cookieHeader
+                    }
+                }
+            );
+
+            const message = res.data.data;
+            if (message.complete) {
+                if (message.error) {
+                    throw new Error(message.error);
+                }
+                return;
+            }
+        }
+
+        if (i < pollBackoffSteps) {
+            await sleep(interval);
+            interval *= 2;
+        }
+    }
+
+    throw new Error("Timed out waiting for round-trip message completion");
+}
+
 function generateEphemeralKeyPair(): {
     privateKeyPem: string;
     publicKeyOpenSSH: string;
@@ -51,6 +107,7 @@ export default async function SshPage() {
     const headersList = await headers();
     const host = headersList.get("host") || "";
     const hostname = host.split(":")[0];
+    const cookieHeader = headersList.get("cookie") || "";
 
     let target: GetBrowserTargetResponse | null = null;
     let signedKeyData: SignSshKeyResponse | null = null;
@@ -72,11 +129,25 @@ export default async function SshPage() {
                     `/org/${target.orgId}/ssh/sign-key`,
                     {
                         publicKey: publicKeyOpenSSH,
-                        resource: target.niceId
+                        resourceId: target.resourceId,
+                        type: "public"
+                    },
+                    {
+                        headers: {
+                            Cookie: cookieHeader
+                        }
                     }
                 );
                 signedKeyData = res.data.data;
-                console.log("Received signed SSH key:", signedKeyData);
+
+                const messageIds =
+                    signedKeyData.messageIds.length > 0
+                        ? signedKeyData.messageIds
+                        : signedKeyData.messageId
+                          ? [signedKeyData.messageId]
+                          : [];
+
+                await waitForRoundTripCompletion(messageIds, cookieHeader);
             } catch (err) {
                 console.error("Error signing SSH key:", err);
                 error = "Failed to sign SSH key for PAM push authentication.";
