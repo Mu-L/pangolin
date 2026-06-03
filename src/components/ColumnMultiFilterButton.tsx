@@ -20,6 +20,7 @@ import { CheckIcon, Funnel } from "lucide-react";
 import { cn } from "@app/lib/cn";
 import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
 import { Badge } from "./ui/badge";
+import { Checkbox } from "./ui/checkbox";
 
 type FilterOption = {
     value: string;
@@ -130,13 +131,11 @@ export function ColumnMultiFilterButton({
                                         toggle(option.value);
                                     }}
                                 >
-                                    <CheckIcon
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedSet.has(option.value)
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                        )}
+                                    <Checkbox
+                                        className="pointer-events-none shrink-0"
+                                        checked={selectedSet.has(option.value)}
+                                        aria-hidden
+                                        tabIndex={-1}
                                     />
                                     {option.label}
                                 </CommandItem>

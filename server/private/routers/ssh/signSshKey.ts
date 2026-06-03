@@ -40,6 +40,7 @@ import { signPublicKey, getOrgCAKeys } from "@server/lib/sshCA";
 import config from "@server/lib/config";
 import { sendToClient } from "#private/routers/ws";
 import { ActionsEnum } from "@server/auth/actions";
+import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 
 const paramsSchema = z.strictObject({
     orgId: z.string().nonempty()
@@ -63,23 +64,6 @@ const bodySchema = z
                 "Exactly one of resourceId, niceId, or alias must be provided"
         }
     );
-
-export type SignSshKeyResponse = {
-    certificate?: string;
-    messageIds: number[];
-    messageId?: number;
-    sshUsername: string;
-    sshHost: string;
-    resourceId: number;
-    siteIds: number[];
-    siteId: number;
-    keyId?: string;
-    validPrincipals?: string[];
-    validAfter?: string;
-    validBefore?: string;
-    expiresIn?: number;
-    authDaemonMode: "site" | "remote" | "native" | null;
-};
 
 export async function signSshKey(
     req: Request,

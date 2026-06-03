@@ -41,13 +41,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-    startTransition,
-    useEffect,
-    useMemo,
-    useState,
-    useTransition
-} from "react";
+import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import z from "zod";
 import { ColumnFilterButton } from "./ColumnFilterButton";
@@ -56,13 +50,11 @@ import {
     type ExtendedColumnDef
 } from "./ui/controlled-data-table";
 
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { cn } from "@app/lib/cn";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { type SelectedLabel } from "./labels-selector";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
-import { useLocalLabels } from "@app/hooks/useLocalLabels";
-import { TableLabelsCell } from "./TableLabelsCell";
+import { LabelsTableCell } from "./LabelsTableCell";
 
 export type SiteRow = {
     id: number;
@@ -686,54 +678,19 @@ type SiteLabelCellProps = {
 };
 
 function SiteLabelCell({ site, orgId }: SiteLabelCellProps) {
-    const t = useTranslations();
-
-    const api = createApiClient(useEnvContext());
-
-    const [localLabels, setLocalLabels] = useLocalLabels(site.labels, site.id);
-
-    function toggleSiteLabel(
-        label: SelectedLabel,
-        action: "attach" | "detach"
-    ) {
-        const previousLabels = localLabels;
-
-        void (async () => {
-            try {
-                if (action === "attach") {
-                    setLocalLabels([...previousLabels, label]);
-
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/attach`,
-                        { siteId: site.id }
-                    );
-                } else {
-                    setLocalLabels(
-                        previousLabels.filter(
-                            (lb) => lb.labelId !== label.labelId
-                        )
-                    );
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/detach`,
-                        { siteId: site.id }
-                    );
-                }
-            } catch (e) {
-                setLocalLabels(previousLabels);
-                toast({
-                    title: t("error"),
-                    description: formatAxiosError(e, t("errorOccurred")),
-                    variant: "destructive"
-                });
-            }
-        })();
-    }
+    const { localLabels, refresh, toggleLabel } = useOptimisticLabels({
+        serverLabels: site.labels,
+        orgId,
+        entityId: site.id,
+        entityIdField: "siteId"
+    });
 
     return (
-        <TableLabelsCell
+        <LabelsTableCell
             orgId={orgId}
-            localLabels={localLabels}
-            toggleLabel={toggleSiteLabel}
+            selectedLabels={localLabels}
+            onToggleLabel={toggleLabel}
+            onClosePopover={() => startTransition(refresh)}
         />
     );
 }

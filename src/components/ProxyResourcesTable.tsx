@@ -73,7 +73,9 @@ import UptimeMiniBar from "./UptimeMiniBar";
 import { type SelectedLabel } from "./labels-selector";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { useLocalLabels } from "@app/hooks/useLocalLabels";
-import { TableLabelsCell } from "./TableLabelsCell";
+import { LabelsTableCell } from "./LabelsTableCell";
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
+import { refresh } from "next/cache";
 
 export type TargetHealth = {
     targetId: number;
@@ -772,57 +774,19 @@ type ResourceLabelCellProps = {
 };
 
 function ResourceLabelCell({ resource, orgId }: ResourceLabelCellProps) {
-    const t = useTranslations();
-
-    const api = createApiClient(useEnvContext());
-
-    const [localLabels, setLocalLabels] = useLocalLabels(
-        resource.labels,
-        resource.id
-    );
-
-    function toggleSiteLabel(
-        label: SelectedLabel,
-        action: "attach" | "detach"
-    ) {
-        const previousLabels = localLabels;
-
-        void (async () => {
-            try {
-                if (action === "attach") {
-                    setLocalLabels([...previousLabels, label]);
-
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/attach`,
-                        { resourceId: resource.id }
-                    );
-                } else {
-                    setLocalLabels(
-                        previousLabels.filter(
-                            (lb) => lb.labelId !== label.labelId
-                        )
-                    );
-                    await api.put(
-                        `/org/${orgId}/label/${label.labelId}/detach`,
-                        { resourceId: resource.id }
-                    );
-                }
-            } catch (e) {
-                setLocalLabels(previousLabels);
-                toast({
-                    title: t("error"),
-                    description: formatAxiosError(e, t("errorOccurred")),
-                    variant: "destructive"
-                });
-            }
-        })();
-    }
+    const { localLabels, refresh, toggleLabel } = useOptimisticLabels({
+        serverLabels: resource.labels,
+        orgId,
+        entityId: resource.id,
+        entityIdField: "resourceId"
+    });
 
     return (
-        <TableLabelsCell
+        <LabelsTableCell
             orgId={orgId}
-            localLabels={localLabels}
-            toggleLabel={toggleSiteLabel}
+            selectedLabels={localLabels}
+            onToggleLabel={toggleLabel}
+            onClosePopover={() => startTransition(refresh)}
         />
     );
 }

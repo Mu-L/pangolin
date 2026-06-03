@@ -1392,6 +1392,16 @@ export type ResourceHeaderAuthExtendedCompatibility = InferSelectModel<
 export type ResourceOtp = InferSelectModel<typeof resourceOtp>;
 export type ResourceAccessToken = InferSelectModel<typeof resourceAccessToken>;
 export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;
+export type ResourcePolicyPincode = InferSelectModel<
+    typeof resourcePolicyPincode
+>;
+export type ResourcePolicyPassword = InferSelectModel<
+    typeof resourcePolicyPassword
+>;
+export type ResourcePolicyHeaderAuth = InferSelectModel<
+    typeof resourcePolicyHeaderAuth
+>;
+
 export type VersionMigration = InferSelectModel<typeof versionMigrations>;
 export type ResourceRule = InferSelectModel<typeof resourceRules>;
 export type Domain = InferSelectModel<typeof domains>;
