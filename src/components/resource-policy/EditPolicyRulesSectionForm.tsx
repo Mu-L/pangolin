@@ -750,10 +750,19 @@ export function EditPolicyRulesSectionForm({
             return;
         }
 
-        const isValid = form.trigger();
+        const isValid = await form.trigger();
         if (!isValid) return;
 
-        const payload = form.getValues();
+        const payload = {
+            applyRules: form.getValues("applyRules") ?? false,
+            rules: rules.map(({ action, match, value, priority, enabled }) => ({
+                action,
+                match,
+                value,
+                priority,
+                enabled
+            }))
+        };
 
         try {
             const res = await api
