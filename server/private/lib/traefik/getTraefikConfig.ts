@@ -410,7 +410,11 @@ export async function getTraefikConfig(
         fullDomain: string | null;
         mode: "http" | "host" | "cidr" | "ssh";
     }[] = [];
-    if (build == "enterprise") {
+    if (
+        build == "enterprise" &&
+        !privateConfig.getRawPrivateConfig().flags
+            .disable_private_http_placeholder
+    ) {
         // we dont want to do this on the cloud
         // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge
         siteResourcesWithFullDomain = await db
