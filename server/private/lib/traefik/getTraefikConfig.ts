@@ -493,16 +493,29 @@ export async function getTraefikConfig(
         const transportName = `${key}-transport`;
         const headersMiddlewareName = `${key}-headers-middleware`;
 
+        logger.debug(
+            `Processing resource ${resource.name} with domain ${fullDomain} and ${targets.length} targets`
+        );
+
         if (!resource.enabled) {
+            logger.debug(
+                `Resource ${resource.name} is disabled, skipping Traefik config`
+            );
             continue;
         }
 
-        if (resource.http) {
+        if (resource.mode == "http") {
             if (!resource.domainId) {
+                logger.debug(
+                    `Resource ${resource.name} does not have a domainId, skipping Traefik config`
+                );
                 continue;
             }
 
             if (!resource.fullDomain) {
+                logger.debug(
+                    `Resource ${resource.name} does not have a fullDomain, skipping Traefik config`
+                );
                 continue;
             }
 
@@ -958,7 +971,7 @@ export async function getTraefikConfig(
                     serviceName
                 ].loadBalancer.serversTransport = transportName;
             }
-        } else {
+        } else if (resource.mode == "tcp" || resource.mode == "udp") {
             // Non-HTTP (TCP/UDP) configuration
             if (!resource.enableProxy) {
                 continue;
