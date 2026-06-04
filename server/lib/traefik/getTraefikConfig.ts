@@ -44,7 +44,8 @@ export async function getTraefikConfig(
     filterOutNamespaceDomains = false, // UNUSED BUT USED IN PRIVATE
     generateLoginPageRouters = false, // UNUSED BUT USED IN PRIVATE
     allowRawResources = true,
-    allowMaintenancePage = true // UNUSED BUT USED IN PRIVATE
+    allowMaintenancePage = true, // UNUSED BUT USED IN PRIVATE
+    allowBrowserGatewayResources = true
 ): Promise<any> {
     // Get resources with their targets and sites in a single optimized query
     // Start from sites on this exit node, then join to targets and resources
@@ -240,7 +241,7 @@ export async function getTraefikConfig(
             continue;
         }
 
-        if (resource.http) {
+        if (resource.mode === "http") {
             if (!resource.domainId || !resource.fullDomain) {
                 continue;
             }
@@ -572,7 +573,7 @@ export async function getTraefikConfig(
                     serviceName
                 ].loadBalancer.serversTransport = transportName;
             }
-        } else {
+        } else if (resource.mode === "tcp" || resource.mode === "udp") {
             // Non-HTTP (TCP/UDP) configuration
             if (!resource.enableProxy || !resource.proxyPort) {
                 continue;
