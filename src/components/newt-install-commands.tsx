@@ -286,25 +286,33 @@ WantedBy=default.target`
                             label={t("siteAcceptClientConnections")}
                         />
                     </div>
-                    {supportsSshOption && (
-                        <div className="flex items-center space-x-2 mb-2">
-                            <CheckboxWithLabel
-                                id="allowPangolinSsh"
-                                checked={allowPangolinSsh}
-                                onCheckedChange={(checked) => {
-                                    const value = checked as boolean;
-                                    setAllowPangolinSsh(value);
-                                }}
-                                label="Allow Pangolin SSH"
-                            />
-                        </div>
-                    )}
                     <p
                         id="acceptClients-desc"
                         className="text-sm text-muted-foreground"
                     >
                         {t("siteAcceptClientConnectionsDescription")}
                     </p>
+                    {supportsSshOption && (
+                        <>
+                            <div className="flex items-center space-x-2 mb-2 mt-2">
+                                <CheckboxWithLabel
+                                    id="allowPangolinSsh"
+                                    checked={allowPangolinSsh}
+                                    onCheckedChange={(checked) => {
+                                        const value = checked as boolean;
+                                        setAllowPangolinSsh(value);
+                                    }}
+                                    label="Allow Pangolin SSH"
+                                />
+                            </div>
+                            <p
+                                id="allowPangolinSsh-desc"
+                                className="text-sm text-muted-foreground"
+                            >
+                                {t("sitePangolinSshDescription")}
+                            </p>
+                        </>
+                    )}
                 </div>
 
                 <div className="pt-4">

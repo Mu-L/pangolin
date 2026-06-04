@@ -3455,5 +3455,6 @@
     "sshErrorNoTarget": "No target specified",
     "sshErrorWebSocket": "WebSocket connection failed",
     "sshErrorAuthFailed": "Authentication failed",
-    "sshErrorConnectionClosed": "Connection closed before authentication completed"
+    "sshErrorConnectionClosed": "Connection closed before authentication completed",
+    "sitePangolinSshDescription": "Allow SSH access to resources on this site. This can be changed later."
 }
