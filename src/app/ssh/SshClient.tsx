@@ -180,7 +180,6 @@ export default function SshClient({
                 certificate: signedKeyData.certificate
             });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     function connect(override?: ConnectCredentials) {

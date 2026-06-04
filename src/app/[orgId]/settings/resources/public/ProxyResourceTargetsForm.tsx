@@ -103,7 +103,7 @@ export function ProxyResourceTargetsForm({
     // Notify parent of changes (create mode)
     useEffect(() => {
         onChange?.(targets);
-    }, [targets]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [targets]);
 
     // Poll health status only in edit mode
     const { data: polledTargets } = useQuery({

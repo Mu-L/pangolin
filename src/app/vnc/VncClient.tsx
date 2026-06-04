@@ -39,7 +39,6 @@ export default function VncClient({
     });
 
     const [connected, setConnected] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rfbRef = useRef<any>(null);
     const screenRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +58,7 @@ export default function VncClient({
     // Clean up on unmount.
     useEffect(() => {
         return () => disconnect();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     const connect = async () => {
         if (!target) {
@@ -115,7 +114,6 @@ export default function VncClient({
             options.credentials = { password: form.password };
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rfb: any = new RFB(screenRef.current, wsUrl, options);
 
         rfb.scaleViewport = true;

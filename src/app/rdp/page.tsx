@@ -17,7 +17,7 @@ export default async function RdpPage() {
     const hostname = host.split(":")[0];
 
     let target: GetBrowserTargetResponse | null = null;
-    let error: string | null = null;
+    const error: string | null = null;
 
     try {
         const res = await priv.get<AxiosResponse<GetBrowserTargetResponse>>(
