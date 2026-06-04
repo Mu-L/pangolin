@@ -43,10 +43,13 @@ export function NewtSiteInstallCommands({
     const t = useTranslations();
 
     const [acceptClients, setAcceptClients] = useState(true);
+    const [allowPangolinSsh, setAllowPangolinSsh] = useState(true);
     const [platform, setPlatform] = useState<Platform>("linux");
     const [architecture, setArchitecture] = useState(
         () => getArchitectures(platform)[0]
     );
+
+    const supportsSshOption = platform === "linux" || platform === "nixos";
 
     const acceptClientsFlag = !acceptClients ? " --disable-clients" : "";
     const acceptClientsEnv = !acceptClients
@@ -57,6 +60,11 @@ export function NewtSiteInstallCommands({
       --set newtInstances[0].acceptClients=true`
         : "";
 
+    const disableSshFlag =
+        supportsSshOption && !allowPangolinSsh ? " --disable-ssh" : "";
+    const runAsRootPrefix =
+        supportsSshOption && allowPangolinSsh ? "sudo " : "";
+
     const commandList: Record<Platform, Record<string, CommandItem[]>> = {
         linux: {
             Run: [
@@ -66,7 +74,7 @@ export function NewtSiteInstallCommands({
                 },
                 {
                     title: t("run"),
-                    command: `newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                    command: `${runAsRootPrefix}newt --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
                 }
             ],
             "Systemd Service": [
@@ -85,6 +93,11 @@ PANGOLIN_ENDPOINT=${endpoint}${
                         !acceptClients
                             ? `
 DISABLE_CLIENTS=true`
+                            : ""
+                    }${
+                        !allowPangolinSsh
+                            ? `
+DISABLE_SSH=true`
                             : ""
                     }
 EOF
@@ -205,7 +218,7 @@ WantedBy=default.target`
         },
         nixos: {
             Flake: [
-                `nix run 'nixpkgs#fosrl-newt' -- --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}`
+                `${runAsRootPrefix}nix run 'nixpkgs#fosrl-newt' -- --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
             ]
         }
     };
@@ -273,6 +286,19 @@ WantedBy=default.target`
                             label={t("siteAcceptClientConnections")}
                         />
                     </div>
+                    {supportsSshOption && (
+                        <div className="flex items-center space-x-2 mb-2">
+                            <CheckboxWithLabel
+                                id="allowPangolinSsh"
+                                checked={allowPangolinSsh}
+                                onCheckedChange={(checked) => {
+                                    const value = checked as boolean;
+                                    setAllowPangolinSsh(value);
+                                }}
+                                label="Allow Pangolin SSH"
+                            />
+                        </div>
+                    )}
                     <p
                         id="acceptClients-desc"
                         className="text-sm text-muted-foreground"

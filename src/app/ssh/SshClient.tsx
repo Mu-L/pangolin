@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@app/lib/cn";
+import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 import { useTranslations } from "next-intl";
 
@@ -60,8 +60,6 @@ export default function SshClient({
     });
 
     const t = useTranslations();
-
-    const [authTab, setAuthTab] = useState<AuthTab>("password");
 
     function handleKeyFile(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -182,7 +180,10 @@ export default function SshClient({
         }
     }, []);
 
-    function connect(override?: ConnectCredentials) {
+    function connect(
+        override?: ConnectCredentials,
+        authMethod: AuthTab = "password"
+    ) {
         setConnectError(null);
         setConnecting(true);
 
@@ -194,10 +195,11 @@ export default function SshClient({
 
         const username = override?.username ?? form.username;
         const password =
-            override?.password ?? (authTab === "password" ? form.password : "");
+            override?.password ??
+            (authMethod === "password" ? form.password : "");
         const privateKey =
             override?.privateKey ??
-            (authTab === "privateKey" ? form.privateKey : "");
+            (authMethod === "privateKey" ? form.privateKey : "");
         const certificate = override?.certificate;
 
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/ssh`;
@@ -224,7 +226,7 @@ export default function SshClient({
         ws.onopen = () => {
             // Send credentials as the first frame so the proxy can complete
             // SSH authentication before piping pty data. Stay in "connecting"
-            // state until the server responds — this prevents the flash to the
+            // state until the server responds - this prevents the flash to the
             // terminal page that would occur if we set connected=true here.
             ws.send(
                 JSON.stringify({
@@ -260,7 +262,7 @@ export default function SshClient({
                         xtermRef.current?.write(msg.data);
                     } else if (msg.type === "error") {
                         if (!authConfirmed) {
-                            // Auth-phase error — show in the login form.
+                            // Auth-phase error - show in the login form.
                             authErrorShown = true;
                             setConnecting(false);
                             setConnectError(
@@ -281,13 +283,13 @@ export default function SshClient({
                     xtermRef.current?.write(evt.data);
                 }
             } else if (evt.data instanceof Blob) {
-                evt.data.text().then((t) => {
+                evt.data.text().then((text) => {
                     if (!authConfirmed) {
                         authConfirmed = true;
                         setConnecting(false);
                         setConnected(true);
                     }
-                    xtermRef.current?.write(t);
+                    xtermRef.current?.write(text);
                 });
             }
         };
@@ -426,31 +428,15 @@ export default function SshClient({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {/* Tab row */}
-                            <div className="flex space-x-4 border-b mb-4">
-                                {(["password", "privateKey"] as const).map(
-                                    (tab) => (
-                                        <button
-                                            key={tab}
-                                            type="button"
-                                            onClick={() => setAuthTab(tab)}
-                                            className={cn(
-                                                "px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap relative",
-                                                authTab === tab
-                                                    ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            {tab === "password"
-                                                ? t("sshPasswordTab")
-                                                : t("sshPrivateKeyTab")}
-                                        </button>
-                                    )
-                                )}
-                            </div>
-
-                            {authTab === "password" && (
-                                <div className="space-y-4">
+                            <HorizontalTabs
+                                clientSide
+                                defaultTab={0}
+                                items={[
+                                    { title: t("sshPasswordTab"), href: "#" },
+                                    { title: t("sshPrivateKeyTab"), href: "#" }
+                                ]}
+                            >
+                                <div className="space-y-4 mt-4 p-1">
                                     <Field
                                         label={t("username")}
                                         id="username-pw"
@@ -464,7 +450,6 @@ export default function SshClient({
                                                     username: e.target.value
                                                 })
                                             }
-                                            placeholder="root"
                                         />
                                     </Field>
                                     <Field label={t("password")} id="password">
@@ -480,11 +465,31 @@ export default function SshClient({
                                             }
                                         />
                                     </Field>
-                                </div>
-                            )}
+                                    <div className="mt-4 space-y-3">
+                                        {connectError && (
+                                            <p className="text-destructive text-sm">
+                                                {connectError}
+                                            </p>
+                                        )}
 
-                            {authTab === "privateKey" && (
-                                <div className="space-y-4">
+                                        <Button
+                                            onClick={() =>
+                                                connect(undefined, "password")
+                                            }
+                                            loading={connecting}
+                                            disabled={
+                                                !form.username || !form.password
+                                            }
+                                            className="w-full"
+                                        >
+                                            {connecting
+                                                ? t("sshConnecting")
+                                                : t("sshAuthenticate")}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 mt-4 p-1">
                                     <p className="text-sm text-muted-foreground">
                                         {t("sshPrivateKeyDisclaimer")}{" "}
                                         <Link
@@ -510,7 +515,6 @@ export default function SshClient({
                                                     username: e.target.value
                                                 })
                                             }
-                                            placeholder="root"
                                         />
                                     </Field>
                                     <Field
@@ -542,32 +546,31 @@ export default function SshClient({
                                             onChange={handleKeyFile}
                                         />
                                     </Field>
+                                    <div className="mt-4 space-y-3">
+                                        {connectError && (
+                                            <p className="text-destructive text-sm">
+                                                {connectError}
+                                            </p>
+                                        )}
+
+                                        <Button
+                                            onClick={() =>
+                                                connect(undefined, "privateKey")
+                                            }
+                                            loading={connecting}
+                                            disabled={
+                                                !form.username ||
+                                                !form.privateKey
+                                            }
+                                            className="w-full"
+                                        >
+                                            {connecting
+                                                ? t("sshConnecting")
+                                                : t("sshAuthenticate")}
+                                        </Button>
+                                    </div>
                                 </div>
-                            )}
-
-                            <div className="mt-4 space-y-3">
-                                {connectError && (
-                                    <p className="text-destructive text-sm">
-                                        {connectError}
-                                    </p>
-                                )}
-
-                                <Button
-                                    onClick={() => connect()}
-                                    loading={connecting}
-                                    disabled={
-                                        !form.username ||
-                                        (authTab === "password"
-                                            ? !form.password
-                                            : !form.privateKey)
-                                    }
-                                    className="w-full"
-                                >
-                                    {connecting
-                                        ? t("sshConnecting")
-                                        : t("sshAuthenticate")}
-                                </Button>
-                            </div>
+                            </HorizontalTabs>
                         </CardContent>
                     </Card>
                 </div>
