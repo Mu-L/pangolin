@@ -20,6 +20,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { build } from "@server/build";
 import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -302,19 +303,18 @@ export default function GeneralPage() {
             header: ({ column }) => {
                 return (
                     <div className="flex items-center gap-2">
-                        <span>{t("action")}</span>
-                        <ColumnFilter
+                        <ColumnFilterButton
                             options={[
                                 { value: "true", label: "Allowed" },
                                 { value: "false", label: "Denied" }
                             ]}
+                            label={t("action")}
                             selectedValue={filters.action}
                             onValueChange={(value) =>
                                 handleFilterChange("action", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
