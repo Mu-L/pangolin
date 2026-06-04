@@ -11,6 +11,7 @@ import {
     CreditCard,
     Fingerprint,
     Globe,
+    GlobeIcon,
     GlobeLock,
     KeyRound,
     Laptop,
@@ -22,7 +23,9 @@ import {
     ScanEye,
     Server,
     Settings,
+    ShieldIcon,
     SquareMousePointer,
+    TagIcon,
     TicketCheck,
     Unplug,
     User,
@@ -68,12 +71,12 @@ export const orgNavSections = (
                 items: [
                     {
                         title: "sidebarProxyResources",
-                        href: "/{orgId}/settings/resources/proxy",
+                        href: "/{orgId}/settings/resources/public",
                         icon: <Globe className="size-4 flex-none" />
                     },
                     {
                         title: "sidebarClientResources",
-                        href: "/{orgId}/settings/resources/client",
+                        href: "/{orgId}/settings/resources/private",
                         icon: <GlobeLock className="size-4 flex-none" />
                     }
                 ]
@@ -99,7 +102,7 @@ export const orgNavSections = (
                 href: "/{orgId}/settings/domains",
                 icon: <Globe className="size-4 flex-none" />
             },
-            ...(build == "saas"
+            ...(build === "saas"
                 ? [
                       {
                           title: "sidebarRemoteExitNodes",
@@ -134,6 +137,24 @@ export const orgNavSections = (
                     }
                 ]
             },
+            ...(build !== "oss"
+                ? [
+                      {
+                          title: "sidebarPolicies",
+
+                          icon: <ShieldIcon className="size-4 flex-none" />,
+                          items: [
+                              {
+                                  title: "sidebarResourcePolicies",
+                                  href: "/{orgId}/settings/policies/resource",
+                                  icon: (
+                                      <GlobeIcon className="size-4 flex-none" />
+                                  )
+                              }
+                          ]
+                      }
+                  ]
+                : []),
             // PaidFeaturesAlert
             ...((build === "oss" && !env?.flags.disableEnterpriseFeatures) ||
             build === "saas" ||
@@ -237,10 +258,19 @@ export const orgNavSections = (
                         title: "sidebarApiKeys",
                         href: "/{orgId}/settings/api-keys",
                         icon: <KeyRound className="size-4 flex-none" />
-                    }
+                    },
+                    ...(build !== "oss"
+                        ? [
+                              {
+                                  title: "labels",
+                                  href: "/{orgId}/settings/labels",
+                                  icon: <TagIcon className="size-4 flex-none" />
+                              }
+                          ]
+                        : [])
                 ]
             },
-            ...(build == "saas" && options?.isPrimaryOrg
+            ...(build === "saas" && options?.isPrimaryOrg
                 ? [
                       {
                           title: "sidebarBillingAndLicenses",

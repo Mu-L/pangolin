@@ -17,7 +17,15 @@ import {
     Transaction,
     userOrgs,
     userResources,
-    users
+    users,
+    resourcePolicies,
+    resourcePolicyPassword,
+    resourcePolicyPincode,
+    resourcePolicyHeaderAuth,
+    resourcePolicyRules,
+    resourcePolicyWhiteList,
+    rolePolicies,
+    userPolicies
 } from "@server/db";
 import { resources, targets, sites } from "@server/db";
 import { eq, and, asc, or, ne, count, isNotNull } from "drizzle-orm";
@@ -31,6 +39,7 @@ import logger from "@server/logger";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
 import { pickPort } from "@server/routers/target/helpers";
 import { resourcePassword } from "@server/db";
+import { getUniqueResourcePolicyName } from "@server/db/names";
 import { hashPassword } from "@server/auth/password";
 import { isValidCIDR, isValidIP, isValidUrlGlobPattern } from "../validators";
 import { isValidRegionId } from "@server/db/regions";
@@ -200,9 +209,6 @@ export async function updateProxyResources(
             )
             .limit(1);
 
-        const http = resourceData.protocol == "http";
-        const protocol =
-            resourceData.protocol == "http" ? "tcp" : resourceData.protocol;
         const resourceEnabled =
             resourceData.enabled == undefined || resourceData.enabled == null
                 ? true
@@ -218,7 +224,9 @@ export async function updateProxyResources(
 
         if (existingResource) {
             let domain;
-            if (http) {
+            if (
+                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+            ) {
                 domain = await getDomain(
                     existingResource.resourceId,
                     resourceData["full-domain"]!,
@@ -244,163 +252,336 @@ export async function updateProxyResources(
                     resourceData.maintenance = undefined;
                 }
 
-                [resource] = await trx
-                    .update(resources)
-                    .set({
-                        name: resourceData.name || "Unnamed Resource",
-                        protocol: protocol || "tcp",
-                        http: http,
-                        proxyPort: http ? null : resourceData["proxy-port"],
-                        fullDomain: http ? resourceData["full-domain"] : null,
-                        subdomain: domain ? domain.subdomain : null,
-                        domainId: domain ? domain.domainId : null,
-                        wildcard: domain ? domain.wildcard : false,
-                        enabled: resourceEnabled,
-                        sso: resourceData.auth?.["sso-enabled"] || false,
-                        skipToIdpId:
-                            resourceData.auth?.["auto-login-idp"] || null,
-                        ssl: resourceSsl,
-                        setHostHeader: resourceData["host-header"] || null,
-                        tlsServerName: resourceData["tls-server-name"] || null,
-                        emailWhitelistEnabled: resourceData.auth?.[
-                            "whitelist-users"
-                        ]
-                            ? resourceData.auth["whitelist-users"].length > 0
-                            : false,
-                        headers: headers || null,
-                        applyRules:
-                            resourceData.rules && resourceData.rules.length > 0,
-                        maintenanceModeEnabled:
-                            resourceData.maintenance?.enabled,
-                        maintenanceModeType: resourceData.maintenance?.type,
-                        maintenanceTitle: resourceData.maintenance?.title,
-                        maintenanceMessage: resourceData.maintenance?.message,
-                        maintenanceEstimatedTime:
-                            resourceData.maintenance?.["estimated-time"]
-                    })
-                    .where(
-                        eq(resources.resourceId, existingResource.resourceId)
-                    )
-                    .returning();
+                // Look up the admin role (needed for inline policy creation)
+                const [adminRole] = await trx
+                    .select()
+                    .from(roles)
+                    .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
+                    .limit(1);
 
-                await trx
-                    .delete(resourcePassword)
-                    .where(
-                        eq(
-                            resourcePassword.resourceId,
-                            existingResource.resourceId
-                        )
-                    );
-                if (resourceData.auth?.password) {
-                    const passwordHash = await hashPassword(
-                        resourceData.auth.password
-                    );
-
-                    await trx.insert(resourcePassword).values({
-                        resourceId: existingResource.resourceId,
-                        passwordHash
-                    });
+                if (!adminRole) {
+                    throw new Error(`Admin role not found`);
                 }
 
-                await trx
-                    .delete(resourcePincode)
-                    .where(
-                        eq(
-                            resourcePincode.resourceId,
-                            existingResource.resourceId
+                if (resourceData.policy) {
+                    // SHARED POLICY MODE: look up shared policy by niceId
+                    const [sharedPolicy] = await trx
+                        .select()
+                        .from(resourcePolicies)
+                        .where(
+                            and(
+                                eq(
+                                    resourcePolicies.niceId,
+                                    resourceData.policy
+                                ),
+                                eq(resourcePolicies.orgId, orgId)
+                            )
                         )
-                    );
-                if (resourceData.auth?.pincode) {
-                    const pincodeHash = await hashPassword(
-                        resourceData.auth.pincode.toString()
-                    );
+                        .limit(1);
 
-                    await trx.insert(resourcePincode).values({
-                        resourceId: existingResource.resourceId,
-                        pincodeHash,
-                        digitLength: 6
-                    });
-                }
-
-                await trx
-                    .delete(resourceHeaderAuth)
-                    .where(
-                        eq(
-                            resourceHeaderAuth.resourceId,
-                            existingResource.resourceId
-                        )
-                    );
-
-                await trx
-                    .delete(resourceHeaderAuthExtendedCompatibility)
-                    .where(
-                        eq(
-                            resourceHeaderAuthExtendedCompatibility.resourceId,
-                            existingResource.resourceId
-                        )
-                    );
-
-                if (resourceData.auth?.["basic-auth"]) {
-                    const headerAuthUser =
-                        resourceData.auth?.["basic-auth"]?.user;
-                    const headerAuthPassword =
-                        resourceData.auth?.["basic-auth"]?.password;
-                    const headerAuthExtendedCompatibility =
-                        resourceData.auth?.["basic-auth"]
-                            ?.extendedCompatibility;
-                    if (
-                        headerAuthUser &&
-                        headerAuthPassword &&
-                        headerAuthExtendedCompatibility !== null
-                    ) {
-                        const headerAuthHash = await hashPassword(
-                            Buffer.from(
-                                `${headerAuthUser}:${headerAuthPassword}`
-                            ).toString("base64")
+                    if (!sharedPolicy) {
+                        throw new Error(
+                            `Shared policy not found: ${resourceData.policy} in org ${orgId}`
                         );
-                        await Promise.all([
-                            trx.insert(resourceHeaderAuth).values({
-                                resourceId: existingResource.resourceId,
-                                headerAuthHash
-                            }),
-                            trx
-                                .insert(resourceHeaderAuthExtendedCompatibility)
-                                .values({
-                                    resourceId: existingResource.resourceId,
-                                    extendedCompatibilityIsActivated:
-                                        headerAuthExtendedCompatibility
-                                })
-                        ]);
                     }
-                }
 
-                if (resourceData.auth?.["sso-roles"]) {
-                    const ssoRoles = resourceData.auth?.["sso-roles"];
-                    await syncRoleResources(
-                        existingResource.resourceId,
-                        ssoRoles,
+                    [resource] = await trx
+                        .update(resources)
+                        .set({
+                            name: resourceData.name || "Unnamed Resource",
+
+                            mode: resourceData.mode,
+                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                                resourceData.mode || ""
+                            )
+                                ? null
+                                : resourceData["proxy-port"],
+                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                                resourceData.mode || ""
+                            )
+                                ? resourceData["full-domain"]
+                                : null,
+                            subdomain: domain ? domain.subdomain : null,
+                            domainId: domain ? domain.domainId : null,
+                            wildcard: domain ? domain.wildcard : false,
+                            enabled: resourceEnabled,
+                            sso: resourceData.auth?.["sso-enabled"] || false,
+                            skipToIdpId:
+                                resourceData.auth?.["auto-login-idp"] || null,
+                            ssl: resourceSsl,
+                            setHostHeader: resourceData["host-header"] || null,
+                            tlsServerName:
+                                resourceData["tls-server-name"] || null,
+                            emailWhitelistEnabled: resourceData.auth?.[
+                                "whitelist-users"
+                            ]
+                                ? resourceData.auth["whitelist-users"].length >
+                                  0
+                                : false,
+                            headers: headers || null,
+                            applyRules:
+                                resourceData.rules &&
+                                resourceData.rules.length > 0,
+                            pamMode:
+                                resourceData["auth-daemon"]?.pam ||
+                                "passthrough",
+                            authDaemonMode:
+                                resourceData["auth-daemon"]?.mode || "native",
+                            authDaemonPort:
+                                resourceData["auth-daemon"]?.port || 22123,
+                            maintenanceModeEnabled:
+                                resourceData.maintenance?.enabled,
+                            maintenanceModeType: resourceData.maintenance?.type,
+                            maintenanceTitle: resourceData.maintenance?.title,
+                            maintenanceMessage:
+                                resourceData.maintenance?.message,
+                            maintenanceEstimatedTime:
+                                resourceData.maintenance?.["estimated-time"],
+                            proxyProtocol:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol"] ?? false)
+                                    : false,
+                            proxyProtocolVersion:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol-version"] ??
+                                      1)
+                                    : 1,
+                            resourcePolicyId: sharedPolicy.resourcePolicyId
+                        })
+                        .where(
+                            eq(
+                                resources.resourceId,
+                                existingResource.resourceId
+                            )
+                        )
+                        .returning();
+
+                    // Update OLD resource-level auth tables
+                    await trx
+                        .delete(resourcePassword)
+                        .where(
+                            eq(
+                                resourcePassword.resourceId,
+                                existingResource.resourceId
+                            )
+                        );
+                    if (resourceData.auth?.password) {
+                        const passwordHash = await hashPassword(
+                            resourceData.auth.password
+                        );
+                        await trx.insert(resourcePassword).values({
+                            resourceId: existingResource.resourceId,
+                            passwordHash
+                        });
+                    }
+
+                    await trx
+                        .delete(resourcePincode)
+                        .where(
+                            eq(
+                                resourcePincode.resourceId,
+                                existingResource.resourceId
+                            )
+                        );
+                    if (resourceData.auth?.pincode) {
+                        const pincodeHash = await hashPassword(
+                            resourceData.auth.pincode.toString()
+                        );
+                        await trx.insert(resourcePincode).values({
+                            resourceId: existingResource.resourceId,
+                            pincodeHash,
+                            digitLength: 6
+                        });
+                    }
+
+                    await trx
+                        .delete(resourceHeaderAuth)
+                        .where(
+                            eq(
+                                resourceHeaderAuth.resourceId,
+                                existingResource.resourceId
+                            )
+                        );
+                    await trx
+                        .delete(resourceHeaderAuthExtendedCompatibility)
+                        .where(
+                            eq(
+                                resourceHeaderAuthExtendedCompatibility.resourceId,
+                                existingResource.resourceId
+                            )
+                        );
+                    if (resourceData.auth?.["basic-auth"]) {
+                        const headerAuthUser =
+                            resourceData.auth["basic-auth"]?.user;
+                        const headerAuthPassword =
+                            resourceData.auth["basic-auth"]?.password;
+                        const headerAuthExtendedCompatibility =
+                            resourceData.auth["basic-auth"]
+                                ?.extendedCompatibility;
+                        if (
+                            headerAuthUser &&
+                            headerAuthPassword &&
+                            headerAuthExtendedCompatibility !== null
+                        ) {
+                            const headerAuthHash = await hashPassword(
+                                Buffer.from(
+                                    `${headerAuthUser}:${headerAuthPassword}`
+                                ).toString("base64")
+                            );
+                            await Promise.all([
+                                trx.insert(resourceHeaderAuth).values({
+                                    resourceId: existingResource.resourceId,
+                                    headerAuthHash
+                                }),
+                                trx
+                                    .insert(
+                                        resourceHeaderAuthExtendedCompatibility
+                                    )
+                                    .values({
+                                        resourceId: existingResource.resourceId,
+                                        extendedCompatibilityIsActivated:
+                                            headerAuthExtendedCompatibility
+                                    })
+                            ]);
+                        }
+                    }
+
+                    if (resourceData.auth?.["sso-roles"]) {
+                        await syncRoleResources(
+                            existingResource.resourceId,
+                            resourceData.auth["sso-roles"],
+                            orgId,
+                            trx
+                        );
+                    }
+
+                    if (resourceData.auth?.["sso-users"]) {
+                        await syncUserResources(
+                            existingResource.resourceId,
+                            resourceData.auth["sso-users"],
+                            orgId,
+                            trx
+                        );
+                    }
+
+                    if (resourceData.auth?.["whitelist-users"]) {
+                        await syncWhitelistUsers(
+                            existingResource.resourceId,
+                            resourceData.auth["whitelist-users"],
+                            orgId,
+                            trx
+                        );
+                    }
+                } else {
+                    // INLINE POLICY MODE: ensure inline policy exists
+                    const inlinePolicyId = await ensureInlinePolicy(
+                        existingResource.defaultResourcePolicyId,
                         orgId,
+                        resourceNiceId,
+                        adminRole.roleId,
                         trx
                     );
-                }
 
-                if (resourceData.auth?.["sso-users"]) {
-                    const ssoUsers = resourceData.auth?.["sso-users"];
-                    await syncUserResources(
-                        existingResource.resourceId,
-                        ssoUsers,
-                        orgId,
+                    [resource] = await trx
+                        .update(resources)
+                        .set({
+                            name: resourceData.name || "Unnamed Resource",
+                            proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                                resourceData.mode || ""
+                            )
+                                ? null
+                                : resourceData["proxy-port"],
+                            fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                                resourceData.mode || ""
+                            )
+                                ? resourceData["full-domain"]
+                                : null,
+                            subdomain: domain ? domain.subdomain : null,
+                            domainId: domain ? domain.domainId : null,
+                            wildcard: domain ? domain.wildcard : false,
+                            enabled: resourceEnabled,
+                            ssl: resourceSsl,
+                            setHostHeader: resourceData["host-header"] || null,
+                            tlsServerName:
+                                resourceData["tls-server-name"] || null,
+                            headers: headers || null,
+                            maintenanceModeEnabled:
+                                resourceData.maintenance?.enabled,
+                            maintenanceModeType: resourceData.maintenance?.type,
+                            maintenanceTitle: resourceData.maintenance?.title,
+                            maintenanceMessage:
+                                resourceData.maintenance?.message,
+                            maintenanceEstimatedTime:
+                                resourceData.maintenance?.["estimated-time"],
+                            proxyProtocol:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol"] ?? false)
+                                    : false,
+                            proxyProtocolVersion:
+                                resourceData.mode === "tcp"
+                                    ? (resourceData["proxy-protocol-version"] ??
+                                      1)
+                                    : 1,
+                            resourcePolicyId: null,
+                            defaultResourcePolicyId: inlinePolicyId
+                        })
+                        .where(
+                            eq(
+                                resources.resourceId,
+                                existingResource.resourceId
+                            )
+                        )
+                        .returning();
+
+                    // Clear the old resource-level auth tables (not used in inline policy mode)
+                    await Promise.all([
                         trx
-                    );
-                }
+                            .delete(resourcePassword)
+                            .where(
+                                eq(
+                                    resourcePassword.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourcePincode)
+                            .where(
+                                eq(
+                                    resourcePincode.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourceHeaderAuth)
+                            .where(
+                                eq(
+                                    resourceHeaderAuth.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourceHeaderAuthExtendedCompatibility)
+                            .where(
+                                eq(
+                                    resourceHeaderAuthExtendedCompatibility.resourceId,
+                                    existingResource.resourceId
+                                )
+                            ),
+                        trx
+                            .delete(resourceWhitelist)
+                            .where(
+                                eq(
+                                    resourceWhitelist.resourceId,
+                                    existingResource.resourceId
+                                )
+                            )
+                    ]);
 
-                if (resourceData.auth?.["whitelist-users"]) {
-                    const whitelistUsers =
-                        resourceData.auth?.["whitelist-users"];
-                    await syncWhitelistUsers(
-                        existingResource.resourceId,
-                        whitelistUsers,
+                    // Update inline policy auth fields and policy-level tables
+                    await syncInlinePolicyAuth(
+                        inlinePolicyId,
                         orgId,
+                        resourceData,
                         trx
                     );
                 }
@@ -468,7 +649,10 @@ export async function updateProxyResources(
                         .set({
                             siteId: site.siteId,
                             ip: targetData.hostname,
-                            method: http ? targetData.method : null,
+                            method:
+                                resourceData.mode == "http" // the other types of ssh, rdp, and vnc use the browser gateway targets and not this one so this is okay
+                                    ? targetData.method
+                                    : null,
                             port: targetData.port,
                             enabled: targetData.enabled,
                             path: targetData.path,
@@ -620,76 +804,108 @@ export async function updateProxyResources(
                 }
             }
 
-            const existingRules = await trx
-                .select()
-                .from(resourceRules)
-                .where(
-                    eq(resourceRules.resourceId, existingResource.resourceId)
-                )
-                .orderBy(resourceRules.priority);
+            if (resourceData.policy) {
+                // SHARED POLICY MODE: sync rules into old resourceRules table
+                const existingRules = await trx
+                    .select()
+                    .from(resourceRules)
+                    .where(
+                        eq(
+                            resourceRules.resourceId,
+                            existingResource.resourceId
+                        )
+                    )
+                    .orderBy(resourceRules.priority);
 
-            // Sync rules
-            for (const [index, rule] of resourceData.rules?.entries() || []) {
-                const intendedPriority = rule.priority ?? index + 1;
-                const existingRule = existingRules[index];
-                if (existingRule) {
-                    if (
-                        existingRule.action !== getRuleAction(rule.action) ||
-                        existingRule.match !== rule.match.toUpperCase() ||
-                        existingRule.value !==
-                            getRuleValue(
-                                rule.match.toUpperCase(),
-                                rule.value
-                            ) ||
-                        existingRule.priority !== intendedPriority
-                    ) {
-                        validateRule(rule);
-                        await trx
-                            .update(resourceRules)
-                            .set({
-                                action: getRuleAction(rule.action),
-                                match: rule.match.toUpperCase(),
-                                value: getRuleValue(
+                // Sync rules
+                for (const [index, rule] of resourceData.rules?.entries() ||
+                    []) {
+                    const intendedPriority = rule.priority ?? index + 1;
+                    const existingRule = existingRules[index];
+                    if (existingRule) {
+                        if (
+                            existingRule.action !==
+                                getRuleAction(rule.action) ||
+                            existingRule.match !== rule.match.toUpperCase() ||
+                            existingRule.value !==
+                                getRuleValue(
                                     rule.match.toUpperCase(),
                                     rule.value
-                                ),
-                                priority: intendedPriority
-                            })
-                            .where(
-                                eq(resourceRules.ruleId, existingRule.ruleId)
-                            );
+                                ) ||
+                            existingRule.priority !== intendedPriority
+                        ) {
+                            validateRule(rule);
+                            await trx
+                                .update(resourceRules)
+                                .set({
+                                    action: getRuleAction(rule.action),
+                                    match: rule.match.toUpperCase(),
+                                    value: getRuleValue(
+                                        rule.match.toUpperCase(),
+                                        rule.value
+                                    ),
+                                    priority: intendedPriority
+                                })
+                                .where(
+                                    eq(
+                                        resourceRules.ruleId,
+                                        existingRule.ruleId
+                                    )
+                                );
+                        }
+                    } else {
+                        validateRule(rule);
+                        await trx.insert(resourceRules).values({
+                            resourceId: existingResource.resourceId,
+                            action: getRuleAction(rule.action),
+                            match: rule.match.toUpperCase(),
+                            value: getRuleValue(
+                                rule.match.toUpperCase(),
+                                rule.value
+                            ),
+                            priority: intendedPriority
+                        });
                     }
-                } else {
-                    validateRule(rule);
-                    await trx.insert(resourceRules).values({
-                        resourceId: existingResource.resourceId,
-                        action: getRuleAction(rule.action),
-                        match: rule.match.toUpperCase(),
-                        value: getRuleValue(
-                            rule.match.toUpperCase(),
-                            rule.value
-                        ),
-                        priority: intendedPriority
-                    });
                 }
-            }
 
-            if (existingRules.length > (resourceData.rules?.length || 0)) {
-                const rulesToDelete = existingRules.slice(
-                    resourceData.rules?.length || 0
-                );
-                for (const rule of rulesToDelete) {
-                    await trx
-                        .delete(resourceRules)
-                        .where(eq(resourceRules.ruleId, rule.ruleId));
+                if (existingRules.length > (resourceData.rules?.length || 0)) {
+                    const rulesToDelete = existingRules.slice(
+                        resourceData.rules?.length || 0
+                    );
+                    for (const rule of rulesToDelete) {
+                        await trx
+                            .delete(resourceRules)
+                            .where(eq(resourceRules.ruleId, rule.ruleId));
+                    }
                 }
+            } else {
+                // INLINE POLICY MODE: sync rules into policy-level table
+                const inlinePolicyId = resource!.defaultResourcePolicyId!;
+
+                // Clear the old resource-level rules table
+                await trx
+                    .delete(resourceRules)
+                    .where(
+                        eq(
+                            resourceRules.resourceId,
+                            existingResource.resourceId
+                        )
+                    );
+
+                await syncInlinePolicyRules(
+                    inlinePolicyId,
+                    resourceData.rules || [],
+                    trx
+                );
             }
 
             logger.debug(`Updated resource ${existingResource.resourceId}`);
         } else {
             // create a brand new resource
             let domain;
-            if (http) {
+            if (
+                ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
+            ) {
                 domain = await getDomain(
                     undefined,
                     resourceData["full-domain"]!,
@@ -706,97 +922,7 @@ export async function updateProxyResources(
                 resourceData.maintenance = undefined;
             }
 
-            // Create new resource
-            const [newResource] = await trx
-                .insert(resources)
-                .values({
-                    orgId,
-                    niceId: resourceNiceId,
-                    name: resourceData.name || "Unnamed Resource",
-                    protocol: protocol || "tcp",
-                    http: http,
-                    proxyPort: http ? null : resourceData["proxy-port"],
-                    fullDomain: http ? resourceData["full-domain"] : null,
-                    subdomain: domain ? domain.subdomain : null,
-                    domainId: domain ? domain.domainId : null,
-                    wildcard: domain ? domain.wildcard : false,
-                    enabled: resourceEnabled,
-                    sso: resourceData.auth?.["sso-enabled"] || false,
-                    skipToIdpId: resourceData.auth?.["auto-login-idp"] || null,
-                    setHostHeader: resourceData["host-header"] || null,
-                    tlsServerName: resourceData["tls-server-name"] || null,
-                    ssl: resourceSsl,
-                    headers: headers || null,
-                    applyRules:
-                        resourceData.rules && resourceData.rules.length > 0,
-                    maintenanceModeEnabled: resourceData.maintenance?.enabled,
-                    maintenanceModeType: resourceData.maintenance?.type,
-                    maintenanceTitle: resourceData.maintenance?.title,
-                    maintenanceMessage: resourceData.maintenance?.message,
-                    maintenanceEstimatedTime:
-                        resourceData.maintenance?.["estimated-time"]
-                })
-                .returning();
-
-            if (resourceData.auth?.password) {
-                const passwordHash = await hashPassword(
-                    resourceData.auth.password
-                );
-
-                await trx.insert(resourcePassword).values({
-                    resourceId: newResource.resourceId,
-                    passwordHash
-                });
-            }
-
-            if (resourceData.auth?.pincode) {
-                const pincodeHash = await hashPassword(
-                    resourceData.auth.pincode.toString()
-                );
-
-                await trx.insert(resourcePincode).values({
-                    resourceId: newResource.resourceId,
-                    pincodeHash,
-                    digitLength: 6
-                });
-            }
-
-            if (resourceData.auth?.["basic-auth"]) {
-                const headerAuthUser = resourceData.auth?.["basic-auth"]?.user;
-                const headerAuthPassword =
-                    resourceData.auth?.["basic-auth"]?.password;
-                const headerAuthExtendedCompatibility =
-                    resourceData.auth?.["basic-auth"]?.extendedCompatibility;
-
-                if (
-                    headerAuthUser &&
-                    headerAuthPassword &&
-                    headerAuthExtendedCompatibility !== null
-                ) {
-                    const headerAuthHash = await hashPassword(
-                        Buffer.from(
-                            `${headerAuthUser}:${headerAuthPassword}`
-                        ).toString("base64")
-                    );
-
-                    await Promise.all([
-                        trx.insert(resourceHeaderAuth).values({
-                            resourceId: newResource.resourceId,
-                            headerAuthHash
-                        }),
-                        trx
-                            .insert(resourceHeaderAuthExtendedCompatibility)
-                            .values({
-                                resourceId: newResource.resourceId,
-                                extendedCompatibilityIsActivated:
-                                    headerAuthExtendedCompatibility
-                            })
-                    ]);
-                }
-            }
-
-            resource = newResource;
-
+            // Look up admin role (needed for inline policy and roleResources)
             const [adminRole] = await trx
                 .select()
                 .from(roles)
@@ -807,37 +933,233 @@ export async function updateProxyResources(
                 throw new Error(`Admin role not found`);
             }
 
+            // Always create an inline policy for the resource
+            const policyNiceId = await getUniqueResourcePolicyName(orgId);
+            const [inlinePolicy] = await trx
+                .insert(resourcePolicies)
+                .values({
+                    niceId: policyNiceId,
+                    orgId,
+                    name: `default policy for ${resourceNiceId}`,
+                    sso: true,
+                    scope: "resource"
+                })
+                .returning();
+
+            // Make the inline policy visible to the admin role
+            await trx.insert(rolePolicies).values({
+                roleId: adminRole.roleId,
+                resourcePolicyId: inlinePolicy.resourcePolicyId
+            });
+
+            // Determine the active shared policy (if provided)
+            let sharedPolicyId: number | null = null;
+            if (resourceData.policy) {
+                const [sharedPolicy] = await trx
+                    .select()
+                    .from(resourcePolicies)
+                    .where(
+                        and(
+                            eq(resourcePolicies.niceId, resourceData.policy),
+                            eq(resourcePolicies.orgId, orgId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!sharedPolicy) {
+                    throw new Error(
+                        `Shared policy not found: ${resourceData.policy} in org ${orgId}`
+                    );
+                }
+                sharedPolicyId = sharedPolicy.resourcePolicyId;
+            }
+
+            // Create new resource
+            const [newResource] = await trx
+                .insert(resources)
+                .values({
+                    orgId,
+                    niceId: resourceNiceId,
+                    name: resourceData.name || "Unnamed Resource",
+                    mode: resourceData.mode,
+                    proxyPort: ["http", "ssh", "rdp", "vnc"].includes(
+                        resourceData.mode || ""
+                    )
+                        ? null
+                        : resourceData["proxy-port"],
+                    fullDomain: ["http", "ssh", "rdp", "vnc"].includes(
+                        resourceData.mode || ""
+                    )
+                        ? resourceData["full-domain"]
+                        : null,
+                    subdomain: domain ? domain.subdomain : null,
+                    domainId: domain ? domain.domainId : null,
+                    wildcard: domain ? domain.wildcard : false,
+                    enabled: resourceEnabled,
+                    setHostHeader: resourceData["host-header"] || null,
+                    tlsServerName: resourceData["tls-server-name"] || null,
+                    ssl: resourceSsl,
+                    headers: headers || null,
+                    applyRules:
+                        resourceData.rules && resourceData.rules.length > 0,
+                    pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
+                    authDaemonMode:
+                        resourceData["auth-daemon"]?.mode || "native",
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123,
+                    maintenanceModeEnabled: resourceData.maintenance?.enabled,
+                    maintenanceModeType: resourceData.maintenance?.type,
+                    maintenanceTitle: resourceData.maintenance?.title,
+                    maintenanceMessage: resourceData.maintenance?.message,
+                    maintenanceEstimatedTime:
+                        resourceData.maintenance?.["estimated-time"],
+                    proxyProtocol:
+                        resourceData.mode === "tcp"
+                            ? (resourceData["proxy-protocol"] ?? false)
+                            : false,
+                    proxyProtocolVersion:
+                        resourceData.mode === "tcp"
+                            ? (resourceData["proxy-protocol-version"] ?? 1)
+                            : 1,
+                    defaultResourcePolicyId: inlinePolicy.resourcePolicyId,
+                    resourcePolicyId: sharedPolicyId,
+                    // Only set these resource-level fields when using a shared policy
+                    ...(sharedPolicyId
+                        ? {
+                              sso: resourceData.auth?.["sso-enabled"] || false,
+                              skipToIdpId:
+                                  resourceData.auth?.["auto-login-idp"] || null,
+                              emailWhitelistEnabled: resourceData.auth?.[
+                                  "whitelist-users"
+                              ]
+                                  ? resourceData.auth["whitelist-users"]
+                                        .length > 0
+                                  : false,
+                              applyRules:
+                                  resourceData.rules &&
+                                  resourceData.rules.length > 0
+                          }
+                        : {})
+                })
+                .returning();
+
+            resource = newResource;
+
             await trx.insert(roleResources).values({
                 roleId: adminRole.roleId,
                 resourceId: newResource.resourceId
             });
 
-            if (resourceData.auth?.["sso-roles"]) {
-                const ssoRoles = resourceData.auth?.["sso-roles"];
-                await syncRoleResources(
-                    newResource.resourceId,
-                    ssoRoles,
+            if (sharedPolicyId) {
+                // SHARED POLICY MODE: update OLD resource-level auth tables
+                if (resourceData.auth?.password) {
+                    const passwordHash = await hashPassword(
+                        resourceData.auth.password
+                    );
+                    await trx.insert(resourcePassword).values({
+                        resourceId: newResource.resourceId,
+                        passwordHash
+                    });
+                }
+
+                if (resourceData.auth?.pincode) {
+                    const pincodeHash = await hashPassword(
+                        resourceData.auth.pincode.toString()
+                    );
+                    await trx.insert(resourcePincode).values({
+                        resourceId: newResource.resourceId,
+                        pincodeHash,
+                        digitLength: 6
+                    });
+                }
+
+                if (resourceData.auth?.["basic-auth"]) {
+                    const headerAuthUser =
+                        resourceData.auth["basic-auth"]?.user;
+                    const headerAuthPassword =
+                        resourceData.auth["basic-auth"]?.password;
+                    const headerAuthExtendedCompatibility =
+                        resourceData.auth["basic-auth"]?.extendedCompatibility;
+                    if (
+                        headerAuthUser &&
+                        headerAuthPassword &&
+                        headerAuthExtendedCompatibility !== null
+                    ) {
+                        const headerAuthHash = await hashPassword(
+                            Buffer.from(
+                                `${headerAuthUser}:${headerAuthPassword}`
+                            ).toString("base64")
+                        );
+                        await Promise.all([
+                            trx.insert(resourceHeaderAuth).values({
+                                resourceId: newResource.resourceId,
+                                headerAuthHash
+                            }),
+                            trx
+                                .insert(resourceHeaderAuthExtendedCompatibility)
+                                .values({
+                                    resourceId: newResource.resourceId,
+                                    extendedCompatibilityIsActivated:
+                                        headerAuthExtendedCompatibility
+                                })
+                        ]);
+                    }
+                }
+
+                if (resourceData.auth?.["sso-roles"]) {
+                    await syncRoleResources(
+                        newResource.resourceId,
+                        resourceData.auth["sso-roles"],
+                        orgId,
+                        trx
+                    );
+                }
+
+                if (resourceData.auth?.["sso-users"]) {
+                    await syncUserResources(
+                        newResource.resourceId,
+                        resourceData.auth["sso-users"],
+                        orgId,
+                        trx
+                    );
+                }
+
+                if (resourceData.auth?.["whitelist-users"]) {
+                    await syncWhitelistUsers(
+                        newResource.resourceId,
+                        resourceData.auth["whitelist-users"],
+                        orgId,
+                        trx
+                    );
+                }
+
+                // Rules into OLD resourceRules table
+                for (const [index, rule] of resourceData.rules?.entries() ||
+                    []) {
+                    validateRule(rule);
+                    await trx.insert(resourceRules).values({
+                        resourceId: newResource.resourceId,
+                        action: getRuleAction(rule.action),
+                        match: rule.match.toUpperCase(),
+                        value: getRuleValue(
+                            rule.match.toUpperCase(),
+                            rule.value
+                        ),
+                        priority: rule.priority ?? index + 1
+                    });
+                }
+            } else {
+                // INLINE POLICY MODE: update the inline policy auth fields
+                await syncInlinePolicyAuth(
+                    inlinePolicy.resourcePolicyId,
                     orgId,
+                    resourceData,
                     trx
                 );
-            }
 
-            if (resourceData.auth?.["sso-users"]) {
-                const ssoUsers = resourceData.auth?.["sso-users"];
-                await syncUserResources(
-                    newResource.resourceId,
-                    ssoUsers,
-                    orgId,
-                    trx
-                );
-            }
-
-            if (resourceData.auth?.["whitelist-users"]) {
-                const whitelistUsers = resourceData.auth?.["whitelist-users"];
-                await syncWhitelistUsers(
-                    newResource.resourceId,
-                    whitelistUsers,
-                    orgId,
+                // Rules into policy-level table
+                await syncInlinePolicyRules(
+                    inlinePolicy.resourcePolicyId,
+                    resourceData.rules || [],
                     trx
                 );
             }
@@ -849,17 +1171,6 @@ export async function updateProxyResources(
                     continue;
                 }
                 await createTarget(newResource.resourceId, targetData);
-            }
-
-            for (const [index, rule] of resourceData.rules?.entries() || []) {
-                validateRule(rule);
-                await trx.insert(resourceRules).values({
-                    resourceId: newResource.resourceId,
-                    action: getRuleAction(rule.action),
-                    match: rule.match.toUpperCase(),
-                    value: getRuleValue(rule.match.toUpperCase(), rule.value),
-                    priority: rule.priority ?? index + 1
-                });
             }
 
             logger.debug(`Created resource ${newResource.resourceId}`);
@@ -946,7 +1257,9 @@ async function syncRoleResources(
                 }))
             );
             role = created;
-            logger.info(`Auto-created role "${roleName}" in org ${orgId} from blueprint`);
+            logger.info(
+                `Auto-created role "${roleName}" in org ${orgId} from blueprint`
+            );
         }
 
         if (role.isAdmin) {
@@ -1105,6 +1418,399 @@ async function syncWhitelistUsers(
                             resourceWhitelist.email,
                             existingWhitelistEntry.email
                         )
+                    )
+                );
+        }
+    }
+}
+
+/**
+ * Creates an inline resourcePolicy if one doesn't exist yet, and returns its ID.
+ * Makes the policy visible to the admin role via rolePolicies.
+ */
+async function ensureInlinePolicy(
+    existingPolicyId: number | null | undefined,
+    orgId: string,
+    resourceNiceId: string,
+    adminRoleId: number,
+    trx: Transaction
+): Promise<number> {
+    if (existingPolicyId) {
+        return existingPolicyId;
+    }
+
+    const policyNiceId = await getUniqueResourcePolicyName(orgId);
+    const [newPolicy] = await trx
+        .insert(resourcePolicies)
+        .values({
+            niceId: policyNiceId,
+            orgId,
+            name: `default policy for ${resourceNiceId}`,
+            sso: true,
+            scope: "resource"
+        })
+        .returning();
+
+    await trx.insert(rolePolicies).values({
+        roleId: adminRoleId,
+        resourcePolicyId: newPolicy.resourcePolicyId
+    });
+
+    return newPolicy.resourcePolicyId;
+}
+
+/**
+ * Updates the inline policy's auth-related fields and policy-level tables
+ * (used when no shared policy is specified in the blueprint).
+ */
+async function syncInlinePolicyAuth(
+    policyId: number,
+    orgId: string,
+    resourceData: any,
+    trx: Transaction
+) {
+    // Update policy-level SSO/whitelist/applyRules fields
+    await trx
+        .update(resourcePolicies)
+        .set({
+            sso: resourceData.auth?.["sso-enabled"] ?? false,
+            idpId: resourceData.auth?.["auto-login-idp"] || null,
+            emailWhitelistEnabled: resourceData.auth?.["whitelist-users"]
+                ? resourceData.auth["whitelist-users"].length > 0
+                : false,
+            applyRules: !!(resourceData.rules && resourceData.rules.length > 0)
+        })
+        .where(eq(resourcePolicies.resourcePolicyId, policyId));
+
+    // Password
+    await trx
+        .delete(resourcePolicyPassword)
+        .where(eq(resourcePolicyPassword.resourcePolicyId, policyId));
+    if (resourceData.auth?.password) {
+        const passwordHash = await hashPassword(resourceData.auth.password);
+        await trx.insert(resourcePolicyPassword).values({
+            resourcePolicyId: policyId,
+            passwordHash
+        });
+    }
+
+    // Pincode
+    await trx
+        .delete(resourcePolicyPincode)
+        .where(eq(resourcePolicyPincode.resourcePolicyId, policyId));
+    if (resourceData.auth?.pincode) {
+        const pincodeHash = await hashPassword(
+            resourceData.auth.pincode.toString()
+        );
+        await trx.insert(resourcePolicyPincode).values({
+            resourcePolicyId: policyId,
+            pincodeHash,
+            digitLength: 6
+        });
+    }
+
+    // Header auth
+    await trx
+        .delete(resourcePolicyHeaderAuth)
+        .where(eq(resourcePolicyHeaderAuth.resourcePolicyId, policyId));
+    if (resourceData.auth?.["basic-auth"]) {
+        const headerAuthUser = resourceData.auth["basic-auth"]?.user;
+        const headerAuthPassword = resourceData.auth["basic-auth"]?.password;
+        const headerAuthExtendedCompatibility =
+            resourceData.auth["basic-auth"]?.extendedCompatibility;
+        if (
+            headerAuthUser &&
+            headerAuthPassword &&
+            headerAuthExtendedCompatibility !== null
+        ) {
+            const headerAuthHash = await hashPassword(
+                Buffer.from(`${headerAuthUser}:${headerAuthPassword}`).toString(
+                    "base64"
+                )
+            );
+            await trx.insert(resourcePolicyHeaderAuth).values({
+                resourcePolicyId: policyId,
+                headerAuthHash,
+                extendedCompatibility: headerAuthExtendedCompatibility
+            });
+        }
+    }
+
+    // SSO roles → rolePolicies
+    if (resourceData.auth?.["sso-roles"] !== undefined) {
+        await syncRolePolicies(
+            policyId,
+            resourceData.auth["sso-roles"],
+            orgId,
+            trx
+        );
+    }
+
+    // SSO users → userPolicies
+    if (resourceData.auth?.["sso-users"] !== undefined) {
+        await syncUserPolicies(
+            policyId,
+            resourceData.auth["sso-users"],
+            orgId,
+            trx
+        );
+    }
+
+    // Whitelist → resourcePolicyWhiteList
+    if (resourceData.auth?.["whitelist-users"] !== undefined) {
+        await syncWhitelistPolicyUsers(
+            policyId,
+            resourceData.auth["whitelist-users"],
+            orgId,
+            trx
+        );
+    }
+}
+
+/**
+ * Syncs rules into the resourcePolicyRules table (inline policy mode).
+ */
+async function syncInlinePolicyRules(
+    policyId: number,
+    rules: any[],
+    trx: Transaction
+) {
+    const existingRules = await trx
+        .select()
+        .from(resourcePolicyRules)
+        .where(eq(resourcePolicyRules.resourcePolicyId, policyId))
+        .orderBy(resourcePolicyRules.priority);
+
+    for (const [index, rule] of rules.entries()) {
+        const intendedPriority = rule.priority ?? index + 1;
+        const existingRule = existingRules[index];
+        if (existingRule) {
+            if (
+                existingRule.action !== getRuleAction(rule.action) ||
+                existingRule.match !== rule.match.toUpperCase() ||
+                existingRule.value !==
+                    getRuleValue(rule.match.toUpperCase(), rule.value) ||
+                existingRule.priority !== intendedPriority
+            ) {
+                validateRule(rule);
+                await trx
+                    .update(resourcePolicyRules)
+                    .set({
+                        action: getRuleAction(rule.action) as
+                            | "ACCEPT"
+                            | "DROP"
+                            | "PASS",
+                        match: rule.match.toUpperCase() as
+                            | "CIDR"
+                            | "IP"
+                            | "PATH",
+                        value: getRuleValue(
+                            rule.match.toUpperCase(),
+                            rule.value
+                        ),
+                        priority: intendedPriority
+                    })
+                    .where(eq(resourcePolicyRules.ruleId, existingRule.ruleId));
+            }
+        } else {
+            validateRule(rule);
+            await trx.insert(resourcePolicyRules).values({
+                resourcePolicyId: policyId,
+                action: getRuleAction(rule.action) as
+                    | "ACCEPT"
+                    | "DROP"
+                    | "PASS",
+                match: rule.match.toUpperCase() as "CIDR" | "IP" | "PATH",
+                value: getRuleValue(rule.match.toUpperCase(), rule.value),
+                priority: intendedPriority
+            });
+        }
+    }
+
+    if (existingRules.length > rules.length) {
+        const rulesToDelete = existingRules.slice(rules.length);
+        for (const rule of rulesToDelete) {
+            await trx
+                .delete(resourcePolicyRules)
+                .where(eq(resourcePolicyRules.ruleId, rule.ruleId));
+        }
+    }
+}
+
+/**
+ * Syncs SSO roles to the rolePolicies table (inline policy mode).
+ */
+async function syncRolePolicies(
+    policyId: number,
+    ssoRoles: string[],
+    orgId: string,
+    trx: Transaction
+) {
+    const existingRolePoliciesList = await trx
+        .select()
+        .from(rolePolicies)
+        .where(eq(rolePolicies.resourcePolicyId, policyId));
+
+    for (const roleName of ssoRoles) {
+        const [role] = await trx
+            .select()
+            .from(roles)
+            .where(and(eq(roles.name, roleName), eq(roles.orgId, orgId)))
+            .limit(1);
+
+        if (!role) {
+            throw new Error(`Role not found: ${roleName} in org ${orgId}`);
+        }
+
+        if (role.isAdmin) {
+            continue;
+        }
+
+        const existingRolePolicy = existingRolePoliciesList.find(
+            (rp) => rp.roleId === role.roleId
+        );
+
+        if (!existingRolePolicy) {
+            await trx.insert(rolePolicies).values({
+                roleId: role.roleId,
+                resourcePolicyId: policyId
+            });
+        }
+    }
+
+    for (const existingRolePolicy of existingRolePoliciesList) {
+        const [role] = await trx
+            .select()
+            .from(roles)
+            .where(eq(roles.roleId, existingRolePolicy.roleId))
+            .limit(1);
+
+        if (role?.isAdmin) {
+            continue;
+        }
+
+        if (role && !ssoRoles.includes(role.name)) {
+            await trx
+                .delete(rolePolicies)
+                .where(
+                    and(
+                        eq(rolePolicies.roleId, existingRolePolicy.roleId),
+                        eq(rolePolicies.resourcePolicyId, policyId)
+                    )
+                );
+        }
+    }
+}
+
+/**
+ * Syncs SSO users to the userPolicies table (inline policy mode).
+ */
+async function syncUserPolicies(
+    policyId: number,
+    ssoUsers: string[],
+    orgId: string,
+    trx: Transaction
+) {
+    const existingUserPoliciesList = await trx
+        .select()
+        .from(userPolicies)
+        .where(eq(userPolicies.resourcePolicyId, policyId));
+
+    for (const username of ssoUsers) {
+        const [user] = await trx
+            .select()
+            .from(users)
+            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
+            .where(
+                and(
+                    or(eq(users.username, username), eq(users.email, username)),
+                    eq(userOrgs.orgId, orgId)
+                )
+            )
+            .limit(1);
+
+        if (!user) {
+            throw new Error(`User not found: ${username} in org ${orgId}`);
+        }
+
+        const existingUserPolicy = existingUserPoliciesList.find(
+            (up) => up.userId === user.user.userId
+        );
+
+        if (!existingUserPolicy) {
+            await trx.insert(userPolicies).values({
+                userId: user.user.userId,
+                resourcePolicyId: policyId
+            });
+        }
+    }
+
+    for (const existingUserPolicy of existingUserPoliciesList) {
+        const [user] = await trx
+            .select()
+            .from(users)
+            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
+            .where(
+                and(
+                    eq(users.userId, existingUserPolicy.userId),
+                    eq(userOrgs.orgId, orgId)
+                )
+            )
+            .limit(1);
+
+        if (
+            user &&
+            user.user.username &&
+            !ssoUsers.includes(user.user.username)
+        ) {
+            await trx
+                .delete(userPolicies)
+                .where(
+                    and(
+                        eq(userPolicies.userId, existingUserPolicy.userId),
+                        eq(userPolicies.resourcePolicyId, policyId)
+                    )
+                );
+        }
+    }
+}
+
+/**
+ * Syncs whitelist emails to the resourcePolicyWhiteList table (inline policy mode).
+ */
+async function syncWhitelistPolicyUsers(
+    policyId: number,
+    whitelistUsers: string[],
+    orgId: string,
+    trx: Transaction
+) {
+    const existingWhitelist = await trx
+        .select()
+        .from(resourcePolicyWhiteList)
+        .where(eq(resourcePolicyWhiteList.resourcePolicyId, policyId));
+
+    for (const email of whitelistUsers) {
+        const existingEntry = existingWhitelist.find((w) => w.email === email);
+
+        if (!existingEntry) {
+            await trx.insert(resourcePolicyWhiteList).values({
+                email,
+                resourcePolicyId: policyId
+            });
+        }
+    }
+
+    for (const existingEntry of existingWhitelist) {
+        if (!whitelistUsers.includes(existingEntry.email)) {
+            await trx
+                .delete(resourcePolicyWhiteList)
+                .where(
+                    and(
+                        eq(
+                            resourcePolicyWhiteList.whitelistId,
+                            existingEntry.whitelistId
+                        ),
+                        eq(resourcePolicyWhiteList.resourcePolicyId, policyId)
                     )
                 );
         }

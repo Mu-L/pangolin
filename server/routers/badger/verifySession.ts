@@ -17,6 +17,9 @@ import {
     ResourceHeaderAuthExtendedCompatibility,
     ResourcePassword,
     ResourcePincode,
+    ResourcePolicyPincode,
+    ResourcePolicyPassword,
+    ResourcePolicyHeaderAuth,
     ResourceRule
 } from "@server/db";
 import config from "@server/lib/config";
@@ -61,6 +64,8 @@ export type VerifyResourceSessionSchema = z.infer<
 >;
 
 type BasicUserData = {
+    dontStripSession?: boolean;
+    userId: string;
     username: string;
     email: string | null;
     name: string | null;
@@ -73,6 +78,7 @@ export type VerifyUserResponse = {
     redirectUrl?: string;
     userData?: BasicUserData;
     pangolinVersion?: string;
+    dontStripSession?: boolean;
 };
 
 export async function verifyResourceSession(
@@ -131,10 +137,16 @@ export async function verifyResourceSession(
         let resourceData:
             | {
                   resource: Resource | null;
-                  pincode: ResourcePincode | null;
-                  password: ResourcePassword | null;
-                  headerAuth: ResourceHeaderAuth | null;
+                  pincode: ResourcePincode | ResourcePolicyPincode | null;
+                  password: ResourcePassword | ResourcePolicyPassword | null;
+                  headerAuth:
+                      | ResourceHeaderAuth
+                      | ResourcePolicyHeaderAuth
+                      | null;
                   headerAuthExtendedCompatibility: ResourceHeaderAuthExtendedCompatibility | null;
+                  applyRules: boolean;
+                  sso: boolean;
+                  emailWhitelistEnabled: boolean;
                   org: Org;
               }
             | undefined = localCache.get(resourceCacheKey);
@@ -166,9 +178,12 @@ export async function verifyResourceSession(
 
         const {
             resource,
+            applyRules,
+            sso,
             pincode,
             password,
             headerAuth,
+            emailWhitelistEnabled,
             headerAuthExtendedCompatibility
         } = resourceData;
 
@@ -190,7 +205,8 @@ export async function verifyResourceSession(
             return notAllowed(res);
         }
 
-        const { sso, blockAccess } = resource;
+        const { blockAccess, mode } = resource;
+        const dontStripSession = ["ssh", "rdp", "vnc"].includes(mode);
 
         if (blockAccess) {
             logger.debug("Resource blocked", host);
@@ -210,7 +226,7 @@ export async function verifyResourceSession(
         }
 
         // check the rules
-        if (resource.applyRules) {
+        if (applyRules) {
             const action = await checkRules(
                 resource.resourceId,
                 clientIp,
@@ -233,7 +249,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             } else if (action == "DROP") {
                 logger.debug("Resource denied by rule");
 
@@ -265,7 +281,7 @@ export async function verifyResourceSession(
             !sso &&
             !pincode &&
             !password &&
-            !resource.emailWhitelistEnabled &&
+            !emailWhitelistEnabled &&
             !headerAuth
         ) {
             logger.debug("Resource allowed because no auth");
@@ -281,7 +297,7 @@ export async function verifyResourceSession(
                 parsedBody.data
             );
 
-            return allowed(res);
+            return allowed(res, undefined, dontStripSession);
         }
 
         const redirectPath = `/auth/resource/${encodeURIComponent(
@@ -347,7 +363,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             }
         }
 
@@ -398,7 +414,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             }
         }
 
@@ -421,7 +437,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             } else if (
                 await verifyPassword(
                     clientHeaderAuth,
@@ -442,7 +458,7 @@ export async function verifyResourceSession(
                     parsedBody.data
                 );
 
-                return allowed(res);
+                return allowed(res, undefined, dontStripSession);
             }
 
             if (
@@ -450,7 +466,7 @@ export async function verifyResourceSession(
                 !sso &&
                 !pincode &&
                 !password &&
-                !resource.emailWhitelistEnabled &&
+                !emailWhitelistEnabled &&
                 !headerAuthExtendedCompatibility?.extendedCompatibilityIsActivated
             ) {
                 logRequestAudit(
@@ -472,7 +488,7 @@ export async function verifyResourceSession(
                 !sso &&
                 !pincode &&
                 !password &&
-                !resource.emailWhitelistEnabled &&
+                !emailWhitelistEnabled &&
                 !headerAuthExtendedCompatibility?.extendedCompatibilityIsActivated
             ) {
                 logRequestAudit(
@@ -573,7 +589,11 @@ export async function verifyResourceSession(
                     return notAllowed(res, redirectPath, resource.orgId);
                 }
 
-                if (pincode && resourceSession.pincodeId) {
+                if (
+                    pincode &&
+                    (resourceSession.pincodeId ||
+                        resourceSession.policyPincodeId)
+                ) {
                     logger.debug(
                         "Resource allowed because pincode session is valid"
                     );
@@ -589,10 +609,14 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
-                if (password && resourceSession.passwordId) {
+                if (
+                    password &&
+                    (resourceSession.passwordId ||
+                        resourceSession.policyPasswordId)
+                ) {
                     logger.debug(
                         "Resource allowed because password session is valid"
                     );
@@ -608,12 +632,13 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (
-                    resource.emailWhitelistEnabled &&
-                    resourceSession.whitelistId
+                    emailWhitelistEnabled &&
+                    (resourceSession.whitelistId ||
+                        resourceSession.policyWhitelistId)
                 ) {
                     logger.debug(
                         "Resource allowed because whitelist session is valid"
@@ -630,7 +655,7 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (resourceSession.accessTokenId) {
@@ -653,7 +678,7 @@ export async function verifyResourceSession(
                         parsedBody.data
                     );
 
-                    return allowed(res);
+                    return allowed(res, undefined, dontStripSession);
                 }
 
                 if (resourceSession.userSessionId && sso) {
@@ -671,7 +696,8 @@ export async function verifyResourceSession(
                             resourceData.org
                         );
 
-                        localCache.set(userAccessCacheKey, allowedUserData, 5);
+                        // this is query intensive so let it cache a little longer
+                        localCache.set(userAccessCacheKey, allowedUserData, 12);
                     }
 
                     if (
@@ -697,7 +723,11 @@ export async function verifyResourceSession(
                             parsedBody.data
                         );
 
-                        return allowed(res, allowedUserData);
+                        return allowed(
+                            res,
+                            { ...allowedUserData, dontStripSession },
+                            dontStripSession
+                        );
                     }
                 }
             }
@@ -830,21 +860,29 @@ async function notAllowed(
         message: "Access denied",
         status: HttpCode.OK
     };
-    logger.debug(JSON.stringify(data));
+    // logger.debug(JSON.stringify(data));
     return response<VerifyUserResponse>(res, data);
 }
 
-function allowed(res: Response, userData?: BasicUserData) {
+function allowed(
+    res: Response,
+    userData?: BasicUserData,
+    dontStripSession?: boolean
+) {
+    const baseData =
+        userData !== undefined && userData !== null
+            ? { valid: true, ...userData, pangolinVersion: APP_VERSION }
+            : { valid: true, pangolinVersion: APP_VERSION };
     const data = {
-        data:
-            userData !== undefined && userData !== null
-                ? { valid: true, ...userData, pangolinVersion: APP_VERSION }
-                : { valid: true, pangolinVersion: APP_VERSION },
+        data: dontStripSession
+            ? { ...baseData, dontStripSession: true }
+            : baseData,
         success: true,
         error: false,
         message: "Access allowed",
         status: HttpCode.OK
     };
+    logger.debug("Access allowed, response data:", data);
     return response<VerifyUserResponse>(res, data);
 }
 
@@ -892,7 +930,7 @@ async function headerAuthChallenged(
         message: "Access denied",
         status: HttpCode.OK
     };
-    logger.debug(JSON.stringify(data));
+    // logger.debug(JSON.stringify(data));
     return response<VerifyUserResponse>(res, data);
 }
 
@@ -944,6 +982,7 @@ async function isUserAllowedToAccessResource(
     );
     if (roleResourceAccess && roleResourceAccess.length > 0) {
         return {
+            userId: user.userId,
             username: user.username,
             email: user.email,
             name: user.name,
@@ -958,6 +997,7 @@ async function isUserAllowedToAccessResource(
 
     if (userResourceAccess) {
         return {
+            userId: user.userId,
             username: user.username,
             email: user.email,
             name: user.name,
@@ -1003,11 +1043,7 @@ async function checkRules(
             isIpInCidr(clientIp, rule.value)
         ) {
             return rule.action as any;
-        } else if (
-            clientIp &&
-            rule.match == "IP" &&
-            clientIp == rule.value
-        ) {
+        } else if (clientIp && rule.match == "IP" && clientIp == rule.value) {
             return rule.action as any;
         } else if (
             path &&
@@ -1015,10 +1051,7 @@ async function checkRules(
             isPathAllowed(rule.value, path)
         ) {
             return rule.action as any;
-        } else if (
-            clientIp &&
-            rule.match == "COUNTRY"
-        ) {
+        } else if (clientIp && rule.match == "COUNTRY") {
             // COUNTRY=ALL should not affect local/private/CGNAT addresses.
             if (
                 rule.value.toUpperCase() === "ALL" &&
@@ -1030,10 +1063,7 @@ async function checkRules(
             if (await isIpInGeoIP(ipCC, rule.value)) {
                 return rule.action as any;
             }
-        } else if (
-            clientIp &&
-            rule.match == "ASN"
-        ) {
+        } else if (clientIp && rule.match == "ASN") {
             // ASN=ALL/AS0 should not affect local/private/CGNAT addresses.
             if (
                 (rule.value.toUpperCase() === "ALL" ||
@@ -1272,11 +1302,15 @@ export async function isIpInRegion(
         if (region.id === checkRegionCode) {
             for (const subregion of region.includes) {
                 if (subregion.countries.includes(upperCode)) {
-                    logger.debug(`Country ${upperCode} is in region ${region.id} (${region.name})`);
+                    logger.debug(
+                        `Country ${upperCode} is in region ${region.id} (${region.name})`
+                    );
                     return true;
                 }
             }
-            logger.debug(`Country ${upperCode} is not in region ${region.id} (${region.name})`);
+            logger.debug(
+                `Country ${upperCode} is not in region ${region.id} (${region.name})`
+            );
             return false;
         }
 
@@ -1284,10 +1318,14 @@ export async function isIpInRegion(
         for (const subregion of region.includes) {
             if (subregion.id === checkRegionCode) {
                 if (subregion.countries.includes(upperCode)) {
-                    logger.debug(`Country ${upperCode} is in region ${subregion.id} (${subregion.name})`);
+                    logger.debug(
+                        `Country ${upperCode} is in region ${subregion.id} (${subregion.name})`
+                    );
                     return true;
                 }
-                logger.debug(`Country ${upperCode} is not in region ${subregion.id} (${subregion.name})`);
+                logger.debug(
+                    `Country ${upperCode} is not in region ${subregion.id} (${subregion.name})`
+                );
                 return false;
             }
         }

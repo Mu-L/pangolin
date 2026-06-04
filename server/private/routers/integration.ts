@@ -16,6 +16,7 @@ import * as org from "#private/routers/org";
 import * as logs from "#private/routers/auditLogs";
 import * as alertEvents from "#private/routers/alertEvents";
 import * as certificates from "#private/routers/certificates";
+import * as browserGatewayTarget from "#private/routers/browserGatewayTarget";
 
 import {
     verifyApiKeyHasAction,
@@ -214,4 +215,44 @@ authenticated.delete(
     verifyApiKeyHasAction(ActionsEnum.removeUserRole),
     logActionAudit(ActionsEnum.removeUserRole),
     user.removeUserRole
+);
+
+authenticated.put(
+    "/org/:orgId/resource/:resourceId/browser-gateway-target",
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.createBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.createBrowserGatewayTarget),
+    browserGatewayTarget.createBrowserGatewayTarget
+);
+
+authenticated.get(
+    "/org/:orgId/resource/:resourceId/browser-gateway-targets",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.listBrowserGatewayTargets),
+    browserGatewayTarget.listBrowserGatewayTargets
+);
+
+authenticated.get(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.getBrowserGatewayTarget),
+    browserGatewayTarget.getBrowserGatewayTarget
+);
+
+authenticated.post(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyApiKeyOrgAccess,
+    verifyLimits,
+    verifyApiKeyHasAction(ActionsEnum.updateBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.updateBrowserGatewayTarget),
+    browserGatewayTarget.updateBrowserGatewayTarget
+);
+
+authenticated.delete(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyApiKeyOrgAccess,
+    verifyApiKeyHasAction(ActionsEnum.deleteBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.deleteBrowserGatewayTarget),
+    browserGatewayTarget.deleteBrowserGatewayTarget
 );

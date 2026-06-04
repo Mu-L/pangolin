@@ -2,7 +2,14 @@ import { PostHog } from "posthog-node";
 import config from "./config";
 import { getHostMeta } from "./hostMeta";
 import logger from "@server/logger";
-import { alertRules, apiKeys, blueprints, db, roles, siteResources } from "@server/db";
+import {
+    alertRules,
+    apiKeys,
+    blueprints,
+    db,
+    roles,
+    siteResources
+} from "@server/db";
 import { sites, users, orgs, resources, clients, idp } from "@server/db";
 import { eq, count, notInArray, and, isNotNull, isNull } from "drizzle-orm";
 import { APP_VERSION } from "./consts";
@@ -143,8 +150,7 @@ class TelemetryClient {
                 .select({
                     name: resources.name,
                     sso: resources.sso,
-                    protocol: resources.protocol,
-                    http: resources.http
+                    mode: resources.mode
                 })
                 .from(resources);
 
@@ -311,7 +317,7 @@ class TelemetryClient {
                         (r) => r.sso
                     ).length,
                     num_resources_non_http: stats.resources.filter(
-                        (r) => !r.http
+                        (r) => r.mode !== "http"
                     ).length,
                     num_newt_sites: stats.sites.filter((s) => s.type === "newt")
                         .length,

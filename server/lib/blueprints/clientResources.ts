@@ -227,7 +227,11 @@ export async function updateClientResources(
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
                     subdomain: domainInfo ? domainInfo.subdomain : null,
-                    domainId: domainInfo ? domainInfo.domainId : null
+                    domainId: domainInfo ? domainInfo.domainId : null,
+                    pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
+                    authDaemonMode:
+                        resourceData["auth-daemon"]?.mode || "native",
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
                 })
                 .where(
                     eq(
@@ -382,8 +386,14 @@ export async function updateClientResources(
             });
         } else {
             let aliasAddress: string | null = null;
+            let releaseAliasLock: (() => Promise<void>) | null = null;
             if (resourceData.mode === "host" || resourceData.mode === "http") {
-                aliasAddress = await getNextAvailableAliasAddress(orgId, trx);
+                const { value, release } = await getNextAvailableAliasAddress(
+                    orgId,
+                    trx
+                );
+                aliasAddress = value;
+                releaseAliasLock = release;
             }
 
             let domainInfo:
@@ -437,9 +447,15 @@ export async function updateClientResources(
                             : resourceData["udp-ports"],
                     fullDomain: resourceData["full-domain"] || null,
                     subdomain: domainInfo ? domainInfo.subdomain : null,
-                    domainId: domainInfo ? domainInfo.domainId : null
+                    domainId: domainInfo ? domainInfo.domainId : null,
+                    pamMode: resourceData["auth-daemon"]?.pam || "passthrough",
+                    authDaemonMode:
+                        resourceData["auth-daemon"]?.mode || "native",
+                    authDaemonPort: resourceData["auth-daemon"]?.port || 22123
                 })
                 .returning();
+
+            await releaseAliasLock?.();
 
             const siteResourceId = newResource.siteResourceId;
 

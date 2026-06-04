@@ -38,11 +38,16 @@ import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import type { OrgContextType } from "@app/contexts/orgContext";
+import { SwitchInput } from "@app/components/SwitchInput";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
+import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
+import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 
 // Schema for general organization settings
 const GeneralFormSchema = z.object({
     name: z.string(),
-    subnet: z.string().optional()
+    subnet: z.string().optional(),
+    settingsEnableGlobalNewtAutoUpdate: z.boolean().optional()
 });
 
 export default function GeneralPage() {
@@ -163,17 +168,24 @@ function GeneralSectionForm({ org }: SectionFormProps) {
         resolver: zodResolver(
             GeneralFormSchema.pick({
                 name: true,
-                subnet: true
+                subnet: true,
+                settingsEnableGlobalNewtAutoUpdate: true
             })
         ),
         defaultValues: {
             name: org.name,
-            subnet: org.subnet || "" // Add default value for subnet
+            subnet: org.subnet || "",
+            settingsEnableGlobalNewtAutoUpdate:
+                org.settingsEnableGlobalNewtAutoUpdate ?? false
         },
         mode: "onChange"
     });
     const t = useTranslations();
     const router = useRouter();
+    const { isPaidUser } = usePaidStatus();
+    const hasAutoUpdateFeature = isPaidUser(
+        tierMatrix[TierFeature.NewtAutoUpdate]
+    );
 
     const [, formAction, loadingSave] = useActionState(performSave, null);
     const api = createApiClient(useEnvContext());
@@ -186,7 +198,9 @@ function GeneralSectionForm({ org }: SectionFormProps) {
 
         try {
             const reqData = {
-                name: data.name
+                name: data.name,
+                settingsEnableGlobalNewtAutoUpdate:
+                    data.settingsEnableGlobalNewtAutoUpdate
             } as any;
 
             // Update organization
@@ -194,13 +208,16 @@ function GeneralSectionForm({ org }: SectionFormProps) {
 
             // Update the org context to reflect the change in the info card
             updateOrg({
-                name: data.name
+                name: data.name,
+                settingsEnableGlobalNewtAutoUpdate:
+                    data.settingsEnableGlobalNewtAutoUpdate
             });
 
             toast({
                 title: t("orgUpdated"),
                 description: t("orgUpdatedDescription")
             });
+
             router.refresh();
         } catch (e) {
             toast({
@@ -240,6 +257,31 @@ function GeneralSectionForm({ org }: SectionFormProps) {
                                         <FormDescription>
                                             {t("orgDisplayName")}
                                         </FormDescription>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <PaidFeaturesAlert
+                                tiers={tierMatrix.newtAutoUpdate}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="settingsEnableGlobalNewtAutoUpdate"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <SwitchInput
+                                                id="settings-enable-global-newt-auto-update"
+                                                label={t("newtAutoUpdate")}
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={!hasAutoUpdateFeature}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            {t("newtAutoUpdateDescription")}
+                                        </FormDescription>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />

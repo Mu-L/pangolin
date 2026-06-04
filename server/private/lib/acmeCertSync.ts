@@ -780,9 +780,9 @@ async function syncAcmeCerts(acmeJsonPath: string): Promise<void> {
             }
         }
 
-        logger.debug(
-            `acmeCertSync: cert for ${mainDomain} covers ${allDomains.size} domain(s): ${[...allDomains].join(", ")}`
-        );
+        // logger.debug(
+        //     `acmeCertSync: cert for ${mainDomain} covers ${allDomains.size} domain(s): ${[...allDomains].join(", ")}`
+        // );
 
         for (const domain of allDomains) {
             try {
@@ -863,9 +863,9 @@ export function initAcmeCertSync(): void {
                     );
                     return;
                 }
-                logger.debug(
-                    `acmeCertSync: found ${files.length} acme.json file(s) in directory "${acmeJsonPath}"`
-                );
+                // logger.debug(
+                //     `acmeCertSync: found ${files.length} acme.json file(s) in directory "${acmeJsonPath}"`
+                // );
                 for (const file of files) {
                     syncAcmeCerts(file).catch((err) => {
                         logger.error(

@@ -46,6 +46,20 @@ function toSshSudoMode(value: string | null | undefined): SshSudoMode {
     return "none";
 }
 
+function hasOnlyAbsoluteSudoCommands(value: string | undefined): boolean {
+    if (!value?.trim()) return true;
+
+    const commands = value
+        .split(",")
+        .map((command) => command.trim())
+        .filter(Boolean);
+
+    return commands.every((command) => {
+        const executable = command.split(/\s+/)[0];
+        return executable.startsWith("/");
+    });
+}
+
 export type RoleFormValues = {
     name: string;
     description?: string;
@@ -74,19 +88,33 @@ export function RoleForm({
     const { isPaidUser } = usePaidStatus();
     const { env } = useEnvContext();
 
-    const formSchema = z.object({
-        name: z
-            .string({ message: t("nameRequired") })
-            .min(1)
-            .max(32),
-        description: z.string().max(255).optional(),
-        requireDeviceApproval: z.boolean().optional(),
-        allowSsh: z.boolean().optional(),
-        sshSudoMode: z.enum(SSH_SUDO_MODE_VALUES),
-        sshSudoCommands: z.string().optional(),
-        sshCreateHomeDir: z.boolean().optional(),
-        sshUnixGroups: z.string().optional()
-    });
+    const formSchema = z
+        .object({
+            name: z
+                .string({ message: t("nameRequired") })
+                .min(1)
+                .max(32),
+            description: z.string().max(255).optional(),
+            requireDeviceApproval: z.boolean().optional(),
+            allowSsh: z.boolean().optional(),
+            sshSudoMode: z.enum(SSH_SUDO_MODE_VALUES),
+            sshSudoCommands: z.string().optional(),
+            sshCreateHomeDir: z.boolean().optional(),
+            sshUnixGroups: z.string().optional()
+        })
+        .superRefine((values, ctx) => {
+            if (
+                values.sshSudoMode === "commands" &&
+                !hasOnlyAbsoluteSudoCommands(values.sshSudoCommands)
+            ) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["sshSudoCommands"],
+                    message:
+                        "Each sudo command must start with an absolute path (for example, /usr/bin/systemctl)."
+                });
+            }
+        });
 
     const defaultValues: RoleFormValues = role
         ? {
@@ -136,7 +164,7 @@ export function RoleForm({
         }
     }, [variant, role, form]);
 
-    const sshDisabled = !isPaidUser(tierMatrix.sshPam);
+    const sshDisabled = !isPaidUser(tierMatrix.advancedPrivateResources);
     const sshSudoMode = form.watch("sshSudoMode");
     const isAdminRole = variant === "edit" && role?.isAdmin === true;
 
@@ -291,12 +319,16 @@ export function RoleForm({
                         {/* SSH tab - hidden when enterprise features are disabled */}
                         {!env.flags.disableEnterpriseFeatures && (
                             <div className="space-y-4 mt-4">
-                                <PaidFeaturesAlert tiers={tierMatrix.sshPam} />
+                                <PaidFeaturesAlert
+                                    tiers={tierMatrix.advancedPrivateResources}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="allowSsh"
                                     render={({ field }) => {
-                                        const allowSshOptions: OptionSelectOption<"allow" | "disallow">[] = [
+                                        const allowSshOptions: OptionSelectOption<
+                                            "allow" | "disallow"
+                                        >[] = [
                                             {
                                                 value: "allow",
                                                 label: t("roleAllowSshAllow")
@@ -311,7 +343,9 @@ export function RoleForm({
                                                 <FormLabel>
                                                     {t("roleAllowSsh")}
                                                 </FormLabel>
-                                                <OptionSelect<"allow" | "disallow">
+                                                <OptionSelect<
+                                                    "allow" | "disallow"
+                                                >
                                                     options={allowSshOptions}
                                                     value={
                                                         sshDisabled
@@ -322,7 +356,9 @@ export function RoleForm({
                                                     }
                                                     onChange={(v) => {
                                                         if (sshDisabled) return;
-                                                        field.onChange(v === "allow");
+                                                        field.onChange(
+                                                            v === "allow"
+                                                        );
                                                     }}
                                                     cols={2}
                                                     disabled={sshDisabled}

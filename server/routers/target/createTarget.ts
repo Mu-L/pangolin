@@ -329,7 +329,7 @@ export async function createTarget(
                     newt.newtId,
                     newTarget,
                     healthCheck,
-                    resource.protocol,
+                    resource.mode === "udp" ? "udp" : "tcp",
                     newt.version
                 );
             }

@@ -331,16 +331,8 @@ export async function calculateUserClientsForOrgs(
                     ];
 
                 // Get next available subnet
-                const newSubnet = await getNextAvailableClientSubnet(
-                    orgId,
-                    transaction
-                );
-                if (!newSubnet) {
-                    logger.warn(
-                        `Skipping org ${orgId} for OLM ${olm.olmId} (user ${userId}): no available subnet found`
-                    );
-                    continue;
-                }
+                const { value: newSubnet, release: releaseSubnetLock } =
+                    await getNextAvailableClientSubnet(orgId, transaction);
 
                 const subnet = newSubnet.split("/")[0];
                 const updatedSubnet = `${subnet}/${org.subnet.split("/")[1]}`;
@@ -370,6 +362,7 @@ export async function calculateUserClientsForOrgs(
                     .insert(clients)
                     .values(newClientData)
                     .returning();
+                await releaseSubnetLock();
                 existingClientCache.set(
                     getOrgOlmKey(orgId, olm.olmId),
                     newClient

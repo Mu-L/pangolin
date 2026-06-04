@@ -73,6 +73,25 @@ export const privateConfigSchema = z
                     .object({
                         rejectUnauthorized: z.boolean().optional().default(true)
                     })
+                    .optional(),
+                regional_redis: z
+                    .object({
+                        host: z.string(),
+                        port: portSchema,
+                        password: z
+                            .string()
+                            .optional()
+                            .transform(getEnvOrYaml("REGIONAL_REDIS_PASSWORD")),
+                        db: z.int().nonnegative().optional().default(0),
+                        tls: z
+                            .object({
+                                rejectUnauthorized: z
+                                    .boolean()
+                                    .optional()
+                                    .default(true)
+                            })
+                            .optional()
+                    })
                     .optional()
             })
             .optional(),

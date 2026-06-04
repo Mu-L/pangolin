@@ -1,16 +1,26 @@
 import {
+    browserGatewayTarget,
     db,
+    labels,
     resourceHeaderAuth,
     resourceHeaderAuthExtendedCompatibility,
+    resourceLabels,
     resourcePassword,
     resourcePincode,
+    resourcePolicies,
+    resourcePolicyHeaderAuth,
+    resourcePolicyPassword,
+    resourcePolicyPincode,
     resources,
     roleResources,
     sites,
     targetHealthCheck,
     targets,
-    userResources
+    userResources,
+    type Label
 } from "@server/db";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import response from "@server/lib/response";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -66,7 +76,7 @@ const listResourcesSchema = z.object({
         }),
     query: z.string().optional(),
     sort_by: z
-        .enum(["name"])
+        .literal("name")
         .optional()
         .catch(undefined)
         .openapi({
@@ -118,7 +128,27 @@ const listResourcesSchema = z.object({
         type: "integer",
         description:
             "When set, only resources that have at least one target on this site are returned"
-    })
+    }),
+    labels: z
+        .preprocess((val) => {
+            if (val === undefined || val === null || val === "") {
+                return undefined;
+            }
+            if (Array.isArray(val)) {
+                return val;
+            }
+            // the array is returned as this
+            if (typeof val === "string") {
+                return val.split(",");
+            }
+            return undefined;
+        }, z.array(z.string()))
+        .optional()
+        .catch([])
+        .openapi({
+            type: "array",
+            description: "Filter by resource labels"
+        })
 });
 
 // grouped by resource with targets[])
@@ -131,8 +161,6 @@ export type ResourceWithTargets = {
     sso: boolean;
     pincodeId: number | null;
     whitelist: boolean;
-    http: boolean;
-    protocol: string;
     proxyPort: number | null;
     enabled: boolean;
     domainId: string | null;
@@ -140,6 +168,7 @@ export type ResourceWithTargets = {
     headerAuthId: number | null;
     wildcard: boolean;
     health: string | null;
+    mode: string | null;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -154,6 +183,7 @@ export type ResourceWithTargets = {
         siteNiceId: string;
         online?: boolean; // undefined for local sites
     }>;
+    labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
 };
 
 function queryResourcesBase() {
@@ -163,40 +193,55 @@ function queryResourcesBase() {
             name: resources.name,
             ssl: resources.ssl,
             fullDomain: resources.fullDomain,
-            passwordId: resourcePassword.passwordId,
-            sso: resources.sso,
-            pincodeId: resourcePincode.pincodeId,
-            whitelist: resources.emailWhitelistEnabled,
-            http: resources.http,
-            protocol: resources.protocol,
+            passwordId: resourcePolicyPassword.passwordId,
+            sso: resourcePolicies.sso,
+            pincodeId: resourcePolicyPincode.pincodeId,
+            whitelist: resourcePolicies.emailWhitelistEnabled,
             proxyPort: resources.proxyPort,
             enabled: resources.enabled,
             domainId: resources.domainId,
             niceId: resources.niceId,
             wildcard: resources.wildcard,
-            headerAuthId: resourceHeaderAuth.headerAuthId,
-            headerAuthExtendedCompatibilityId:
-                resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId,
-            health: resources.health
+            mode: resources.mode,
+            health: resources.health,
+            headerAuthId: resourcePolicyHeaderAuth.headerAuthId,
+            headerAuthExtendedCompatibility:
+                resourcePolicyHeaderAuth.extendedCompatibility
         })
         .from(resources)
         .leftJoin(
-            resourcePassword,
-            eq(resourcePassword.resourceId, resources.resourceId)
+            resourcePolicies,
+            or(
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    resources.resourcePolicyId
+                ),
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    resources.defaultResourcePolicyId
+                )
+            )
         )
+
         .leftJoin(
-            resourcePincode,
-            eq(resourcePincode.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourceHeaderAuth,
-            eq(resourceHeaderAuth.resourceId, resources.resourceId)
-        )
-        .leftJoin(
-            resourceHeaderAuthExtendedCompatibility,
+            resourcePolicyPassword,
             eq(
-                resourceHeaderAuthExtendedCompatibility.resourceId,
-                resources.resourceId
+                resourcePolicyPassword.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            resourcePolicyPincode,
+            eq(
+                resourcePolicyPincode.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
+            )
+        )
+        .leftJoin(
+            resourcePolicyHeaderAuth,
+            eq(
+                resourcePolicyHeaderAuth.resourcePolicyId,
+                resourcePolicies.resourcePolicyId
             )
         )
         .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
@@ -206,10 +251,10 @@ function queryResourcesBase() {
         )
         .groupBy(
             resources.resourceId,
-            resourcePassword.passwordId,
-            resourcePincode.pincodeId,
-            resourceHeaderAuth.headerAuthId,
-            resourceHeaderAuthExtendedCompatibility.headerAuthExtendedCompatibilityId
+            resourcePolicies.resourcePolicyId,
+            resourcePolicyPassword.passwordId,
+            resourcePolicyPincode.pincodeId,
+            resourcePolicyHeaderAuth.headerAuthId
         );
 }
 
@@ -270,7 +315,8 @@ export async function listResources(
             healthStatus,
             sort_by,
             order,
-            siteId
+            siteId,
+            labels: labelFilter
         } = parsedQuery.data;
 
         const parsedParams = listResourcesParamsSchema.safeParse(req.params);
@@ -302,6 +348,11 @@ export async function listResources(
                 )
             );
         }
+
+        const isLabelFeatureEnabled = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.labels
+        );
 
         let accessibleResources: Array<{ resourceId: number }>;
         if (req.user) {
@@ -340,24 +391,6 @@ export async function listResources(
             )
         ];
 
-        if (query) {
-            conditions.push(
-                or(
-                    like(
-                        sql`LOWER(${resources.name})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${resources.niceId})`,
-                        "%" + query.toLowerCase() + "%"
-                    ),
-                    like(
-                        sql`LOWER(${resources.fullDomain})`,
-                        "%" + query.toLowerCase() + "%"
-                    )
-                )
-            );
-        }
         if (typeof enabled !== "undefined") {
             conditions.push(eq(resources.enabled, enabled));
         }
@@ -365,26 +398,28 @@ export async function listResources(
         if (typeof authState !== "undefined") {
             switch (authState) {
                 case "none":
-                    conditions.push(eq(resources.http, false));
+                    conditions.push(
+                        or(eq(resources.mode, "tcp"), eq(resources.mode, "udp"))
+                    );
                     break;
                 case "protected":
                     conditions.push(
                         or(
-                            eq(resources.sso, true),
-                            eq(resources.emailWhitelistEnabled, true),
-                            not(isNull(resourceHeaderAuth.headerAuthId)),
-                            not(isNull(resourcePincode.pincodeId)),
-                            not(isNull(resourcePassword.passwordId))
+                            eq(resourcePolicies.sso, true),
+                            eq(resourcePolicies.emailWhitelistEnabled, true),
+                            not(isNull(resourcePolicyHeaderAuth.headerAuthId)),
+                            not(isNull(resourcePolicyPincode.pincodeId)),
+                            not(isNull(resourcePolicyPassword.passwordId))
                         )
                     );
                     break;
                 case "not_protected":
                     conditions.push(
-                        not(eq(resources.sso, true)),
-                        not(eq(resources.emailWhitelistEnabled, true)),
-                        isNull(resourceHeaderAuth.headerAuthId),
-                        isNull(resourcePincode.pincodeId),
-                        isNull(resourcePassword.passwordId)
+                        not(eq(resourcePolicies.sso, true)),
+                        not(eq(resourcePolicies.emailWhitelistEnabled, true)),
+                        isNull(resourcePolicyHeaderAuth.headerAuthId),
+                        isNull(resourcePolicyPincode.pincodeId),
+                        isNull(resourcePolicyPassword.passwordId)
                     );
                     break;
             }
@@ -399,7 +434,59 @@ export async function listResources(
                 .from(targets)
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
                 .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
-            conditions.push(inArray(resources.resourceId, resourcesWithSite));
+            const resourcesWithBrowserGateway = db
+                .select({ resourceId: browserGatewayTarget.resourceId })
+                .from(browserGatewayTarget)
+                .where(eq(browserGatewayTarget.siteId, siteId));
+            conditions.push(
+                or(
+                    inArray(resources.resourceId, resourcesWithSite),
+                    inArray(resources.resourceId, resourcesWithBrowserGateway)
+                )
+            );
+        }
+
+        if (isLabelFeatureEnabled && labelFilter && labelFilter.length > 0) {
+            conditions.push(
+                inArray(
+                    resources.resourceId,
+                    db
+                        .select({ id: resourceLabels.resourceId })
+                        .from(resourceLabels)
+                        .innerJoin(
+                            labels,
+                            eq(labels.labelId, resourceLabels.labelId)
+                        )
+                        .where(inArray(labels.name, labelFilter))
+                )
+            );
+        }
+
+        if (query) {
+            const q = "%" + query.toLowerCase() + "%";
+            const queryList = [
+                like(sql`LOWER(${resources.name})`, q),
+                like(sql`LOWER(${resources.niceId})`, q),
+                like(sql`LOWER(${resources.fullDomain})`, q)
+            ];
+
+            if (isLabelFeatureEnabled) {
+                queryList.push(
+                    inArray(
+                        resources.resourceId,
+                        db
+                            .select({ id: resourceLabels.resourceId })
+                            .from(resourceLabels)
+                            .innerJoin(
+                                labels,
+                                eq(labels.labelId, resourceLabels.labelId)
+                            )
+                            .where(like(sql`LOWER(${labels.name})`, q))
+                    )
+                );
+            }
+
+            conditions.push(or(...queryList));
         }
 
         const baseQuery = queryResourcesBase().where(and(...conditions));
@@ -422,6 +509,36 @@ export async function listResources(
         ]);
 
         const resourceIdList = rows.map((row) => row.resourceId);
+
+        let labelsForResources: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            resourceId: number;
+        }> = [];
+
+        if (isLabelFeatureEnabled) {
+            labelsForResources =
+                resourceIdList.length === 0
+                    ? []
+                    : await db
+                          .select({
+                              labelId: labels.labelId,
+                              name: labels.name,
+                              color: labels.color,
+                              resourceId: resourceLabels.resourceId
+                          })
+                          .from(labels)
+                          .innerJoin(
+                              resourceLabels,
+                              eq(resourceLabels.labelId, labels.labelId)
+                          )
+                          .where(
+                              inArray(resourceLabels.resourceId, resourceIdList)
+                          )
+                          .orderBy(asc(resourceLabels.resourceLabelId));
+        }
+
         const allResourceTargets =
             resourceIdList.length === 0
                 ? []
@@ -448,6 +565,30 @@ export async function listResources(
                       )
                       .leftJoin(sites, eq(targets.siteId, sites.siteId));
 
+        const allBgTargetSites =
+            resourceIdList.length === 0
+                ? []
+                : await db
+                      .select({
+                          resourceId: browserGatewayTarget.resourceId,
+                          siteId: browserGatewayTarget.siteId,
+                          siteName: sites.name,
+                          siteNiceId: sites.niceId,
+                          siteOnline: sites.online,
+                          siteType: sites.type
+                      })
+                      .from(browserGatewayTarget)
+                      .where(
+                          inArray(
+                              browserGatewayTarget.resourceId,
+                              resourceIdList
+                          )
+                      )
+                      .leftJoin(
+                          sites,
+                          eq(sites.siteId, browserGatewayTarget.siteId)
+                      );
+
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
 
@@ -461,19 +602,21 @@ export async function listResources(
                     ssl: row.ssl,
                     fullDomain: row.fullDomain,
                     passwordId: row.passwordId,
-                    sso: row.sso,
+                    sso: row.sso ?? false,
                     pincodeId: row.pincodeId,
-                    whitelist: row.whitelist,
-                    http: row.http,
-                    protocol: row.protocol,
+                    whitelist: row.whitelist ?? false,
                     proxyPort: row.proxyPort,
                     wildcard: row.wildcard,
+                    mode: row.mode,
                     enabled: row.enabled,
                     domainId: row.domainId,
                     headerAuthId: row.headerAuthId,
                     health: row.health ?? null,
                     targets: [],
-                    sites: []
+                    sites: [],
+                    labels: labelsForResources.filter(
+                        (l) => l.resourceId === row.resourceId
+                    )
                 };
                 map.set(row.resourceId, entry);
             }
@@ -497,6 +640,21 @@ export async function listResources(
                 }
             >();
             for (const t of raw) {
+                if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
+                    continue;
+                }
+                const isLocal = t.siteType === "local";
+                siteById.set(t.siteId, {
+                    siteId: t.siteId,
+                    siteName: t.siteName ?? "",
+                    siteNiceId: t.siteNiceId ?? "",
+                    online: isLocal ? undefined : Boolean(t.siteOnline)
+                });
+            }
+            const bgRaw = allBgTargetSites.filter(
+                (t) => t.resourceId === entry.resourceId
+            );
+            for (const t of bgRaw) {
                 if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
                     continue;
                 }

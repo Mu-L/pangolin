@@ -20,6 +20,14 @@ import { handleFingerprintInsertion } from "./fingerprintingUtils";
 import { build } from "@server/build";
 import { canCompress } from "@server/lib/clientVersionChecks";
 import config from "@server/lib/config";
+import cache from "#dynamic/lib/cache";
+
+const HOLEPUNCH_STALE_CHAIN_THRESHOLD = 18;
+const HOLEPUNCH_STALE_CHAIN_TTL_SECONDS = 1800;
+
+function getHolePunchChainCounterKey(olmId: string, chainId: string): string {
+    return `olm:register:stale_holepunch:${olmId}:${chainId}`;
+}
 
 export const handleOlmRegisterMessage: MessageHandler = async (context) => {
     logger.info("[handleOlmRegisterMessage] Handling register olm message");
@@ -319,6 +327,24 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             );
     }
 
+    let staleHolePunchChainCount: number | undefined;
+    const hasChainId =
+        chainId !== undefined && chainId !== null && String(chainId) !== "";
+
+    if (hasChainId) {
+        const cacheKey = getHolePunchChainCounterKey(
+            olm.olmId,
+            String(chainId)
+        );
+        const existingCount = (await cache.get<number>(cacheKey)) ?? 0;
+        staleHolePunchChainCount = existingCount + 1;
+        await cache.set(
+            cacheKey,
+            staleHolePunchChainCount,
+            HOLEPUNCH_STALE_CHAIN_TTL_SECONDS
+        );
+    }
+
     // this prevents us from accepting a register from an olm that has not hole punched yet.
     // the olm will pump the register so we can keep checking
     // TODO: I still think there is a better way to do this rather than locking it out here but ???
@@ -327,6 +353,34 @@ export const handleOlmRegisterMessage: MessageHandler = async (context) => {
             `[handleOlmRegisterMessage] Client last hole punch is too old and we have sites to send; skipping this register. The client is failing to hole punch and identify its network address with the server. Can the client reach the server on UDP port ${config.getRawConfig().gerbil.clients_start_port}?`,
             { orgId: client.orgId, clientId: client.clientId }
         );
+
+        if (!hasChainId) {
+            logger.debug(
+                "[handleOlmRegisterMessage] Skipping HOLEPUNCH_MISSING because chainId is missing",
+                {
+                    orgId: client.orgId,
+                    clientId: client.clientId,
+                    olmId: olm.olmId
+                }
+            );
+            return;
+        }
+
+        if (staleHolePunchChainCount === HOLEPUNCH_STALE_CHAIN_THRESHOLD) {
+            sendOlmError(OlmErrorCodes.HOLEPUNCH_MISSING, olm.olmId);
+        } else {
+            logger.debug(
+                "[handleOlmRegisterMessage] Suppressing HOLEPUNCH_MISSING until chain threshold is met",
+                {
+                    orgId: client.orgId,
+                    clientId: client.clientId,
+                    olmId: olm.olmId,
+                    chainId,
+                    staleHolePunchChainCount,
+                    threshold: HOLEPUNCH_STALE_CHAIN_THRESHOLD
+                }
+            );
+        }
         return;
     }
 

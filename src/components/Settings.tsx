@@ -22,13 +22,24 @@ export function SettingsSectionHeader({
 
 export function SettingsSectionForm({
     children,
-    className
+    className,
+    variant = "compact"
 }: {
     children: React.ReactNode;
+    variant?: "half" | "compact";
     className?: string;
 }) {
     return (
-        <div className={cn("max-w-xl space-y-4", className)}>{children}</div>
+        <div
+            className={cn(
+                variant === "half"
+                    ? "max-w-3xl space-y-4"
+                    : "max-w-xl space-y-4",
+                className
+            )}
+        >
+            {children}
+        </div>
     );
 }
 
@@ -61,12 +72,19 @@ export function SettingsSectionBody({
 }
 
 export function SettingsSectionFooter({
-    children
+    children,
+    className
 }: {
     children: React.ReactNode;
+    className?: string;
 }) {
     return (
-        <div className="flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-2 mt-auto pt-6">
+        <div
+            className={cn(
+                "flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-2 mt-auto pt-6",
+                className
+            )}
+        >
             {children}
         </div>
     );

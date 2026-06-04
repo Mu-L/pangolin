@@ -31,7 +31,11 @@ import * as siteProvisioning from "#private/routers/siteProvisioning";
 import * as eventStreamingDestination from "#private/routers/eventStreamingDestination";
 import * as alertRule from "#private/routers/alertRule";
 import * as healthChecks from "#private/routers/healthChecks";
+import * as browserGatewayTarget from "#private/routers/browserGatewayTarget";
+import * as labels from "#private/routers/labels";
 import * as client from "@server/routers/client";
+import * as resource from "#private/routers/resource";
+import * as policy from "#private/routers/policy";
 
 import {
     verifyOrgAccess,
@@ -45,7 +49,8 @@ import {
     verifyUserCanSetUserOrgRoles,
     verifySiteProvisioningKeyAccess,
     verifyIsLoggedInUser,
-    verifyAdmin
+    verifyAdmin,
+    verifyResourcePolicyAccess
 } from "@server/middlewares";
 import { ActionsEnum } from "@server/auth/actions";
 import {
@@ -383,6 +388,39 @@ authenticated.get(
     approval.countApprovals
 );
 
+authenticated.delete(
+    "/resource-policy/:resourcePolicyId",
+    verifyResourcePolicyAccess,
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.deleteResourcePolicy),
+    logActionAudit(ActionsEnum.deleteResourcePolicy),
+    policy.deleteResourcePolicy
+);
+
+authenticated.get(
+    "/org/:orgId/resource-policies",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.listResourcePolicies),
+    logActionAudit(ActionsEnum.listResourcePolicies),
+    policy.listResourcePolicies
+);
+
+authenticated.post(
+    "/org/:orgId/resource-policy",
+    verifyValidLicense,
+    verifyValidSubscription(tierMatrix.resourcePolicies),
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createResourcePolicy),
+    logActionAudit(ActionsEnum.createResourcePolicy),
+    policy.createResourcePolicy
+);
+
 authenticated.put(
     "/org/:orgId/approvals/:approvalId",
     verifyValidLicense,
@@ -572,7 +610,7 @@ authenticated.put(
 authenticated.post(
     "/org/:orgId/ssh/sign-key",
     verifyValidLicense,
-    verifyValidSubscription(tierMatrix.sshPam),
+    verifyValidSubscription(tierMatrix.advancedPrivateResources),
     verifyOrgAccess,
     verifyLimits,
     verifyUserHasAction(ActionsEnum.signSshKey),
@@ -734,6 +772,59 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.listOrgLabels),
+    labels.listOrgLabels
+);
+
+authenticated.post(
+    "/org/:orgId/labels",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.createOrgLabel),
+    labels.createOrgLabel
+);
+
+authenticated.patch(
+    "/org/:orgId/label/:labelId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.updateOrgLabel),
+    labels.updateOrgLabel
+);
+
+authenticated.delete(
+    "/org/:orgId/label/:labelId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteOrgLabel),
+    labels.deleteOrgLabel
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/attach",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.attachLabelToItem),
+    labels.attachLabelToItem
+);
+
+authenticated.put(
+    "/org/:orgId/label/:labelId/detach",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyValidSubscription(tierMatrix.labels),
+    verifyUserHasAction(ActionsEnum.detachLabelFromItem),
+    labels.detachLabelFromItem
+);
+
+authenticated.get(
     "/org/:orgId/health-checks",
     verifyValidLicense,
     verifyOrgAccess,
@@ -787,4 +878,49 @@ authenticated.post(
     "/client/:clientId/rebuild-associations-cache",
     verifyClientAccess,
     client.rebuildClientAssociationsCacheRoute
+);
+
+authenticated.put(
+    "/org/:orgId/resource/:resourceId/browser-gateway-target",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.createBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.createBrowserGatewayTarget),
+    browserGatewayTarget.createBrowserGatewayTarget
+);
+
+authenticated.get(
+    "/org/:orgId/resource/:resourceId/browser-gateway-targets",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listBrowserGatewayTargets),
+    browserGatewayTarget.listBrowserGatewayTargets
+);
+
+authenticated.get(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getBrowserGatewayTarget),
+    browserGatewayTarget.getBrowserGatewayTarget
+);
+
+authenticated.post(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyLimits,
+    verifyUserHasAction(ActionsEnum.updateBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.updateBrowserGatewayTarget),
+    browserGatewayTarget.updateBrowserGatewayTarget
+);
+
+authenticated.delete(
+    "/org/:orgId/browser-gateway-target/:browserGatewayTargetId",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.deleteBrowserGatewayTarget),
+    logActionAudit(ActionsEnum.deleteBrowserGatewayTarget),
+    browserGatewayTarget.deleteBrowserGatewayTarget
 );

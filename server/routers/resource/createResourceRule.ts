@@ -109,7 +109,7 @@ export async function createResourceRule(
             );
         }
 
-        if (!resource.http) {
+        if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,

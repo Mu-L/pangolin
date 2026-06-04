@@ -43,6 +43,7 @@ import m37 from "./scriptsSqlite/1.17.0";
 import m38 from "./scriptsSqlite/1.18.0";
 import m39 from "./scriptsSqlite/1.18.3";
 import m40 from "./scriptsSqlite/1.18.4";
+import m41 from "./scriptsSqlite/1.19.0";
 
 // THIS CANNOT IMPORT ANYTHING FROM THE SERVER
 // EXCEPT FOR THE DATABASE AND THE SCHEMA
@@ -83,7 +84,8 @@ const migrations = [
     { version: "1.17.0", run: m37 },
     { version: "1.18.0", run: m38 },
     { version: "1.18.3", run: m39 },
-    { version: "1.18.4", run: m40 }
+    { version: "1.18.4", run: m40 },
+    { version: "1.19.0", run: m41 }
     // Add new migrations here as they are created
 ] as const;
 
@@ -169,7 +171,7 @@ async function executeScripts() {
         console.log(`Starting migrations from version ${startVersion}`);
 
         const migrationsToRun = migrations.filter((migration) =>
-            semver.gt(migration.version, startVersion)
+            shouldRunMigration(migration.version, startVersion)
         );
 
         console.log(
@@ -222,4 +224,24 @@ async function executeScripts() {
         console.error("Migration process failed:", error);
         throw error;
     }
+}
+
+function shouldRunMigration(migrationVersion: string, currentVersion: string) {
+    const migration = semver.parse(migrationVersion);
+    const current = semver.parse(currentVersion);
+
+    // Treat x.y.z-rc.* as equivalent to x.y.z so restarts on RC builds do not re-run the same migration.
+    if (
+        migration &&
+        current &&
+        migration.prerelease.length === 0 &&
+        current.prerelease[0] === "rc" &&
+        migration.major === current.major &&
+        migration.minor === current.minor &&
+        migration.patch === current.patch
+    ) {
+        return false;
+    }
+
+    return semver.gt(migrationVersion, currentVersion);
 }

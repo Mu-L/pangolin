@@ -1,12 +1,23 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, domainNamespaces, loginPage } from "@server/db";
+import {
+    db,
+    domainNamespaces,
+    loginPage,
+    resourceHeaderAuth,
+    resourceHeaderAuthExtendedCompatibility,
+    resourcePassword,
+    resourcePincode,
+    resourceRules,
+    resourceWhitelist
+} from "@server/db";
 import {
     domains,
     Org,
     orgDomains,
     orgs,
     Resource,
+    resourcePolicies,
     resources
 } from "@server/db";
 import { eq, and, ne } from "drizzle-orm";
@@ -24,7 +35,10 @@ import {
 import { registry } from "@server/openApi";
 import { OpenAPITags } from "@server/openApi";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
-import { validateAndConstructDomain, checkWildcardDomainConflict } from "@server/lib/domainUtils";
+import {
+    validateAndConstructDomain,
+    checkWildcardDomainConflict
+} from "@server/lib/domainUtils";
 import { build } from "@server/build";
 import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -68,7 +82,12 @@ const updateHttpResourceBodySchema = z
         maintenanceTitle: z.string().max(255).nullable().optional(),
         maintenanceMessage: z.string().max(2000).nullable().optional(),
         maintenanceEstimatedTime: z.string().max(100).nullable().optional(),
-        postAuthPath: z.string().nullable().optional()
+        postAuthPath: z.string().nullable().optional(),
+        // SSH settings
+        pamMode: z.enum(["passthrough", "push"]).optional(),
+        authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
+        authDaemonPort: z.int().min(1).max(65535).nullable().optional(),
+        resourcePolicyId: z.number().nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -165,7 +184,8 @@ const updateRawResourceBodySchema = z
         stickySession: z.boolean().optional(),
         enabled: z.boolean().optional(),
         proxyProtocol: z.boolean().optional(),
-        proxyProtocolVersion: z.int().min(1).optional()
+        proxyProtocolVersion: z.int().min(1).optional(),
+        resourcePolicyId: z.number().nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"
@@ -255,7 +275,7 @@ export async function updateResource(
             );
         }
 
-        if (resource.http) {
+        if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
             // HANDLE UPDATING HTTP RESOURCES
             return await updateHttpResource(
                 {
@@ -316,6 +336,42 @@ async function updateHttpResource(
 
     const updateData = parsedBody.data;
 
+    const isLicensed = await isLicensedOrSubscribed(
+        resource.orgId,
+        tierMatrix.wildcardSubdomain
+    );
+
+    if (updateData.resourcePolicyId != null) {
+        if (!isLicensed) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "Resource policies are not supported on your current plan. Please upgrade to access this feature."
+                )
+            );
+        }
+
+        const [existingPolicy] = await db
+            .select()
+            .from(resourcePolicies)
+            .where(
+                eq(
+                    resourcePolicies.resourcePolicyId,
+                    updateData.resourcePolicyId
+                )
+            )
+            .limit(1);
+
+        if (!existingPolicy) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Resource policy with ID ${updateData.resourcePolicyId} not found`
+                )
+            );
+        }
+    }
+
     if (updateData.niceId) {
         const [existingResource] = await db
             .select()
@@ -341,10 +397,6 @@ async function updateHttpResource(
 
     // Wildcard subdomains are a paid feature
     if (updateData.subdomain && updateData.subdomain.includes("*")) {
-        const isLicensed = await isLicensedOrSubscribed(
-            resource.orgId,
-            tierMatrix.wildcardSubdomain
-        );
         if (!isLicensed) {
             return next(
                 createHttpError(
@@ -489,10 +541,6 @@ async function updateHttpResource(
         headers = null;
     }
 
-    const isLicensed = await isLicensedOrSubscribed(
-        resource.orgId,
-        tierMatrix.maintencePage
-    );
     if (!isLicensed) {
         updateData.maintenanceModeEnabled = undefined;
         updateData.maintenanceModeType = undefined;
@@ -550,38 +598,122 @@ async function updateRawResource(
     }
 
     const updateData = parsedBody.data;
+    let updatedResource: Resource | null = null;
 
-    if (updateData.niceId) {
-        const [existingResource] = await db
-            .select()
-            .from(resources)
-            .where(
-                and(
-                    eq(resources.niceId, updateData.niceId),
-                    eq(resources.orgId, resource.orgId)
-                )
-            );
-
-        if (
-            existingResource &&
-            existingResource.resourceId !== resource.resourceId
-        ) {
-            return next(
-                createHttpError(
-                    HttpCode.CONFLICT,
-                    `A resource with niceId "${updateData.niceId}" already exists`
-                )
-            );
-        }
-    }
-
-    const updatedResource = await db
-        .update(resources)
-        .set(updateData)
+    const [existingResource] = await db
+        .select()
+        .from(resources)
         .where(eq(resources.resourceId, resource.resourceId))
-        .returning();
+        .limit(1);
 
-    if (updatedResource.length === 0) {
+    await db.transaction(async (trx) => {
+        if (updateData.resourcePolicyId != null) {
+            const [existingPolicy] = await trx
+                .select()
+                .from(resourcePolicies)
+                .where(
+                    eq(
+                        resourcePolicies.resourcePolicyId,
+                        updateData.resourcePolicyId
+                    )
+                )
+                .limit(1);
+
+            if (!existingPolicy) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `Resource policy with ID ${updateData.resourcePolicyId} not found`
+                    )
+                );
+            }
+        } else {
+            // we are in an inline policy and we need to clear out the old tables
+            await Promise.all([
+                trx
+                    .delete(resourcePassword)
+                    .where(
+                        eq(
+                            resourcePassword.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourcePincode)
+                    .where(
+                        eq(
+                            resourcePincode.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourceHeaderAuth)
+                    .where(
+                        eq(
+                            resourceHeaderAuth.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourceHeaderAuthExtendedCompatibility)
+                    .where(
+                        eq(
+                            resourceHeaderAuthExtendedCompatibility.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+                trx
+                    .delete(resourceWhitelist)
+                    .where(
+                        eq(
+                            resourceWhitelist.resourceId,
+                            existingResource.resourceId
+                        )
+                    ),
+
+                trx
+                    .delete(resourceRules)
+                    .where(
+                        eq(
+                            resourceRules.resourceId,
+                            existingResource.resourceId
+                        )
+                    )
+            ]);
+        }
+
+        if (updateData.niceId) {
+            const [existingResourceConflict] = await trx
+                .select()
+                .from(resources)
+                .where(
+                    and(
+                        eq(resources.niceId, updateData.niceId),
+                        eq(resources.orgId, resource.orgId)
+                    )
+                );
+
+            if (
+                existingResourceConflict &&
+                existingResourceConflict.resourceId !== resource.resourceId
+            ) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        `A resource with niceId "${updateData.niceId}" already exists`
+                    )
+                );
+            }
+        }
+
+        [updatedResource] = await trx
+            .update(resources)
+            .set(updateData)
+            .where(eq(resources.resourceId, resource.resourceId))
+            .returning();
+    });
+
+    if (!updatedResource) {
         return next(
             createHttpError(
                 HttpCode.NOT_FOUND,
@@ -591,7 +723,7 @@ async function updateRawResource(
     }
 
     return response(res, {
-        data: updatedResource[0],
+        data: updatedResource,
         success: true,
         error: false,
         message: "Non-http Resource updated successfully",

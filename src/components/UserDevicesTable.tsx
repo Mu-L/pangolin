@@ -405,7 +405,7 @@ export default function UserDevicesTable({
             },
             {
                 accessorKey: "online",
-                friendlyName: t("connected"),
+                friendlyName: t("status"),
                 header: () => {
                     return (
                         <ColumnFilterButton
@@ -427,7 +427,7 @@ export default function UserDevicesTable({
                             }
                             searchPlaceholder={t("searchPlaceholder")}
                             emptyMessage={t("emptySearchOptions")}
-                            label={t("connected")}
+                            label={t("status")}
                             className="p-3"
                         />
                     );
@@ -794,6 +794,7 @@ export default function UserDevicesTable({
                 columnVisibility={defaultUserColumnVisibility}
                 onSearch={handleSearchChange}
                 onPaginationChange={handlePaginationChange}
+                searchQuery={searchParams.get("query")?.toString()}
                 pagination={pagination}
                 rowCount={rowCount}
                 stickyLeftColumn="name"

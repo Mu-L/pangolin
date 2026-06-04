@@ -520,7 +520,8 @@ export class TraefikConfigManager {
                 build != "oss", // generate the login pages on the cloud and hybrid,
                 build == "saas"
                     ? false
-                    : config.getRawConfig().traefik.allow_raw_resources // dont allow raw resources on saas otherwise use config
+                    : config.getRawConfig().traefik.allow_raw_resources, // dont allow raw resources on saas otherwise use config
+                build != "oss" // generate browser gateway targets on cloud and enterprise
             );
 
             const domains = new Set<string>();

@@ -26,6 +26,15 @@ const listOrgsSchema = z.object({
         .pipe(z.int().nonnegative())
 });
 
+const ListOrgsResponseDataSchema = z.object({
+    orgs: z.array(z.object({}).passthrough()),
+    pagination: z.object({
+        total: z.number(),
+        limit: z.number(),
+        offset: z.number()
+    })
+});
+
 registry.registerPath({
     method: "get",
     path: "/orgs",
@@ -50,15 +59,6 @@ export type ListOrgsResponse = {
     orgs: Org[];
     pagination: { total: number; limit: number; offset: number };
 };
-
-const ListOrgsResponseDataSchema = z.object({
-    orgs: z.array(z.object({}).passthrough()),
-    pagination: z.object({
-        total: z.number(),
-        limit: z.number(),
-        offset: z.number()
-    })
-});
 
 export async function listOrgs(
     req: Request,

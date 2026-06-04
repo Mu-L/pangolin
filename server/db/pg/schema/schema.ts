@@ -65,7 +65,12 @@ export const orgs = pgTable("orgs", {
     sshCaPrivateKey: text("sshCaPrivateKey"), // Encrypted SSH CA private key (PEM format)
     sshCaPublicKey: text("sshCaPublicKey"), // SSH CA public key (OpenSSH format)
     isBillingOrg: boolean("isBillingOrg"),
-    billingOrgId: varchar("billingOrgId")
+    billingOrgId: varchar("billingOrgId"),
+    settingsEnableGlobalNewtAutoUpdate: boolean(
+        "settingsEnableGlobalNewtAutoUpdate"
+    )
+        .notNull()
+        .default(false)
 });
 
 export const orgDomains = pgTable("orgDomains", {
@@ -103,6 +108,10 @@ export const sites = pgTable("sites", {
     lastHolePunch: bigint("lastHolePunch", { mode: "number" }),
     listenPort: integer("listenPort"),
     dockerSocketEnabled: boolean("dockerSocketEnabled").notNull().default(true),
+    autoUpdateEnabled: boolean("autoUpdateEnabled").notNull().default(false),
+    autoUpdateOverrideOrg: boolean("autoUpdateOverrideOrg")
+        .notNull()
+        .default(false),
     status: varchar("status")
         .$type<"pending" | "approved">()
         .default("approved")
@@ -110,6 +119,16 @@ export const sites = pgTable("sites", {
 
 export const resources = pgTable("resources", {
     resourceId: serial("resourceId").primaryKey(),
+    resourcePolicyId: integer("resourcePolicyId").references(
+        () => resourcePolicies.resourcePolicyId,
+        { onDelete: "set null" }
+    ),
+    defaultResourcePolicyId: integer("defaultResourcePolicyId").references(
+        () => resourcePolicies.resourcePolicyId,
+        {
+            onDelete: "restrict"
+        }
+    ),
     resourceGuid: varchar("resourceGuid", { length: 36 })
         .unique()
         .notNull()
@@ -129,8 +148,6 @@ export const resources = pgTable("resources", {
     ssl: boolean("ssl").notNull().default(false),
     blockAccess: boolean("blockAccess").notNull().default(false),
     sso: boolean("sso").notNull().default(true),
-    http: boolean("http").notNull().default(true),
-    protocol: varchar("protocol").notNull(),
     proxyPort: integer("proxyPort"),
     emailWhitelistEnabled: boolean("emailWhitelistEnabled")
         .notNull()
@@ -147,7 +164,6 @@ export const resources = pgTable("resources", {
     headers: text("headers"), // comma-separated list of headers to add to the request
     proxyProtocol: boolean("proxyProtocol").notNull().default(false),
     proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
-
     maintenanceModeEnabled: boolean("maintenanceModeEnabled")
         .notNull()
         .default(false),
@@ -159,8 +175,99 @@ export const resources = pgTable("resources", {
     maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
     postAuthPath: text("postAuthPath"),
     health: varchar("health").default("unknown"), // "healthy", "unhealthy", "unknown"
-    wildcard: boolean("wildcard").notNull().default(false)
+    wildcard: boolean("wildcard").notNull().default(false),
+    mode: text("mode").default("http").notNull(), // rdp, ssh, http, vnc
+    pamMode: varchar("pamMode", { length: 32 })
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
+    authDaemonMode: varchar("authDaemonMode", { length: 32 })
+        .$type<"site" | "remote" | "native">()
+        .default("site"),
+    authDaemonPort: integer("authDaemonPort").default(22123)
 });
+
+export const labels = pgTable("labels", {
+    labelId: serial("labelId").primaryKey(),
+    name: varchar("name").notNull(),
+    color: varchar("color").notNull(),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
+});
+
+export const siteLabels = pgTable(
+    "siteLabels",
+    {
+        siteLabelId: serial("siteLabelId").primaryKey(),
+        siteId: integer("siteId")
+            .references(() => sites.siteId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_label_uniq").on(t.siteId, t.labelId)]
+);
+
+export const resourceLabels = pgTable(
+    "resourceLabels",
+    {
+        resourceLabelId: serial("resourceLabelId").primaryKey(),
+        resourceId: integer("resourceId")
+            .references(() => resources.resourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("resource_label_uniq").on(t.resourceId, t.labelId)]
+);
+
+export const siteResourceLabels = pgTable(
+    "siteResourceLabels",
+    {
+        siteResourceLabelId: serial("siteResourceLabelId").primaryKey(),
+        siteResourceId: integer("siteResourceId")
+            .references(() => siteResources.siteResourceId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("site_resource_label_uniq").on(t.siteResourceId, t.labelId)]
+);
+
+export const clientLabels = pgTable(
+    "clientLabels",
+    {
+        clientLabelId: serial("clientLabelId").primaryKey(),
+        clientId: integer("clientId")
+            .references(() => clients.clientId, {
+                onDelete: "cascade"
+            })
+            .notNull(),
+        labelId: integer("labelId")
+            .references(() => labels.labelId, {
+                onDelete: "cascade"
+            })
+            .notNull()
+    },
+    (t) => [unique("client_label_uniq").on(t.clientId, t.labelId)]
+);
 
 export const targets = pgTable("targets", {
     targetId: serial("targetId").primaryKey(),
@@ -196,9 +303,11 @@ export const targetHealthCheck = pgTable("targetHealthCheck", {
             onDelete: "cascade"
         })
         .notNull(),
-    siteId: integer("siteId").references(() => sites.siteId, {
-        onDelete: "cascade"
-    }).notNull(),
+    siteId: integer("siteId")
+        .references(() => sites.siteId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
     name: varchar("name"),
     hcEnabled: boolean("hcEnabled").notNull().default(false),
     hcPath: varchar("hcPath"),
@@ -254,11 +363,11 @@ export const siteResources = pgTable("siteResources", {
     niceId: varchar("niceId").notNull(),
     name: varchar("name").notNull(),
     ssl: boolean("ssl").notNull().default(false),
-    mode: varchar("mode").$type<"host" | "cidr" | "http">().notNull(), // "host" | "cidr" | "http"
+    mode: varchar("mode").$type<"host" | "cidr" | "http" | "ssh">().notNull(), // "host" | "cidr" | "http"
     scheme: varchar("scheme").$type<"http" | "https">(), // only for when we are doing https or http mode
     proxyPort: integer("proxyPort"), // only for port mode
     destinationPort: integer("destinationPort"), // only for port mode
-    destination: varchar("destination").notNull(), // ip, cidr, hostname; validate against the mode
+    destination: varchar("destination"), // ip, cidr, hostname; validate against the mode
     enabled: boolean("enabled").notNull().default(true),
     alias: varchar("alias"),
     aliasAddress: varchar("aliasAddress"),
@@ -266,8 +375,11 @@ export const siteResources = pgTable("siteResources", {
     udpPortRangeString: varchar("udpPortRangeString").notNull().default("*"),
     disableIcmp: boolean("disableIcmp").notNull().default(false),
     authDaemonPort: integer("authDaemonPort").default(22123),
+    pamMode: varchar("pamMode", { length: 32 })
+        .$type<"passthrough" | "push">()
+        .default("passthrough"),
     authDaemonMode: varchar("authDaemonMode", { length: 32 })
-        .$type<"site" | "remote">()
+        .$type<"site" | "remote" | "native">()
         .default("site"),
     domainId: varchar("domainId").references(() => domains.domainId, {
         onDelete: "set null"
@@ -521,6 +633,38 @@ export const userResources = pgTable("userResources", {
         .references(() => resources.resourceId, { onDelete: "cascade" })
 });
 
+export const rolePolicies = pgTable("rolePolicies", {
+    roleId: integer("roleId")
+        .notNull()
+        .references(() => roles.roleId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const userPolicies = pgTable("userPolicies", {
+    userId: varchar("userId")
+        .notNull()
+        .references(() => users.userId, { onDelete: "cascade" }),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyWhiteList = pgTable("resourcePolicyWhitelist", {
+    whitelistId: serial("id").primaryKey(),
+    email: varchar("email").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
 export const userInvites = pgTable("userInvites", {
     inviteId: varchar("inviteId").primaryKey(),
     orgId: varchar("orgId")
@@ -586,6 +730,40 @@ export const resourceHeaderAuthExtendedCompatibility = pgTable(
     }
 );
 
+export const resourcePolicyPincode = pgTable("resourcePolicyPincode", {
+    pincodeId: serial("pincodeId").primaryKey(),
+    pincodeHash: varchar("pincodeHash").notNull(),
+    digitLength: integer("digitLength").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyPassword = pgTable("resourcePolicyPassword", {
+    passwordId: serial("passwordId").primaryKey(),
+    passwordHash: varchar("passwordHash").notNull(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
+export const resourcePolicyHeaderAuth = pgTable("resourcePolicyHeaderAuth", {
+    headerAuthId: serial("headerAuthId").primaryKey(),
+    headerAuthHash: varchar("headerAuthHash").notNull(),
+    extendedCompatibility: boolean("extendedCompatibility")
+        .notNull()
+        .default(true),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        })
+});
+
 export const resourceAccessToken = pgTable("resourceAccessToken", {
     accessTokenId: varchar("accessTokenId").primaryKey(),
     orgId: varchar("orgId")
@@ -594,6 +772,7 @@ export const resourceAccessToken = pgTable("resourceAccessToken", {
     resourceId: integer("resourceId")
         .notNull()
         .references(() => resources.resourceId, { onDelete: "cascade" }),
+    path: varchar("path"),
     tokenHash: varchar("tokenHash").notNull(),
     sessionLength: bigint("sessionLength", { mode: "number" }).notNull(),
     expiresAt: bigint("expiresAt", { mode: "number" }),
@@ -641,6 +820,24 @@ export const resourceSessions = pgTable("resourceSessions", {
             onDelete: "cascade"
         }
     ),
+    policyPasswordId: integer("policyPasswordId").references(
+        () => resourcePolicyPassword.passwordId,
+        {
+            onDelete: "cascade"
+        }
+    ),
+    policyPincodeId: integer("policyPincodeId").references(
+        () => resourcePolicyPincode.pincodeId,
+        {
+            onDelete: "cascade"
+        }
+    ),
+    policyWhitelistId: integer("policyWhitelistId").references(
+        () => resourcePolicyWhiteList.whitelistId,
+        {
+            onDelete: "cascade"
+        }
+    ),
     issuedAt: bigint("issuedAt", { mode: "number" })
 });
 
@@ -677,6 +874,43 @@ export const resourceRules = pgTable("resourceRules", {
     action: varchar("action").notNull(), // ACCEPT, DROP, PASS
     match: varchar("match").notNull(), // CIDR, PATH, IP
     value: varchar("value").notNull()
+});
+
+export const resourcePolicyRules = pgTable("resourcePolicyRules", {
+    ruleId: serial("ruleId").primaryKey(),
+    resourcePolicyId: integer("resourcePolicyId")
+        .notNull()
+        .references(() => resourcePolicies.resourcePolicyId, {
+            onDelete: "cascade"
+        }),
+    enabled: boolean("enabled").notNull().default(true),
+    priority: integer("priority").notNull(),
+    action: varchar("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
+    match: varchar("match").$type<"CIDR" | "PATH" | "IP">().notNull(),
+    value: varchar("value").notNull()
+});
+
+export const resourcePolicies = pgTable("resourcePolicies", {
+    resourcePolicyId: serial("resourcePolicyId").primaryKey(),
+    sso: boolean("sso").notNull().default(true),
+    applyRules: boolean("applyRules").notNull().default(false),
+    scope: varchar("scope")
+        .$type<"global" | "resource">()
+        .notNull()
+        .default("global"),
+    emailWhitelistEnabled: boolean("emailWhitelistEnabled")
+        .notNull()
+        .default(false),
+    idpId: integer("idpId").references(() => idp.idpId, {
+        onDelete: "set null"
+    }),
+    niceId: text("niceId").notNull(),
+    name: varchar("name").notNull(),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull()
 });
 
 export const supporterKey = pgTable("supporterKey", {
@@ -1097,19 +1331,30 @@ export const roundTripMessageTracker = pgTable("roundTripMessageTracker", {
     complete: boolean("complete").notNull().default(false)
 });
 
-export const statusHistory = pgTable("statusHistory", {
-    id: serial("id").primaryKey(),
-    entityType: varchar("entityType").notNull(),
-    entityId: integer("entityId").notNull(),
-    orgId: varchar("orgId")
-        .notNull()
-        .references(() => orgs.orgId, { onDelete: "cascade" }),
-    status: varchar("status").notNull(),
-    timestamp: integer("timestamp").notNull(),
-}, (table) => [
-    index("idx_statusHistory_entity").on(table.entityType, table.entityId, table.timestamp),
-    index("idx_statusHistory_org_timestamp").on(table.orgId, table.timestamp),
-]);
+export const statusHistory = pgTable(
+    "statusHistory",
+    {
+        id: serial("id").primaryKey(),
+        entityType: varchar("entityType").notNull(),
+        entityId: integer("entityId").notNull(),
+        orgId: varchar("orgId")
+            .notNull()
+            .references(() => orgs.orgId, { onDelete: "cascade" }),
+        status: varchar("status").notNull(),
+        timestamp: integer("timestamp").notNull()
+    },
+    (table) => [
+        index("idx_statusHistory_entity").on(
+            table.entityType,
+            table.entityId,
+            table.timestamp
+        ),
+        index("idx_statusHistory_org_timestamp").on(
+            table.orgId,
+            table.timestamp
+        )
+    ]
+);
 
 export type Org = InferSelectModel<typeof orgs>;
 export type User = InferSelectModel<typeof users>;
@@ -1147,6 +1392,16 @@ export type ResourceHeaderAuthExtendedCompatibility = InferSelectModel<
 export type ResourceOtp = InferSelectModel<typeof resourceOtp>;
 export type ResourceAccessToken = InferSelectModel<typeof resourceAccessToken>;
 export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;
+export type ResourcePolicyPincode = InferSelectModel<
+    typeof resourcePolicyPincode
+>;
+export type ResourcePolicyPassword = InferSelectModel<
+    typeof resourcePolicyPassword
+>;
+export type ResourcePolicyHeaderAuth = InferSelectModel<
+    typeof resourcePolicyHeaderAuth
+>;
+
 export type VersionMigration = InferSelectModel<typeof versionMigrations>;
 export type ResourceRule = InferSelectModel<typeof resourceRules>;
 export type Domain = InferSelectModel<typeof domains>;
@@ -1179,3 +1434,7 @@ export type RoundTripMessageTracker = InferSelectModel<
 >;
 export type Network = InferSelectModel<typeof networks>;
 export type StatusHistory = InferSelectModel<typeof statusHistory>;
+export type Label = InferSelectModel<typeof labels>;
+export type ResourcePolicy = InferSelectModel<typeof resourcePolicies>;
+export type RolePolicy = InferSelectModel<typeof rolePolicies>;
+export type UserPolicy = InferSelectModel<typeof userPolicies>;

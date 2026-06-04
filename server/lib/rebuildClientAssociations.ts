@@ -890,6 +890,9 @@ async function handleSubnetProxyTargetUpdates(
                 }
 
                 for (const client of removedClients) {
+                    if (!siteResource.destination) {
+                        continue;
+                    }
                     // Check if this client still has access to another resource
                     // on this specific site with the same destination. We scope
                     // by siteId (via siteNetworks) rather than networkId because
@@ -1563,6 +1566,9 @@ async function handleMessagesForClientResources(
                 }
 
                 try {
+                    if (!resource.destination) {
+                        continue;
+                    }
                     // Check if this client still has access to another resource
                     // on this specific site with the same destination. We scope
                     // by siteId (via siteNetworks) rather than networkId because

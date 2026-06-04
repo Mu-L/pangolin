@@ -41,6 +41,7 @@ import {
     TooltipTrigger
 } from "@/components/ui/tooltip";
 import CopyToClipboard from "@app/components/CopyToClipboard";
+import { Badge } from "@/components/ui/badge";
 
 // Update Resource type to include site information
 type Resource = {
@@ -49,7 +50,7 @@ type Resource = {
     domain: string;
     enabled: boolean;
     protected: boolean;
-    protocol: string;
+    mode: string; // "http", "tcp", "udp", "rdp", "vnc", "ssh"
     // Auth method fields
     sso?: boolean;
     password?: boolean;
@@ -62,9 +63,9 @@ type Resource = {
 type SiteResource = {
     siteResourceId: number;
     name: string;
+    niceId: string;
     destination: string;
     mode: string;
-    protocol: string | null;
     ssl: boolean;
     fullDomain: string | null;
     enabled: boolean;
@@ -755,7 +756,13 @@ export default function MemberResourcesPortal({
                                                     </TooltipProvider>
                                                 </div>
 
-                                                <div className="flex-shrink-0">
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-xs"
+                                                    >
+                                                        {resource.mode.toUpperCase()}
+                                                    </Badge>
                                                     <ResourceInfo
                                                         resource={resource}
                                                     />
@@ -861,7 +868,13 @@ export default function MemberResourcesPortal({
                                                     </TooltipProvider>
                                                 </div>
 
-                                                <div className="flex-shrink-0">
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-xs"
+                                                    >
+                                                        {siteResource.mode.toUpperCase()}
+                                                    </Badge>
                                                     <InfoPopup>
                                                         <div className="space-y-2 text-sm">
                                                             <div className="text-xs font-medium mb-1.5">
@@ -877,39 +890,24 @@ export default function MemberResourcesPortal({
                                                                     :
                                                                 </span>
                                                                 <span className="ml-2 text-muted-foreground capitalize">
-                                                                    {
-                                                                        siteResource.mode
-                                                                    }
+                                                                    {siteResource.mode.toUpperCase()}
                                                                 </span>
                                                             </div>
-                                                            {siteResource.protocol && (
+                                                            {siteResource.destination && (
                                                                 <div>
                                                                     <span className="font-medium">
                                                                         {t(
-                                                                            "protocol"
+                                                                            "memberPortalDestination"
                                                                         )}
                                                                         :
                                                                     </span>
-                                                                    <span className="ml-2 text-muted-foreground uppercase">
+                                                                    <span className="ml-2 text-muted-foreground">
                                                                         {
-                                                                            siteResource.protocol
+                                                                            siteResource.destination
                                                                         }
                                                                     </span>
                                                                 </div>
                                                             )}
-                                                            <div>
-                                                                <span className="font-medium">
-                                                                    {t(
-                                                                        "memberPortalDestination"
-                                                                    )}
-                                                                    :
-                                                                </span>
-                                                                <span className="ml-2 text-muted-foreground">
-                                                                    {
-                                                                        siteResource.destination
-                                                                    }
-                                                                </span>
-                                                            </div>
                                                             {siteResource.alias && (
                                                                 <div>
                                                                     <span className="font-medium">
@@ -954,49 +952,39 @@ export default function MemberResourcesPortal({
                                                 siteResource.fullDomain ? (
                                                     /* HTTP mode - show as clickable link */
                                                     <CopyToClipboard
-                                                        text={`${siteResource.ssl ? "https" : (siteResource.protocol ?? "http")}://${siteResource.fullDomain}`}
+                                                        text={`${siteResource.ssl ? "https" : (siteResource.mode ?? "http")}://${siteResource.fullDomain}`}
                                                         isLink={true}
                                                     />
                                                 ) : siteResource.alias ? (
-                                                    <>
-                                                        {/* Alias as primary */}
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <div className="text-base font-semibold text-foreground text-left truncate flex-1">
-                                                                {
-                                                                    siteResource.alias
-                                                                }
-                                                            </div>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-muted-foreground"
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(
-                                                                        siteResource.alias!
-                                                                    );
-                                                                    toast({
-                                                                        title: t(
-                                                                            "memberPortalCopiedToClipboard"
+                                                    /* Alias as primary */
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-sm text-muted-foreground font-medium text-left truncate flex-1">
+                                                            {siteResource.alias}
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(
+                                                                    siteResource.alias!
+                                                                );
+                                                                toast({
+                                                                    title: t(
+                                                                        "memberPortalCopiedToClipboard"
+                                                                    ),
+                                                                    description:
+                                                                        t(
+                                                                            "memberPortalCopiedAliasDescription"
                                                                         ),
-                                                                        description:
-                                                                            t(
-                                                                                "memberPortalCopiedAliasDescription"
-                                                                            ),
-                                                                        duration: 2000
-                                                                    });
-                                                                }}
-                                                            >
-                                                                <Copy className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        {/* Destination as secondary */}
-                                                        <div className="text-xs text-muted-foreground truncate">
-                                                            {
-                                                                siteResource.destination
-                                                            }
-                                                        </div>
-                                                    </>
-                                                ) : (
+                                                                    duration: 2000
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Copy className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ) : siteResource.destination ? (
                                                     /* Destination as primary when no alias */
                                                     <div className="flex items-center gap-2">
                                                         <div className="text-sm text-muted-foreground font-medium text-left truncate flex-1">
@@ -1027,6 +1015,37 @@ export default function MemberResourcesPortal({
                                                             <Copy className="h-4 w-4" />
                                                         </Button>
                                                     </div>
+                                                ) : (
+                                                    /* niceId fallback when no alias and no destination */
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-sm text-muted-foreground font-medium text-left truncate flex-1">
+                                                            {
+                                                                siteResource.niceId
+                                                            }
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(
+                                                                    siteResource.niceId
+                                                                );
+                                                                toast({
+                                                                    title: t(
+                                                                        "memberPortalCopiedToClipboard"
+                                                                    ),
+                                                                    description:
+                                                                        t(
+                                                                            "memberPortalCopiedDestinationDescription"
+                                                                        ),
+                                                                    duration: 2000
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Copy className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -1037,7 +1056,7 @@ export default function MemberResourcesPortal({
                                                 <Button
                                                     onClick={() =>
                                                         window.open(
-                                                            `${siteResource.ssl ? "https" : (siteResource.protocol ?? "http")}://${siteResource.fullDomain}`,
+                                                            `${siteResource.ssl ? "https" : (siteResource.mode ?? "http")}://${siteResource.fullDomain}`,
                                                             "_blank"
                                                         )
                                                     }

@@ -61,8 +61,7 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
         return (
             <Alert>
                 <AlertDescription>
-                    <InfoSections cols={site.endpoint ? 5 : 4}>
-                        {identifierSection}
+                    <InfoSections cols={site.endpoint ? 4 : 3}>
                         {statusSection}
                         <InfoSection>
                             <InfoSectionTitle>

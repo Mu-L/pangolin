@@ -16,14 +16,13 @@ import logger from "@server/logger";
 import { sites } from "@server/db";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { addTargets as addProxyTargets } from "@server/routers/newt/targets";
-import { addTargets as addClientTargets } from "@server/routers/client/targets";
 import {
     ClientResourcesResults,
     updateClientResources
 } from "./clientResources";
 import { BlueprintSource } from "@server/routers/blueprints/types";
 import { stringify as stringifyYaml } from "yaml";
-import { faker } from "@faker-js/faker";
+import { generateName } from "@server/db/names";
 import { handleMessagingForUpdatedSiteResource } from "@server/routers/siteResource";
 import { rebuildClientAssociationsFromSiteResource } from "../rebuildClientAssociations";
 
@@ -106,7 +105,7 @@ export async function applyBlueprint({
                             site.newt.newtId,
                             [target],
                             matchingHealthcheck ? [matchingHealthcheck] : [],
-                            result.proxyResource.protocol,
+                            result.proxyResource.mode === "udp" ? "udp" : "tcp",
                             site.newt.version
                         );
                     }
@@ -291,9 +290,7 @@ export async function applyBlueprint({
             .insert(blueprints)
             .values({
                 orgId,
-                name:
-                    name ??
-                    `${faker.word.adjective()}-${faker.word.adjective()}-${faker.word.noun()}`,
+                name: name ?? generateName(),
                 contents: stringifyYaml(configData),
                 createdAt: Math.floor(Date.now() / 1000),
                 succeeded: blueprintSucceeded,

@@ -26,7 +26,9 @@ const updateResourceRuleParamsSchema = z.strictObject({
 const updateResourceRuleSchema = z
     .strictObject({
         action: z.enum(["ACCEPT", "DROP", "PASS"]).optional(),
-        match: z.enum(["CIDR", "IP", "PATH", "COUNTRY", "ASN", "REGION"]).optional(),
+        match: z
+            .enum(["CIDR", "IP", "PATH", "COUNTRY", "ASN", "REGION"])
+            .optional(),
         value: z.string().min(1).optional(),
         priority: z.int(),
         enabled: z.boolean().optional()
@@ -117,7 +119,7 @@ export async function updateResourceRule(
             );
         }
 
-        if (!resource.http) {
+        if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
