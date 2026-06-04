@@ -208,6 +208,7 @@ type InternalResourceFormProps = {
     formId: string;
     onSubmit: (values: InternalResourceFormValues) => void | Promise<void>;
     onSubmitDisabledChange?: (disabled: boolean) => void;
+    initialSites?: Selectedsite[];
 };
 
 export function PrivateResourceForm({
@@ -218,7 +219,8 @@ export function PrivateResourceForm({
     siteResourceId,
     formId,
     onSubmit,
-    onSubmitDisabledChange
+    onSubmitDisabledChange,
+    initialSites = []
 }: InternalResourceFormProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
@@ -609,6 +611,8 @@ export function PrivateResourceForm({
         authDaemonMode === "remote";
     const hasInitialized = useRef(false);
     const previousResourceId = useRef<number | null>(null);
+    const initialSitesRef = useRef(initialSites);
+    initialSitesRef.current = initialSites;
 
     useEffect(() => {
         const tcpValue = getPortStringFromMode(tcpPortMode, tcpCustomPorts);
@@ -623,9 +627,13 @@ export function PrivateResourceForm({
     // Reset when create dialog opens
     useEffect(() => {
         if (variant === "create" && open) {
+            const prefillSites =
+                initialSitesRef.current.length > 0
+                    ? initialSitesRef.current
+                    : [];
             form.reset({
                 name: "",
-                siteIds: [],
+                siteIds: prefillSites.map((s) => s.siteId),
                 mode: "host",
                 destination: "",
                 alias: null,
@@ -645,7 +653,7 @@ export function PrivateResourceForm({
                 users: [],
                 clients: []
             });
-            setSelectedSites([]);
+            setSelectedSites(prefillSites);
             setSshServerMode("native");
             setTcpPortMode("all");
             setUdpPortMode("all");

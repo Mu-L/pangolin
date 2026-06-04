@@ -23,19 +23,22 @@ import {
     isHostname,
     type InternalResourceFormValues
 } from "./PrivateResourceForm";
+import type { Selectedsite } from "./site-selector";
 
 type CreateInternalResourceDialogProps = {
     open: boolean;
     setOpen: (val: boolean) => void;
     orgId: string;
     onSuccess?: () => void;
+    initialSites?: Selectedsite[];
 };
 
 export default function CreatePrivateResourceDialog({
     open,
     setOpen,
     orgId,
-    onSuccess
+    onSuccess,
+    initialSites
 }: CreateInternalResourceDialogProps) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
@@ -175,6 +178,7 @@ export default function CreatePrivateResourceDialog({
                         formId="create-internal-resource-form"
                         onSubmit={handleSubmit}
                         onSubmitDisabledChange={setIsHttpModeDisabled}
+                        initialSites={initialSites}
                     />
                 </CredenzaBody>
                 <CredenzaFooter>

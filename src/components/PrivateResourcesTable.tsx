@@ -187,6 +187,11 @@ export default function PrivateResourcesTable({
         };
     }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
+    const createInitialSites = useMemo(
+        () => (selectedSite ? [selectedSite] : undefined),
+        [selectedSite]
+    );
+
     const refreshData = () => {
         startRefreshTransition(() => {
             try {
@@ -686,6 +691,7 @@ export default function PrivateResourcesTable({
                 open={isCreateDialogOpen}
                 setOpen={setIsCreateDialogOpen}
                 orgId={orgId}
+                initialSites={createInitialSites}
                 onSuccess={() => {
                     // Delay refresh to allow modal to close smoothly
                     setTimeout(() => {
