@@ -3346,6 +3346,8 @@
     "idpUnassociateQuestion": "Are you sure you want to unassociate this identity provider from this organization?",
     "idpUnassociateDescription": "All users associated with this identity provider will be removed from this organization, but the identity provider will still continue to exist for other associated organizations.",
     "idpUnassociateConfirm": "Confirm Unassociate Identity Provider",
+    "idpConfirmDeleteAndRemoveMeFromOrg": "DELETE AND REMOVE ME FROM ORG",
+    "idpUnassociateAndRemoveMeFromOrg": "UNASSOCIATE AND REMOVE ME FROM ORG",
     "idpUnassociateWarning": "This cannot be undone for this organization.",
     "idpUnassociatedDescription": "Identity provider unassociated from this organization successfully",
     "idpUnassociateMenu": "Unassociate",
