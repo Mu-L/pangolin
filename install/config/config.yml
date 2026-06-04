@@ -38,7 +38,5 @@ flags:
     disable_user_create_org: false
     allow_raw_resources: true
 
-{{if .IsPostgreSQL}}
-postgres:
-  connection_string: postgresql://pangolin:{{.IsPostgreSQLPass}}@postgres:5432/pangolin
-{{end}}
+{{if .IsPostgreSQL}}postgres:
+    connection_string: postgresql://pangolin:{{.IsPostgreSQLPass}}@postgres:5432/pangolin{{end}}
