@@ -120,7 +120,7 @@ export function ColumnMultiFilterButton({
                                     }}
                                     className="text-muted-foreground"
                                 >
-                                    {t("accessUsersRoleFilterClear")}
+                                    {t("accessFilterClear")}
                                 </CommandItem>
                             )}
                             {options.map((option) => (
