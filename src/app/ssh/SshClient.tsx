@@ -15,9 +15,11 @@ import {
     CardDescription
 } from "@app/components/ui/card";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@app/lib/cn";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
+import { useTranslations } from "next-intl";
 
 type AuthTab = "password" | "privateKey";
 
@@ -56,6 +58,8 @@ export default function SshClient({
         }
         return { username: "", password: "", privateKey: "" };
     });
+
+    const t = useTranslations();
 
     const [authTab, setAuthTab] = useState<AuthTab>("password");
 
@@ -184,7 +188,7 @@ export default function SshClient({
         setConnecting(true);
 
         if (!target) {
-            setConnectError("No target specified");
+            setConnectError(t("sshErrorNoTarget"));
             setConnecting(false);
             return;
         }
@@ -261,7 +265,7 @@ export default function SshClient({
                             authErrorShown = true;
                             setConnecting(false);
                             setConnectError(
-                                msg.error ?? "Authentication failed"
+                                msg.error ?? t("sshErrorAuthFailed")
                             );
                         } else {
                             xtermRef.current?.writeln(
@@ -292,7 +296,7 @@ export default function SshClient({
         ws.onerror = () => {
             setConnecting(false);
             setConnected(false);
-            setConnectError("WebSocket connection failed");
+            setConnectError(t("sshErrorWebSocket"));
         };
 
         ws.onclose = (evt) => {
@@ -306,9 +310,7 @@ export default function SshClient({
             // If auth was never confirmed the login form is already visible;
             // a generic error is shown only when no specific error was received.
             if (!authConfirmed && !authErrorShown) {
-                setConnectError(
-                    "Connection closed before authentication completed"
-                );
+                setConnectError(t("sshErrorConnectionClosed"));
             }
         };
     }
@@ -325,14 +327,38 @@ export default function SshClient({
         return (
             <>
                 {!connected && (
-                    <div className="flex items-center justify-center py-12">
-                        <p className="text-muted-foreground">
-                            {connectError
-                                ? connectError
-                                : connecting
-                                  ? "Connecting…"
-                                  : "Initializing…"}
-                        </p>
+                    <div className="flex items-center justify-center">
+                        <Card className="w-full max-w-md">
+                            <CardHeader>
+                                <CardTitle>{t("sshTitle")}</CardTitle>
+                                <CardDescription>
+                                    {t("sshConnectingDescription")}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex flex-col items-center space-y-4">
+                                {!connectError && (
+                                    <div className="flex items-center space-x-2">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>
+                                            {connecting
+                                                ? t("sshConnecting")
+                                                : t("sshInitializing")}
+                                        </span>
+                                    </div>
+                                )}
+                                {connectError && (
+                                    <Alert
+                                        variant="destructive"
+                                        className="w-full"
+                                    >
+                                        <AlertCircle className="h-5 w-5" />
+                                        <AlertDescription>
+                                            {connectError}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
                 {connected && (
@@ -353,7 +379,7 @@ export default function SshClient({
             <div>
                 <div className="text-center mb-2">
                     <span className="text-sm text-muted-foreground">
-                        Powered by{" "}
+                        {t("sshPoweredBy")}{" "}
                         <Link
                             href="https://pangolin.net/"
                             target="_blank"
@@ -366,7 +392,7 @@ export default function SshClient({
                 </div>
                 <Card className="w-full">
                     <CardHeader>
-                        <CardTitle>SSH</CardTitle>
+                        <CardTitle>{t("sshTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-destructive text-sm">{error}</p>
@@ -382,7 +408,7 @@ export default function SshClient({
                 <div>
                     <div className="text-center mb-2">
                         <span className="text-sm text-muted-foreground">
-                            Powered by{" "}
+                            {t("sshPoweredBy")}{" "}
                             <Link
                                 href="https://pangolin.net/"
                                 target="_blank"
@@ -395,9 +421,9 @@ export default function SshClient({
                     </div>
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>Sign in to SSH</CardTitle>
+                            <CardTitle>{t("sshSignInTitle")}</CardTitle>
                             <CardDescription>
-                                Enter credentials to access xxxx
+                                {t("sshSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -417,8 +443,8 @@ export default function SshClient({
                                             )}
                                         >
                                             {tab === "password"
-                                                ? "Password"
-                                                : "Private Key"}
+                                                ? t("sshPasswordTab")
+                                                : t("sshPrivateKeyTab")}
                                         </button>
                                     )
                                 )}
@@ -426,7 +452,10 @@ export default function SshClient({
 
                             {authTab === "password" && (
                                 <div className="space-y-4">
-                                    <Field label="Username" id="username-pw">
+                                    <Field
+                                        label={t("username")}
+                                        id="username-pw"
+                                    >
                                         <Input
                                             id="username-pw"
                                             value={form.username}
@@ -439,7 +468,7 @@ export default function SshClient({
                                             placeholder="root"
                                         />
                                     </Field>
-                                    <Field label="Password" id="password">
+                                    <Field label={t("password")} id="password">
                                         <Input
                                             id="password"
                                             type="password"
@@ -458,22 +487,21 @@ export default function SshClient({
                             {authTab === "privateKey" && (
                                 <div className="space-y-4">
                                     <p className="text-sm text-muted-foreground">
-                                        Your private key is not stored or
-                                        visible to Pangolin. Alternatively, you
-                                        can use short-lived certificates for
-                                        seamless authentication using your
-                                        existing Pangolin identity.{" "}
+                                        {t("sshPrivateKeyDisclaimer")}{" "}
                                         <Link
                                             href="https://docs.pangolin.net/"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="underline inline-flex items-center gap-1"
                                         >
-                                            Learn more
+                                            {t("sshLearnMore")}
                                             <ExternalLink className="h-3 w-3" />
                                         </Link>
                                     </p>
-                                    <Field label="Username" id="username-key">
+                                    <Field
+                                        label={t("username")}
+                                        id="username-key"
+                                    >
                                         <Input
                                             id="username-key"
                                             value={form.username}
@@ -486,7 +514,10 @@ export default function SshClient({
                                             placeholder="root"
                                         />
                                     </Field>
-                                    <Field label="Private Key" id="privateKey">
+                                    <Field
+                                        label={t("sshPrivateKeyField")}
+                                        id="privateKey"
+                                    >
                                         <Textarea
                                             id="privateKey"
                                             value={form.privateKey}
@@ -502,7 +533,7 @@ export default function SshClient({
                                         />
                                     </Field>
                                     <Field
-                                        label="Private Key File"
+                                        label={t("sshPrivateKeyFile")}
                                         id="privateKeyFile"
                                     >
                                         <Input
@@ -534,8 +565,8 @@ export default function SshClient({
                                     className="w-full"
                                 >
                                     {connecting
-                                        ? "Connecting..."
-                                        : "Authenticate"}
+                                        ? t("sshConnecting")
+                                        : t("sshAuthenticate")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -551,7 +582,7 @@ export default function SshClient({
                             variant="destructive"
                             onClick={disconnect}
                         >
-                            Terminate
+                            {t("sshTerminate")}
                         </Button>
                     </div>
                     <div
