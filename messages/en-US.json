@@ -1225,7 +1225,7 @@
     "accessLabelFilterCount": "{count, plural, one {# label} other {# labels}}",
     "labelOverflowCount": "+{count, plural, one {# label} other {# labels}}",
     "accessLabelFilterClear": "Clear label filters",
-    "accessFilterClear": "Clear filters",
+    "accessFilterClear": "Clear filter",
     "selectColor": "Select color",
     "createNewLabel": "Create new org label \"{label}\"",
     "inviteInvalidDescription": "The invite link is invalid.",
