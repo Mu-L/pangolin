@@ -35,7 +35,7 @@ import {
     resourcePolicyHeaderAuth,
     ResourcePolicyHeaderAuth
 } from "@server/db";
-import { alias } from "drizzle-orm/sqlite-core";
+import { alias } from "@server/db";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import logger from "@server/logger";
 
