@@ -54,6 +54,7 @@ import { ColumnFilterButton } from "./ColumnFilterButton";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
 import { LabelsTableCell } from "./LabelsTableCell";
 import { ControlledDataTable } from "./ui/controlled-data-table";
+import { SitesColumnFilterButton } from "./SitesColumnFilterButton";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
@@ -146,7 +147,6 @@ export default function PrivateResourcesTable({
     const [editingResource, setEditingResource] =
         useState<InternalResourceRow | null>();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
 
     const [isRefreshing, startRefreshTransition] = useTransition();
 
@@ -159,22 +159,6 @@ export default function PrivateResourcesTable({
     //     }, 30_000);
     //     return () => clearInterval(interval);
     // }, [router]);
-
-    const siteIdQ = searchParams.get("siteId");
-    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
-    const selectedSite: Selectedsite | null = useMemo(() => {
-        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
-            return null;
-        }
-        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
-            return initialFilterSite;
-        }
-        return {
-            siteId: siteIdNum,
-            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
-            type: "newt"
-        };
-    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
 
     const refreshData = () => {
         startRefreshTransition(() => {
@@ -269,58 +253,27 @@ export default function PrivateResourcesTable({
                 accessorFn: (row) =>
                     row.sites.map((s) => s.siteName).join(", "),
                 friendlyName: t("sites"),
-                header: () => (
-                    <Popover
-                        open={siteFilterOpen}
-                        onOpenChange={setSiteFilterOpen}
-                    >
-                        <PopoverTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                role="combobox"
-                                className={cn(
-                                    "justify-between text-sm h-8 px-2 w-full p-3",
-                                    !selectedSite && "text-muted-foreground"
-                                )}
-                            >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    {t("sites")}
-                                    <Funnel className="size-4 flex-none" />
-                                    {selectedSite && (
-                                        <Badge
-                                            className="truncate max-w-[10rem]"
-                                            variant="secondary"
-                                        >
-                                            {selectedSite.name}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            className={dataTableFilterPopoverContentClassName}
-                            align="start"
-                        >
-                            <div className="border-b p-1">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-full justify-start font-normal"
-                                    onClick={clearSiteFilter}
-                                >
-                                    {t("standaloneHcFilterAnySite")}
-                                </Button>
-                            </div>
-                            <SitesSelector
-                                orgId={orgId}
-                                selectedSite={selectedSite}
-                                onSelectSite={onPickSite}
-                            />
-                        </PopoverContent>
-                    </Popover>
-                ),
+                header: () => {
+                    const siteIdQ = searchParams.get("siteId");
+                    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+
+                    const selectedSiteId =
+                        !siteIdQ ||
+                        !Number.isInteger(siteIdNum) ||
+                        siteIdNum <= 0
+                            ? null
+                            : siteIdNum;
+
+                    return (
+                        <SitesColumnFilterButton
+                            selectedSiteId={selectedSiteId}
+                            onValueChange={(value) =>
+                                handleFilterChange("siteId", value?.toString())
+                            }
+                            orgId={orgId}
+                        />
+                    );
+                },
                 cell: ({ row }) => {
                     const resourceRow = row.original;
                     return (
@@ -569,16 +522,6 @@ export default function PrivateResourcesTable({
             searchParams
         });
     }
-
-    const clearSiteFilter = () => {
-        handleFilterChange("siteId", undefined);
-        setSiteFilterOpen(false);
-    };
-
-    const onPickSite = (site: Selectedsite) => {
-        handleFilterChange("siteId", String(site.siteId));
-        setSiteFilterOpen(false);
-    };
 
     function toggleSort(column: string) {
         const newSearch = getNextSortOrder(column, searchParams);
