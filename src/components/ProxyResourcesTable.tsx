@@ -76,6 +76,7 @@ import { useLocalLabels } from "@app/hooks/useLocalLabels";
 import { LabelsTableCell } from "./LabelsTableCell";
 import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
 import { refresh } from "next/cache";
+import { SitesColumnFilterButton } from "./SitesColumnFilterButton";
 
 export type TargetHealth = {
     targetId: number;
@@ -154,30 +155,6 @@ export default function ProxyResourcesTable({
 
     const [isRefreshing, startTransition] = useTransition();
     const [isNavigatingToAddPage, startNavigation] = useTransition();
-    const [siteFilterOpen, setSiteFilterOpen] = useState(false);
-
-    const siteIdQ = searchParams.get("siteId");
-    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
-    const selectedSite: Selectedsite | null = useMemo(() => {
-        if (!siteIdQ || !Number.isInteger(siteIdNum) || siteIdNum <= 0) {
-            return null;
-        }
-        if (initialFilterSite && initialFilterSite.siteId === siteIdNum) {
-            return initialFilterSite;
-        }
-        return {
-            siteId: siteIdNum,
-            name: t("standaloneHcFilterSiteIdFallback", { id: siteIdNum }),
-            type: "newt"
-        };
-    }, [initialFilterSite, siteIdQ, siteIdNum, t]);
-
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         router.refresh();
-    //     }, 30_000);
-    //     return () => clearInterval(interval);
-    // }, [router]);
 
     const refreshData = () => {
         startTransition(() => {
@@ -227,28 +204,6 @@ export default function ProxyResourcesTable({
         }
     }
 
-    const clearSiteFilter = () => {
-        handleFilterChange("siteId", undefined);
-        setSiteFilterOpen(false);
-    };
-
-    const onPickSite = (site: Selectedsite) => {
-        handleFilterChange("siteId", String(site.siteId));
-        setSiteFilterOpen(false);
-    };
-
-    const siteFilterOpenRef = useRef(siteFilterOpen);
-    siteFilterOpenRef.current = siteFilterOpen;
-
-    const selectedSiteRef = useRef(selectedSite);
-    selectedSiteRef.current = selectedSite;
-
-    const clearSiteFilterRef = useRef(clearSiteFilter);
-    clearSiteFilterRef.current = clearSiteFilter;
-
-    const onPickSiteRef = useRef(onPickSite);
-    onPickSiteRef.current = onPickSite;
-
     const proxyColumns = useMemo<ExtendedColumnDef<ResourceRow>[]>(() => {
         const cols: ExtendedColumnDef<ResourceRow>[] = [
             {
@@ -291,61 +246,27 @@ export default function ProxyResourcesTable({
                 accessorFn: (row) =>
                     row.sites.map((s) => s.siteName).join(", "),
                 friendlyName: t("sites"),
-                header: () => (
-                    <Popover
-                        open={siteFilterOpenRef.current}
-                        onOpenChange={setSiteFilterOpen}
-                    >
-                        <PopoverTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                role="combobox"
-                                className={cn(
-                                    "justify-between text-sm h-8 px-2 w-full p-3",
-                                    !selectedSiteRef.current &&
-                                        "text-muted-foreground"
-                                )}
-                            >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    {t("sites")}
-                                    <Funnel className="size-4 flex-none" />
-                                    {selectedSiteRef.current && (
-                                        <Badge
-                                            className="truncate max-w-[10rem]"
-                                            variant="secondary"
-                                        >
-                                            {selectedSiteRef.current.name}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            className={dataTableFilterPopoverContentClassName}
-                            align="start"
-                        >
-                            <div className="border-b p-1">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-full justify-start font-normal"
-                                    onClick={() => clearSiteFilterRef.current()}
-                                >
-                                    {t("standaloneHcFilterAnySite")}
-                                </Button>
-                            </div>
-                            <SitesSelector
-                                orgId={orgId}
-                                selectedSite={selectedSiteRef.current}
-                                onSelectSite={(site) =>
-                                    onPickSiteRef.current(site)
-                                }
-                            />
-                        </PopoverContent>
-                    </Popover>
-                ),
+                header: () => {
+                    const siteIdQ = searchParams.get("siteId");
+                    const siteIdNum = siteIdQ ? parseInt(siteIdQ, 10) : NaN;
+
+                    const selectedSiteId =
+                        !siteIdQ ||
+                        !Number.isInteger(siteIdNum) ||
+                        siteIdNum <= 0
+                            ? null
+                            : siteIdNum;
+
+                    return (
+                        <SitesColumnFilterButton
+                            selectedSiteId={selectedSiteId}
+                            onValueChange={(value) =>
+                                handleFilterChange("siteId", value?.toString())
+                            }
+                            orgId={orgId}
+                        />
+                    );
+                },
                 cell: ({ row }) => (
                     <ResourceSitesStatusCell
                         orgId={row.original.orgId}

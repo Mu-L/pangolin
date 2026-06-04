@@ -2,9 +2,17 @@
 
 import ConfirmDeleteDialog from "@app/components/ConfirmDeleteDialog";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import { ExtendedColumnDef } from "@app/components/ui/data-table";
+import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
+import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
+import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
+import {
+    ResourceSitesStatusCell,
+    type ResourceSiteRow
+} from "@app/components/ResourceSitesStatusCell";
+import { Selectedsite, SitesSelector } from "@app/components/site-selector";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
+import { ExtendedColumnDef } from "@app/components/ui/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,53 +26,34 @@ import {
     PopoverTrigger
 } from "@app/components/ui/popover";
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
+import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { cn } from "@app/lib/cn";
+import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
+import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
 import { getNextSortOrder, getSortDirection } from "@app/lib/sortColumn";
+import { build } from "@server/build";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
+import type { PaginationState } from "@tanstack/react-table";
 import {
     ArrowDown01Icon,
     ArrowUp10Icon,
     ArrowUpDown,
-    ArrowUpRight,
-    ChevronDown,
     ChevronsUpDownIcon,
     Funnel,
     MoreHorizontal
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Selectedsite, SitesSelector } from "@app/components/site-selector";
-import {
-    startTransition,
-    useEffect,
-    useMemo,
-    useState,
-    useTransition
-} from "react";
-import CreatePrivateResourceDialog from "@app/components/CreatePrivateResourceDialog";
-import EditPrivateResourceDialog from "@app/components/EditPrivateResourceDialog";
-import type { PaginationState } from "@tanstack/react-table";
-import { ControlledDataTable } from "./ui/controlled-data-table";
-import { useNavigationContext } from "@app/hooks/useNavigationContext";
+import { startTransition, useMemo, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { ColumnFilterButton } from "./ColumnFilterButton";
-import { cn } from "@app/lib/cn";
-import { dataTableFilterPopoverContentClassName } from "@app/lib/dataTableFilterPopover";
-import { formatSiteResourceDestinationDisplay } from "@app/lib/formatSiteResourceAccess";
-import {
-    ResourceSitesStatusCell,
-    type ResourceSiteRow
-} from "@app/components/ResourceSitesStatusCell";
-import { ResourceAccessCertIndicator } from "@app/components/ResourceAccessCertIndicator";
-import { build } from "@server/build";
-import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { tierMatrix } from "@server/lib/billing/tierMatrix";
-import { type SelectedLabel } from "./labels-selector";
-import { LabelsTableCell } from "./LabelsTableCell";
 import { LabelColumnFilterButton } from "./LabelColumnFilterButton";
-import { useLocalLabels } from "@app/hooks/useLocalLabels";
-import { useOptimisticLabels } from "@app/hooks/useOptimisticLabels";
+import { LabelsTableCell } from "./LabelsTableCell";
+import { ControlledDataTable } from "./ui/controlled-data-table";
 
 export type InternalResourceSiteRow = ResourceSiteRow;
 
