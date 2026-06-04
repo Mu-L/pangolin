@@ -71,9 +71,12 @@ const (
 	Undefined SupportedContainer = "undefined"
 )
 
+var redisFlag *bool
+
 func main() {
 
 	crowdsecFlag := flag.Bool("crowdsec", false, "Enable the CrowdSec installation prompt")
+	redisFlag = flag.Bool("redis", false, "Install Redis as cacheing solution. Required for HA. Not required for the Enterprise version.")
 	flag.Parse()
 
 	// print a banner about prerequisites - opening port 80, 443, 51820, and 21820 on the VPS and firewall and pointing your domain to the VPS IP with a records. Docs are at http://localhost:3000/Getting%20Started/dns-networking
@@ -491,13 +494,13 @@ func collectUserInput() Config {
 
 	config.IsEnterprise = readBoolNoDefault("Do you want to install the Enterprise version of Pangolin? The EE is free for personal use or for businesses making less than 100k USD annually.")
     if config.IsEnterprise {
-        config.IsRedis = readBool("Do you want to run the Redis containers locally? Required for HA.")
-        if config.IsRedis {
+        if *redisFlag {
+			config.IsRedis = true
             config.IsRedisPass = readPassword("Enter a unique password for the Redis service.")
         }
     }
 
-    config.IsPostgreSQL = readBool("Do you want to run the PostgreSQL containers locally? Otherwise, default to the local SQLite database only.", false)
+    config.IsPostgreSQL = readBool("Do you want to use PostgreSQL (not recommended for most users)?", false)
 	if config.IsPostgreSQL {
 		config.IsPostgreSQLPass = readPassword("Enter a unique password for the PostgreSQL pangolin user.")
 	}
@@ -544,7 +547,7 @@ func collectUserInput() Config {
 	fmt.Println("\n=== Advanced Configuration ===")
 
 	config.EnableIPv6 = readBool("Is your server IPv6 capable?", true)
-	config.EnableMaxMind = readBool("Do you want to download the MaxMind GeoLite2 Country and ADN databases for blocking functionality?", true)
+	config.EnableMaxMind = readBool("Do you want to download the MaxMind GeoLite2 Country and ASN databases for blocking functionality?", true)
 
 	if config.DashboardDomain == "" {
 		fmt.Println("Error: Dashboard Domain name is required")
