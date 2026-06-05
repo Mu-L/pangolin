@@ -2,13 +2,6 @@
 
 import CopyTextBox from "@app/components/CopyTextBox";
 import DomainPicker from "@app/components/DomainPicker";
-import HealthCheckCredenza from "@app/components/HealthCheckCredenza";
-import {
-    PathMatchDisplay,
-    PathMatchModal,
-    PathRewriteDisplay,
-    PathRewriteModal
-} from "@app/components/PathMatchRenameModal";
 import {
     SettingsContainer,
     SettingsSection,
@@ -48,29 +41,6 @@ import {
     PopoverContent,
     PopoverTrigger
 } from "@app/components/ui/popover";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
-import { Switch } from "@app/components/ui/switch";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@app/components/ui/table";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { toast } from "@app/hooks/useToast";
@@ -84,32 +54,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
 import { Resource } from "@server/db";
 import { isTargetValid } from "@server/lib/validators";
-import { ListTargetsResponse } from "@server/routers/target";
 import { ListRemoteExitNodesResponse } from "@server/routers/remoteExitNode/types";
-import { ArrayElement } from "@server/types/ArrayElement";
 import { useQuery } from "@tanstack/react-query";
 import {
     LocalTarget,
     ProxyResourceTargetsForm
 } from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable
-} from "@tanstack/react-table";
 import { AxiosResponse } from "axios";
 import {
     ChevronsUpDown,
-    CircleCheck,
-    CircleX,
     ExternalLink,
-    Info,
-    Plus,
-    Settings,
     SquareArrowOutUpRight
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -119,13 +73,11 @@ import { toASCII } from "punycode";
 import {
     useMemo,
     useState,
-    useCallback,
     useTransition,
     useEffect
 } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { cn } from "@app/lib/cn";
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
@@ -327,14 +279,25 @@ export default function Page() {
     const rawResourcesAllowed =
         env.flags.allowRawResources &&
         (build !== "saas" || remoteExitNodes.length > 0);
+    const enterpriseModesAllowed =
+        build === "oss" && !env.flags.disableEnterpriseFeatures;
 
     const availableTypes = useMemo((): NewResourceType[] => {
-        const base: NewResourceType[] = ["http", "ssh", "rdp", "vnc"];
+        const base: NewResourceType[] = ["http"];
+        if (enterpriseModesAllowed) {
+            base.push("ssh", "rdp", "vnc");
+        }
         if (rawResourcesAllowed) {
             base.push("tcp", "udp");
         }
         return base;
-    }, [rawResourcesAllowed]);
+    }, [enterpriseModesAllowed, rawResourcesAllowed]);
+
+    useEffect(() => {
+        if (!availableTypes.includes(resourceType)) {
+            setResourceType("http");
+        }
+    }, [availableTypes, resourceType]);
 
     const baseForm = useForm({
         resolver: zodResolver(baseResourceFormSchema),
@@ -686,19 +649,25 @@ export default function Page() {
         }
     ];
 
-    const typeLabels: Record<NewResourceType, string> = {
+    let typeLabels: Partial<Record<NewResourceType, string>> = {
         http: "HTTP",
-        ssh: "SSH",
-        rdp: "RDP",
-        vnc: "VNC",
         tcp: "TCP",
         udp: "UDP"
     };
 
+    if (enterpriseModesAllowed) {
+        typeLabels = {  
+            ...typeLabels,
+            ssh: "SSH",
+            rdp: "RDP",
+            vnc: "VNC",
+        }
+    }
+
     const typeOptions: OptionSelectOption<NewResourceType>[] =
         availableTypes.map((type) => ({
             value: type,
-            label: typeLabels[type]
+            label: typeLabels[type] ?? type.toUpperCase()
         }));
 
     return (

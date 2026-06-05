@@ -1647,7 +1647,7 @@
     "standaloneHcFilterResourceIdFallback": "Resource {id}",
     "blueprints": "Blueprints",
     "blueprintsLog": "Blueprints Log",
-    "blueprintsDescription": "View past blueprint applications and their results",
+    "blueprintsDescription": "View past blueprint applications and their results or apply a new blueprint",
     "blueprintAdd": "Add Blueprint",
     "blueprintGoBack": "See all Blueprints",
     "blueprintCreate": "Create Blueprint",

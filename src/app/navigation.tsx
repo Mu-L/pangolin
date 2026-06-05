@@ -137,7 +137,7 @@ export const orgNavSections = (
                     }
                 ]
             },
-            ...(build !== "oss"
+            ...(build === "oss" && !env?.flags.disableEnterpriseFeatures
                 ? [
                       {
                           title: "sidebarPolicies",
