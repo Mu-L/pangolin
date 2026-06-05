@@ -42,22 +42,6 @@ export default async function migration() {
         db.transaction(() => {
             db.prepare(
                 `
-            CREATE TABLE 'browserGatewayTarget' (
-                'browserGatewayTargetId' integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-                'resourceId' integer NOT NULL,
-                'siteId' integer NOT NULL,
-                'authToken' text NOT NULL,
-                'type' text NOT NULL,
-                'destination' text NOT NULL,
-                'destinationPort' integer NOT NULL,
-                FOREIGN KEY ('resourceId') REFERENCES 'resources'('resourceId') ON UPDATE no action ON DELETE cascade,
-                FOREIGN KEY ('siteId') REFERENCES 'sites'('siteId') ON UPDATE no action ON DELETE cascade
-            );
-                `
-            ).run();
-
-            db.prepare(
-                `
             CREATE TABLE 'clientLabels' (
                 'clientLabelId' integer PRIMARY KEY AUTOINCREMENT NOT NULL,
                 'clientId' integer NOT NULL,
@@ -348,6 +332,16 @@ export default async function migration() {
             db.prepare(
                 `
             ALTER TABLE 'resourceSessions' ADD 'policyWhitelistId' integer REFERENCES resourcePolicyWhitelist(id);
+                `
+            ).run();
+            db.prepare(
+                `
+            ALTER TABLE 'targets' ADD 'mode' text DEFAULT 'http' NOT NULL;
+                `
+            ).run();
+            db.prepare(
+                `
+            ALTER TABLE 'targets' ADD 'authToken' text;
                 `
             ).run();
         })();

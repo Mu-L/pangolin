@@ -40,18 +40,6 @@ export default async function migration() {
         await db.execute(sql`BEGIN`);
 
         await db.execute(sql`
-            CREATE TABLE "browserGatewayTarget" (
-                "browserGatewayTargetId" serial PRIMARY KEY NOT NULL,
-                "resourceId" integer NOT NULL,
-                "siteId" integer NOT NULL,
-                "authToken" varchar NOT NULL,
-                "type" varchar NOT NULL,
-                "destination" varchar NOT NULL,
-                "destinationPort" integer NOT NULL
-            );
-        `);
-
-        await db.execute(sql`
             CREATE TABLE "clientLabels" (
                 "clientLabelId" serial PRIMARY KEY NOT NULL,
                 "clientId" integer NOT NULL,
@@ -216,12 +204,6 @@ export default async function migration() {
             sql`ALTER TABLE "sites" ADD COLUMN "autoUpdateOverrideOrg" boolean DEFAULT false NOT NULL;`
         );
         await db.execute(
-            sql`ALTER TABLE "browserGatewayTarget" ADD CONSTRAINT "browserGatewayTarget_resourceId_resources_resourceId_fk" FOREIGN KEY ("resourceId") REFERENCES "public"."resources"("resourceId") ON DELETE cascade ON UPDATE no action;`
-        );
-        await db.execute(
-            sql`ALTER TABLE "browserGatewayTarget" ADD CONSTRAINT "browserGatewayTarget_siteId_sites_siteId_fk" FOREIGN KEY ("siteId") REFERENCES "public"."sites"("siteId") ON DELETE cascade ON UPDATE no action;`
-        );
-        await db.execute(
             sql`ALTER TABLE "clientLabels" ADD CONSTRAINT "clientLabels_clientId_clients_clientId_fk" FOREIGN KEY ("clientId") REFERENCES "public"."clients"("clientId") ON DELETE cascade ON UPDATE no action;`
         );
         await db.execute(
@@ -289,6 +271,10 @@ export default async function migration() {
         );
         await db.execute(sql`ALTER TABLE "resources" DROP COLUMN "http";`);
         await db.execute(sql`ALTER TABLE "resources" DROP COLUMN "protocol";`);
+        await db.execute(
+            sql`ALTER TABLE "targets" ADD "mode" text DEFAULT 'http' NOT NULL;`
+        );
+        await db.execute(sql`ALTER TABLE "targets" ADD "authToken" text;`);
 
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
