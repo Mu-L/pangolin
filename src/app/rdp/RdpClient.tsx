@@ -22,6 +22,7 @@ import {
     CardTitle,
     CardDescription
 } from "@app/components/ui/card";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import { useTranslations } from "next-intl";
@@ -92,6 +93,7 @@ export default function RdpClient({
     const [showLogin, setShowLogin] = useState(true);
     const [moduleReady, setModuleReady] = useState(false);
     const [connecting, setConnecting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [unicodeMode, setUnicodeMode] = useState(false);
     const [cursorOverrideActive, setCursorOverrideActive] = useState(false);
 
@@ -170,16 +172,13 @@ export default function RdpClient({
     };
 
     const startSession = async () => {
+        setSubmitError(null);
         setConnecting(true);
         const userInteraction = userInteractionRef.current;
         const exts = extensionsRef.current;
         if (!userInteraction || !exts) {
             setConnecting(false);
-            toast({
-                variant: "destructive",
-                title: t("rdpNotReady"),
-                description: t("rdpModuleInitializing")
-            });
+            setSubmitError(t("rdpModuleInitializing"));
             return;
         }
 
@@ -241,11 +240,7 @@ export default function RdpClient({
 
         if (!target) {
             setConnecting(false);
-            toast({
-                variant: "destructive",
-                title: t("browserGatewayNoTarget"),
-                description: t("rdpNoConnectionTarget")
-            });
+            setSubmitError(t("rdpNoConnectionTarget"));
             return;
         }
 
@@ -294,17 +289,9 @@ export default function RdpClient({
             setConnecting(false);
             setShowLogin(true);
             if (isIronError(err)) {
-                toast({
-                    variant: "destructive",
-                    title: t("rdpConnectionFailed"),
-                    description: err.backtrace()
-                });
+                setSubmitError(err.backtrace());
             } else {
-                toast({
-                    variant: "destructive",
-                    title: t("rdpConnectionFailed"),
-                    description: `${err}`
-                });
+                setSubmitError(`${err}`);
             }
         }
     };
@@ -331,7 +318,9 @@ export default function RdpClient({
                         <CardTitle>{t("rdpTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-destructive text-sm">{error}</p>
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
             </BrandedAuthSurface>
@@ -413,6 +402,14 @@ export default function RdpClient({
                                 Enable Clipboard
                             </Label>
                         </div> */}
+                                {submitError && (
+                                    <Alert variant="destructive">
+                                        <AlertDescription>
+                                            {submitError}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
                                 <Button
                                     onClick={startSession}
                                     disabled={!moduleReady}

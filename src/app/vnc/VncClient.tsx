@@ -13,6 +13,7 @@ import {
     CardTitle,
     CardDescription
 } from "@app/components/ui/card";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import { useTranslations } from "next-intl";
@@ -44,6 +45,7 @@ export default function VncClient({
     });
 
     const [connected, setConnected] = useState(false);
+    const [connectError, setConnectError] = useState<string | null>(null);
     const rfbRef = useRef<any>(null);
     const screenRef = useRef<HTMLDivElement>(null);
 
@@ -66,12 +68,10 @@ export default function VncClient({
     }, []);
 
     const connect = async () => {
+        setConnectError(null);
+
         if (!target) {
-            toast({
-                variant: "destructive",
-                title: t("browserGatewayNoTarget"),
-                description: t("vncNoResourceTarget")
-            });
+            setConnectError(t("vncNoResourceTarget"));
             return;
         }
 
@@ -144,15 +144,13 @@ export default function VncClient({
         rfb.addEventListener(
             "securityfailure",
             (e: { detail: { status: number; reason?: string } }) => {
-                toast({
-                    variant: "destructive",
-                    title: t("sshErrorAuthFailed"),
-                    description:
-                        e.detail.reason ??
+                disconnect();
+                setConnectError(
+                    e.detail.reason ??
                         t("vncAuthFailedStatus", {
                             status: e.detail.status
                         })
-                });
+                );
             }
         );
 
@@ -168,7 +166,9 @@ export default function VncClient({
                         <CardTitle>{t("vncTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-destructive text-sm">{error}</p>
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
             </BrandedAuthSurface>
@@ -202,6 +202,14 @@ export default function VncClient({
                                         }
                                     />
                                 </Field>
+
+                                {connectError && (
+                                    <Alert variant="destructive">
+                                        <AlertDescription>
+                                            {connectError}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
 
                                 <Button onClick={connect} className="w-full">
                                     {t("browserGatewayConnect")}

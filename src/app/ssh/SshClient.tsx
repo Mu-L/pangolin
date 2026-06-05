@@ -15,7 +15,7 @@ import {
     CardDescription
 } from "@app/components/ui/card";
 import Link from "next/link";
-import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
@@ -352,11 +352,7 @@ export default function SshClient({
                                     </div>
                                 )}
                                 {connectError && (
-                                    <Alert
-                                        variant="destructive"
-                                        className="w-full"
-                                    >
-                                        <AlertCircle className="h-5 w-5" />
+                                    <Alert variant="destructive" className="w-full">
                                         <AlertDescription>
                                             {connectError}
                                         </AlertDescription>
@@ -388,7 +384,9 @@ export default function SshClient({
                         <CardTitle>{t("sshTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-destructive text-sm">{error}</p>
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
             </BrandedAuthSurface>
@@ -447,9 +445,11 @@ export default function SshClient({
                                     </Field>
                                     <div className="mt-4 space-y-3">
                                         {connectError && (
-                                            <p className="text-destructive text-sm">
-                                                {connectError}
-                                            </p>
+                                            <Alert variant="destructive">
+                                                <AlertDescription>
+                                                    {connectError}
+                                                </AlertDescription>
+                                            </Alert>
                                         )}
 
                                         <Button
@@ -530,9 +530,11 @@ export default function SshClient({
                                     </Field>
                                     <div className="mt-4 space-y-3">
                                         {connectError && (
-                                            <p className="text-destructive text-sm">
-                                                {connectError}
-                                            </p>
+                                            <Alert variant="destructive">
+                                                <AlertDescription>
+                                                    {connectError}
+                                                </AlertDescription>
+                                            </Alert>
                                         )}
 
                                         <Button
