@@ -549,6 +549,58 @@ async function updateHttpResource(
         updateData.maintenanceEstimatedTime = undefined;
     }
 
+    const isInlinePolicy =
+        resource.resourcePolicyId === null &&
+        resource.defaultResourcePolicyId !== null;
+
+    if (isInlinePolicy) {
+        const policyId = resource.defaultResourcePolicyId!;
+        const {
+            sso,
+            emailWhitelistEnabled,
+            applyRules,
+            skipToIdpId,
+            ...resourceOnlyData
+        } = updateData;
+
+        const policyUpdate: Record<string, unknown> = {};
+        if (sso !== undefined) policyUpdate.sso = sso;
+        if (emailWhitelistEnabled !== undefined)
+            policyUpdate.emailWhitelistEnabled = emailWhitelistEnabled;
+        if (applyRules !== undefined) policyUpdate.applyRules = applyRules;
+        if (skipToIdpId !== undefined) policyUpdate.idpId = skipToIdpId;
+
+        if (Object.keys(policyUpdate).length > 0) {
+            await db
+                .update(resourcePolicies)
+                .set(policyUpdate)
+                .where(eq(resourcePolicies.resourcePolicyId, policyId));
+        }
+
+        const updatedResource = await db
+            .update(resources)
+            .set({ ...resourceOnlyData, headers })
+            .where(eq(resources.resourceId, resource.resourceId))
+            .returning();
+
+        if (updatedResource.length === 0) {
+            return next(
+                createHttpError(
+                    HttpCode.NOT_FOUND,
+                    `Resource with ID ${resource.resourceId} not found`
+                )
+            );
+        }
+
+        return response(res, {
+            data: updatedResource[0],
+            success: true,
+            error: false,
+            message: "HTTP resource updated successfully",
+            status: HttpCode.OK
+        });
+    }
+
     const updatedResource = await db
         .update(resources)
         .set({ ...updateData, headers })

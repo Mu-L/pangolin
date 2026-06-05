@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { userResources } from "@server/db";
+import { userResources, userPolicies, resources } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -82,19 +82,51 @@ export async function setResourceUsers(
 
         const { resourceId } = parsedParams.data;
 
-        await db.transaction(async (trx) => {
-            await trx
-                .delete(userResources)
-                .where(eq(userResources.resourceId, resourceId));
+        const [resource] = await db
+            .select()
+            .from(resources)
+            .where(eq(resources.resourceId, resourceId))
+            .limit(1);
 
-            const newUserResources = await Promise.all(
-                userIds.map((userId) =>
-                    trx
-                        .insert(userResources)
-                        .values({ userId, resourceId })
-                        .returning()
-                )
+        if (!resource) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Resource not found")
             );
+        }
+
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
+        await db.transaction(async (trx) => {
+            if (isInlinePolicy) {
+                const policyId = resource.defaultResourcePolicyId!;
+                await trx
+                    .delete(userPolicies)
+                    .where(eq(userPolicies.resourcePolicyId, policyId));
+
+                await Promise.all(
+                    userIds.map((userId) =>
+                        trx
+                            .insert(userPolicies)
+                            .values({ userId, resourcePolicyId: policyId })
+                            .returning()
+                    )
+                );
+            } else {
+                await trx
+                    .delete(userResources)
+                    .where(eq(userResources.resourceId, resourceId));
+
+                await Promise.all(
+                    userIds.map((userId) =>
+                        trx
+                            .insert(userResources)
+                            .values({ userId, resourceId })
+                            .returning()
+                    )
+                );
+            }
 
             return response(res, {
                 data: {},

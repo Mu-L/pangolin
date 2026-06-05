@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, resources } from "@server/db";
-import { roleResources, roles } from "@server/db";
+import { roleResources, roles, rolePolicies } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -131,30 +131,63 @@ export async function addRoleToResource(
             );
         }
 
-        // Check if role already exists in resource
-        const existingEntry = await db
-            .select()
-            .from(roleResources)
-            .where(
-                and(
-                    eq(roleResources.resourceId, resourceId),
-                    eq(roleResources.roleId, roleId)
-                )
-            );
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
 
-        if (existingEntry.length > 0) {
-            return next(
-                createHttpError(
-                    HttpCode.CONFLICT,
-                    "Role already assigned to resource"
-                )
-            );
+        if (isInlinePolicy) {
+            const policyId = resource.defaultResourcePolicyId!;
+
+            // Check if role already exists in the inline policy
+            const existingEntry = await db
+                .select()
+                .from(rolePolicies)
+                .where(
+                    and(
+                        eq(rolePolicies.resourcePolicyId, policyId),
+                        eq(rolePolicies.roleId, roleId)
+                    )
+                );
+
+            if (existingEntry.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        "Role already assigned to resource"
+                    )
+                );
+            }
+
+            await db.insert(rolePolicies).values({
+                roleId,
+                resourcePolicyId: policyId
+            });
+        } else {
+            // Check if role already exists in resource
+            const existingEntry = await db
+                .select()
+                .from(roleResources)
+                .where(
+                    and(
+                        eq(roleResources.resourceId, resourceId),
+                        eq(roleResources.roleId, roleId)
+                    )
+                );
+
+            if (existingEntry.length > 0) {
+                return next(
+                    createHttpError(
+                        HttpCode.CONFLICT,
+                        "Role already assigned to resource"
+                    )
+                );
+            }
+
+            await db.insert(roleResources).values({
+                roleId,
+                resourceId
+            });
         }
-
-        await db.insert(roleResources).values({
-            roleId,
-            resourceId
-        });
 
         return response(res, {
             data: {},

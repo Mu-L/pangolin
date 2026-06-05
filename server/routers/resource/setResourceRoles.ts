@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db, resources } from "@server/db";
-import { apiKeys, roleResources, roles } from "@server/db";
+import { apiKeys, roleResources, roles, rolePolicies } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -129,28 +129,61 @@ export async function setResourceRoles(
             );
         const adminRoleIds = adminRoles.map((role) => role.roleId);
 
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
         await db.transaction(async (trx) => {
-            if (adminRoleIds.length > 0) {
-                await trx.delete(roleResources).where(
-                    and(
-                        eq(roleResources.resourceId, resourceId),
-                        ne(roleResources.roleId, adminRoleIds[0]) // delete all but the admin role
+            if (isInlinePolicy) {
+                const policyId = resource.defaultResourcePolicyId!;
+
+                // For inline policy, preserve admin roles by only deleting non-admin entries
+                if (adminRoleIds.length > 0) {
+                    await trx
+                        .delete(rolePolicies)
+                        .where(
+                            and(
+                                eq(rolePolicies.resourcePolicyId, policyId),
+                                ne(rolePolicies.roleId, adminRoleIds[0])
+                            )
+                        );
+                } else {
+                    await trx
+                        .delete(rolePolicies)
+                        .where(eq(rolePolicies.resourcePolicyId, policyId));
+                }
+
+                await Promise.all(
+                    roleIds.map((roleId) =>
+                        trx
+                            .insert(rolePolicies)
+                            .values({ roleId, resourcePolicyId: policyId })
+                            .returning()
                     )
                 );
             } else {
-                await trx
-                    .delete(roleResources)
-                    .where(eq(roleResources.resourceId, resourceId));
-            }
+                if (adminRoleIds.length > 0) {
+                    await trx.delete(roleResources).where(
+                        and(
+                            eq(roleResources.resourceId, resourceId),
+                            ne(roleResources.roleId, adminRoleIds[0]) // delete all but the admin role
+                        )
+                    );
+                } else {
+                    await trx
+                        .delete(roleResources)
+                        .where(eq(roleResources.resourceId, resourceId));
+                }
 
-            const newRoleResources = await Promise.all(
-                roleIds.map((roleId) =>
-                    trx
-                        .insert(roleResources)
-                        .values({ roleId, resourceId })
-                        .returning()
-                )
-            );
+                await Promise.all(
+                    roleIds.map((roleId) =>
+                        trx
+                            .insert(roleResources)
+                            .values({ roleId, resourceId })
+                            .returning()
+                    )
+                );
+            }
 
             return response(res, {
                 data: {},
