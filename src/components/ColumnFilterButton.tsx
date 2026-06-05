@@ -110,6 +110,7 @@ export function ColumnFilterButton({
                                         );
                                         setOpen(false);
                                     }}
+                                    className="break-all"
                                 >
                                     <CheckIcon
                                         className={cn(

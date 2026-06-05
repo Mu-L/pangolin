@@ -130,6 +130,7 @@ export function ColumnMultiFilterButton({
                                     onSelect={() => {
                                         toggle(option.value);
                                     }}
+                                    className="break-all"
                                 >
                                     <Checkbox
                                         className="pointer-events-none shrink-0"
