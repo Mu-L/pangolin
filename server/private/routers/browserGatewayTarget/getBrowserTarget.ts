@@ -13,9 +13,8 @@
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { browserGatewayTarget, db } from "@server/db";
-import { resources, targets } from "@server/db";
-import { eq } from "drizzle-orm";
+import { db, resources, targets } from "@server/db";
+import { eq, and, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -51,11 +50,11 @@ export async function getBrowserTarget(
 
         logger.info(`Retrieving browser target for domain: ${fullDomain}`);
 
-        const [browserTarget] = await db
+        const [row] = await db
             .select({
-                destination: browserGatewayTarget.destination,
-                destinationPort: browserGatewayTarget.destinationPort,
-                authToken: browserGatewayTarget.authToken,
+                ip: targets.ip,
+                port: targets.port,
+                authToken: targets.authToken,
                 resourceId: resources.resourceId,
                 niceId: resources.niceId,
                 name: resources.name,
@@ -63,20 +62,18 @@ export async function getBrowserTarget(
                 pamMode: resources.pamMode,
                 authDaemonMode: resources.authDaemonMode
             })
-            .from(browserGatewayTarget)
-            .innerJoin(
-                resources,
-                eq(browserGatewayTarget.resourceId, resources.resourceId)
+            .from(targets)
+            .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+            .where(
+                and(
+                    eq(resources.fullDomain, fullDomain),
+                    eq(targets.enabled, true),
+                    inArray(targets.mode, ["ssh", "rdp", "vnc"])
+                )
             )
-            .where(eq(resources.fullDomain, fullDomain))
             .limit(1);
 
-        const decryptedAuthToken = decrypt(
-            browserTarget.authToken,
-            config.getRawConfig().server.secret!
-        );
-
-        if (!browserTarget) {
+        if (!row) {
             return next(
                 createHttpError(
                     HttpCode.NOT_FOUND,
@@ -85,17 +82,21 @@ export async function getBrowserTarget(
             );
         }
 
+        const decryptedAuthToken = row.authToken
+            ? decrypt(row.authToken, config.getRawConfig().server.secret!)
+            : "";
+
         return response<GetBrowserTargetResponse>(res, {
             data: {
-                ip: browserTarget.destination,
-                port: browserTarget.destinationPort,
+                ip: row.ip,
+                port: row.port,
                 authToken: decryptedAuthToken,
-                pamMode: browserTarget.pamMode,
-                authDaemonMode: browserTarget.authDaemonMode,
-                orgId: browserTarget.orgId,
-                resourceId: browserTarget.resourceId,
-                niceId: browserTarget.niceId,
-                name: browserTarget.name
+                pamMode: row.pamMode,
+                authDaemonMode: row.authDaemonMode,
+                orgId: row.orgId,
+                resourceId: row.resourceId,
+                niceId: row.niceId,
+                name: row.name ?? ""
             },
             success: true,
             error: false,

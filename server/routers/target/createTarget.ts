@@ -24,6 +24,9 @@ import {
     fireHealthCheckUnhealthyAlert,
     fireHealthCheckUnknownAlert
 } from "@server/lib/alerts";
+import { encrypt } from "@server/lib/crypto";
+import { generateId } from "@server/auth/sessions/app";
+import config from "@server/lib/config";
 
 const createTargetParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
@@ -32,6 +35,7 @@ const createTargetParamsSchema = z.strictObject({
 const createTargetSchema = z.strictObject({
     siteId: z.int().positive(),
     ip: z.string().refine(isTargetValid),
+    mode: z.enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"]).optional(),
     method: z.string().optional().nullable(),
     port: z.int().min(1).max(65535),
     enabled: z.boolean().default(true),
@@ -161,6 +165,12 @@ export async function createTarget(
             );
         }
 
+        const plainToken = generateId(48);
+        const encryptedToken = encrypt(
+            plainToken,
+            config.getRawConfig().server.secret!
+        );
+
         let newTarget: Target[] = [];
         let targetIps: string[] = [];
         let healthCheck: TargetHealthCheck[] = [];
@@ -191,6 +201,9 @@ export async function createTarget(
                     .values({
                         resourceId,
                         ...targetData,
+                        mode: (targetData.mode ??
+                            resource.mode ??
+                            "http") as Target["mode"],
                         priority: targetData.priority || 100
                     })
                     .returning();
@@ -226,6 +239,10 @@ export async function createTarget(
                         resourceId,
                         siteId: site.siteId,
                         ip: targetData.ip,
+                        mode: (targetData.mode ??
+                            resource.mode ??
+                            "http") as Target["mode"],
+                        authToken: encryptedToken,
                         method: targetData.method,
                         port: targetData.port,
                         internalPort,

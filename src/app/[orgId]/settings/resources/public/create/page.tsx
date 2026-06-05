@@ -498,12 +498,13 @@ export default function Page() {
                     if (isNative) {
                         if (nativeSelectedSite) {
                             await api.put(
-                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                `/resource/${id}/target`,
                                 {
                                     siteId: nativeSelectedSite.siteId,
-                                    type: "ssh",
-                                    destination: "localhost",
-                                    destinationPort: 22
+                                    mode: "ssh",
+                                    ip: "localhost",
+                                    port: 22,
+                                    hcEnabled: false
                                 }
                             );
                         }
@@ -516,12 +517,13 @@ export default function Page() {
                                   : [];
                         for (const site of sitesToCreate) {
                             await api.put(
-                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                `/resource/${id}/target`,
                                 {
                                     siteId: site.siteId,
-                                    type: "ssh",
-                                    destination: bgDestination,
-                                    destinationPort: Number(bgDestinationPort)
+                                    mode: "ssh",
+                                    ip: bgDestination,
+                                    port: Number(bgDestinationPort),
+                                    hcEnabled: false
                                 }
                             );
                         }
@@ -533,12 +535,14 @@ export default function Page() {
                 } else if (resourceType === "rdp" || resourceType === "vnc") {
                     for (const site of bgSelectedSites) {
                         await api.put(
-                            `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                            `/resource/${id}/target`,
                             {
                                 siteId: site.siteId,
-                                type: resourceType,
-                                destination: bgDestination,
-                                destinationPort: Number(bgDestinationPort)
+                                mode: resourceType,
+                                ip: bgDestination,
+                                port: Number(bgDestinationPort),
+                                authToken: null,
+                                hcEnabled: false
                             }
                         );
                     }

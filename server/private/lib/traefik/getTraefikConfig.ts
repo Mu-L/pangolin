@@ -12,7 +12,6 @@
  */
 
 import {
-    browserGatewayTarget,
     certificates,
     db,
     domainNamespaces,
@@ -182,6 +181,9 @@ export async function getTraefikConfig(
     const resourcesMap = new Map();
 
     resourcesWithTargetsAndSites.forEach((row) => {
+        if (!["http", "tcp", "udp"].includes(row.mode)) {
+            return;
+        }
         const resourceId = row.resourceId;
         const resourceName = sanitize(row.resourceName) || "";
         const targetPath = encodePath(row.path); // Use encodePath to avoid collisions (e.g. "/a/b" vs "/a-b")
@@ -295,13 +297,12 @@ export async function getTraefikConfig(
         maintenanceMessage: string | null;
         maintenanceEstimatedTime: string | null;
         targets: {
-            browserGatewayTargetId: number;
+            targetId: number;
             bgType: string;
             siteId: number;
             siteType: string;
             siteOnline: boolean | null;
             subnet: string | null;
-            siteExitNodeId: number | null;
         }[];
     };
     const browserGatewayResourcesMap = new Map<
@@ -310,66 +311,10 @@ export async function getTraefikConfig(
     >();
 
     if (allowBrowserGatewayResources) {
-        // Query browser gateway targets for this exit node
-        const browserGatewayRows = await db
-            .select({
-                // Resource fields
-                resourceId: resources.resourceId,
-                resourceName: resources.name,
-                fullDomain: resources.fullDomain,
-                ssl: resources.ssl,
-                subdomain: resources.subdomain,
-                domainId: resources.domainId,
-                enabled: resources.enabled,
-                wildcard: resources.wildcard,
-                domainCertResolver: domains.certResolver,
-                preferWildcardCert: domains.preferWildcardCert,
-                domainNamespaceId: domainNamespaces.domainNamespaceId,
-                // Maintenance fields
-                maintenanceModeEnabled: resources.maintenanceModeEnabled,
-                maintenanceModeType: resources.maintenanceModeType,
-                maintenanceTitle: resources.maintenanceTitle,
-                maintenanceMessage: resources.maintenanceMessage,
-                maintenanceEstimatedTime: resources.maintenanceEstimatedTime,
-                // Browser gateway target fields
-                browserGatewayTargetId:
-                    browserGatewayTarget.browserGatewayTargetId,
-                bgType: browserGatewayTarget.type,
-                // Site fields
-                siteId: sites.siteId,
-                siteType: sites.type,
-                siteOnline: sites.online,
-                subnet: sites.subnet,
-                siteExitNodeId: sites.exitNodeId
-            })
-            .from(browserGatewayTarget)
-            .innerJoin(sites, eq(sites.siteId, browserGatewayTarget.siteId))
-            .innerJoin(
-                resources,
-                eq(resources.resourceId, browserGatewayTarget.resourceId)
-            )
-            .leftJoin(domains, eq(domains.domainId, resources.domainId))
-            .leftJoin(
-                domainNamespaces,
-                eq(domainNamespaces.domainId, resources.domainId)
-            )
-            .where(
-                and(
-                    eq(resources.enabled, true),
-                    or(
-                        eq(sites.exitNodeId, exitNodeId),
-                        and(
-                            isNull(sites.exitNodeId),
-                            sql`(${siteTypes.includes("local") ? 1 : 0} = 1)`,
-                            eq(sites.type, "local"),
-                            sql`(${build != "saas" ? 1 : 0} = 1)`
-                        )
-                    ),
-                    inArray(sites.type, siteTypes)
-                )
-            );
-
-        for (const row of browserGatewayRows) {
+        for (const row of resourcesWithTargetsAndSites) {
+            if (!["ssh", "vnc", "rdp"].includes(row.mode)) {
+                return;
+            }
             if (filterOutNamespaceDomains && row.domainNamespaceId) {
                 continue;
             }
@@ -394,13 +339,12 @@ export async function getTraefikConfig(
                 });
             }
             browserGatewayResourcesMap.get(row.resourceId)!.targets.push({
-                browserGatewayTargetId: row.browserGatewayTargetId,
-                bgType: row.bgType,
+                targetId: row.targetId,
+                bgType: row.mode,
                 siteId: row.siteId,
                 siteType: row.siteType,
                 siteOnline: row.siteOnline,
-                subnet: row.subnet,
-                siteExitNodeId: row.siteExitNodeId
+                subnet: row.subnet
             });
         }
     }

@@ -30,8 +30,7 @@ import {
     userOrgs,
     sites,
     Resource,
-    SiteResource,
-    browserGatewayTarget
+    SiteResource
 } from "@server/db";
 import { logAccessAudit } from "#private/lib/logAccessAudit";
 import { isLicensedOrSubscribed } from "#private/lib/isLicencedOrSubscribed";
@@ -291,16 +290,15 @@ export async function signSshKey(
             const publicResource = resource as Resource;
             const targetRows = await db
                 .select({
-                    siteId: browserGatewayTarget.siteId,
-                    ip: browserGatewayTarget.destination
+                    siteId: targets.siteId,
+                    ip: targets.ip
                 })
-                .from(browserGatewayTarget)
+                .from(targets)
                 .where(
                     and(
-                        eq(
-                            browserGatewayTarget.resourceId,
-                            publicResource.resourceId
-                        )
+                        eq(targets.resourceId, publicResource.resourceId),
+                        eq(targets.enabled, true),
+                        eq(targets.mode, "ssh")
                     )
                 );
 

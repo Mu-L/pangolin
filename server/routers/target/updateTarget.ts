@@ -27,6 +27,10 @@ const updateTargetBodySchema = z
     .strictObject({
         siteId: z.int().positive(),
         ip: z.string().refine(isTargetValid),
+        mode: z
+            .enum(["http", "tcp", "udp", "ssh", "rdp", "vnc"])
+            .optional()
+            .nullable(),
         method: z.string().min(1).max(10).optional().nullable(),
         port: z.int().min(1).max(65535).optional(),
         enabled: z.boolean().optional(),
@@ -184,6 +188,8 @@ export async function updateTarget(
         }
 
         const pathMatchTypeRemoved = parsedBody.data.pathMatchType === null;
+        const nextMode =
+            parsedBody.data.mode === null ? undefined : parsedBody.data.mode;
 
         let updatedTarget: any;
         let updatedHc: any;
@@ -193,6 +199,7 @@ export async function updateTarget(
                 .set({
                     siteId: parsedBody.data.siteId,
                     ip: parsedBody.data.ip,
+                    mode: nextMode,
                     method: parsedBody.data.method,
                     port: parsedBody.data.port,
                     internalPort,

@@ -29,20 +29,9 @@ import { GetResourceResponse } from "@server/routers/resource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 
 type ExistingTarget = {
-    browserGatewayTargetId: number;
+    targetId: number;
     siteId: number;
 };
-
-const sshFormSchema = z.object({
-    authDaemonPort: z.string().refine(
-        (val) => {
-            if (!val) return true;
-            const n = Number(val);
-            return Number.isInteger(n) && n >= 1 && n <= 65535;
-        },
-        { message: "Port must be between 1 and 65535" }
-    )
-});
 
 export default function SshSettingsPage(props: {
     params: Promise<{ orgId: string }>;
@@ -59,7 +48,7 @@ export default function SshSettingsPage(props: {
             <PaidFeaturesAlert
                 tiers={tierMatrix[TierFeature.AdvancedPublicResources]}
             />
-            <SshServerForm
+            <VncServerForm
                 orgId={params.orgId}
                 resource={resource}
                 updateResource={updateResource}
@@ -69,7 +58,7 @@ export default function SshSettingsPage(props: {
     );
 }
 
-function SshServerForm({
+function VncServerForm({
     orgId,
     resource,
     updateResource,
@@ -99,20 +88,18 @@ function SshServerForm({
         useState<ExistingTarget | null>(null);
 
     const { data: bgTargetsResponse } = useQuery({
-        queryKey: ["browserGatewayTargets", resource.resourceId, orgId],
+        queryKey: ["resourceTargets", resource.resourceId, orgId, "vnc"],
         queryFn: async () => {
-            const res = await api.get(
-                `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-targets`
-            );
+            const res = await api.get(`/resource/${resource.resourceId}/targets`);
             return res.data.data as {
                 targets: Array<{
-                    browserGatewayTargetId: number;
+                    targetId: number;
                     resourceId: number;
                     siteId: number;
                     siteName?: string;
-                    type: string;
-                    destination: string;
-                    destinationPort: number;
+                    mode: string | null;
+                    ip: string;
+                    port: number;
                 }>;
             };
         }
@@ -120,14 +107,17 @@ function SshServerForm({
 
     useEffect(() => {
         if (!bgTargetsResponse?.targets?.length) return;
-        const targets = bgTargetsResponse.targets;
+        const targets = bgTargetsResponse.targets.filter(
+            (t) => t.mode === "vnc"
+        );
+        if (!targets.length) return;
         const first = targets[0];
 
-        setBgDestination(first.destination);
-        setBgDestinationPort(String(first.destinationPort));
+        setBgDestination(first.ip);
+        setBgDestinationPort(String(first.port));
         setExistingTargets(
             targets.map((t) => ({
-                browserGatewayTargetId: t.browserGatewayTargetId,
+                targetId: t.targetId,
                 siteId: t.siteId
             }))
         );
@@ -157,9 +147,7 @@ function SshServerForm({
                 );
                 await Promise.all(
                     toDelete.map((t) =>
-                        api.delete(
-                            `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`
-                        )
+                        api.delete(`/target/${t.targetId}`)
                     )
                 );
 
@@ -169,12 +157,13 @@ function SshServerForm({
                 await Promise.all(
                     toUpdate.map((t) =>
                         api.post(
-                            `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`,
+                            `/target/${t.targetId}`,
                             {
-                                type: "vnc",
-                                destination: bgDestination,
-                                destinationPort: Number(bgDestinationPort),
-                                siteId: t.siteId
+                                mode: "vnc",
+                                ip: bgDestination,
+                                port: Number(bgDestinationPort),
+                                siteId: t.siteId,
+                                hcEnabled: false
                             }
                         )
                     )
@@ -186,20 +175,20 @@ function SshServerForm({
                 const created = await Promise.all(
                     toCreate.map((s) =>
                         api.put(
-                            `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
+                            `/resource/${resource.resourceId}/target`,
                             {
                                 siteId: s.siteId,
-                                type: "vnc",
-                                destination: bgDestination,
-                                destinationPort: Number(bgDestinationPort)
+                                mode: "vnc",
+                                ip: bgDestination,
+                                port: Number(bgDestinationPort),
+                                hcEnabled: false
                             }
                         )
                     )
                 );
 
                 const newTargets: ExistingTarget[] = created.map((res, i) => ({
-                    browserGatewayTargetId:
-                        res.data.data.browserGatewayTargetId,
+                    targetId: res.data.data.targetId,
                     siteId: toCreate[i].siteId
                 }));
                 setExistingTargets([...toUpdate, ...newTargets]);

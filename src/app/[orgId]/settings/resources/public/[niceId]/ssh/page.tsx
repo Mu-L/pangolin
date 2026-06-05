@@ -54,8 +54,9 @@ import { GetResourceResponse } from "@server/routers/resource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 
 type ExistingTarget = {
-    browserGatewayTargetId: number;
+    targetId: number;
     siteId: number;
+    authToken?: string | null;
 };
 
 const sshFormSchema = z.object({
@@ -154,20 +155,19 @@ function SshServerForm({
     const [nativeSiteOpen, setNativeSiteOpen] = useState(false);
 
     const { data: bgTargetsResponse } = useQuery({
-        queryKey: ["browserGatewayTargets", resource.resourceId, orgId],
+        queryKey: ["resourceTargets", resource.resourceId, orgId, "ssh"],
         queryFn: async () => {
-            const res = await api.get(
-                `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-targets`
-            );
+            const res = await api.get(`/resource/${resource.resourceId}/targets`);
             return res.data.data as {
                 targets: Array<{
-                    browserGatewayTargetId: number;
+                    targetId: number;
                     resourceId: number;
                     siteId: number;
                     siteName?: string;
-                    type: string;
-                    destination: string;
-                    destinationPort: number;
+                    mode: string | null;
+                    ip: string;
+                    port: number;
+                    authToken?: string | null;
                 }>;
             };
         }
@@ -175,7 +175,10 @@ function SshServerForm({
 
     useEffect(() => {
         if (!bgTargetsResponse?.targets?.length) return;
-        const targets = bgTargetsResponse.targets;
+        const targets = bgTargetsResponse.targets.filter(
+            (t) => t.mode === "ssh"
+        );
+        if (!targets.length) return;
         const first = targets[0];
         if (isNativeInitially) {
             setSelectedNativeSite({
@@ -184,16 +187,18 @@ function SshServerForm({
                 type: "newt" as const
             });
             setNativeExistingTarget({
-                browserGatewayTargetId: first.browserGatewayTargetId,
-                siteId: first.siteId
+                targetId: first.targetId,
+                siteId: first.siteId,
+                authToken: first.authToken
             });
         } else {
-            setBgDestination(first.destination);
-            setBgDestinationPort(String(first.destinationPort));
+            setBgDestination(first.ip);
+            setBgDestinationPort(String(first.port));
             setExistingTargets(
                 targets.map((t) => ({
-                    browserGatewayTargetId: t.browserGatewayTargetId,
-                    siteId: t.siteId
+                    targetId: t.targetId,
+                    siteId: t.siteId,
+                    authToken: t.authToken
                 }))
             );
             setSelectedSites(
@@ -236,28 +241,31 @@ function SshServerForm({
                 if (selectedNativeSite) {
                     if (nativeExistingTarget) {
                         await api.post(
-                            `/org/${orgId}/browser-gateway-target/${nativeExistingTarget.browserGatewayTargetId}`,
+                            `/target/${nativeExistingTarget.targetId}`,
                             {
-                                type: "ssh",
-                                destination: "localhost",
-                                destinationPort: 22,
-                                siteId: selectedNativeSite.siteId
+                                mode: "ssh",
+                                ip: "localhost",
+                                port: 22,
+                                siteId: selectedNativeSite.siteId,
+                                authToken: nativeExistingTarget.authToken,
+                                hcEnabled: false
                             }
                         );
                     } else {
                         const res = await api.put(
-                            `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
+                            `/resource/${resource.resourceId}/target`,
                             {
                                 siteId: selectedNativeSite.siteId,
-                                type: "ssh",
-                                destination: "localhost",
-                                destinationPort: 22
+                                mode: "ssh",
+                                ip: "localhost",
+                                port: 22,
+                                hcEnabled: false
                             }
                         );
                         setNativeExistingTarget({
-                            browserGatewayTargetId:
-                                res.data.data.browserGatewayTargetId,
-                            siteId: selectedNativeSite.siteId
+                            targetId: res.data.data.targetId,
+                            siteId: selectedNativeSite.siteId,
+                            authToken: res.data.data.authToken
                         });
                     }
                 }
@@ -275,9 +283,7 @@ function SshServerForm({
                     );
                     await Promise.all(
                         toDelete.map((t) =>
-                            api.delete(
-                                `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`
-                            )
+                            api.delete(`/target/${t.targetId}`)
                         )
                     );
 
@@ -287,12 +293,14 @@ function SshServerForm({
                     await Promise.all(
                         toUpdate.map((t) =>
                             api.post(
-                                `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`,
+                                `/target/${t.targetId}`,
                                 {
-                                    type: "ssh",
-                                    destination: bgDestination,
-                                    destinationPort: Number(bgDestinationPort),
-                                    siteId: t.siteId
+                                    mode: "ssh",
+                                    ip: bgDestination,
+                                    port: Number(bgDestinationPort),
+                                    siteId: t.siteId,
+                                    authToken: t.authToken,
+                                    hcEnabled: false
                                 }
                             )
                         )
@@ -304,12 +312,13 @@ function SshServerForm({
                     const created = await Promise.all(
                         toCreate.map((s) =>
                             api.put(
-                                `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
+                                `/resource/${resource.resourceId}/target`,
                                 {
                                     siteId: s.siteId,
-                                    type: "ssh",
-                                    destination: bgDestination,
-                                    destinationPort: Number(bgDestinationPort)
+                                    mode: "ssh",
+                                    ip: bgDestination,
+                                    port: Number(bgDestinationPort),
+                                    hcEnabled: false
                                 }
                             )
                         )
@@ -317,9 +326,9 @@ function SshServerForm({
 
                     const newTargets: ExistingTarget[] = created.map(
                         (res, i) => ({
-                            browserGatewayTargetId:
-                                res.data.data.browserGatewayTargetId,
-                            siteId: toCreate[i].siteId
+                            targetId: res.data.data.targetId,
+                            siteId: toCreate[i].siteId,
+                            authToken: res.data.data.authToken
                         })
                     );
                     setExistingTargets([...toUpdate, ...newTargets]);

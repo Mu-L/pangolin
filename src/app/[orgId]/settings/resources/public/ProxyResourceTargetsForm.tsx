@@ -138,11 +138,6 @@ export function ProxyResourceTargetsForm({
     const [selectedTargetForHealthCheck, setSelectedTargetForHealthCheck] =
         useState<LocalTarget | null>(null);
 
-    const [bgDestination, setBgDestination] = useState("");
-    const [bgDestinationPort, setBgDestinationPort] = useState("");
-    const [bgSiteId, setBgSiteId] = useState<number | null>(null);
-    const [bgTargetId, setBgTargetId] = useState<number | null>(null);
-
     const initializeDockerForSite = async (siteId: number) => {
         if (dockerStates.has(siteId)) {
             return;
@@ -206,42 +201,6 @@ export function ProxyResourceTargetsForm({
             orgId
         })
     );
-
-    // Browser-gateway targets (edit mode only)
-    const { data: bgTargetsResponse } = useQuery({
-        queryKey: ["browserGatewayTargets", resource?.resourceId, orgId],
-        queryFn: async () => {
-            const res = await api.get(
-                `/org/${orgId}/resource/${resource!.resourceId}/browser-gateway-targets`
-            );
-            return res.data.data as {
-                targets: Array<{
-                    browserGatewayTargetId: number;
-                    resourceId: number;
-                    siteId: number;
-                    type: string;
-                    destination: string;
-                    destinationPort: number;
-                }>;
-            };
-        },
-        enabled: !!resource
-    });
-
-    useEffect(() => {
-        if (!bgTargetsResponse?.targets?.length) return;
-        const bgt = bgTargetsResponse.targets[0];
-        setBgDestination(bgt.destination);
-        setBgDestinationPort(String(bgt.destinationPort));
-        setBgSiteId(bgt.siteId);
-        setBgTargetId(bgt.browserGatewayTargetId);
-    }, [bgTargetsResponse]);
-
-    useEffect(() => {
-        if (sites.length > 0 && bgSiteId === null) {
-            setBgSiteId(sites[0].siteId);
-        }
-    }, [sites, bgSiteId]);
 
     const updateTarget = useCallback(
         (targetId: number, data: Partial<LocalTarget>) => {
@@ -603,6 +562,8 @@ export function ProxyResourceTargetsForm({
         const newTarget: LocalTarget = {
             targetId: -Date.now(),
             ip: "",
+            mode: ((resource?.mode as LocalTarget["mode"]) ??
+                (isHttp ? "http" : "tcp")) as LocalTarget["mode"],
             method: isHttp ? "http" : null,
             port: 0,
             siteId: sites.length > 0 ? sites[0].siteId : 0,

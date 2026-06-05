@@ -588,26 +588,6 @@ export const trialNotifications = sqliteTable("trialNotifications", {
     sentAt: integer("sentAt").notNull()
 });
 
-export const browserGatewayTarget = sqliteTable("browserGatewayTarget", {
-    browserGatewayTargetId: integer("browserGatewayTargetId").primaryKey({
-        autoIncrement: true
-    }),
-    resourceId: integer("resourceId")
-        .references(() => resources.resourceId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    siteId: integer("siteId")
-        .references(() => sites.siteId, {
-            onDelete: "cascade"
-        })
-        .notNull(),
-    authToken: text("authToken").notNull(),
-    type: text("type").notNull(), // "ssh", "rdp", "vnc"
-    destination: text("destination").notNull(),
-    destinationPort: integer("destinationPort").notNull()
-});
-
 export type Approval = InferSelectModel<typeof approvals>;
 export type Limit = InferSelectModel<typeof limits>;
 export type Account = InferSelectModel<typeof account>;
@@ -647,6 +627,3 @@ export type AlertEmailAction = InferSelectModel<typeof alertEmailActions>;
 export type AlertEmailRecipient = InferSelectModel<typeof alertEmailRecipients>;
 export type AlertWebhookAction = InferSelectModel<typeof alertWebhookActions>;
 export type TrialNotification = InferSelectModel<typeof trialNotifications>;
-export type BrowserGatewayTarget = InferSelectModel<
-    typeof browserGatewayTarget
->;

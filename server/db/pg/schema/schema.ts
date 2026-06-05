@@ -290,7 +290,12 @@ export const targets = pgTable("targets", {
     pathMatchType: text("pathMatchType"), // exact, prefix, regex
     rewritePath: text("rewritePath"), // if set, rewrites the path to this value before sending to the target
     rewritePathType: text("rewritePathType"), // exact, prefix, regex, stripPrefix
-    priority: integer("priority").notNull().default(100)
+    priority: integer("priority").notNull().default(100),
+    mode: varchar("mode")
+        .$type<"http" | "tcp" | "udp" | "ssh" | "rdp" | "vnc">()
+        .notNull()
+        .default("http"),
+    authToken: varchar("authToken")
 });
 
 export const targetHealthCheck = pgTable("targetHealthCheck", {
