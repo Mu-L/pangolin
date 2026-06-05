@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@app/components/ui/button";
-import { ColumnFilter } from "@app/components/ColumnFilter";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 import { DateTimeValue } from "@app/components/DateTimePicker";
 import { LogDataTable } from "@app/components/LogDataTable";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
@@ -256,9 +256,7 @@ export default function ConnectionLogsPage() {
     const columns: ColumnDef<any>[] = [
         {
             accessorKey: "startedAt",
-            header: () => {
-                return t("timestamp");
-            },
+            header: () => <span className="px-2">{t("timestamp")}</span>,
             cell: ({ row }) => {
                 return (
                     <div className="whitespace-nowrap">
@@ -273,21 +271,21 @@ export default function ConnectionLogsPage() {
             accessorKey: "protocol",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("protocol")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.protocols.map(
                                 (protocol) => ({
                                     label: protocol.toUpperCase(),
                                     value: protocol
                                 })
                             )}
+                            label={t("protocol")}
                             selectedValue={filters.protocol}
                             onValueChange={(value) =>
                                 handleFilterChange("protocol", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -304,19 +302,19 @@ export default function ConnectionLogsPage() {
             accessorKey: "resourceName",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("resource")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.resources.map((res) => ({
                                 value: res.id.toString(),
                                 label: res.name || "Unnamed Resource"
                             }))}
+                            label={t("resource")}
                             selectedValue={filters.siteResourceId}
                             onValueChange={(value) =>
                                 handleFilterChange("siteResourceId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -345,19 +343,19 @@ export default function ConnectionLogsPage() {
             accessorKey: "clientName",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("client")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.clients.map((c) => ({
                                 value: c.id.toString(),
                                 label: c.name
                             }))}
+                            label={t("client")}
                             selectedValue={filters.clientId}
                             onValueChange={(value) =>
                                 handleFilterChange("clientId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -388,19 +386,19 @@ export default function ConnectionLogsPage() {
             accessorKey: "userEmail",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("user")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.users.map((u) => ({
                                 value: u.id,
                                 label: u.email || u.id
                             }))}
+                            label={t("user")}
                             selectedValue={filters.userId}
                             onValueChange={(value) =>
                                 handleFilterChange("userId", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -419,9 +417,7 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "sourceAddr",
-            header: () => {
-                return t("sourceAddress");
-            },
+            header: () => <span className="px-2">{t("sourceAddress")}</span>,
             cell: ({ row }) => {
                 return (
                     <span className="whitespace-nowrap font-mono text-xs">
@@ -434,19 +430,19 @@ export default function ConnectionLogsPage() {
             accessorKey: "destAddr",
             header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("destinationAddress")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.destAddrs.map((addr) => ({
                                 value: addr,
                                 label: addr
                             }))}
+                            label={t("destinationAddress")}
                             selectedValue={filters.destAddr}
                             onValueChange={(value) =>
                                 handleFilterChange("destAddr", value)
                             }
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -461,9 +457,7 @@ export default function ConnectionLogsPage() {
         },
         {
             accessorKey: "duration",
-            header: () => {
-                return t("duration");
-            },
+            header: () => <span className="px-2">{t("duration")}</span>,
             cell: ({ row }) => {
                 return (
                     <span className="whitespace-nowrap">
