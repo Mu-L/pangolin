@@ -330,7 +330,7 @@ export default function ResourceAuthenticationPage() {
                                         asChild
                                     >
                                         <Link
-                                            href={`/${org.org.orgId}/settings/policies/resource/${policies.sharedPolicy.niceId}`}
+                                            href={`/${org.org.orgId}/settings/policies/resources/public/${policies.sharedPolicy.niceId}`}
                                         >
                                             {t("editSharedPolicy")}
                                             <ArrowRightIcon className="size-4" />

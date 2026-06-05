@@ -109,7 +109,7 @@ export function EditPolicyNameSectionForm({
 
                 if (payload.niceId && payload.niceId !== policy.niceId) {
                     router.replace(
-                        `/${org.org.orgId}/settings/policies/resource/${payload.niceId}`
+                        `/${org.org.orgId}/settings/policies/resources/public/${payload.niceId}`
                     );
                 }
 

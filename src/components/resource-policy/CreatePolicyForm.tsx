@@ -140,7 +140,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
             if (res && res.status === 201) {
                 const niceId = res.data.data.niceId;
                 router.push(
-                    `/${org.org.orgId}/settings/policies/resource/${niceId}`
+                    `/${org.org.orgId}/settings/policies/resources/public/${niceId}`
                 );
                 toast({
                     title: t("success"),

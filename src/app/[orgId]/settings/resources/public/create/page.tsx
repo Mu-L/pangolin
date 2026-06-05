@@ -50,6 +50,12 @@ import { toast } from "@app/hooks/useToast";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import {
+    createBrowserGatewayTargetFormSchema,
+    createSshSettingsFormSchema,
+    selectedSiteSchema,
+    type SshSettingsFormValues
+} from "@app/lib/browserGatewayTargetFormSchema";
 import { DockerManager, DockerState } from "@app/lib/docker";
 import { orgQueries } from "@app/lib/queries";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
@@ -79,99 +85,133 @@ import {
     useTransition,
     useEffect
 } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 
-const baseResourceFormSchema = z.object({
-    name: z.string().min(1).max(255),
-    http: z.boolean()
-});
+type TranslateFn = (key: string) => string;
 
-const httpResourceFormSchema = z.object({
-    domainId: z.string().nonempty(),
-    subdomain: z.string().optional()
-});
+function createBaseResourceFormSchema(t: TranslateFn) {
+    return z.object({
+        name: z
+            .string()
+            .min(1, { message: t("nameRequired") })
+            .max(255, {
+                message: t("createInternalResourceDialogNameMaxLength")
+            }),
+        http: z.boolean()
+    });
+}
 
-const tcpUdpResourceFormSchema = z.object({
-    protocol: z.string(),
-    proxyPort: z.int().min(1).max(65535)
-});
+function createHttpResourceFormSchema(t: TranslateFn) {
+    return z.object({
+        domainId: z.string().min(1, { message: t("domainRequired") }),
+        subdomain: z.string().optional()
+    });
+}
 
-const sshDaemonPortSchema = z.object({
-    authDaemonPort: z.string().refine(
-        (val) => {
-            if (!val) return true;
-            const n = Number(val);
-            return Number.isInteger(n) && n >= 1 && n <= 65535;
-        },
-        { message: "Port must be between 1 and 65535" }
-    )
-});
+function createTcpUdpResourceFormSchema(t: TranslateFn) {
+    return z.object({
+        protocol: z.string(),
+        proxyPort: z
+            .number({ error: t("proxyPortRequired") })
+            .int({ error: t("healthCheckPortInvalid") })
+            .min(1, { message: t("healthCheckPortInvalid") })
+            .max(65535, { message: t("healthCheckPortInvalid") })
+    });
+}
 
-const addTargetSchema = z
-    .object({
-        ip: z.string().refine(isTargetValid),
-        method: z.string().nullable(),
-        port: z.coerce.number<number>().int().positive(),
-        siteId: z.int().positive(),
-        path: z.string().optional().nullable(),
-        pathMatchType: z
-            .enum(["exact", "prefix", "regex"])
-            .optional()
-            .nullable(),
-        rewritePath: z.string().optional().nullable(),
-        rewritePathType: z
-            .enum(["exact", "prefix", "regex", "stripPrefix"])
-            .optional()
-            .nullable(),
-        priority: z.int().min(1).max(1000).optional()
-    })
-    .refine(
-        (data) => {
-            if (data.path && !data.pathMatchType) {
-                return false;
-            }
-            if (data.pathMatchType && !data.path) {
-                return false;
-            }
-            if (data.path && data.pathMatchType) {
-                switch (data.pathMatchType) {
-                    case "exact":
-                    case "prefix":
-                        return data.path.startsWith("/");
-                    case "regex":
-                        try {
-                            new RegExp(data.path);
-                            return true;
-                        } catch {
-                            return false;
-                        }
-                }
-            }
-            return true;
-        },
-        {
-            error: "Invalid path configuration"
-        }
-    )
-    .refine(
-        (data) => {
-            if (data.rewritePath && !data.rewritePathType) {
-                return false;
-            }
-            if (data.rewritePathType && !data.rewritePath) {
-                if (data.rewritePathType !== "stripPrefix") {
+function createSshDaemonPortSchema(t: TranslateFn) {
+    return z.object({
+        authDaemonPort: z.string().refine(
+            (val) => {
+                if (!val) return true;
+                const n = Number(val);
+                return Number.isInteger(n) && n >= 1 && n <= 65535;
+            },
+            { message: t("healthCheckPortInvalid") }
+        )
+    });
+}
+
+function createAddTargetSchema(t: TranslateFn) {
+    return z
+        .object({
+            ip: z.string().refine(isTargetValid, {
+                message: t("targetErrorInvalidIpDescription")
+            }),
+            method: z.string().nullable(),
+            port: z.coerce
+                .number<number>({ error: t("targetErrorInvalidPortDescription") })
+                .int({ error: t("targetErrorInvalidPortDescription") })
+                .positive({ error: t("targetErrorInvalidPortDescription") }),
+            siteId: z
+                .int({ error: t("siteRequired") })
+                .positive({ error: t("siteRequired") }),
+            path: z.string().optional().nullable(),
+            pathMatchType: z
+                .enum(["exact", "prefix", "regex"])
+                .optional()
+                .nullable(),
+            rewritePath: z.string().optional().nullable(),
+            rewritePathType: z
+                .enum(["exact", "prefix", "regex", "stripPrefix"])
+                .optional()
+                .nullable(),
+            priority: z
+                .int()
+                .min(1, { message: t("healthCheckPortInvalid") })
+                .max(1000, { message: t("healthCheckPortInvalid") })
+                .optional()
+        })
+        .refine(
+            (data) => {
+                if (data.path && !data.pathMatchType) {
                     return false;
                 }
+                if (data.pathMatchType && !data.path) {
+                    return false;
+                }
+                if (data.path && data.pathMatchType) {
+                    switch (data.pathMatchType) {
+                        case "exact":
+                        case "prefix":
+                            return data.path.startsWith("/");
+                        case "regex":
+                            try {
+                                new RegExp(data.path);
+                                return true;
+                            } catch {
+                                return false;
+                            }
+                    }
+                }
+                return true;
+            },
+            {
+                message: t("invalidPathConfiguration")
             }
-            return true;
-        },
-        {
-            error: "Invalid rewrite path configuration"
-        }
-    );
+        )
+        .refine(
+            (data) => {
+                if (data.rewritePath && !data.rewritePathType) {
+                    return false;
+                }
+                if (data.rewritePathType && !data.rewritePath) {
+                    if (data.rewritePathType !== "stripPrefix") {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            {
+                message: t("invalidRewritePathConfiguration")
+            }
+        );
+}
 
 type NewResourceType = "http" | "ssh" | "rdp" | "vnc" | "tcp" | "udp";
+
+type CreateBgTargetFormValues = SshSettingsFormValues;
 
 export default function Page() {
     const { env } = useEnvContext();
@@ -223,29 +263,6 @@ export default function Page() {
         useState<Selectedsite | null>(null);
     const [nativeSiteOpen, setNativeSiteOpen] = useState(false);
 
-    // Browser-gateway targets state (SSH standard, RDP, VNC)
-    const [bgSelectedSites, setBgSelectedSites] = useState<Selectedsite[]>([]);
-    const [bgSelectedSite, setBgSelectedSite] = useState<Selectedsite | null>(
-        null
-    );
-    const [bgDestination, setBgDestination] = useState("");
-    const [bgDestinationPort, setBgDestinationPort] = useState("22");
-
-    // Reset BG state when resource type changes
-    useEffect(() => {
-        if (resourceType === "rdp") {
-            setBgDestinationPort("3389");
-        } else if (resourceType === "vnc") {
-            setBgDestinationPort("5900");
-        } else if (resourceType === "ssh") {
-            setBgDestinationPort("22");
-        }
-        setBgDestination("");
-        setBgSelectedSites([]);
-        setBgSelectedSite(null);
-        setNativeSelectedSite(null);
-    }, [resourceType]);
-
     useEffect(() => {
         if (build !== "saas") return;
 
@@ -278,6 +295,39 @@ export default function Page() {
         pamMode === "push" &&
         standardDaemonLocation === "remote";
 
+    const bgTargetFormSchema = useMemo(() => {
+        if (resourceType === "ssh" && !isNative) {
+            return createSshSettingsFormSchema(t, { isNative: false });
+        }
+        if (resourceType === "rdp" || resourceType === "vnc") {
+            return createBrowserGatewayTargetFormSchema(t);
+        }
+        return z.object({
+            selectedSites: z.array(selectedSiteSchema),
+            selectedSite: selectedSiteSchema.nullable(),
+            destination: z.string(),
+            destinationPort: z.string(),
+            pamMode: z.enum(["passthrough", "push"]),
+            standardDaemonLocation: z.enum(["site", "remote"])
+        });
+    }, [resourceType, isNative, t]);
+
+    const bgTargetForm = useForm<CreateBgTargetFormValues>({
+        resolver: zodResolver(
+            bgTargetFormSchema
+        ) as unknown as Resolver<CreateBgTargetFormValues>,
+        defaultValues: {
+            selectedSites: [],
+            selectedSite: null,
+            selectedNativeSite: null,
+            destination: "",
+            destinationPort: "22",
+            pamMode: "passthrough",
+            standardDaemonLocation: "site",
+            authDaemonPort: "22123"
+        }
+    });
+
     // Whether raw (TCP/UDP) resources are available
     const rawResourcesAllowed =
         env.flags.allowRawResources &&
@@ -301,6 +351,24 @@ export default function Page() {
             setResourceType("http");
         }
     }, [availableTypes, resourceType]);
+
+    const baseResourceFormSchema = useMemo(
+        () => createBaseResourceFormSchema(t),
+        [t]
+    );
+    const httpResourceFormSchema = useMemo(
+        () => createHttpResourceFormSchema(t),
+        [t]
+    );
+    const tcpUdpResourceFormSchema = useMemo(
+        () => createTcpUdpResourceFormSchema(t),
+        [t]
+    );
+    const sshDaemonPortSchema = useMemo(
+        () => createSshDaemonPortSchema(t),
+        [t]
+    );
+    const addTargetSchema = useMemo(() => createAddTargetSchema(t), [t]);
 
     const baseForm = useForm({
         resolver: zodResolver(baseResourceFormSchema),
@@ -329,6 +397,31 @@ export default function Page() {
             authDaemonPort: "22123"
         }
     });
+
+    useEffect(() => {
+        const defaultPort =
+            resourceType === "rdp"
+                ? "3389"
+                : resourceType === "vnc"
+                  ? "5900"
+                  : "22";
+        bgTargetForm.reset({
+            selectedSites: [],
+            selectedSite: null,
+            selectedNativeSite: null,
+            destination: "",
+            destinationPort: defaultPort,
+            pamMode,
+            standardDaemonLocation,
+            authDaemonPort: sshDaemonPortForm.getValues().authDaemonPort
+        });
+        setNativeSelectedSite(null);
+    }, [resourceType]);
+
+    useEffect(() => {
+        bgTargetForm.setValue("pamMode", pamMode);
+        bgTargetForm.setValue("standardDaemonLocation", standardDaemonLocation);
+    }, [pamMode, standardDaemonLocation]);
 
     // Sync form http field with resourceType
     useEffect(() => {
@@ -509,20 +602,23 @@ export default function Page() {
                             );
                         }
                     } else {
-                        const sitesToCreate =
-                            standardDaemonLocation !== "site"
-                                ? bgSelectedSites
-                                : bgSelectedSite
-                                  ? [bgSelectedSite]
-                                  : [];
+                        const bgValues = bgTargetForm.getValues();
+                        const useMultiSite =
+                            standardDaemonLocation !== "site" ||
+                            pamMode === "passthrough";
+                        const sitesToCreate = useMultiSite
+                            ? bgValues.selectedSites
+                            : bgValues.selectedSite
+                              ? [bgValues.selectedSite]
+                              : [];
                         for (const site of sitesToCreate) {
                             await api.put(
                                 `/resource/${id}/target`,
                                 {
                                     siteId: site.siteId,
                                     mode: "ssh",
-                                    ip: bgDestination,
-                                    port: Number(bgDestinationPort),
+                                    ip: bgValues.destination,
+                                    port: Number(bgValues.destinationPort),
                                     hcEnabled: false
                                 }
                             );
@@ -533,18 +629,19 @@ export default function Page() {
                         `/${orgId}/settings/resources/public/${newNiceId}`
                     );
                 } else if (resourceType === "rdp" || resourceType === "vnc") {
-                    for (const site of bgSelectedSites) {
+                    const bgValues = bgTargetForm.getValues();
+                    for (const site of bgValues.selectedSites) {
                         await api.put(
                             `/resource/${id}/target`,
                             {
                                 siteId: site.siteId,
                                 mode: resourceType,
-                                ip: bgDestination,
-                                port: Number(bgDestinationPort),
+                                ip: bgValues.destination,
+                                port: Number(bgValues.destinationPort),
                                 authToken: null,
                                 hcEnabled: false
                             }
-                        );
+                         );
                     }
 
                     router.push(
@@ -764,32 +861,56 @@ export default function Page() {
 
                                         {/* Domain/Subdomain (HTTP-based types) */}
                                         {isHttpResource && (
-                                            <div className="space-y-2">
-                                                <DomainPicker
-                                                    allowWildcard={true}
-                                                    orgId={orgId as string}
-                                                    warnOnProvidedDomain={
-                                                        remoteExitNodes.length >=
-                                                        1
-                                                    }
-                                                    onDomainChange={(res) => {
-                                                        if (!res) return;
-                                                        httpForm.setValue(
-                                                            "subdomain",
-                                                            res.subdomain
-                                                        );
-                                                        httpForm.setValue(
-                                                            "domainId",
-                                                            res.domainId
-                                                        );
-                                                    }}
-                                                />
-                                                <p className="text-sm text-muted-foreground">
-                                                    {t(
-                                                        "resourceDomainDescription"
+                                            <Form {...httpForm}>
+                                                <FormField
+                                                    control={httpForm.control}
+                                                    name="domainId"
+                                                    render={() => (
+                                                        <FormItem>
+                                                            <DomainPicker
+                                                                allowWildcard={
+                                                                    true
+                                                                }
+                                                                orgId={
+                                                                    orgId as string
+                                                                }
+                                                                warnOnProvidedDomain={
+                                                                    remoteExitNodes.length >=
+                                                                    1
+                                                                }
+                                                                onDomainChange={(
+                                                                    res
+                                                                ) => {
+                                                                    if (!res)
+                                                                        return;
+                                                                    httpForm.setValue(
+                                                                        "subdomain",
+                                                                        res.subdomain,
+                                                                        {
+                                                                            shouldValidate:
+                                                                                true
+                                                                        }
+                                                                    );
+                                                                    httpForm.setValue(
+                                                                        "domainId",
+                                                                        res.domainId,
+                                                                        {
+                                                                            shouldValidate:
+                                                                                true
+                                                                        }
+                                                                    );
+                                                                }}
+                                                            />
+                                                            <FormMessage />
+                                                            <FormDescription>
+                                                                {t(
+                                                                    "resourceDomainDescription"
+                                                                )}
+                                                            </FormDescription>
+                                                        </FormItem>
                                                     )}
-                                                </p>
-                                            </div>
+                                                />
+                                            </Form>
                                         )}
 
                                         {/* Proxy Port (TCP/UDP types) */}
@@ -887,9 +1008,7 @@ export default function Page() {
                                         <SettingsSectionForm variant="half">
                                             {/* Mode */}
                                             <div className="space-y-2">
-                                                <SettingsSubsectionTitle>
-                                                    {t("sshServerMode")}
-                                                </SettingsSubsectionTitle>
+                                                <p className="font-semibold text-sm">{t("sshServerMode")}</p>
                                                 <StrategySelect<
                                                     "standard" | "native"
                                                 >
@@ -901,11 +1020,7 @@ export default function Page() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <SettingsSubsectionTitle>
-                                                    {t(
-                                                        "sshAuthenticationMethod"
-                                                    )}
-                                                </SettingsSubsectionTitle>
+                                                <p className="font-semibold text-sm">{t("sshAuthenticationMethod")}</p>
                                                 <StrategySelect<
                                                     "passthrough" | "push"
                                                 >
@@ -921,11 +1036,7 @@ export default function Page() {
                                             {/* Daemon Location (standard + push) */}
                                             {showDaemonLocation && (
                                                 <div className="space-y-2">
-                                                    <SettingsSubsectionTitle>
-                                                        {t(
-                                                            "sshAuthDaemonLocation"
-                                                        )}
-                                                    </SettingsSubsectionTitle>
+                                                    <p className="font-semibold text-sm">{t("sshAuthDaemonLocation")}</p>
                                                     <StrategySelect<
                                                         "site" | "remote"
                                                     >
@@ -1056,55 +1167,39 @@ export default function Page() {
                                                       "site" ||
                                                   pamMode ===
                                                       "passthrough" ? (
-                                                    <BrowserGatewayTargetForm
-                                                        orgId={orgId as string}
-                                                        multiSite={true}
-                                                        selectedSites={
-                                                            bgSelectedSites
-                                                        }
-                                                        onSitesChange={
-                                                            setBgSelectedSites
-                                                        }
-                                                        destination={
-                                                            bgDestination
-                                                        }
-                                                        destinationPort={
-                                                            bgDestinationPort
-                                                        }
-                                                        onDestinationChange={
-                                                            setBgDestination
-                                                        }
-                                                        onDestinationPortChange={
-                                                            setBgDestinationPort
-                                                        }
-                                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                                                        defaultPort={22}
-                                                    />
+                                                    <Form {...bgTargetForm}>
+                                                        <BrowserGatewayTargetForm
+                                                            control={
+                                                                bgTargetForm.control
+                                                            }
+                                                            orgId={
+                                                                orgId as string
+                                                            }
+                                                            multiSite={true}
+                                                            sitesField="selectedSites"
+                                                            destinationField="destination"
+                                                            destinationPortField="destinationPort"
+                                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                            defaultPort={22}
+                                                        />
+                                                    </Form>
                                                 ) : (
-                                                    <BrowserGatewayTargetForm
-                                                        orgId={orgId as string}
-                                                        multiSite={false}
-                                                        selectedSite={
-                                                            bgSelectedSite
-                                                        }
-                                                        onSiteChange={
-                                                            setBgSelectedSite
-                                                        }
-                                                        destination={
-                                                            bgDestination
-                                                        }
-                                                        destinationPort={
-                                                            bgDestinationPort
-                                                        }
-                                                        onDestinationChange={
-                                                            setBgDestination
-                                                        }
-                                                        onDestinationPortChange={
-                                                            setBgDestinationPort
-                                                        }
-                                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                                                        defaultPort={22}
-                                                    />
+                                                    <Form {...bgTargetForm}>
+                                                        <BrowserGatewayTargetForm
+                                                            control={
+                                                                bgTargetForm.control
+                                                            }
+                                                            orgId={
+                                                                orgId as string
+                                                            }
+                                                            multiSite={false}
+                                                            siteField="selectedSite"
+                                                            destinationField="destination"
+                                                            destinationPortField="destinationPort"
+                                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                            defaultPort={22}
+                                                        />
+                                                    </Form>
                                                 )}
                                             </div>
                                         </SettingsSectionForm>
@@ -1142,26 +1237,18 @@ export default function Page() {
                                     >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
-                                            <BrowserGatewayTargetForm
-                                                orgId={orgId as string}
-                                                multiSite={true}
-                                                selectedSites={bgSelectedSites}
-                                                onSitesChange={
-                                                    setBgSelectedSites
-                                                }
-                                                destination={bgDestination}
-                                                destinationPort={
-                                                    bgDestinationPort
-                                                }
-                                                onDestinationChange={
-                                                    setBgDestination
-                                                }
-                                                onDestinationPortChange={
-                                                    setBgDestinationPort
-                                                }
-                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
-                                                defaultPort={3389}
-                                            />
+                                            <Form {...bgTargetForm}>
+                                                <BrowserGatewayTargetForm
+                                                    control={bgTargetForm.control}
+                                                    orgId={orgId as string}
+                                                    multiSite={true}
+                                                    sitesField="selectedSites"
+                                                    destinationField="destination"
+                                                    destinationPortField="destinationPort"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/rdp"
+                                                    defaultPort={3389}
+                                                />
+                                            </Form>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
                                     </fieldset>
@@ -1197,26 +1284,18 @@ export default function Page() {
                                     >
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
-                                            <BrowserGatewayTargetForm
-                                                orgId={orgId as string}
-                                                multiSite={true}
-                                                selectedSites={bgSelectedSites}
-                                                onSitesChange={
-                                                    setBgSelectedSites
-                                                }
-                                                destination={bgDestination}
-                                                destinationPort={
-                                                    bgDestinationPort
-                                                }
-                                                onDestinationChange={
-                                                    setBgDestination
-                                                }
-                                                onDestinationPortChange={
-                                                    setBgDestinationPort
-                                                }
-                                                learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
-                                                defaultPort={5900}
-                                            />
+                                            <Form {...bgTargetForm}>
+                                                <BrowserGatewayTargetForm
+                                                    control={bgTargetForm.control}
+                                                    orgId={orgId as string}
+                                                    multiSite={true}
+                                                    sitesField="selectedSites"
+                                                    destinationField="destination"
+                                                    destinationPortField="destinationPort"
+                                                    learnMoreHref="https://docs.pangolin.net/manage/resources/public/vnc"
+                                                    defaultPort={5900}
+                                                />
+                                            </Form>
                                         </SettingsSectionForm>
                                     </SettingsSectionBody>
                                     </fieldset>
@@ -1257,15 +1336,31 @@ export default function Page() {
                                         const tcpValid = !isHttpResource
                                             ? await tcpUdpForm.trigger()
                                             : true;
-                                        const sshPortValid = showDaemonPort
-                                            ? await sshDaemonPortForm.trigger()
-                                            : true;
+
+                                        if (
+                                            resourceType === "ssh" &&
+                                            !isNative
+                                        ) {
+                                            bgTargetForm.setValue(
+                                                "authDaemonPort",
+                                                sshDaemonPortForm.getValues()
+                                                    .authDaemonPort
+                                            );
+                                        }
+
+                                        const bgValid =
+                                            resourceType === "rdp" ||
+                                            resourceType === "vnc" ||
+                                            (resourceType === "ssh" &&
+                                                !isNative)
+                                                ? await bgTargetForm.trigger()
+                                                : true;
 
                                         if (
                                             baseValid &&
                                             domainValid &&
                                             tcpValid &&
-                                            sshPortValid
+                                            bgValid
                                         ) {
                                             onSubmit();
                                         }

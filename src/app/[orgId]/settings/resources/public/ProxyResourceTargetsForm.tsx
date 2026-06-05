@@ -10,7 +10,10 @@ import {
     PathRewriteDisplay,
     PathRewriteModal
 } from "@app/components/PathMatchRenameModal";
-import { ResourceTargetAddressItem } from "@app/components/resource-target-address-item";
+import {
+    ResourceTargetAddressItem,
+    ResourceTargetSiteItem
+} from "@app/components/resource-target-address-item";
 import {
     SettingsSection,
     SettingsSectionBody,
@@ -65,6 +68,7 @@ import {
     useMemo,
     useState
 } from "react";
+import { maxSize } from "zod";
 
 export type LocalTarget = Omit<
     ArrayElement<ListTargetsResponse["targets"]> & {
@@ -228,7 +232,7 @@ export function ProxyResourceTargetsForm({
         const priorityColumn: ColumnDef<LocalTarget> = {
             id: "priority",
             header: () => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 p-3">
                     {t("priority")}
                     <TooltipProvider>
                         <Tooltip>
@@ -244,7 +248,6 @@ export function ProxyResourceTargetsForm({
             ),
             cell: ({ row }) => {
                 return (
-                    <div className="flex items-center justify-center w-full">
                         <Input
                             type="number"
                             min="1"
@@ -262,7 +265,6 @@ export function ProxyResourceTargetsForm({
                                 }
                             }}
                         />
-                    </div>
                 );
             },
             size: 120,
@@ -396,13 +398,12 @@ export function ProxyResourceTargetsForm({
             maxSize: 200
         };
 
-        const addressColumn: ColumnDef<LocalTarget> = {
-            accessorKey: "address",
-            header: () => <span className="p-3">{t("address")}</span>,
+        const siteColumn: ColumnDef<LocalTarget> = {
+            accessorKey: "site",
+            header: () => <span className="p-3">{t("site")}</span>,
             cell: ({ row }) => {
                 return (
-                    <ResourceTargetAddressItem
-                        isHttp={isHttp}
+                    <ResourceTargetSiteItem
                         orgId={orgId}
                         getDockerStateForSite={getDockerStateForSite}
                         proxyTarget={row.original}
@@ -411,9 +412,26 @@ export function ProxyResourceTargetsForm({
                     />
                 );
             },
-            size: 400,
-            minSize: 350,
-            maxSize: 500
+            size: 220,
+            minSize: 180,
+            maxSize: 280
+        };
+
+        const addressColumn: ColumnDef<LocalTarget> = {
+            accessorKey: "address",
+            header: () => <span className="p-3">{t("address")}</span>,
+            cell: ({ row }) => {
+                return (
+                    <ResourceTargetAddressItem
+                        isHttp={isHttp}
+                        proxyTarget={row.original}
+                        updateTarget={updateTarget}
+                    />
+                );
+            },
+            size: 350,
+            minSize: 300,
+            maxSize: 450
         };
 
         const rewritePathColumn: ColumnDef<LocalTarget> = {
@@ -526,6 +544,7 @@ export function ProxyResourceTargetsForm({
 
         if (isAdvancedMode) {
             const cols = [
+                siteColumn,
                 addressColumn,
                 healthCheckColumn,
                 enabledColumn,
@@ -534,12 +553,13 @@ export function ProxyResourceTargetsForm({
 
             if (isHttp) {
                 cols.unshift(matchPathColumn);
-                cols.splice(3, 0, rewritePathColumn, priorityColumn);
+                cols.splice(4, 0, rewritePathColumn, priorityColumn);
             }
 
             return cols;
         } else {
             return [
+                siteColumn,
                 addressColumn,
                 healthCheckColumn,
                 enabledColumn,
@@ -779,6 +799,10 @@ export function ProxyResourceTargetsForm({
                                                                 header.column
                                                                     .id ===
                                                                 "actions";
+                                                            const isSiteColumn =
+                                                                header.column
+                                                                    .id ===
+                                                                "site";
                                                             return (
                                                                 <TableHead
                                                                     key={
@@ -787,7 +811,9 @@ export function ProxyResourceTargetsForm({
                                                                     className={
                                                                         isActionsColumn
                                                                             ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                            : ""
+                                                                            : isSiteColumn
+                                                                              ? "w-45"
+                                                                              : ""
                                                                     }
                                                                 >
                                                                     {header.isPlaceholder
@@ -819,6 +845,10 @@ export function ProxyResourceTargetsForm({
                                                                     cell.column
                                                                         .id ===
                                                                     "actions";
+                                                                const isSiteColumn =
+                                                                    cell.column
+                                                                        .id ===
+                                                                    "site";
                                                                 return (
                                                                     <TableCell
                                                                         key={
@@ -827,7 +857,9 @@ export function ProxyResourceTargetsForm({
                                                                         className={
                                                                             isActionsColumn
                                                                                 ? "sticky right-0 z-10 w-auto min-w-fit bg-card"
-                                                                                : ""
+                                                                                : isSiteColumn
+                                                                                  ? "w-45"
+                                                                                  : ""
                                                                         }
                                                                     >
                                                                         {flexRender(
