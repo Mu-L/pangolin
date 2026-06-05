@@ -3,6 +3,7 @@ import { getBrowserTargetForRequest } from "@app/lib/getBrowserTargetForRequest"
 import { loadOrgLoginPageBranding } from "@app/lib/loadOrgLoginPageBranding";
 import RdpClient from "./RdpClient";
 import AuthFooter from "@app/components/AuthFooter";
+import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,9 @@ export async function generateMetadata() {
 }
 
 export default async function RdpPage() {
+    const t = await getTranslations();
     const { target } = await getBrowserTargetForRequest();
-    const error = target ? null : "No resource found for this domain";
+    const error = target ? null : t("browserGatewayNoResourceForDomain");
     const { primaryColor } = target
         ? await loadOrgLoginPageBranding(target.orgId)
         : { primaryColor: null };

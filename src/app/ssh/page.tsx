@@ -9,6 +9,7 @@ import SshClient from "./SshClient";
 import crypto from "crypto";
 import AuthFooter from "@app/components/AuthFooter";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
+import { getTranslations } from "next-intl/server";
 
 const pollInitialDelayMs = 250;
 const pollStartIntervalMs = 250;
@@ -107,6 +108,7 @@ export async function generateMetadata() {
 }
 
 export default async function SshPage() {
+    const t = await getTranslations();
     const headersList = await headers();
     const cookieHeader = headersList.get("cookie") || "";
 
@@ -119,7 +121,7 @@ export default async function SshPage() {
     target = browserTarget;
 
     if (!target) {
-        error = "No resource found for this domain";
+        error = t("browserGatewayNoResourceForDomain");
     } else if (target.pamMode === "push") {
         try {
             const { privateKeyPem, publicKeyOpenSSH } =
@@ -150,8 +152,7 @@ export default async function SshPage() {
             await waitForRoundTripCompletion(messageIds, cookieHeader);
         } catch (err) {
             console.error("Error signing SSH key:", err);
-            error =
-                "Failed to sign SSH key for PAM push authentication. Did you sign in as a user?";
+            error = t("sshErrorSignKeyFailed");
         }
     }
 

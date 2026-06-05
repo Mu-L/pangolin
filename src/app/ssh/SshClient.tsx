@@ -274,7 +274,7 @@ export default function SshClient({
                             );
                         } else {
                             xtermRef.current?.writeln(
-                                `\r\n\x1b[31mError: ${msg.error}\x1b[0m\r\n`
+                                `\r\n\x1b[31m${t("sshTerminalError", { error: msg.error ?? "" })}\x1b[0m\r\n`
                             );
                         }
                     }
@@ -309,7 +309,7 @@ export default function SshClient({
             if (authConfirmed) {
                 setConnected(false);
                 xtermRef.current?.writeln(
-                    `\r\n\x1b[33mConnection closed (code ${evt.code})\x1b[0m\r\n`
+                    `\r\n\x1b[33m${t("sshConnectionClosedCode", { code: evt.code })}\x1b[0m\r\n`
                 );
             }
             // If auth was never confirmed the login form is already visible;
@@ -510,7 +510,9 @@ export default function SshClient({
                                                     privateKey: e.target.value
                                                 })
                                             }
-                                            placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                                            placeholder={t(
+                                                "sshPrivateKeyPlaceholder"
+                                            )}
                                             rows={5}
                                             className="font-mono text-xs"
                                         />

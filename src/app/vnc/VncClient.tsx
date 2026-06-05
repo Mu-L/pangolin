@@ -15,6 +15,7 @@ import {
 } from "@app/components/ui/card";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import { useTranslations } from "next-intl";
 
 type FormState = {
     password: string;
@@ -29,6 +30,7 @@ export default function VncClient({
     error: string | null;
     primaryColor?: string | null;
 }) {
+    const t = useTranslations();
     const STORAGE_KEY = "pangolin_vnc_credentials";
 
     const [form, setForm] = useState<FormState>(() => {
@@ -67,8 +69,8 @@ export default function VncClient({
         if (!target) {
             toast({
                 variant: "destructive",
-                title: "No target",
-                description: "No resource target is available"
+                title: t("browserGatewayNoTarget"),
+                description: t("vncNoResourceTarget")
             });
             return;
         }
@@ -92,7 +94,7 @@ export default function VncClient({
         } catch (err) {
             toast({
                 variant: "destructive",
-                title: "Failed to load noVNC",
+                title: t("vncFailedToLoadNovnc"),
                 description: `${err}`
             });
             return;
@@ -144,8 +146,12 @@ export default function VncClient({
             (e: { detail: { status: number; reason?: string } }) => {
                 toast({
                     variant: "destructive",
-                    title: "Authentication failed",
-                    description: e.detail.reason ?? `Status ${e.detail.status}`
+                    title: t("sshErrorAuthFailed"),
+                    description:
+                        e.detail.reason ??
+                        t("vncAuthFailedStatus", {
+                            status: e.detail.status
+                        })
                 });
             }
         );
@@ -159,7 +165,7 @@ export default function VncClient({
                 <PoweredByPangolin />
                 <Card className="w-full">
                     <CardHeader>
-                        <CardTitle>VNC</CardTitle>
+                        <CardTitle>{t("vncTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-destructive text-sm">{error}</p>
@@ -176,15 +182,15 @@ export default function VncClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>VNC</CardTitle>
+                            <CardTitle>{t("vncTitle")}</CardTitle>
                             <CardDescription>
-                                Enter your credentials to access xxxx
+                                {t("vncSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
                                 <Field
-                                    label="Password (optional)"
+                                    label={t("vncPasswordOptional")}
                                     id="password"
                                 >
                                     <Input
@@ -198,7 +204,7 @@ export default function VncClient({
                                 </Field>
 
                                 <Button onClick={connect} className="w-full">
-                                    Connect
+                                    {t("browserGatewayConnect")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -220,7 +226,7 @@ export default function VncClient({
                             }
                         }}
                     >
-                        Ctrl+Alt+Del
+                        {t("browserGatewayCtrlAltDel")}
                     </Button>
                     <Button
                         size="sm"
@@ -234,14 +240,14 @@ export default function VncClient({
                                 .catch(() => {});
                         }}
                     >
-                        Paste clipboard
+                        {t("vncPasteClipboard")}
                     </Button>
                     <Button
                         size="sm"
                         variant="destructive"
                         onClick={disconnect}
                     >
-                        Terminate
+                        {t("sshTerminate")}
                     </Button>
                 </div>
 

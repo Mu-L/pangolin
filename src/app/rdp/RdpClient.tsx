@@ -24,6 +24,7 @@ import {
 } from "@app/components/ui/card";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import { useTranslations } from "next-intl";
 
 declare module "react" {
     namespace JSX {
@@ -68,6 +69,7 @@ export default function RdpClient({
     error: string | null;
     primaryColor?: string | null;
 }) {
+    const t = useTranslations();
     const STORAGE_KEY = "pangolin_rdp_credentials";
 
     const [form, setForm] = useState<FormState>(() => {
@@ -141,7 +143,7 @@ export default function RdpClient({
             console.error("Failed to load iron-remote-desktop modules", err);
             toast({
                 variant: "destructive",
-                title: "Failed to load RDP module",
+                title: t("rdpFailedToLoadModule"),
                 description: `${err}`
             });
         });
@@ -175,8 +177,8 @@ export default function RdpClient({
             setConnecting(false);
             toast({
                 variant: "destructive",
-                title: "Not ready",
-                description: "RDP module is still initializing"
+                title: t("rdpNotReady"),
+                description: t("rdpModuleInitializing")
             });
             return;
         }
@@ -196,7 +198,9 @@ export default function RdpClient({
                 const downloadable = files.filter((f) => !f.isDirectory);
                 if (downloadable.length === 0) return;
                 toast({
-                    title: `Downloading ${downloadable.length} file(s) from remote…`
+                    title: t("rdpDownloadingFiles", {
+                        count: downloadable.length
+                    })
                 });
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
@@ -214,7 +218,9 @@ export default function RdpClient({
                         .catch((err) => {
                             toast({
                                 variant: "destructive",
-                                title: `Download failed: ${file.name}`,
+                                title: t("rdpDownloadFailed", {
+                                    fileName: file.name
+                                }),
                                 description: `${err}`
                             });
                         });
@@ -223,7 +229,7 @@ export default function RdpClient({
 
             // Notify when individual uploads complete (remote pasted a file).
             fileTransfer.on("upload-complete", (file: File) => {
-                toast({ title: `Uploaded: ${file.name}` });
+                toast({ title: t("rdpUploaded", { fileName: file.name }) });
             });
 
             // Register with the web component so CLIPRDR extensions are
@@ -237,8 +243,8 @@ export default function RdpClient({
             setConnecting(false);
             toast({
                 variant: "destructive",
-                title: "No target",
-                description: "No connection target available"
+                title: t("browserGatewayNoTarget"),
+                description: t("rdpNoConnectionTarget")
             });
             return;
         }
@@ -290,13 +296,13 @@ export default function RdpClient({
             if (isIronError(err)) {
                 toast({
                     variant: "destructive",
-                    title: "Connection failed",
+                    title: t("rdpConnectionFailed"),
                     description: err.backtrace()
                 });
             } else {
                 toast({
                     variant: "destructive",
-                    title: "Connection failed",
+                    title: t("rdpConnectionFailed"),
                     description: `${err}`
                 });
             }
@@ -322,7 +328,7 @@ export default function RdpClient({
                 <PoweredByPangolin />
                 <Card className="w-full">
                     <CardHeader>
-                        <CardTitle>RDP</CardTitle>
+                        <CardTitle>{t("rdpTitle")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-destructive text-sm">{error}</p>
@@ -339,14 +345,14 @@ export default function RdpClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>Sign in to Remote Desktop</CardTitle>
+                            <CardTitle>{t("rdpSignInTitle")}</CardTitle>
                             <CardDescription>
-                                Enter Windows credentials to access xxxx
+                                {t("rdpSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                <Field label="Domain" id="domain">
+                                <Field label={t("domain")} id="domain">
                                     <Input
                                         id="domain"
                                         value={form.domain}
@@ -355,7 +361,7 @@ export default function RdpClient({
                                         }
                                     />
                                 </Field>
-                                <Field label="Username" id="username">
+                                <Field label={t("username")} id="username">
                                     <Input
                                         id="username"
                                         value={form.username}
@@ -364,7 +370,7 @@ export default function RdpClient({
                                         }
                                     />
                                 </Field>
-                                <Field label="Password" id="password">
+                                <Field label={t("password")} id="password">
                                     <Input
                                         id="password"
                                         type="password"
@@ -414,8 +420,8 @@ export default function RdpClient({
                                     className="w-full"
                                 >
                                     {moduleReady
-                                        ? "Connect"
-                                        : "Loading module..."}
+                                        ? t("browserGatewayConnect")
+                                        : t("rdpLoadingModule")}
                                 </Button>
                             </div>
                         </CardContent>
@@ -433,35 +439,35 @@ export default function RdpClient({
                         variant="secondary"
                         onClick={() => ui()?.setScale(1)}
                     >
-                        Fit
+                        {t("rdpFit")}
                     </Button>
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.setScale(2)}
                     >
-                        Full
+                        {t("rdpFull")}
                     </Button>
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.setScale(3)}
                     >
-                        Real
+                        {t("rdpReal")}
                     </Button>
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.ctrlAltDel()}
                     >
-                        Ctrl+Alt+Del
+                        {t("browserGatewayCtrlAltDel")}
                     </Button>
                     <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.metaKey()}
                     >
-                        Meta
+                        {t("rdpMeta")}
                     </Button>
                     {/* <Button
                         size="sm"
@@ -483,19 +489,22 @@ export default function RdpClient({
                             try {
                                 ft.uploadFiles(files);
                                 toast({
-                                    title: "Files ready to paste",
-                                    description: `${files.length} file(s) copied to remote clipboard — press Ctrl+V on the remote desktop to paste.`
+                                    title: t("rdpFilesReadyToPaste"),
+                                    description: t(
+                                        "rdpFilesReadyToPasteDescription",
+                                        { count: files.length }
+                                    )
                                 });
                             } catch (err) {
                                 toast({
                                     variant: "destructive",
-                                    title: "Upload failed",
+                                    title: t("rdpUploadFailed"),
                                     description: `${err}`
                                 });
                             }
                         }}
                     >
-                        Upload files
+                        {t("rdpUploadFiles")}
                     </Button>
                     <Button
                         size="sm"
@@ -505,7 +514,7 @@ export default function RdpClient({
                             setShowLogin(true);
                         }}
                     >
-                        Terminate
+                        {t("sshTerminate")}
                     </Button>
                     <label className="ml-2 flex items-center gap-2">
                         <input
@@ -516,7 +525,7 @@ export default function RdpClient({
                                 ui()?.setKeyboardUnicodeMode(e.target.checked);
                             }}
                         />
-                        Unicode keyboard mode
+                        {t("rdpUnicodeKeyboardMode")}
                     </label>
                 </div>
 
