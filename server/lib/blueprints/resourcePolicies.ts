@@ -345,8 +345,16 @@ function getRuleAction(input: string): "ACCEPT" | "DROP" | "PASS" {
     return "PASS";
 }
 
-function getRuleMatch(input: string): "CIDR" | "IP" | "PATH" {
-    return input.toUpperCase() as "CIDR" | "IP" | "PATH";
+function getRuleMatch(
+    input: string
+): "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN" | "REGION" {
+    return input.toUpperCase() as
+        | "CIDR"
+        | "IP"
+        | "PATH"
+        | "COUNTRY"
+        | "ASN"
+        | "REGION";
 }
 
 async function syncRolePolicies(

@@ -83,7 +83,8 @@ export const RuleSchema = z
         action: z.enum(["allow", "deny", "pass"]),
         match: z.enum(["cidr", "path", "ip", "country", "asn", "region"]),
         value: z.coerce.string(),
-        priority: z.int().optional()
+        priority: z.int().optional(),
+        enabled: z.boolean().optional().default(true)
     })
     .refine(
         (rule) => {
@@ -507,40 +508,7 @@ export const PrivateResourceSchema = z
         }
     );
 
-export const ResourcePolicyRuleSchema = z
-    .object({
-        action: z.enum(["allow", "deny", "pass"]),
-        match: z.enum(["cidr", "path", "ip"]),
-        value: z.coerce.string(),
-        priority: z.int().optional(),
-        enabled: z.boolean().optional().default(true)
-    })
-    .refine(
-        (rule) => {
-            if (rule.match === "ip") {
-                return z.union([z.ipv4(), z.ipv6()]).safeParse(rule.value)
-                    .success;
-            }
-            return true;
-        },
-        {
-            path: ["value"],
-            message: "Value must be a valid IP address when match is 'ip'"
-        }
-    )
-    .refine(
-        (rule) => {
-            if (rule.match === "cidr") {
-                return z.union([z.cidrv4(), z.cidrv6()]).safeParse(rule.value)
-                    .success;
-            }
-            return true;
-        },
-        {
-            path: ["value"],
-            message: "Value must be a valid CIDR notation when match is 'cidr'"
-        }
-    );
+export const ResourcePolicyRuleSchema = RuleSchema;
 
 export const ResourcePolicySchema = z.object({
     name: z.string().min(1).max(255),

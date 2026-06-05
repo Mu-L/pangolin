@@ -280,7 +280,7 @@ export default function Page() {
         env.flags.allowRawResources &&
         (build !== "saas" || remoteExitNodes.length > 0);
     const enterpriseModesAllowed =
-        build === "oss" && !env.flags.disableEnterpriseFeatures;
+        !env.flags.disableEnterpriseFeatures;
 
     const availableTypes = useMemo((): NewResourceType[] => {
         const base: NewResourceType[] = ["http"];
