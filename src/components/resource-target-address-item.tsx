@@ -153,7 +153,7 @@ export function ResourceTargetAddressItem({
                             })
                         }
                     >
-                        <SelectTrigger className="h-9 pl-2 w-17.5 border-none bg-transparent shadow-none data-[state=open]:bg-transparent rounded-none mr-0 pr-0">
+                        <SelectTrigger className="h-9 w-17.5 border-none bg-transparent shadow-none data-[state=open]:bg-transparent rounded-none mr-0 pr-0">
                             {proxyTarget.method || "http"}
                         </SelectTrigger>
                         <SelectContent>
@@ -173,7 +173,7 @@ export function ResourceTargetAddressItem({
                 <Input
                     defaultValue={proxyTarget.ip}
                     placeholder="Host"
-                    className="flex-1 min-w-30 px-2 border-none placeholder-gray-400 rounded-xs"
+                    className="flex-1 min-w-30 border-none placeholder-gray-400 rounded-xs"
                     onBlur={(e) => {
                         const input = e.target.value.trim();
                         const hasProtocol = /^(https?|h2c):\/\//.test(input);

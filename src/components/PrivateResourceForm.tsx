@@ -1813,9 +1813,9 @@ export function PrivateResourceForm({
 
                             {/* Mode */}
                             <div className="space-y-2">
-                                <SettingsSubsectionTitle>
+                                <p className="font-semibold text-sm">
                                     {t("sshServerMode")}
-                                </SettingsSubsectionTitle>
+                                </p>
                                 <StrategySelect<"standard" | "native">
                                     value={sshServerMode}
                                     options={[
@@ -1870,9 +1870,9 @@ export function PrivateResourceForm({
                             </div>
 
                             <div className="space-y-2">
-                                <SettingsSubsectionTitle>
+                                <p className="font-semibold text-sm">
                                     {t("sshAuthenticationMethod")}
-                                </SettingsSubsectionTitle>
+                                </p>
                                 <FormField
                                     control={form.control}
                                     name="pamMode"
@@ -1965,9 +1965,9 @@ export function PrivateResourceForm({
                             {/* Daemon Location (standard + push) */}
                             {showDaemonLocation && (
                                 <div className="space-y-2">
-                                    <SettingsSubsectionTitle>
+                                    <p className="font-semibold text-sm">
                                         {t("sshAuthDaemonLocation")}
-                                    </SettingsSubsectionTitle>
+                                    </p>
                                     <FormField
                                         control={form.control}
                                         name="authDaemonMode"

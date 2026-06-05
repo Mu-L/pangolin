@@ -1,128 +1,173 @@
 "use client";
 
+import { cn } from "@app/lib/cn";
 import { ChevronsUpDown, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import type { Control, FieldValues, Path } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import {
     MultiSitesSelector,
     formatMultiSitesSelectorLabel
 } from "./multi-site-selector";
 import { SitesSelector, type Selectedsite } from "./site-selector";
 import { Button } from "./ui/button";
+import {
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "./ui/form";
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
-type SingleSiteProps = {
-    multiSite?: false;
-    selectedSite: Selectedsite | null;
-    onSiteChange: (site: Selectedsite | null) => void;
-};
-
-type MultiSiteProps = {
-    multiSite: true;
-    selectedSites: Selectedsite[];
-    onSitesChange: (sites: Selectedsite[]) => void;
-};
-
-export type BrowserGatewayTargetFormProps = {
+type BaseProps<T extends FieldValues> = {
+    control: Control<T>;
     orgId: string;
-    destination: string;
-    defaultPort: number;
-    destinationPort: string;
-    onDestinationChange: (v: string) => void;
-    onDestinationPortChange: (v: string) => void;
+    destinationField: Path<T>;
+    destinationPortField: Path<T>;
     learnMoreHref?: string;
-} & (SingleSiteProps | MultiSiteProps);
+    defaultPort: number;
+};
 
-export function BrowserGatewayTargetForm(props: BrowserGatewayTargetFormProps) {
+type MultiSiteFormProps<T extends FieldValues> = BaseProps<T> & {
+    multiSite: true;
+    sitesField: Path<T>;
+};
+
+type SingleSiteFormProps<T extends FieldValues> = BaseProps<T> & {
+    multiSite?: false;
+    siteField: Path<T>;
+};
+
+export type BrowserGatewayTargetFormProps<T extends FieldValues = FieldValues> =
+    | MultiSiteFormProps<T>
+    | SingleSiteFormProps<T>;
+
+export function BrowserGatewayTargetForm<T extends FieldValues>(
+    props: BrowserGatewayTargetFormProps<T>
+) {
     const t = useTranslations();
     const [siteOpen, setSiteOpen] = useState(false);
 
-    const siteSelector =
-        props.multiSite === true ? (
-            <Popover open={siteOpen} onOpenChange={setSiteOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between font-normal"
-                    >
-                        <span className="truncate">
-                            {formatMultiSitesSelectorLabel(
-                                props.selectedSites,
-                                t
-                            )}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                    <MultiSitesSelector
-                        orgId={props.orgId}
-                        selectedSites={props.selectedSites}
-                        onSelectionChange={props.onSitesChange}
-                    />
-                </PopoverContent>
-            </Popover>
-        ) : (
-            <Popover open={siteOpen} onOpenChange={setSiteOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between font-normal"
-                    >
-                        <span className="truncate">
-                            {props.selectedSite?.name ?? t("siteSelect")}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                    <SitesSelector
-                        orgId={props.orgId}
-                        selectedSite={props.selectedSite}
-                        onSelectSite={(site) => {
-                            props.onSiteChange(site);
-                            setSiteOpen(false);
-                        }}
-                    />
-                </PopoverContent>
-            </Popover>
-        );
+    const sitesFieldName =
+        props.multiSite === true ? props.sitesField : props.siteField;
+
+    const watchedSites = useWatch({
+        control: props.control,
+        name: sitesFieldName
+    });
+
+    const showMultiSiteDisclaimer =
+        props.multiSite === true &&
+        ((watchedSites as Selectedsite[] | undefined)?.length ?? 0) > 1;
 
     return (
         <div className="space-y-2">
-            <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-semibold">
-                        {t("sites")}
-                    </label>
-                    {siteSelector}
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-semibold">
-                        {t("destination")}
-                    </label>
-                    <Input
-                        value={props.destination}
-                        onChange={(e) =>
-                            props.onDestinationChange(e.target.value)
-                        }
-                    />
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-semibold">{t("port")}</label>
-                    <Input
-                        type="number"
-                        value={props.destinationPort}
-                        onChange={(e) =>
-                            props.onDestinationPortChange(e.target.value)
-                        }
-                    />
-                </div>
+            <div className="grid grid-cols-3 gap-4 items-start">
+                <FormField
+                    control={props.control}
+                    name={sitesFieldName}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t("sites")}</FormLabel>
+                            <Popover open={siteOpen} onOpenChange={setSiteOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between font-normal",
+                                                "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
+                                                props.multiSite === true
+                                                    ? (
+                                                          field.value as Selectedsite[]
+                                                      )?.length === 0 &&
+                                                          "text-muted-foreground"
+                                                    : !field.value &&
+                                                          "text-muted-foreground"
+                                            )}
+                                        >
+                                            <span className="truncate">
+                                                {props.multiSite === true
+                                                    ? formatMultiSitesSelectorLabel(
+                                                          (field.value as Selectedsite[]) ??
+                                                              [],
+                                                          t
+                                                      )
+                                                    : ((
+                                                          field.value as Selectedsite | null
+                                                      )?.name ??
+                                                      t("siteSelect"))}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                    {props.multiSite === true ? (
+                                        <MultiSitesSelector
+                                            orgId={props.orgId}
+                                            selectedSites={
+                                                (field.value as Selectedsite[]) ??
+                                                []
+                                            }
+                                            onSelectionChange={field.onChange}
+                                        />
+                                    ) : (
+                                        <SitesSelector
+                                            orgId={props.orgId}
+                                            selectedSite={
+                                                field.value as Selectedsite | null
+                                            }
+                                            onSelectSite={(site) => {
+                                                field.onChange(site);
+                                                setSiteOpen(false);
+                                            }}
+                                        />
+                                    )}
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={props.control}
+                    name={props.destinationField}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t("destination")}</FormLabel>
+                            <FormControl>
+                                <Input {...field} value={field.value ?? ""} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={props.control}
+                    name={props.destinationPortField}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t("port")}</FormLabel>
+                            <FormControl>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={65535}
+                                    {...field}
+                                    value={field.value ?? ""}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
             </div>
-            {props.multiSite === true && props.selectedSites.length > 1 && (
+            {showMultiSiteDisclaimer && (
                 <p className="text-sm text-muted-foreground">
                     {t("bgTargetMultiSiteDisclaimer")}{" "}
                     <a
