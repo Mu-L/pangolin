@@ -18,6 +18,7 @@ import {
     FaLinux,
     FaWindows
 } from "react-icons/fa";
+import { ExternalLink } from "lucide-react";
 import { SiKubernetes, SiNixos } from "react-icons/si";
 
 export type CommandItem = string | { title: string; command: string };
@@ -333,31 +334,36 @@ WantedBy=default.target`
                     <p className="font-semibold mb-3">{t("commands")}</p>
                     {platform === "kubernetes" && (
                         <p className="text-sm text-muted-foreground mb-3">
-                            For more and up to date Kubernetes installation
-                            information, see{" "}
-                            <a
-                                href="https://docs.pangolin.net/manage/sites/install-kubernetes"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="underline"
-                            >
-                                docs.pangolin.net/manage/sites/install-kubernetes
-                            </a>
-                            .
+                            {t.rich("siteInstallKubernetesDocsDescription", {
+                                docsLink: (chunks) => (
+                                    <a
+                                        href="https://docs.pangolin.net/manage/sites/install-kubernetes"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline inline-flex items-center gap-1"
+                                    >
+                                        {chunks}
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </a>
+                                )
+                            })}
                         </p>
                     )}
                     {platform === "advantech" && (
                         <p className="text-sm text-muted-foreground mb-3">
-                            For Advantech modem installation instructions, see{" "}
-                            <a
-                                href="https://docs.pangolin.net/manage/sites/install-advantech"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="underline"
-                            >
-                                docs.pangolin.net/manage/sites/install-advantech
-                            </a>
-                            .
+                            {t.rich("siteInstallAdvantechDocsDescription", {
+                                docsLink: (chunks) => (
+                                    <a
+                                        href="https://docs.pangolin.net/manage/sites/install-advantech"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline inline-flex items-center gap-1"
+                                    >
+                                        {chunks}
+                                        <ExternalLink className="size-3.5 shrink-0" />
+                                    </a>
+                                )
+                            })}
                         </p>
                     )}
                     <div className="mt-2 space-y-3">

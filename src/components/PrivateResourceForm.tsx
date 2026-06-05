@@ -1,5 +1,10 @@
 "use client";
 
+import {
+    SettingsSubsectionDescription,
+    SettingsSubsectionHeader,
+    SettingsSubsectionTitle
+} from "@app/components/Settings";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import {
     OptionSelect,
@@ -1807,10 +1812,10 @@ export function PrivateResourceForm({
                             />
 
                             {/* Mode */}
-                            <div className="space-y-3">
-                                <p className="text-sm font-semibold">
+                            <div className="space-y-2">
+                                <SettingsSubsectionTitle>
                                     {t("sshServerMode")}
-                                </p>
+                                </SettingsSubsectionTitle>
                                 <StrategySelect<"standard" | "native">
                                     value={sshServerMode}
                                     options={[
@@ -1864,10 +1869,10 @@ export function PrivateResourceForm({
                                 />
                             </div>
 
-                            <div className="space-y-3">
-                                <p className="text-sm font-semibold">
+                            <div className="space-y-2">
+                                <SettingsSubsectionTitle>
                                     {t("sshAuthenticationMethod")}
-                                </p>
+                                </SettingsSubsectionTitle>
                                 <FormField
                                     control={form.control}
                                     name="pamMode"
@@ -1959,10 +1964,10 @@ export function PrivateResourceForm({
 
                             {/* Daemon Location (standard + push) */}
                             {showDaemonLocation && (
-                                <div className="space-y-3">
-                                    <p className="text-sm font-semibold">
+                                <div className="space-y-2">
+                                    <SettingsSubsectionTitle>
                                         {t("sshAuthDaemonLocation")}
-                                    </p>
+                                    </SettingsSubsectionTitle>
                                     <FormField
                                         control={form.control}
                                         name="authDaemonMode"
@@ -2062,51 +2067,57 @@ export function PrivateResourceForm({
 
                             {/* Daemon Port (standard + push + remote) */}
                             {showDaemonPort && (
-                                <FormField
-                                    control={form.control}
-                                    name="authDaemonPort"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                {t("sshDaemonPort")}
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={65535}
-                                                    placeholder="22123"
-                                                    disabled={
-                                                        sshSectionDisabled
-                                                    }
-                                                    value={field.value ?? ""}
-                                                    onChange={(e) => {
-                                                        if (sshSectionDisabled)
-                                                            return;
-                                                        const v =
-                                                            e.target.value;
-                                                        if (v === "") {
-                                                            field.onChange(
-                                                                null
-                                                            );
-                                                            return;
+                                <div className="w-full md:w-1/2">
+                                    <FormField
+                                        control={form.control}
+                                        name="authDaemonPort"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("sshDaemonPort")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={65535}
+                                                        placeholder="22123"
+                                                        disabled={
+                                                            sshSectionDisabled
                                                         }
-                                                        const num = parseInt(
-                                                            v,
-                                                            10
-                                                        );
-                                                        field.onChange(
-                                                            Number.isNaN(num)
-                                                                ? null
-                                                                : num
-                                                        );
-                                                    }}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                                        value={
+                                                            field.value ?? ""
+                                                        }
+                                                        onChange={(e) => {
+                                                            if (
+                                                                sshSectionDisabled
+                                                            )
+                                                                return;
+                                                            const v =
+                                                                e.target.value;
+                                                            if (v === "") {
+                                                                field.onChange(
+                                                                    null
+                                                                );
+                                                                return;
+                                                            }
+                                                            const num =
+                                                                parseInt(v, 10);
+                                                            field.onChange(
+                                                                Number.isNaN(
+                                                                    num
+                                                                )
+                                                                    ? null
+                                                                    : num
+                                                            );
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             )}
                         </div>
                     )}

@@ -385,7 +385,7 @@ export function CreatePolicyAuthMethodsSectionForm({
                                                     label={t(
                                                         "headerAuthCompatibility"
                                                     )}
-                                                    info={t(
+                                                    description={t(
                                                         "headerAuthCompatibilityInfo"
                                                     )}
                                                     checked={field.value}
@@ -426,7 +426,10 @@ export function CreatePolicyAuthMethodsSectionForm({
                         {/* Password row */}
                         <div className="flex items-center justify-between border rounded-md p-2 mb-4">
                             <div
-                                className={cn("flex items-center text-sm space-x-2", password && "text-green-500")}
+                                className={cn(
+                                    "flex items-center text-sm space-x-2",
+                                    password && "text-green-500"
+                                )}
                             >
                                 <Key size="14" />
                                 <span>
@@ -456,7 +459,10 @@ export function CreatePolicyAuthMethodsSectionForm({
                         {/* Pincode row */}
                         <div className="flex items-center justify-between border rounded-md p-2">
                             <div
-                                className={cn("flex items-center space-x-2 text-sm", pincode && "text-green-500")}
+                                className={cn(
+                                    "flex items-center space-x-2 text-sm",
+                                    pincode && "text-green-500"
+                                )}
                             >
                                 <Binary size="14" />
                                 <span>
@@ -484,7 +490,10 @@ export function CreatePolicyAuthMethodsSectionForm({
                         {/* Header auth row */}
                         <div className="flex items-center justify-between border rounded-md p-2">
                             <div
-                                className={cn("flex items-center space-x-2 text-sm", headerAuth && "text-green-500")}
+                                className={cn(
+                                    "flex items-center space-x-2 text-sm",
+                                    headerAuth && "text-green-500"
+                                )}
                             >
                                 <Bot size="14" />
                                 <span>

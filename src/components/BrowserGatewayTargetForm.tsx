@@ -105,7 +105,6 @@ export function BrowserGatewayTargetForm(props: BrowserGatewayTargetFormProps) {
                         {t("destination")}
                     </label>
                     <Input
-                        placeholder="192.168.1.1"
                         value={props.destination}
                         onChange={(e) =>
                             props.onDestinationChange(e.target.value)
@@ -116,7 +115,6 @@ export function BrowserGatewayTargetForm(props: BrowserGatewayTargetFormProps) {
                     <label className="text-sm font-semibold">{t("port")}</label>
                     <Input
                         type="number"
-                        placeholder={props.defaultPort.toString()}
                         value={props.destinationPort}
                         onChange={(e) =>
                             props.onDestinationPortChange(e.target.value)

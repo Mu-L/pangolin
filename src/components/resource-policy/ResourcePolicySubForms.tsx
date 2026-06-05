@@ -670,7 +670,7 @@ export function PolicyAuthMethodsSection({
                                                     label={t(
                                                         "headerAuthCompatibility"
                                                     )}
-                                                    info={t(
+                                                    description={t(
                                                         "headerAuthCompatibilityInfo"
                                                     )}
                                                     checked={field.value}

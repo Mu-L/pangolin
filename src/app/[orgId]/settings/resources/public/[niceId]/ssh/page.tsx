@@ -7,7 +7,10 @@ import {
     SettingsSectionDescription,
     SettingsSectionForm,
     SettingsSectionHeader,
-    SettingsSectionTitle
+    SettingsSectionTitle,
+    SettingsSubsectionDescription,
+    SettingsSubsectionHeader,
+    SettingsSubsectionTitle
 } from "@app/components/Settings";
 import { StrategySelect, StrategyOption } from "@app/components/StrategySelect";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
@@ -386,9 +389,9 @@ function SshServerForm({
             <SettingsSectionBody>
                 <SettingsSectionForm variant="half">
                     <div className="space-y-3">
-                        <p className="text-sm font-semibold">
+                        <SettingsSubsectionTitle>
                             {t("sshServerMode")}
-                        </p>
+                        </SettingsSubsectionTitle>
                         <Badge variant="secondary">
                             {sshServerMode == "standard"
                                 ? t("sshServerModeStandard")
@@ -397,9 +400,9 @@ function SshServerForm({
                     </div>
 
                     <div className="space-y-3">
-                        <p className="text-sm font-semibold">
+                        <SettingsSubsectionTitle>
                             {t("sshAuthenticationMethod")}
-                        </p>
+                        </SettingsSubsectionTitle>
                         <StrategySelect<"passthrough" | "push">
                             value={pamMode}
                             options={authMethodOptions}
@@ -410,9 +413,9 @@ function SshServerForm({
 
                     {showDaemonLocation && (
                         <div className="space-y-3">
-                            <p className="text-sm font-semibold">
+                            <SettingsSubsectionTitle>
                                 {t("sshAuthDaemonLocation")}
-                            </p>
+                            </SettingsSubsectionTitle>
                             <StrategySelect<"site" | "remote">
                                 value={standardDaemonLocation}
                                 options={daemonLocationOptions}
@@ -460,14 +463,14 @@ function SshServerForm({
                     )}
 
                     <div className="space-y-3">
-                        <div>
-                            <h2 className="text-1xl font-semibold tracking-tight flex items-center gap-2">
+                        <SettingsSubsectionHeader>
+                            <SettingsSubsectionTitle>
                                 {t("sshServerDestination")}
-                            </h2>
-                            <p className="text-sm text-muted-foreground">
+                            </SettingsSubsectionTitle>
+                            <SettingsSubsectionDescription>
                                 {t("sshServerDestinationDescription")}
-                            </p>
-                        </div>
+                            </SettingsSubsectionDescription>
+                        </SettingsSubsectionHeader>
                         {isNative ? (
                             <Popover
                                 open={nativeSiteOpen}

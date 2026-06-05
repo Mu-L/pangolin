@@ -491,7 +491,7 @@ export function EditPolicyAuthMethodsSectionForm({
                                                     label={t(
                                                         "headerAuthCompatibility"
                                                     )}
-                                                    info={t(
+                                                    description={t(
                                                         "headerAuthCompatibilityInfo"
                                                     )}
                                                     checked={field.value}

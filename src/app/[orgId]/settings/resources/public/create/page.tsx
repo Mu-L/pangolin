@@ -9,7 +9,10 @@ import {
     SettingsSectionDescription,
     SettingsSectionForm,
     SettingsSectionHeader,
-    SettingsSectionTitle
+    SettingsSectionTitle,
+    SettingsSubsectionDescription,
+    SettingsSubsectionHeader,
+    SettingsSubsectionTitle
 } from "@app/components/Settings";
 import HeaderTitle from "@app/components/SettingsSectionTitle";
 import {
@@ -711,7 +714,7 @@ export default function Page() {
                                                         e.preventDefault();
                                                     }
                                                 }}
-                                                className="space-y-4"
+                                                className="grid gap-4 grid-cols-1 md:grid-cols-2 items-start"
                                                 id="base-resource-form"
                                             >
                                                 <FormField
@@ -794,7 +797,7 @@ export default function Page() {
                                                             e.preventDefault();
                                                         }
                                                     }}
-                                                    className="space-y-4"
+                                                    className="grid gap-4 grid-cols-1 md:grid-cols-2 items-start"
                                                     id="tcp-udp-settings-form"
                                                 >
                                                     <FormField
@@ -879,10 +882,10 @@ export default function Page() {
                                     <SettingsSectionBody>
                                         <SettingsSectionForm variant="half">
                                             {/* Mode */}
-                                            <div className="space-y-3">
-                                                <p className="text-sm font-semibold">
+                                            <div className="space-y-2">
+                                                <SettingsSubsectionTitle>
                                                     {t("sshServerMode")}
-                                                </p>
+                                                </SettingsSubsectionTitle>
                                                 <StrategySelect<
                                                     "standard" | "native"
                                                 >
@@ -893,12 +896,12 @@ export default function Page() {
                                                 />
                                             </div>
 
-                                            <div className="space-y-3">
-                                                <p className="text-sm font-semibold">
+                                            <div className="space-y-2">
+                                                <SettingsSubsectionTitle>
                                                     {t(
                                                         "sshAuthenticationMethod"
                                                     )}
-                                                </p>
+                                                </SettingsSubsectionTitle>
                                                 <StrategySelect<
                                                     "passthrough" | "push"
                                                 >
@@ -913,12 +916,12 @@ export default function Page() {
 
                                             {/* Daemon Location (standard + push) */}
                                             {showDaemonLocation && (
-                                                <div className="space-y-3">
-                                                    <p className="text-sm font-semibold">
+                                                <div className="space-y-2">
+                                                    <SettingsSubsectionTitle>
                                                         {t(
                                                             "sshAuthDaemonLocation"
                                                         )}
-                                                    </p>
+                                                    </SettingsSubsectionTitle>
                                                     <StrategySelect<
                                                         "site" | "remote"
                                                     >
@@ -953,49 +956,55 @@ export default function Page() {
                                             {/* Daemon Port (standard + push + remote) */}
                                             {showDaemonPort && (
                                                 <Form {...sshDaemonPortForm}>
-                                                    <FormField
-                                                        control={
-                                                            sshDaemonPortForm.control
-                                                        }
-                                                        name="authDaemonPort"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    {t(
-                                                                        "sshDaemonPort"
-                                                                    )}
-                                                                </FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min={1}
-                                                                        max={
-                                                                            65535
-                                                                        }
-                                                                        {...field}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                    <div className="w-full md:w-1/2">
+                                                        <FormField
+                                                            control={
+                                                                sshDaemonPortForm.control
+                                                            }
+                                                            name="authDaemonPort"
+                                                            render={({
+                                                                field
+                                                            }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>
+                                                                        {t(
+                                                                            "sshDaemonPort"
+                                                                        )}
+                                                                    </FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            type="number"
+                                                                            min={
+                                                                                1
+                                                                            }
+                                                                            max={
+                                                                                65535
+                                                                            }
+                                                                            {...field}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </div>
                                                 </Form>
                                             )}
 
                                             {/* Server Destination */}
                                             <div className="space-y-3">
-                                                <div>
-                                                    <h2 className="text-sm font-semibold">
+                                                <SettingsSubsectionHeader>
+                                                    <SettingsSubsectionTitle>
                                                         {t(
                                                             "sshServerDestination"
                                                         )}
-                                                    </h2>
-                                                    <p className="text-sm text-muted-foreground">
+                                                    </SettingsSubsectionTitle>
+                                                    <SettingsSubsectionDescription>
                                                         {t(
                                                             "sshServerDestinationDescription"
                                                         )}
-                                                    </p>
-                                                </div>
+                                                    </SettingsSubsectionDescription>
+                                                </SettingsSubsectionHeader>
                                                 {isNative ? (
                                                     <Popover
                                                         open={nativeSiteOpen}
@@ -1007,7 +1016,7 @@ export default function Page() {
                                                             <Button
                                                                 variant="outline"
                                                                 role="combobox"
-                                                                className="w-full max-w-xs justify-between font-normal"
+                                                                className="w-full md:w-1/2 justify-between font-normal"
                                                             >
                                                                 <span className="truncate">
                                                                     {nativeSelectedSite?.name ??

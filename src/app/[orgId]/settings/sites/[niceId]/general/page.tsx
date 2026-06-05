@@ -256,7 +256,7 @@ export default function GeneralPage() {
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <div className="flex items-center gap-3">
+                                                        <div className="">
                                                             <SwitchInput
                                                                 id="auto-update-enabled"
                                                                 label={t(
@@ -285,7 +285,7 @@ export default function GeneralPage() {
                                                                     type="button"
                                                                     variant="link"
                                                                     size="sm"
-                                                                    className="h-auto p-0 pb-2 text-xs"
+                                                                    className="text-sm text-muted-foreground underline px-0"
                                                                     onClick={() => {
                                                                         form.setValue(
                                                                             "autoUpdateOverrideOrg",
