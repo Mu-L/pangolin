@@ -579,6 +579,13 @@ export async function updateProxyResources(
                                     ? (resourceData["proxy-protocol-version"] ??
                                       1)
                                     : 1,
+                            pamMode:
+                                resourceData["auth-daemon"]?.pam ||
+                                "passthrough",
+                            authDaemonMode:
+                                resourceData["auth-daemon"]?.mode || "native",
+                            authDaemonPort:
+                                resourceData["auth-daemon"]?.port || 22123,
                             resourcePolicyId: null,
                             defaultResourcePolicyId: inlinePolicyId
                         })

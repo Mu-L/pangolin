@@ -205,7 +205,8 @@ function SshServerForm({
                 ? []
                 : targets.map((target) => ({
                       targetId: target.targetId,
-                      siteId: target.siteId
+                      siteId: target.siteId,
+                      authToken: target.authToken
                   }))
     );
 
@@ -253,7 +254,8 @@ function SshServerForm({
             });
 
             if (isNative) {
-                if (values.selectedNativeSite) {
+                const nativeSite = values.selectedNativeSite;
+                if (nativeSite) {
                     if (nativeExistingTarget) {
                         await api.post(
                             `/target/${nativeExistingTarget.targetId}`,
@@ -261,16 +263,20 @@ function SshServerForm({
                                 mode: "ssh",
                                 ip: "localhost",
                                 port: 22,
-                                siteId: selectedNativeSite.siteId,
+                                siteId: nativeSite.siteId,
                                 authToken: nativeExistingTarget.authToken,
                                 hcEnabled: false
                             }
                         );
+                        setNativeExistingTarget({
+                            ...nativeExistingTarget,
+                            siteId: nativeSite.siteId
+                        });
                     } else {
                         const res = await api.put(
                             `/resource/${resource.resourceId}/target`,
                             {
-                                siteId: selectedNativeSite.siteId,
+                                siteId: nativeSite.siteId,
                                 mode: "ssh",
                                 ip: "localhost",
                                 port: 22,
@@ -279,7 +285,7 @@ function SshServerForm({
                         );
                         setNativeExistingTarget({
                             targetId: res.data.data.targetId,
-                            siteId: selectedNativeSite.siteId,
+                            siteId: nativeSite.siteId,
                             authToken: res.data.data.authToken
                         });
                     }
@@ -304,71 +310,64 @@ function SshServerForm({
                     (t) => !selectedSiteIds.has(t.siteId)
                 );
                 await Promise.all(
-                    toDelete.map((t) =>
-                        api.delete(
-                            `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`
->>>>>>> 8ee520dbb58f6bd4009581c79322f77b17ff6757
-                        )
+                    toDelete.map((t) => api.delete(`/target/${t.targetId}`))
+                );
+
+                const toUpdate = existingTargets.filter((t) =>
+                    selectedSiteIds.has(t.siteId)
+                );
+                await Promise.all(
+                    toUpdate.map((t) =>
+                        api.post(`/target/${t.targetId}`, {
+                            mode: "ssh",
+                            ip: values.destination,
+                            port: Number(values.destinationPort),
+                            siteId: t.siteId,
+                            authToken: t.authToken,
+                            hcEnabled: false
+                        })
                     )
                 );
 
-<<<<<<< HEAD
-                    const toUpdate = existingTargets.filter((t) =>
-                        selectedSiteIds.has(t.siteId)
-                    );
-                    await Promise.all(
-                        toUpdate.map((t) =>
-                            api.post(
-                                `/target/${t.targetId}`,
-                                {
-                                    mode: "ssh",
-                                    ip: bgDestination,
-                                    api.delete(`/target/${t.targetId}`)
-                                }
-                            )
+                const toCreate = activeSites.filter(
+                    (s) => !existingSiteIds.has(s.siteId)
                 );
-
-<<<<<<< HEAD
-                    const toCreate = selectedSites.filter(
-                        (s) => !existingSiteIds.has(s.siteId)
-                    );
-                                        `/target/${t.targetId}`,
-                        toCreate.map((s) =>
-                                            mode: "ssh",
-                                            ip: values.destination,
-                                            port: Number(values.destinationPort),
-                                            siteId: t.siteId,
-                                            authToken: t.authToken,
-                                            hcEnabled: false
-                                    port: Number(bgDestinationPort),
-                                    hcEnabled: false
-                                )
-                            );
-
+                const created = await Promise.all(
+                    toCreate.map((s) =>
+                        api.put(`/resource/${resource.resourceId}/target`, {
+                            siteId: s.siteId,
+                            mode: "ssh",
+                            ip: values.destination,
+                            port: Number(values.destinationPort),
+                            hcEnabled: false
+                        })
                     )
                 );
 
-<<<<<<< HEAD
-                    const newTargets: ExistingTarget[] = created.map(
-                        (res, i) => ({
-                                        `/resource/${resource.resourceId}/target`,
-                            siteId: toCreate[i].siteId,
-                            authToken: res.data.data.authToken
-                                            mode: "ssh",
-                                            ip: values.destination,
-                                            port: Number(values.destinationPort),
-                                            hcEnabled: false
                 const newTargets: ExistingTarget[] = created.map((res, i) => ({
-                    browserGatewayTargetId:
-                                )
-                            );
+                    targetId: res.data.data.targetId,
+                    siteId: toCreate[i].siteId,
+                    authToken: res.data.data.authToken
+                }));
+                setExistingTargets([...toUpdate, ...newTargets]);
+            }
+
+            toast({
+                title: t("settingsUpdated"),
+                description: t("settingsUpdatedDescription")
             });
-                            const newTargets: ExistingTarget[] = created.map((res, i) => ({
-                                targetId: res.data.data.targetId,
-                                siteId: toCreate[i].siteId,
-                                authToken: res.data.data.authToken
-                            }));
-                            setExistingTargets([...toUpdate, ...newTargets]);
+            router.refresh();
+        } catch (err) {
+            console.error(err);
+            toast({
+                variant: "destructive",
+                title: t("settingsErrorUpdate"),
+                description: formatAxiosError(
+                    err,
+                    t("settingsErrorUpdateDescription")
+                )
+            });
+        }
     }
 
     const authMethodOptions: StrategyOption<"passthrough" | "push">[] = [
