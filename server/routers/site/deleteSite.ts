@@ -93,10 +93,9 @@ export async function deleteSite(
                 // Clean up all client associations and send peer/proxy removal
                 // messages in a single efficient pass before deleting the row.
                 await cleanupSiteAssociations(site, trx);
-
-                await trx.delete(sites).where(eq(sites.siteId, siteId));
             }
 
+            await trx.delete(sites).where(eq(sites.siteId, siteId));
             await usageService.add(site.orgId, FeatureId.SITES, -1, trx);
         });
 

@@ -514,6 +514,16 @@ export default function SitesTable({
                                             )}
                                         </DropdownMenuItem>
                                     </Link>
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            setSelectedSite(siteRow);
+                                            setIsDeleteModalOpen(true);
+                                        }}
+                                    >
+                                        <span className="text-red-500">
+                                            {t("delete")}
+                                        </span>
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <Link
