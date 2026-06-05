@@ -665,7 +665,7 @@ export async function generateSubnetProxyTargetV2(
         return;
     }
 
-    let targets: SubnetProxyTargetV2[] = [];
+    const targets: SubnetProxyTargetV2[] = [];
 
     const portRange = [
         ...parsePortRangeString(siteResource.tcpPortRangeString, "tcp"),

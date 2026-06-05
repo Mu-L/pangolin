@@ -63,6 +63,42 @@ export function SettingsSectionDescription({
     return <p className="text-muted-foreground text-sm">{children}</p>;
 }
 
+export function SettingsSubsectionHeader({
+    children,
+    className
+}: {
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return <div className={cn("space-y-0.5", className)}>{children}</div>;
+}
+
+export function SettingsSubsectionTitle({
+    children,
+    className
+}: {
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <h3 className={cn("text-sm font-semibold", className)}>{children}</h3>
+    );
+}
+
+export function SettingsSubsectionDescription({
+    children,
+    className
+}: {
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <p className={cn("text-sm text-muted-foreground", className)}>
+            {children}
+        </p>
+    );
+}
+
 export function SettingsSectionBody({
     children
 }: {

@@ -886,7 +886,9 @@ export const resourcePolicyRules = pgTable("resourcePolicyRules", {
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
     action: varchar("action").$type<"ACCEPT" | "DROP" | "PASS">().notNull(),
-    match: varchar("match").$type<"CIDR" | "PATH" | "IP">().notNull(),
+    match: varchar("match")
+        .$type<"CIDR" | "PATH" | "IP" | "COUNTRY" | "ASN" | "REGION">()
+        .notNull(),
     value: varchar("value").notNull()
 });
 

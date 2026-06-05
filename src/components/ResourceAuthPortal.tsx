@@ -41,8 +41,9 @@ import {
 } from "@app/actions/server";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
-import Link from "next/link";
 import BrandingLogo from "@app/components/BrandingLogo";
+import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
+import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import { useSupporterStatusContext } from "@app/hooks/useSupporterStatusContext";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
@@ -366,57 +367,20 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
         : 100;
 
     return (
-        <div
-            style={{
-                // @ts-expect-error CSS variable
-                "--primary": isUnlocked() ? props.branding?.primaryColor : null
-            }}
-        >
+        <BrandedAuthSurface primaryColor={props.branding?.primaryColor}>
             {!accessDenied ? (
                 <div>
-                    {isUnlocked() && build === "enterprise" ? (
-                        !env.branding.resourceAuthPage?.hidePoweredBy &&
-                        !env.branding.hidePoweredBy && (
-                            <div className="text-center mb-2">
-                                <span className="text-sm text-muted-foreground">
-                                    {t("poweredBy")}{" "}
-                                    <Link
-                                        href="https://pangolin.net/"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="underline"
-                                    >
-                                        {env.branding.appName || "Pangolin"}
-                                    </Link>
-                                </span>
-                            </div>
-                        )
-                    ) : (
-                        <div className="text-center mb-2">
-                            <span className="text-sm text-muted-foreground">
-                                {t("poweredBy")}{" "}
-                                <Link
-                                    href="https://pangolin.net/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    Pangolin
-                                </Link>
-                            </span>
-                        </div>
-                    )}
+                    <PoweredByPangolin />
                     <Card>
                         <CardHeader>
                             {isUnlocked() &&
                                 build !== "oss" &&
-                                (env.branding?.resourceAuthPage?.showLogo ||
-                                    props.branding) && (
+                                props.branding?.logoUrl && (
                                     <div className="flex flex-row items-center justify-center mb-3">
                                         <BrandingLogo
                                             height={logoHeight}
                                             width={logoWidth}
-                                            logoPath={props.branding?.logoUrl}
+                                            logoPath={props.branding.logoUrl}
                                         />
                                     </div>
                                 )}
@@ -790,6 +754,6 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
             ) : (
                 <ResourceAccessDenied />
             )}
-        </div>
+        </BrandedAuthSurface>
     );
 }

@@ -744,7 +744,7 @@ function TargetStatusCell({
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-2 h-8 px-2 font-normal"
+                    className="flex items-center gap-2 h-8 px-0 font-normal"
                 >
                     <StatusIcon status={overallStatus} />
                     <span className="text-sm">

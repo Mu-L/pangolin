@@ -71,6 +71,15 @@ export async function verifySiteAccess(
             );
         }
 
+        if (req.userOrgId && site.orgId !== req.userOrgId) {
+            return next(
+                createHttpError(
+                    HttpCode.FORBIDDEN,
+                    "User does not have access to this site"
+                )
+            );
+        }
+
         if (!req.userOrg) {
             // Get user's role ID in the organization
             const userOrgRole = await db
@@ -128,10 +137,7 @@ export async function verifySiteAccess(
                       .where(
                           and(
                               eq(roleSites.siteId, site.siteId),
-                              inArray(
-                                  roleSites.roleId,
-                                  req.userOrgRoleIds!
-                              )
+                              inArray(roleSites.roleId, req.userOrgRoleIds!)
                           )
                       )
                       .limit(1)

@@ -20,6 +20,7 @@ import {
     ClientResourcesResults,
     updateClientResources
 } from "./clientResources";
+import { updateResourcePolicies } from "./resourcePolicies";
 import { BlueprintSource } from "@server/routers/blueprints/types";
 import { stringify as stringifyYaml } from "yaml";
 import { generateName } from "@server/db/names";
@@ -56,6 +57,8 @@ export async function applyBlueprint({
         let proxyResourcesResults: ProxyResourcesResults = [];
         let clientResourcesResults: ClientResourcesResults = [];
         await db.transaction(async (trx) => {
+            await updateResourcePolicies(orgId, config, trx);
+
             proxyResourcesResults = await updateProxyResources(
                 orgId,
                 config,

@@ -58,6 +58,7 @@ export async function getBrowserTarget(
                 authToken: browserGatewayTarget.authToken,
                 resourceId: resources.resourceId,
                 niceId: resources.niceId,
+                name: resources.name,
                 orgId: resources.orgId,
                 pamMode: resources.pamMode,
                 authDaemonMode: resources.authDaemonMode
@@ -93,7 +94,8 @@ export async function getBrowserTarget(
                 authDaemonMode: browserTarget.authDaemonMode,
                 orgId: browserTarget.orgId,
                 resourceId: browserTarget.resourceId,
-                niceId: browserTarget.niceId
+                niceId: browserTarget.niceId,
+                name: browserTarget.name
             },
             success: true,
             error: false,

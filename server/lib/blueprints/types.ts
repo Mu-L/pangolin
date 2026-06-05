@@ -83,7 +83,8 @@ export const RuleSchema = z
         action: z.enum(["allow", "deny", "pass"]),
         match: z.enum(["cidr", "path", "ip", "country", "asn", "region"]),
         value: z.coerce.string(),
-        priority: z.int().optional()
+        priority: z.int().optional(),
+        enabled: z.boolean().optional().default(true)
     })
     .refine(
         (rule) => {
@@ -507,6 +508,52 @@ export const PrivateResourceSchema = z
         }
     );
 
+export const ResourcePolicyRuleSchema = RuleSchema;
+
+export const ResourcePolicySchema = z.object({
+    name: z.string().min(1).max(255),
+    sso: z.boolean().optional().default(true),
+    "auto-login-idp": z.int().positive().optional().nullable(),
+    "sso-roles": z
+        .array(z.string())
+        .optional()
+        .default([])
+        .refine((roles) => !roles.includes("Admin"), {
+            error: "Admin role cannot be included in sso-roles"
+        }),
+    "sso-users": z.array(z.string()).optional().default([]),
+    password: z.string().min(4).max(100).optional().nullable(),
+    pincode: z
+        .string()
+        .regex(/^\d{6}$/)
+        .optional()
+        .nullable(),
+    "basic-auth": z
+        .object({
+            user: z.string().min(4).max(100),
+            password: z.string().min(4).max(100),
+            "extended-compatibility": z.boolean().default(true)
+        })
+        .optional()
+        .nullable(),
+    "email-whitelist-enabled": z.boolean().optional().default(false),
+    "whitelist-users": z
+        .array(
+            z.email().or(
+                z.string().regex(/^\*@[\w.-]+\.[a-zA-Z]{2,}$/, {
+                    error: "Invalid email address. Wildcard (*) must be the entire local part."
+                })
+            )
+        )
+        .max(50)
+        .transform((v) => v.map((e) => e.toLowerCase()))
+        .optional()
+        .default([]),
+    "apply-rules": z.boolean().optional().default(false),
+    rules: z.array(ResourcePolicyRuleSchema).optional().default([])
+});
+export type ResourcePolicyData = z.infer<typeof ResourcePolicySchema>;
+
 // Schema for the entire configuration object
 export const ConfigSchema = z
     .object({
@@ -524,6 +571,10 @@ export const ConfigSchema = z
             .prefault({}),
         "private-resources": z
             .record(z.string(), PrivateResourceSchema)
+            .optional()
+            .prefault({}),
+        "resource-policies": z
+            .record(z.string(), ResourcePolicySchema)
             .optional()
             .prefault({}),
         sites: z.record(z.string(), SiteSchema).optional().prefault({})
@@ -555,6 +606,10 @@ export const ConfigSchema = z
             "client-resources": Record<
                 string,
                 z.infer<typeof PrivateResourceSchema>
+            >;
+            "resource-policies": Record<
+                string,
+                z.infer<typeof ResourcePolicySchema>
             >;
             sites: Record<string, z.infer<typeof SiteSchema>>;
         };
@@ -695,3 +750,4 @@ export type Site = z.infer<typeof SiteSchema>;
 export type Target = z.infer<typeof TargetSchema>;
 export type Resource = z.infer<typeof PublicResourceSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
+export type BlueprintResourcePolicy = z.infer<typeof ResourcePolicySchema>;

@@ -1,5 +1,5 @@
 import { db } from "@server/db";
-import { resourceRules, resources } from "@server/db";
+import { resourceRules, resourcePolicyRules, resources } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq, sql } from "drizzle-orm";
@@ -45,6 +45,21 @@ function queryResourceRules(resourceId: number) {
         .where(eq(resourceRules.resourceId, resourceId));
 
     return baseQuery;
+}
+
+function queryPolicyRules(policyId: number) {
+    return db
+        .select({
+            ruleId: resourcePolicyRules.ruleId,
+            resourceId: sql<number | null>`null`,
+            action: resourcePolicyRules.action,
+            match: resourcePolicyRules.match,
+            value: resourcePolicyRules.value,
+            priority: resourcePolicyRules.priority,
+            enabled: resourcePolicyRules.enabled
+        })
+        .from(resourcePolicyRules)
+        .where(eq(resourcePolicyRules.resourcePolicyId, policyId));
 }
 
 export type ListResourceRulesResponse = {
@@ -125,16 +140,34 @@ export async function listResourceRules(
             );
         }
 
-        const baseQuery = queryResourceRules(resourceId);
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
 
-        const countQuery = db
-            .select({ count: sql<number>`cast(count(*) as integer)` })
-            .from(resourceRules)
-            .where(eq(resourceRules.resourceId, resourceId));
+        let rulesList: Awaited<ReturnType<typeof queryResourceRules>>;
+        let totalCount: number;
 
-        let rulesList = await baseQuery.limit(limit).offset(offset);
-        const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0].count;
+        if (isInlinePolicy) {
+            const policyId = resource.defaultResourcePolicyId!;
+            const policyRules = await queryPolicyRules(policyId)
+                .limit(limit)
+                .offset(offset);
+            const countResult = await db
+                .select({ count: sql<number>`cast(count(*) as integer)` })
+                .from(resourcePolicyRules)
+                .where(eq(resourcePolicyRules.resourcePolicyId, policyId));
+            rulesList = policyRules as typeof rulesList;
+            totalCount = countResult[0].count;
+        } else {
+            const baseQuery = queryResourceRules(resourceId);
+            const countQuery = db
+                .select({ count: sql<number>`cast(count(*) as integer)` })
+                .from(resourceRules)
+                .where(eq(resourceRules.resourceId, resourceId));
+            rulesList = await baseQuery.limit(limit).offset(offset);
+            const totalCountResult = await countQuery;
+            totalCount = totalCountResult[0].count;
+        }
 
         // sort rules list by the priority in ascending order
         rulesList = rulesList.sort((a, b) => a.priority - b.priority);

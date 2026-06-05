@@ -103,7 +103,7 @@ export function ProxyResourceTargetsForm({
     // Notify parent of changes (create mode)
     useEffect(() => {
         onChange?.(targets);
-    }, [targets]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [targets]);
 
     // Poll health status only in edit mode
     const { data: polledTargets } = useQuery({
@@ -334,19 +334,15 @@ export function ProxyResourceTargetsForm({
                         {row.original.siteType === "newt" ? (
                             <Button
                                 variant="outline"
-                                className="flex items-center gap-2 w-full text-left cursor-pointer"
+                                className="flex items-center space-x-2 w-full text-left cursor-pointer"
                                 onClick={() =>
                                     openHealthCheckDialog(row.original)
                                 }
                             >
                                 <div
-                                    className={`flex items-center gap-2 ${status === "healthy" ? "text-green-500" : status === "unhealthy" ? "text-destructive" : "text-neutral-500"}`}
-                                >
-                                    <div
-                                        className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
-                                    ></div>
-                                    {getStatusText(status)}
-                                </div>
+                                    className={`w-2 h-2 rounded-full ${status === "healthy" ? "bg-green-500" : status === "unhealthy" ? "bg-destructive" : "bg-neutral-500"}`}
+                                ></div>
+                                <span>{getStatusText(status)}</span>
                             </Button>
                         ) : (
                             <span>-</span>
@@ -535,7 +531,7 @@ export function ProxyResourceTargetsForm({
             accessorKey: "enabled",
             header: () => <span className="p-3">{t("enabled")}</span>,
             cell: ({ row }) => (
-                <div className="flex items-center justify-center w-full">
+                <div className="flex items-center w-full">
                     <Switch
                         defaultChecked={row.original.enabled}
                         onCheckedChange={(val) =>
@@ -554,9 +550,8 @@ export function ProxyResourceTargetsForm({
 
         const actionsColumn: ColumnDef<LocalTarget> = {
             id: "actions",
-            header: () => <span className="p-3">{t("actions")}</span>,
             cell: ({ row }) => (
-                <div className="flex items-center w-full">
+                <div className="flex items-center justify-end w-full">
                     <Button
                         variant="outline"
                         onClick={() => removeTarget(row.original.targetId)}

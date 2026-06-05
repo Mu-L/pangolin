@@ -410,7 +410,11 @@ export async function getTraefikConfig(
         fullDomain: string | null;
         mode: "http" | "host" | "cidr" | "ssh";
     }[] = [];
-    if (build == "enterprise") {
+    if (
+        build == "enterprise" &&
+        !privateConfig.getRawPrivateConfig().flags
+            .disable_private_http_placeholder
+    ) {
         // we dont want to do this on the cloud
         // Query siteResources in HTTP mode with SSL enabled and aliases - cert generation / HTTPS edge
         siteResourcesWithFullDomain = await db
@@ -493,16 +497,29 @@ export async function getTraefikConfig(
         const transportName = `${key}-transport`;
         const headersMiddlewareName = `${key}-headers-middleware`;
 
+        logger.debug(
+            `Processing resource ${resource.name} with domain ${fullDomain} and ${targets.length} targets`
+        );
+
         if (!resource.enabled) {
+            logger.debug(
+                `Resource ${resource.name} is disabled, skipping Traefik config`
+            );
             continue;
         }
 
-        if (resource.http) {
+        if (resource.mode == "http") {
             if (!resource.domainId) {
+                logger.debug(
+                    `Resource ${resource.name} does not have a domainId, skipping Traefik config`
+                );
                 continue;
             }
 
             if (!resource.fullDomain) {
+                logger.debug(
+                    `Resource ${resource.name} does not have a fullDomain, skipping Traefik config`
+                );
                 continue;
             }
 
@@ -958,7 +975,7 @@ export async function getTraefikConfig(
                     serviceName
                 ].loadBalancer.serversTransport = transportName;
             }
-        } else {
+        } else if (resource.mode == "tcp" || resource.mode == "udp") {
             // Non-HTTP (TCP/UDP) configuration
             if (!resource.enableProxy) {
                 continue;

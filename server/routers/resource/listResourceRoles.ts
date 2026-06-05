@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { roleResources, roles } from "@server/db";
+import { roleResources, roles, rolePolicies, resources } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -25,6 +25,19 @@ async function query(resourceId: number) {
         .from(roleResources)
         .innerJoin(roles, eq(roleResources.roleId, roles.roleId))
         .where(eq(roleResources.resourceId, resourceId));
+}
+
+async function queryInlinePolicy(policyId: number) {
+    return await db
+        .select({
+            roleId: roles.roleId,
+            name: roles.name,
+            description: roles.description,
+            isAdmin: roles.isAdmin
+        })
+        .from(rolePolicies)
+        .innerJoin(roles, eq(rolePolicies.roleId, roles.roleId))
+        .where(eq(rolePolicies.resourcePolicyId, policyId));
 }
 
 export type ListResourceRolesResponse = {
@@ -75,7 +88,25 @@ export async function listResourceRoles(
 
         const { resourceId } = parsedParams.data;
 
-        const resourceRolesList = await query(resourceId);
+        const [resource] = await db
+            .select()
+            .from(resources)
+            .where(eq(resources.resourceId, resourceId))
+            .limit(1);
+
+        if (!resource) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, "Resource not found")
+            );
+        }
+
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
+        const resourceRolesList = isInlinePolicy
+            ? await queryInlinePolicy(resource.defaultResourcePolicyId!)
+            : await query(resourceId);
 
         return response<ListResourceRolesResponse>(res, {
             data: {

@@ -12,6 +12,7 @@
  */
 
 import { Request, Response, NextFunction } from "express";
+import { randomInt } from "crypto";
 import { z } from "zod";
 import {
     actionAuditLog,
@@ -392,7 +393,7 @@ export async function signSshKey(
                 if (existingUserWithSameName) {
                     let foundUniqueUsername = false;
                     for (let attempt = 0; attempt < 20; attempt++) {
-                        const randomNum = Math.floor(Math.random() * 101); // 0 to 100
+                        const randomNum = randomInt(0, 101); // 0 to 100
                         const candidateUsername = `${usernameToUse}${randomNum}`;
 
                         const [existingUser] = await db
