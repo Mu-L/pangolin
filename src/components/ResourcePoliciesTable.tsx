@@ -200,7 +200,7 @@ export function ResourcePoliciesTable({
                             <DropdownMenuContent align="end">
                                 <Link
                                     className="block w-full"
-                                    href={`/${policyRow.orgId}/settings/policies/resource/${policyRow.niceId}`}
+                                    href={`/${policyRow.orgId}/settings/policies/resources/public/${policyRow.niceId}`}
                                 >
                                     <DropdownMenuItem>
                                         {t("viewSettings")}
@@ -219,7 +219,7 @@ export function ResourcePoliciesTable({
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Link
-                            href={`/${policyRow.orgId}/settings/policies/resource/${policyRow.niceId}`}
+                            href={`/${policyRow.orgId}/settings/policies/resources/public/${policyRow.niceId}`}
                         >
                             <Button variant={"outline"}>
                                 {t("edit")}
@@ -288,7 +288,7 @@ export function ResourcePoliciesTable({
                 onAdd={() =>
                     startNavigation(() =>
                         router.push(
-                            `/${orgId}/settings/policies/resource/create`
+                            `/${orgId}/settings/policies/resources/public/create`
                         )
                     )
                 }

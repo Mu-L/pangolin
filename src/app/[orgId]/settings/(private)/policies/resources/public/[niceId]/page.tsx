@@ -28,11 +28,11 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
         );
         policyResponse = res.data.data;
     } catch {
-        redirect(`/${params.orgId}/settings/policies/resource`);
+        redirect(`/${params.orgId}/settings/policies/resources/public`);
     }
 
     if (!policyResponse) {
-        redirect(`/${params.orgId}/settings/policies/resource`);
+        redirect(`/${params.orgId}/settings/policies/resources/public`);
     }
 
     return (
@@ -46,7 +46,9 @@ export default async function EditPolicyPage(props: EditPolicyPageProps) {
                 />
 
                 <Button asChild variant="outline">
-                    <Link href={`/${params.orgId}/settings/policies/resource`}>
+                    <Link
+                        href={`/${params.orgId}/settings/policies/resources/public`}
+                    >
                         {t("resourcePoliciesSeeAll")}
                     </Link>
                 </Button>
