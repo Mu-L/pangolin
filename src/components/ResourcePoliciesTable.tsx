@@ -8,12 +8,7 @@ import type {
     ListResourcePoliciesResponse
 } from "@server/routers/resource/types";
 import type { PaginationState } from "@tanstack/react-table";
-import {
-    ArrowRight,
-    ChevronDown,
-    MoreHorizontal,
-    Waypoints
-} from "lucide-react";
+import { ArrowRight, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -98,23 +93,19 @@ export function ResourcePoliciesTable({
     };
 
     function ResourceListCell({
+        orgId,
         resources
     }: {
+        orgId: string;
         resources?: AttachedResource[];
     }) {
         if (!resources || resources.length === 0) {
-            return (
-                <div
-                    id="LOOK_FOR_ME"
-                    className="flex items-center gap-2 text-muted-foreground"
-                >
-                    <Waypoints className="size-4 flex-none" />
-                    <span className="text-sm">
-                        {t("resourcePoliciesAttachedResourcesEmpty")}
-                    </span>
-                </div>
-            );
+            return <span>-</span>;
         }
+
+        const countLabel = t("resourcePoliciesAttachedResourcesCount", {
+            count: resources.length
+        });
 
         return (
             <DropdownMenu>
@@ -122,31 +113,30 @@ export function ResourcePoliciesTable({
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="flex items-center gap-2 h-8 px-0 font-normal"
+                        className="flex h-8 items-center gap-2 px-0 font-normal"
                     >
-                        <Waypoints className="size-4 flex-none" />
-                        <span className="text-sm">
-                            {t("resourcePoliciesAttachedResources", {
-                                count: resources.length
-                            })}
+                        <span className="text-sm tabular-nums">
+                            {countLabel}
                         </span>
-                        <ChevronDown className="h-3 w-3" />
+                        <ChevronDown className="h-3 w-3 shrink-0" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-70">
+                <DropdownMenuContent align="start" className="min-w-56">
                     {resources.map((resource) => (
-                        <DropdownMenuItem
-                            key={resource.resourceId}
-                            className="flex items-center justify-between gap-4"
-                        >
-                            <div className="flex items-center gap-2">
-                                {resource.name}
-                            </div>
-                            <span
-                                className={`capitalize text-muted-foreground`}
+                        <DropdownMenuItem key={resource.resourceId} asChild>
+                            <Link
+                                href={`/${orgId}/settings/resources/public/${resource.niceId}`}
+                                className="flex cursor-pointer items-center justify-between gap-4"
                             >
-                                {resource.fullDomain}
-                            </span>
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <span className="truncate">
+                                        {resource.name}
+                                    </span>
+                                </div>
+                                <span className="shrink-0 text-muted-foreground">
+                                    {resource.fullDomain}
+                                </span>
+                            </Link>
                         </DropdownMenuItem>
                     ))}
                 </DropdownMenuContent>
@@ -182,7 +172,12 @@ export function ResourcePoliciesTable({
                 </span>
             ),
             cell: ({ row }) => {
-                return <ResourceListCell resources={row.original.resources} />;
+                return (
+                    <ResourceListCell
+                        orgId={row.original.orgId}
+                        resources={row.original.resources}
+                    />
+                );
             }
         },
         {

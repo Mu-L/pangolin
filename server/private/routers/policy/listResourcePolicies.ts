@@ -216,6 +216,7 @@ export async function listResourcePolicies(
                 : await db
                       .select({
                           resourceId: resources.resourceId,
+                          niceId: resources.niceId,
                           name: resources.name,
                           fullDomain: resources.fullDomain,
                           resourcePolicyId: resources.resourcePolicyId
