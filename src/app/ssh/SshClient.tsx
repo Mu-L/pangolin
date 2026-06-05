@@ -20,6 +20,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 import { useTranslations } from "next-intl";
+import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
+import PoweredByPangolin from "@app/components/PoweredByPangolin";
 
 type AuthTab = "password" | "privateKey";
 
@@ -40,12 +42,14 @@ export default function SshClient({
     target,
     error,
     signedKeyData,
-    privateKey: signedPrivateKey
+    privateKey: signedPrivateKey,
+    primaryColor
 }: {
     target: GetBrowserTargetResponse | null;
     error: string | null;
     signedKeyData?: SignSshKeyResponse | null;
     privateKey?: string | null;
+    primaryColor?: string | null;
 }) {
     const STORAGE_KEY = "pangolin_ssh_credentials";
 
@@ -377,20 +381,8 @@ export default function SshClient({
 
     if (error) {
         return (
-            <div>
-                <div className="text-center mb-2">
-                    <span className="text-sm text-muted-foreground">
-                        {t("sshPoweredBy")}{" "}
-                        <Link
-                            href="https://pangolin.net/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                        >
-                            Pangolin
-                        </Link>
-                    </span>
-                </div>
+            <BrandedAuthSurface primaryColor={primaryColor}>
+                <PoweredByPangolin />
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle>{t("sshTitle")}</CardTitle>
@@ -399,27 +391,15 @@ export default function SshClient({
                         <p className="text-destructive text-sm">{error}</p>
                     </CardContent>
                 </Card>
-            </div>
+            </BrandedAuthSurface>
         );
     }
 
     return (
         <>
             {!connected && (
-                <div>
-                    <div className="text-center mb-2">
-                        <span className="text-sm text-muted-foreground">
-                            {t("sshPoweredBy")}{" "}
-                            <Link
-                                href="https://pangolin.net/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                Pangolin
-                            </Link>
-                        </span>
-                    </div>
+                <BrandedAuthSurface primaryColor={primaryColor}>
+                    <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
                             <CardTitle>{t("sshSignInTitle")}</CardTitle>
@@ -496,10 +476,10 @@ export default function SshClient({
                                             href="https://docs.pangolin.net/"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="underline inline-flex items-center gap-1"
+                                            className="text-primary hover:underline inline-flex items-center gap-1"
                                         >
                                             {t("sshLearnMore")}
-                                            <ExternalLink className="h-3 w-3" />
+                                            <ExternalLink className="size-3.5 shrink-0" />
                                         </Link>
                                     </p>
                                     <Field
@@ -573,7 +553,7 @@ export default function SshClient({
                             </HorizontalTabs>
                         </CardContent>
                     </Card>
-                </div>
+                </BrandedAuthSurface>
             )}
 
             {connected && (

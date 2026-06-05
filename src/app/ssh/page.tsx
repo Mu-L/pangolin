@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { priv } from "@app/lib/api";
 import { generateBrowserGatewayMetadata } from "@app/lib/browserGatewayMetadata";
 import { getBrowserTargetForRequest } from "@app/lib/getBrowserTargetForRequest";
+import { loadOrgLoginPageBranding } from "@app/lib/loadOrgLoginPageBranding";
 import { AxiosResponse } from "axios";
 import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import SshClient from "./SshClient";
@@ -154,6 +155,10 @@ export default async function SshPage() {
         }
     }
 
+    const { primaryColor } = target
+        ? await loadOrgLoginPageBranding(target.orgId)
+        : { primaryColor: null };
+
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 flex md:items-center justify-center">
@@ -163,6 +168,7 @@ export default async function SshPage() {
                         error={error}
                         signedKeyData={signedKeyData}
                         privateKey={privateKey}
+                        primaryColor={primaryColor}
                     />
                 </div>
             </div>

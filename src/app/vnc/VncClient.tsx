@@ -13,7 +13,8 @@ import {
     CardTitle,
     CardDescription
 } from "@app/components/ui/card";
-import Link from "next/link";
+import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
+import PoweredByPangolin from "@app/components/PoweredByPangolin";
 
 type FormState = {
     password: string;
@@ -21,10 +22,12 @@ type FormState = {
 
 export default function VncClient({
     target,
-    error
+    error,
+    primaryColor
 }: {
     target: GetBrowserTargetResponse | null;
     error: string | null;
+    primaryColor?: string | null;
 }) {
     const STORAGE_KEY = "pangolin_vnc_credentials";
 
@@ -152,20 +155,8 @@ export default function VncClient({
 
     if (error) {
         return (
-            <div>
-                <div className="text-center mb-2">
-                    <span className="text-sm text-muted-foreground">
-                        Powered by{" "}
-                        <Link
-                            href="https://pangolin.net/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                        >
-                            Pangolin
-                        </Link>
-                    </span>
-                </div>
+            <BrandedAuthSurface primaryColor={primaryColor}>
+                <PoweredByPangolin />
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle>VNC</CardTitle>
@@ -174,27 +165,15 @@ export default function VncClient({
                         <p className="text-destructive text-sm">{error}</p>
                     </CardContent>
                 </Card>
-            </div>
+            </BrandedAuthSurface>
         );
     }
 
     return (
         <>
             {!connected && (
-                <div>
-                    <div className="text-center mb-2">
-                        <span className="text-sm text-muted-foreground">
-                            Powered by{" "}
-                            <Link
-                                href="https://pangolin.net/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                Pangolin
-                            </Link>
-                        </span>
-                    </div>
+                <BrandedAuthSurface primaryColor={primaryColor}>
+                    <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
                             <CardTitle>VNC</CardTitle>
@@ -224,7 +203,7 @@ export default function VncClient({
                             </div>
                         </CardContent>
                     </Card>
-                </div>
+                </BrandedAuthSurface>
             )}
 
             <div
