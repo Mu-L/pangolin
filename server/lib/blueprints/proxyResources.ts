@@ -48,6 +48,9 @@ import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { build } from "@server/build";
+import { encrypt } from "@server/lib/crypto";
+import { generateId } from "@server/auth/sessions/app";
+import serverConfig from "@server/lib/config";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -80,7 +83,7 @@ export async function updateProxyResources(
             if (targetSiteId) {
                 // Look up site by niceId
                 [site] = await trx
-                    .select({ siteId: sites.siteId })
+                    .select({ siteId: sites.siteId, type: sites.type })
                     .from(sites)
                     .where(
                         and(
@@ -92,7 +95,7 @@ export async function updateProxyResources(
             } else if (siteId) {
                 // Use the provided siteId directly, but verify it belongs to the org
                 [site] = await trx
-                    .select({ siteId: sites.siteId })
+                    .select({ siteId: sites.siteId, type: sites.type })
                     .from(sites)
                     .where(
                         and(eq(sites.siteId, siteId), eq(sites.orgId, orgId))
@@ -119,6 +122,15 @@ export async function updateProxyResources(
                 internalPortToCreate = targetData["internal-port"];
             }
 
+            let authToken: string | undefined;
+            if (site.type !== "local") {
+                const plainToken = generateId(48);
+                authToken = encrypt(
+                    plainToken,
+                    serverConfig.getRawConfig().server.secret!
+                );
+            }
+
             // Create target
             const [newTarget] = await trx
                 .insert(targets)
@@ -126,10 +138,12 @@ export async function updateProxyResources(
                     resourceId: resourceId,
                     siteId: site.siteId,
                     ip: targetData.hostname,
+                    mode: resourceData.mode as Target["mode"],
                     method: targetData.method,
                     port: targetData.port,
                     enabled: targetData.enabled,
                     internalPort: internalPortToCreate,
+                    authToken: authToken,
                     path: targetData.path,
                     pathMatchType: targetData["path-match"],
                     rewritePath:
@@ -707,7 +721,8 @@ export async function updateProxyResources(
                                     ? "/"
                                     : undefined),
                             rewritePathType: targetData["rewrite-match"],
-                            priority: targetData.priority
+                            priority: targetData.priority,
+                            mode: resourceData.mode
                         })
                         .where(eq(targets.targetId, existingTarget.targetId))
                         .returning();
