@@ -23,6 +23,8 @@ import logger from "@server/logger";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
 import { getNextAvailableAliasAddress } from "../ip";
 import { createCertificate } from "#dynamic/routers/certificates/createCertificate";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "../billing/tierMatrix";
 
 async function getDomainForSiteResource(
     siteResourceId: number | undefined,
@@ -114,6 +116,30 @@ export async function updateClientResources(
     for (const [resourceNiceId, resourceData] of Object.entries(
         config["client-resources"]
     )) {
+        if (resourceData.mode === "http") {
+            const hasHttpFeature = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix.advancedPrivateResources
+            );
+            if (!hasHttpFeature) {
+                throw new Error(
+                    "HTTP private resources are not included in your current plan. Please upgrade."
+                );
+            }
+        }
+
+        if (resourceData.mode === "ssh") {
+            const hasSshFeature = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix.advancedPrivateResources
+            );
+            if (!hasSshFeature) {
+                throw new Error(
+                    "SSH private resources are not included in your current plan. Please upgrade."
+                );
+            }
+        }
+
         const [existingResource] = await trx
             .select()
             .from(siteResources)
@@ -366,7 +392,9 @@ export async function updateClientResources(
                         }))
                     );
                     existingRoles.push(created);
-                    logger.info(`Auto-created role "${name}" in org ${orgId} from blueprint`);
+                    logger.info(
+                        `Auto-created role "${name}" in org ${orgId} from blueprint`
+                    );
                 }
 
                 const roleIds = existingRoles.map((role) => role.roleId);
@@ -510,7 +538,9 @@ export async function updateClientResources(
                         }))
                     );
                     existingRoles.push(created);
-                    logger.info(`Auto-created role "${name}" in org ${orgId} from blueprint`);
+                    logger.info(
+                        `Auto-created role "${name}" in org ${orgId} from blueprint`
+                    );
                 }
 
                 const roleIds = existingRoles.map((role) => role.roleId);

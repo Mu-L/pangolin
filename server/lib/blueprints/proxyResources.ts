@@ -47,6 +47,7 @@ import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
 import { fireHealthCheckUnknownAlert } from "@server/lib/alerts";
 import { tierMatrix } from "../billing/tierMatrix";
 import { defaultRoleAllowedActions } from "@server/routers/role/createRole";
+import { build } from "@server/build";
 
 export type ProxyResourcesResults = {
     proxyResource: Resource;
@@ -222,15 +223,57 @@ export async function updateProxyResources(
             headers = JSON.stringify(resourceData.headers);
         }
 
+        if (["ssh", "rdp", "vnc"].includes(resourceData.mode || "")) {
+            const isLicensed = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix.advancedPublicResources
+            );
+            if (!isLicensed) {
+                throw new Error(
+                    "Your current subscription does not support browser gateway resources. Please upgrade to access this feature."
+                );
+            }
+        }
+
+        if (resourceData.policy) {
+            const isLicensed = await isLicensedOrSubscribed(
+                orgId,
+                tierMatrix.resourcePolicies
+            );
+            if (!isLicensed) {
+                throw new Error(
+                    "Your current subscription does not support shared resource policies. Please upgrade to access this feature."
+                );
+            }
+        }
+
         if (existingResource) {
             let domain;
             if (
                 ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
             ) {
+                if (resourceData["full-domain"]?.startsWith("*.")) {
+                    const isLicensed = await isLicensedOrSubscribed(
+                        orgId,
+                        tierMatrix.wildcardSubdomain
+                    );
+                    if (!isLicensed) {
+                        throw new Error(
+                            "Wildcard subdomains are not supported on your current plan. Please upgrade to access this feature."
+                        );
+                    }
+                }
+
                 domain = await getDomain(
                     existingResource.resourceId,
                     resourceData["full-domain"]!,
                     orgId,
+                    trx
+                );
+
+                await enforceDomainNamespacePaywall(
+                    orgId,
+                    domain.domainId,
                     trx
                 );
             }
@@ -906,10 +949,28 @@ export async function updateProxyResources(
             if (
                 ["http", "ssh", "rdp", "vnc"].includes(resourceData.mode || "")
             ) {
+                if (resourceData["full-domain"]?.startsWith("*.")) {
+                    const isLicensed = await isLicensedOrSubscribed(
+                        orgId,
+                        tierMatrix.wildcardSubdomain
+                    );
+                    if (!isLicensed) {
+                        throw new Error(
+                            "Wildcard subdomains are not supported on your current plan. Please upgrade to access this feature."
+                        );
+                    }
+                }
+
                 domain = await getDomain(
                     undefined,
                     resourceData["full-domain"]!,
                     orgId,
+                    trx
+                );
+
+                await enforceDomainNamespacePaywall(
+                    orgId,
+                    domain.domainId,
                     trx
                 );
             }
@@ -1864,6 +1925,37 @@ function checkIfTargetChanged(
     if (existing.siteId !== incoming.siteId) return true;
 
     return false;
+}
+
+async function enforceDomainNamespacePaywall(
+    orgId: string,
+    domainId: string,
+    trx: Transaction
+) {
+    if (build !== "saas") {
+        return;
+    }
+
+    const hasDomainNamespaceAccess = await isLicensedOrSubscribed(
+        orgId,
+        tierMatrix.domainNamespaces
+    );
+
+    if (hasDomainNamespaceAccess) {
+        return;
+    }
+
+    const [namespaceDomain] = await trx
+        .select()
+        .from(domainNamespaces)
+        .where(eq(domainNamespaces.domainId, domainId))
+        .limit(1);
+
+    if (namespaceDomain) {
+        throw new Error(
+            "Your current subscription does not support custom domain namespaces. Please upgrade to access this feature."
+        );
+    }
 }
 
 export async function getDomain(
