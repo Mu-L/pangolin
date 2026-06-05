@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@app/components/ui/button";
+import { Input } from "@app/components/ui/input";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
 import { toast } from "@app/hooks/useToast";
 import type {
     UserInteraction,
@@ -43,7 +53,7 @@ declare module "react" {
     }
 }
 
-type FormState = {
+type RdpCredentialsForm = {
     username: string;
     password: string;
     domain: string;
@@ -51,6 +61,23 @@ type FormState = {
     pcb: string;
     enableClipboard: boolean;
 };
+
+function loadStoredCredentials(key: string): RdpCredentialsForm {
+    try {
+        const saved = localStorage.getItem(key);
+        if (saved) return JSON.parse(saved) as RdpCredentialsForm;
+    } catch {
+        // ignore
+    }
+    return {
+        username: "",
+        password: "",
+        domain: "",
+        kdcProxyUrl: "",
+        pcb: "",
+        enableClipboard: true
+    };
+}
 
 const isIronError = (error: unknown): error is IronError => {
     return (
@@ -73,21 +100,18 @@ export default function RdpClient({
     const t = useTranslations();
     const STORAGE_KEY = "pangolin_rdp_credentials";
 
-    const [form, setForm] = useState<FormState>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) return JSON.parse(saved) as FormState;
-        } catch {
-            // ignore
-        }
-        return {
-            username: "",
-            password: "",
-            domain: "",
-            kdcProxyUrl: "",
-            pcb: "",
-            enableClipboard: true
-        };
+    const formSchema = z.object({
+        username: z.string().min(1, { message: t("usernameRequired") }),
+        password: z.string().min(1, { message: t("passwordRequired") }),
+        domain: z.string(),
+        kdcProxyUrl: z.string(),
+        pcb: z.string(),
+        enableClipboard: z.boolean()
+    });
+
+    const form = useForm<RdpCredentialsForm>({
+        resolver: zodResolver(formSchema),
+        defaultValues: loadStoredCredentials(STORAGE_KEY)
     });
 
     const [showLogin, setShowLogin] = useState(true);
@@ -167,12 +191,7 @@ export default function RdpClient({
         el.addEventListener("ready", onReady);
     };
 
-    const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-        setForm((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const startSession = async () => {
-        setSubmitError(null);
+    const startSession = async (values: RdpCredentialsForm) => {
         setConnecting(true);
         const userInteraction = userInteractionRef.current;
         const exts = extensionsRef.current;
@@ -182,7 +201,7 @@ export default function RdpClient({
             return;
         }
 
-        userInteraction.setEnableClipboard(form.enableClipboard);
+        userInteraction.setEnableClipboard(values.enableClipboard);
 
         // Dispose any previous session's provider and create a fresh one so
         // there is no stale upload state from a prior connection.
@@ -248,13 +267,13 @@ export default function RdpClient({
 
         const builder = userInteraction
             .configBuilder()
-            .withUsername(form.username)
-            .withPassword(form.password)
+            .withUsername(values.username)
+            .withPassword(values.password)
             .withDestination(destination)
             .withProxyAddress(
                 `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/rdp`
             )
-            .withServerDomain(form.domain)
+            .withServerDomain(values.domain)
             .withAuthToken(target.authToken)
             .withDesktopSize({
                 width: window.innerWidth,
@@ -262,18 +281,18 @@ export default function RdpClient({
             })
             .withExtension(exts.displayControl(true));
 
-        if (form.pcb !== "") {
-            builder.withExtension(exts.preConnectionBlob(form.pcb));
+        if (values.pcb !== "") {
+            builder.withExtension(exts.preConnectionBlob(values.pcb));
         }
-        if (form.kdcProxyUrl !== "") {
-            builder.withExtension(exts.kdcProxyUrl(form.kdcProxyUrl));
+        if (values.kdcProxyUrl !== "") {
+            builder.withExtension(exts.kdcProxyUrl(values.kdcProxyUrl));
         }
 
         try {
             const sessionInfo = await userInteraction.connect(builder.build());
 
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
             } catch {
                 // ignore
             }
@@ -294,6 +313,11 @@ export default function RdpClient({
                 setSubmitError(`${err}`);
             }
         }
+    };
+
+    const onSubmit = (values: RdpCredentialsForm) => {
+        setSubmitError(null);
+        startSession(values);
     };
 
     const ui = () => userInteractionRef.current;
@@ -340,87 +364,76 @@ export default function RdpClient({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                <Field label={t("domain")} id="domain">
-                                    <Input
-                                        id="domain"
-                                        value={form.domain}
-                                        onChange={(e) =>
-                                            update("domain", e.target.value)
-                                        }
-                                    />
-                                </Field>
-                                <Field label={t("username")} id="username">
-                                    <Input
-                                        id="username"
-                                        value={form.username}
-                                        onChange={(e) =>
-                                            update("username", e.target.value)
-                                        }
-                                    />
-                                </Field>
-                                <Field label={t("password")} id="password">
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={form.password}
-                                        onChange={(e) =>
-                                            update("password", e.target.value)
-                                        }
-                                    />
-                                </Field>
-                                {/* 
-                        <Field label="Pre Connection Blob (optional)" id="pcb">
-                            <Input
-                                id="pcb"
-                                value={form.pcb}
-                                onChange={(e) => update("pcb", e.target.value)}
-                            />
-                        </Field> */}
-
-                                {/* <Field
-                            label="KDC Proxy URL (optional)"
-                            id="kdcProxyUrl"
-                        >
-                            <Input
-                                id="kdcProxyUrl"
-                                value={form.kdcProxyUrl}
-                                onChange={(e) =>
-                                    update("kdcProxyUrl", e.target.value)
-                                }
-                            />
-                        </Field> */}
-                                {/* <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="enable_clipboard"
-                                checked={form.enableClipboard}
-                                onCheckedChange={(checked) =>
-                                    update("enableClipboard", checked === true)
-                                }
-                            />
-                            <Label htmlFor="enable_clipboard">
-                                Enable Clipboard
-                            </Label>
-                        </div> */}
-                                {submitError && (
-                                    <Alert variant="destructive">
-                                        <AlertDescription>
-                                            {submitError}
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-
-                                <Button
-                                    onClick={startSession}
-                                    disabled={!moduleReady}
-                                    loading={connecting}
-                                    className="w-full"
+                            <Form {...form}>
+                                <form
+                                    onSubmit={form.handleSubmit(onSubmit)}
+                                    className="space-y-4"
                                 >
-                                    {moduleReady
-                                        ? t("browserGatewayConnect")
-                                        : t("rdpLoadingModule")}
-                                </Button>
-                            </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="domain"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("domain")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="username"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("username")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("password")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="password"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        disabled={!moduleReady || connecting}
+                                        loading={connecting}
+                                        className="w-full"
+                                    >
+                                        {t("browserGatewayConnect")}
+                                    </Button>
+                                    {submitError && (
+                                        <Alert variant="destructive">
+                                            <AlertDescription>
+                                                {submitError}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </form>
+                            </Form>
                         </CardContent>
                     </Card>
                 </BrandedAuthSurface>
@@ -537,22 +550,5 @@ export default function RdpClient({
                 )}
             </div>
         </>
-    );
-}
-
-function Field({
-    label,
-    id,
-    children
-}: {
-    label: string;
-    id: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <Label htmlFor={id}>{label}</Label>
-            {children}
-        </div>
     );
 }

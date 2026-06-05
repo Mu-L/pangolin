@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@app/components/ui/button";
+import { Input } from "@app/components/ui/input";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage
+} from "@app/components/ui/form";
 import { toast } from "@app/hooks/useToast";
 import { GetBrowserTargetResponse } from "@server/routers/browserGatewayTarget";
 import {
@@ -18,9 +28,19 @@ import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import { useTranslations } from "next-intl";
 
-type FormState = {
+type VncCredentialsForm = {
     password: string;
 };
+
+function loadStoredCredentials(key: string): VncCredentialsForm {
+    try {
+        const saved = localStorage.getItem(key);
+        if (saved) return JSON.parse(saved) as VncCredentialsForm;
+    } catch {
+        // ignore
+    }
+    return { password: "" };
+}
 
 export default function VncClient({
     target,
@@ -34,14 +54,13 @@ export default function VncClient({
     const t = useTranslations();
     const STORAGE_KEY = "pangolin_vnc_credentials";
 
-    const [form, setForm] = useState<FormState>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) return JSON.parse(saved) as FormState;
-        } catch {
-            // ignore
-        }
-        return { password: "" };
+    const formSchema = z.object({
+        password: z.string()
+    });
+
+    const form = useForm<VncCredentialsForm>({
+        resolver: zodResolver(formSchema),
+        defaultValues: loadStoredCredentials(STORAGE_KEY)
     });
 
     const [connected, setConnected] = useState(false);
@@ -49,11 +68,6 @@ export default function VncClient({
     const rfbRef = useRef<any>(null);
     const screenRef = useRef<HTMLDivElement>(null);
 
-    const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-        setForm((prev) => ({ ...prev, [key]: value }));
-    };
-
-    // Disconnect and clean up the RFB instance.
     const disconnect = () => {
         if (rfbRef.current) {
             rfbRef.current.disconnect();
@@ -62,14 +76,11 @@ export default function VncClient({
         setConnected(false);
     };
 
-    // Clean up on unmount.
     useEffect(() => {
         return () => disconnect();
     }, []);
 
-    const connect = async () => {
-        setConnectError(null);
-
+    const connect = async (values: VncCredentialsForm) => {
         if (!target) {
             setConnectError(t("vncNoResourceTarget"));
             return;
@@ -77,11 +88,8 @@ export default function VncClient({
 
         if (!screenRef.current) return;
 
-        // Disconnect any existing session first.
         disconnect();
 
-        // noVNC has no ESM default export — import the module dynamically to
-        // keep it out of the server bundle, then grab the default export.
         let RFB: new (
             target: HTMLElement,
             url: string,
@@ -100,8 +108,6 @@ export default function VncClient({
             return;
         }
 
-        // Build the proxy WebSocket URL:
-        // ws://<proxyAddress>?authToken=<token>&host=<ip>&port=<port>
         const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/vnc`;
         const base = proxyAddress.replace(/\/$/, "");
         const params = new URLSearchParams({
@@ -111,12 +117,11 @@ export default function VncClient({
         });
         const wsUrl = `${base}?${params.toString()}`;
 
-        // Clear the container so noVNC gets a clean mount point.
         screenRef.current.innerHTML = "";
 
         const options: Record<string, unknown> = {};
-        if (form.password) {
-            options.credentials = { password: form.password };
+        if (values.password) {
+            options.credentials = { password: values.password };
         }
 
         const rfb: any = new RFB(screenRef.current, wsUrl, options);
@@ -126,7 +131,7 @@ export default function VncClient({
 
         rfb.addEventListener("connect", () => {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
             } catch {
                 // ignore
             }
@@ -155,6 +160,11 @@ export default function VncClient({
         );
 
         rfbRef.current = rfb;
+    };
+
+    const onSubmit = (values: VncCredentialsForm) => {
+        setConnectError(null);
+        connect(values);
     };
 
     if (error) {
@@ -188,33 +198,41 @@ export default function VncClient({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                <Field
-                                    label={t("vncPasswordOptional")}
-                                    id="password"
+                            <Form {...form}>
+                                <form
+                                    onSubmit={form.handleSubmit(onSubmit)}
+                                    className="space-y-4"
                                 >
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={form.password}
-                                        onChange={(e) =>
-                                            update("password", e.target.value)
-                                        }
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    {t("vncPasswordOptional")}
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="password"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
                                     />
-                                </Field>
-
-                                {connectError && (
-                                    <Alert variant="destructive">
-                                        <AlertDescription>
-                                            {connectError}
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-
-                                <Button onClick={connect} className="w-full">
-                                    {t("browserGatewayConnect")}
-                                </Button>
-                            </div>
+                                    <Button type="submit" className="w-full">
+                                        {t("browserGatewayConnect")}
+                                    </Button>
+                                    {connectError && (
+                                        <Alert variant="destructive">
+                                            <AlertDescription>
+                                                {connectError}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </form>
+                            </Form>
                         </CardContent>
                     </Card>
                 </BrandedAuthSurface>
@@ -259,7 +277,6 @@ export default function VncClient({
                     </Button>
                 </div>
 
-                {/* noVNC mounts a <canvas> inside this div */}
                 <div
                     ref={screenRef}
                     className="flex-1 overflow-hidden"
@@ -267,22 +284,5 @@ export default function VncClient({
                 />
             </div>
         </>
-    );
-}
-
-function Field({
-    label,
-    id,
-    children
-}: {
-    label: string;
-    id: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <Label htmlFor={id}>{label}</Label>
-            {children}
-        </div>
     );
 }
