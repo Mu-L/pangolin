@@ -26,6 +26,7 @@ import {
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
 import { useTranslations } from "next-intl";
 
 type VncCredentialsForm = {
@@ -242,6 +243,7 @@ export default function VncClient({
                             </Form>
                         </CardContent>
                     </Card>
+                    <AuthPageFooterNotices />
                 </BrandedAuthSurface>
             )}
 

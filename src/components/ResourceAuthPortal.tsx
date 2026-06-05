@@ -44,7 +44,7 @@ import { toast } from "@app/hooks/useToast";
 import BrandingLogo from "@app/components/BrandingLogo";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
-import { useSupporterStatusContext } from "@app/hooks/useSupporterStatusContext";
+import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
@@ -123,8 +123,6 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
     const [otpState, setOtpState] = useState<"idle" | "otp_sent">("idle");
 
     const { env } = useEnvContext();
-
-    const { supporterStatus } = useSupporterStatusContext();
 
     function getDefaultSelectedMethod() {
         if (props.methods.sso) {
@@ -727,29 +725,7 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
                             </Tabs>
                         </CardContent>
                     </Card>
-                    {supporterStatus?.visible && (
-                        <div className="text-center mt-2">
-                            <span className="text-sm text-muted-foreground opacity-50">
-                                {t("noSupportKey")}
-                            </span>
-                        </div>
-                    )}
-                    {build === "enterprise" && !isUnlocked() ? (
-                        <div className="text-center mt-2">
-                            <span className="text-sm font-medium text-muted-foreground">
-                                {t("instanceIsUnlicensed")}
-                            </span>
-                        </div>
-                    ) : null}
-                    {build === "enterprise" &&
-                    isUnlocked() &&
-                    licenseStatus?.tier === "personal" ? (
-                        <div className="text-center mt-2">
-                            <span className="text-sm font-medium text-muted-foreground">
-                                {t("loginPageLicenseWatermark")}
-                            </span>
-                        </div>
-                    ) : null}
+                    <AuthPageFooterNotices />
                 </div>
             ) : (
                 <ResourceAccessDenied />

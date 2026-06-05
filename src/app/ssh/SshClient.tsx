@@ -31,6 +31,7 @@ import type { SignSshKeyResponse } from "@server/routers/ssh/types";
 import { useTranslations } from "next-intl";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
 
 type AuthTab = "password" | "privateKey";
 
@@ -618,6 +619,7 @@ export default function SshClient({
                             </Form>
                         </CardContent>
                     </Card>
+                    <AuthPageFooterNotices />
                 </BrandedAuthSurface>
             )}
 
