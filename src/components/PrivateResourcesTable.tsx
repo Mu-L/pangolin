@@ -426,7 +426,7 @@ export default function PrivateResourcesTable({
                 ),
                 cell: ({ row }) => {
                     const resourceRow = row.original;
-                    if (resourceRow.mode === "host" && resourceRow.alias) {
+                    if (resourceRow.alias) {
                         return (
                             <CopyToClipboard
                                 text={resourceRow.alias}
