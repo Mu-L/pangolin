@@ -72,6 +72,7 @@ export default function SshClient({
 }) {
     const STORAGE_KEY = "pangolin_ssh_credentials";
     const t = useTranslations();
+    const resourceName = target?.name?.trim() || null;
 
     const passwordTabSchema = z.object({
         username: z.string().min(1, { message: t("usernameRequired") }),
@@ -445,9 +446,15 @@ export default function SshClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>{t("sshSignInTitle")}</CardTitle>
+                            <CardTitle>
+                                {resourceName
+                                    ? `${t("sshSignInTitle")} - ${resourceName}`
+                                    : t("sshSignInTitle")}
+                            </CardTitle>
                             <CardDescription>
-                                {t("sshSignInDescription")}
+                                {resourceName
+                                    ? `${t("sshSignInDescription")} (${resourceName})`
+                                    : t("sshSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

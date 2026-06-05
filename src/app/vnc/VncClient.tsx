@@ -53,6 +53,7 @@ export default function VncClient({
 }) {
     const t = useTranslations();
     const STORAGE_KEY = "pangolin_vnc_credentials";
+    const resourceName = target?.name?.trim() || null;
 
     const formSchema = z.object({
         password: z.string()
@@ -192,9 +193,15 @@ export default function VncClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>{t("vncTitle")}</CardTitle>
+                            <CardTitle>
+                                {resourceName
+                                    ? `${t("vncTitle")} - ${resourceName}`
+                                    : t("vncTitle")}
+                            </CardTitle>
                             <CardDescription>
-                                {t("vncSignInDescription")}
+                                {resourceName
+                                    ? `${t("vncSignInDescription")} (${resourceName})`
+                                    : t("vncSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

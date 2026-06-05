@@ -99,6 +99,7 @@ export default function RdpClient({
 }) {
     const t = useTranslations();
     const STORAGE_KEY = "pangolin_rdp_credentials";
+    const resourceName = target?.name?.trim() || null;
 
     const formSchema = z.object({
         username: z.string().min(1, { message: t("usernameRequired") }),
@@ -358,9 +359,15 @@ export default function RdpClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>{t("rdpSignInTitle")}</CardTitle>
+                            <CardTitle>
+                                {resourceName
+                                    ? `${t("rdpSignInTitle")} - ${resourceName}`
+                                    : t("rdpSignInTitle")}
+                            </CardTitle>
                             <CardDescription>
-                                {t("rdpSignInDescription")}
+                                {resourceName
+                                    ? `${t("rdpSignInDescription")} (${resourceName})`
+                                    : t("rdpSignInDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
