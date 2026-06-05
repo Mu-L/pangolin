@@ -37,7 +37,7 @@ export async function updateResourcePolicies(
     const results: ResourcePoliciesResults = [];
 
     for (const [policyNiceId, policyData] of Object.entries(
-        config["resource-policies"]
+        config["public-policies"]
     )) {
         const isLicensed = await isLicensedOrSubscribed(
             orgId,

@@ -573,7 +573,7 @@ export const ConfigSchema = z
             .record(z.string(), PrivateResourceSchema)
             .optional()
             .prefault({}),
-        "resource-policies": z
+        "public-policies": z
             .record(z.string(), ResourcePolicySchema)
             .optional()
             .prefault({}),
@@ -607,7 +607,7 @@ export const ConfigSchema = z
                 string,
                 z.infer<typeof PrivateResourceSchema>
             >;
-            "resource-policies": Record<
+            "public-policies": Record<
                 string,
                 z.infer<typeof ResourcePolicySchema>
             >;
