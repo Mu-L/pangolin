@@ -784,6 +784,7 @@
     "ruleErrorUpdate": "Operation failed",
     "ruleErrorUpdateDescription": "An error occurred during the save operation",
     "rulesPriority": "Priority",
+    "rulesReorderDragHandle": "Drag to reorder rule priority",
     "rulesAction": "Action",
     "rulesMatchType": "Match Type",
     "value": "Value",

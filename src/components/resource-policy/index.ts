@@ -57,6 +57,15 @@ export type LocalRule = {
     updated?: boolean;
 };
 
+export { PolicyAccessRulesTable } from "./PolicyAccessRulesTable";
+export type { PolicyAccessRulesTableProps } from "./PolicyAccessRulesTable";
+export {
+    createEmptyRule,
+    reorderPolicyRules,
+    sortPolicyRulesByPriority,
+    type EmptyRuleDraft,
+    type PolicyAccessRule
+} from "./policy-access-rule-utils";
 export {
     createPolicyRulePrioritySchema,
     createPolicyRuleSchema,

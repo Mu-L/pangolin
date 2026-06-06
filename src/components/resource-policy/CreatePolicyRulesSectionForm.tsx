@@ -12,76 +12,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
 import { createPolicyRulesSectionSchema, type PolicyFormValues } from ".";
-import { toast } from "@app/hooks/useToast";
-import {
-    validatePolicyRulePriority,
-    validatePolicyRuleValue
-} from "./policy-access-rule-validation";
-
 import { Button } from "@app/components/ui/button";
-import { DataTableEmptyState } from "@app/components/ui/data-table-empty-state";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "@app/components/ui/command";
-import { Input } from "@app/components/ui/input";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger
-} from "@app/components/ui/popover";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@app/components/ui/select";
-import { Switch } from "@app/components/ui/switch";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@app/components/ui/table";
-
-import { MAJOR_ASNS } from "@server/db/asns";
-import { COUNTRIES } from "@server/db/countries";
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable
-} from "@tanstack/react-table";
-import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
 
 import { PolicyAccessRulesIntro } from "./PolicyAccessRulesIntro";
-import { createEmptyRule } from "./policy-access-rule-utils";
-
-// ─── CreatePolicyRulesSectionForm ─────────────────────────────────────────────
-
-type LocalRule = {
-    ruleId: number;
-    action: "ACCEPT" | "DROP" | "PASS";
-    match: string;
-    value: string;
-    priority: number;
-    enabled: boolean;
-    new?: boolean;
-    updated?: boolean;
-};
+import { PolicyAccessRulesTable } from "./PolicyAccessRulesTable";
+import {
+    createEmptyRule,
+    type PolicyAccessRule
+} from "./policy-access-rule-utils";
 
 export type CreatePolicyRulesSectionFormProps = {
     form: UseFormReturn<PolicyFormValues, any, any>;
@@ -95,7 +37,7 @@ export function CreatePolicyRulesSectionForm({
     isMaxmindAsnAvailable
 }: CreatePolicyRulesSectionFormProps) {
     const t = useTranslations();
-    const [rules, setRules] = useState<LocalRule[]>([]);
+    const [rules, setRules] = useState<PolicyAccessRule[]>([]);
 
     const rulesFormSchema = useMemo(
         () => createPolicyRulesSectionSchema(t),
@@ -123,28 +65,8 @@ export function CreatePolicyRulesSectionForm({
         name: "applyRules"
     });
 
-    const RuleAction = useMemo(
-        () => ({
-            ACCEPT: t("alwaysAllow"),
-            DROP: t("alwaysDeny"),
-            PASS: t("passToAuth")
-        }),
-        [t]
-    );
-
-    const RuleMatch = useMemo(
-        () => ({
-            PATH: t("path"),
-            IP: "IP",
-            CIDR: t("ipAddressRange"),
-            COUNTRY: t("country"),
-            ASN: "ASN"
-        }),
-        [t]
-    );
-
     const syncFormRules = useCallback(
-        (updatedRules: LocalRule[]) => {
+        (updatedRules: PolicyAccessRule[]) => {
             form.setValue(
                 "rules",
                 updatedRules.map(
@@ -177,7 +99,7 @@ export function CreatePolicyRulesSectionForm({
     );
 
     const updateRule = useCallback(
-        function updateRule(ruleId: number, data: Partial<LocalRule>) {
+        function updateRule(ruleId: number, data: Partial<PolicyAccessRule>) {
             const updatedRules = rules.map((rule) =>
                 rule.ruleId === ruleId
                     ? { ...rule, ...data, updated: true }
@@ -189,368 +111,13 @@ export function CreatePolicyRulesSectionForm({
         [rules, syncFormRules]
     );
 
-    const columns: ColumnDef<LocalRule>[] = useMemo(
-        () => [
-            {
-                accessorKey: "priority",
-                size: 96,
-                maxSize: 96,
-                header: ({ column }) => (
-                    <div className="p-3">
-                        <Button
-                            variant="ghost"
-                            className="h-auto p-0 font-medium text-muted-foreground hover:bg-transparent"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("rulesPriority")}
-                            <ArrowUpDown className="ml-1 h-3 w-3" />
-                        </Button>
-                    </div>
-                ),
-                cell: ({ row }) => (
-                    <Input
-                        defaultValue={row.original.priority}
-                        className="w-full min-w-0"
-                        type="number"
-                        onClick={(e) => e.currentTarget.focus()}
-                        onBlur={(e) => {
-                            const validated = validatePolicyRulePriority(
-                                t,
-                                e.target.value
-                            );
-                            if (!validated.success) {
-                                toast({
-                                    variant: "destructive",
-                                    ...validated.toast
-                                });
-                                return;
-                            }
-                            const duplicatePriority = rules.some(
-                                (rule) =>
-                                    rule.ruleId !== row.original.ruleId &&
-                                    rule.priority === validated.data
-                            );
-                            if (duplicatePriority) {
-                                toast({
-                                    variant: "destructive",
-                                    title: t("rulesErrorDuplicatePriority"),
-                                    description: t(
-                                        "rulesErrorDuplicatePriorityDescription"
-                                    )
-                                });
-                                return;
-                            }
-                            updateRule(row.original.ruleId, {
-                                priority: validated.data
-                            });
-                        }}
-                    />
-                )
-            },
-            {
-                accessorKey: "action",
-                size: 160,
-                maxSize: 160,
-                header: () => <span className="p-3">{t("rulesAction")}</span>,
-                cell: ({ row }) => (
-                    <Select
-                        defaultValue={row.original.action}
-                        onValueChange={(value: "ACCEPT" | "DROP" | "PASS") =>
-                            updateRule(row.original.ruleId, { action: value })
-                        }
-                    >
-                        <SelectTrigger className="h-8 w-full min-w-0">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="ACCEPT">
-                                {RuleAction.ACCEPT}
-                            </SelectItem>
-                            <SelectItem value="DROP">
-                                {RuleAction.DROP}
-                            </SelectItem>
-                            <SelectItem value="PASS">
-                                {RuleAction.PASS}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                )
-            },
-            {
-                accessorKey: "match",
-                size: 144,
-                maxSize: 144,
-                header: () => (
-                    <span className="p-3">{t("rulesMatchType")}</span>
-                ),
-                cell: ({ row }) => (
-                    <Select
-                        defaultValue={row.original.match}
-                        onValueChange={(
-                            value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN"
-                        ) =>
-                            updateRule(row.original.ruleId, {
-                                match: value,
-                                value:
-                                    value === "COUNTRY"
-                                        ? "US"
-                                        : value === "ASN"
-                                          ? "AS15169"
-                                          : row.original.value
-                            })
-                        }
-                    >
-                        <SelectTrigger className="h-8 w-full min-w-0">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="PATH">
-                                {RuleMatch.PATH}
-                            </SelectItem>
-                            <SelectItem value="IP">{RuleMatch.IP}</SelectItem>
-                            <SelectItem value="CIDR">
-                                {RuleMatch.CIDR}
-                            </SelectItem>
-                            {isMaxmindAvailable && (
-                                <SelectItem value="COUNTRY">
-                                    {RuleMatch.COUNTRY}
-                                </SelectItem>
-                            )}
-                            {isMaxmindAsnAvailable && (
-                                <SelectItem value="ASN">
-                                    {RuleMatch.ASN}
-                                </SelectItem>
-                            )}
-                        </SelectContent>
-                    </Select>
-                )
-            },
-            {
-                accessorKey: "value",
-                header: () => <span className="p-3">{t("value")}</span>,
-                cell: ({ row }) =>
-                    row.original.match === "COUNTRY" ? (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className="min-w-50 justify-between"
-                                >
-                                    {row.original.value
-                                        ? COUNTRIES.find(
-                                              (c) =>
-                                                  c.code === row.original.value
-                                          )?.name +
-                                          " (" +
-                                          row.original.value +
-                                          ")"
-                                        : t("selectCountry")}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="min-w-50 p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder={t("searchCountries")}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            {t("noCountryFound")}
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {COUNTRIES.map((country) => (
-                                                <CommandItem
-                                                    key={country.code}
-                                                    value={country.name}
-                                                    onSelect={() =>
-                                                        updateRule(
-                                                            row.original.ruleId,
-                                                            {
-                                                                value: country.code
-                                                            }
-                                                        )
-                                                    }
-                                                >
-                                                    <Check
-                                                        className={`mr-2 h-4 w-4 ${row.original.value === country.code ? "opacity-100" : "opacity-0"}`}
-                                                    />
-                                                    {country.name} (
-                                                    {country.code})
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    ) : row.original.match === "ASN" ? (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className="min-w-50 justify-between"
-                                >
-                                    {row.original.value
-                                        ? (() => {
-                                              const found = MAJOR_ASNS.find(
-                                                  (asn) =>
-                                                      asn.code ===
-                                                      row.original.value
-                                              );
-                                              return found
-                                                  ? `${found.name} (${row.original.value})`
-                                                  : `Custom (${row.original.value})`;
-                                          })()
-                                        : "Select ASN"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="min-w-50 p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search ASNs or enter custom..." />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            No ASN found. Enter a custom ASN
-                                            below.
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {MAJOR_ASNS.map((asn) => (
-                                                <CommandItem
-                                                    key={asn.code}
-                                                    value={
-                                                        asn.name +
-                                                        " " +
-                                                        asn.code
-                                                    }
-                                                    onSelect={() =>
-                                                        updateRule(
-                                                            row.original.ruleId,
-                                                            { value: asn.code }
-                                                        )
-                                                    }
-                                                >
-                                                    <Check
-                                                        className={`mr-2 h-4 w-4 ${row.original.value === asn.code ? "opacity-100" : "opacity-0"}`}
-                                                    />
-                                                    {asn.name} ({asn.code})
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                                <div className="border-t p-2">
-                                    <Input
-                                        placeholder="Enter custom ASN (e.g., AS15169)"
-                                        defaultValue={
-                                            !MAJOR_ASNS.find(
-                                                (asn) =>
-                                                    asn.code ===
-                                                    row.original.value
-                                            )
-                                                ? row.original.value
-                                                : ""
-                                        }
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                const value =
-                                                    e.currentTarget.value
-                                                        .toUpperCase()
-                                                        .replace(/^AS/, "");
-                                                if (/^\d+$/.test(value)) {
-                                                    updateRule(
-                                                        row.original.ruleId,
-                                                        { value: "AS" + value }
-                                                    );
-                                                }
-                                            }
-                                        }}
-                                        className="text-sm"
-                                    />
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                    ) : (
-                        <Input
-                            defaultValue={row.original.value}
-                            className="min-w-50"
-                            onBlur={(e) => {
-                                const validated = validatePolicyRuleValue(
-                                    t,
-                                    row.original.match,
-                                    e.target.value
-                                );
-                                if (!validated.success) {
-                                    toast({
-                                        variant: "destructive",
-                                        ...validated.toast
-                                    });
-                                    return;
-                                }
-                                updateRule(row.original.ruleId, {
-                                    value: validated.data
-                                });
-                            }}
-                        />
-                    )
-            },
-            {
-                accessorKey: "enabled",
-                header: () => <span className="p-3">{t("enabled")}</span>,
-                cell: ({ row }) => (
-                    <div className="flex items-center w-full">
-                        <Switch
-                            defaultChecked={row.original.enabled}
-                            onCheckedChange={(val) =>
-                                updateRule(row.original.ruleId, {
-                                    enabled: val
-                                })
-                            }
-                        />
-                    </div>
-                )
-            },
-            {
-                id: "actions",
-                header: () => null,
-                cell: ({ row }) => (
-                    <div className="flex items-center justify-end space-x-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => removeRule(row.original.ruleId)}
-                        >
-                            {t("delete")}
-                        </Button>
-                    </div>
-                )
-            }
-        ],
-        [
-            t,
-            RuleAction,
-            RuleMatch,
-            isMaxmindAvailable,
-            isMaxmindAsnAvailable,
-            updateRule,
-            removeRule,
-            rules
-        ]
+    const handleRulesChange = useCallback(
+        (updatedRules: PolicyAccessRule[]) => {
+            setRules(updatedRules);
+            syncFormRules(updatedRules);
+        },
+        [syncFormRules]
     );
-
-    const table = useReactTable({
-        data: rules,
-        columns,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        state: { pagination: { pageIndex: 0, pageSize: 1000 } }
-    });
 
     const addRuleButton = (
         <Button type="button" variant="outline" onClick={addEmptyRule}>
@@ -558,6 +125,8 @@ export function CreatePolicyRulesSectionForm({
             {t("ruleSubmit")}
         </Button>
     );
+
+    const hasRules = rules.length > 0;
 
     return (
         <SettingsSection>
@@ -580,117 +149,17 @@ export function CreatePolicyRulesSectionForm({
 
                     {rulesEnabled && (
                         <>
-                            <Table>
-                                <TableHeader>
-                                    {table
-                                        .getHeaderGroups()
-                                        .map((headerGroup) => (
-                                            <TableRow key={headerGroup.id}>
-                                                {headerGroup.headers.map(
-                                                    (header) => {
-                                                        const columnId =
-                                                            header.column.id;
-                                                        const isActionsColumn =
-                                                            columnId ===
-                                                            "actions";
-                                                        const isPriorityColumn =
-                                                            columnId ===
-                                                            "priority";
-                                                        const isActionColumn =
-                                                            columnId ===
-                                                            "action";
-                                                        const isMatchColumn =
-                                                            columnId ===
-                                                            "match";
-                                                        return (
-                                                            <TableHead
-                                                                key={header.id}
-                                                                className={
-                                                                    isActionsColumn
-                                                                        ? "sticky right-0 z-10 w-[1%] min-w-fit bg-card text-right"
-                                                                        : isPriorityColumn
-                                                                          ? "w-24 max-w-24"
-                                                                          : isActionColumn
-                                                                            ? "w-40 max-w-40"
-                                                                            : isMatchColumn
-                                                                              ? "w-36 max-w-36"
-                                                                              : ""
-                                                                }
-                                                            >
-                                                                {header.isPlaceholder
-                                                                    ? null
-                                                                    : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext()
-                                                                      )}
-                                                            </TableHead>
-                                                        );
-                                                    }
-                                                )}
-                                            </TableRow>
-                                        ))}
-                                </TableHeader>
-                                <TableBody>
-                                    {table.getRowModel().rows?.length ? (
-                                        table.getRowModel().rows.map((row) => (
-                                            <TableRow key={row.id}>
-                                                {row
-                                                    .getVisibleCells()
-                                                    .map((cell) => {
-                                                        const columnId =
-                                                            cell.column.id;
-                                                        const isActionsColumn =
-                                                            columnId ===
-                                                            "actions";
-                                                        const isPriorityColumn =
-                                                            columnId ===
-                                                            "priority";
-                                                        const isActionColumn =
-                                                            columnId ===
-                                                            "action";
-                                                        const isMatchColumn =
-                                                            columnId ===
-                                                            "match";
-                                                        return (
-                                                            <TableCell
-                                                                key={cell.id}
-                                                                className={
-                                                                    isActionsColumn
-                                                                        ? "sticky right-0 z-10 w-[1%] min-w-fit bg-card text-right"
-                                                                        : isPriorityColumn
-                                                                          ? "w-24 max-w-24"
-                                                                          : isActionColumn
-                                                                            ? "w-40 max-w-40"
-                                                                            : isMatchColumn
-                                                                              ? "w-36 max-w-36"
-                                                                              : ""
-                                                                }
-                                                            >
-                                                                {flexRender(
-                                                                    cell.column
-                                                                        .columnDef
-                                                                        .cell,
-                                                                    cell.getContext()
-                                                                )}
-                                                            </TableCell>
-                                                        );
-                                                    })}
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <DataTableEmptyState
-                                            colSpan={columns.length}
-                                            message={t("rulesNoOne")}
-                                            action={addRuleButton}
-                                        />
-                                    )}
-                                </TableBody>
-                            </Table>
-                            {table.getRowModel().rows?.length > 0 &&
-                                addRuleButton}
+                            <PolicyAccessRulesTable
+                                rules={rules}
+                                onRulesChange={handleRulesChange}
+                                updateRule={updateRule}
+                                removeRule={removeRule}
+                                isMaxmindAvailable={isMaxmindAvailable}
+                                isMaxmindAsnAvailable={isMaxmindAsnAvailable}
+                                includeRegionMatch={false}
+                                emptyStateAction={addRuleButton}
+                            />
+                            {hasRules && addRuleButton}
                         </>
                     )}
                 </div>
