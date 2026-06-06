@@ -178,7 +178,6 @@ function RdpServerForm({
                         mode: "rdp",
                         ip: destination,
                         port: Number(destinationPort),
-                        authToken: null,
                         hcEnabled: false
                     })
                 )

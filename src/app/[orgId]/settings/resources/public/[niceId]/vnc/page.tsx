@@ -178,7 +178,6 @@ function VncServerForm({
                         mode: "vnc",
                         ip: destination,
                         port: Number(destinationPort),
-                        authToken: null,
                         hcEnabled: false
                     })
                 )

@@ -54,7 +54,6 @@ import type { ResourceContextType } from "@app/contexts/resourceContext";
 type ExistingTarget = {
     targetId: number;
     siteId: number;
-    authToken?: string | null;
 };
 
 type TargetRow = {
@@ -65,7 +64,6 @@ type TargetRow = {
     mode: string | null;
     ip: string;
     port: number;
-    authToken?: string | null;
 };
 
 type ResourceTargetsResponse = {
@@ -206,7 +204,6 @@ function SshServerForm({
                 : targets.map((target) => ({
                       targetId: target.targetId,
                       siteId: target.siteId,
-                      authToken: target.authToken
                   }))
     );
 
@@ -216,7 +213,6 @@ function SshServerForm({
                 ? {
                       targetId: firstTarget.targetId,
                       siteId: firstTarget.siteId,
-                      authToken: firstTarget.authToken
                   }
                 : null
         );
@@ -264,7 +260,6 @@ function SshServerForm({
                                 ip: "localhost",
                                 port: 22,
                                 siteId: nativeSite.siteId,
-                                authToken: nativeExistingTarget.authToken,
                                 hcEnabled: false
                             }
                         );
@@ -286,7 +281,6 @@ function SshServerForm({
                         setNativeExistingTarget({
                             targetId: res.data.data.targetId,
                             siteId: nativeSite.siteId,
-                            authToken: res.data.data.authToken
                         });
                     }
                 }
@@ -323,7 +317,6 @@ function SshServerForm({
                             ip: values.destination,
                             port: Number(values.destinationPort),
                             siteId: t.siteId,
-                            authToken: t.authToken,
                             hcEnabled: false
                         })
                     )
@@ -347,7 +340,6 @@ function SshServerForm({
                 const newTargets: ExistingTarget[] = created.map((res, i) => ({
                     targetId: res.data.data.targetId,
                     siteId: toCreate[i].siteId,
-                    authToken: res.data.data.authToken
                 }));
                 setExistingTargets([...toUpdate, ...newTargets]);
             }

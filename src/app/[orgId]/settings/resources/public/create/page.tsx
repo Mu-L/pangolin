@@ -638,7 +638,6 @@ export default function Page() {
                                 mode: resourceType,
                                 ip: bgValues.destination,
                                 port: Number(bgValues.destinationPort),
-                                authToken: null,
                                 hcEnabled: false
                             }
                          );
