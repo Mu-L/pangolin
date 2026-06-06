@@ -171,8 +171,15 @@ export async function getTraefikConfig(
                 ),
                 inArray(sites.type, siteTypes),
                 allowRawResources
-                    ? inArray(resources.mode, ["http", "udp", "tcp"]) // allow all three
-                    : eq(resources.mode, "http")
+                    ? inArray(resources.mode, [
+                          "http",
+                          "udp",
+                          "tcp",
+                          "vnc",
+                          "ssh",
+                          "rdp"
+                      ]) // allow all three
+                    : inArray(resources.mode, ["http", "vnc", "ssh", "rdp"])
             )
         )
         .orderBy(desc(targets.priority), targets.targetId); // stable ordering
@@ -180,9 +187,9 @@ export async function getTraefikConfig(
     // Group by resource and include targets with their unique site data
     const resourcesMap = new Map();
 
-    resourcesWithTargetsAndSites.forEach((row) => {
+    for (const row of resourcesWithTargetsAndSites) {
         if (!["http", "tcp", "udp"].includes(row.mode)) {
-            return;
+            continue;
         }
         const resourceId = row.resourceId;
         const resourceName = sanitize(row.resourceName) || "";
@@ -193,7 +200,7 @@ export async function getTraefikConfig(
         const priority = row.priority ?? 100;
 
         if (filterOutNamespaceDomains && row.domainNamespaceId) {
-            return;
+            continue;
         }
 
         // Create a unique key combining resourceId, path config, and rewrite config
@@ -220,7 +227,7 @@ export async function getTraefikConfig(
                 logger.debug(
                     `Invalid path rewrite configuration for resource ${resourceId}: ${validation.error}`
                 );
-                return;
+                continue;
             }
 
             resourcesMap.set(mapKey, {
@@ -277,7 +284,7 @@ export async function getTraefikConfig(
                 online: row.siteOnline
             }
         });
-    });
+    }
 
     // Group browser gateway targets by resource
     type BrowserGatewayResourceEntry = {
@@ -313,7 +320,7 @@ export async function getTraefikConfig(
     if (allowBrowserGatewayResources) {
         for (const row of resourcesWithTargetsAndSites) {
             if (!["ssh", "vnc", "rdp"].includes(row.mode)) {
-                return;
+                continue;
             }
             if (filterOutNamespaceDomains && row.domainNamespaceId) {
                 continue;
