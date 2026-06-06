@@ -648,9 +648,7 @@ export function PolicyAuthStackSectionEdit({
                             emailEnabled={emailEnabled}
                             disabled={authReadonly}
                             emails={emails}
-                            onEmailsChange={(value) =>
-                                form.setValue("emails", value)
-                            }
+                            onSave={(value) => form.setValue("emails", value)}
                         />
 
                         <HeaderAuthCredenza

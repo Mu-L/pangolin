@@ -220,6 +220,11 @@ function MaintenanceSectionForm({
                                                     </TooltipProvider>
                                                 </FormControl>
                                             </div>
+                                            <FormDescription>
+                                                {t(
+                                                    "enableMaintenanceModeDescription"
+                                                )}
+                                            </FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     );
@@ -586,6 +591,40 @@ export default function GeneralForm() {
                                     className="space-y-4"
                                     id="general-settings-form"
                                 >
+                                    <FormField
+                                        control={form.control}
+                                        name="enabled"
+                                        render={() => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <SwitchInput
+                                                        id="enable-resource"
+                                                        defaultChecked={
+                                                            resource.enabled
+                                                        }
+                                                        label={t(
+                                                            "resourceEnable"
+                                                        )}
+                                                        onCheckedChange={(
+                                                            val
+                                                        ) =>
+                                                            form.setValue(
+                                                                "enabled",
+                                                                val
+                                                            )
+                                                        }
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    {t(
+                                                        "disabledResourceDescription"
+                                                    )}
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
@@ -732,40 +771,6 @@ export default function GeneralForm() {
                                             </div>
                                         </div>
                                     )}
-
-                                    <FormField
-                                        control={form.control}
-                                        name="enabled"
-                                        render={() => (
-                                            <FormItem>
-                                                <FormControl>
-                                                    <SwitchInput
-                                                        id="enable-resource"
-                                                        defaultChecked={
-                                                            resource.enabled
-                                                        }
-                                                        label={t(
-                                                            "resourceEnable"
-                                                        )}
-                                                        onCheckedChange={(
-                                                            val
-                                                        ) =>
-                                                            form.setValue(
-                                                                "enabled",
-                                                                val
-                                                            )
-                                                        }
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "disabledResourceDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
                                 </form>
                             </Form>
                         </SettingsSectionForm>

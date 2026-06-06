@@ -279,7 +279,7 @@ export function PolicyAuthStackSectionCreate({
                     onOpenChange={(open) => !open && closeCredenza()}
                     emailEnabled={emailEnabled}
                     emails={emails}
-                    onEmailsChange={(value) =>
+                    onSave={(value) =>
                         parentForm.setValue(
                             "emails",
                             value as PolicyFormValues["emails"]

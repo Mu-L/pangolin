@@ -117,7 +117,7 @@ export function PasscodeCredenza({
             title={t("resourcePasswordSetupTitle")}
             description={t("resourcePasswordSetupTitleDescription")}
             formId="policy-passcode-form"
-            submitLabel={t("resourcePasswordSubmit")}
+            submitLabel={t("policyAuthSetPasscode")}
         >
             <Form {...form}>
                 <form
@@ -191,7 +191,7 @@ export function PincodeCredenza({
             title={t("resourcePincodeSetupTitle")}
             description={t("resourcePincodeSetupTitleDescription")}
             formId="policy-pincode-form"
-            submitLabel={t("resourcePincodeSubmit")}
+            submitLabel={t("policyAuthSetPincode")}
         >
             <Form {...form}>
                 <form
@@ -286,7 +286,7 @@ export function HeaderAuthCredenza({
             title={t("resourceHeaderAuthSetupTitle")}
             description={t("resourceHeaderAuthSetupTitleDescription")}
             formId="policy-header-auth-form"
-            submitLabel={t("resourceHeaderAuthSubmit")}
+            submitLabel={t("policyAuthSetHeaderAuth")}
         >
             <Form {...form}>
                 <form
@@ -368,7 +368,7 @@ type EmailCredenzaProps = {
     emailEnabled: boolean;
     disabled?: boolean;
     emails: Tag[];
-    onEmailsChange: (emails: Tag[]) => void;
+    onSave: (emails: Tag[]) => void;
 };
 
 export function EmailCredenza({
@@ -377,12 +377,19 @@ export function EmailCredenza({
     emailEnabled,
     disabled,
     emails,
-    onEmailsChange
+    onSave
 }: EmailCredenzaProps) {
     const t = useTranslations();
     const [activeEmailTagIndex, setActiveEmailTagIndex] = useState<
         number | null
     >(null);
+    const [draftEmails, setDraftEmails] = useState<Tag[]>(emails);
+
+    useEffect(() => {
+        if (open) {
+            setDraftEmails(emails);
+        }
+    }, [open, emails]);
 
     return (
         <Credenza open={open} onOpenChange={onOpenChange}>
@@ -394,72 +401,90 @@ export function EmailCredenza({
                     </CredenzaDescription>
                 </CredenzaHeader>
                 <CredenzaBody>
-                    <div className="space-y-4">
-                        {!emailEnabled && (
-                            <Alert variant="neutral">
-                                <InfoIcon className="h-4 w-4" />
-                                <AlertTitle className="font-semibold">
-                                    {t("otpEmailSmtpRequired")}
-                                </AlertTitle>
-                                <AlertDescription>
-                                    {t("otpEmailSmtpRequiredDescription")}
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {emailEnabled && (
-                            <p className="text-sm text-muted-foreground">
-                                {t("otpEmailWhitelistListDescription")}
-                            </p>
-                        )}
-                        {emailEnabled && (
-                            <FormItem>
-                                <FormLabel>
-                                    {t("otpEmailWhitelistList")}
-                                </FormLabel>
-                                <FormControl>
-                                    <TagInput
-                                        activeTagIndex={activeEmailTagIndex}
-                                        setActiveTagIndex={
-                                            setActiveEmailTagIndex
-                                        }
-                                        placeholder={t("otpEmailEnter")}
-                                        tags={emails}
-                                        setTags={(newEmails) => {
-                                            if (!disabled) {
-                                                onEmailsChange(
-                                                    newEmails as Tag[]
-                                                );
+                    <form
+                        id="policy-email-form"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            onSave(draftEmails);
+                            onOpenChange(false);
+                        }}
+                    >
+                        <div className="space-y-4">
+                            {!emailEnabled && (
+                                <Alert variant="neutral">
+                                    <InfoIcon className="h-4 w-4" />
+                                    <AlertTitle className="font-semibold">
+                                        {t("otpEmailSmtpRequired")}
+                                    </AlertTitle>
+                                    <AlertDescription>
+                                        {t("otpEmailSmtpRequiredDescription")}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            {emailEnabled && (
+                                <p className="text-sm text-muted-foreground">
+                                    {t("otpEmailWhitelistListDescription")}
+                                </p>
+                            )}
+                            {emailEnabled && (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("otpEmailWhitelistList")}
+                                    </FormLabel>
+                                    <FormControl>
+                                        <TagInput
+                                            activeTagIndex={activeEmailTagIndex}
+                                            setActiveTagIndex={
+                                                setActiveEmailTagIndex
                                             }
-                                        }}
-                                        validateTag={(tag) =>
-                                            z
-                                                .email()
-                                                .or(
-                                                    z
-                                                        .string()
-                                                        .regex(
-                                                            /^\*@[\w.-]+\.[a-zA-Z]{2,}$/
-                                                        )
-                                                )
-                                                .safeParse(tag).success
-                                        }
-                                        allowDuplicates={false}
-                                        sortTags
-                                        size="sm"
-                                        disabled={disabled}
-                                    />
-                                </FormControl>
-                                <FormDescription>
-                                    {t("otpEmailEnterDescription")}
-                                </FormDescription>
-                            </FormItem>
-                        )}
-                    </div>
+                                            placeholder={t("otpEmailEnter")}
+                                            tags={draftEmails}
+                                            setTags={(newEmails) => {
+                                                if (!disabled) {
+                                                    setDraftEmails(
+                                                        newEmails as Tag[]
+                                                    );
+                                                }
+                                            }}
+                                            validateTag={(tag) =>
+                                                z
+                                                    .email()
+                                                    .or(
+                                                        z
+                                                            .string()
+                                                            .regex(
+                                                                /^\*@[\w.-]+\.[a-zA-Z]{2,}$/
+                                                            )
+                                                    )
+                                                    .safeParse(tag).success
+                                            }
+                                            allowDuplicates={false}
+                                            sortTags
+                                            size="sm"
+                                            disabled={disabled}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        {t("otpEmailEnterDescription")}
+                                    </FormDescription>
+                                </FormItem>
+                            )}
+                        </div>
+                    </form>
                 </CredenzaBody>
                 <CredenzaFooter>
                     <CredenzaClose asChild>
                         <Button variant="outline">{t("close")}</Button>
                     </CredenzaClose>
+                    {emailEnabled && (
+                        <Button
+                            type="submit"
+                            form="policy-email-form"
+                            disabled={disabled}
+                        >
+                            {t("policyAuthSetEmailWhitelist")}
+                        </Button>
+                    )}
                 </CredenzaFooter>
             </CredenzaContent>
         </Credenza>
