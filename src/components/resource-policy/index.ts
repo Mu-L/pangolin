@@ -46,13 +46,6 @@ export const createPolicySchema = z.object({
 
 export type PolicyFormValues = z.infer<typeof createPolicySchema>;
 
-export const addRuleSchema = z.object({
-    action: z.enum(["ACCEPT", "DROP", "PASS"]),
-    match: z.string(),
-    value: z.string(),
-    priority: z.coerce.number<number>().int().optional()
-});
-
 export type LocalRule = {
     ruleId: number;
     action: "ACCEPT" | "DROP" | "PASS";
@@ -63,3 +56,17 @@ export type LocalRule = {
     new?: boolean;
     updated?: boolean;
 };
+
+export {
+    createPolicyRulePrioritySchema,
+    createPolicyRuleSchema,
+    createPolicyRuleValueSchema,
+    createPolicyRulesArraySchema,
+    createPolicyRulesSectionSchema,
+    createPolicySchemaWithI18n,
+    getPolicyRuleValidationMessage,
+    validatePolicyRulePriority,
+    validatePolicyRuleValue,
+    validatePolicyRulesForSave,
+    type RuleValidationToast
+} from "./policy-access-rule-validation";

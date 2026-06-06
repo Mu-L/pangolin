@@ -137,7 +137,7 @@ export function EditPolicyNameSectionForm({
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <SettingsSectionForm>
+                        <SettingsSectionForm variant="half">
                             <FormField
                                 control={form.control}
                                 name="name"

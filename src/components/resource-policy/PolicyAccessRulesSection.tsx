@@ -4,6 +4,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
@@ -11,12 +12,14 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 
-import { createPolicyRulesSectionSchema, type PolicyFormValues } from ".";
 import { toast } from "@app/hooks/useToast";
 import {
+    createPolicyRulesSectionSchema,
     validatePolicyRulePriority,
-    validatePolicyRuleValue
-} from "./policy-access-rule-validation";
+    validatePolicyRuleValue,
+    validatePolicyRulesForSave,
+    type PolicyFormValues
+} from ".";
 
 import { Button } from "@app/components/ui/button";
 import { DataTableEmptyState } from "@app/components/ui/data-table-empty-state";
@@ -53,6 +56,7 @@ import {
 
 import { MAJOR_ASNS } from "@server/db/asns";
 import { COUNTRIES } from "@server/db/countries";
+import { REGIONS, getRegionNameById } from "@server/db/regions";
 import {
     ColumnDef,
     flexRender,
@@ -62,15 +66,35 @@ import {
     getSortedRowModel,
     useReactTable
 } from "@tanstack/react-table";
-import { ArrowUpDown, Check, ChevronsUpDown, Plus } from "lucide-react";
+import {
+    ArrowUpDown,
+    Check,
+    ChevronsUpDown,
+    LockIcon,
+    Plus
+} from "lucide-react";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { type UseFormReturn, useForm, useWatch } from "react-hook-form";
-
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useTransition
+} from "react";
+import { UseFormReturn, useForm, useWatch } from "react-hook-form";
+import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
+import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useEnvContext } from "@app/hooks/useEnvContext";
+import { resourceQueries } from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
+import type { AxiosResponse } from "axios";
+import { useRouter } from "next/navigation";
+import { CreatePolicyRulesSectionForm } from "./CreatePolicyRulesSectionForm";
 import { PolicyAccessRulesIntro } from "./PolicyAccessRulesIntro";
 import { createEmptyRule } from "./policy-access-rule-utils";
 
-// ─── CreatePolicyRulesSectionForm ─────────────────────────────────────────────
+// ─── PolicyRulesSection ───────────────────────────────────────────────────────
 
 type LocalRule = {
     ruleId: number;
@@ -81,21 +105,58 @@ type LocalRule = {
     enabled: boolean;
     new?: boolean;
     updated?: boolean;
+    fromPolicy?: boolean;
 };
 
-export type CreatePolicyRulesSectionFormProps = {
+type PolicyAccessRulesSectionEditProps = {
+    mode: "edit";
+    isMaxmindAvailable: boolean;
+    isMaxmindAsnAvailable: boolean;
+    readonly?: boolean;
+    resourceId?: number;
+};
+
+type PolicyAccessRulesSectionCreateProps = {
+    mode: "create";
     form: UseFormReturn<PolicyFormValues, any, any>;
     isMaxmindAvailable: boolean;
     isMaxmindAsnAvailable: boolean;
 };
 
-export function CreatePolicyRulesSectionForm({
-    form: parentForm,
+export type PolicyAccessRulesSectionProps =
+    | PolicyAccessRulesSectionEditProps
+    | PolicyAccessRulesSectionCreateProps;
+
+export function PolicyAccessRulesSection(props: PolicyAccessRulesSectionProps) {
+    if (props.mode === "create") {
+        return <PolicyAccessRulesSectionCreate {...props} />;
+    }
+    return <PolicyAccessRulesSectionEdit {...props} />;
+}
+
+function PolicyAccessRulesSectionEdit({
     isMaxmindAvailable,
-    isMaxmindAsnAvailable
-}: CreatePolicyRulesSectionFormProps) {
+    isMaxmindAsnAvailable,
+    readonly,
+    resourceId
+}: PolicyAccessRulesSectionEditProps) {
     const t = useTranslations();
-    const [rules, setRules] = useState<LocalRule[]>([]);
+
+    const { policy } = useResourcePolicyContext();
+    const api = createApiClient(useEnvContext());
+    const router = useRouter();
+
+    const isResourceOverlay = resourceId !== undefined;
+
+    // ── Fetch resource-specific rules when in overlay mode ───────────────────
+    const { data: resourceRulesData } = useQuery({
+        ...resourceQueries.resourceRules({ resourceId: resourceId! }),
+        enabled: isResourceOverlay
+    });
+
+    const deletedResourceRuleIdsRef = useRef<Set<number>>(new Set());
+    const [resourceRulesInitialized, setResourceRulesInitialized] =
+        useState(false);
 
     const rulesFormSchema = useMemo(
         () => createPolicyRulesSectionSchema(t),
@@ -105,23 +166,49 @@ export function CreatePolicyRulesSectionForm({
     const form = useForm({
         resolver: zodResolver(rulesFormSchema),
         defaultValues: {
-            applyRules: false,
-            rules: []
+            applyRules: policy.applyRules,
+            rules: policy.rules
         }
     });
-
-    useEffect(() => {
-        const subscription = form.watch((values) => {
-            parentForm.setValue("applyRules", values.applyRules as boolean);
-            parentForm.setValue("rules", values.rules as any);
-        });
-        return () => subscription.unsubscribe();
-    }, [form, parentForm]);
 
     const rulesEnabled = useWatch({
         control: form.control,
         name: "applyRules"
     });
+
+    const [rules, setRules] = useState<LocalRule[]>(
+        policy.rules.map((r) => ({ ...r, fromPolicy: isResourceOverlay }))
+    );
+
+    // Initialize resource-specific rules once fetched
+    useEffect(() => {
+        if (!isResourceOverlay || resourceRulesInitialized) return;
+        if (!resourceRulesData) return;
+
+        const policyRuleIds = new Set(policy.rules.map((r) => r.ruleId));
+        const resourceSpecific: LocalRule[] = resourceRulesData
+            .filter((r) => !policyRuleIds.has(r.ruleId))
+            .map((r) => ({
+                ruleId: r.ruleId,
+                action: r.action as "ACCEPT" | "DROP" | "PASS",
+                match: r.match,
+                value: r.value,
+                priority: r.priority,
+                enabled: r.enabled,
+                fromPolicy: false
+            }));
+
+        setRules([
+            ...resourceSpecific,
+            ...policy.rules.map((r) => ({ ...r, fromPolicy: true }))
+        ]);
+        setResourceRulesInitialized(true);
+    }, [
+        isResourceOverlay,
+        resourceRulesData,
+        resourceRulesInitialized,
+        policy.rules
+    ]);
 
     const RuleAction = useMemo(
         () => ({
@@ -138,7 +225,8 @@ export function CreatePolicyRulesSectionForm({
             IP: "IP",
             CIDR: t("ipAddressRange"),
             COUNTRY: t("country"),
-            ASN: "ASN"
+            ASN: "ASN",
+            REGION: t("region")
         }),
         [t]
     );
@@ -169,11 +257,17 @@ export function CreatePolicyRulesSectionForm({
 
     const removeRule = useCallback(
         function removeRule(ruleId: number) {
+            const rule = rules.find((r) => r.ruleId === ruleId);
+            if (!rule || rule.fromPolicy) return; // cannot remove policy rules
+            // Track deletion for resource overlay mode (only for existing DB rules)
+            if (isResourceOverlay && !rule.new) {
+                deletedResourceRuleIdsRef.current.add(ruleId);
+            }
             const updatedRules = rules.filter((rule) => rule.ruleId !== ruleId);
             setRules(updatedRules);
             syncFormRules(updatedRules);
         },
-        [rules, syncFormRules]
+        [rules, syncFormRules, isResourceOverlay]
     );
 
     const updateRule = useCallback(
@@ -187,6 +281,11 @@ export function CreatePolicyRulesSectionForm({
             syncFormRules(updatedRules);
         },
         [rules, syncFormRules]
+    );
+
+    const sortedRules = useMemo(
+        () => [...rules].sort((a, b) => a.priority - b.priority),
+        [rules]
     );
 
     const columns: ColumnDef<LocalRule>[] = useMemo(
@@ -216,6 +315,7 @@ export function CreatePolicyRulesSectionForm({
                         defaultValue={row.original.priority}
                         className="w-full min-w-0"
                         type="number"
+                        disabled={readonly || row.original.fromPolicy}
                         onClick={(e) => e.currentTarget.focus()}
                         onBlur={(e) => {
                             const validated = validatePolicyRulePriority(
@@ -259,8 +359,11 @@ export function CreatePolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Select
                         defaultValue={row.original.action}
+                        disabled={readonly || row.original.fromPolicy}
                         onValueChange={(value: "ACCEPT" | "DROP" | "PASS") =>
-                            updateRule(row.original.ruleId, { action: value })
+                            updateRule(row.original.ruleId, {
+                                action: value
+                            })
                         }
                     >
                         <SelectTrigger className="h-8 w-full min-w-0">
@@ -290,8 +393,15 @@ export function CreatePolicyRulesSectionForm({
                 cell: ({ row }) => (
                     <Select
                         defaultValue={row.original.match}
+                        disabled={readonly || row.original.fromPolicy}
                         onValueChange={(
-                            value: "CIDR" | "IP" | "PATH" | "COUNTRY" | "ASN"
+                            value:
+                                | "CIDR"
+                                | "IP"
+                                | "PATH"
+                                | "COUNTRY"
+                                | "ASN"
+                                | "REGION"
                         ) =>
                             updateRule(row.original.ruleId, {
                                 match: value,
@@ -300,7 +410,9 @@ export function CreatePolicyRulesSectionForm({
                                         ? "US"
                                         : value === "ASN"
                                           ? "AS15169"
-                                          : row.original.value
+                                          : value === "REGION"
+                                            ? "021"
+                                            : row.original.value
                             })
                         }
                     >
@@ -318,6 +430,11 @@ export function CreatePolicyRulesSectionForm({
                             {isMaxmindAvailable && (
                                 <SelectItem value="COUNTRY">
                                     {RuleMatch.COUNTRY}
+                                </SelectItem>
+                            )}
+                            {isMaxmindAvailable && (
+                                <SelectItem value="REGION">
+                                    {RuleMatch.REGION}
                                 </SelectItem>
                             )}
                             {isMaxmindAsnAvailable && (
@@ -339,6 +456,9 @@ export function CreatePolicyRulesSectionForm({
                                 <Button
                                     variant="outline"
                                     role="combobox"
+                                    disabled={
+                                        readonly || row.original.fromPolicy
+                                    }
                                     className="min-w-50 justify-between"
                                 >
                                     {row.original.value
@@ -394,6 +514,9 @@ export function CreatePolicyRulesSectionForm({
                                 <Button
                                     variant="outline"
                                     role="combobox"
+                                    disabled={
+                                        readonly || row.original.fromPolicy
+                                    }
                                     className="min-w-50 justify-between"
                                 >
                                     {row.original.value
@@ -475,10 +598,116 @@ export function CreatePolicyRulesSectionForm({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                    ) : row.original.match === "REGION" ? (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    disabled={
+                                        readonly || row.original.fromPolicy
+                                    }
+                                    className="min-w-50 justify-between"
+                                >
+                                    {(() => {
+                                        const regionName = getRegionNameById(
+                                            row.original.value
+                                        );
+                                        if (!regionName) {
+                                            return t("selectRegion");
+                                        }
+                                        return `${t(regionName)} (${row.original.value})`;
+                                    })()}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="min-w-50 p-0">
+                                <Command>
+                                    <CommandInput
+                                        placeholder={t("searchRegions")}
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            {t("noRegionFound")}
+                                        </CommandEmpty>
+                                        {REGIONS.map((continent) => (
+                                            <CommandGroup
+                                                key={continent.id}
+                                                heading={t(continent.name)}
+                                            >
+                                                <CommandItem
+                                                    value={continent.id}
+                                                    keywords={[
+                                                        t(continent.name),
+                                                        continent.id
+                                                    ]}
+                                                    onSelect={() =>
+                                                        updateRule(
+                                                            row.original.ruleId,
+                                                            {
+                                                                value: continent.id
+                                                            }
+                                                        )
+                                                    }
+                                                >
+                                                    <Check
+                                                        className={`mr-2 h-4 w-4 ${
+                                                            row.original
+                                                                .value ===
+                                                            continent.id
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        }`}
+                                                    />
+                                                    {t(continent.name)} (
+                                                    {continent.id})
+                                                </CommandItem>
+                                                {continent.includes.map(
+                                                    (subregion) => (
+                                                        <CommandItem
+                                                            key={subregion.id}
+                                                            value={subregion.id}
+                                                            keywords={[
+                                                                t(
+                                                                    subregion.name
+                                                                ),
+                                                                subregion.id
+                                                            ]}
+                                                            onSelect={() =>
+                                                                updateRule(
+                                                                    row.original
+                                                                        .ruleId,
+                                                                    {
+                                                                        value: subregion.id
+                                                                    }
+                                                                )
+                                                            }
+                                                        >
+                                                            <Check
+                                                                className={`mr-2 h-4 w-4 ${
+                                                                    row.original
+                                                                        .value ===
+                                                                    subregion.id
+                                                                        ? "opacity-100"
+                                                                        : "opacity-0"
+                                                                }`}
+                                                            />
+                                                            {t(subregion.name)}{" "}
+                                                            ({subregion.id})
+                                                        </CommandItem>
+                                                    )
+                                                )}
+                                            </CommandGroup>
+                                        ))}
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     ) : (
                         <Input
                             defaultValue={row.original.value}
                             className="min-w-50"
+                            disabled={readonly || row.original.fromPolicy}
                             onBlur={(e) => {
                                 const validated = validatePolicyRuleValue(
                                     t,
@@ -506,6 +735,7 @@ export function CreatePolicyRulesSectionForm({
                     <div className="flex items-center w-full">
                         <Switch
                             defaultChecked={row.original.enabled}
+                            disabled={readonly || row.original.fromPolicy}
                             onCheckedChange={(val) =>
                                 updateRule(row.original.ruleId, {
                                     enabled: val
@@ -520,12 +750,23 @@ export function CreatePolicyRulesSectionForm({
                 header: () => null,
                 cell: ({ row }) => (
                     <div className="flex items-center justify-end space-x-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => removeRule(row.original.ruleId)}
-                        >
-                            {t("delete")}
-                        </Button>
+                        {row.original.fromPolicy ? (
+                            <Button
+                                variant="outline"
+                                disabled
+                                className="cursor-not-allowed"
+                            >
+                                <LockIcon className="h-4 w-4" />
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                disabled={readonly}
+                                onClick={() => removeRule(row.original.ruleId)}
+                            >
+                                {t("delete")}
+                            </Button>
+                        )}
                     </div>
                 )
             }
@@ -538,12 +779,13 @@ export function CreatePolicyRulesSectionForm({
             isMaxmindAsnAvailable,
             updateRule,
             removeRule,
+            readonly,
             rules
         ]
     );
 
     const table = useReactTable({
-        data: rules,
+        data: sortedRules,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
@@ -552,8 +794,137 @@ export function CreatePolicyRulesSectionForm({
         state: { pagination: { pageIndex: 0, pageSize: 1000 } }
     });
 
+    const [isPending, startTransition] = useTransition();
+
+    async function saveRules() {
+        if (readonly) return;
+
+        const applyRules = form.getValues("applyRules") ?? false;
+        const rulesPayload = rules.map(
+            ({ action, match, value, priority, enabled }) => ({
+                action,
+                match,
+                value,
+                priority,
+                enabled
+            })
+        );
+        const validation = validatePolicyRulesForSave(
+            t,
+            rulesPayload,
+            applyRules
+        );
+        if (!validation.success) {
+            toast({
+                variant: "destructive",
+                ...validation.toast
+            });
+            return;
+        }
+
+        if (isResourceOverlay) {
+            await saveResourceOverlayRules();
+            return;
+        }
+
+        const isValid = await form.trigger();
+        if (!isValid) return;
+
+        const payload = {
+            applyRules,
+            rules: rulesPayload
+        };
+
+        try {
+            const res = await api
+                .put<
+                    AxiosResponse<{}>
+                >(`/resource-policy/${policy.resourcePolicyId}/rules`, payload)
+                .catch((e) => {
+                    toast({
+                        variant: "destructive",
+                        title: t("policyErrorUpdate"),
+                        description: formatAxiosError(
+                            e,
+                            t("policyErrorUpdateDescription")
+                        )
+                    });
+                });
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("success"),
+                    description: t("policyUpdatedSuccess")
+                });
+                router.refresh();
+            }
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: t("policyErrorUpdateMessageDescription")
+            });
+        }
+    }
+
+    async function saveResourceOverlayRules() {
+        try {
+            const newRules = rules.filter((r) => !r.fromPolicy && r.new);
+            const updatedRules = rules.filter(
+                (r) => !r.fromPolicy && !r.new && r.updated
+            );
+            const deletedIds = [...deletedResourceRuleIdsRef.current];
+
+            await Promise.all([
+                ...newRules.map((r) =>
+                    api.put(`/resource/${resourceId}/rule`, {
+                        action: r.action,
+                        match: r.match,
+                        value: r.value,
+                        priority: r.priority,
+                        enabled: r.enabled
+                    })
+                ),
+                ...updatedRules.map((r) =>
+                    api.post(`/resource/${resourceId}/rule/${r.ruleId}`, {
+                        action: r.action,
+                        match: r.match,
+                        value: r.value,
+                        priority: r.priority,
+                        enabled: r.enabled
+                    })
+                ),
+                ...deletedIds.map((id) =>
+                    api.delete(`/resource/${resourceId}/rule/${id}`)
+                )
+            ]);
+
+            deletedResourceRuleIdsRef.current = new Set();
+
+            toast({
+                title: t("success"),
+                description: t("policyUpdatedSuccess")
+            });
+            router.refresh();
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: t("policyErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("policyErrorUpdateDescription")
+                )
+            });
+        }
+    }
+
     const addRuleButton = (
-        <Button type="button" variant="outline" onClick={addEmptyRule}>
+        <Button
+            type="button"
+            variant="outline"
+            disabled={readonly}
+            onClick={addEmptyRule}
+        >
             <Plus className="h-4 w-4 mr-2" />
             {t("ruleSubmit")}
         </Button>
@@ -570,12 +941,13 @@ export function CreatePolicyRulesSectionForm({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <div className="flex flex-col gap-y-6 pb-20">
+                <div className="space-y-6">
                     <PolicyAccessRulesIntro
                         rulesEnabled={Boolean(rulesEnabled)}
                         onRulesEnabledChange={(val) => {
                             form.setValue("applyRules", val);
                         }}
+                        disableToggle={readonly || isResourceOverlay}
                     />
 
                     {rulesEnabled && (
@@ -695,6 +1067,29 @@ export function CreatePolicyRulesSectionForm({
                     )}
                 </div>
             </SettingsSectionBody>
+            <SettingsSectionFooter>
+                <Button
+                    onClick={() => startTransition(() => saveRules())}
+                    loading={isPending}
+                    disabled={readonly || isPending}
+                >
+                    {t("saveSettings")}
+                </Button>
+            </SettingsSectionFooter>
         </SettingsSection>
+    );
+}
+
+function PolicyAccessRulesSectionCreate({
+    form,
+    isMaxmindAvailable,
+    isMaxmindAsnAvailable
+}: PolicyAccessRulesSectionCreateProps) {
+    return (
+        <CreatePolicyRulesSectionForm
+            form={form}
+            isMaxmindAvailable={isMaxmindAvailable}
+            isMaxmindAsnAvailable={isMaxmindAsnAvailable}
+        />
     );
 }
