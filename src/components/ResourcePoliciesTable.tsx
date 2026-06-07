@@ -283,6 +283,7 @@ export function ResourcePoliciesTable({
                 searchPlaceholder={t("resourcePoliciesSearch")}
                 pagination={pagination}
                 rowCount={rowCount}
+                searchQuery={searchParams.get("query")?.toString()}
                 onSearch={handleSearchChange}
                 onPaginationChange={handlePaginationChange}
                 onAdd={() =>

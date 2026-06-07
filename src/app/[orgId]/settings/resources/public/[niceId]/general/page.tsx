@@ -36,10 +36,14 @@ import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII, toUnicode } from "punycode";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
+import { SharedPolicySelect } from "@app/components/shared-policy-selector";
+import { useOrgContext } from "@app/hooks/useOrgContext";
+import { build } from "@server/build";
+import { TierFeature } from "@server/lib/billing/tierMatrix";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import {
@@ -434,15 +438,29 @@ function MaintenanceSectionForm({
 
 export default function GeneralForm() {
     const params = useParams();
+    const { org } = useOrgContext();
     const { resource, updateResource } = useResourceContext();
     const router = useRouter();
     const t = useTranslations();
 
     const { env } = useEnvContext();
+    const { isPaidUser } = usePaidStatus();
 
     const orgId = params.orgId;
 
     const api = createApiClient({ env });
+
+    const showResourcePolicy =
+        build !== "oss" &&
+        isPaidUser(tierMatrix[TierFeature.ResourcePolicies]);
+
+    const [selectedSharedPolicyId, setSelectedSharedPolicyId] = useState<
+        number | null
+    >(resource.resourcePolicyId ?? null);
+
+    useEffect(() => {
+        setSelectedSharedPolicyId(resource.resourcePolicyId ?? null);
+    }, [resource.resourcePolicyId]);
 
     const [resourceFullDomain, setResourceFullDomain] = useState(
         `${resource.ssl ? "https" : "http"}://${toUnicode(resource.fullDomain || "")}`
@@ -506,6 +524,12 @@ export default function GeneralForm() {
 
         const data = form.getValues();
 
+        let resourcePolicyId: number | null | undefined;
+
+        if (showResourcePolicy) {
+            resourcePolicyId = selectedSharedPolicyId;
+        }
+
         const res = await api
             .post<AxiosResponse<UpdateResourceResponse>>(
                 `resource/${resource?.resourceId}`,
@@ -519,7 +543,8 @@ export default function GeneralForm() {
                           )
                         : undefined,
                     domainId: data.domainId,
-                    proxyPort: data.proxyPort
+                    proxyPort: data.proxyPort,
+                    ...(resourcePolicyId !== undefined && { resourcePolicyId })
                 }
             )
             .catch((e) => {
@@ -543,7 +568,10 @@ export default function GeneralForm() {
                 subdomain: data.subdomain,
                 fullDomain: updated.fullDomain,
                 proxyPort: data.proxyPort,
-                domainId: data.domainId
+                domainId: data.domainId,
+                ...(resourcePolicyId !== undefined && {
+                    resourcePolicyId
+                })
             });
 
             toast({
@@ -584,7 +612,7 @@ export default function GeneralForm() {
                     </SettingsSectionHeader>
 
                     <SettingsSectionBody>
-                        <SettingsSectionForm>
+                        <SettingsSectionForm variant="half">
                             <Form {...form}>
                                 <form
                                     action={formAction}
@@ -769,6 +797,24 @@ export default function GeneralForm() {
                                                     }}
                                                 />
                                             </div>
+                                        </div>
+                                    )}
+                                    {showResourcePolicy && (
+                                        <div className="space-y-2">
+                                            <FormLabel>
+                                                {t("sharedPolicy")}
+                                            </FormLabel>
+                                            <SharedPolicySelect
+                                                key={
+                                                    resource.resourcePolicyId ??
+                                                    "none"
+                                                }
+                                                orgId={org.org.orgId}
+                                                value={selectedSharedPolicyId}
+                                                onChange={
+                                                    setSelectedSharedPolicyId
+                                                }
+                                            />
                                         </div>
                                     )}
                                 </form>

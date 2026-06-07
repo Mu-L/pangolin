@@ -92,10 +92,16 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
     ];
 
     if (["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
-        navItems.push({
-            title: t("authentication"),
-            href: `/{orgId}/settings/resources/public/{niceId}/authentication`
-        });
+        navItems.push(
+            {
+                title: t("authentication"),
+                href: `/{orgId}/settings/resources/public/{niceId}/authentication`
+            },
+            {
+                title: t("policyAccessRulesTitle"),
+                href: `/{orgId}/settings/resources/public/{niceId}/rules`
+            }
+        );
     }
 
     return (

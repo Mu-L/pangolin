@@ -147,7 +147,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
             if (res && res.status === 201) {
                 const niceId = res.data.data.niceId;
                 router.push(
-                    `/${org.org.orgId}/settings/policies/resources/public/${niceId}`
+                    `/${org.org.orgId}/settings/policies/resources/public/${niceId}/general`
                 );
                 toast({
                     title: t("success"),
@@ -227,7 +227,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                                 </SettingsSectionDescription>
                             </SettingsSectionHeader>
                             <SettingsSectionBody>
-                                <SettingsSectionForm>
+                                <SettingsSectionForm variant="half">
                                     <FormField
                                         control={form.control}
                                         name="name"
@@ -237,12 +237,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                                                     {t("name")}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        placeholder={t(
-                                                            "resourcePolicyNamePlaceholder"
-                                                        )}
-                                                    />
+                                                    <Input {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
