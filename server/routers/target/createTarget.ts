@@ -27,6 +27,7 @@ import {
 import { encrypt } from "@server/lib/crypto";
 import { generateId } from "@server/auth/sessions/app";
 import config from "@server/lib/config";
+import { sendBrowserGatewayTargets } from "@server/routers/newt/targets";
 
 const createTargetParamsSchema = z.strictObject({
     resourceId: z.coerce.number().int().positive()
@@ -342,13 +343,21 @@ export async function createTarget(
                     .where(eq(newts.siteId, site.siteId))
                     .limit(1);
 
-                await addTargets(
-                    newt.newtId,
-                    newTarget,
-                    healthCheck,
-                    resource.mode === "udp" ? "udp" : "tcp",
-                    newt.version
-                );
+                if (["http", "tcp", "udp"].includes(newTarget[0].mode)) {
+                    await addTargets(
+                        newt.newtId,
+                        newTarget,
+                        healthCheck,
+                        resource.mode === "udp" ? "udp" : "tcp",
+                        newt.version
+                    );
+                } else if (["ssh", "rdp", "vnc"].includes(newTarget[0].mode)) {
+                    await sendBrowserGatewayTargets(
+                        newt.newtId,
+                        newTarget,
+                        newt.version
+                    );
+                }
             }
         }
 

@@ -18,6 +18,7 @@ import {
 import { pickPort } from "./helpers";
 import { isTargetValid } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
+import { sendBrowserGatewayTargets } from "@server/routers/newt/targets";
 
 const updateTargetParamsSchema = z.strictObject({
     targetId: z.coerce.number().int().positive()
@@ -350,13 +351,21 @@ export async function updateTarget(
                     .where(eq(newts.siteId, site.siteId))
                     .limit(1);
 
-                await addTargets(
-                    newt.newtId,
-                    [updatedTarget],
-                    [updatedHc],
-                    resource.mode === "udp" ? "udp" : "tcp",
-                    newt.version
-                );
+                if (["http", "tcp", "udp"].includes(updatedTarget.mode)) {
+                    await addTargets(
+                        newt.newtId,
+                        [updatedTarget],
+                        [updatedHc],
+                        resource.mode === "udp" ? "udp" : "tcp",
+                        newt.version
+                    );
+                } else if (["ssh", "rdp", "vnc"].includes(updatedTarget.mode)) {
+                    await sendBrowserGatewayTargets(
+                        newt.newtId,
+                        [updatedTarget],
+                        newt.version
+                    );
+                }
             }
         }
 
