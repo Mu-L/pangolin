@@ -37,6 +37,10 @@ import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
 import { useTranslations } from "next-intl";
+import {
+    loadEncryptedLocalStorage,
+    saveEncryptedLocalStorage
+} from "@app/lib/secureLocalStorage";
 
 declare module "react" {
     namespace JSX {
@@ -63,22 +67,14 @@ type RdpCredentialsForm = {
     enableClipboard: boolean;
 };
 
-function loadStoredCredentials(key: string): RdpCredentialsForm {
-    try {
-        const saved = localStorage.getItem(key);
-        if (saved) return JSON.parse(saved) as RdpCredentialsForm;
-    } catch {
-        // ignore
-    }
-    return {
-        username: "",
-        password: "",
-        domain: "",
-        kdcProxyUrl: "",
-        pcb: "",
-        enableClipboard: true
-    };
-}
+const DEFAULT_RDP_CREDENTIALS: RdpCredentialsForm = {
+    username: "",
+    password: "",
+    domain: "",
+    kdcProxyUrl: "",
+    pcb: "",
+    enableClipboard: true
+};
 
 const isIronError = (error: unknown): error is IronError => {
     return (
@@ -113,8 +109,24 @@ export default function RdpClient({
 
     const form = useForm<RdpCredentialsForm>({
         resolver: zodResolver(formSchema),
-        defaultValues: loadStoredCredentials(STORAGE_KEY)
+        defaultValues: DEFAULT_RDP_CREDENTIALS
     });
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void loadEncryptedLocalStorage<RdpCredentialsForm>(
+            STORAGE_KEY,
+            target?.authToken
+        ).then((saved) => {
+            if (cancelled || !saved) return;
+            form.reset({ ...DEFAULT_RDP_CREDENTIALS, ...saved });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [form, target?.authToken]);
 
     const [showLogin, setShowLogin] = useState(true);
     const [moduleReady, setModuleReady] = useState(false);
@@ -293,11 +305,11 @@ export default function RdpClient({
         try {
             const sessionInfo = await userInteraction.connect(builder.build());
 
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
-            } catch {
-                // ignore
-            }
+            void saveEncryptedLocalStorage(
+                STORAGE_KEY,
+                values,
+                target.authToken
+            );
             setConnecting(false);
             setShowLogin(false);
             userInteraction.setVisibility(true);

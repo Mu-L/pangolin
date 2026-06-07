@@ -52,19 +52,19 @@ import { encrypt } from "@server/lib/crypto";
 import { generateId } from "@server/auth/sessions/app";
 import serverConfig from "@server/lib/config";
 
-export type ProxyResourcesResults = {
+export type PublicResourcesResults = {
     proxyResource: Resource;
     targetsToUpdate: Target[];
     healthchecksToUpdate: TargetHealthCheck[];
 }[];
 
-export async function updateProxyResources(
+export async function updatePublicResources(
     orgId: string,
     config: Config,
     trx: Transaction,
     siteId?: number
-): Promise<ProxyResourcesResults> {
-    const results: ProxyResourcesResults = [];
+): Promise<PublicResourcesResults> {
+    const results: PublicResourcesResults = [];
 
     for (const [resourceNiceId, resourceData] of Object.entries(
         config["proxy-resources"]

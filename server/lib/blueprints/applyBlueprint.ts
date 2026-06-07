@@ -10,16 +10,22 @@ import {
     clientSiteResources
 } from "@server/db";
 import { Config, ConfigSchema } from "./types";
-import { ProxyResourcesResults, updateProxyResources } from "./proxyResources";
+import {
+    PublicResourcesResults,
+    updatePublicResources
+} from "./publicResources";
 import { fromError } from "zod-validation-error";
 import logger from "@server/logger";
 import { sites } from "@server/db";
 import { eq, and, isNotNull } from "drizzle-orm";
-import { addTargets as addProxyTargets } from "@server/routers/newt/targets";
+import {
+    addTargets as addProxyTargets,
+    sendBrowserGatewayTargets
+} from "@server/routers/newt/targets";
 import {
     ClientResourcesResults,
-    updateClientResources
-} from "./clientResources";
+    updatePrivateResources
+} from "./privateResources";
 import { updateResourcePolicies } from "./resourcePolicies";
 import { BlueprintSource } from "@server/routers/blueprints/types";
 import { stringify as stringifyYaml } from "yaml";
@@ -54,18 +60,18 @@ export async function applyBlueprint({
     let error: any | null = null;
 
     try {
-        let proxyResourcesResults: ProxyResourcesResults = [];
+        let proxyResourcesResults: PublicResourcesResults = [];
         let clientResourcesResults: ClientResourcesResults = [];
         await db.transaction(async (trx) => {
             await updateResourcePolicies(orgId, config, trx);
 
-            proxyResourcesResults = await updateProxyResources(
+            proxyResourcesResults = await updatePublicResources(
                 orgId,
                 config,
                 trx,
                 siteId
             );
-            clientResourcesResults = await updateClientResources(
+            clientResourcesResults = await updatePrivateResources(
                 orgId,
                 config,
                 trx,
@@ -104,13 +110,27 @@ export async function applyBlueprint({
                                 (hc) => hc.targetId === target.targetId
                             );
 
-                        await addProxyTargets(
-                            site.newt.newtId,
-                            [target],
-                            matchingHealthcheck ? [matchingHealthcheck] : [],
-                            result.proxyResource.mode === "udp" ? "udp" : "tcp",
-                            site.newt.version
-                        );
+                        if (["http", "tcp", "udp"].includes(target.mode)) {
+                            await addProxyTargets(
+                                site.newt.newtId,
+                                [target],
+                                matchingHealthcheck
+                                    ? [matchingHealthcheck]
+                                    : [],
+                                result.proxyResource.mode === "udp"
+                                    ? "udp"
+                                    : "tcp",
+                                site.newt.version
+                            );
+                        } else if (
+                            ["ssh", "rdp", "vnc"].includes(target.mode)
+                        ) {
+                            await sendBrowserGatewayTargets(
+                                site.newt.newtId,
+                                [target],
+                                site.newt.version
+                            );
+                        }
                     }
                 }
             }
