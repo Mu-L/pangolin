@@ -334,6 +334,10 @@ export default function SshClient({
             setConnecting(false);
             if (authConfirmed) {
                 setConnected(false);
+                if (evt.wasClean || evt.code === 1000) {
+                    window.close();
+                    return;
+                }
                 xtermRef.current?.writeln(
                     `\r\n\x1b[33m${t("sshConnectionClosedCode", { code: evt.code })}\x1b[0m\r\n`
                 );
