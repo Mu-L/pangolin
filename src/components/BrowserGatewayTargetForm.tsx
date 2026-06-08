@@ -48,15 +48,44 @@ export type BrowserGatewayTargetFormProps<T extends FieldValues = FieldValues> =
 export function BrowserGatewayTargetForm<T extends FieldValues>(
     props: BrowserGatewayTargetFormProps<T>
 ) {
+    // IDK MAN REMOVING THIS SEEMS TO CAUSE ISSUES
+    // Opt out of the React Compiler for this component.
+    //
+    // The parent (create page) shares a single `bgTargetForm` instance across
+    // multiple conditionally-rendered Form sections (SSH passthrough/push, RDP,
+    // VNC) and calls `bgTargetForm.reset(...)` in a useEffect when the
+    // resource type changes. react-hook-form's Controller uses an external
+    // subscription that the React Compiler cannot statically reason about, so
+    // with `reactCompiler: true` (see next.config.ts) the Compiler can memoize
+    // the render prop and skip re-rendering the <Input> elements when their
+    // bound form values change. The visible symptom is that typing into the
+    // destination/port inputs updates form state but the input itself never
+    // visually updates. The escape hatch is the canonical fix here.
+    "use no memo";
     const t = useTranslations();
     const [siteOpen, setSiteOpen] = useState(false);
 
     const sitesFieldName =
         props.multiSite === true ? props.sitesField : props.siteField;
 
+    // Subscribe to field values via useWatch and drive the controlled <Input>
+    // elements from these values rather than from the `field.value` returned
+    // by the Controller render prop. Combined with the "use no memo" directive
+    // above, this makes the inputs reliably re-render when their bound form
+    // values change.
     const watchedSites = useWatch({
         control: props.control,
         name: sitesFieldName
+    });
+
+    const watchedDestination = useWatch({
+        control: props.control,
+        name: props.destinationField
+    });
+
+    const watchedDestinationPort = useWatch({
+        control: props.control,
+        name: props.destinationPortField
     });
 
     const showMultiSiteDisclaimer =
@@ -141,7 +170,17 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                         <FormItem>
                             <FormLabel>{t("destination")}</FormLabel>
                             <FormControl>
-                                <Input {...field} value={field.value ?? ""} />
+                                <Input
+                                    name={field.name}
+                                    ref={field.ref}
+                                    onBlur={field.onBlur}
+                                    onChange={field.onChange}
+                                    value={
+                                        (watchedDestination as
+                                            | string
+                                            | undefined) ?? ""
+                                    }
+                                />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -158,8 +197,16 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                                     type="number"
                                     min={1}
                                     max={65535}
-                                    {...field}
-                                    value={field.value ?? ""}
+                                    name={field.name}
+                                    ref={field.ref}
+                                    onBlur={field.onBlur}
+                                    onChange={field.onChange}
+                                    value={
+                                        (watchedDestinationPort as
+                                            | string
+                                            | number
+                                            | undefined) ?? ""
+                                    }
                                 />
                             </FormControl>
                             <FormMessage />

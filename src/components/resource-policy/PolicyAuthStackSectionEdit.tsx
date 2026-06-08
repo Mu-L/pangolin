@@ -725,7 +725,8 @@ export function PolicyAuthStackSectionEdit({
                                           user: headerAuth.user,
                                           password: headerAuth.password,
                                           extendedCompatibility:
-                                              headerAuth.extendedCompatibility
+                                              headerAuth.extendedCompatibility ??
+                                              true
                                       }
                                     : undefined
                             }

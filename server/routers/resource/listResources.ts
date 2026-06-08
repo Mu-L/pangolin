@@ -1,6 +1,5 @@
 import {
     alias,
-    browserGatewayTarget,
     db,
     labels,
     resourceHeaderAuth,
@@ -639,15 +638,8 @@ export async function listResources(
                 .from(targets)
                 .innerJoin(sites, eq(targets.siteId, sites.siteId))
                 .where(and(eq(sites.orgId, orgId), eq(sites.siteId, siteId)));
-            const resourcesWithBrowserGateway = db
-                .select({ resourceId: browserGatewayTarget.resourceId })
-                .from(browserGatewayTarget)
-                .where(eq(browserGatewayTarget.siteId, siteId));
             conditions.push(
-                or(
-                    inArray(resources.resourceId, resourcesWithSite),
-                    inArray(resources.resourceId, resourcesWithBrowserGateway)
-                )
+                or(inArray(resources.resourceId, resourcesWithSite))
             );
         }
 
@@ -770,30 +762,6 @@ export async function listResources(
                       )
                       .leftJoin(sites, eq(targets.siteId, sites.siteId));
 
-        const allBgTargetSites =
-            resourceIdList.length === 0
-                ? []
-                : await db
-                      .select({
-                          resourceId: browserGatewayTarget.resourceId,
-                          siteId: browserGatewayTarget.siteId,
-                          siteName: sites.name,
-                          siteNiceId: sites.niceId,
-                          siteOnline: sites.online,
-                          siteType: sites.type
-                      })
-                      .from(browserGatewayTarget)
-                      .where(
-                          inArray(
-                              browserGatewayTarget.resourceId,
-                              resourceIdList
-                          )
-                      )
-                      .leftJoin(
-                          sites,
-                          eq(sites.siteId, browserGatewayTarget.siteId)
-                      );
-
         // avoids TS issues with reduce/never[]
         const map = new Map<number, ResourceWithTargets>();
 
@@ -845,21 +813,6 @@ export async function listResources(
                 }
             >();
             for (const t of raw) {
-                if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
-                    continue;
-                }
-                const isLocal = t.siteType === "local";
-                siteById.set(t.siteId, {
-                    siteId: t.siteId,
-                    siteName: t.siteName ?? "",
-                    siteNiceId: t.siteNiceId ?? "",
-                    online: isLocal ? undefined : Boolean(t.siteOnline)
-                });
-            }
-            const bgRaw = allBgTargetSites.filter(
-                (t) => t.resourceId === entry.resourceId
-            );
-            for (const t of bgRaw) {
                 if (typeof t.siteId !== "number" || siteById.has(t.siteId)) {
                     continue;
                 }

@@ -15,9 +15,7 @@ import {
 import { StrategySelect, StrategyOption } from "@app/components/StrategySelect";
 import { BrowserGatewayTargetForm } from "@app/components/BrowserGatewayTargetForm";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
-import {
-    SitesSelector
-} from "@app/components/site-selector";
+import { SitesSelector } from "@app/components/site-selector";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 import { Button } from "@app/components/ui/button";
@@ -54,22 +52,22 @@ import { GetResourceResponse } from "@server/routers/resource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 
 type ExistingTarget = {
-    browserGatewayTargetId: number;
+    targetId: number;
     siteId: number;
 };
 
-type BgTarget = {
-    browserGatewayTargetId: number;
+type TargetRow = {
+    targetId: number;
     resourceId: number;
     siteId: number;
     siteName?: string;
-    type: string;
-    destination: string;
-    destinationPort: number;
+    mode: string | null;
+    ip: string;
+    port: number;
 };
 
-type BgTargetsResponse = {
-    targets: BgTarget[];
+type ResourceTargetsResponse = {
+    targets: TargetRow[];
 };
 
 export default function SshSettingsPage(props: {
@@ -83,13 +81,11 @@ export default function SshSettingsPage(props: {
         tierMatrix[TierFeature.AdvancedPublicResources]
     );
 
-    const { data: bgTargetsResponse, isLoading: isLoadingTargets } = useQuery({
-        queryKey: ["browserGatewayTargets", resource.resourceId, params.orgId],
+    const { data: targetsResponse, isLoading: isLoadingTargets } = useQuery({
+        queryKey: ["resourceTargets", resource.resourceId, params.orgId, "ssh"],
         queryFn: async () => {
-            const res = await api.get(
-                `/org/${params.orgId}/resource/${resource.resourceId}/browser-gateway-targets`
-            );
-            return res.data.data as BgTargetsResponse;
+            const res = await api.get(`/resource/${resource.resourceId}/targets`);
+            return res.data.data as ResourceTargetsResponse;
         }
     });
 
@@ -107,7 +103,7 @@ export default function SshSettingsPage(props: {
                 resource={resource}
                 updateResource={updateResource}
                 disabled={disabled}
-                bgTargetsResponse={bgTargetsResponse ?? { targets: [] }}
+                targetsResponse={targetsResponse ?? { targets: [] }}
             />
         </SettingsContainer>
     );
@@ -118,20 +114,20 @@ function SshServerForm({
     resource,
     updateResource,
     disabled,
-    bgTargetsResponse
+    targetsResponse
 }: {
     orgId: string;
     resource: GetResourceResponse;
     updateResource: ResourceContextType["updateResource"];
     disabled: boolean;
-    bgTargetsResponse: BgTargetsResponse;
+    targetsResponse: ResourceTargetsResponse;
 }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const router = useRouter();
 
     const isNativeInitially = resource.authDaemonMode === "native";
-    const targets = bgTargetsResponse.targets;
+    const targets = targetsResponse.targets.filter((t) => t.mode === "ssh");
     const firstTarget = targets[0];
     const initialPamMode =
         (resource.pamMode as "passthrough" | "push") || "passthrough";
@@ -192,11 +188,11 @@ function SshServerForm({
                     : null,
             destination: isNativeInitially
                 ? ""
-                : (firstTarget?.destination ?? ""),
+                                : (firstTarget?.ip ?? ""),
             destinationPort: isNativeInitially
                 ? "22"
                 : firstTarget
-                  ? String(firstTarget.destinationPort)
+                                    ? String(firstTarget.port)
                   : "22"
         }
     });
@@ -206,8 +202,8 @@ function SshServerForm({
             isNativeInitially
                 ? []
                 : targets.map((target) => ({
-                      browserGatewayTargetId: target.browserGatewayTargetId,
-                      siteId: target.siteId
+                      targetId: target.targetId,
+                      siteId: target.siteId,
                   }))
     );
 
@@ -215,14 +211,12 @@ function SshServerForm({
         useState<ExistingTarget | null>(() =>
             isNativeInitially && firstTarget
                 ? {
-                      browserGatewayTargetId:
-                          firstTarget.browserGatewayTargetId,
-                      siteId: firstTarget.siteId
+                      targetId: firstTarget.targetId,
+                      siteId: firstTarget.siteId,
                   }
                 : null
         );
     const [nativeSiteOpen, setNativeSiteOpen] = useState(false);
-
     const [, formAction, isSubmitting] = useActionState(save, null);
 
     const pamMode = form.watch("pamMode");
@@ -256,31 +250,37 @@ function SshServerForm({
             });
 
             if (isNative) {
-                if (values.selectedNativeSite) {
+                const nativeSite = values.selectedNativeSite;
+                if (nativeSite) {
                     if (nativeExistingTarget) {
                         await api.post(
-                            `/org/${orgId}/browser-gateway-target/${nativeExistingTarget.browserGatewayTargetId}`,
+                            `/target/${nativeExistingTarget.targetId}`,
                             {
-                                type: "ssh",
-                                destination: "localhost",
-                                destinationPort: 22,
-                                siteId: values.selectedNativeSite.siteId
-                            }
-                        );
-                    } else {
-                        const res = await api.put(
-                            `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
-                            {
-                                siteId: values.selectedNativeSite.siteId,
-                                type: "ssh",
-                                destination: "localhost",
-                                destinationPort: 22
+                                mode: "ssh",
+                                ip: "localhost",
+                                port: 22,
+                                siteId: nativeSite.siteId,
+                                hcEnabled: false
                             }
                         );
                         setNativeExistingTarget({
-                            browserGatewayTargetId:
-                                res.data.data.browserGatewayTargetId,
-                            siteId: values.selectedNativeSite.siteId
+                            ...nativeExistingTarget,
+                            siteId: nativeSite.siteId
+                        });
+                    } else {
+                        const res = await api.put(
+                            `/resource/${resource.resourceId}/target`,
+                            {
+                                siteId: nativeSite.siteId,
+                                mode: "ssh",
+                                ip: "localhost",
+                                port: 22,
+                                hcEnabled: false
+                            }
+                        );
+                        setNativeExistingTarget({
+                            targetId: res.data.data.targetId,
+                            siteId: nativeSite.siteId,
                         });
                     }
                 }
@@ -293,7 +293,6 @@ function SshServerForm({
                     : values.selectedSite
                       ? [values.selectedSite]
                       : [];
-
                 const selectedSiteIds = new Set(
                     activeSites.map((s) => s.siteId)
                 );
@@ -305,11 +304,7 @@ function SshServerForm({
                     (t) => !selectedSiteIds.has(t.siteId)
                 );
                 await Promise.all(
-                    toDelete.map((t) =>
-                        api.delete(
-                            `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`
-                        )
-                    )
+                    toDelete.map((t) => api.delete(`/target/${t.targetId}`))
                 );
 
                 const toUpdate = existingTargets.filter((t) =>
@@ -317,17 +312,13 @@ function SshServerForm({
                 );
                 await Promise.all(
                     toUpdate.map((t) =>
-                        api.post(
-                            `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`,
-                            {
-                                type: "ssh",
-                                destination: values.destination,
-                                destinationPort: Number(
-                                    values.destinationPort
-                                ),
-                                siteId: t.siteId
-                            }
-                        )
+                        api.post(`/target/${t.targetId}`, {
+                            mode: "ssh",
+                            ip: values.destination,
+                            port: Number(values.destinationPort),
+                            siteId: t.siteId,
+                            hcEnabled: false
+                        })
                     )
                 );
 
@@ -336,24 +327,19 @@ function SshServerForm({
                 );
                 const created = await Promise.all(
                     toCreate.map((s) =>
-                        api.put(
-                            `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
-                            {
-                                siteId: s.siteId,
-                                type: "ssh",
-                                destination: values.destination,
-                                destinationPort: Number(
-                                    values.destinationPort
-                                )
-                            }
-                        )
+                        api.put(`/resource/${resource.resourceId}/target`, {
+                            siteId: s.siteId,
+                            mode: "ssh",
+                            ip: values.destination,
+                            port: Number(values.destinationPort),
+                            hcEnabled: false
+                        })
                     )
                 );
 
                 const newTargets: ExistingTarget[] = created.map((res, i) => ({
-                    browserGatewayTargetId:
-                        res.data.data.browserGatewayTargetId,
-                    siteId: toCreate[i].siteId
+                    targetId: res.data.data.targetId,
+                    siteId: toCreate[i].siteId,
                 }));
                 setExistingTargets([...toUpdate, ...newTargets]);
             }

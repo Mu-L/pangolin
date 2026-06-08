@@ -1,6 +1,4 @@
 import {
-    browserGatewayTarget,
-    BrowserGatewayTarget,
     clients,
     clientSiteResourcesAssociationsCache,
     clientSitesAssociationsCache,
@@ -16,7 +14,7 @@ import {
 } from "@server/db";
 import logger from "@server/logger";
 import { initPeerAddHandshake, updatePeer } from "../olm/peers";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import config from "@server/lib/config";
 import { decrypt } from "@server/lib/crypto";
 import {
@@ -211,7 +209,13 @@ export async function buildTargetConfigurationForNewtClient(
         })
         .from(targets)
         .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
-        .where(and(eq(targets.siteId, siteId), eq(targets.enabled, true)));
+        .where(
+            and(
+                eq(targets.siteId, siteId),
+                eq(targets.enabled, true),
+                inArray(targets.mode, ["http", "udp", "tcp"])
+            )
+        );
 
     const allHealthChecks = await db
         .select({
@@ -236,10 +240,27 @@ export async function buildTargetConfigurationForNewtClient(
         .from(targetHealthCheck)
         .where(eq(targetHealthCheck.siteId, siteId));
 
+    // Get all enabled targets with their resource mode information
     const allBrowserGatewayTargets = await db
-        .select()
-        .from(browserGatewayTarget)
-        .where(eq(browserGatewayTarget.siteId, siteId));
+        .select({
+            resourceId: targets.resourceId,
+            targetId: targets.targetId,
+            ip: targets.ip,
+            method: targets.method,
+            port: targets.port,
+            enabled: targets.enabled,
+            mode: resources.mode,
+            authToken: targets.authToken
+        })
+        .from(targets)
+        .innerJoin(resources, eq(targets.resourceId, resources.resourceId))
+        .where(
+            and(
+                eq(targets.siteId, siteId),
+                eq(targets.enabled, true),
+                inArray(targets.mode, ["ssh", "rdp", "vnc"])
+            )
+        );
 
     const { tcpTargets, udpTargets } = allTargets.reduce(
         (acc, target) => {
@@ -315,12 +336,15 @@ export async function buildTargetConfigurationForNewtClient(
 
     const serverSecret = config.getRawConfig().server.secret!;
     const browserGatewayTargets = allBrowserGatewayTargets.map((t) => {
+        if (!t.ip || !t.port || !t.authToken) {
+            return null;
+        }
         const decryptAuthToken = decrypt(t.authToken, serverSecret);
         return {
-            id: t.browserGatewayTargetId,
-            type: t.type,
-            destination: t.destination,
-            destinationPort: t.destinationPort,
+            id: t.targetId,
+            type: t.mode,
+            destination: t.ip,
+            destinationPort: t.port,
             authToken: decryptAuthToken
         };
     });

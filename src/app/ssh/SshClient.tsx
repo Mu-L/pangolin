@@ -32,6 +32,10 @@ import { useTranslations } from "next-intl";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
+import {
+    loadEncryptedLocalStorage,
+    saveEncryptedLocalStorage
+} from "@app/lib/secureLocalStorage";
 
 type AuthTab = "password" | "privateKey";
 
@@ -48,15 +52,11 @@ type ConnectCredentials = {
     certificate?: string;
 };
 
-function loadStoredCredentials(key: string): SshCredentialsForm {
-    try {
-        const saved = localStorage.getItem(key);
-        if (saved) return JSON.parse(saved) as SshCredentialsForm;
-    } catch {
-        // ignore
-    }
-    return { username: "", password: "", privateKey: "" };
-}
+const DEFAULT_SSH_CREDENTIALS: SshCredentialsForm = {
+    username: "",
+    password: "",
+    privateKey: ""
+};
 
 export default function SshClient({
     target,
@@ -86,8 +86,24 @@ export default function SshClient({
     });
 
     const form = useForm<SshCredentialsForm>({
-        defaultValues: loadStoredCredentials(STORAGE_KEY)
+        defaultValues: DEFAULT_SSH_CREDENTIALS
     });
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void loadEncryptedLocalStorage<SshCredentialsForm>(
+            STORAGE_KEY,
+            target?.authToken
+        ).then((saved) => {
+            if (cancelled || !saved) return;
+            form.reset({ ...DEFAULT_SSH_CREDENTIALS, ...saved });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [form, target?.authToken]);
 
     function handleKeyFile(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -252,14 +268,11 @@ export default function SshClient({
                 })
             );
             if (!override) {
-                try {
-                    localStorage.setItem(
-                        STORAGE_KEY,
-                        JSON.stringify(form.getValues())
-                    );
-                } catch {
-                    // ignore
-                }
+                void saveEncryptedLocalStorage(
+                    STORAGE_KEY,
+                    form.getValues(),
+                    target.authToken
+                );
             }
         };
 
@@ -625,7 +638,7 @@ export default function SshClient({
 
             {connected && (
                 <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900">
-                    <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
+                    {/* <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
                         <Button
                             size="sm"
                             variant="destructive"
@@ -633,7 +646,7 @@ export default function SshClient({
                         >
                             {t("sshTerminate")}
                         </Button>
-                    </div>
+                    </div> */}
                     <div
                         ref={terminalRef}
                         className="flex-1 overflow-hidden"

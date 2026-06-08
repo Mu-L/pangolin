@@ -34,6 +34,7 @@ function queryTargets(resourceId: number) {
         .select({
             targetId: targets.targetId,
             ip: targets.ip,
+            mode: targets.mode,
             method: targets.method,
             port: targets.port,
             enabled: targets.enabled,

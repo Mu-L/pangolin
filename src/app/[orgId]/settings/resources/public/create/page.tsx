@@ -591,12 +591,13 @@ export default function Page() {
                     if (isNative) {
                         if (nativeSelectedSite) {
                             await api.put(
-                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                `/resource/${id}/target`,
                                 {
                                     siteId: nativeSelectedSite.siteId,
-                                    type: "ssh",
-                                    destination: "localhost",
-                                    destinationPort: 22
+                                    mode: "ssh",
+                                    ip: "localhost",
+                                    port: 22,
+                                    hcEnabled: false
                                 }
                             );
                         }
@@ -612,14 +613,13 @@ export default function Page() {
                               : [];
                         for (const site of sitesToCreate) {
                             await api.put(
-                                `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                                `/resource/${id}/target`,
                                 {
                                     siteId: site.siteId,
-                                    type: "ssh",
-                                    destination: bgValues.destination,
-                                    destinationPort: Number(
-                                        bgValues.destinationPort
-                                    )
+                                    mode: "ssh",
+                                    ip: bgValues.destination,
+                                    port: Number(bgValues.destinationPort),
+                                    hcEnabled: false
                                 }
                             );
                         }
@@ -632,14 +632,13 @@ export default function Page() {
                     const bgValues = bgTargetForm.getValues();
                     for (const site of bgValues.selectedSites) {
                         await api.put(
-                            `/org/${orgId}/resource/${id}/browser-gateway-target`,
+                            `/resource/${id}/target`,
                             {
                                 siteId: site.siteId,
-                                type: resourceType,
-                                destination: bgValues.destination,
-                                destinationPort: Number(
-                                    bgValues.destinationPort
-                                )
+                                mode: resourceType,
+                                ip: bgValues.destination,
+                                port: Number(bgValues.destinationPort),
+                                hcEnabled: false
                             }
                          );
                     }

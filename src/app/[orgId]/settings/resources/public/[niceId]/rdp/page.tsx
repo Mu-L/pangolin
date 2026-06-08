@@ -32,22 +32,22 @@ import { GetResourceResponse } from "@server/routers/resource";
 import type { ResourceContextType } from "@app/contexts/resourceContext";
 
 type ExistingTarget = {
-    browserGatewayTargetId: number;
+    targetId: number;
     siteId: number;
 };
 
-type BgTarget = {
-    browserGatewayTargetId: number;
+type TargetRow = {
+    targetId: number;
     resourceId: number;
     siteId: number;
     siteName?: string;
-    type: string;
-    destination: string;
-    destinationPort: number;
+    mode: string | null;
+    ip: string;
+    port: number;
 };
 
-type BgTargetsResponse = {
-    targets: BgTarget[];
+type ResourceTargetsResponse = {
+    targets: TargetRow[];
 };
 
 export default function RdpSettingsPage(props: {
@@ -61,13 +61,11 @@ export default function RdpSettingsPage(props: {
         tierMatrix[TierFeature.AdvancedPublicResources]
     );
 
-    const { data: bgTargetsResponse, isLoading: isLoadingTargets } = useQuery({
-        queryKey: ["browserGatewayTargets", resource.resourceId, params.orgId],
+    const { data: targetsResponse, isLoading: isLoadingTargets } = useQuery({
+        queryKey: ["resourceTargets", resource.resourceId, params.orgId, "rdp"],
         queryFn: async () => {
-            const res = await api.get(
-                `/org/${params.orgId}/resource/${resource.resourceId}/browser-gateway-targets`
-            );
-            return res.data.data as BgTargetsResponse;
+            const res = await api.get(`/resource/${resource.resourceId}/targets`);
+            return res.data.data as ResourceTargetsResponse;
         }
     });
 
@@ -85,7 +83,7 @@ export default function RdpSettingsPage(props: {
                 resource={resource}
                 updateResource={updateResource}
                 disabled={disabled}
-                bgTargetsResponse={bgTargetsResponse ?? { targets: [] }}
+                targetsResponse={targetsResponse ?? { targets: [] }}
             />
         </SettingsContainer>
     );
@@ -95,18 +93,18 @@ function RdpServerForm({
     orgId,
     resource,
     disabled,
-    bgTargetsResponse
+    targetsResponse
 }: {
     orgId: string;
     resource: GetResourceResponse;
     updateResource: ResourceContextType["updateResource"];
     disabled: boolean;
-    bgTargetsResponse: BgTargetsResponse;
+    targetsResponse: ResourceTargetsResponse;
 }) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const router = useRouter();
-    const targets = bgTargetsResponse.targets;
+    const targets = targetsResponse.targets.filter((t) => t.mode === "rdp");
     const firstTarget = targets[0];
 
     const formSchema = useMemo(
@@ -122,17 +120,15 @@ function RdpServerForm({
                 name: target.siteName ?? String(target.siteId),
                 type: "newt" as const
             })),
-            destination: firstTarget?.destination ?? "",
-            destinationPort: firstTarget
-                ? String(firstTarget.destinationPort)
-                : "3389"
+            destination: firstTarget?.ip ?? "",
+            destinationPort: firstTarget ? String(firstTarget.port) : "3389"
         }
     });
 
     const [existingTargets, setExistingTargets] = useState<ExistingTarget[]>(
         () =>
             targets.map((target) => ({
-                browserGatewayTargetId: target.browserGatewayTargetId,
+                targetId: target.targetId,
                 siteId: target.siteId
             }))
     );
@@ -155,28 +151,20 @@ function RdpServerForm({
             const toDelete = existingTargets.filter(
                 (t) => !selectedSiteIds.has(t.siteId)
             );
-            await Promise.all(
-                toDelete.map((t) =>
-                    api.delete(
-                        `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`
-                    )
-                )
-            );
+            await Promise.all(toDelete.map((t) => api.delete(`/target/${t.targetId}`)));
 
             const toUpdate = existingTargets.filter((t) =>
                 selectedSiteIds.has(t.siteId)
             );
             await Promise.all(
                 toUpdate.map((t) =>
-                    api.post(
-                        `/org/${orgId}/browser-gateway-target/${t.browserGatewayTargetId}`,
-                        {
-                            type: "rdp",
-                            destination,
-                            destinationPort: Number(destinationPort),
-                            siteId: t.siteId
-                        }
-                    )
+                    api.post(`/target/${t.targetId}`, {
+                        mode: "rdp",
+                        ip: destination,
+                        port: Number(destinationPort),
+                        siteId: t.siteId,
+                        hcEnabled: false
+                    })
                 )
             );
 
@@ -185,20 +173,18 @@ function RdpServerForm({
             );
             const created = await Promise.all(
                 toCreate.map((s) =>
-                    api.put(
-                        `/org/${orgId}/resource/${resource.resourceId}/browser-gateway-target`,
-                        {
-                            siteId: s.siteId,
-                            type: "rdp",
-                            destination,
-                            destinationPort: Number(destinationPort)
-                        }
-                    )
+                    api.put(`/resource/${resource.resourceId}/target`, {
+                        siteId: s.siteId,
+                        mode: "rdp",
+                        ip: destination,
+                        port: Number(destinationPort),
+                        hcEnabled: false
+                    })
                 )
             );
 
             const newTargets: ExistingTarget[] = created.map((res, i) => ({
-                browserGatewayTargetId: res.data.data.browserGatewayTargetId,
+                targetId: res.data.data.targetId,
                 siteId: toCreate[i].siteId
             }));
             setExistingTargets([...toUpdate, ...newTargets]);
