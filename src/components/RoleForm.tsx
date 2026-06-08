@@ -10,6 +10,7 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { Textarea } from "@app/components/ui/textarea";
 import {
     OptionSelect,
     type OptionSelectOption
@@ -46,15 +47,34 @@ function toSshSudoMode(value: string | null | undefined): SshSudoMode {
     return "none";
 }
 
-function hasOnlyAbsoluteSudoCommands(value: string | undefined): boolean {
-    if (!value?.trim()) return true;
+export function parseUnixGroups(value: string | undefined): string[] {
+    if (!value?.trim()) return [];
 
-    const commands = value
-        .split(",")
-        .map((command) => command.trim())
+    return value
+        .split(/[,\s\n]+/)
+        .map((group) => group.trim())
         .filter(Boolean);
+}
 
-    return commands.every((command) => {
+export function parseSudoCommands(value: string | undefined): string[] {
+    if (!value?.trim()) return [];
+
+    const commands: string[] = [];
+    for (const segment of value.split(/[,\n]+/)) {
+        const trimmed = segment.trim();
+        if (!trimmed) continue;
+
+        for (const part of trimmed.split(/ (?=\/)/)) {
+            const command = part.trim();
+            if (command) commands.push(command);
+        }
+    }
+
+    return commands;
+}
+
+function hasOnlyAbsoluteSudoCommands(value: string | undefined): boolean {
+    return parseSudoCommands(value).every((command) => {
         const executable = command.split(/\s+/)[0];
         return executable.startsWith("/");
     });
@@ -125,10 +145,10 @@ export function RoleForm({
                   (role as Role & { allowSsh?: boolean }).allowSsh ?? false,
               sshSudoMode: toSshSudoMode(role.sshSudoMode),
               sshSudoCommands: parseRoleJsonArray(role.sshSudoCommands).join(
-                  ", "
+                  "\n"
               ),
               sshCreateHomeDir: role.sshCreateHomeDir ?? false,
-              sshUnixGroups: parseRoleJsonArray(role.sshUnixGroups).join(", ")
+              sshUnixGroups: parseRoleJsonArray(role.sshUnixGroups).join("\n")
           }
         : {
               name: "",
@@ -156,10 +176,10 @@ export function RoleForm({
                     (role as Role & { allowSsh?: boolean }).allowSsh ?? false,
                 sshSudoMode: toSshSudoMode(role.sshSudoMode),
                 sshSudoCommands: parseRoleJsonArray(role.sshSudoCommands).join(
-                    ", "
+                    "\n"
                 ),
                 sshCreateHomeDir: role.sshCreateHomeDir ?? false,
-                sshUnixGroups: parseRoleJsonArray(role.sshUnixGroups).join(", ")
+                sshUnixGroups: parseRoleJsonArray(role.sshUnixGroups).join("\n")
             });
         }
     }, [variant, role, form]);
@@ -421,9 +441,10 @@ export function RoleForm({
                                                     {t("sshSudoCommands")}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <Input
+                                                    <Textarea
                                                         {...field}
                                                         disabled={sshDisabled}
+                                                        className="h-20 min-h-20"
                                                     />
                                                 </FormControl>
                                                 <FormDescription>
@@ -446,9 +467,10 @@ export function RoleForm({
                                                 {t("sshUnixGroups")}
                                             </FormLabel>
                                             <FormControl>
-                                                <Input
+                                                <Textarea
                                                     {...field}
                                                     disabled={sshDisabled}
+                                                    className="h-20 min-h-20"
                                                 />
                                             </FormControl>
                                             <FormDescription>
