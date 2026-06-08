@@ -15,9 +15,11 @@ import { useTranslations } from "next-intl";
 import { toast } from "@app/hooks/useToast";
 import {
     createPolicyRulesSectionSchema,
+    type PolicyRuleMatchType,
     validatePolicyRulesForSave,
     type PolicyFormValues
 } from ".";
+import { POLICY_RULE_MATCH_TYPES } from "./policy-access-rule-validation";
 
 import { Button } from "@app/components/ui/button";
 import { Plus } from "lucide-react";
@@ -68,6 +70,12 @@ type PolicyAccessRulesSectionCreateProps = {
 export type PolicyAccessRulesSectionProps =
     | PolicyAccessRulesSectionEditProps
     | PolicyAccessRulesSectionCreateProps;
+
+const POLICY_RULE_MATCH_SET = new Set<string>(POLICY_RULE_MATCH_TYPES);
+
+function isPolicyRuleMatchType(value: string): value is PolicyRuleMatchType {
+    return POLICY_RULE_MATCH_SET.has(value);
+}
 
 export function PolicyAccessRulesSection(props: PolicyAccessRulesSectionProps) {
     if (props.mode === "create") {
@@ -270,7 +278,7 @@ function PolicyAccessRulesSectionEdit({
             .map((r) => ({
                 ruleId: r.ruleId,
                 action: r.action as "ACCEPT" | "DROP" | "PASS",
-                match: r.match,
+                match: isPolicyRuleMatchType(r.match) ? r.match : "PATH",
                 value: r.value,
                 priority: r.priority,
                 enabled: r.enabled,

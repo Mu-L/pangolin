@@ -1,7 +1,9 @@
+import type { PolicyRuleMatchType } from "./policy-access-rule-validation";
+
 export type PolicyAccessRule = {
     ruleId: number;
     action: "ACCEPT" | "DROP" | "PASS";
-    match: string;
+    match: PolicyRuleMatchType;
     value: string;
     priority: number;
     enabled: boolean;

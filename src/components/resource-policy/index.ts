@@ -2,6 +2,7 @@
 
 import z from "zod";
 import { POLICY_RULE_MATCH_TYPES } from "./policy-access-rule-validation";
+import type { PolicyRuleMatchType } from "./policy-access-rule-validation";
 
 export const createPolicySchema = z.object({
     name: z.string().min(1).max(255),
@@ -50,7 +51,7 @@ export type PolicyFormValues = z.infer<typeof createPolicySchema>;
 export type LocalRule = {
     ruleId: number;
     action: "ACCEPT" | "DROP" | "PASS";
-    match: string;
+    match: PolicyRuleMatchType;
     value: string;
     priority: number;
     enabled: boolean;
