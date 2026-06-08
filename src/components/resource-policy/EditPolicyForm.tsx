@@ -10,26 +10,27 @@ import { orgQueries } from "@app/lib/queries";
 import { build } from "@server/build";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 
 import { useMemo } from "react";
-import { HorizontalTabs } from "@app/components/HorizontalTabs";
 import { EditPolicyNameSectionForm } from "./EditPolicyNameSectionForm";
 import { PolicyAuthStackSection } from "./PolicyAuthStackSection";
 import { PolicyAccessRulesSection } from "./PolicyAccessRulesSection";
+
+export type EditPolicyFormSection = "general" | "authentication" | "rules";
 
 export type EditPolicyFormProps = {
     hidePolicyNameForm?: boolean;
     readonly?: boolean;
     resourceId?: number;
+    section?: EditPolicyFormSection;
 };
 
 export function EditPolicyForm({
     hidePolicyNameForm,
     readonly,
-    resourceId
+    resourceId,
+    section
 }: EditPolicyFormProps) {
-    const t = useTranslations();
     const { org } = useOrgContext();
     const { env } = useEnvContext();
     const { isPaidUser } = usePaidStatus();
@@ -37,7 +38,6 @@ export function EditPolicyForm({
     // In overlay mode (resourceId provided), policy-level sections are locked.
     // Rules and users/roles sections handle their own hybrid logic via resourceId.
     const isOverlay = resourceId !== undefined;
-    const showTabs = !hidePolicyNameForm && !isOverlay;
 
     const isMaxmindAvailable = !!(
         env.server.maxmind_db_path && env.server.maxmind_db_path.length > 0
@@ -92,22 +92,16 @@ export function EditPolicyForm({
         />
     );
 
-    if (showTabs) {
-        return (
-            <HorizontalTabs
-                clientSide
-                defaultTab={0}
-                items={[
-                    { title: t("general"), href: "#" },
-                    { title: t("authentication"), href: "#" },
-                    { title: t("policyAccessRulesTitle"), href: "#" }
-                ]}
-            >
-                <EditPolicyNameSectionForm readonly={readonly} />
-                {authSection}
-                {rulesSection}
-            </HorizontalTabs>
-        );
+    if (section === "general") {
+        return <EditPolicyNameSectionForm readonly={readonly} />;
+    }
+
+    if (section === "authentication") {
+        return authSection;
+    }
+
+    if (section === "rules") {
+        return rulesSection;
     }
 
     return (

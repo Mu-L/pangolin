@@ -66,23 +66,6 @@ export function PolicyAuthMethodRow({
         >
             <div className="flex flex-1 min-w-0 flex-col gap-0.5">
                 <div className="flex items-center gap-2">
-                    <span
-                        className="shrink-0 flex items-center"
-                        role="img"
-                        aria-label={
-                            active
-                                ? t("policyAuthMethodActive")
-                                : t("policyAuthMethodOff")
-                        }
-                    >
-                        <div
-                            className={
-                                active
-                                    ? "w-2 h-2 bg-green-500 rounded-full"
-                                    : "w-2 h-2 bg-neutral-500 rounded-full"
-                            }
-                        />
-                    </span>
                     <span className="text-sm font-medium">{title}</span>
                 </div>
                 <p className="truncate text-sm text-muted-foreground">

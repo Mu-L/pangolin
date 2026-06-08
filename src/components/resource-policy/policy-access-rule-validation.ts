@@ -12,6 +12,23 @@ type TranslateFn = (
     values?: Record<string, string | number>
 ) => string;
 
+export const POLICY_RULE_MATCH_TYPES = [
+    "CIDR",
+    "IP",
+    "PATH",
+    "COUNTRY",
+    "ASN",
+    "REGION"
+] as const;
+
+export type PolicyRuleMatchType = (typeof POLICY_RULE_MATCH_TYPES)[number];
+
+export function createPolicyRuleMatchSchema(t: TranslateFn) {
+    return z.enum(POLICY_RULE_MATCH_TYPES, {
+        error: t("rulesErrorInvalidMatchTypeDescription")
+    });
+}
+
 export type RuleValidationToast = {
     title: string;
     description: string;
@@ -78,7 +95,7 @@ export function createPolicyRuleSchema(t: TranslateFn) {
     return z
         .object({
             action: z.enum(["ACCEPT", "DROP", "PASS"]),
-            match: z.string(),
+            match: createPolicyRuleMatchSchema(t),
             value: z.string(),
             priority: z.number().int(),
             enabled: z.boolean()

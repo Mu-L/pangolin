@@ -28,7 +28,8 @@ import {
     useMemo,
     useRef,
     useState,
-    useTransition
+    useTransition,
+    type ReactNode
 } from "react";
 import { UseFormReturn, useForm, useWatch } from "react-hook-form";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
@@ -38,11 +39,12 @@ import { resourceQueries } from "@app/lib/queries";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useRouter } from "next/navigation";
-import { CreatePolicyRulesSectionForm } from "./CreatePolicyRulesSectionForm";
 import { PolicyAccessRulesIntro } from "./PolicyAccessRulesIntro";
 import { PolicyAccessRulesTable } from "./PolicyAccessRulesTable";
+import { SharedPolicyResourceNotice } from "./SharedPolicyResourceNotice";
 import {
     createEmptyRule,
+    prependEmptyRule,
     type PolicyAccessRule
 } from "./policy-access-rule-utils";
 
@@ -72,6 +74,143 @@ export function PolicyAccessRulesSection(props: PolicyAccessRulesSectionProps) {
         return <PolicyAccessRulesSectionCreate {...props} />;
     }
     return <PolicyAccessRulesSectionEdit {...props} />;
+}
+
+type PolicyAccessRulesSectionLayoutProps = {
+    rulesEnabled: boolean;
+    onRulesEnabledChange: (enabled: boolean) => void;
+    disableToggle?: boolean;
+    rules: PolicyAccessRule[];
+    onRulesChange: (rules: PolicyAccessRule[]) => void;
+    updateRule: (ruleId: number, data: Partial<PolicyAccessRule>) => void;
+    removeRule: (ruleId: number) => void;
+    readonly?: boolean;
+    isMaxmindAvailable: boolean;
+    isMaxmindAsnAvailable: boolean;
+    resourceOverlayMode?: boolean;
+    footer?: ReactNode;
+};
+
+function PolicyAccessRulesSectionLayout({
+    rulesEnabled,
+    onRulesEnabledChange,
+    disableToggle,
+    rules,
+    onRulesChange,
+    updateRule,
+    removeRule,
+    readonly,
+    isMaxmindAvailable,
+    isMaxmindAsnAvailable,
+    resourceOverlayMode,
+    footer
+}: PolicyAccessRulesSectionLayoutProps) {
+    const t = useTranslations();
+
+    const addEmptyRule = useCallback(() => {
+        if (resourceOverlayMode) {
+            onRulesChange(prependEmptyRule(rules));
+            return;
+        }
+        onRulesChange([...rules, createEmptyRule(rules)]);
+    }, [rules, onRulesChange, resourceOverlayMode]);
+
+    const addRuleButton = (
+        <Button
+            type="button"
+            variant="outline"
+            disabled={readonly}
+            onClick={addEmptyRule}
+        >
+            <Plus className="h-4 w-4 mr-2" />
+            {t("ruleSubmit")}
+        </Button>
+    );
+
+    const hasRules = rules.length > 0;
+
+    return (
+        <SettingsSection>
+            <SettingsSectionHeader>
+                <SettingsSectionTitle>
+                    {t("policyAccessRulesTitle")}
+                </SettingsSectionTitle>
+                <SettingsSectionDescription>
+                    {t("rulesResourceDescription")}
+                </SettingsSectionDescription>
+            </SettingsSectionHeader>
+            <SettingsSectionBody>
+                <div className="space-y-4">
+                    {resourceOverlayMode && (
+                        <SharedPolicyResourceNotice section="rules" />
+                    )}
+                    <PolicyAccessRulesIntro
+                        rulesEnabled={rulesEnabled}
+                        onRulesEnabledChange={onRulesEnabledChange}
+                        disableToggle={disableToggle}
+                    />
+
+                    {rulesEnabled && (
+                        <>
+                            <PolicyAccessRulesTable
+                                rules={rules}
+                                onRulesChange={onRulesChange}
+                                updateRule={updateRule}
+                                removeRule={removeRule}
+                                readonly={readonly}
+                                isMaxmindAvailable={isMaxmindAvailable}
+                                isMaxmindAsnAvailable={isMaxmindAsnAvailable}
+                                includeRegionMatch
+                                markUpdatedOnReorder
+                                resourceOverlayMode={resourceOverlayMode}
+                                emptyStateAction={addRuleButton}
+                            />
+                            {hasRules && addRuleButton}
+                        </>
+                    )}
+                </div>
+            </SettingsSectionBody>
+            {footer}
+        </SettingsSection>
+    );
+}
+
+function usePolicyAccessRulesFormSync(
+    form: UseFormReturn<{
+        applyRules: boolean;
+        rules: PolicyFormValues["rules"];
+    }>
+) {
+    const syncFormRules = useCallback(
+        (updatedRules: PolicyAccessRule[]) => {
+            form.setValue(
+                "rules",
+                updatedRules.map(
+                    ({ action, match, value, priority, enabled }) => ({
+                        action,
+                        match,
+                        value,
+                        priority,
+                        enabled
+                    })
+                )
+            );
+        },
+        [form]
+    );
+
+    const updateRulesState = useCallback(
+        (
+            setRules: React.Dispatch<React.SetStateAction<PolicyAccessRule[]>>,
+            updatedRules: PolicyAccessRule[]
+        ) => {
+            setRules(updatedRules);
+            syncFormRules(updatedRules);
+        },
+        [syncFormRules]
+    );
+
+    return { syncFormRules, updateRulesState };
 }
 
 function PolicyAccessRulesSectionEdit({
@@ -119,6 +258,8 @@ function PolicyAccessRulesSectionEdit({
         policy.rules.map((r) => ({ ...r, fromPolicy: isResourceOverlay }))
     );
 
+    const { updateRulesState } = usePolicyAccessRulesFormSync(form);
+
     useEffect(() => {
         if (!isResourceOverlay || resourceRulesInitialized) return;
         if (!resourceRulesData) return;
@@ -148,29 +289,12 @@ function PolicyAccessRulesSectionEdit({
         policy.rules
     ]);
 
-    const syncFormRules = useCallback(
+    const handleRulesChange = useCallback(
         (updatedRules: PolicyAccessRule[]) => {
-            form.setValue(
-                "rules",
-                updatedRules.map(
-                    ({ action, match, value, priority, enabled }) => ({
-                        action,
-                        match,
-                        value,
-                        priority,
-                        enabled
-                    })
-                )
-            );
+            updateRulesState(setRules, updatedRules);
         },
-        [form]
+        [updateRulesState]
     );
-
-    const addEmptyRule = useCallback(() => {
-        const updatedRules = [...rules, createEmptyRule(rules)];
-        setRules(updatedRules);
-        syncFormRules(updatedRules);
-    }, [rules, syncFormRules]);
 
     const removeRule = useCallback(
         function removeRule(ruleId: number) {
@@ -179,32 +303,22 @@ function PolicyAccessRulesSectionEdit({
             if (isResourceOverlay && !rule.new) {
                 deletedResourceRuleIdsRef.current.add(ruleId);
             }
-            const updatedRules = rules.filter((rule) => rule.ruleId !== ruleId);
-            setRules(updatedRules);
-            syncFormRules(updatedRules);
+            handleRulesChange(rules.filter((rule) => rule.ruleId !== ruleId));
         },
-        [rules, syncFormRules, isResourceOverlay]
+        [rules, handleRulesChange, isResourceOverlay]
     );
 
     const updateRule = useCallback(
         function updateRule(ruleId: number, data: Partial<PolicyAccessRule>) {
-            const updatedRules = rules.map((rule) =>
-                rule.ruleId === ruleId
-                    ? { ...rule, ...data, updated: true }
-                    : rule
+            handleRulesChange(
+                rules.map((rule) =>
+                    rule.ruleId === ruleId
+                        ? { ...rule, ...data, updated: true }
+                        : rule
+                )
             );
-            setRules(updatedRules);
-            syncFormRules(updatedRules);
         },
-        [rules, syncFormRules]
-    );
-
-    const handleRulesChange = useCallback(
-        (updatedRules: PolicyAccessRule[]) => {
-            setRules(updatedRules);
-            syncFormRules(updatedRules);
-        },
-        [syncFormRules]
+        [rules, handleRulesChange]
     );
 
     const [isPending, startTransition] = useTransition();
@@ -213,7 +327,10 @@ function PolicyAccessRulesSectionEdit({
         if (readonly) return;
 
         const applyRules = form.getValues("applyRules") ?? false;
-        const rulesPayload = rules.map(
+        const rulesToValidate = isResourceOverlay
+            ? rules.filter((rule) => !rule.fromPolicy)
+            : rules;
+        const rulesPayload = rulesToValidate.map(
             ({ action, match, value, priority, enabled }) => ({
                 action,
                 match,
@@ -331,80 +448,112 @@ function PolicyAccessRulesSectionEdit({
         }
     }
 
-    const addRuleButton = (
-        <Button
-            type="button"
-            variant="outline"
-            disabled={readonly}
-            onClick={addEmptyRule}
-        >
-            <Plus className="h-4 w-4 mr-2" />
-            {t("ruleSubmit")}
-        </Button>
-    );
-
-    const hasRules = rules.length > 0;
-
     return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>
-                    {t("policyAccessRulesTitle")}
-                </SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {t("rulesResourceDescription")}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-            <SettingsSectionBody>
-                <div className="space-y-6">
-                    <PolicyAccessRulesIntro
-                        rulesEnabled={Boolean(rulesEnabled)}
-                        onRulesEnabledChange={(val) => {
-                            form.setValue("applyRules", val);
-                        }}
-                        disableToggle={readonly || isResourceOverlay}
-                    />
-
-                    {rulesEnabled && (
-                        <>
-                            <PolicyAccessRulesTable
-                                rules={rules}
-                                onRulesChange={handleRulesChange}
-                                updateRule={updateRule}
-                                removeRule={removeRule}
-                                readonly={readonly}
-                                isMaxmindAvailable={isMaxmindAvailable}
-                                isMaxmindAsnAvailable={isMaxmindAsnAvailable}
-                                includeRegionMatch
-                                markUpdatedOnReorder
-                                emptyStateAction={addRuleButton}
-                            />
-                            {hasRules && addRuleButton}
-                        </>
-                    )}
-                </div>
-            </SettingsSectionBody>
-            <SettingsSectionFooter>
-                <Button
-                    onClick={() => startTransition(() => saveRules())}
-                    loading={isPending}
-                    disabled={readonly || isPending}
-                >
-                    {t("saveSettings")}
-                </Button>
-            </SettingsSectionFooter>
-        </SettingsSection>
+        <PolicyAccessRulesSectionLayout
+            rulesEnabled={Boolean(rulesEnabled)}
+            onRulesEnabledChange={(val) => {
+                form.setValue("applyRules", val);
+            }}
+            disableToggle={readonly || isResourceOverlay}
+            rules={rules}
+            onRulesChange={handleRulesChange}
+            updateRule={updateRule}
+            removeRule={removeRule}
+            readonly={readonly}
+            isMaxmindAvailable={isMaxmindAvailable}
+            isMaxmindAsnAvailable={isMaxmindAsnAvailable}
+            resourceOverlayMode={isResourceOverlay}
+            footer={
+                <SettingsSectionFooter>
+                    <Button
+                        onClick={() => startTransition(() => saveRules())}
+                        loading={isPending}
+                        disabled={readonly || isPending}
+                    >
+                        {t("saveSettings")}
+                    </Button>
+                </SettingsSectionFooter>
+            }
+        />
     );
 }
 
 function PolicyAccessRulesSectionCreate({
-    form,
+    form: parentForm,
     isMaxmindAvailable,
     isMaxmindAsnAvailable
 }: PolicyAccessRulesSectionCreateProps) {
+    const t = useTranslations();
+    const [rules, setRules] = useState<PolicyAccessRule[]>([]);
+
+    const rulesFormSchema = useMemo(
+        () => createPolicyRulesSectionSchema(t),
+        [t]
+    );
+
+    const form = useForm({
+        resolver: zodResolver(rulesFormSchema),
+        defaultValues: {
+            applyRules: false,
+            rules: []
+        }
+    });
+
+    useEffect(() => {
+        const subscription = form.watch((values) => {
+            parentForm.setValue("applyRules", values.applyRules as boolean);
+            parentForm.setValue(
+                "rules",
+                values.rules as PolicyFormValues["rules"]
+            );
+        });
+        return () => subscription.unsubscribe();
+    }, [form, parentForm]);
+
+    const rulesEnabled = useWatch({
+        control: form.control,
+        name: "applyRules"
+    });
+
+    const { updateRulesState } = usePolicyAccessRulesFormSync(form);
+
+    const handleRulesChange = useCallback(
+        (updatedRules: PolicyAccessRule[]) => {
+            updateRulesState(setRules, updatedRules);
+        },
+        [updateRulesState]
+    );
+
+    const removeRule = useCallback(
+        function removeRule(ruleId: number) {
+            handleRulesChange(rules.filter((rule) => rule.ruleId !== ruleId));
+        },
+        [rules, handleRulesChange]
+    );
+
+    const updateRule = useCallback(
+        function updateRule(ruleId: number, data: Partial<PolicyAccessRule>) {
+            handleRulesChange(
+                rules.map((rule) =>
+                    rule.ruleId === ruleId
+                        ? { ...rule, ...data, updated: true }
+                        : rule
+                )
+            );
+        },
+        [rules, handleRulesChange]
+    );
+
     return (
-        <CreatePolicyRulesSectionForm
-            form={form}
+        <PolicyAccessRulesSectionLayout
+            rulesEnabled={Boolean(rulesEnabled)}
+            onRulesEnabledChange={(val) => {
+                form.setValue("applyRules", val);
+            }}
+            rules={rules}
+            onRulesChange={handleRulesChange}
+            updateRule={updateRule}
+            removeRule={removeRule}
             isMaxmindAvailable={isMaxmindAvailable}
             isMaxmindAsnAvailable={isMaxmindAsnAvailable}
         />

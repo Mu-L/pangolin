@@ -1,6 +1,7 @@
 // ─── Schemas & types ──────────────────────────────────────────────────────────
 
 import z from "zod";
+import { POLICY_RULE_MATCH_TYPES } from "./policy-access-rule-validation";
 
 export const createPolicySchema = z.object({
     name: z.string().min(1).max(255),
@@ -35,7 +36,7 @@ export const createPolicySchema = z.object({
         .array(
             z.object({
                 action: z.enum(["ACCEPT", "DROP", "PASS"]),
-                match: z.string(),
+                match: z.enum(POLICY_RULE_MATCH_TYPES),
                 value: z.string(),
                 priority: z.number().int(),
                 enabled: z.boolean()
@@ -67,6 +68,7 @@ export {
     type PolicyAccessRule
 } from "./policy-access-rule-utils";
 export {
+    createPolicyRuleMatchSchema,
     createPolicyRulePrioritySchema,
     createPolicyRuleSchema,
     createPolicyRuleValueSchema,
@@ -74,8 +76,10 @@ export {
     createPolicyRulesSectionSchema,
     createPolicySchemaWithI18n,
     getPolicyRuleValidationMessage,
+    POLICY_RULE_MATCH_TYPES,
     validatePolicyRulePriority,
     validatePolicyRuleValue,
     validatePolicyRulesForSave,
+    type PolicyRuleMatchType,
     type RuleValidationToast
 } from "./policy-access-rule-validation";

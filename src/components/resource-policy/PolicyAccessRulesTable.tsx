@@ -66,8 +66,12 @@ import {
     validatePolicyRuleValue
 } from "./policy-access-rule-validation";
 import {
+    buildDisplayPrioritiesForResourceOverlay,
     reorderPolicyRules,
+    reorderResourceOverlayRules,
+    setResourceRuleDisplayPriority,
     sortPolicyRulesByPriority,
+    sortPolicyRulesForResourceOverlay,
     type PolicyAccessRule
 } from "./policy-access-rule-utils";
 
@@ -82,6 +86,7 @@ export type PolicyAccessRulesTableProps = {
     readonly?: boolean;
     includeRegionMatch?: boolean;
     markUpdatedOnReorder?: boolean;
+    resourceOverlayMode?: boolean;
     isRuleDraggable?: (rule: PolicyAccessRule) => boolean;
     isRuleLocked?: (rule: PolicyAccessRule) => boolean;
 };
@@ -97,7 +102,7 @@ function getColumnClassName(columnId: string) {
         return "w-24 max-w-24";
     }
     if (columnId === "action") {
-        return "w-40 max-w-40";
+        return "w-42 max-w-42";
     }
     if (columnId === "match") {
         return "w-36 max-w-36";
@@ -116,6 +121,7 @@ export function PolicyAccessRulesTable({
     readonly = false,
     includeRegionMatch = false,
     markUpdatedOnReorder = false,
+    resourceOverlayMode = false,
     isRuleDraggable: isRuleDraggableProp,
     isRuleLocked: isRuleLockedProp
 }: PolicyAccessRulesTableProps) {
@@ -140,12 +146,37 @@ export function PolicyAccessRulesTable({
     );
 
     const sortedRules = useMemo(
-        () => sortPolicyRulesByPriority(rules),
+        () =>
+            resourceOverlayMode
+                ? sortPolicyRulesForResourceOverlay(rules)
+                : sortPolicyRulesByPriority(rules),
+        [rules, resourceOverlayMode]
+    );
+
+    const displayPriorities = useMemo(
+        () =>
+            resourceOverlayMode
+                ? buildDisplayPrioritiesForResourceOverlay(rules)
+                : null,
+        [rules, resourceOverlayMode]
+    );
+
+    const resourceRuleCount = useMemo(
+        () => rules.filter((rule) => !rule.fromPolicy).length,
         [rules]
     );
 
     const handleReorder = useCallback(
         (fromRuleId: number, toRuleId: number) => {
+            if (resourceOverlayMode) {
+                onRulesChange(
+                    reorderResourceOverlayRules(rules, fromRuleId, toRuleId, {
+                        markUpdated: markUpdatedOnReorder
+                    })
+                );
+                return;
+            }
+
             const fromIndex = sortedRules.findIndex(
                 (rule) => rule.ruleId === fromRuleId
             );
@@ -164,7 +195,13 @@ export function PolicyAccessRulesTable({
             );
             onRulesChange(reordered);
         },
-        [sortedRules, onRulesChange, markUpdatedOnReorder]
+        [
+            rules,
+            sortedRules,
+            onRulesChange,
+            markUpdatedOnReorder,
+            resourceOverlayMode
+        ]
     );
 
     const handleDragStart = useCallback((ruleId: number, e: DragEvent) => {
@@ -228,60 +265,132 @@ export function PolicyAccessRulesTable({
                 maxSize: 96,
                 header: ({ column }) => (
                     <div className="p-3">
-                        <Button
-                            variant="ghost"
-                            className="h-auto p-0 font-medium text-muted-foreground hover:bg-transparent"
-                            onClick={() =>
-                                column.toggleSorting(
-                                    column.getIsSorted() === "asc"
-                                )
-                            }
-                        >
-                            {t("rulesPriority")}
-                            <ArrowUpDown className="ml-1 h-3 w-3" />
-                        </Button>
+                        {resourceOverlayMode ? (
+                            <span className="font-medium text-muted-foreground">
+                                {t("rulesPriority")}
+                            </span>
+                        ) : (
+                            <Button
+                                variant="ghost"
+                                className="h-auto p-0 font-medium text-muted-foreground hover:bg-transparent"
+                                onClick={() =>
+                                    column.toggleSorting(
+                                        column.getIsSorted() === "asc"
+                                    )
+                                }
+                            >
+                                {t("rulesPriority")}
+                                <ArrowUpDown className="ml-1 h-3 w-3" />
+                            </Button>
+                        )}
                     </div>
                 ),
-                cell: ({ row }) => (
-                    <Input
-                        defaultValue={row.original.priority}
-                        className="w-full min-w-0"
-                        type="number"
-                        disabled={readonly || isRuleLocked(row.original)}
-                        onClick={(e) => e.currentTarget.focus()}
-                        onBlur={(e) => {
-                            const validated = validatePolicyRulePriority(
-                                t,
-                                e.target.value
-                            );
-                            if (!validated.success) {
-                                toast({
-                                    variant: "destructive",
-                                    ...validated.toast
+                cell: ({ row }) => {
+                    const displayPriority = resourceOverlayMode
+                        ? (displayPriorities?.get(row.original.ruleId) ??
+                          row.original.priority)
+                        : row.original.priority;
+
+                    return (
+                        <Input
+                            key={`${row.original.ruleId}-${displayPriority}`}
+                            defaultValue={displayPriority}
+                            className="w-full min-w-0"
+                            type="number"
+                            disabled={readonly || isRuleLocked(row.original)}
+                            onClick={(e) => e.currentTarget.focus()}
+                            onBlur={(e) => {
+                                const validated = validatePolicyRulePriority(
+                                    t,
+                                    e.target.value
+                                );
+                                if (!validated.success) {
+                                    toast({
+                                        variant: "destructive",
+                                        ...validated.toast
+                                    });
+                                    return;
+                                }
+
+                                if (resourceOverlayMode) {
+                                    if (
+                                        validated.data > resourceRuleCount ||
+                                        validated.data < 1
+                                    ) {
+                                        toast({
+                                            variant: "destructive",
+                                            title: t(
+                                                "rulesErrorInvalidPriority"
+                                            ),
+                                            description: t(
+                                                "rulesErrorInvalidPriorityDescription"
+                                            )
+                                        });
+                                        return;
+                                    }
+
+                                    const duplicateDisplayPriority = rules.some(
+                                        (rule) =>
+                                            !rule.fromPolicy &&
+                                            rule.ruleId !==
+                                                row.original.ruleId &&
+                                            displayPriorities?.get(
+                                                rule.ruleId
+                                            ) === validated.data
+                                    );
+                                    if (duplicateDisplayPriority) {
+                                        toast({
+                                            variant: "destructive",
+                                            title: t(
+                                                "rulesErrorDuplicatePriority"
+                                            ),
+                                            description: t(
+                                                "rulesErrorDuplicatePriorityDescription"
+                                            )
+                                        });
+                                        return;
+                                    }
+
+                                    if (validated.data === displayPriority) {
+                                        return;
+                                    }
+
+                                    onRulesChange(
+                                        setResourceRuleDisplayPriority(
+                                            rules,
+                                            row.original.ruleId,
+                                            validated.data,
+                                            {
+                                                markUpdated:
+                                                    markUpdatedOnReorder
+                                            }
+                                        )
+                                    );
+                                    return;
+                                }
+
+                                const duplicatePriority = rules.some(
+                                    (rule) =>
+                                        rule.ruleId !== row.original.ruleId &&
+                                        rule.priority === validated.data
+                                );
+                                if (duplicatePriority) {
+                                    toast({
+                                        variant: "destructive",
+                                        title: t("rulesErrorDuplicatePriority"),
+                                        description: t(
+                                            "rulesErrorDuplicatePriorityDescription"
+                                        )
+                                    });
+                                    return;
+                                }
+                                updateRule(row.original.ruleId, {
+                                    priority: validated.data
                                 });
-                                return;
-                            }
-                            const duplicatePriority = rules.some(
-                                (rule) =>
-                                    rule.ruleId !== row.original.ruleId &&
-                                    rule.priority === validated.data
-                            );
-                            if (duplicatePriority) {
-                                toast({
-                                    variant: "destructive",
-                                    title: t("rulesErrorDuplicatePriority"),
-                                    description: t(
-                                        "rulesErrorDuplicatePriorityDescription"
-                                    )
-                                });
-                                return;
-                            }
-                            updateRule(row.original.ruleId, {
-                                priority: validated.data
-                            });
-                        }}
-                    />
-                )
+                            }}
+                        />
+                    );
+                }
             },
             {
                 accessorKey: "action",
@@ -683,13 +792,7 @@ export function PolicyAccessRulesTable({
                 cell: ({ row }) => (
                     <div className="flex items-center justify-end space-x-2">
                         {isRuleLocked(row.original) ? (
-                            <Button
-                                variant="outline"
-                                disabled
-                                className="cursor-not-allowed"
-                            >
-                                <LockIcon className="h-4 w-4" />
-                            </Button>
+                            <LockIcon className="h-4 w-4 text-muted-foreground" />
                         ) : (
                             <Button
                                 variant="outline"
@@ -711,9 +814,14 @@ export function PolicyAccessRulesTable({
             isMaxmindAsnAvailable,
             includeRegionMatch,
             updateRule,
+            onRulesChange,
             removeRule,
             readonly,
             rules,
+            resourceOverlayMode,
+            displayPriorities,
+            resourceRuleCount,
+            markUpdatedOnReorder,
             isRuleDraggable,
             isRuleLocked,
             handleDragStart,
@@ -775,7 +883,8 @@ export function PolicyAccessRulesTable({
                                     e.preventDefault();
                                     if (
                                         draggedRuleId !== null &&
-                                        draggedRuleId !== rule.ruleId
+                                        draggedRuleId !== rule.ruleId &&
+                                        isRuleDraggable(rule)
                                     ) {
                                         handleReorder(
                                             draggedRuleId,
@@ -789,7 +898,7 @@ export function PolicyAccessRulesTable({
                                     draggedRuleId === rule.ruleId &&
                                         "opacity-50",
                                     dragOverRuleId === rule.ruleId &&
-                                        "border-t-2 border-primary"
+                                        "border-t border-primary"
                                 )}
                             >
                                 {row.getVisibleCells().map((cell) => {

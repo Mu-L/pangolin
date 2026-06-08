@@ -1,3 +1,4 @@
+import ResourcePoliciesBanner from "@app/components/ResourcePoliciesBanner";
 import { ResourcePoliciesTable } from "@app/components/ResourcePoliciesTable";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { internal } from "@app/lib/api";
@@ -53,6 +54,8 @@ export default async function ResourcePoliciesPage(
                 title={t("resourcePoliciesTitle")}
                 description={t("resourcePoliciesDescription")}
             />
+
+            <ResourcePoliciesBanner />
 
             <ResourcePoliciesTable
                 policies={policies}
