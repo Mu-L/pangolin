@@ -20,6 +20,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useStoredPageSize } from "@app/hooks/useStoredPageSize";
 import { build } from "@server/build";
 import type { QueryRequestAuditLogResponse } from "@server/routers/auditLogs/types";
+import { ColumnFilterButton } from "@app/components/ColumnFilterButton";
 
 export default function GeneralPage() {
     const router = useRouter();
@@ -284,9 +285,9 @@ export default function GeneralPage() {
     const columns: ColumnDef<any>[] = [
         {
             accessorKey: "timestamp",
-            header: ({ column }) => {
-                return t("timestamp");
-            },
+            header: ({ column }) => (
+                <span className="px-2">{t("timestamp")}</span>
+            ),
             cell: ({ row }) => {
                 return (
                     <div className="whitespace-nowrap">
@@ -299,22 +300,21 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "action",
-            header: ({ column }) => {
+            header: () => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("action")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "true", label: "Allowed" },
                                 { value: "false", label: "Denied" }
                             ]}
+                            label={t("action")}
                             selectedValue={filters.action}
                             onValueChange={(value) =>
                                 handleFilterChange("action", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -329,17 +329,14 @@ export default function GeneralPage() {
         },
         {
             accessorKey: "ip",
-            header: ({ column }) => {
-                return t("ip");
-            }
+            header: ({ column }) => <span className="px-2">{t("ip")}</span>
         },
         {
             accessorKey: "location",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("location")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.locations.map(
                                 (location) => ({
                                     value: location,
@@ -351,8 +348,9 @@ export default function GeneralPage() {
                                 handleFilterChange("location", value)
                             }
                             // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("location")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -377,9 +375,8 @@ export default function GeneralPage() {
             accessorKey: "resourceName",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("resource")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.resources.map((res) => ({
                                 value: res.id.toString(),
                                 label: res.name || "Unnamed Resource"
@@ -388,9 +385,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("resourceId", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("resource")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -417,9 +414,8 @@ export default function GeneralPage() {
             accessorKey: "host",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("host")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.hosts.map((host) => ({
                                 value: host,
                                 label: host
@@ -428,9 +424,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("host", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("host")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -452,9 +448,8 @@ export default function GeneralPage() {
             accessorKey: "path",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("path")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.paths.map((path) => ({
                                 value: path,
                                 label: path
@@ -463,9 +458,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("path", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("path")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -482,9 +477,8 @@ export default function GeneralPage() {
             accessorKey: "method",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("method")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "GET", label: "GET" },
                                 { value: "POST", label: "POST" },
@@ -498,9 +492,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("method", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("method")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -510,9 +504,8 @@ export default function GeneralPage() {
             accessorKey: "reason",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("reason")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={[
                                 { value: "100", label: t("allowedByRule") },
                                 { value: "101", label: t("allowedNoAuth") },
@@ -537,9 +530,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("reason", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("reason")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
@@ -556,9 +549,8 @@ export default function GeneralPage() {
             accessorKey: "actor",
             header: ({ column }) => {
                 return (
-                    <div className="flex items-center gap-2">
-                        <span>{t("actor")}</span>
-                        <ColumnFilter
+                    <div className="flex items-center gap-2 px-2">
+                        <ColumnFilterButton
                             options={filterAttributes.actors.map((actor) => ({
                                 value: actor,
                                 label: actor
@@ -567,9 +559,9 @@ export default function GeneralPage() {
                             onValueChange={(value) =>
                                 handleFilterChange("actor", value)
                             }
-                            // placeholder=""
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found"
+                            label={t("actor")}
+                            searchPlaceholder={t("searchPlaceholder")}
+                            emptyMessage={t("emptySearchOptions")}
                         />
                     </div>
                 );
