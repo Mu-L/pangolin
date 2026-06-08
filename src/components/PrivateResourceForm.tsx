@@ -570,7 +570,7 @@ export function PrivateResourceForm({
                   mode: "host",
                   destination: "",
                   alias: null,
-                  destinationPort: 22,
+                  destinationPort: null,
                   scheme: "http",
                   ssl: true,
                   httpConfigSubdomain: null,
@@ -1038,9 +1038,35 @@ export function PrivateResourceForm({
                                                                 modeOptions
                                                             }
                                                             value={field.value}
-                                                            onChange={
-                                                                field.onChange
-                                                            }
+                                                            onChange={(
+                                                                newMode
+                                                            ) => {
+                                                                field.onChange(
+                                                                    newMode
+                                                                );
+                                                                if (
+                                                                    newMode ===
+                                                                    "ssh"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        22
+                                                                    );
+                                                                } else if (
+                                                                    newMode ===
+                                                                    "http"
+                                                                ) {
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        443
+                                                                    );
+                                                                } else {
+                                                                    form.setValue(
+                                                                        "destinationPort",
+                                                                        null
+                                                                    );
+                                                                }
+                                                            }}
                                                             cols={2}
                                                         />
                                                         <FormMessage />
