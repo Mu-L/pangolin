@@ -142,6 +142,7 @@ const createSiteResourceSchema = z
                         data.destinationPort <= 65535)
                 );
             }
+            return true;
         },
         {
             message:

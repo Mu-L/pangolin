@@ -14,7 +14,7 @@ export type GetMaintenanceInfoResponse = {
 
 export type AttachedResource = Pick<
     Resource,
-    "resourceId" | "name" | "fullDomain"
+    "resourceId" | "niceId" | "name" | "fullDomain"
 >;
 
 export type ResourcePolicyWithResources = Pick<

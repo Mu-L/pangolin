@@ -268,8 +268,37 @@ export const PublicResourceSchema = z
                 return true;
             }
 
-            // If protocol/mode is http, it must have a full-domain
-            if ((resource.mode ?? resource.protocol) === "http") {
+            const effectiveProtocol = resource.mode ?? resource.protocol;
+            if (effectiveProtocol !== "ssh") {
+                return true;
+            }
+
+            const authDaemonMode = resource["auth-daemon"]?.mode;
+            if (authDaemonMode !== "native" && authDaemonMode !== "site") {
+                return true;
+            }
+
+            return (
+                resource.targets.filter((target) => target != null).length <= 1
+            );
+        },
+        {
+            path: ["targets"],
+            error: "When protocol is 'ssh' and auth-daemon mode is 'native' or 'site', only one target/site is allowed"
+        }
+    )
+    .refine(
+        (resource) => {
+            if (isTargetsOnlyResource(resource)) {
+                return true;
+            }
+
+            // If protocol/mode is http, ssh, rdp, or vnc, it must have a full-domain
+            const effectiveProtocol = resource.mode ?? resource.protocol;
+            if (
+                effectiveProtocol !== undefined &&
+                ["http", "ssh", "rdp", "vnc"].includes(effectiveProtocol)
+            ) {
                 return (
                     resource["full-domain"] !== undefined &&
                     resource["full-domain"].length > 0
@@ -279,7 +308,7 @@ export const PublicResourceSchema = z
         },
         {
             path: ["full-domain"],
-            error: "When protocol is 'http', a 'full-domain' must be provided"
+            error: "When protocol is 'http', 'ssh', 'rdp', or 'vnc', a 'full-domain' must be provided"
         }
     )
     .refine(
@@ -506,7 +535,44 @@ export const PrivateResourceSchema = z
         {
             message: "Destination must be a valid CIDR notation for cidr mode"
         }
-    );
+    )
+    .refine(
+        (data) => {
+            if (data.mode !== "ssh") {
+                return true;
+            }
+
+            const authDaemonMode = data["auth-daemon"]?.mode;
+            if (authDaemonMode !== "native" && authDaemonMode !== "site") {
+                return true;
+            }
+
+            const uniqueSites = new Set<string>();
+            if (data.site) {
+                uniqueSites.add(data.site);
+            }
+            for (const site of data.sites) {
+                uniqueSites.add(site);
+            }
+
+            return uniqueSites.size <= 1;
+        },
+        {
+            path: ["sites"],
+            message:
+                "When mode is 'ssh' and auth-daemon mode is 'native' or 'site', only one site/target is allowed"
+        }
+    )
+    .transform((data) => {
+        if (
+            data.mode === "ssh" &&
+            data.destination !== undefined &&
+            data["destination-port"] === undefined
+        ) {
+            data["destination-port"] = 22;
+        }
+        return data;
+    });
 
 export const ResourcePolicyRuleSchema = RuleSchema;
 
@@ -573,7 +639,7 @@ export const ConfigSchema = z
             .record(z.string(), PrivateResourceSchema)
             .optional()
             .prefault({}),
-        "resource-policies": z
+        "public-policies": z
             .record(z.string(), ResourcePolicySchema)
             .optional()
             .prefault({}),
@@ -607,7 +673,7 @@ export const ConfigSchema = z
                 string,
                 z.infer<typeof PrivateResourceSchema>
             >;
-            "resource-policies": Record<
+            "public-policies": Record<
                 string,
                 z.infer<typeof ResourcePolicySchema>
             >;

@@ -11,9 +11,4 @@
  * This file is not licensed under the AGPLv3.
  */
 
-export * from "./createBrowserGatewayTarget";
-export * from "./updateBrowserGatewayTarget";
-export * from "./deleteBrowserGatewayTarget";
-export * from "./getBrowserGatewayTarget";
-export * from "./listBrowserGatewayTargets";
 export * from "./getBrowserTarget";

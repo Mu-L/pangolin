@@ -19,7 +19,11 @@ import { build } from "@server/build";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { type PolicyFormValues, createPolicySchema } from ".";
+import {
+    type PolicyFormValues,
+    createPolicySchema,
+    createPolicySchemaWithI18n
+} from ".";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { orgs, type ResourcePolicy } from "@server/db";
@@ -37,10 +41,8 @@ import {
 import { Input } from "@app/components/ui/input";
 import { useMemo, useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { CreatePolicyUsersRolesSectionForm } from "./CreatePolicyUserRolesSectionForm";
-import { CreatePolicyAuthMethodsSectionForm } from "./CreatePolicyAuthMethodsSectionForm";
-import { CreatePolicyOtpEmailSectionForm } from "./CreatePolicyOtpEmailSectionForm";
-import { CreatePolicyRulesSectionForm } from "./CreatePolicyRulesSectionForm";
+import { PolicyAuthStackSection } from "./PolicyAuthStackSection";
+import { PolicyAccessRulesSection } from "./PolicyAccessRulesSection";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { tierMatrix, TierFeature } from "@server/lib/billing/tierMatrix";
 
@@ -78,8 +80,13 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
         })
     );
 
+    const policySchema = useMemo(
+        () => createPolicySchemaWithI18n(t, createPolicySchema),
+        [t]
+    );
+
     const form = useForm<PolicyFormValues>({
-        resolver: zodResolver(createPolicySchema) as any,
+        resolver: zodResolver(policySchema) as any,
         defaultValues: {
             name: "",
             sso: true,
@@ -140,7 +147,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
             if (res && res.status === 201) {
                 const niceId = res.data.data.niceId;
                 router.push(
-                    `/${org.org.orgId}/settings/policies/resource/${niceId}`
+                    `/${org.org.orgId}/settings/policies/resources/public/${niceId}/general`
                 );
                 toast({
                     title: t("success"),
@@ -220,7 +227,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                                 </SettingsSectionDescription>
                             </SettingsSectionHeader>
                             <SettingsSectionBody>
-                                <SettingsSectionForm>
+                                <SettingsSectionForm variant="half">
                                     <FormField
                                         control={form.control}
                                         name="name"
@@ -230,12 +237,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                                                     {t("name")}
                                                 </FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        placeholder={t(
-                                                            "resourcePolicyNamePlaceholder"
-                                                        )}
-                                                    />
+                                                    <Input {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -245,18 +247,17 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                             </SettingsSectionBody>
                         </SettingsSection>
 
-                        <CreatePolicyUsersRolesSectionForm
+                        <PolicyAuthStackSection
+                            mode="create"
                             form={form}
+                            orgId={org.org.orgId}
+                            allIdps={allIdps}
                             allRoles={allRoles}
                             allUsers={allUsers}
-                            allIdps={allIdps}
-                        />
-                        <CreatePolicyAuthMethodsSectionForm form={form} />
-                        <CreatePolicyOtpEmailSectionForm
-                            form={form}
                             emailEnabled={env.email.emailEnabled}
                         />
-                        <CreatePolicyRulesSectionForm
+                        <PolicyAccessRulesSection
+                            mode="create"
                             form={form}
                             isMaxmindAvailable={isMaxmindAvailable}
                             isMaxmindAsnAvailable={isMaxmindAsnAvailable}

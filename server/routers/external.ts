@@ -666,6 +666,13 @@ authenticated.get(
     resource.getResourcePolicies
 );
 
+authenticated.get(
+    "/resource-policy/:resourcePolicyId",
+    verifyResourcePolicyAccess,
+    verifyUserHasAction(ActionsEnum.getResourcePolicy),
+    policy.getResourcePolicy
+);
+
 authenticated.put(
     "/resource-policy/:resourcePolicyId",
     verifyResourcePolicyAccess,

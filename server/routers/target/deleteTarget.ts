@@ -11,6 +11,7 @@ import { fromError } from "zod-validation-error";
 import { removeTargets } from "../newt/targets";
 import { OpenAPITags, registry } from "@server/openApi";
 import { targetHealthCheck } from "@server/db";
+import { removeBrowserGatewayTarget } from "@server/routers/newt/targets";
 
 const deleteTargetSchema = z.strictObject({
     targetId: z.coerce.number().int().positive()
@@ -136,14 +137,22 @@ export async function deleteTarget(
                     .where(eq(newts.siteId, site.siteId))
                     .limit(1);
 
-                await removeTargets(
-                    newt.newtId,
-                    // [deletedTarget],
-                    [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
-                    [deletedHealthCheck],
-                    resource.mode === "udp" ? "udp" : "tcp",
-                    newt.version
-                );
+                if (["http", "tcp", "udp"].includes(deletedTarget.mode)) {
+                    await removeTargets(
+                        newt.newtId,
+                        // [deletedTarget],
+                        [], // deleting the target from newt causes issues because we cant unbind the port. this needs to be fixed in newt before we can do this
+                        [deletedHealthCheck],
+                        resource.mode === "udp" ? "udp" : "tcp",
+                        newt.version
+                    );
+                } else if (["ssh", "rdp", "vnc"].includes(deletedTarget.mode)) {
+                    await removeBrowserGatewayTarget(
+                        newt.newtId,
+                        deletedTarget.targetId,
+                        newt.version
+                    );
+                }
             }
         }
 

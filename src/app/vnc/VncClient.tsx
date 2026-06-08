@@ -26,21 +26,20 @@ import {
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
+import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
 import { useTranslations } from "next-intl";
+import {
+    loadEncryptedLocalStorage,
+    saveEncryptedLocalStorage
+} from "@app/lib/secureLocalStorage";
 
 type VncCredentialsForm = {
     password: string;
 };
 
-function loadStoredCredentials(key: string): VncCredentialsForm {
-    try {
-        const saved = localStorage.getItem(key);
-        if (saved) return JSON.parse(saved) as VncCredentialsForm;
-    } catch {
-        // ignore
-    }
-    return { password: "" };
-}
+const DEFAULT_VNC_CREDENTIALS: VncCredentialsForm = {
+    password: ""
+};
 
 export default function VncClient({
     target,
@@ -61,8 +60,24 @@ export default function VncClient({
 
     const form = useForm<VncCredentialsForm>({
         resolver: zodResolver(formSchema),
-        defaultValues: loadStoredCredentials(STORAGE_KEY)
+        defaultValues: DEFAULT_VNC_CREDENTIALS
     });
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void loadEncryptedLocalStorage<VncCredentialsForm>(
+            STORAGE_KEY,
+            target?.authToken
+        ).then((saved) => {
+            if (cancelled || !saved) return;
+            form.reset({ ...DEFAULT_VNC_CREDENTIALS, ...saved });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [form, target?.authToken]);
 
     const [connected, setConnected] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
@@ -131,11 +146,11 @@ export default function VncClient({
         rfb.resizeSession = true;
 
         rfb.addEventListener("connect", () => {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
-            } catch {
-                // ignore
-            }
+            void saveEncryptedLocalStorage(
+                STORAGE_KEY,
+                values,
+                target.authToken
+            );
             setConnected(true);
         });
 
@@ -242,6 +257,7 @@ export default function VncClient({
                             </Form>
                         </CardContent>
                     </Card>
+                    <AuthPageFooterNotices />
                 </BrandedAuthSurface>
             )}
 

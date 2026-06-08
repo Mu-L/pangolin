@@ -33,9 +33,8 @@ import {
 import { getUniqueResourcePolicyName } from "@server/db/names";
 import response from "@server/lib/response";
 import {
-    isValidCIDR,
-    isValidIP,
-    isValidUrlGlobPattern
+    getResourceRuleValueValidationError,
+    RESOURCE_RULE_MATCH_TYPES
 } from "@server/lib/validators";
 import logger from "@server/logger";
 import { OpenAPITags, registry } from "@server/openApi";
@@ -56,9 +55,9 @@ const ruleSchema = z.strictObject({
         enum: ["ACCEPT", "DROP", "PASS"],
         description: "rule action"
     }),
-    match: z.enum(["CIDR", "IP", "PATH"]).openapi({
+    match: z.enum(RESOURCE_RULE_MATCH_TYPES).openapi({
         type: "string",
-        enum: ["CIDR", "IP", "PATH"],
+        enum: [...RESOURCE_RULE_MATCH_TYPES],
         description: "rule match"
     }),
     value: z.string().min(1),
@@ -261,26 +260,13 @@ export async function createResourcePolicy(
         const niceId = await getUniqueResourcePolicyName(orgId);
 
         for (const rule of rules) {
-            if (rule.match === "CIDR" && !isValidCIDR(rule.value)) {
+            const validationError = getResourceRuleValueValidationError(
+                rule.match,
+                rule.value
+            );
+            if (validationError) {
                 return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Invalid CIDR provided"
-                    )
-                );
-            } else if (rule.match === "IP" && !isValidIP(rule.value)) {
-                return next(
-                    createHttpError(HttpCode.BAD_REQUEST, "Invalid IP provided")
-                );
-            } else if (
-                rule.match === "PATH" &&
-                !isValidUrlGlobPattern(rule.value)
-            ) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        "Invalid URL glob pattern provided"
-                    )
+                    createHttpError(HttpCode.BAD_REQUEST, validationError)
                 );
             }
         }

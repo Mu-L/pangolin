@@ -1,22 +1,21 @@
 "use client";
 
-import React from "react";
 import { Globe } from "lucide-react";
 import { useTranslations } from "next-intl";
 import DismissableBanner from "./DismissableBanner";
 
-export const ProxyResourcesBanner = () => {
+export const PublicResourcesBanner = () => {
     const t = useTranslations();
 
     return (
         <DismissableBanner
             storageKey="proxy-resources-banner-dismissed"
             version={1}
-            title={t("proxyResourcesBannerTitle")}
+            title={t("publicResourcesBannerTitle")}
             titleIcon={<Globe className="w-5 h-5 text-primary" />}
-            description={t("proxyResourcesBannerDescription")}
+            description={t("publicResourcesBannerDescription")}
         />
     );
 };
 
-export default ProxyResourcesBanner;
+export default PublicResourcesBanner;

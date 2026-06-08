@@ -157,7 +157,7 @@ export function LabelsSelector({
                                 />
 
                                 <Select defaultValue={randomColor} name="color">
-                                    <SelectTrigger className="w-18 [&_[data-name]]:hidden [&_[svg]]:hidden!">
+                                    <SelectTrigger className="w-auto min-w-24">
                                         <SelectValue
                                             placeholder={t("selectColor")}
                                         />

@@ -11,6 +11,7 @@ import {
 } from "@app/components/Settings";
 
 import { useEnvContext } from "@app/hooks/useEnvContext";
+import { useOrgContext } from "@app/hooks/useOrgContext";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -40,21 +41,28 @@ import { useForm } from "react-hook-form";
 
 // ─── PolicyNameSection ──────────────────────────────────────────────────
 
-export function EditPolicyNameSectionForm({ readonly }: { readonly?: boolean }) {
+const PolicyNameFormSchema = z.object({
+    name: z.string(),
+    niceId: z.string().min(1).max(255).optional()
+});
+
+export function EditPolicyNameSectionForm({
+    readonly
+}: {
+    readonly?: boolean;
+}) {
     const t = useTranslations();
     const api = createApiClient(useEnvContext());
     const router = useRouter();
+    const { org } = useOrgContext();
 
-    const { policy } = useResourcePolicyContext();
+    const { policy, updatePolicy } = useResourcePolicyContext();
 
     const form = useForm({
-        resolver: zodResolver(
-            z.object({
-                name: z.string()
-            })
-        ),
+        resolver: zodResolver(PolicyNameFormSchema),
         defaultValues: {
-            name: policy.name
+            name: policy.name,
+            niceId: policy.niceId || ""
         }
     });
 
@@ -73,7 +81,8 @@ export function EditPolicyNameSectionForm({ readonly }: { readonly?: boolean }) 
                 .put<AxiosResponse<ResourcePolicy>>(
                     `/resource-policy/${policy.resourcePolicyId}`,
                     {
-                        name: payload.name
+                        name: payload.name,
+                        niceId: payload.niceId
                     }
                 )
                 .catch((e) => {
@@ -88,10 +97,22 @@ export function EditPolicyNameSectionForm({ readonly }: { readonly?: boolean }) 
                 });
 
             if (res && res.status === 200) {
+                updatePolicy({
+                    name: payload.name,
+                    niceId: payload.niceId
+                });
+
                 toast({
                     title: t("success"),
                     description: t("policyUpdatedSuccess")
                 });
+
+                if (payload.niceId && payload.niceId !== policy.niceId) {
+                    router.replace(
+                        `/${org.org.orgId}/settings/policies/resources/public/${payload.niceId}/general`
+                    );
+                }
+
                 router.refresh();
             }
         } catch (e) {
@@ -116,7 +137,7 @@ export function EditPolicyNameSectionForm({ readonly }: { readonly?: boolean }) 
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <SettingsSectionForm>
+                        <SettingsSectionForm variant="half">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -130,6 +151,26 @@ export function EditPolicyNameSectionForm({ readonly }: { readonly?: boolean }) 
                                                 placeholder={t(
                                                     "resourcePolicyNamePlaceholder"
                                                 )}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="niceId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t("identifier")}</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                disabled={readonly}
+                                                placeholder={t(
+                                                    "enterIdentifier"
+                                                )}
+                                                className="flex-1"
                                             />
                                         </FormControl>
                                         <FormMessage />

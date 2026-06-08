@@ -408,12 +408,7 @@ export function HealthCheckCredenza(props: HealthCheckCredenzaProps) {
               ? t("standaloneHcEditTitle")
               : t("standaloneHcCreateTitle");
 
-    const description =
-        mode === "autoSave"
-            ? t("configureHealthCheckDescription", {
-                  target: (props as any).targetAddress
-              })
-            : t("standaloneHcDescription");
+    const description = t("configureHealthCheckDescription");
 
     const disableTabInputs = mode === "autoSave" && !watchedEnabled;
     const isSnmpOrIcmp = watchedMode === "snmp" || watchedMode === "icmp";

@@ -105,7 +105,7 @@ export type ClientResourcesResults = {
     oldSites: { siteId: number }[];
 }[];
 
-export async function updateClientResources(
+export async function updatePrivateResources(
     orgId: string,
     config: Config,
     trx: Transaction,

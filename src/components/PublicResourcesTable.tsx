@@ -127,7 +127,7 @@ const booleanSearchFilterSchema = z
     .optional()
     .catch(undefined);
 
-export default function ProxyResourcesTable({
+export default function PublicResourcesTable({
     resources,
     orgId,
     pagination,

@@ -12,7 +12,6 @@ import {
     userSites,
     labels,
     siteLabels,
-    browserGatewayTarget,
     type Label
 } from "@server/db";
 import cache from "#dynamic/lib/cache";
@@ -241,10 +240,6 @@ function querySitesBase() {
                     ON ${siteResources.networkId} = ${siteNetworks.networkId}
                 WHERE ${siteNetworks.siteId} = ${sites.siteId}
                     AND ${siteResources.orgId} = ${sites.orgId}
-            ) + (
-                SELECT COUNT(DISTINCT ${browserGatewayTarget.resourceId})
-                FROM ${browserGatewayTarget}
-                WHERE ${browserGatewayTarget.siteId} = ${sites.siteId}
             )`,
             status: sites.status
         })

@@ -70,7 +70,7 @@ export function SettingsSubsectionHeader({
     children: React.ReactNode;
     className?: string;
 }) {
-    return <div className={cn("space-y-0.5", className)}>{children}</div>;
+    return <div className={cn("py-3 space-y-0.5", className)}>{children}</div>;
 }
 
 export function SettingsSubsectionTitle({
@@ -80,9 +80,7 @@ export function SettingsSubsectionTitle({
     children: React.ReactNode;
     className?: string;
 }) {
-    return (
-        <h3 className={cn("text-sm font-semibold", className)}>{children}</h3>
-    );
+    return <h3 className={cn("font-semibold", className)}>{children}</h3>;
 }
 
 export function SettingsSubsectionDescription({
