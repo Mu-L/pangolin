@@ -80,6 +80,7 @@ export default function VncClient({
     }, [form, target?.authToken]);
 
     const [connected, setConnected] = useState(false);
+    const [connecting, setConnecting] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
     const rfbRef = useRef<any>(null);
     const screenRef = useRef<HTMLDivElement>(null);
@@ -89,6 +90,7 @@ export default function VncClient({
             rfbRef.current.disconnect();
             rfbRef.current = null;
         }
+        setConnecting(false);
         setConnected(false);
     };
 
@@ -97,12 +99,19 @@ export default function VncClient({
     }, []);
 
     const connect = async (values: VncCredentialsForm) => {
+        setConnecting(true);
+
         if (!target) {
             setConnectError(t("vncNoResourceTarget"));
+            setConnecting(false);
             return;
         }
 
-        if (!screenRef.current) return;
+        if (!screenRef.current) {
+            setConnectError(t("sshErrorConnectionClosed"));
+            setConnecting(false);
+            return;
+        }
 
         disconnect();
 
@@ -116,6 +125,8 @@ export default function VncClient({
             const mod = await import("@novnc/novnc");
             RFB = mod.default ?? mod;
         } catch (err) {
+            setConnecting(false);
+            setConnectError(t("sshErrorWebSocket"));
             toast({
                 variant: "destructive",
                 title: t("vncFailedToLoadNovnc"),
@@ -140,7 +151,16 @@ export default function VncClient({
             options.credentials = { password: values.password };
         }
 
-        const rfb: any = new RFB(screenRef.current, wsUrl, options);
+        let rfb: any;
+        try {
+            rfb = new RFB(screenRef.current, wsUrl, options);
+        } catch {
+            setConnecting(false);
+            setConnectError(t("sshErrorWebSocket"));
+            return;
+        }
+
+        let authConfirmed = false;
 
         rfb.scaleViewport = true;
         rfb.resizeSession = true;
@@ -151,6 +171,8 @@ export default function VncClient({
                 values,
                 target.authToken
             );
+            authConfirmed = true;
+            setConnecting(false);
             setConnected(true);
         });
 
@@ -158,7 +180,11 @@ export default function VncClient({
             "disconnect",
             (e: { detail: { clean: boolean } }) => {
                 rfbRef.current = null;
+                setConnecting(false);
                 setConnected(false);
+                if (!authConfirmed && !e.detail.clean) {
+                    setConnectError(t("sshErrorConnectionClosed"));
+                }
             }
         );
 
@@ -243,7 +269,12 @@ export default function VncClient({
                                             </FormItem>
                                         )}
                                     />
-                                    <Button type="submit" className="w-full">
+                                    <Button
+                                        type="submit"
+                                        className="w-full"
+                                        loading={connecting}
+                                        disabled={connecting}
+                                    >
                                         {t("browserGatewayConnect")}
                                     </Button>
                                     {connectError && (
