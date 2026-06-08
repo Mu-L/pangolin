@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from "@app/components/ui/alert";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
+import CollapsibleSessionToolbar from "@app/components/CollapsibleSessionToolbar";
 import { useTranslations } from "next-intl";
 import {
     loadEncryptedLocalStorage,
@@ -296,7 +297,7 @@ export default function VncClient({
                 className="fixed inset-0 z-50 flex flex-col bg-neutral-900"
                 style={{ display: connected ? "flex" : "none" }}
             >
-                <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
+                <CollapsibleSessionToolbar>
                     <Button
                         size="sm"
                         variant="secondary"
@@ -329,7 +330,7 @@ export default function VncClient({
                     >
                         {t("sshTerminate")}
                     </Button>
-                </div>
+                </CollapsibleSessionToolbar>
 
                 <div
                     ref={screenRef}

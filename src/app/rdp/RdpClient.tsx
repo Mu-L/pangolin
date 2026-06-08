@@ -36,6 +36,7 @@ import { Alert, AlertDescription } from "@app/components/ui/alert";
 import BrandedAuthSurface from "@app/components/BrandedAuthSurface";
 import PoweredByPangolin from "@app/components/PoweredByPangolin";
 import AuthPageFooterNotices from "@app/components/AuthPageFooterNotices";
+import CollapsibleSessionToolbar from "@app/components/CollapsibleSessionToolbar";
 import { useTranslations } from "next-intl";
 import {
     loadEncryptedLocalStorage,
@@ -464,34 +465,16 @@ export default function RdpClient({
                 className="fixed inset-0 z-50 flex flex-col bg-neutral-900"
                 style={{ display: showLogin ? "none" : "flex" }}
             >
-                <div className="flex flex-wrap items-center gap-2 bg-black p-2 text-white">
+                <CollapsibleSessionToolbar>
                     <Button
                         size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.setScale(1)}
+                        variant="destructive"
+                        onClick={() => {
+                            ui()?.shutdown();
+                            setShowLogin(true);
+                        }}
                     >
-                        {t("rdpFit")}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.setScale(2)}
-                    >
-                        {t("rdpFull")}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.setScale(3)}
-                    >
-                        {t("rdpReal")}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.ctrlAltDel()}
-                    >
-                        {t("browserGatewayCtrlAltDel")}
+                        {t("sshTerminate")}
                     </Button>
                     <Button
                         size="sm"
@@ -500,13 +483,6 @@ export default function RdpClient({
                     >
                         {t("rdpMeta")}
                     </Button>
-                    {/* <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={toggleCursorKind}
-                    >
-                        Toggle cursor
-                    </Button> */}
                     <Button
                         size="sm"
                         variant="secondary"
@@ -539,14 +515,39 @@ export default function RdpClient({
                     </Button>
                     <Button
                         size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                            ui()?.shutdown();
-                            setShowLogin(true);
-                        }}
+                        variant="secondary"
+                        onClick={() => ui()?.setScale(1)}
                     >
-                        {t("sshTerminate")}
+                        {t("rdpFit")}
                     </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => ui()?.setScale(2)}
+                    >
+                        {t("rdpFull")}
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => ui()?.setScale(3)}
+                    >
+                        {t("rdpReal")}
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => ui()?.ctrlAltDel()}
+                    >
+                        {t("browserGatewayCtrlAltDel")}
+                    </Button>
+                    {/* <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={toggleCursorKind}
+                    >
+                        Toggle cursor
+                    </Button> */}
                     <label className="ml-2 flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -558,7 +559,7 @@ export default function RdpClient({
                         />
                         {t("rdpUnicodeKeyboardMode")}
                     </label>
-                </div>
+                </CollapsibleSessionToolbar>
 
                 {moduleReady && (
                     <iron-remote-desktop
