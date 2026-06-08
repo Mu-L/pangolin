@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { db, DB_TYPE } from "@server/db";
-import { and, eq, or, inArray, sql } from "drizzle-orm";
+import { db, DB_TYPE, type Label } from "@server/db";
+import { and, asc, eq, or, inArray, sql } from "drizzle-orm";
 import {
     resources,
     userResources,
@@ -20,12 +20,17 @@ import {
     userSiteResources,
     roleSiteResources,
     siteNetworks,
-    sites
+    sites,
+    labels,
+    resourceLabels,
+    siteResourceLabels
 } from "@server/db";
 import createHttpError from "http-errors";
 import HttpCode from "@server/types/HttpCode";
 import { response } from "@server/lib/response";
 import { getFirstString } from "@server/lib/requestParams";
+import { isLicensedOrSubscribed } from "#dynamic/lib/isLicencedOrSubscribed";
+import { tierMatrix } from "@server/lib/billing/tierMatrix";
 
 export async function getUserResources(
     req: Request,
@@ -353,6 +358,73 @@ export async function getUserResources(
             });
         }
 
+        const resourceIdList = resourcesData.map((r) => r.resourceId);
+        const siteResourceIdList = siteResourcesData.map(
+            (r) => r.siteResourceId
+        );
+
+        const isLabelFeatureEnabled = await isLicensedOrSubscribed(
+            orgId,
+            tierMatrix.labels
+        );
+
+        let labelsForResources: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            resourceId: number;
+        }> = [];
+        let labelsForSiteResources: Array<{
+            labelId: number;
+            name: string;
+            color: string;
+            siteResourceId: number;
+        }> = [];
+
+        if (isLabelFeatureEnabled) {
+            [labelsForResources, labelsForSiteResources] = await Promise.all([
+                resourceIdList.length === 0
+                    ? Promise.resolve([])
+                    : db
+                          .select({
+                              labelId: labels.labelId,
+                              name: labels.name,
+                              color: labels.color,
+                              resourceId: resourceLabels.resourceId
+                          })
+                          .from(labels)
+                          .innerJoin(
+                              resourceLabels,
+                              eq(resourceLabels.labelId, labels.labelId)
+                          )
+                          .where(
+                              inArray(resourceLabels.resourceId, resourceIdList)
+                          )
+                          .orderBy(asc(resourceLabels.resourceLabelId)),
+                siteResourceIdList.length === 0
+                    ? Promise.resolve([])
+                    : db
+                          .select({
+                              labelId: labels.labelId,
+                              name: labels.name,
+                              color: labels.color,
+                              siteResourceId: siteResourceLabels.siteResourceId
+                          })
+                          .from(labels)
+                          .innerJoin(
+                              siteResourceLabels,
+                              eq(siteResourceLabels.labelId, labels.labelId)
+                          )
+                          .where(
+                              inArray(
+                                  siteResourceLabels.siteResourceId,
+                                  siteResourceIdList
+                              )
+                          )
+                          .orderBy(asc(siteResourceLabels.siteResourceLabelId))
+            ]);
+        }
+
         // Check for password, pincode, and whitelist protection for each resource
         const resourcesWithAuth = await Promise.all(
             resourcesData.map(async (resource) => {
@@ -453,7 +525,10 @@ export async function getUserResources(
                     sso: resource.sso,
                     password: hasPassword,
                     pincode: hasPincode,
-                    whitelist: hasWhitelist
+                    whitelist: hasWhitelist,
+                    labels: labelsForResources.filter(
+                        (l) => l.resourceId === resource.resourceId
+                    )
                 };
             })
         );
@@ -479,7 +554,10 @@ export async function getUserResources(
                 siteNiceIds: siteResource.siteNiceIds,
                 siteAddresses: siteResource.siteAddresses,
                 siteOnlines: siteResource.siteOnlines,
-                type: "site" as const
+                type: "site" as const,
+                labels: labelsForSiteResources.filter(
+                    (l) => l.siteResourceId === siteResource.siteResourceId
+                )
             };
         });
 
@@ -514,6 +592,7 @@ export type GetUserResourcesResponse = {
             enabled: boolean;
             protected: boolean;
             mode: string;
+            labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
         }>;
         siteResources: Array<{
             siteResourceId: number;
@@ -535,6 +614,7 @@ export type GetUserResourcesResponse = {
             siteAddresses: (string | null)[];
             siteOnlines: boolean[];
             type: "site";
+            labels?: Array<Pick<Label, "color" | "labelId" | "name">>;
         }>;
     };
 };
