@@ -5,6 +5,8 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle,
@@ -410,174 +412,199 @@ function SshServerForm({
                 <Form {...form}>
                     <SettingsSectionBody>
                         <SettingsSectionForm variant="half">
-                            <div className="space-y-2">
-                                <p className="font-semibold text-sm">{t("sshServerMode")}</p>
-                                <Badge variant="secondary">
-                                    {sshServerMode == "standard"
-                                        ? t("sshServerModeStandard")
-                                        : t("sshServerModePangolin")}
-                                </Badge>
-                            </div>
+                            <SettingsFormGrid>
+                                <SettingsFormCell span="full">
+                                    <div className="space-y-2">
+                                        <p className="font-semibold text-sm">
+                                            {t("sshServerMode")}
+                                        </p>
+                                        <Badge variant="secondary">
+                                            {sshServerMode == "standard"
+                                                ? t("sshServerModeStandard")
+                                                : t("sshServerModePangolin")}
+                                        </Badge>
+                                    </div>
+                                </SettingsFormCell>
 
-                            <div className="space-y-2">
-                                <p className="font-semibold text-sm">{t("sshAuthenticationMethod")}</p>
-                                <StrategySelect<"passthrough" | "push">
-                                    value={pamMode}
-                                    options={authMethodOptions}
-                                    onChange={(value) =>
-                                        form.setValue("pamMode", value, {
-                                            shouldValidate: true
-                                        })
-                                    }
-                                    cols={2}
-                                />
-                            </div>
+                                <SettingsFormCell span="full">
+                                    <div className="space-y-2">
+                                        <p className="font-semibold text-sm">
+                                            {t("sshAuthenticationMethod")}
+                                        </p>
+                                        <StrategySelect<"passthrough" | "push">
+                                            value={pamMode}
+                                            options={authMethodOptions}
+                                            onChange={(value) =>
+                                                form.setValue("pamMode", value, {
+                                                    shouldValidate: true
+                                                })
+                                            }
+                                            cols={2}
+                                        />
+                                    </div>
+                                </SettingsFormCell>
 
-                            {showDaemonLocation && (
-                                <div className="space-y-2">
-                                    <p className="font-semibold text-sm">{t("sshAuthDaemonLocation")}</p>
-                                    <StrategySelect<"site" | "remote">
-                                        value={standardDaemonLocation}
-                                        options={daemonLocationOptions}
-                                        onChange={(value) =>
-                                            form.setValue(
-                                                "standardDaemonLocation",
-                                                value,
-                                                { shouldValidate: true }
-                                            )
-                                        }
-                                        cols={2}
-                                    />
-                                    <p className="text-sm text-muted-foreground">
-                                        {t("sshDaemonDisclaimer")}{" "}
-                                        <a
-                                            href="https://docs.pangolin.net/manage/resources/public/ssh"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary hover:underline inline-flex items-center gap-1"
-                                        >
-                                            {t("learnMore")}
-                                            <ExternalLink className="size-3.5 shrink-0" />
-                                        </a>
-                                    </p>
-                                </div>
-                            )}
-
-                            {showDaemonPort && (
-                                <div className="w-full md:w-1/2">
-                                    <FormField
-                                        control={form.control}
-                                        name="authDaemonPort"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("sshDaemonPort")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        min={1}
-                                                        max={65535}
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="space-y-3">
-                                <SettingsSubsectionHeader>
-                                    <SettingsSubsectionTitle>
-                                        {t("sshServerDestination")}
-                                    </SettingsSubsectionTitle>
-                                    <SettingsSubsectionDescription>
-                                        {t("sshServerDestinationDescription")}
-                                    </SettingsSubsectionDescription>
-                                </SettingsSubsectionHeader>
-                                {isNative ? (
-                                    <FormField
-                                        control={form.control}
-                                        name="selectedNativeSite"
-                                        render={() => (
-                                            <FormItem>
-                                                <Popover
-                                                    open={nativeSiteOpen}
-                                                    onOpenChange={
-                                                        setNativeSiteOpen
-                                                    }
+                                {showDaemonLocation && (
+                                    <SettingsFormCell span="full">
+                                        <div className="space-y-2">
+                                            <p className="font-semibold text-sm">
+                                                {t("sshAuthDaemonLocation")}
+                                            </p>
+                                            <StrategySelect<"site" | "remote">
+                                                value={standardDaemonLocation}
+                                                options={daemonLocationOptions}
+                                                onChange={(value) =>
+                                                    form.setValue(
+                                                        "standardDaemonLocation",
+                                                        value,
+                                                        {
+                                                            shouldValidate: true
+                                                        }
+                                                    )
+                                                }
+                                                cols={2}
+                                            />
+                                            <p className="text-sm text-muted-foreground">
+                                                {t("sshDaemonDisclaimer")}{" "}
+                                                <a
+                                                    href="https://docs.pangolin.net/manage/resources/public/ssh"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline inline-flex items-center gap-1"
                                                 >
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                className="w-full max-w-xs justify-between font-normal"
-                                                            >
-                                                                <span className="truncate">
-                                                                    {selectedNativeSite?.name ??
-                                                                        t(
-                                                                            "siteSelect"
-                                                                        )}
-                                                                </span>
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                                        <SitesSelector
-                                                            orgId={orgId}
-                                                            selectedSite={
-                                                                selectedNativeSite
-                                                            }
-                                                            onSelectSite={(
-                                                                site
-                                                            ) => {
-                                                                form.setValue(
-                                                                    "selectedNativeSite",
-                                                                    site,
-                                                                    {
-                                                                        shouldValidate:
-                                                                            true
-                                                                    }
-                                                                );
-                                                                setNativeSiteOpen(
-                                                                    false
-                                                                );
-                                                            }}
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                ) : useMultiSiteTargetForm ? (
-                                    <BrowserGatewayTargetForm
-                                        control={form.control}
-                                        orgId={orgId}
-                                        multiSite={true}
-                                        sitesField="selectedSites"
-                                        destinationField="destination"
-                                        destinationPortField="destinationPort"
-                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                                        defaultPort={22}
-                                    />
-                                ) : (
-                                    <BrowserGatewayTargetForm
-                                        control={form.control}
-                                        orgId={orgId}
-                                        multiSite={false}
-                                        siteField="selectedSite"
-                                        destinationField="destination"
-                                        destinationPortField="destinationPort"
-                                        learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
-                                        defaultPort={22}
-                                    />
+                                                    {t("learnMore")}
+                                                    <ExternalLink className="size-3.5 shrink-0" />
+                                                </a>
+                                            </p>
+                                        </div>
+                                    </SettingsFormCell>
                                 )}
-                            </div>
+
+                                {showDaemonPort && (
+                                    <SettingsFormCell span="half">
+                                        <FormField
+                                            control={form.control}
+                                            name="authDaemonPort"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        {t("sshDaemonPort")}
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={65535}
+                                                            {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+                                )}
+
+                                <SettingsFormCell span="full">
+                                    <SettingsSubsectionHeader>
+                                        <SettingsSubsectionTitle>
+                                            {t("sshServerDestination")}
+                                        </SettingsSubsectionTitle>
+                                        <SettingsSubsectionDescription>
+                                            {t(
+                                                "sshServerDestinationDescription"
+                                            )}
+                                        </SettingsSubsectionDescription>
+                                    </SettingsSubsectionHeader>
+                                </SettingsFormCell>
+
+                                {isNative ? (
+                                    <SettingsFormCell span="half">
+                                        <FormField
+                                            control={form.control}
+                                            name="selectedNativeSite"
+                                            render={() => (
+                                                <FormItem>
+                                                    <Popover
+                                                        open={nativeSiteOpen}
+                                                        onOpenChange={
+                                                            setNativeSiteOpen
+                                                        }
+                                                    >
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    className="w-full justify-between font-normal"
+                                                                >
+                                                                    <span className="truncate">
+                                                                        {selectedNativeSite?.name ??
+                                                                            t(
+                                                                                "siteSelect"
+                                                                            )}
+                                                                    </span>
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                                            <SitesSelector
+                                                                orgId={orgId}
+                                                                selectedSite={
+                                                                    selectedNativeSite
+                                                                }
+                                                                onSelectSite={(
+                                                                    site
+                                                                ) => {
+                                                                    form.setValue(
+                                                                        "selectedNativeSite",
+                                                                        site,
+                                                                        {
+                                                                            shouldValidate:
+                                                                                true
+                                                                        }
+                                                                    );
+                                                                    setNativeSiteOpen(
+                                                                        false
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </SettingsFormCell>
+                                ) : useMultiSiteTargetForm ? (
+                                    <SettingsFormCell span="full">
+                                        <BrowserGatewayTargetForm
+                                            control={form.control}
+                                            orgId={orgId}
+                                            multiSite={true}
+                                            sitesField="selectedSites"
+                                            destinationField="destination"
+                                            destinationPortField="destinationPort"
+                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                            defaultPort={22}
+                                        />
+                                    </SettingsFormCell>
+                                ) : (
+                                    <SettingsFormCell span="full">
+                                        <BrowserGatewayTargetForm
+                                            control={form.control}
+                                            orgId={orgId}
+                                            multiSite={false}
+                                            siteField="selectedSite"
+                                            destinationField="destination"
+                                            destinationPortField="destinationPort"
+                                            learnMoreHref="https://docs.pangolin.net/manage/resources/public/ssh"
+                                            defaultPort={22}
+                                        />
+                                    </SettingsFormCell>
+                                )}
+                            </SettingsFormGrid>
                         </SettingsSectionForm>
                     </SettingsSectionBody>
                     <form action={formAction} className="flex justify-end mt-4">

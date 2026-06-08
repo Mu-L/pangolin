@@ -1,6 +1,8 @@
 "use client";
 
 import {
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
@@ -475,101 +477,109 @@ export function PolicyAuthStackSectionEdit({
                             {isResourceOverlay && (
                                 <SharedPolicyResourceNotice section="authentication" />
                             )}
-                            <div className="w-full md:w-1/2">
-                                <PolicyAuthSsoSection
-                                    sso={Boolean(sso)}
-                                    onSsoChange={(active) =>
-                                        form.setValue("sso", active)
-                                    }
-                                    skipToIdpId={skipToIdpId}
-                                    onSkipToIdpChange={(id) =>
-                                        form.setValue("skipToIdpId", id)
-                                    }
-                                    allIdps={allIdps}
-                                    disabled={authReadonly}
-                                    idpDisabled={authReadonly}
-                                    rolesEditor={
-                                        isResourceOverlay ? (
-                                            <RolesSelector
-                                                orgId={orgId}
-                                                selectedRoles={overlayRoles}
-                                                onSelectRoles={(selected) =>
-                                                    setCombinedRoles(
-                                                        selected.map(
-                                                            (role) => ({
-                                                                ...role,
-                                                                isAdmin:
-                                                                    Boolean(
-                                                                        role.isAdmin
-                                                                    )
-                                                            })
+                            <SettingsFormGrid>
+                                <SettingsFormCell span="half">
+                                    <PolicyAuthSsoSection
+                                        sso={Boolean(sso)}
+                                        onSsoChange={(active) =>
+                                            form.setValue("sso", active)
+                                        }
+                                        skipToIdpId={skipToIdpId}
+                                        onSkipToIdpChange={(id) =>
+                                            form.setValue("skipToIdpId", id)
+                                        }
+                                        allIdps={allIdps}
+                                        disabled={authReadonly}
+                                        idpDisabled={authReadonly}
+                                        rolesEditor={
+                                            isResourceOverlay ? (
+                                                <RolesSelector
+                                                    orgId={orgId}
+                                                    selectedRoles={overlayRoles}
+                                                    onSelectRoles={(selected) =>
+                                                        setCombinedRoles(
+                                                            selected.map(
+                                                                (role) => ({
+                                                                    ...role,
+                                                                    isAdmin:
+                                                                        Boolean(
+                                                                            role.isAdmin
+                                                                        )
+                                                                })
+                                                            )
                                                         )
-                                                    )
-                                                }
-                                                disabled={isLoading}
-                                                restrictAdminRole
-                                                lockedIds={policyRoleLockedIds}
-                                            />
-                                        ) : (
-                                            <FormField
-                                                control={form.control}
-                                                name="roles"
-                                                render={({ field }) => (
-                                                    <RolesSelector
-                                                        orgId={orgId}
-                                                        selectedRoles={
-                                                            field.value
-                                                        }
-                                                        onSelectRoles={(
-                                                            selected
-                                                        ) =>
-                                                            form.setValue(
-                                                                "roles",
+                                                    }
+                                                    disabled={isLoading}
+                                                    restrictAdminRole
+                                                    lockedIds={
+                                                        policyRoleLockedIds
+                                                    }
+                                                />
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="roles"
+                                                    render={({ field }) => (
+                                                        <RolesSelector
+                                                            orgId={orgId}
+                                                            selectedRoles={
+                                                                field.value
+                                                            }
+                                                            onSelectRoles={(
                                                                 selected
-                                                            )
-                                                        }
-                                                        disabled={readonly}
-                                                        restrictAdminRole
-                                                    />
-                                                )}
-                                            />
-                                        )
-                                    }
-                                    usersEditor={
-                                        isResourceOverlay ? (
-                                            <UsersSelector
-                                                orgId={orgId}
-                                                selectedUsers={overlayUsers}
-                                                onSelectUsers={setCombinedUsers}
-                                                disabled={isLoading}
-                                                lockedIds={policyUserLockedIds}
-                                            />
-                                        ) : (
-                                            <FormField
-                                                control={form.control}
-                                                name="users"
-                                                render={({ field }) => (
-                                                    <UsersSelector
-                                                        orgId={orgId}
-                                                        selectedUsers={
-                                                            field.value
-                                                        }
-                                                        onSelectUsers={(
-                                                            selected
-                                                        ) =>
-                                                            form.setValue(
-                                                                "users",
+                                                            ) =>
+                                                                form.setValue(
+                                                                    "roles",
+                                                                    selected
+                                                                )
+                                                            }
+                                                            disabled={readonly}
+                                                            restrictAdminRole
+                                                        />
+                                                    )}
+                                                />
+                                            )
+                                        }
+                                        usersEditor={
+                                            isResourceOverlay ? (
+                                                <UsersSelector
+                                                    orgId={orgId}
+                                                    selectedUsers={overlayUsers}
+                                                    onSelectUsers={
+                                                        setCombinedUsers
+                                                    }
+                                                    disabled={isLoading}
+                                                    lockedIds={
+                                                        policyUserLockedIds
+                                                    }
+                                                />
+                                            ) : (
+                                                <FormField
+                                                    control={form.control}
+                                                    name="users"
+                                                    render={({ field }) => (
+                                                        <UsersSelector
+                                                            orgId={orgId}
+                                                            selectedUsers={
+                                                                field.value
+                                                            }
+                                                            onSelectUsers={(
                                                                 selected
-                                                            )
-                                                        }
-                                                        disabled={readonly}
-                                                    />
-                                                )}
-                                            />
-                                        )
-                                    }
-                                />
-                            </div>
+                                                            ) =>
+                                                                form.setValue(
+                                                                    "users",
+                                                                    selected
+                                                                )
+                                                            }
+                                                            disabled={readonly}
+                                                        />
+                                                    )}
+                                                />
+                                            )
+                                        }
+                                    />
+                                </SettingsFormCell>
+                            </SettingsFormGrid>
 
                             <SettingsSubsectionHeader>
                                 <SettingsSubsectionTitle>

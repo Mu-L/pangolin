@@ -10,6 +10,8 @@ import { formatAxiosError } from "@app/lib/api";
 import { AxiosResponse } from "axios";
 import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionHeader,
     SettingsSectionTitle,
@@ -1324,42 +1326,44 @@ export default function BillingPage() {
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
-                        <div className="w-full md:w-1/2">
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border rounded-lg p-4">
-                                <div>
-                                    <div className="text-sm text-muted-foreground mb-1">
-                                        {t("billingCurrentKeys") ||
-                                            "Current Keys"}
+                        <SettingsFormGrid>
+                            <SettingsFormCell span="half">
+                                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border rounded-lg p-4">
+                                    <div>
+                                        <div className="text-sm text-muted-foreground mb-1">
+                                            {t("billingCurrentKeys") ||
+                                                "Current Keys"}
+                                        </div>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-3xl font-semibold">
+                                                {getLicenseKeyCount()}
+                                            </span>
+                                            <span className="text-lg">
+                                                {getLicenseKeyCount() === 1
+                                                    ? "key"
+                                                    : "keys"}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-3xl font-semibold">
-                                            {getLicenseKeyCount()}
-                                        </span>
-                                        <span className="text-lg">
-                                            {getLicenseKeyCount() === 1
-                                                ? "key"
-                                                : "keys"}
-                                        </span>
-                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleModifySubscription}
+                                        disabled={isLoading}
+                                        loading={isLoading}
+                                    >
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        {t("billingModifyCurrentPlan") ||
+                                            "Modify Current Plan"}
+                                    </Button>
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                        {t(
+                                            "billingManageLicenseSubscriptionDescription"
+                                        ) ||
+                                            "Manage your subscription for paid self-hosted license keys and download invoices."}
+                                    </p>
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleModifySubscription}
-                                    disabled={isLoading}
-                                    loading={isLoading}
-                                >
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    {t("billingModifyCurrentPlan") ||
-                                        "Modify Current Plan"}
-                                </Button>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    {t(
-                                        "billingManageLicenseSubscriptionDescription"
-                                    ) ||
-                                        "Manage your subscription for paid self-hosted license keys and download invoices."}
-                                </p>
-                            </div>
-                        </div>
+                            </SettingsFormCell>
+                        </SettingsFormGrid>
                     </SettingsSectionBody>
                 </SettingsSection>
             )}

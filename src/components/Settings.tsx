@@ -43,6 +43,49 @@ export function SettingsSectionForm({
     );
 }
 
+export function SettingsFormGrid({
+    children,
+    className
+}: {
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <div
+            className={cn(
+                "grid grid-cols-1 md:grid-cols-4 gap-4 items-start",
+                className
+            )}
+        >
+            {children}
+        </div>
+    );
+}
+
+export function SettingsFormCell({
+    children,
+    span = "half",
+    className
+}: {
+    children: React.ReactNode;
+    span?: "quarter" | "half" | "full";
+    className?: string;
+}) {
+    return (
+        <div
+            className={cn(
+                "min-w-0",
+                span === "quarter" && "md:col-span-1",
+                span === "half" && "md:col-span-2",
+                span === "full" && "md:col-span-4",
+                className
+            )}
+        >
+            {children}
+        </div>
+    );
+}
+
 export function SettingsSectionTitle({
     children
 }: {

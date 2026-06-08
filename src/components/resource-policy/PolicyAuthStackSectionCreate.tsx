@@ -1,6 +1,8 @@
 "use client";
 
 import {
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
@@ -111,65 +113,67 @@ export function PolicyAuthStackSectionCreate({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <div className="w-full md:w-1/2">
-                    <PolicyAuthSsoSection
-                        sso={Boolean(sso)}
-                        onSsoChange={(active) =>
-                            parentForm.setValue("sso", active)
-                        }
-                        skipToIdpId={skipToIdpId}
-                        onSkipToIdpChange={(id) =>
-                            parentForm.setValue("skipToIdpId", id)
-                        }
-                        allIdps={allIdps}
-                        rolesEditor={
-                            <FormField<PolicyFormValues, "roles">
-                                control={parentForm.control}
-                                name="roles"
-                                render={({ field }) => (
-                                    <TagInput
-                                        {...field}
-                                        activeTagIndex={activeRolesTagIndex}
-                                        setActiveTagIndex={
-                                            setActiveRolesTagIndex
-                                        }
-                                        placeholder={t("accessRoleSelect2")}
-                                        tags={field.value ?? []}
-                                        setTags={(newRoles) =>
-                                            field.onChange(newRoles)
-                                        }
-                                        autocompleteOptions={allRoles}
-                                        allowDuplicates={false}
-                                        size="sm"
-                                    />
-                                )}
-                            />
-                        }
-                        usersEditor={
-                            <FormField<PolicyFormValues, "users">
-                                control={parentForm.control}
-                                name="users"
-                                render={({ field }) => (
-                                    <TagInput
-                                        {...field}
-                                        activeTagIndex={activeUsersTagIndex}
-                                        setActiveTagIndex={
-                                            setActiveUsersTagIndex
-                                        }
-                                        placeholder={t("accessUserSelect")}
-                                        tags={field.value ?? []}
-                                        setTags={(newUsers) =>
-                                            field.onChange(newUsers)
-                                        }
-                                        autocompleteOptions={allUsers}
-                                        allowDuplicates={false}
-                                        size="sm"
-                                    />
-                                )}
-                            />
-                        }
-                    />
-                </div>
+                <SettingsFormGrid>
+                    <SettingsFormCell span="half">
+                        <PolicyAuthSsoSection
+                            sso={Boolean(sso)}
+                            onSsoChange={(active) =>
+                                parentForm.setValue("sso", active)
+                            }
+                            skipToIdpId={skipToIdpId}
+                            onSkipToIdpChange={(id) =>
+                                parentForm.setValue("skipToIdpId", id)
+                            }
+                            allIdps={allIdps}
+                            rolesEditor={
+                                <FormField<PolicyFormValues, "roles">
+                                    control={parentForm.control}
+                                    name="roles"
+                                    render={({ field }) => (
+                                        <TagInput
+                                            {...field}
+                                            activeTagIndex={activeRolesTagIndex}
+                                            setActiveTagIndex={
+                                                setActiveRolesTagIndex
+                                            }
+                                            placeholder={t("accessRoleSelect2")}
+                                            tags={field.value ?? []}
+                                            setTags={(newRoles) =>
+                                                field.onChange(newRoles)
+                                            }
+                                            autocompleteOptions={allRoles}
+                                            allowDuplicates={false}
+                                            size="sm"
+                                        />
+                                    )}
+                                />
+                            }
+                            usersEditor={
+                                <FormField<PolicyFormValues, "users">
+                                    control={parentForm.control}
+                                    name="users"
+                                    render={({ field }) => (
+                                        <TagInput
+                                            {...field}
+                                            activeTagIndex={activeUsersTagIndex}
+                                            setActiveTagIndex={
+                                                setActiveUsersTagIndex
+                                            }
+                                            placeholder={t("accessUserSelect")}
+                                            tags={field.value ?? []}
+                                            setTags={(newUsers) =>
+                                                field.onChange(newUsers)
+                                            }
+                                            autocompleteOptions={allUsers}
+                                            allowDuplicates={false}
+                                            size="sm"
+                                        />
+                                    )}
+                                />
+                            }
+                        />
+                    </SettingsFormCell>
+                </SettingsFormGrid>
 
                 <SettingsSubsectionHeader>
                     <SettingsSubsectionTitle>

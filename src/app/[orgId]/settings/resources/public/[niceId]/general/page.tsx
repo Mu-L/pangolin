@@ -20,6 +20,8 @@ import {
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionFooter,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
@@ -616,207 +618,225 @@ export default function GeneralForm() {
                             <Form {...form}>
                                 <form
                                     action={formAction}
-                                    className="space-y-4"
                                     id="general-settings-form"
                                 >
-                                    <FormField
-                                        control={form.control}
-                                        name="enabled"
-                                        render={() => (
-                                            <FormItem>
-                                                <FormControl>
-                                                    <SwitchInput
-                                                        id="enable-resource"
-                                                        defaultChecked={
-                                                            resource.enabled
-                                                        }
-                                                        label={t(
-                                                            "resourceEnable"
-                                                        )}
-                                                        onCheckedChange={(
-                                                            val
-                                                        ) =>
-                                                            form.setValue(
-                                                                "enabled",
-                                                                val
-                                                            )
-                                                        }
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "disabledResourceDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("name")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={form.control}
-                                            name="niceId"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("identifier")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            placeholder={t(
-                                                                "enterIdentifier"
-                                                            )}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {!["http", "ssh", "rdp", "vnc"].includes(
-                                        resource.mode
-                                    ) && (
-                                        <>
+                                    <SettingsFormGrid>
+                                        <SettingsFormCell span="full">
                                             <FormField
                                                 control={form.control}
-                                                name="proxyPort"
-                                                render={({ field }) => (
+                                                name="enabled"
+                                                render={() => (
                                                     <FormItem>
-                                                        <FormLabel>
-                                                            {t(
-                                                                "resourcePortNumber"
-                                                            )}
-                                                        </FormLabel>
                                                         <FormControl>
-                                                            <Input
-                                                                type="number"
-                                                                value={
-                                                                    field.value !==
-                                                                    undefined
-                                                                        ? String(
-                                                                              field.value
-                                                                          )
-                                                                        : ""
+                                                            <SwitchInput
+                                                                id="enable-resource"
+                                                                defaultChecked={
+                                                                    resource.enabled
                                                                 }
-                                                                onChange={(e) =>
-                                                                    field.onChange(
-                                                                        e.target
-                                                                            .value
-                                                                            ? parseInt(
-                                                                                  e
-                                                                                      .target
-                                                                                      .value
-                                                                              )
-                                                                            : undefined
+                                                                label={t(
+                                                                    "resourceEnable"
+                                                                )}
+                                                                onCheckedChange={(
+                                                                    val
+                                                                ) =>
+                                                                    form.setValue(
+                                                                        "enabled",
+                                                                        val
                                                                     )
                                                                 }
                                                             />
                                                         </FormControl>
-                                                        <FormMessage />
                                                         <FormDescription>
                                                             {t(
-                                                                "resourcePortNumberDescription"
+                                                                "disabledResourceDescription"
                                                             )}
                                                         </FormDescription>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-                                        </>
-                                    )}
+                                        </SettingsFormCell>
 
-                                    {["http", "ssh", "rdp", "vnc"].includes(
-                                        resource.mode
-                                    ) && (
-                                        <div className="space-y-4">
-                                            <div id="resource-domain-picker">
-                                                <DomainPicker
-                                                    allowWildcard={true}
-                                                    key={resource.resourceId}
-                                                    orgId={orgId as string}
-                                                    cols={2}
-                                                    defaultSubdomain={
-                                                        form.watch(
-                                                            "subdomain"
-                                                        ) ?? undefined
-                                                    }
-                                                    defaultDomainId={
-                                                        form.watch(
-                                                            "domainId"
-                                                        ) ?? undefined
-                                                    }
-                                                    defaultFullDomain={
-                                                        resourceFullDomainName ||
-                                                        undefined
-                                                    }
-                                                    onDomainChange={(res) => {
-                                                        if (res === null) {
+                                        <SettingsFormCell span="half">
+                                            <FormField
+                                                control={form.control}
+                                                name="name"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("name")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+
+                                        <SettingsFormCell span="half">
+                                            <FormField
+                                                control={form.control}
+                                                name="niceId"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t("identifier")}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                placeholder={t(
+                                                                    "enterIdentifier"
+                                                                )}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+
+                                        {!["http", "ssh", "rdp", "vnc"].includes(
+                                            resource.mode
+                                        ) && (
+                                            <SettingsFormCell span="half">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="proxyPort"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t(
+                                                                    "resourcePortNumber"
+                                                                )}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={
+                                                                        field.value !==
+                                                                        undefined
+                                                                            ? String(
+                                                                                  field.value
+                                                                              )
+                                                                            : ""
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        field.onChange(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                                ? parseInt(
+                                                                                      e
+                                                                                          .target
+                                                                                          .value
+                                                                                  )
+                                                                                : undefined
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                            <FormDescription>
+                                                                {t(
+                                                                    "resourcePortNumberDescription"
+                                                                )}
+                                                            </FormDescription>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </SettingsFormCell>
+                                        )}
+
+                                        {["http", "ssh", "rdp", "vnc"].includes(
+                                            resource.mode
+                                        ) && (
+                                            <SettingsFormCell span="full">
+                                                <div id="resource-domain-picker">
+                                                    <DomainPicker
+                                                        allowWildcard={true}
+                                                        key={
+                                                            resource.resourceId
+                                                        }
+                                                        orgId={orgId as string}
+                                                        cols={2}
+                                                        defaultSubdomain={
+                                                            form.watch(
+                                                                "subdomain"
+                                                            ) ?? undefined
+                                                        }
+                                                        defaultDomainId={
+                                                            form.watch(
+                                                                "domainId"
+                                                            ) ?? undefined
+                                                        }
+                                                        defaultFullDomain={
+                                                            resourceFullDomainName ||
+                                                            undefined
+                                                        }
+                                                        onDomainChange={(
+                                                            res
+                                                        ) => {
+                                                            if (res === null) {
+                                                                form.setValue(
+                                                                    "domainId",
+                                                                    undefined
+                                                                );
+                                                                form.setValue(
+                                                                    "subdomain",
+                                                                    undefined
+                                                                );
+                                                                setResourceFullDomain(
+                                                                    `${resource.ssl ? "https" : "http"}://`
+                                                                );
+                                                                return;
+                                                            }
                                                             form.setValue(
                                                                 "domainId",
-                                                                undefined
+                                                                res.domainId
                                                             );
                                                             form.setValue(
                                                                 "subdomain",
-                                                                undefined
+                                                                res.subdomain ??
+                                                                    undefined
                                                             );
                                                             setResourceFullDomain(
-                                                                `${resource.ssl ? "https" : "http"}://`
+                                                                `${resource.ssl ? "https" : "http"}://${toUnicode(res.fullDomain)}`
                                                             );
-                                                            return;
+                                                        }}
+                                                    />
+                                                </div>
+                                            </SettingsFormCell>
+                                        )}
+                                        {showResourcePolicy && (
+                                            <SettingsFormCell span="half">
+                                                <div className="space-y-2">
+                                                    <FormLabel>
+                                                        {t("sharedPolicy")}
+                                                    </FormLabel>
+                                                    <SharedPolicySelect
+                                                        key={
+                                                            resource.resourcePolicyId ??
+                                                            "none"
                                                         }
-                                                        form.setValue(
-                                                            "domainId",
-                                                            res.domainId
-                                                        );
-                                                        form.setValue(
-                                                            "subdomain",
-                                                            res.subdomain ??
-                                                                undefined
-                                                        );
-                                                        setResourceFullDomain(
-                                                            `${resource.ssl ? "https" : "http"}://${toUnicode(res.fullDomain)}`
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {showResourcePolicy && (
-                                        <div className="space-y-2">
-                                            <FormLabel>
-                                                {t("sharedPolicy")}
-                                            </FormLabel>
-                                            <SharedPolicySelect
-                                                key={
-                                                    resource.resourcePolicyId ??
-                                                    "none"
-                                                }
-                                                orgId={org.org.orgId}
-                                                value={selectedSharedPolicyId}
-                                                onChange={
-                                                    setSelectedSharedPolicyId
-                                                }
-                                            />
-                                        </div>
-                                    )}
+                                                        orgId={org.org.orgId}
+                                                        value={
+                                                            selectedSharedPolicyId
+                                                        }
+                                                        onChange={
+                                                            setSelectedSharedPolicyId
+                                                        }
+                                                    />
+                                                </div>
+                                            </SettingsFormCell>
+                                        )}
+                                    </SettingsFormGrid>
                                 </form>
                             </Form>
                         </SettingsSectionForm>

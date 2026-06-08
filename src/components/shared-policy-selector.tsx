@@ -183,7 +183,7 @@ export function SharedPolicySelect({
                     role="combobox"
                     disabled={disabled}
                     className={cn(
-                        "w-full justify-between font-normal md:w-1/2",
+                        "w-full justify-between font-normal",
                         value !== null &&
                             !resolvedLabel &&
                             !fetchedPolicy?.name &&

@@ -2,6 +2,8 @@
 
 import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
@@ -514,98 +516,107 @@ export default function Page() {
                                                 e.preventDefault(); // block default enter refresh
                                             }
                                         }}
-                                        className="space-y-4 grid gap-4 grid-cols-1 md:grid-cols-2 items-start"
                                         id="create-site-form"
                                     >
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("name")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            autoComplete="off"
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                    <FormDescription>
-                                                        {t(
-                                                            "siteNameDescription"
-                                                        )}
-                                                    </FormDescription>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        {form.watch("method") === "newt" && (
-                                            <div className="flex items-center justify-end md:col-start-2">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setShowAdvancedSettings(
-                                                            !showAdvancedSettings
-                                                        )
-                                                    }
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    {showAdvancedSettings ? (
-                                                        <ChevronUp className="h-4 w-4" />
-                                                    ) : (
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    )}
-                                                    {t("advancedSettings")}
-                                                </Button>
-                                            </div>
-                                        )}
-                                        {form.watch("method") === "newt" &&
-                                            showAdvancedSettings && (
+                                        <SettingsFormGrid>
+                                            <SettingsFormCell span="half">
                                                 <FormField
                                                     control={form.control}
-                                                    name="clientAddress"
+                                                    name="name"
                                                     render={({ field }) => (
-                                                        <FormItem className="md:col-start-1 md:col-span-2">
+                                                        <FormItem>
                                                             <FormLabel>
-                                                                {t(
-                                                                    "siteAddress"
-                                                                )}
+                                                                {t("name")}
                                                             </FormLabel>
                                                             <FormControl>
                                                                 <Input
                                                                     autoComplete="off"
-                                                                    value={
-                                                                        clientAddress
-                                                                    }
-                                                                    onChange={(
-                                                                        e
-                                                                    ) => {
-                                                                        setClientAddress(
-                                                                            e
-                                                                                .target
-                                                                                .value
-                                                                        );
-                                                                        field.onChange(
-                                                                            e
-                                                                                .target
-                                                                                .value
-                                                                        );
-                                                                    }}
+                                                                    {...field}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
                                                             <FormDescription>
                                                                 {t(
-                                                                    "siteAddressDescription"
+                                                                    "siteNameDescription"
                                                                 )}
                                                             </FormDescription>
                                                         </FormItem>
                                                     )}
                                                 />
-                                            )}
+                                                {form.watch("method") ===
+                                                    "newt" && (
+                                                    <>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                setShowAdvancedSettings(
+                                                                    !showAdvancedSettings
+                                                                )
+                                                            }
+                                                            className="mt-2 flex items-center gap-2 -ml-3"
+                                                        >
+                                                            {showAdvancedSettings ? (
+                                                                <ChevronUp className="h-4 w-4" />
+                                                            ) : (
+                                                                <ChevronDown className="h-4 w-4" />
+                                                            )}
+                                                            {t(
+                                                                "advancedSettings"
+                                                            )}
+                                                        </Button>
+                                                        {showAdvancedSettings && (
+                                                            <FormField
+                                                                control={
+                                                                    form.control
+                                                                }
+                                                                name="clientAddress"
+                                                                render={({
+                                                                    field
+                                                                }) => (
+                                                                    <FormItem className="mt-4">
+                                                                        <FormLabel>
+                                                                            {t(
+                                                                                "siteAddress"
+                                                                            )}
+                                                                        </FormLabel>
+                                                                        <FormControl>
+                                                                            <Input
+                                                                                autoComplete="off"
+                                                                                value={
+                                                                                    clientAddress
+                                                                                }
+                                                                                onChange={(
+                                                                                    e
+                                                                                ) => {
+                                                                                    setClientAddress(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value
+                                                                                    );
+                                                                                    field.onChange(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value
+                                                                                    );
+                                                                                }}
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                        <FormDescription>
+                                                                            {t(
+                                                                                "siteAddressDescription"
+                                                                            )}
+                                                                        </FormDescription>
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        )}
+                                                    </>
+                                                )}
+                                            </SettingsFormCell>
+                                        </SettingsFormGrid>
                                     </form>
                                 </Form>
                             </SettingsSectionBody>
