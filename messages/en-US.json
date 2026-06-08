@@ -292,6 +292,8 @@
     "labelDelete": "Delete Label",
     "labelAdd": "Add Label",
     "labelCreateSuccessMessage": "Label Created Successfully",
+    "labelDuplicateError": "Duplicate Label",
+    "labelDuplicateErrorDescription": "A label with this name already exists.",
     "labelEditSuccessMessage": "Label Modified Successfully",
     "labelNameField": "Label Name",
     "labelColorField": "Label Color",
