@@ -274,6 +274,12 @@ export default async function migration() {
         await db.execute(
             sql`ALTER TABLE "targets" ADD "mode" text DEFAULT 'http' NOT NULL;`
         );
+        await db.execute(sql`
+            UPDATE "targets"
+            SET "mode" = "resources"."mode"
+            FROM "resources"
+            WHERE "resources"."resourceId" = "targets"."resourceId";
+        `);
         await db.execute(sql`ALTER TABLE "targets" ADD "authToken" text;`);
 
         await db.execute(sql`COMMIT`);

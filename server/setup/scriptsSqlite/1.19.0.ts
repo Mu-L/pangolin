@@ -341,6 +341,15 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
+            UPDATE 'targets'
+            SET 'mode' = (
+                SELECT 'mode' FROM 'resources'
+                WHERE 'resources'.'resourceId' = 'targets'.'resourceId'
+            );
+                `
+            ).run();
+            db.prepare(
+                `
             ALTER TABLE 'targets' ADD 'authToken' text;
                 `
             ).run();
