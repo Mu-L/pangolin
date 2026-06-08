@@ -26,6 +26,12 @@ export default function CollapsibleSessionToolbar({
                 <div className="flex flex-wrap items-center gap-2 p-2">
                     {children}
                 </div>
+                {/* Gray backdrop that visually "disappears" into the toolbar
+                    and peeks out behind the top of the orange pull tab. */}
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-1/2 top-full h-4 w-36 -translate-x-1/2 -translate-y-2 rounded-md bg-neutral-300 shadow-sm dark:bg-neutral-500"
+                />
                 <button
                     type="button"
                     onClick={() => setOpen((v) => !v)}
@@ -33,12 +39,12 @@ export default function CollapsibleSessionToolbar({
                         open ? t("sessionToolbarHide") : t("sessionToolbarShow")
                     }
                     aria-expanded={open}
-                    className="absolute left-1/2 top-full flex h-7 w-12 -translate-x-1/2 items-center justify-center rounded-b-md bg-primary text-primary-foreground shadow-md transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="absolute left-1/2 top-full flex h-5 w-6 -translate-x-1/2 items-center justify-center rounded-b-md bg-primary text-primary-foreground shadow-md transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                     {open ? (
-                        <ChevronUp className="h-4 w-4" />
+                        <ChevronUp className="h-3 w-3" />
                     ) : (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-3 w-3" />
                     )}
                 </button>
             </div>

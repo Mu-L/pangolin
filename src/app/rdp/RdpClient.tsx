@@ -479,6 +479,13 @@ export default function RdpClient({
                     <Button
                         size="sm"
                         variant="secondary"
+                        onClick={() => ui()?.ctrlAltDel()}
+                    >
+                        {t("browserGatewayCtrlAltDel")}
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={() => ui()?.metaKey()}
                     >
                         {t("rdpMeta")}
@@ -513,7 +520,7 @@ export default function RdpClient({
                     >
                         {t("rdpUploadFiles")}
                     </Button>
-                    <Button
+                    {/* <Button
                         size="sm"
                         variant="secondary"
                         onClick={() => ui()?.setScale(1)}
@@ -533,14 +540,7 @@ export default function RdpClient({
                         onClick={() => ui()?.setScale(3)}
                     >
                         {t("rdpReal")}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => ui()?.ctrlAltDel()}
-                    >
-                        {t("browserGatewayCtrlAltDel")}
-                    </Button>
+                    </Button> */}
                     {/* <Button
                         size="sm"
                         variant="secondary"
