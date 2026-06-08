@@ -152,7 +152,8 @@ export default async function SshPage() {
             await waitForRoundTripCompletion(messageIds, cookieHeader);
         } catch (err) {
             console.error("Error signing SSH key:", err);
-            error = t("sshErrorSignKeyFailed");
+            const detail = err instanceof Error ? err.message : String(err);
+            error = `${t("sshErrorSignKeyFailed")}: ${detail}`;
         }
     }
 
