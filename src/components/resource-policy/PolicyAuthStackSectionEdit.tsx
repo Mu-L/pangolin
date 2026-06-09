@@ -636,111 +636,146 @@ export function PolicyAuthStackSectionEdit({
                                 </SettingsFormCell>
                             </SettingsFormGrid>
 
-                            <SettingsSubsectionHeader>
-                                <SettingsSubsectionTitle>
-                                    {t("policyAuthOtherMethodsTitle")}
-                                </SettingsSubsectionTitle>
-                                <SettingsSubsectionDescription>
-                                    {t("policyAuthOtherMethodsDescription")}
-                                </SettingsSubsectionDescription>
-                            </SettingsSubsectionHeader>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <PolicyAuthMethodRow
-                                    id="pincode"
-                                    title={t("policyAuthPincodeTitle")}
-                                    description={t(
-                                        "policyAuthPincodeDescription"
-                                    )}
-                                    summary={getPincodeSummary({ t })}
-                                    active={pinActive}
-                                    onConfigure={() =>
-                                        openMethodEditor("pincode")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle("pincode", active, () => {
-                                            setPinActive(false);
-                                            form.setValue("pincode", null);
-                                        })
-                                    }
-                                    disabled={authReadonly}
-                                />
-
-                                <PolicyAuthMethodRow
-                                    id="passcode"
-                                    title={t("policyAuthPasscodeTitle")}
-                                    description={t(
-                                        "policyAuthPasscodeDescription"
-                                    )}
-                                    summary={getPasscodeSummary({ t })}
-                                    active={passcodeActive}
-                                    onConfigure={() =>
-                                        openMethodEditor("passcode")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle("passcode", active, () => {
-                                            setPasscodeActive(false);
-                                            form.setValue("password", null);
-                                        })
-                                    }
-                                    disabled={authReadonly}
-                                />
-
-                                <PolicyAuthMethodRow
-                                    id="email"
-                                    title={t("policyAuthEmailTitle")}
-                                    description={t(
-                                        "policyAuthEmailDescription"
-                                    )}
-                                    summary={getEmailWhitelistSummary({
-                                        t,
-                                        count: emails.length
-                                    })}
-                                    active={Boolean(emailWhitelistEnabled)}
-                                    onConfigure={() =>
-                                        openMethodEditor("email")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle("email", active, () =>
-                                            form.setValue(
-                                                "emailWhitelistEnabled",
-                                                false
-                                            )
-                                        )
-                                    }
-                                    disabled={authReadonly || !emailEnabled}
-                                />
-
-                                <PolicyAuthMethodRow
-                                    id="header-auth"
-                                    title={t("policyAuthHeaderAuthTitle")}
-                                    description={t(
-                                        "policyAuthHeaderAuthDescription"
-                                    )}
-                                    summary={getHeaderAuthSummary({
-                                        t,
-                                        headerName: headerAuth?.user ?? ""
-                                    })}
-                                    active={headerAuthActive}
-                                    onConfigure={() =>
-                                        openMethodEditor("headerAuth")
-                                    }
-                                    onToggle={(active) =>
-                                        handleToggle(
-                                            "headerAuth",
-                                            active,
-                                            () => {
-                                                setHeaderAuthActive(false);
-                                                form.setValue(
-                                                    "headerAuth",
-                                                    null
-                                                );
+                            <SettingsFormGrid>
+                                <SettingsFormCell span="full">
+                                    <SettingsSubsectionHeader>
+                                        <SettingsSubsectionTitle>
+                                            {t("policyAuthOtherMethodsTitle")}
+                                        </SettingsSubsectionTitle>
+                                        <SettingsSubsectionDescription>
+                                            {t(
+                                                "policyAuthOtherMethodsDescription"
+                                            )}
+                                        </SettingsSubsectionDescription>
+                                    </SettingsSubsectionHeader>
+                                </SettingsFormCell>
+                                <SettingsFormCell span="half">
+                                    <div className="flex flex-col gap-3">
+                                        <PolicyAuthMethodRow
+                                            id="pincode"
+                                            title={t("policyAuthPincodeTitle")}
+                                            description={t(
+                                                "policyAuthPincodeDescription"
+                                            )}
+                                            summary={getPincodeSummary({ t })}
+                                            active={pinActive}
+                                            onConfigure={() =>
+                                                openMethodEditor("pincode")
                                             }
-                                        )
-                                    }
-                                    disabled={authReadonly}
-                                />
-                            </div>
+                                            onToggle={(active) =>
+                                                handleToggle(
+                                                    "pincode",
+                                                    active,
+                                                    () => {
+                                                        setPinActive(false);
+                                                        form.setValue(
+                                                            "pincode",
+                                                            null
+                                                        );
+                                                    }
+                                                )
+                                            }
+                                            disabled={authReadonly}
+                                        />
+
+                                        <PolicyAuthMethodRow
+                                            id="passcode"
+                                            title={t("policyAuthPasscodeTitle")}
+                                            description={t(
+                                                "policyAuthPasscodeDescription"
+                                            )}
+                                            summary={getPasscodeSummary({ t })}
+                                            active={passcodeActive}
+                                            onConfigure={() =>
+                                                openMethodEditor("passcode")
+                                            }
+                                            onToggle={(active) =>
+                                                handleToggle(
+                                                    "passcode",
+                                                    active,
+                                                    () => {
+                                                        setPasscodeActive(
+                                                            false
+                                                        );
+                                                        form.setValue(
+                                                            "password",
+                                                            null
+                                                        );
+                                                    }
+                                                )
+                                            }
+                                            disabled={authReadonly}
+                                        />
+
+                                        <PolicyAuthMethodRow
+                                            id="email"
+                                            title={t("policyAuthEmailTitle")}
+                                            description={t(
+                                                "policyAuthEmailDescription"
+                                            )}
+                                            summary={getEmailWhitelistSummary({
+                                                t,
+                                                count: emails.length
+                                            })}
+                                            active={Boolean(
+                                                emailWhitelistEnabled
+                                            )}
+                                            onConfigure={() =>
+                                                openMethodEditor("email")
+                                            }
+                                            onToggle={(active) =>
+                                                handleToggle(
+                                                    "email",
+                                                    active,
+                                                    () =>
+                                                        form.setValue(
+                                                            "emailWhitelistEnabled",
+                                                            false
+                                                        )
+                                                )
+                                            }
+                                            disabled={
+                                                authReadonly || !emailEnabled
+                                            }
+                                        />
+
+                                        <PolicyAuthMethodRow
+                                            id="header-auth"
+                                            title={t(
+                                                "policyAuthHeaderAuthTitle"
+                                            )}
+                                            description={t(
+                                                "policyAuthHeaderAuthDescription"
+                                            )}
+                                            summary={getHeaderAuthSummary({
+                                                t,
+                                                headerName:
+                                                    headerAuth?.user ?? ""
+                                            })}
+                                            active={headerAuthActive}
+                                            onConfigure={() =>
+                                                openMethodEditor("headerAuth")
+                                            }
+                                            onToggle={(active) =>
+                                                handleToggle(
+                                                    "headerAuth",
+                                                    active,
+                                                    () => {
+                                                        setHeaderAuthActive(
+                                                            false
+                                                        );
+                                                        form.setValue(
+                                                            "headerAuth",
+                                                            null
+                                                        );
+                                                    }
+                                                )
+                                            }
+                                            disabled={authReadonly}
+                                        />
+                                    </div>
+                                </SettingsFormCell>
+                            </SettingsFormGrid>
                         </div>
 
                         <PincodeCredenza

@@ -262,7 +262,7 @@ export default function Page() {
                                         id="create-client-form"
                                     >
                                         <SettingsFormGrid>
-                                            <SettingsFormCell span="half">
+                                            <SettingsFormCell span="quarter">
                                                 <FormField
                                                     control={form.control}
                                                     name="name"
@@ -287,7 +287,7 @@ export default function Page() {
                                                     )}
                                                 />
                                             </SettingsFormCell>
-                                            <SettingsFormCell className="flex items-center justify-end md:col-span-2">
+                                            <SettingsFormCell span="full">
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -297,7 +297,7 @@ export default function Page() {
                                                             !showAdvancedSettings
                                                         )
                                                     }
-                                                    className="flex items-center gap-2"
+                                                    className="flex items-center gap-2 -ml-3"
                                                 >
                                                     {showAdvancedSettings ? (
                                                         <ChevronUp className="h-4 w-4" />
@@ -308,7 +308,7 @@ export default function Page() {
                                                 </Button>
                                             </SettingsFormCell>
                                             {showAdvancedSettings && (
-                                                <SettingsFormCell span="full">
+                                                <SettingsFormCell span="quarter">
                                                     <FormField
                                                         control={form.control}
                                                         name="subnet"

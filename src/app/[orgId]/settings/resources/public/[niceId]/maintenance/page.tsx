@@ -15,13 +15,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
-    SettingsSectionTitle
+    SettingsSectionTitle,
+    SettingsSubsectionDescription,
+    SettingsSubsectionHeader,
+    SettingsSubsectionTitle
 } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { useEnvContext } from "@app/hooks/useEnvContext";
@@ -37,12 +42,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
-import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 import {
-    Tooltip,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
+    StrategySelect,
+    type StrategyOption
+} from "@app/components/StrategySelect";
 import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
@@ -158,6 +161,25 @@ export default function ResourceMaintenancePage() {
         return null;
     }
 
+    const isMaintenanceDisabled = !isPaidUser(tierMatrix.maintencePage);
+
+    const maintenanceModeTypeOptions: StrategyOption<
+        "automatic" | "forced"
+    >[] = [
+        {
+            id: "automatic",
+            title: `${t("automatic")} (${t("recommended")})`,
+            description: t("automaticModeDescription"),
+            disabled: isMaintenanceDisabled
+        },
+        {
+            id: "forced",
+            title: t("forced"),
+            description: t("forcedModeDescription"),
+            disabled: isMaintenanceDisabled
+        }
+    ];
+
     return (
         <SettingsContainer>
             <SettingsSection>
@@ -172,255 +194,237 @@ export default function ResourceMaintenancePage() {
 
                 <SettingsSectionBody>
                     <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
-                    <SettingsSectionForm>
+                    <SettingsSectionForm variant="half">
                         <Form {...maintenanceForm}>
                             <form
                                 action={maintenanceFormAction}
-                                className="space-y-4"
                                 id="maintenance-settings-form"
                             >
-                                <FormField
-                                    control={maintenanceForm.control}
-                                    name="maintenanceModeEnabled"
-                                    render={({ field }) => {
-                                        const isDisabled = !isPaidUser(
-                                            tierMatrix.maintencePage
-                                        );
+                                <SettingsFormGrid>
+                                    <SettingsFormCell span="full">
+                                        <FormField
+                                            control={maintenanceForm.control}
+                                            name="maintenanceModeEnabled"
+                                            render={({ field }) => {
+                                                const isDisabled = !isPaidUser(
+                                                    tierMatrix.maintencePage
+                                                );
 
-                                        return (
-                                            <FormItem>
-                                                <div className="flex items-center space-x-2">
-                                                    <FormControl>
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger
-                                                                    asChild
+                                                return (
+                                                    <FormItem>
+                                                        <FormControl>
+                                                            <SwitchInput
+                                                                id="enable-maintenance"
+                                                                checked={
+                                                                    field.value
+                                                                }
+                                                                label={t(
+                                                                    "enableMaintenanceMode"
+                                                                )}
+                                                                description={t(
+                                                                    "enableMaintenanceModeDescription"
+                                                                )}
+                                                                disabled={
+                                                                    isDisabled
+                                                                }
+                                                                onCheckedChange={(
+                                                                    val
+                                                                ) => {
+                                                                    if (
+                                                                        !isDisabled
+                                                                    ) {
+                                                                        maintenanceForm.setValue(
+                                                                            "maintenanceModeEnabled",
+                                                                            val
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                );
+                                            }}
+                                        />
+                                    </SettingsFormCell>
+
+                                    {isMaintenanceEnabled && (
+                                        <>
+                                            <SettingsFormCell span="full">
+                                                <FormField
+                                                    control={
+                                                        maintenanceForm.control
+                                                    }
+                                                    name="maintenanceModeType"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t(
+                                                                    "maintenanceModeType"
+                                                                )}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <StrategySelect<
+                                                                    | "automatic"
+                                                                    | "forced"
                                                                 >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <SwitchInput
-                                                                            id="enable-maintenance"
-                                                                            checked={
-                                                                                field.value
-                                                                            }
-                                                                            label={t(
-                                                                                "enableMaintenanceMode"
-                                                                            )}
-                                                                            disabled={
-                                                                                isDisabled
-                                                                            }
-                                                                            onCheckedChange={(
-                                                                                val
-                                                                            ) => {
-                                                                                if (
-                                                                                    !isDisabled
-                                                                                ) {
-                                                                                    maintenanceForm.setValue(
-                                                                                        "maintenanceModeEnabled",
-                                                                                        val
-                                                                                    );
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                </TooltipTrigger>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    </FormControl>
-                                                </div>
-                                                <FormDescription>
-                                                    {t(
-                                                        "enableMaintenanceModeDescription"
+                                                                    value={
+                                                                        field.value
+                                                                    }
+                                                                    options={
+                                                                        maintenanceModeTypeOptions
+                                                                    }
+                                                                    onChange={
+                                                                        field.onChange
+                                                                    }
+                                                                    cols={2}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
                                                     )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        );
-                                    }}
-                                />
+                                                />
+                                            </SettingsFormCell>
 
-                                {isMaintenanceEnabled && (
-                                    <div className="space-y-4">
-                                        <FormField
-                                            control={maintenanceForm.control}
-                                            name="maintenanceModeType"
-                                            render={({ field }) => (
-                                                <FormItem className="space-y-3">
-                                                    <FormLabel>
+                                            {maintenanceModeType ===
+                                                "forced" && (
+                                                <SettingsFormCell span="full">
+                                                    <Alert variant="neutral">
+                                                        <AlertCircle className="h-4 w-4" />
+                                                        <AlertDescription>
+                                                            {t(
+                                                                "forcedeModeWarning"
+                                                            )}
+                                                        </AlertDescription>
+                                                    </Alert>
+                                                </SettingsFormCell>
+                                            )}
+
+                                            <SettingsFormCell span="full">
+                                                <SettingsSubsectionHeader>
+                                                    <SettingsSubsectionTitle>
                                                         {t(
-                                                            "maintenanceModeType"
+                                                            "maintenancePageContentSubsection"
                                                         )}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <RadioGroup
-                                                            onValueChange={
-                                                                field.onChange
-                                                            }
-                                                            defaultValue={
-                                                                field.value
-                                                            }
-                                                            disabled={
-                                                                !isPaidUser(
-                                                                    tierMatrix.maintencePage
-                                                                )
-                                                            }
-                                                            className="flex flex-col space-y-1"
-                                                        >
-                                                            <FormItem className="flex items-start space-x-3 space-y-0">
-                                                                <FormControl>
-                                                                    <RadioGroupItem value="automatic" />
-                                                                </FormControl>
-                                                                <div className="space-y-1 leading-none">
-                                                                    <FormLabel className="font-normal">
-                                                                        <strong>
-                                                                            {t(
-                                                                                "automatic"
-                                                                            )}
-                                                                        </strong>{" "}
-                                                                        (
-                                                                        {t(
-                                                                            "recommended"
-                                                                        )}
+                                                    </SettingsSubsectionTitle>
+                                                    <SettingsSubsectionDescription>
+                                                        {t(
+                                                            "maintenancePageContentSubsectionDescription"
+                                                        )}
+                                                    </SettingsSubsectionDescription>
+                                                </SettingsSubsectionHeader>
+                                            </SettingsFormCell>
+
+                                            <SettingsFormCell span="half">
+                                                <FormField
+                                                    control={
+                                                        maintenanceForm.control
+                                                    }
+                                                    name="maintenanceTitle"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t("pageTitle")}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...field}
+                                                                    disabled={
+                                                                        !isPaidUser(
+                                                                            tierMatrix.maintencePage
                                                                         )
-                                                                    </FormLabel>
-                                                                    <FormDescription>
-                                                                        {t(
-                                                                            "automaticModeDescription"
-                                                                        )}
-                                                                    </FormDescription>
-                                                                </div>
-                                                            </FormItem>
-                                                            <FormItem className="flex items-start space-x-3 space-y-0">
-                                                                <FormControl>
-                                                                    <RadioGroupItem value="forced" />
-                                                                </FormControl>
-                                                                <div className="space-y-1 leading-none">
-                                                                    <FormLabel className="font-normal">
-                                                                        <strong>
-                                                                            {t(
-                                                                                "forced"
-                                                                            )}
-                                                                        </strong>
-                                                                    </FormLabel>
-                                                                    <FormDescription>
-                                                                        {t(
-                                                                            "forcedModeDescription"
-                                                                        )}
-                                                                    </FormDescription>
-                                                                </div>
-                                                            </FormItem>
-                                                        </RadioGroup>
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                                                    }
+                                                                    placeholder="We'll be back soon!"
+                                                                />
+                                                            </FormControl>
+                                                            <FormDescription>
+                                                                {t(
+                                                                    "pageTitleDescription"
+                                                                )}
+                                                            </FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </SettingsFormCell>
 
-                                        {maintenanceModeType === "forced" && (
-                                            <Alert variant={"neutral"}>
-                                                <AlertCircle className="h-4 w-4" />
-                                                <AlertDescription>
-                                                    {t("forcedeModeWarning")}
-                                                </AlertDescription>
-                                            </Alert>
-                                        )}
+                                            <SettingsFormCell span="full">
+                                                <FormField
+                                                    control={
+                                                        maintenanceForm.control
+                                                    }
+                                                    name="maintenanceMessage"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t(
+                                                                    "maintenancePageMessage"
+                                                                )}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Textarea
+                                                                    {...field}
+                                                                    rows={4}
+                                                                    disabled={
+                                                                        !isPaidUser(
+                                                                            tierMatrix.maintencePage
+                                                                        )
+                                                                    }
+                                                                    placeholder={t(
+                                                                        "maintenancePageMessagePlaceholder"
+                                                                    )}
+                                                                />
+                                                            </FormControl>
+                                                            <FormDescription>
+                                                                {t(
+                                                                    "maintenancePageMessageDescription"
+                                                                )}
+                                                            </FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </SettingsFormCell>
 
-                                        <FormField
-                                            control={maintenanceForm.control}
-                                            name="maintenanceTitle"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t("pageTitle")}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            disabled={
-                                                                !isPaidUser(
-                                                                    tierMatrix.maintencePage
-                                                                )
-                                                            }
-                                                            placeholder="We'll be back soon!"
-                                                        />
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        {t(
-                                                            "pageTitleDescription"
-                                                        )}
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={maintenanceForm.control}
-                                            name="maintenanceMessage"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t(
-                                                            "maintenancePageMessage"
-                                                        )}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Textarea
-                                                            {...field}
-                                                            rows={4}
-                                                            disabled={
-                                                                !isPaidUser(
-                                                                    tierMatrix.maintencePage
-                                                                )
-                                                            }
-                                                            placeholder={t(
-                                                                "maintenancePageMessagePlaceholder"
-                                                            )}
-                                                        />
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        {t(
-                                                            "maintenancePageMessageDescription"
-                                                        )}
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <FormField
-                                            control={maintenanceForm.control}
-                                            name="maintenanceEstimatedTime"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>
-                                                        {t(
-                                                            "maintenancePageTimeTitle"
-                                                        )}
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            disabled={
-                                                                !isPaidUser(
-                                                                    tierMatrix.maintencePage
-                                                                )
-                                                            }
-                                                            placeholder={t(
-                                                                "maintenanceTime"
-                                                            )}
-                                                        />
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        {t(
-                                                            "maintenanceEstimatedTimeDescription"
-                                                        )}
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                )}
+                                            <SettingsFormCell span="half">
+                                                <FormField
+                                                    control={
+                                                        maintenanceForm.control
+                                                    }
+                                                    name="maintenanceEstimatedTime"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                {t(
+                                                                    "maintenancePageTimeTitle"
+                                                                )}
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...field}
+                                                                    disabled={
+                                                                        !isPaidUser(
+                                                                            tierMatrix.maintencePage
+                                                                        )
+                                                                    }
+                                                                    placeholder={t(
+                                                                        "maintenanceTime"
+                                                                    )}
+                                                                />
+                                                            </FormControl>
+                                                            <FormDescription>
+                                                                {t(
+                                                                    "maintenanceEstimatedTimeDescription"
+                                                                )}
+                                                            </FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </SettingsFormCell>
+                                        </>
+                                    )}
+                                </SettingsFormGrid>
                             </form>
                         </Form>
                     </SettingsSectionForm>

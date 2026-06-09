@@ -489,7 +489,7 @@ export default function GeneralForm() {
                                                         </SettingsSubsectionDescription>
                                                     </SettingsSubsectionHeader>
                                                 </SettingsFormCell>
-                                                <SettingsFormCell span="full">
+                                                <SettingsFormCell span="half">
                                                     <div className="space-y-2">
                                                         <FormLabel>
                                                             {t("sharedPolicy")}

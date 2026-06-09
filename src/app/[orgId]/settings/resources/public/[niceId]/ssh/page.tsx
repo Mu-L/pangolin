@@ -525,6 +525,9 @@ function SshServerForm({
                                             name="selectedNativeSite"
                                             render={() => (
                                                 <FormItem>
+                                                    <FormLabel>
+                                                        {t("sites")}
+                                                    </FormLabel>
                                                     <Popover
                                                         open={nativeSiteOpen}
                                                         onOpenChange={

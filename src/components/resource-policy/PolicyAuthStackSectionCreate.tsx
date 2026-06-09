@@ -158,82 +158,91 @@ export function PolicyAuthStackSectionCreate({
                     </SettingsFormCell>
                 </SettingsFormGrid>
 
-                <SettingsSubsectionHeader>
-                    <SettingsSubsectionTitle>
-                        {t("policyAuthOtherMethodsTitle")}
-                    </SettingsSubsectionTitle>
-                    <SettingsSubsectionDescription>
-                        {t("policyAuthOtherMethodsDescription")}
-                    </SettingsSubsectionDescription>
-                </SettingsSubsectionHeader>
+                <SettingsFormGrid>
+                    <SettingsFormCell span="full">
+                        <SettingsSubsectionHeader>
+                            <SettingsSubsectionTitle>
+                                {t("policyAuthOtherMethodsTitle")}
+                            </SettingsSubsectionTitle>
+                            <SettingsSubsectionDescription>
+                                {t("policyAuthOtherMethodsDescription")}
+                            </SettingsSubsectionDescription>
+                        </SettingsSubsectionHeader>
+                    </SettingsFormCell>
+                    <SettingsFormCell span="half">
+                        <div className="flex flex-col gap-3">
+                            <PolicyAuthMethodRow
+                                id="pincode"
+                                title={t("policyAuthPincodeTitle")}
+                                description={t("policyAuthPincodeDescription")}
+                                summary={getPincodeSummary({ t })}
+                                active={pinActive}
+                                onConfigure={() => setEditingMethod("pincode")}
+                                onToggle={(active) =>
+                                    handleToggle("pincode", active, () =>
+                                        parentForm.setValue("pincode", null)
+                                    )
+                                }
+                            />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <PolicyAuthMethodRow
-                        id="pincode"
-                        title={t("policyAuthPincodeTitle")}
-                        description={t("policyAuthPincodeDescription")}
-                        summary={getPincodeSummary({ t })}
-                        active={pinActive}
-                        onConfigure={() => setEditingMethod("pincode")}
-                        onToggle={(active) =>
-                            handleToggle("pincode", active, () =>
-                                parentForm.setValue("pincode", null)
-                            )
-                        }
-                    />
+                            <PolicyAuthMethodRow
+                                id="passcode"
+                                title={t("policyAuthPasscodeTitle")}
+                                description={t("policyAuthPasscodeDescription")}
+                                summary={getPasscodeSummary({ t })}
+                                active={passcodeActive}
+                                onConfigure={() => setEditingMethod("passcode")}
+                                onToggle={(active) =>
+                                    handleToggle("passcode", active, () =>
+                                        parentForm.setValue("password", null)
+                                    )
+                                }
+                            />
 
-                    <PolicyAuthMethodRow
-                        id="passcode"
-                        title={t("policyAuthPasscodeTitle")}
-                        description={t("policyAuthPasscodeDescription")}
-                        summary={getPasscodeSummary({ t })}
-                        active={passcodeActive}
-                        onConfigure={() => setEditingMethod("passcode")}
-                        onToggle={(active) =>
-                            handleToggle("passcode", active, () =>
-                                parentForm.setValue("password", null)
-                            )
-                        }
-                    />
+                            <PolicyAuthMethodRow
+                                id="email"
+                                title={t("policyAuthEmailTitle")}
+                                description={t("policyAuthEmailDescription")}
+                                summary={getEmailWhitelistSummary({
+                                    t,
+                                    count: emails.length
+                                })}
+                                active={Boolean(emailWhitelistEnabled)}
+                                onConfigure={() => setEditingMethod("email")}
+                                onToggle={(active) =>
+                                    handleToggle("email", active, () =>
+                                        parentForm.setValue(
+                                            "emailWhitelistEnabled",
+                                            false
+                                        )
+                                    )
+                                }
+                                disabled={!emailEnabled}
+                            />
 
-                    <PolicyAuthMethodRow
-                        id="email"
-                        title={t("policyAuthEmailTitle")}
-                        description={t("policyAuthEmailDescription")}
-                        summary={getEmailWhitelistSummary({
-                            t,
-                            count: emails.length
-                        })}
-                        active={Boolean(emailWhitelistEnabled)}
-                        onConfigure={() => setEditingMethod("email")}
-                        onToggle={(active) =>
-                            handleToggle("email", active, () =>
-                                parentForm.setValue(
-                                    "emailWhitelistEnabled",
-                                    false
-                                )
-                            )
-                        }
-                        disabled={!emailEnabled}
-                    />
-
-                    <PolicyAuthMethodRow
-                        id="header-auth"
-                        title={t("policyAuthHeaderAuthTitle")}
-                        description={t("policyAuthHeaderAuthDescription")}
-                        summary={getHeaderAuthSummary({
-                            t,
-                            headerName: headerAuth?.user ?? ""
-                        })}
-                        active={headerAuthActive}
-                        onConfigure={() => setEditingMethod("headerAuth")}
-                        onToggle={(active) =>
-                            handleToggle("headerAuth", active, () =>
-                                parentForm.setValue("headerAuth", null)
-                            )
-                        }
-                    />
-                </div>
+                            <PolicyAuthMethodRow
+                                id="header-auth"
+                                title={t("policyAuthHeaderAuthTitle")}
+                                description={t(
+                                    "policyAuthHeaderAuthDescription"
+                                )}
+                                summary={getHeaderAuthSummary({
+                                    t,
+                                    headerName: headerAuth?.user ?? ""
+                                })}
+                                active={headerAuthActive}
+                                onConfigure={() =>
+                                    setEditingMethod("headerAuth")
+                                }
+                                onToggle={(active) =>
+                                    handleToggle("headerAuth", active, () =>
+                                        parentForm.setValue("headerAuth", null)
+                                    )
+                                }
+                            />
+                        </div>
+                    </SettingsFormCell>
+                </SettingsFormGrid>
 
                 <PincodeCredenza
                     open={editingMethod === "pincode"}

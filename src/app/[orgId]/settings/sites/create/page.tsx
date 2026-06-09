@@ -7,7 +7,6 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
-    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
@@ -519,7 +518,7 @@ export default function Page() {
                                         id="create-site-form"
                                     >
                                         <SettingsFormGrid>
-                                            <SettingsFormCell span="half">
+                                            <SettingsFormCell span="quarter">
                                                 <FormField
                                                     control={form.control}
                                                     name="name"
@@ -543,9 +542,11 @@ export default function Page() {
                                                         </FormItem>
                                                     )}
                                                 />
-                                                {form.watch("method") ===
-                                                    "newt" && (
-                                                    <>
+                                            </SettingsFormCell>
+                                            {form.watch("method") ===
+                                                "newt" && (
+                                                <>
+                                                    <SettingsFormCell span="full">
                                                         <Button
                                                             type="button"
                                                             variant="ghost"
@@ -566,7 +567,9 @@ export default function Page() {
                                                                 "advancedSettings"
                                                             )}
                                                         </Button>
-                                                        {showAdvancedSettings && (
+                                                    </SettingsFormCell>
+                                                    {showAdvancedSettings && (
+                                                        <SettingsFormCell span="quarter">
                                                             <FormField
                                                                 control={
                                                                     form.control
@@ -575,7 +578,7 @@ export default function Page() {
                                                                 render={({
                                                                     field
                                                                 }) => (
-                                                                    <FormItem className="mt-4">
+                                                                    <FormItem>
                                                                         <FormLabel>
                                                                             {t(
                                                                                 "siteAddress"
@@ -612,10 +615,10 @@ export default function Page() {
                                                                     </FormItem>
                                                                 )}
                                                             />
-                                                        )}
-                                                    </>
-                                                )}
-                                            </SettingsFormCell>
+                                                        </SettingsFormCell>
+                                                    )}
+                                                </>
+                                            )}
                                         </SettingsFormGrid>
                                     </form>
                                 </Form>
