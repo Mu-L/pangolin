@@ -27,6 +27,7 @@ import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { resourceQueries } from "@app/lib/queries";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { GetResourcePolicyResponse } from "@server/routers/policy";
 import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
@@ -105,7 +106,7 @@ export function PolicyAuthStackSectionEdit({
 }: PolicyAuthStackSectionEditProps) {
     const t = useTranslations();
     const router = useRouter();
-    const { policy } = useResourcePolicyContext();
+    const { policy, updatePolicy } = useResourcePolicyContext();
     const api = createApiClient(useEnvContext());
 
     const isResourceOverlay = resourceId !== undefined;
@@ -215,7 +216,7 @@ export function PolicyAuthStackSectionEdit({
             users: policyUserItems,
             password: null,
             pincode: null,
-            headerAuth: policy.headerAuth
+            headerAuth: policy.headerAuth?.id
                 ? {
                       user: "",
                       password: "",
@@ -236,8 +237,12 @@ export function PolicyAuthStackSectionEdit({
     );
     const [pinActive, setPinActive] = useState(Boolean(policy.pincodeId));
     const [headerAuthActive, setHeaderAuthActive] = useState(
-        Boolean(policy.headerAuth)
+        Boolean(policy.headerAuth?.id)
     );
+
+    const passcodeOnServerRef = useRef(Boolean(policy.passwordId));
+    const pincodeOnServerRef = useRef(Boolean(policy.pincodeId));
+    const headerAuthOnServerRef = useRef(Boolean(policy.headerAuth?.id));
     const [editingMethod, setEditingMethod] =
         useState<PolicyAuthMethodId | null>(null);
 
@@ -283,6 +288,7 @@ export function PolicyAuthStackSectionEdit({
 
         const payload = form.getValues();
         const requests: Array<Promise<AxiosResponse<{}> | void>> = [];
+        const policyUpdates: Parameters<typeof updatePolicy>[0] = {};
 
         requests.push(
             api
@@ -307,7 +313,8 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
-        } else if (!passcodeActive && policy.passwordId) {
+            policyUpdates.passwordId = policy.passwordId ?? -1;
+        } else if (!passcodeActive && passcodeOnServerRef.current) {
             requests.push(
                 api
                     .put(
@@ -316,6 +323,7 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
+            policyUpdates.passwordId = null;
         }
 
         if (pinActive && payload.pincode?.pincode?.length === 6) {
@@ -327,7 +335,8 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
-        } else if (!pinActive && policy.pincodeId) {
+            policyUpdates.pincodeId = policy.pincodeId ?? -1;
+        } else if (!pinActive && pincodeOnServerRef.current) {
             requests.push(
                 api
                     .put(
@@ -336,6 +345,7 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
+            policyUpdates.pincodeId = null;
         }
 
         if (
@@ -351,7 +361,12 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
-        } else if (!headerAuthActive && policy.headerAuth) {
+            policyUpdates.headerAuth = {
+                id: policy.headerAuth?.id ?? -1,
+                extendedCompability:
+                    payload.headerAuth.extendedCompatibility ?? true
+            };
+        } else if (!headerAuthActive && headerAuthOnServerRef.current) {
             requests.push(
                 api
                     .put(
@@ -360,6 +375,10 @@ export function PolicyAuthStackSectionEdit({
                     )
                     .catch(handleError)
             );
+            policyUpdates.headerAuth = {
+                id: null,
+                extendedCompability: null
+            } as unknown as GetResourcePolicyResponse["headerAuth"];
         }
 
         requests.push(
@@ -370,10 +389,29 @@ export function PolicyAuthStackSectionEdit({
                 })
                 .catch(handleError)
         );
+        policyUpdates.emailWhitelistEnabled = payload.emailWhitelistEnabled;
 
         try {
             const results = await Promise.all(requests);
             if (results.every((res) => res && res.status === 200)) {
+                if (policyUpdates.passwordId !== undefined) {
+                    passcodeOnServerRef.current = Boolean(
+                        policyUpdates.passwordId
+                    );
+                }
+                if (policyUpdates.pincodeId !== undefined) {
+                    pincodeOnServerRef.current = Boolean(
+                        policyUpdates.pincodeId
+                    );
+                }
+                if (policyUpdates.headerAuth !== undefined) {
+                    headerAuthOnServerRef.current = Boolean(
+                        policyUpdates.headerAuth?.id
+                    );
+                }
+
+                updatePolicy(policyUpdates);
+
                 toast({
                     title: t("success"),
                     description: t("policyUpdatedSuccess")
@@ -740,7 +778,7 @@ export function PolicyAuthStackSectionEdit({
                                       }
                                     : undefined
                             }
-                            existingConfigured={Boolean(policy.headerAuth)}
+                            existingConfigured={Boolean(policy.headerAuth?.id)}
                             onSave={(value) => {
                                 form.setValue("headerAuth", value);
                                 setHeaderAuthActive(true);
