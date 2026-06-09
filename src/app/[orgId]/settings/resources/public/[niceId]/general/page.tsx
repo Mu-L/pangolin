@@ -153,7 +153,10 @@ export default function GeneralForm() {
 
         let resourcePolicyId: number | null | undefined;
 
-        if (showResourcePolicy) {
+        if (
+            showResourcePolicy &&
+            !["tcp", "udp"].includes(resource.mode)
+        ) {
             resourcePolicyId = selectedSharedPolicyId;
         }
 
@@ -473,7 +476,10 @@ export default function GeneralForm() {
                                                 </div>
                                             </SettingsFormCell>
                                         )}
-                                        {showResourcePolicy && (
+                                        {showResourcePolicy &&
+                                            !["tcp", "udp"].includes(
+                                                resource.mode
+                                            ) && (
                                             <>
                                                 <SettingsFormCell span="full">
                                                     <SettingsSubsectionHeader>

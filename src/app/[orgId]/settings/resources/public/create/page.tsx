@@ -73,13 +73,8 @@ import {
     ProxyResourceTargetsForm
 } from "@app/app/[orgId]/settings/resources/public/ProxyResourceTargetsForm";
 import { AxiosResponse } from "axios";
-import {
-    ChevronsUpDown,
-    ExternalLink,
-    SquareArrowOutUpRight
-} from "lucide-react";
+import { ChevronsUpDown, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII } from "punycode";
 import {
@@ -1446,54 +1441,61 @@ export default function Page() {
                                         {t("resourceConfig")}
                                     </SettingsSectionTitle>
                                     <SettingsSectionDescription>
-                                        {t("resourceConfigDescription")}
+                                        {t("resourceConfigDescription")}{" "}
+                                        <a
+                                            href="https://docs.pangolin.net/manage/resources/public/raw-resources"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                        >
+                                            {t("learnMore")}
+                                            <ExternalLink className="size-3.5 shrink-0" />
+                                        </a>
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    <div className="space-y-6">
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">
-                                                {t("resourceAddEntrypoints")}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "resourceAddEntrypointsEditFile"
-                                                )}
-                                            </p>
+                                    <SettingsFormGrid>
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t("resourceAddEntrypoints")}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        "resourceAddEntrypointsEditFile"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
                                             <CopyTextBox
                                                 text={`entryPoints:
   ${tcpUdpForm.getValues("protocol")}-${tcpUdpForm.getValues("proxyPort")}:
     address: ":${tcpUdpForm.getValues("proxyPort")}/${tcpUdpForm.getValues("protocol")}"`}
                                                 wrapText={false}
                                             />
-                                        </div>
+                                        </SettingsFormCell>
 
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-semibold">
-                                                {t("resourceExposePorts")}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "resourceExposePortsEditFile"
-                                                )}
-                                            </p>
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t("resourceExposePorts")}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        "resourceExposePortsEditFile"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+                                        <SettingsFormCell span="full">
                                             <CopyTextBox
                                                 text={`ports:
   - ${tcpUdpForm.getValues("proxyPort")}:${tcpUdpForm.getValues("proxyPort")}${tcpUdpForm.getValues("protocol") === "tcp" ? "" : "/" + tcpUdpForm.getValues("protocol")}`}
                                                 wrapText={false}
                                             />
-                                        </div>
-
-                                        <Link
-                                            className="text-sm text-primary flex items-center gap-1"
-                                            href="https://docs.pangolin.net/manage/resources/public/raw-resources"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <span>{t("resourceLearnRaw")}</span>
-                                            <SquareArrowOutUpRight size={14} />
-                                        </Link>
-                                    </div>
+                                        </SettingsFormCell>
+                                    </SettingsFormGrid>
                                 </SettingsSectionBody>
                             </SettingsSection>
 

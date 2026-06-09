@@ -2,27 +2,26 @@
 
 import { Button } from "@/components/ui/button";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
-import {
     SettingsContainer,
+    SettingsFormCell,
+    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionFooter,
     SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
+import {
+    StrategyOption,
+    StrategySelect
+} from "@app/components/StrategySelect";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -49,6 +48,7 @@ import { useRouter } from "next/navigation";
 import {
     use,
     useActionState,
+    useMemo
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -131,6 +131,22 @@ function ProxyResourceProtocolForm({
 
     const router = useRouter();
 
+    const proxyProtocolVersionOptions = useMemo(
+        (): StrategyOption<"1" | "2">[] => [
+            {
+                id: "1",
+                title: t("version1"),
+                description: t("version1Description")
+            },
+            {
+                id: "2",
+                title: t("version2"),
+                description: t("version2Description")
+            }
+        ],
+        [t]
+    );
+
     const [, formAction, isSubmitting] = useActionState(
         saveProtocolSettings,
         null
@@ -187,105 +203,118 @@ function ProxyResourceProtocolForm({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <SettingsSectionForm>
+                <SettingsSectionForm variant="half">
                     <Form {...proxySettingsForm}>
                         <form
                             action={formAction}
-                            className="space-y-4"
                             id="proxy-protocol-settings-form"
                         >
-                            <FormField
-                                control={proxySettingsForm.control}
-                                name="proxyProtocol"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <SwitchInput
-                                                id="proxy-protocol-toggle"
-                                                label={t("enableProxyProtocol")}
-                                                description={t(
-                                                    "proxyProtocolInfo"
-                                                )}
-                                                defaultChecked={
-                                                    field.value || false
-                                                }
-                                                onCheckedChange={(val) => {
-                                                    field.onChange(val);
-                                                }}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-
-                            {proxySettingsForm.watch("proxyProtocol") && (
-                                <>
+                            <SettingsFormGrid>
+                                <SettingsFormCell span="full">
                                     <FormField
                                         control={proxySettingsForm.control}
-                                        name="proxyProtocolVersion"
+                                        name="proxyProtocol"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>
-                                                    {t("proxyProtocolVersion")}
-                                                </FormLabel>
                                                 <FormControl>
-                                                    <Select
-                                                        value={String(
-                                                            field.value || 1
+                                                    <SwitchInput
+                                                        id="proxy-protocol-toggle"
+                                                        label={t(
+                                                            "enableProxyProtocol"
                                                         )}
-                                                        onValueChange={(
-                                                            value
-                                                        ) =>
-                                                            field.onChange(
-                                                                parseInt(
-                                                                    value,
-                                                                    10
-                                                                )
-                                                            )
+                                                        description={t(
+                                                            "proxyProtocolInfo"
+                                                        )}
+                                                        defaultChecked={
+                                                            field.value || false
                                                         }
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select version" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="1">
-                                                                {t("version1")}
-                                                            </SelectItem>
-                                                            <SelectItem value="2">
-                                                                {t("version2")}
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                        onCheckedChange={(
+                                                            val
+                                                        ) => {
+                                                            field.onChange(val);
+                                                        }}
+                                                    />
                                                 </FormControl>
-                                                <FormDescription>
-                                                    {t("versionDescription")}
-                                                </FormDescription>
                                             </FormItem>
                                         )}
                                     />
+                                </SettingsFormCell>
 
-                                    <Alert>
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertDescription>
-                                            <strong>{t("warning")}:</strong>{" "}
-                                            {t("proxyProtocolWarning")}
-                                        </AlertDescription>
-                                    </Alert>
-                                </>
-                            )}
+                                {proxySettingsForm.watch("proxyProtocol") && (
+                                    <>
+                                        <SettingsFormCell span="full">
+                                            <Alert className="[&>svg]:self-start">
+                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertDescription>
+                                                    <strong>
+                                                        {t("warning")}:
+                                                    </strong>{" "}
+                                                    {t("proxyProtocolWarning")}
+                                                </AlertDescription>
+                                            </Alert>
+                                        </SettingsFormCell>
+
+                                        <SettingsFormCell span="full">
+                                            <FormField
+                                                control={
+                                                    proxySettingsForm.control
+                                                }
+                                                name="proxyProtocolVersion"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
+                                                            {t(
+                                                                "proxyProtocolVersion"
+                                                            )}
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <StrategySelect<
+                                                                "1" | "2"
+                                                            >
+                                                                value={
+                                                                    field.value ===
+                                                                    2
+                                                                        ? "2"
+                                                                        : "1"
+                                                                }
+                                                                options={
+                                                                    proxyProtocolVersionOptions
+                                                                }
+                                                                onChange={(
+                                                                    value
+                                                                ) =>
+                                                                    field.onChange(
+                                                                        parseInt(
+                                                                            value,
+                                                                            10
+                                                                        )
+                                                                    )
+                                                                }
+                                                                cols={2}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </SettingsFormCell>
+                                    </>
+                                )}
+                            </SettingsFormGrid>
                         </form>
                     </Form>
                 </SettingsSectionForm>
-                <form action={formAction} className="flex justify-end">
-                    <Button
-                        disabled={isSubmitting}
-                        loading={isSubmitting}
-                        type="submit"
-                    >
-                        {t("saveProxyProtocol")}
-                    </Button>
-                </form>
             </SettingsSectionBody>
+            <SettingsSectionFooter>
+                <Button
+                    disabled={isSubmitting}
+                    loading={isSubmitting}
+                    type="submit"
+                    form="proxy-protocol-settings-form"
+                >
+                    {t("saveProxyProtocol")}
+                </Button>
+            </SettingsSectionFooter>
         </SettingsSection>
     );
 }
