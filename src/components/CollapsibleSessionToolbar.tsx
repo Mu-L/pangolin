@@ -19,18 +19,23 @@ export default function CollapsibleSessionToolbar({
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
             <div
                 className={cn(
-                    "pointer-events-auto absolute inset-x-0 top-0 bg-black text-white shadow-lg transition-transform duration-200 ease-out",
+                    "pointer-events-auto absolute inset-x-0 top-0 isolate transition-transform duration-200 ease-out",
                     open ? "translate-y-0" : "-translate-y-full"
                 )}
             >
-                <div className="flex flex-wrap items-center gap-2 p-2">
+                <div className="relative z-20 flex flex-wrap items-center gap-2 bg-background p-2">
                     {children}
                 </div>
-                {/* Gray backdrop that visually "disappears" into the toolbar
-                    and peeks out behind the top of the orange pull tab. */}
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-1/2 top-full h-4 w-36 -translate-x-1/2 -translate-y-2 rounded-md bg-neutral-300 shadow-sm dark:bg-neutral-500"
+                {/* Secondary toggle backdrop kept as a distinct style under
+                    the main handle button. */}
+                <button
+                    type="button"
+                    onClick={() => setOpen((v) => !v)}
+                    aria-label={
+                        open ? t("sessionToolbarHide") : t("sessionToolbarShow")
+                    }
+                    aria-expanded={open}
+                    className="absolute left-1/2 top-full -z-20 h-4 w-72 -translate-x-1/2 -translate-y-2 rounded-md bg-neutral-200 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-neutral-500"
                 />
                 <button
                     type="button"
@@ -39,7 +44,7 @@ export default function CollapsibleSessionToolbar({
                         open ? t("sessionToolbarHide") : t("sessionToolbarShow")
                     }
                     aria-expanded={open}
-                    className="absolute left-1/2 top-full flex h-5 w-6 -translate-x-1/2 items-center justify-center rounded-b-md bg-primary text-primary-foreground shadow-md transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="absolute left-1/2 top-full -z-10 flex h-5 w-6 -translate-x-1/2 items-center justify-center rounded-b-sm bg-primary text-primary-foreground transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                     {open ? (
                         <ChevronUp className="h-3 w-3" />

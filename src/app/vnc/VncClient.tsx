@@ -300,6 +300,13 @@ export default function VncClient({
                 <CollapsibleSessionToolbar>
                     <Button
                         size="sm"
+                        variant="destructive"
+                        onClick={disconnect}
+                    >
+                        {t("sshTerminate")}
+                    </Button>
+                    <Button
+                        size="sm"
                         variant="secondary"
                         onClick={() => {
                             if (rfbRef.current) {
@@ -322,13 +329,6 @@ export default function VncClient({
                         }}
                     >
                         {t("vncPasteClipboard")}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={disconnect}
-                    >
-                        {t("sshTerminate")}
                     </Button>
                 </CollapsibleSessionToolbar>
 
