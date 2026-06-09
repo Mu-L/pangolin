@@ -118,7 +118,7 @@ export function PolicyAuthStackSectionCreate({
                             }
                             allIdps={allIdps}
                             rolesEditor={
-                                <FormField
+                                <FormField<PolicyFormValues, "roles">
                                     control={parentForm.control}
                                     name="roles"
                                     render={({ field }) => (
@@ -137,7 +137,7 @@ export function PolicyAuthStackSectionCreate({
                                 />
                             }
                             usersEditor={
-                                <FormField
+                                <FormField<PolicyFormValues, "users">
                                     control={parentForm.control}
                                     name="users"
                                     render={({ field }) => (
