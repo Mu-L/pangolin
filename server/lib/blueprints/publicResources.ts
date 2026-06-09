@@ -1467,17 +1467,6 @@ async function syncWhitelistUsers(
         .where(eq(resourceWhitelist.resourceId, resourceId));
 
     for (const email of whitelistUsers) {
-        const [user] = await trx
-            .select()
-            .from(users)
-            .innerJoin(userOrgs, eq(users.userId, userOrgs.userId))
-            .where(and(eq(users.email, email), eq(userOrgs.orgId, orgId)))
-            .limit(1);
-
-        if (!user) {
-            throw new Error(`User not found: ${email} in org ${orgId}`);
-        }
-
         const existingWhitelistEntry = existingWhitelist.find(
             (w) => w.email === email
         );
