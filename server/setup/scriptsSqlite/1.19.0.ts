@@ -249,6 +249,13 @@ export default async function migration() {
             ).run();
             db.prepare(
                 `
+            UPDATE 'siteResources'
+            SET "pamMode" = 'push'
+            WHERE LOWER(COALESCE("mode", '')) = 'host';
+                `
+            ).run();
+            db.prepare(
+                `
 
             ALTER TABLE 'orgs' ADD 'settingsEnableGlobalNewtAutoUpdate' integer DEFAULT false NOT NULL;
                 `

@@ -197,6 +197,11 @@ export default async function migration() {
         await db.execute(
             sql`ALTER TABLE "siteResources" ADD COLUMN "pamMode" varchar(32) DEFAULT 'passthrough';`
         );
+        await db.execute(sql`
+            UPDATE "siteResources"
+            SET "pamMode" = 'push'
+            WHERE LOWER(COALESCE("mode", '')) = 'host';
+        `);
         await db.execute(
             sql`ALTER TABLE "sites" ADD COLUMN "autoUpdateEnabled" boolean DEFAULT false NOT NULL;`
         );
