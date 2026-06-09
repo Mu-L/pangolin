@@ -1,10 +1,6 @@
 "use client";
 
-import {
-    SettingsFormCell,
-    SettingsFormGrid,
-    SettingsSectionForm
-} from "@app/components/Settings";
+import { SettingsFormCell, SettingsFormGrid } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { Button } from "@app/components/ui/button";
 import {
@@ -58,106 +54,100 @@ export function PolicyAuthSsoSection({
     const idpSelectDisabled = idpDisabled ?? disabled;
 
     return (
-        <SettingsSectionForm variant="half">
-            <SettingsFormGrid>
-                <SettingsFormCell span="full">
-                    <SwitchInput
-                        id="policy-auth-sso"
-                        label={t("policyAuthSsoTitle")}
-                        description={t("policyAuthSsoDescription")}
-                        checked={sso}
-                        disabled={disabled}
-                        onCheckedChange={onSsoChange}
-                    />
-                </SettingsFormCell>
+        <SettingsFormGrid>
+            <SettingsFormCell span="full">
+                <SwitchInput
+                    id="policy-auth-sso"
+                    label={t("policyAuthSsoTitle")}
+                    description={t("policyAuthSsoDescription")}
+                    checked={sso}
+                    disabled={disabled}
+                    onCheckedChange={onSsoChange}
+                />
+            </SettingsFormCell>
 
-                {sso && (
-                    <>
-                        <SettingsFormCell span="full">
-                            <FormItem>
-                                <FormLabel>{t("roles")}</FormLabel>
-                                {rolesEditor}
-                            </FormItem>
-                        </SettingsFormCell>
-                        <SettingsFormCell span="full">
-                            <FormItem>
-                                <FormLabel>{t("users")}</FormLabel>
-                                {usersEditor}
-                            </FormItem>
-                        </SettingsFormCell>
-                        {allIdps.length > 0 && (
-                            <SettingsFormCell span="half">
-                                {skipToIdpId == null && !showIdpSelect ? (
-                                    <Button
-                                        type="button"
-                                        variant="text"
-                                        size="sm"
-                                        className="h-auto px-0"
+            {sso && (
+                <>
+                    <SettingsFormCell span="full">
+                        <FormItem>
+                            <FormLabel>{t("roles")}</FormLabel>
+                            {rolesEditor}
+                        </FormItem>
+                    </SettingsFormCell>
+                    <SettingsFormCell span="full">
+                        <FormItem>
+                            <FormLabel>{t("users")}</FormLabel>
+                            {usersEditor}
+                        </FormItem>
+                    </SettingsFormCell>
+                    {allIdps.length > 0 && (
+                        <SettingsFormCell span="half">
+                            {skipToIdpId == null && !showIdpSelect ? (
+                                <Button
+                                    type="button"
+                                    variant="text"
+                                    size="sm"
+                                    className="h-auto px-0"
+                                    disabled={idpSelectDisabled}
+                                    onClick={() => setShowIdpSelect(true)}
+                                >
+                                    {t("policyAuthAddDefaultIdentityProvider")}
+                                </Button>
+                            ) : (
+                                <FormItem>
+                                    <FormLabel>
+                                        {t("defaultIdentityProvider")}
+                                    </FormLabel>
+                                    <Select
                                         disabled={idpSelectDisabled}
-                                        onClick={() => setShowIdpSelect(true)}
-                                    >
-                                        {t(
-                                            "policyAuthAddDefaultIdentityProvider"
-                                        )}
-                                    </Button>
-                                ) : (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {t("defaultIdentityProvider")}
-                                        </FormLabel>
-                                        <Select
-                                            disabled={idpSelectDisabled}
-                                            onValueChange={(value) => {
-                                                if (value === "none") {
-                                                    onSkipToIdpChange(null);
-                                                    setShowIdpSelect(false);
-                                                    return;
-                                                }
-                                                onSkipToIdpChange(
-                                                    parseInt(value)
-                                                );
-                                            }}
-                                            value={
-                                                skipToIdpId
-                                                    ? skipToIdpId.toString()
-                                                    : "none"
+                                        onValueChange={(value) => {
+                                            if (value === "none") {
+                                                onSkipToIdpChange(null);
+                                                setShowIdpSelect(false);
+                                                return;
                                             }
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue
-                                                        placeholder={t(
-                                                            "selectIdpPlaceholder"
-                                                        )}
-                                                    />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="none">
-                                                    {t("none")}
+                                            onSkipToIdpChange(parseInt(value));
+                                        }}
+                                        value={
+                                            skipToIdpId
+                                                ? skipToIdpId.toString()
+                                                : "none"
+                                        }
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue
+                                                    placeholder={t(
+                                                        "selectIdpPlaceholder"
+                                                    )}
+                                                />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="none">
+                                                {t("none")}
+                                            </SelectItem>
+                                            {allIdps.map((idp) => (
+                                                <SelectItem
+                                                    key={idp.id}
+                                                    value={idp.id.toString()}
+                                                >
+                                                    {idp.text}
                                                 </SelectItem>
-                                                {allIdps.map((idp) => (
-                                                    <SelectItem
-                                                        key={idp.id}
-                                                        value={idp.id.toString()}
-                                                    >
-                                                        {idp.text}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>
-                                            {t(
-                                                "defaultIdentityProviderDescription"
-                                            )}
-                                        </FormDescription>
-                                    </FormItem>
-                                )}
-                            </SettingsFormCell>
-                        )}
-                    </>
-                )}
-            </SettingsFormGrid>
-        </SettingsSectionForm>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                        {t(
+                                            "defaultIdentityProviderDescription"
+                                        )}
+                                    </FormDescription>
+                                </FormItem>
+                            )}
+                        </SettingsFormCell>
+                    )}
+                </>
+            )}
+        </SettingsFormGrid>
     );
 }

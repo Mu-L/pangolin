@@ -5,6 +5,7 @@ import {
     SettingsSectionBody,
     SettingsSectionDescription,
     SettingsSectionFooter,
+    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
@@ -148,10 +149,10 @@ function PolicyAccessRulesSectionLayout({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
+                {resourceOverlayMode && (
+                    <SharedPolicyResourceNotice section="rules" />
+                )}
                 <div className="space-y-4">
-                    {resourceOverlayMode && (
-                        <SharedPolicyResourceNotice section="rules" />
-                    )}
                     <PolicyAccessRulesIntro
                         rulesEnabled={rulesEnabled}
                         onRulesEnabledChange={onRulesEnabledChange}

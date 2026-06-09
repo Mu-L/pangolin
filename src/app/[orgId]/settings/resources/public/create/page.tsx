@@ -1454,7 +1454,8 @@ export default function Page() {
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
-                                    <SettingsFormGrid>
+                                    <SettingsSectionForm variant="half">
+                                        <SettingsFormGrid>
                                         <SettingsFormCell span="full">
                                             <SettingsSubsectionHeader>
                                                 <SettingsSubsectionTitle>
@@ -1496,6 +1497,7 @@ export default function Page() {
                                             />
                                         </SettingsFormCell>
                                     </SettingsFormGrid>
+                                    </SettingsSectionForm>
                                 </SettingsSectionBody>
                             </SettingsSection>
 

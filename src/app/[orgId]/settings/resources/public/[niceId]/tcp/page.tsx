@@ -243,7 +243,7 @@ function ProxyResourceProtocolForm({
                                 {proxySettingsForm.watch("proxyProtocol") && (
                                     <>
                                         <SettingsFormCell span="full">
-                                            <Alert className="[&>svg]:self-start">
+                                            <Alert className="[&>svg]:self-start" variant="neutral">
                                                 <AlertTriangle className="h-4 w-4" />
                                                 <AlertDescription>
                                                     <strong>

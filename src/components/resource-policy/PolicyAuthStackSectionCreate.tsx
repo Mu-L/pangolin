@@ -1,15 +1,11 @@
 "use client";
 
 import {
-    SettingsFormCell,
-    SettingsFormGrid,
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionForm,
     SettingsSectionHeader,
-    SettingsSubsectionDescription,
-    SettingsSubsectionHeader,
-    SettingsSubsectionTitle,
     SettingsSectionTitle
 } from "@app/components/Settings";
 import { RolesSelector } from "@app/components/roles-selector";
@@ -25,15 +21,9 @@ import {
     PasscodeCredenza,
     PincodeCredenza
 } from "./PolicyAuthMethodCredenzas";
-import { PolicyAuthMethodRow } from "./PolicyAuthMethodRow";
+import { PolicyAuthOtherMethodsSection } from "./PolicyAuthOtherMethodsSection";
 import { PolicyAuthSsoSection } from "./PolicyAuthSsoSection";
 import type { PolicyAuthMethodId } from "./policy-auth-method-id";
-import {
-    getEmailWhitelistSummary,
-    getHeaderAuthSummary,
-    getPasscodeSummary,
-    getPincodeSummary
-} from "./policy-auth-summaries";
 
 export type PolicyAuthStackSectionCreateProps = {
     form: UseFormReturn<PolicyFormValues, any, any>;
@@ -105,144 +95,90 @@ export function PolicyAuthStackSectionCreate({
                 </SettingsSectionDescription>
             </SettingsSectionHeader>
             <SettingsSectionBody>
-                <SettingsFormGrid>
-                    <SettingsFormCell span="half">
-                        <PolicyAuthSsoSection
-                            sso={Boolean(sso)}
-                            onSsoChange={(active) =>
-                                parentForm.setValue("sso", active)
-                            }
-                            skipToIdpId={skipToIdpId}
-                            onSkipToIdpChange={(id) =>
-                                parentForm.setValue("skipToIdpId", id)
-                            }
-                            allIdps={allIdps}
-                            rolesEditor={
-                                <FormField<PolicyFormValues, "roles">
-                                    control={parentForm.control}
-                                    name="roles"
-                                    render={({ field }) => (
-                                        <RolesSelector
-                                            orgId={orgId}
-                                            selectedRoles={field.value}
-                                            onSelectRoles={(selected) =>
-                                                parentForm.setValue(
-                                                    "roles",
-                                                    selected
-                                                )
-                                            }
-                                            restrictAdminRole
-                                        />
-                                    )}
-                                />
-                            }
-                            usersEditor={
-                                <FormField<PolicyFormValues, "users">
-                                    control={parentForm.control}
-                                    name="users"
-                                    render={({ field }) => (
-                                        <UsersSelector
-                                            orgId={orgId}
-                                            selectedUsers={field.value}
-                                            onSelectUsers={(selected) =>
-                                                parentForm.setValue(
-                                                    "users",
-                                                    selected
-                                                )
-                                            }
-                                        />
-                                    )}
-                                />
-                            }
-                        />
-                    </SettingsFormCell>
-                </SettingsFormGrid>
-
-                <SettingsFormGrid>
-                    <SettingsFormCell span="full">
-                        <SettingsSubsectionHeader>
-                            <SettingsSubsectionTitle>
-                                {t("policyAuthOtherMethodsTitle")}
-                            </SettingsSubsectionTitle>
-                            <SettingsSubsectionDescription>
-                                {t("policyAuthOtherMethodsDescription")}
-                            </SettingsSubsectionDescription>
-                        </SettingsSubsectionHeader>
-                    </SettingsFormCell>
-                    <SettingsFormCell span="half">
-                        <div className="flex flex-col gap-3">
-                            <PolicyAuthMethodRow
-                                id="pincode"
-                                title={t("policyAuthPincodeTitle")}
-                                description={t("policyAuthPincodeDescription")}
-                                summary={getPincodeSummary({ t })}
-                                active={pinActive}
-                                onConfigure={() => setEditingMethod("pincode")}
-                                onToggle={(active) =>
-                                    handleToggle("pincode", active, () =>
-                                        parentForm.setValue("pincode", null)
-                                    )
-                                }
-                            />
-
-                            <PolicyAuthMethodRow
-                                id="passcode"
-                                title={t("policyAuthPasscodeTitle")}
-                                description={t("policyAuthPasscodeDescription")}
-                                summary={getPasscodeSummary({ t })}
-                                active={passcodeActive}
-                                onConfigure={() => setEditingMethod("passcode")}
-                                onToggle={(active) =>
-                                    handleToggle("passcode", active, () =>
-                                        parentForm.setValue("password", null)
-                                    )
-                                }
-                            />
-
-                            <PolicyAuthMethodRow
-                                id="email"
-                                title={t("policyAuthEmailTitle")}
-                                description={t("policyAuthEmailDescription")}
-                                summary={getEmailWhitelistSummary({
-                                    t,
-                                    count: emails.length
-                                })}
-                                active={Boolean(emailWhitelistEnabled)}
-                                onConfigure={() => setEditingMethod("email")}
-                                onToggle={(active) =>
-                                    handleToggle("email", active, () =>
-                                        parentForm.setValue(
-                                            "emailWhitelistEnabled",
-                                            false
-                                        )
-                                    )
-                                }
-                                disabled={!emailEnabled}
-                            />
-
-                            <PolicyAuthMethodRow
-                                id="header-auth"
-                                title={t("policyAuthHeaderAuthTitle")}
-                                description={t(
-                                    "policyAuthHeaderAuthDescription"
+                <SettingsSectionForm variant="half">
+                    <PolicyAuthSsoSection
+                        sso={Boolean(sso)}
+                        onSsoChange={(active) =>
+                            parentForm.setValue("sso", active)
+                        }
+                        skipToIdpId={skipToIdpId}
+                        onSkipToIdpChange={(id) =>
+                            parentForm.setValue("skipToIdpId", id)
+                        }
+                        allIdps={allIdps}
+                        rolesEditor={
+                            <FormField<PolicyFormValues, "roles">
+                                control={parentForm.control}
+                                name="roles"
+                                render={({ field }) => (
+                                    <RolesSelector
+                                        orgId={orgId}
+                                        selectedRoles={field.value}
+                                        onSelectRoles={(selected) =>
+                                            parentForm.setValue(
+                                                "roles",
+                                                selected
+                                            )
+                                        }
+                                        restrictAdminRole
+                                    />
                                 )}
-                                summary={getHeaderAuthSummary({
-                                    t,
-                                    headerName: headerAuth?.user ?? ""
-                                })}
-                                active={headerAuthActive}
-                                onConfigure={() =>
-                                    setEditingMethod("headerAuth")
-                                }
-                                onToggle={(active) =>
-                                    handleToggle("headerAuth", active, () =>
-                                        parentForm.setValue("headerAuth", null)
-                                    )
-                                }
                             />
-                        </div>
-                    </SettingsFormCell>
-                </SettingsFormGrid>
+                        }
+                        usersEditor={
+                            <FormField<PolicyFormValues, "users">
+                                control={parentForm.control}
+                                name="users"
+                                render={({ field }) => (
+                                    <UsersSelector
+                                        orgId={orgId}
+                                        selectedUsers={field.value}
+                                        onSelectUsers={(selected) =>
+                                            parentForm.setValue(
+                                                "users",
+                                                selected
+                                            )
+                                        }
+                                    />
+                                )}
+                            />
+                        }
+                    />
+
+                    <PolicyAuthOtherMethodsSection
+                        pinActive={pinActive}
+                        passcodeActive={passcodeActive}
+                        emailWhitelistEnabled={Boolean(emailWhitelistEnabled)}
+                        headerAuthActive={headerAuthActive}
+                        headerAuthUser={headerAuth?.user ?? ""}
+                        emailCount={emails.length}
+                        emailEnabled={emailEnabled}
+                        onConfigure={setEditingMethod}
+                        onTogglePincode={(active) =>
+                            handleToggle("pincode", active, () =>
+                                parentForm.setValue("pincode", null)
+                            )
+                        }
+                        onTogglePasscode={(active) =>
+                            handleToggle("passcode", active, () =>
+                                parentForm.setValue("password", null)
+                            )
+                        }
+                        onToggleEmail={(active) =>
+                            handleToggle("email", active, () =>
+                                parentForm.setValue(
+                                    "emailWhitelistEnabled",
+                                    false
+                                )
+                            )
+                        }
+                        onToggleHeaderAuth={(active) =>
+                            handleToggle("headerAuth", active, () =>
+                                parentForm.setValue("headerAuth", null)
+                            )
+                        }
+                    />
+                </SettingsSectionForm>
 
                 <PincodeCredenza
                     open={editingMethod === "pincode"}

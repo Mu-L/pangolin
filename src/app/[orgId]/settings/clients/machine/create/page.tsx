@@ -14,6 +14,7 @@ import {
     SettingsSection,
     SettingsSectionBody,
     SettingsSectionDescription,
+    SettingsSectionForm,
     SettingsSectionHeader,
     SettingsSectionTitle
 } from "@app/components/Settings";
@@ -252,96 +253,102 @@ export default function Page() {
                                 </SettingsSectionTitle>
                             </SettingsSectionHeader>
                             <SettingsSectionBody>
-                                <Form {...form}>
-                                    <form
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault(); // block default enter refresh
-                                            }
-                                        }}
-                                        id="create-client-form"
-                                    >
-                                        <SettingsFormGrid>
-                                            <SettingsFormCell span="quarter">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
-                                                                {t("name")}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    autoComplete="off"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                            <FormDescription>
-                                                                {t(
-                                                                    "clientNameDescription"
-                                                                )}
-                                                            </FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </SettingsFormCell>
-                                            <SettingsFormCell span="full">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setShowAdvancedSettings(
-                                                            !showAdvancedSettings
-                                                        )
-                                                    }
-                                                    className="flex items-center gap-2 -ml-3"
-                                                >
-                                                    {showAdvancedSettings ? (
-                                                        <ChevronUp className="h-4 w-4" />
-                                                    ) : (
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    )}
-                                                    {t("advancedSettings")}
-                                                </Button>
-                                            </SettingsFormCell>
-                                            {showAdvancedSettings && (
-                                                <SettingsFormCell span="quarter">
+                                <SettingsSectionForm variant="half">
+                                    <Form {...form}>
+                                        <form
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault(); // block default enter refresh
+                                                }
+                                            }}
+                                            id="create-client-form"
+                                        >
+                                            <SettingsFormGrid>
+                                                <SettingsFormCell span="half">
                                                     <FormField
                                                         control={form.control}
-                                                        name="subnet"
+                                                        name="name"
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>
-                                                                    {t(
-                                                                        "clientAddress"
-                                                                    )}
+                                                                    {t("name")}
                                                                 </FormLabel>
                                                                 <FormControl>
                                                                     <Input
                                                                         autoComplete="off"
-                                                                        placeholder={t(
-                                                                            "subnetPlaceholder"
-                                                                        )}
                                                                         {...field}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
                                                                 <FormDescription>
                                                                     {t(
-                                                                        "addressDescription"
+                                                                        "clientNameDescription"
                                                                     )}
                                                                 </FormDescription>
                                                             </FormItem>
                                                         )}
                                                     />
                                                 </SettingsFormCell>
-                                            )}
-                                        </SettingsFormGrid>
-                                    </form>
-                                </Form>
+                                                <SettingsFormCell span="full">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            setShowAdvancedSettings(
+                                                                !showAdvancedSettings
+                                                            )
+                                                        }
+                                                        className="flex items-center gap-2 -ml-3"
+                                                    >
+                                                        {showAdvancedSettings ? (
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        )}
+                                                        {t("advancedSettings")}
+                                                    </Button>
+                                                </SettingsFormCell>
+                                                {showAdvancedSettings && (
+                                                    <SettingsFormCell span="half">
+                                                        <FormField
+                                                            control={
+                                                                form.control
+                                                            }
+                                                            name="subnet"
+                                                            render={({
+                                                                field
+                                                            }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>
+                                                                        {t(
+                                                                            "clientAddress"
+                                                                        )}
+                                                                    </FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            autoComplete="off"
+                                                                            placeholder={t(
+                                                                                "subnetPlaceholder"
+                                                                            )}
+                                                                            {...field}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                    <FormDescription>
+                                                                        {t(
+                                                                            "addressDescription"
+                                                                        )}
+                                                                    </FormDescription>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </SettingsFormCell>
+                                                )}
+                                            </SettingsFormGrid>
+                                        </form>
+                                    </Form>
+                                </SettingsSectionForm>
                             </SettingsSectionBody>
                         </SettingsSection>
 
