@@ -207,19 +207,11 @@ export function PolicyAuthStackSectionCreate({
                         active={Boolean(emailWhitelistEnabled)}
                         onConfigure={() => setEditingMethod("email")}
                         onToggle={(active) =>
-                            handleToggle(
-                                "email",
-                                active,
-                                () =>
-                                    parentForm.setValue(
-                                        "emailWhitelistEnabled",
-                                        false
-                                    ),
-                                () =>
-                                    parentForm.setValue(
-                                        "emailWhitelistEnabled",
-                                        true
-                                    )
+                            handleToggle("email", active, () =>
+                                parentForm.setValue(
+                                    "emailWhitelistEnabled",
+                                    false
+                                )
                             )
                         }
                         disabled={!emailEnabled}
@@ -266,12 +258,13 @@ export function PolicyAuthStackSectionCreate({
                     onOpenChange={(open) => !open && closeCredenza()}
                     emailEnabled={emailEnabled}
                     emails={emails}
-                    onSave={(value) =>
+                    onSave={(value) => {
                         parentForm.setValue(
                             "emails",
                             value as PolicyFormValues["emails"]
-                        )
-                    }
+                        );
+                        parentForm.setValue("emailWhitelistEnabled", true);
+                    }}
                 />
 
                 <HeaderAuthCredenza

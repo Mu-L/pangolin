@@ -684,19 +684,11 @@ export function PolicyAuthStackSectionEdit({
                                         openMethodEditor("email")
                                     }
                                     onToggle={(active) =>
-                                        handleToggle(
-                                            "email",
-                                            active,
-                                            () =>
-                                                form.setValue(
-                                                    "emailWhitelistEnabled",
-                                                    false
-                                                ),
-                                            () =>
-                                                form.setValue(
-                                                    "emailWhitelistEnabled",
-                                                    true
-                                                )
+                                        handleToggle("email", active, () =>
+                                            form.setValue(
+                                                "emailWhitelistEnabled",
+                                                false
+                                            )
                                         )
                                     }
                                     disabled={authReadonly || !emailEnabled}
@@ -761,7 +753,10 @@ export function PolicyAuthStackSectionEdit({
                             emailEnabled={emailEnabled}
                             disabled={authReadonly}
                             emails={emails}
-                            onSave={(value) => form.setValue("emails", value)}
+                            onSave={(value) => {
+                                form.setValue("emails", value);
+                                form.setValue("emailWhitelistEnabled", true);
+                            }}
                         />
 
                         <HeaderAuthCredenza
