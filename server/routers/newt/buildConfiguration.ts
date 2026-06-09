@@ -152,34 +152,64 @@ export async function buildClientConfigurationForNewtClient(
 
     const targetsToSend: SubnetProxyTargetV2[] = [];
 
-    for (const resource of allSiteResources) {
-        // Get clients associated with this specific resource
-        const resourceClients = await db
-            .select({
-                clientId: clients.clientId,
-                pubKey: clients.pubKey,
-                subnet: clients.subnet
-            })
-            .from(clients)
-            .innerJoin(
-                clientSiteResourcesAssociationsCache,
-                eq(
-                    clients.clientId,
-                    clientSiteResourcesAssociationsCache.clientId
-                )
-            )
-            .where(
-                eq(
-                    clientSiteResourcesAssociationsCache.siteResourceId,
-                    resource.siteResourceId
-                )
-            );
+    if (allSiteResources.length === 0) {
+        return {
+            peers: validPeers,
+            targets: targetsToSend
+        };
+    }
 
-        const resourceTargets = await generateSubnetProxyTargetV2(
-            resource,
-            resourceClients
+    // Batch fetch all client associations for every site resource in one query
+    // to avoid an N+1 lookup that would issue thousands of queries when a site
+    // has many resources.
+    const siteResourceIds = allSiteResources.map((r) => r.siteResourceId);
+
+    const resourceClientRows = await db
+        .select({
+            siteResourceId: clientSiteResourcesAssociationsCache.siteResourceId,
+            clientId: clients.clientId,
+            pubKey: clients.pubKey,
+            subnet: clients.subnet
+        })
+        .from(clients)
+        .innerJoin(
+            clientSiteResourcesAssociationsCache,
+            eq(clients.clientId, clientSiteResourcesAssociationsCache.clientId)
+        )
+        .where(
+            inArray(
+                clientSiteResourcesAssociationsCache.siteResourceId,
+                siteResourceIds
+            )
         );
 
+    const clientsByResourceId = new Map<
+        number,
+        { clientId: number; pubKey: string | null; subnet: string | null }[]
+    >();
+    for (const row of resourceClientRows) {
+        let list = clientsByResourceId.get(row.siteResourceId);
+        if (!list) {
+            list = [];
+            clientsByResourceId.set(row.siteResourceId, list);
+        }
+        list.push({
+            clientId: row.clientId,
+            pubKey: row.pubKey,
+            subnet: row.subnet
+        });
+    }
+
+    const resourceTargetsArr = await Promise.all(
+        allSiteResources.map((resource) =>
+            generateSubnetProxyTargetV2(
+                resource,
+                clientsByResourceId.get(resource.siteResourceId) ?? []
+            )
+        )
+    );
+
+    for (const resourceTargets of resourceTargetsArr) {
         if (resourceTargets) {
             targetsToSend.push(...resourceTargets);
         }
