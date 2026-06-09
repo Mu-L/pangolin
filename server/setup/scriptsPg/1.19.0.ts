@@ -286,6 +286,24 @@ export default async function migration() {
             WHERE "resources"."resourceId" = "targets"."resourceId";
         `);
         await db.execute(sql`ALTER TABLE "targets" ADD "authToken" text;`);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD COLUMN "policyPasswordId" integer;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD COLUMN "policyPincodeId" integer;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD COLUMN "policyWhitelistId" integer;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPasswordId_resourcePolicyPassword_passwordId_fk" FOREIGN KEY ("policyPasswordId") REFERENCES "public"."resourcePolicyPassword"("passwordId") ON DELETE cascade ON UPDATE no action;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPincodeId_resourcePolicyPincode_pincodeId_fk" FOREIGN KEY ("policyPincodeId") REFERENCES "public"."resourcePolicyPincode"("pincodeId") ON DELETE cascade ON UPDATE no action;
+        `);
+        await db.execute(sql`
+            ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyWhitelistId_resourcePolicyWhitelist_id_fk" FOREIGN KEY ("policyWhitelistId") REFERENCES "public"."resourcePolicyWhitelist"("id") ON DELETE cascade ON UPDATE no action;
+        `);
 
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
@@ -579,24 +597,6 @@ export default async function migration() {
                     await db.execute(sql`
                         DELETE FROM "resourceWhitelist"
                         WHERE "resourceId" = ${resource.resourceId}
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD COLUMN "policyPasswordId" integer;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD COLUMN "policyPincodeId" integer;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD COLUMN "policyWhitelistId" integer;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPasswordId_resourcePolicyPassword_passwordId_fk" FOREIGN KEY ("policyPasswordId") REFERENCES "public"."resourcePolicyPassword"("passwordId") ON DELETE cascade ON UPDATE no action;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyPincodeId_resourcePolicyPincode_pincodeId_fk" FOREIGN KEY ("policyPincodeId") REFERENCES "public"."resourcePolicyPincode"("pincodeId") ON DELETE cascade ON UPDATE no action;
-                    `);
-                    await db.execute(sql`
-                        ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyWhitelistId_resourcePolicyWhitelist_id_fk" FOREIGN KEY ("policyWhitelistId") REFERENCES "public"."resourcePolicyWhitelist"("id") ON DELETE cascade ON UPDATE no action;
                     `);
                 }
 
