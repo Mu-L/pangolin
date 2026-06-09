@@ -32,7 +32,10 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
-import { UpdateResourceResponse } from "@server/routers/resource";
+import {
+    GetResourceAuthInfoResponse,
+    UpdateResourceResponse
+} from "@server/routers/resource";
 import { AxiosResponse } from "axios";
 import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -441,7 +444,7 @@ function MaintenanceSectionForm({
 export default function GeneralForm() {
     const params = useParams();
     const { org } = useOrgContext();
-    const { resource, updateResource } = useResourceContext();
+    const { resource, updateResource, updateAuthInfo } = useResourceContext();
     const router = useRouter();
     const t = useTranslations();
 
@@ -575,6 +578,18 @@ export default function GeneralForm() {
                     resourcePolicyId
                 })
             });
+
+            if (resourcePolicyId !== undefined) {
+                const authRes = await api
+                    .get<AxiosResponse<GetResourceAuthInfoResponse>>(
+                        `/resource/${resource.resourceGuid}/auth`
+                    )
+                    .catch(() => null);
+
+                if (authRes?.status === 200) {
+                    updateAuthInfo(authRes.data.data);
+                }
+            }
 
             toast({
                 title: t("resourceUpdated"),

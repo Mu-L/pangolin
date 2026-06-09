@@ -25,6 +25,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
 import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { resourceQueries } from "@app/lib/queries";
+import ResourceContext from "@app/contexts/resourceContext";
 import { useResourcePolicyContext } from "@app/providers/ResourcePolicyProvider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { GetResourcePolicyResponse } from "@server/routers/policy";
@@ -33,7 +34,14 @@ import { useQuery } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+    useActionState,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { createPolicySchema } from ".";
 import {
@@ -107,6 +115,7 @@ export function PolicyAuthStackSectionEdit({
     const t = useTranslations();
     const router = useRouter();
     const { policy, updatePolicy } = useResourcePolicyContext();
+    const resourceContext = useContext(ResourceContext);
     const api = createApiClient(useEnvContext());
 
     const isResourceOverlay = resourceId !== undefined;
@@ -411,6 +420,14 @@ export function PolicyAuthStackSectionEdit({
                 }
 
                 updatePolicy(policyUpdates);
+
+                resourceContext?.updateAuthInfo({
+                    sso: payload.sso,
+                    whitelist: payload.emailWhitelistEnabled,
+                    password: passcodeOnServerRef.current,
+                    pincode: pincodeOnServerRef.current,
+                    headerAuth: headerAuthOnServerRef.current
+                });
 
                 toast({
                     title: t("success"),
