@@ -293,7 +293,7 @@ export default function GeneralPage() {
                                                                     type="button"
                                                                     variant="link"
                                                                     size="sm"
-                                                                    className="text-sm text-muted-foreground underline px-0"
+                                                                    className="text-sm text-muted-foreground px-0"
                                                                     onClick={() => {
                                                                         form.setValue(
                                                                             "autoUpdateOverrideOrg",
@@ -315,7 +315,16 @@ export default function GeneralPage() {
                                                     <FormDescription>
                                                         {t(
                                                             "siteAutoUpdateDescription"
-                                                        )}
+                                                        )}{" "}
+                                                        <a
+                                                            href="https://docs.pangolin.net/manage/sites/configure-site#auto-update"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                                        >
+                                                            {t("learnMore")}
+                                                            <ExternalLink className="size-3.5 shrink-0" />
+                                                        </a>
                                                     </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
