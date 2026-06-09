@@ -11,7 +11,14 @@
  * This file is not licensed under the AGPLv3.
  */
 
-import { accessAuditLog, logsDb, resources, siteResources, db, primaryDb } from "@server/db";
+import {
+    accessAuditLog,
+    logsDb,
+    resources,
+    siteResources,
+    db,
+    primaryDb
+} from "@server/db";
 import { registry } from "@server/openApi";
 import { NextFunction } from "express";
 import { Request, Response } from "express";
@@ -150,21 +157,30 @@ export function queryAccess(data: Q) {
         .orderBy(desc(accessAuditLog.timestamp), desc(accessAuditLog.id));
 }
 
-async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryAccess>>) {
+async function enrichWithResourceDetails(
+    logs: Awaited<ReturnType<typeof queryAccess>>
+) {
     const resourceIds = logs
-        .map(log => log.resourceId)
+        .map((log) => log.resourceId)
         .filter((id): id is number => id !== null && id !== undefined);
 
     const siteResourceIds = logs
-        .filter(log => log.resourceId == null && log.siteResourceId != null)
-        .map(log => log.siteResourceId)
+        .filter((log) => log.resourceId == null && log.siteResourceId != null)
+        .map((log) => log.siteResourceId)
         .filter((id): id is number => id !== null && id !== undefined);
 
     if (resourceIds.length === 0 && siteResourceIds.length === 0) {
-        return logs.map(log => ({ ...log, resourceName: null, resourceNiceId: null }));
+        return logs.map((log) => ({
+            ...log,
+            resourceName: null,
+            resourceNiceId: null
+        }));
     }
 
-    const resourceMap = new Map<number, { name: string | null; niceId: string | null }>();
+    const resourceMap = new Map<
+        number,
+        { name: string | null; niceId: string | null }
+    >();
 
     if (resourceIds.length > 0) {
         const resourceDetails = await primaryDb
@@ -181,7 +197,10 @@ async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryAc
         }
     }
 
-    const siteResourceMap = new Map<number, { name: string | null; niceId: string | null }>();
+    const siteResourceMap = new Map<
+        number,
+        { name: string | null; niceId: string | null }
+    >();
 
     if (siteResourceIds.length > 0) {
         const siteResourceDetails = await primaryDb
@@ -194,12 +213,15 @@ async function enrichWithResourceDetails(logs: Awaited<ReturnType<typeof queryAc
             .where(inArray(siteResources.siteResourceId, siteResourceIds));
 
         for (const r of siteResourceDetails) {
-            siteResourceMap.set(r.siteResourceId, { name: r.name, niceId: r.niceId });
+            siteResourceMap.set(r.siteResourceId, {
+                name: r.name,
+                niceId: r.niceId
+            });
         }
     }
 
     // Enrich logs with resource details
-    return logs.map(log => {
+    return logs.map((log) => {
         if (log.resourceId != null) {
             const details = resourceMap.get(log.resourceId);
             return {
@@ -273,11 +295,11 @@ async function queryUniqueFilterAttributes(
 
     // Fetch resource names from main database for the unique resource IDs
     const resourceIds = uniqueResources
-        .map(row => row.id)
+        .map((row) => row.id)
         .filter((id): id is number => id !== null);
 
     const siteResourceIds = uniqueSiteResources
-        .map(row => row.id)
+        .map((row) => row.id)
         .filter((id): id is number => id !== null);
 
     let resourcesWithNames: Array<{ id: number; name: string | null }> = [];
@@ -293,7 +315,7 @@ async function queryUniqueFilterAttributes(
 
         resourcesWithNames = [
             ...resourcesWithNames,
-            ...resourceDetails.map(r => ({
+            ...resourceDetails.map((r) => ({
                 id: r.resourceId,
                 name: r.name
             }))
@@ -311,7 +333,7 @@ async function queryUniqueFilterAttributes(
 
         resourcesWithNames = [
             ...resourcesWithNames,
-            ...siteResourceDetails.map(r => ({
+            ...siteResourceDetails.map((r) => ({
                 id: r.siteResourceId,
                 name: r.name
             }))
@@ -344,7 +366,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),

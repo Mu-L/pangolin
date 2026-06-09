@@ -32,7 +32,10 @@ import { OpenAPITags, registry } from "@server/openApi";
 import { and, eq } from "drizzle-orm";
 import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
-import { GetAlertRuleResponse, WebhookAlertConfig } from "@server/routers/alertRule/types";
+import {
+    GetAlertRuleResponse,
+    WebhookAlertConfig
+} from "@server/routers/alertRule/types";
 
 const paramsSchema = z
     .object({
@@ -55,7 +58,7 @@ registry.registerPath({
             content: {
                 "application/json": {
                     schema: z.object({
-                        data: z.unknown().nullable(),
+                        data: z.record(z.string(), z.any()).nullable(),
                         success: z.boolean(),
                         error: z.boolean(),
                         message: z.string(),
