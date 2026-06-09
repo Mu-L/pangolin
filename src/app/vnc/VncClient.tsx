@@ -116,6 +116,30 @@ export default function VncClient({
 
         disconnect();
 
+        const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/vnc`;
+        const base = proxyAddress.replace(/\/$/, "");
+        const params = new URLSearchParams({
+            host: target.ip,
+            port: String(target.port),
+            authToken: target.authToken
+        });
+
+        try {
+            const checkParams = new URLSearchParams(params);
+            checkParams.set("checkOnly", "1");
+            const response = await fetch(`${base}?${checkParams.toString()}`);
+            if (!response.ok) {
+                const detail = (await response.text()).trim();
+                setConnectError(detail || t("sshErrorConnectionClosed"));
+                setConnecting(false);
+                return;
+            }
+        } catch {
+            setConnectError(t("sshErrorWebSocket"));
+            setConnecting(false);
+            return;
+        }
+
         let RFB: new (
             target: HTMLElement,
             url: string,
@@ -136,13 +160,6 @@ export default function VncClient({
             return;
         }
 
-        const proxyAddress = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gateway/vnc`;
-        const base = proxyAddress.replace(/\/$/, "");
-        const params = new URLSearchParams({
-            host: target.ip,
-            port: String(target.port),
-            authToken: target.authToken
-        });
         const wsUrl = `${base}?${params.toString()}`;
 
         screenRef.current.innerHTML = "";
@@ -270,6 +287,13 @@ export default function VncClient({
                                             </FormItem>
                                         )}
                                     />
+                                    {connectError && (
+                                        <Alert variant="destructive">
+                                            <AlertDescription>
+                                                {connectError}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     <Button
                                         type="submit"
                                         className="w-full"
@@ -278,13 +302,6 @@ export default function VncClient({
                                     >
                                         {t("browserGatewayConnect")}
                                     </Button>
-                                    {connectError && (
-                                        <Alert variant="destructive">
-                                            <AlertDescription>
-                                                {connectError}
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
                                 </form>
                             </Form>
                         </CardContent>
