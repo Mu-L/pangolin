@@ -41,6 +41,7 @@ import {
     FormMessage
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { Label } from "@app/components/ui/label";
 import {
     Popover,
     PopoverContent,
@@ -1172,52 +1173,55 @@ export default function Page() {
 
                                                 {isNative ? (
                                                     <SettingsFormCell span="half">
-                                                        <Popover
-                                                            open={
-                                                                nativeSiteOpen
-                                                            }
-                                                            onOpenChange={
-                                                                setNativeSiteOpen
-                                                            }
-                                                        >
-                                                            <PopoverTrigger
-                                                                asChild
+                                                        <div className="grid gap-2">
+                                                            <Label>{t("sites")}</Label>
+                                                            <Popover
+                                                                open={
+                                                                    nativeSiteOpen
+                                                                }
+                                                                onOpenChange={
+                                                                    setNativeSiteOpen
+                                                                }
                                                             >
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className="w-full justify-between font-normal"
+                                                                <PopoverTrigger
+                                                                    asChild
                                                                 >
-                                                                    <span className="truncate">
-                                                                        {nativeSelectedSite?.name ??
-                                                                            t(
-                                                                                "siteSelect"
-                                                                            )}
-                                                                    </span>
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                                                <SitesSelector
-                                                                    orgId={
-                                                                        orgId as string
-                                                                    }
-                                                                    selectedSite={
-                                                                        nativeSelectedSite
-                                                                    }
-                                                                    onSelectSite={(
-                                                                        site
-                                                                    ) => {
-                                                                        setNativeSelectedSite(
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        role="combobox"
+                                                                        className="w-full justify-between font-normal"
+                                                                    >
+                                                                        <span className="truncate">
+                                                                            {nativeSelectedSite?.name ??
+                                                                                t(
+                                                                                    "siteSelect"
+                                                                                )}
+                                                                        </span>
+                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                    </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                                                    <SitesSelector
+                                                                        orgId={
+                                                                            orgId as string
+                                                                        }
+                                                                        selectedSite={
+                                                                            nativeSelectedSite
+                                                                        }
+                                                                        onSelectSite={(
                                                                             site
-                                                                        );
-                                                                        setNativeSiteOpen(
-                                                                            false
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            </PopoverContent>
-                                                        </Popover>
+                                                                        ) => {
+                                                                            setNativeSelectedSite(
+                                                                                site
+                                                                            );
+                                                                            setNativeSiteOpen(
+                                                                                false
+                                                                            );
+                                                                        }}
+                                                                    />
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </div>
                                                     </SettingsFormCell>
                                                 ) : standardDaemonLocation !==
                                                       "site" ||

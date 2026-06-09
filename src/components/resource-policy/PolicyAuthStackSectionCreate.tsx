@@ -12,7 +12,8 @@ import {
     SettingsSubsectionTitle,
     SettingsSectionTitle
 } from "@app/components/Settings";
-import { TagInput } from "@app/components/tags/tag-input";
+import { RolesSelector } from "@app/components/roles-selector";
+import { UsersSelector } from "@app/components/users-selector";
 import { FormField } from "@app/components/ui/form";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -38,27 +39,18 @@ export type PolicyAuthStackSectionCreateProps = {
     form: UseFormReturn<PolicyFormValues, any, any>;
     orgId: string;
     allIdps: { id: number; text: string }[];
-    allRoles: { id: string; text: string }[];
-    allUsers: { id: string; text: string }[];
     emailEnabled: boolean;
 };
 
 export function PolicyAuthStackSectionCreate({
     form: parentForm,
+    orgId,
     allIdps,
-    allRoles,
-    allUsers,
     emailEnabled
 }: PolicyAuthStackSectionCreateProps) {
     const t = useTranslations();
     const [editingMethod, setEditingMethod] =
         useState<PolicyAuthMethodId | null>(null);
-    const [activeRolesTagIndex, setActiveRolesTagIndex] = useState<
-        number | null
-    >(null);
-    const [activeUsersTagIndex, setActiveUsersTagIndex] = useState<
-        number | null
-    >(null);
 
     const sso = useWatch({ control: parentForm.control, name: "sso" });
     const skipToIdpId = useWatch({
@@ -126,47 +118,38 @@ export function PolicyAuthStackSectionCreate({
                             }
                             allIdps={allIdps}
                             rolesEditor={
-                                <FormField<PolicyFormValues, "roles">
+                                <FormField
                                     control={parentForm.control}
                                     name="roles"
                                     render={({ field }) => (
-                                        <TagInput
-                                            {...field}
-                                            activeTagIndex={activeRolesTagIndex}
-                                            setActiveTagIndex={
-                                                setActiveRolesTagIndex
+                                        <RolesSelector
+                                            orgId={orgId}
+                                            selectedRoles={field.value}
+                                            onSelectRoles={(selected) =>
+                                                parentForm.setValue(
+                                                    "roles",
+                                                    selected
+                                                )
                                             }
-                                            placeholder={t("accessRoleSelect2")}
-                                            tags={field.value ?? []}
-                                            setTags={(newRoles) =>
-                                                field.onChange(newRoles)
-                                            }
-                                            autocompleteOptions={allRoles}
-                                            allowDuplicates={false}
-                                            size="sm"
+                                            restrictAdminRole
                                         />
                                     )}
                                 />
                             }
                             usersEditor={
-                                <FormField<PolicyFormValues, "users">
+                                <FormField
                                     control={parentForm.control}
                                     name="users"
                                     render={({ field }) => (
-                                        <TagInput
-                                            {...field}
-                                            activeTagIndex={activeUsersTagIndex}
-                                            setActiveTagIndex={
-                                                setActiveUsersTagIndex
+                                        <UsersSelector
+                                            orgId={orgId}
+                                            selectedUsers={field.value}
+                                            onSelectUsers={(selected) =>
+                                                parentForm.setValue(
+                                                    "users",
+                                                    selected
+                                                )
                                             }
-                                            placeholder={t("accessUserSelect")}
-                                            tags={field.value ?? []}
-                                            setTags={(newUsers) =>
-                                                field.onChange(newUsers)
-                                            }
-                                            autocompleteOptions={allUsers}
-                                            allowDuplicates={false}
-                                            size="sm"
                                         />
                                     )}
                                 />

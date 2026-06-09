@@ -19,8 +19,6 @@ type PolicyAuthStackSectionCreateProps = {
     form: UseFormReturn<PolicyFormValues, any, any>;
     orgId: string;
     allIdps: { id: number; text: string }[];
-    allRoles: { id: string; text: string }[];
-    allUsers: { id: string; text: string }[];
     emailEnabled: boolean;
 };
 

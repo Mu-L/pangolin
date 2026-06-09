@@ -12,11 +12,9 @@ import {
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
-import { getUserDisplayName } from "@app/lib/getUserDisplayName";
 import { orgQueries } from "@app/lib/queries";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
-import { UserType } from "@server/types/UserTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
@@ -67,12 +65,6 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
         env.server.maxmind_asn_path && env.server.maxmind_asn_path.length > 0
     );
 
-    const { data: orgRoles = [], isLoading: isLoadingOrgRoles } = useQuery(
-        orgQueries.roles({ orgId: org.org.orgId })
-    );
-    const { data: orgUsers = [], isLoading: isLoadingOrgUsers } = useQuery(
-        orgQueries.users({ orgId: org.org.orgId })
-    );
     const { data: orgIdps = [], isLoading: isLoadingOrgIdps } = useQuery(
         orgQueries.identityProviders({
             orgId: org.org.orgId,
@@ -163,26 +155,6 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
         }
     }
 
-    const allRoles = useMemo(
-        () =>
-            orgRoles
-                .map((role) => ({
-                    id: role.roleId.toString(),
-                    text: role.name
-                }))
-                .filter((role) => role.text !== "Admin"),
-        [orgRoles]
-    );
-
-    const allUsers = useMemo(
-        () =>
-            orgUsers.map((user) => ({
-                id: user.id.toString(),
-                text: `${getUserDisplayName({ email: user.email, username: user.username })}${user.type !== UserType.Internal ? ` (${user.idpName})` : ""}`
-            })),
-        [orgUsers]
-    );
-
     const allIdps = useMemo(() => {
         if (build === "saas") {
             if (isPaidUser(tierMatrix.orgOidc)) {
@@ -197,7 +169,7 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
         return [];
     }, [orgIdps, isPaidUser]);
 
-    if (isLoadingOrgRoles || isLoadingOrgUsers || isLoadingOrgIdps) {
+    if (isLoadingOrgIdps) {
         return <></>;
     }
 
@@ -252,8 +224,6 @@ export function CreatePolicyForm({}: CreatePolicyFormProps) {
                             form={form}
                             orgId={org.org.orgId}
                             allIdps={allIdps}
-                            allRoles={allRoles}
-                            allUsers={allUsers}
                             emailEnabled={env.email.emailEnabled}
                         />
                         <PolicyAccessRulesSection
