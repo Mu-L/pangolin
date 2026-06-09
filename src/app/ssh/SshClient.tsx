@@ -122,6 +122,9 @@ export default function SshClient({
     const [connected, setConnected] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
+    const [sessionClosedCode, setSessionClosedCode] = useState<number | null>(
+        null
+    );
 
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<import("@xterm/xterm").Terminal | null>(null);
@@ -222,6 +225,8 @@ export default function SshClient({
         authMethod: AuthTab = "password"
     ) {
         setConnecting(true);
+        setSessionClosedCode(null);
+        setConnectError(null);
 
         if (!target) {
             setConnectError(t("sshErrorNoTarget"));
@@ -257,8 +262,10 @@ export default function SshClient({
 
         let authConfirmed = false;
         let authErrorShown = false;
+        let socketOpened = false;
 
         ws.onopen = () => {
+            socketOpened = true;
             ws.send(
                 JSON.stringify({
                     type: "auth",
@@ -331,13 +338,18 @@ export default function SshClient({
         };
 
         ws.onclose = (evt) => {
+            wsRef.current = null;
             setConnecting(false);
+            const isCleanClose = evt.wasClean || evt.code === 1000;
+            if (isCleanClose && (authConfirmed || socketOpened)) {
+                xtermRef.current?.dispose();
+                xtermRef.current = null;
+                setConnected(false);
+                setSessionClosedCode(evt.code);
+                return;
+            }
             if (authConfirmed) {
                 setConnected(false);
-                if (evt.wasClean || evt.code === 1000) {
-                    window.close();
-                    return;
-                }
                 xtermRef.current?.writeln(
                     `\r\n\x1b[33m${t("sshConnectionClosedCode", { code: evt.code })}\x1b[0m\r\n`
                 );
@@ -453,6 +465,40 @@ export default function SshClient({
                         </Alert>
                     </CardContent>
                 </Card>
+            </BrandedAuthSurface>
+        );
+    }
+
+    if (sessionClosedCode !== null) {
+        return (
+            <BrandedAuthSurface primaryColor={primaryColor}>
+                <PoweredByPangolin />
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle>{t("sshTitle")}</CardTitle>
+                        <CardDescription>
+                            {t("sshConnectionClosedCode", {
+                                code: sessionClosedCode
+                            })}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Alert>
+                            <AlertDescription>
+                                This session has ended. You can close this tab
+                                now.
+                            </AlertDescription>
+                        </Alert>
+                        <Button
+                            type="button"
+                            className="w-full"
+                            onClick={() => window.close()}
+                        >
+                            {t("close")}
+                        </Button>
+                    </CardContent>
+                </Card>
+                <AuthPageFooterNotices />
             </BrandedAuthSurface>
         );
     }
