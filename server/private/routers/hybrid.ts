@@ -79,7 +79,10 @@ import logger from "@server/logger";
 import { decrypt } from "@server/lib/crypto";
 import config from "@server/lib/config";
 import { exchangeSession } from "@server/routers/badger";
-import { validateResourceSessionToken } from "@server/auth/sessions/resource";
+import {
+    ResourceSessionValidationResult,
+    validateResourceSessionToken
+} from "@server/auth/sessions/resource";
 import { checkExitNodeOrg, resolveExitNodes } from "#private/lib/exitNodes";
 import { maxmindLookup } from "@server/db/maxmind";
 import { verifyResourceAccessToken } from "@server/auth/verifyResourceAccessToken";
@@ -1754,11 +1757,34 @@ hybridRouter.post(
                 resourceId
             );
 
+            // this is for backward compatibility with nodes that did not have the policy id checking
+            const modifiedResult: ResourceSessionValidationResult = {
+                ...result,
+                resourceSession: result.resourceSession
+                    ? {
+                          ...result.resourceSession,
+                          // Prefer policy IDs, but keep legacy IDs populated for older nodes.
+                          pincodeId:
+                              result.resourceSession.policyPincodeId ??
+                              result.resourceSession.pincodeId ??
+                              null,
+                          passwordId:
+                              result.resourceSession.policyPasswordId ??
+                              result.resourceSession.passwordId ??
+                              null,
+                          whitelistId:
+                              result.resourceSession.policyWhitelistId ??
+                              result.resourceSession.whitelistId ??
+                              null
+                      }
+                    : null
+            };
+
             return response(res, {
-                data: result,
+                data: modifiedResult,
                 success: true,
                 error: false,
-                message: result.resourceSession
+                message: modifiedResult.resourceSession
                     ? "Resource session token is valid"
                     : "Resource session token is invalid or expired",
                 status: HttpCode.OK

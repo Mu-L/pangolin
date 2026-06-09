@@ -20,7 +20,8 @@ import {
     ResourcePolicyPincode,
     ResourcePolicyPassword,
     ResourcePolicyHeaderAuth,
-    ResourceRule
+    ResourceRule,
+    ResourceSession
 } from "@server/db";
 import config from "@server/lib/config";
 import { isIpInCidr, stripPortFromHost } from "@server/lib/ip";
@@ -536,7 +537,8 @@ export async function verifyResourceSession(
 
         if (resourceSessionToken) {
             const sessionCacheKey = `session:${resourceSessionToken}`;
-            let resourceSession: any = localCache.get(sessionCacheKey);
+            let resourceSession: ResourceSession | null | undefined =
+                localCache.get(sessionCacheKey);
 
             if (!resourceSession) {
                 const result = await validateResourceSessionToken(
@@ -671,7 +673,7 @@ export async function verifyResourceSession(
                             orgId: resource.orgId,
                             location: ipCC,
                             apiKey: {
-                                name: resourceSession.accessTokenTitle,
+                                name: null,
                                 apiKeyId: resourceSession.accessTokenId
                             }
                         },
@@ -717,7 +719,7 @@ export async function verifyResourceSession(
                                 location: ipCC,
                                 user: {
                                     username: allowedUserData.username,
-                                    userId: resourceSession.userId
+                                    userId: allowedUserData.userId
                                 }
                             },
                             parsedBody.data
