@@ -11,7 +11,6 @@ import {
     FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import DomainPicker from "@app/components/DomainPicker";
 import {
@@ -24,10 +23,12 @@ import {
     SettingsFormGrid,
     SettingsSectionForm,
     SettingsSectionHeader,
-    SettingsSectionTitle
+    SettingsSectionTitle,
+    SettingsSubsectionDescription,
+    SettingsSubsectionHeader,
+    SettingsSubsectionTitle
 } from "@app/components/Settings";
 import { SwitchInput } from "@app/components/SwitchInput";
-import { Label } from "@app/components/ui/label";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { toast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
@@ -37,7 +38,6 @@ import {
     UpdateResourceResponse
 } from "@server/routers/resource";
 import { AxiosResponse } from "axios";
-import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { toASCII, toUnicode } from "punycode";
@@ -47,399 +47,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { SharedPolicySelect } from "@app/components/shared-policy-selector";
 import { useOrgContext } from "@app/hooks/useOrgContext";
+import { orgQueries } from "@app/lib/queries";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { build } from "@server/build";
 import { TierFeature } from "@server/lib/billing/tierMatrix";
-import { Alert, AlertDescription } from "@app/components/ui/alert";
-import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
-import {
-    Tooltip,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
-import { PaidFeaturesAlert } from "@app/components/PaidFeaturesAlert";
-import { GetResourceResponse } from "@server/routers/resource/getResource";
-import type { ResourceContextType } from "@app/contexts/resourceContext";
 import { usePaidStatus } from "@app/hooks/usePaidStatus";
 import { tierMatrix } from "@server/lib/billing/tierMatrix";
 import UptimeAlertSection from "@app/components/UptimeAlertSection";
-
-type MaintenanceSectionFormProps = {
-    resource: GetResourceResponse;
-    updateResource: ResourceContextType["updateResource"];
-};
-
-function MaintenanceSectionForm({
-    resource,
-    updateResource
-}: MaintenanceSectionFormProps) {
-    const { env } = useEnvContext();
-    const t = useTranslations();
-    const api = createApiClient({ env });
-    const { isPaidUser } = usePaidStatus();
-
-    const MaintenanceFormSchema = z.object({
-        maintenanceModeEnabled: z.boolean().optional(),
-        maintenanceModeType: z.enum(["forced", "automatic"]).optional(),
-        maintenanceTitle: z.string().max(255).optional(),
-        maintenanceMessage: z.string().max(2000).optional(),
-        maintenanceEstimatedTime: z.string().max(100).optional()
-    });
-
-    const maintenanceForm = useForm({
-        resolver: zodResolver(MaintenanceFormSchema),
-        defaultValues: {
-            maintenanceModeEnabled: resource.maintenanceModeEnabled || false,
-            maintenanceModeType: resource.maintenanceModeType || "automatic",
-            maintenanceTitle:
-                resource.maintenanceTitle || "We'll be back soon!",
-            maintenanceMessage:
-                resource.maintenanceMessage ||
-                "We are currently performing scheduled maintenance. Please check back soon.",
-            maintenanceEstimatedTime: resource.maintenanceEstimatedTime || ""
-        },
-        mode: "onChange"
-    });
-
-    const isMaintenanceEnabled = maintenanceForm.watch(
-        "maintenanceModeEnabled"
-    );
-    const maintenanceModeType = maintenanceForm.watch("maintenanceModeType");
-
-    const [, maintenanceFormAction, maintenanceSaveLoading] = useActionState(
-        onMaintenanceSubmit,
-        null
-    );
-
-    async function onMaintenanceSubmit() {
-        const isValid = await maintenanceForm.trigger();
-        if (!isValid) return;
-
-        const data = maintenanceForm.getValues();
-
-        const res = await api
-            .post<AxiosResponse<UpdateResourceResponse>>(
-                `resource/${resource?.resourceId}`,
-                {
-                    maintenanceModeEnabled: data.maintenanceModeEnabled,
-                    maintenanceModeType: data.maintenanceModeType,
-                    maintenanceTitle: data.maintenanceTitle || null,
-                    maintenanceMessage: data.maintenanceMessage || null,
-                    maintenanceEstimatedTime:
-                        data.maintenanceEstimatedTime || null
-                }
-            )
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("resourceErrorUpdate"),
-                    description: formatAxiosError(
-                        e,
-                        t("resourceErrorUpdateDescription")
-                    )
-                });
-            });
-
-        if (res && res.status === 200) {
-            updateResource({
-                maintenanceModeEnabled: data.maintenanceModeEnabled,
-                maintenanceModeType: data.maintenanceModeType,
-                maintenanceTitle: data.maintenanceTitle || null,
-                maintenanceMessage: data.maintenanceMessage || null,
-                maintenanceEstimatedTime: data.maintenanceEstimatedTime || null
-            });
-
-            toast({
-                title: t("resourceUpdated"),
-                description: t("resourceUpdatedDescription")
-            });
-        }
-    }
-
-    if (!["http", "ssh", "rdp", "vnc"].includes(resource.mode)) {
-        return null;
-    }
-
-    return (
-        <SettingsSection>
-            <SettingsSectionHeader>
-                <SettingsSectionTitle>
-                    {t("maintenanceMode")}
-                </SettingsSectionTitle>
-                <SettingsSectionDescription>
-                    {t("maintenanceModeDescription")}
-                </SettingsSectionDescription>
-            </SettingsSectionHeader>
-
-            <SettingsSectionBody>
-                <PaidFeaturesAlert tiers={tierMatrix.maintencePage} />
-                <SettingsSectionForm>
-                    <Form {...maintenanceForm}>
-                        <form
-                            action={maintenanceFormAction}
-                            className="space-y-4"
-                            id="maintenance-settings-form"
-                        >
-                            <FormField
-                                control={maintenanceForm.control}
-                                name="maintenanceModeEnabled"
-                                render={({ field }) => {
-                                    const isDisabled =
-                                        !isPaidUser(tierMatrix.maintencePage) ||
-                                        !["http", "ssh", "rdp", "vnc"].includes(
-                                            resource.mode
-                                        );
-
-                                    return (
-                                        <FormItem>
-                                            <div className="flex items-center space-x-2">
-                                                <FormControl>
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger
-                                                                asChild
-                                                            >
-                                                                <div className="flex items-center gap-2">
-                                                                    <SwitchInput
-                                                                        id="enable-maintenance"
-                                                                        checked={
-                                                                            field.value
-                                                                        }
-                                                                        label={t(
-                                                                            "enableMaintenanceMode"
-                                                                        )}
-                                                                        disabled={
-                                                                            isDisabled
-                                                                        }
-                                                                        onCheckedChange={(
-                                                                            val
-                                                                        ) => {
-                                                                            if (
-                                                                                !isDisabled
-                                                                            ) {
-                                                                                maintenanceForm.setValue(
-                                                                                    "maintenanceModeEnabled",
-                                                                                    val
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                            </TooltipTrigger>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </FormControl>
-                                            </div>
-                                            <FormDescription>
-                                                {t(
-                                                    "enableMaintenanceModeDescription"
-                                                )}
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    );
-                                }}
-                            />
-
-                            {isMaintenanceEnabled && (
-                                <div className="space-y-4">
-                                    <FormField
-                                        control={maintenanceForm.control}
-                                        name="maintenanceModeType"
-                                        render={({ field }) => (
-                                            <FormItem className="space-y-3">
-                                                <FormLabel>
-                                                    {t("maintenanceModeType")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <RadioGroup
-                                                        onValueChange={
-                                                            field.onChange
-                                                        }
-                                                        defaultValue={
-                                                            field.value
-                                                        }
-                                                        disabled={
-                                                            !isPaidUser(
-                                                                tierMatrix.maintencePage
-                                                            )
-                                                        }
-                                                        className="flex flex-col space-y-1"
-                                                    >
-                                                        <FormItem className="flex items-start space-x-3 space-y-0">
-                                                            <FormControl>
-                                                                <RadioGroupItem value="automatic" />
-                                                            </FormControl>
-                                                            <div className="space-y-1 leading-none">
-                                                                <FormLabel className="font-normal">
-                                                                    <strong>
-                                                                        {t(
-                                                                            "automatic"
-                                                                        )}
-                                                                    </strong>{" "}
-                                                                    (
-                                                                    {t(
-                                                                        "recommended"
-                                                                    )}
-                                                                    )
-                                                                </FormLabel>
-                                                                <FormDescription>
-                                                                    {t(
-                                                                        "automaticModeDescription"
-                                                                    )}
-                                                                </FormDescription>
-                                                            </div>
-                                                        </FormItem>
-                                                        <FormItem className="flex items-start space-x-3 space-y-0">
-                                                            <FormControl>
-                                                                <RadioGroupItem value="forced" />
-                                                            </FormControl>
-                                                            <div className="space-y-1 leading-none">
-                                                                <FormLabel className="font-normal">
-                                                                    <strong>
-                                                                        {t(
-                                                                            "forced"
-                                                                        )}
-                                                                    </strong>
-                                                                </FormLabel>
-                                                                <FormDescription>
-                                                                    {t(
-                                                                        "forcedModeDescription"
-                                                                    )}
-                                                                </FormDescription>
-                                                            </div>
-                                                        </FormItem>
-                                                    </RadioGroup>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {maintenanceModeType === "forced" && (
-                                        <Alert variant={"neutral"}>
-                                            <AlertCircle className="h-4 w-4" />
-                                            <AlertDescription>
-                                                {t("forcedeModeWarning")}
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
-
-                                    <FormField
-                                        control={maintenanceForm.control}
-                                        name="maintenanceTitle"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t("pageTitle")}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={
-                                                            !isPaidUser(
-                                                                tierMatrix.maintencePage
-                                                            )
-                                                        }
-                                                        placeholder="We'll be back soon!"
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t("pageTitleDescription")}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={maintenanceForm.control}
-                                        name="maintenanceMessage"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t(
-                                                        "maintenancePageMessage"
-                                                    )}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        {...field}
-                                                        rows={4}
-                                                        disabled={
-                                                            !isPaidUser(
-                                                                tierMatrix.maintencePage
-                                                            )
-                                                        }
-                                                        placeholder={t(
-                                                            "maintenancePageMessagePlaceholder"
-                                                        )}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "maintenancePageMessageDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={maintenanceForm.control}
-                                        name="maintenanceEstimatedTime"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    {t(
-                                                        "maintenancePageTimeTitle"
-                                                    )}
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={
-                                                            !isPaidUser(
-                                                                tierMatrix.maintencePage
-                                                            )
-                                                        }
-                                                        placeholder={t(
-                                                            "maintenanceTime"
-                                                        )}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    {t(
-                                                        "maintenanceEstimatedTimeDescription"
-                                                    )}
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            )}
-                        </form>
-                    </Form>
-                </SettingsSectionForm>
-            </SettingsSectionBody>
-
-            <SettingsSectionFooter>
-                <Button
-                    type="submit"
-                    loading={maintenanceSaveLoading}
-                    disabled={
-                        maintenanceSaveLoading ||
-                        !isPaidUser(tierMatrix.maintencePage)
-                    }
-                    form="maintenance-settings-form"
-                >
-                    {t("saveSettings")}
-                </Button>
-            </SettingsSectionFooter>
-        </SettingsSection>
-    );
-}
 
 export default function GeneralForm() {
     const params = useParams();
@@ -466,6 +81,13 @@ export default function GeneralForm() {
     useEffect(() => {
         setSelectedSharedPolicyId(resource.resourcePolicyId ?? null);
     }, [resource.resourcePolicyId]);
+
+    const { data: selectedSharedPolicy } = useQuery({
+        ...orgQueries.resourcePolicy({
+            resourcePolicyId: selectedSharedPolicyId!
+        }),
+        enabled: showResourcePolicy && selectedSharedPolicyId !== null
+    });
 
     const [resourceFullDomain, setResourceFullDomain] = useState(
         `${resource.ssl ? "https" : "http"}://${toUnicode(resource.fullDomain || "")}`
@@ -672,6 +294,28 @@ export default function GeneralForm() {
                                             />
                                         </SettingsFormCell>
 
+                                        <SettingsFormCell span="full">
+                                            <SettingsSubsectionHeader>
+                                                <SettingsSubsectionTitle>
+                                                    {t(
+                                                        "resourceGeneralDetailsSubsection"
+                                                    )}
+                                                </SettingsSubsectionTitle>
+                                                <SettingsSubsectionDescription>
+                                                    {t(
+                                                        [
+                                                            "tcp",
+                                                            "udp",
+                                                        ].includes(
+                                                            resource.mode
+                                                        )
+                                                            ? "resourceGeneralDetailsSubsectionPortDescription"
+                                                            : "resourceGeneralDetailsSubsectionDescription"
+                                                    )}
+                                                </SettingsSubsectionDescription>
+                                            </SettingsSubsectionHeader>
+                                        </SettingsFormCell>
+
                                         <SettingsFormCell span="half">
                                             <FormField
                                                 control={form.control}
@@ -830,12 +474,27 @@ export default function GeneralForm() {
                                             </SettingsFormCell>
                                         )}
                                         {showResourcePolicy && (
-                                            <SettingsFormCell span="half">
-                                                <div className="space-y-2">
-                                                    <FormLabel>
-                                                        {t("sharedPolicy")}
-                                                    </FormLabel>
-                                                    <SharedPolicySelect
+                                            <>
+                                                <SettingsFormCell span="full">
+                                                    <SettingsSubsectionHeader>
+                                                        <SettingsSubsectionTitle>
+                                                            {t(
+                                                                "resourceGeneralAuthenticationAccessSubsection"
+                                                            )}
+                                                        </SettingsSubsectionTitle>
+                                                        <SettingsSubsectionDescription>
+                                                            {t(
+                                                                "resourceGeneralAuthenticationAccessSubsectionDescription"
+                                                            )}
+                                                        </SettingsSubsectionDescription>
+                                                    </SettingsSubsectionHeader>
+                                                </SettingsFormCell>
+                                                <SettingsFormCell span="full">
+                                                    <div className="space-y-2">
+                                                        <FormLabel>
+                                                            {t("sharedPolicy")}
+                                                        </FormLabel>
+                                                        <SharedPolicySelect
                                                         key={
                                                             resource.resourcePolicyId ??
                                                             "none"
@@ -847,9 +506,39 @@ export default function GeneralForm() {
                                                         onChange={
                                                             setSelectedSharedPolicyId
                                                         }
-                                                    />
-                                                </div>
-                                            </SettingsFormCell>
+                                                        />
+                                                        <FormDescription>
+                                                            {selectedSharedPolicyId ===
+                                                            null
+                                                                ? t(
+                                                                      "resourceSharedPolicyOwnDescription"
+                                                                  )
+                                                                : selectedSharedPolicy
+                                                                  ? t.rich(
+                                                                        "resourceSharedPolicyInheritedDescription",
+                                                                        {
+                                                                            policyName:
+                                                                                selectedSharedPolicy.name,
+                                                                            policyLink:
+                                                                                (
+                                                                                    chunks
+                                                                                ) => (
+                                                                                    <Link
+                                                                                        href={`/${org.org.orgId}/settings/policies/resources/public/${selectedSharedPolicy.niceId}/general`}
+                                                                                        className="text-primary hover:underline"
+                                                                                    >
+                                                                                        {
+                                                                                            chunks
+                                                                                        }
+                                                                                    </Link>
+                                                                                )
+                                                                        }
+                                                                    )
+                                                                  : null}
+                                                        </FormDescription>
+                                                    </div>
+                                                </SettingsFormCell>
+                                            </>
                                         )}
                                     </SettingsFormGrid>
                                 </form>
@@ -868,13 +557,6 @@ export default function GeneralForm() {
                         </Button>
                     </SettingsSectionFooter>
                 </SettingsSection>
-
-                {!env.flags.disableEnterpriseFeatures && (
-                    <MaintenanceSectionForm
-                        resource={resource}
-                        updateResource={updateResource}
-                    />
-                )}
             </SettingsContainer>
         </>
     );
