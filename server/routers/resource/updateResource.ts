@@ -10,7 +10,10 @@ import {
     resourcePincode,
     resourceRules,
     resourceWhitelist,
-    Transaction
+    roleResources,
+    roles,
+    Transaction,
+    userResources
 } from "@server/db";
 import {
     domains,
@@ -313,20 +316,30 @@ export async function updateResource(
 
 async function clearResourceSpecificSettings(
     resourceId: number,
+    orgId: string,
     trx: Transaction | typeof db
 ) {
+    const adminRole = await db
+        .select()
+        .from(roles)
+        .where(and(eq(roles.isAdmin, true), eq(roles.orgId, orgId)))
+        .limit(1);
+
+    if (adminRole.length === 0) {
+        throw new Error(`Admin role not found for org ${orgId}`);
+    }
     // remove the resource specific pincode, password, header auth, rules, nad whitelist entries so that the resource will fall back to the policy settings
     await Promise.all([
-        db
+        trx
             .delete(resourcePassword)
             .where(eq(resourcePassword.resourceId, resourceId)),
-        db
+        trx
             .delete(resourcePincode)
             .where(eq(resourcePincode.resourceId, resourceId)),
-        db
+        trx
             .delete(resourceHeaderAuth)
             .where(eq(resourceHeaderAuth.resourceId, resourceId)),
-        db
+        trx
             .delete(resourceHeaderAuthExtendedCompatibility)
             .where(
                 eq(
@@ -334,10 +347,25 @@ async function clearResourceSpecificSettings(
                     resourceId
                 )
             ),
-        db
+        trx
             .delete(resourceWhitelist)
             .where(eq(resourceWhitelist.resourceId, resourceId)),
-        db.delete(resourceRules).where(eq(resourceRules.resourceId, resourceId))
+        trx
+            .delete(resourceRules)
+            .where(eq(resourceRules.resourceId, resourceId)),
+        // delete the roles and the users as well
+        trx
+            .delete(userResources)
+            .where(eq(userResources.resourceId, resourceId)),
+        // except the admin role
+        trx
+            .delete(roleResources)
+            .where(
+                and(
+                    eq(roleResources.resourceId, resourceId),
+                    ne(roleResources.roleId, adminRole[0].roleId)
+                )
+            )
     ]);
 }
 
@@ -404,12 +432,12 @@ async function updateHttpResource(
     }
 
     // catch when the resource policy changes or gets cleared
-    if (
-        resource.resourcePolicyId != updateData.resourcePolicyId ||
-        (updateData.resourcePolicyId === null &&
-            resource.resourcePolicyId !== null)
-    ) {
-        await clearResourceSpecificSettings(resource.resourceId, db);
+    if (resource.resourcePolicyId != updateData.resourcePolicyId) {
+        await clearResourceSpecificSettings(
+            resource.resourceId,
+            resource.orgId,
+            db
+        );
     }
 
     if (updateData.niceId) {
@@ -731,7 +759,11 @@ async function updateRawResource(
             }
         }
 
-        await clearResourceSpecificSettings(resource.resourceId, trx); // none of these are supported on raw resources
+        await clearResourceSpecificSettings(
+            resource.resourceId,
+            resource.orgId,
+            trx
+        ); // none of these are supported on raw resources
 
         // we should make sure sso, emailWhitelistEnabled, and applyRules are null because this is a raw resource
         const realUpdateData = {
