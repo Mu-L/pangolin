@@ -360,6 +360,42 @@ export default async function migration() {
             ALTER TABLE 'targets' ADD 'authToken' text;
                 `
             ).run();
+
+            // remove not null/default from sso, applyRules, and emailWhitelistEnabled in preparation for resource policies
+            db.prepare(
+                `ALTER TABLE 'resources' ADD COLUMN 'sso2' integer;`
+            ).run();
+            db.prepare(`UPDATE 'resources' SET 'sso2' = 'sso';`).run();
+            db.prepare(`ALTER TABLE 'resources' DROP COLUMN 'sso';`).run();
+            db.prepare(
+                `ALTER TABLE 'resources' RENAME COLUMN 'sso2' TO 'sso';`
+            ).run();
+
+            db.prepare(
+                `ALTER TABLE 'resources' ADD COLUMN 'applyRules2' integer;`
+            ).run();
+            db.prepare(
+                `UPDATE 'resources' SET 'applyRules2' = 'applyRules';`
+            ).run();
+            db.prepare(
+                `ALTER TABLE 'resources' DROP COLUMN 'applyRules';`
+            ).run();
+            db.prepare(
+                `ALTER TABLE 'resources' RENAME COLUMN 'applyRules2' TO 'applyRules';`
+            ).run();
+
+            db.prepare(
+                `ALTER TABLE 'resources' ADD COLUMN 'emailWhitelistEnabled2' integer;`
+            ).run();
+            db.prepare(
+                `UPDATE 'resources' SET 'emailWhitelistEnabled2' = 'emailWhitelistEnabled';`
+            ).run();
+            db.prepare(
+                `ALTER TABLE 'resources' DROP COLUMN 'emailWhitelistEnabled';`
+            ).run();
+            db.prepare(
+                `ALTER TABLE 'resources' RENAME COLUMN 'emailWhitelistEnabled2' TO 'emailWhitelistEnabled';`
+            ).run();
         })();
 
         const existingResources = db

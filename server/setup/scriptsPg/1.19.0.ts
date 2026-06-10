@@ -304,6 +304,25 @@ export default async function migration() {
         await db.execute(sql`
             ALTER TABLE "resourceSessions" ADD CONSTRAINT "resourceSessions_policyWhitelistId_resourcePolicyWhitelist_id_fk" FOREIGN KEY ("policyWhitelistId") REFERENCES "public"."resourcePolicyWhitelist"("id") ON DELETE cascade ON UPDATE no action;
         `);
+        // remove not null/default from sso, applyRules, and emailWhitelistEnabled in preparation for resource policies
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "sso" DROP NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "sso" DROP DEFAULT;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "applyRules" DROP NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "applyRules" DROP DEFAULT;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "emailWhitelistEnabled" DROP NOT NULL;`
+        );
+        await db.execute(
+            sql`ALTER TABLE "resources" ALTER COLUMN "emailWhitelistEnabled" DROP DEFAULT;`
+        );
 
         await db.execute(sql`COMMIT`);
         console.log("Migrated database");
