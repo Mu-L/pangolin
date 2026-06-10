@@ -3549,7 +3549,7 @@
     "sshPrivateKeyDisclaimer": "Your private key is not stored or visible to Pangolin. Alternatively, you can use short-lived certificates for seamless authentication using your existing Pangolin identity.",
     "sshLearnMore": "Learn more",
     "sshPrivateKeyFile": "Private Key File",
-    "sshAuthenticate": "Authenticate",
+    "sshAuthenticate": "Connect",
     "sshTerminate": "Terminate",
     "sshPoweredBy": "Powered by",
     "sshErrorNoTarget": "No target specified",
