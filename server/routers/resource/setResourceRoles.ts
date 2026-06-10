@@ -22,7 +22,7 @@ registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/roles",
     description:
-        "Set roles for a resource. This will replace all existing roles.",
+        "Set roles for a resource. This will replace all existing roles. When the resource has an inline policy defined (no shared resource policy assigned), roles are set on the inline policy instead of directly on the resource.",
     tags: [OpenAPITags.PublicResource, OpenAPITags.Role],
     request: {
         params: setResourceRolesParamsSchema,
