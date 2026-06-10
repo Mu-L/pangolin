@@ -66,16 +66,38 @@ const updateHttpResourceBodySchema = z
             .optional(),
         subdomain: z.string().nullable().optional(),
         ssl: z.boolean().optional(),
-        sso: z.boolean().optional(),
+        sso: z
+            .boolean()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
         blockAccess: z.boolean().optional(),
-        emailWhitelistEnabled: z.boolean().optional(),
-        applyRules: z.boolean().optional(),
+        emailWhitelistEnabled: z
+            .boolean()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
+        applyRules: z
+            .boolean()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
         domainId: z.string().optional(),
         enabled: z.boolean().optional(),
         stickySession: z.boolean().optional(),
         tlsServerName: z.string().nullable().optional(),
         setHostHeader: z.string().nullable().optional(),
-        skipToIdpId: z.int().positive().nullable().optional(),
+        skipToIdpId: z
+            .int()
+            .positive()
+            .nullable()
+            .optional()
+            .describe(
+                "When no shared resource policy is assigned (resourcePolicyId is null), updates the resource's inline policy. When a shared policy is assigned, this value overrides the shared policy for this resource."
+            ),
         headers: z
             .array(z.strictObject({ name: z.string(), value: z.string() }))
             .nullable()
@@ -91,7 +113,13 @@ const updateHttpResourceBodySchema = z
         pamMode: z.enum(["passthrough", "push"]).optional(),
         authDaemonMode: z.enum(["site", "remote", "native"]).optional(),
         authDaemonPort: z.int().min(1).max(65535).nullable().optional(),
-        resourcePolicyId: z.number().nullable().optional()
+        resourcePolicyId: z
+            .number()
+            .nullable()
+            .optional()
+            .describe(
+                "ID of the resource policy to apply to this resource. Set to null to remove the resource policy and fall back to the inline policy settings."
+            )
     })
     .refine((data) => Object.keys(data).length > 0, {
         error: "At least one field must be provided for update"

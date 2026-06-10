@@ -1,4 +1,4 @@
-import { db, resources } from "@server/db";
+import { db, resourcePolicies, resources } from "@server/db";
 import response from "@server/lib/response";
 import stoi from "@server/lib/stoi";
 import logger from "@server/logger";
@@ -39,6 +39,15 @@ async function query(resourceId?: number, niceId?: string, orgId?: string) {
             .limit(1);
         return res;
     }
+}
+
+async function queryInlinePolicy(resourcePolicyId: number) {
+    const [res] = await db
+        .select()
+        .from(resourcePolicies)
+        .where(eq(resourcePolicies.resourcePolicyId, resourcePolicyId))
+        .limit(1);
+    return res;
 }
 
 export type GetResourceResponse = Omit<
@@ -132,12 +141,31 @@ export async function getResource(
             );
         }
 
+        const isInlinePolicy =
+            resource.resourcePolicyId === null &&
+            resource.defaultResourcePolicyId !== null;
+
+        let returnData = resource;
+        if (isInlinePolicy) {
+            // get the policy
+            const policy = await queryInlinePolicy(
+                resource.defaultResourcePolicyId!
+            );
+            returnData = {
+                ...returnData,
+                sso: policy?.sso || null,
+                emailWhitelistEnabled: policy?.emailWhitelistEnabled || null,
+                applyRules: policy?.applyRules || null,
+                skipToIdpId: policy?.idpId || null
+            };
+        }
+
         return response<GetResourceResponse>(res, {
             data: {
-                ...resource,
-                headers: resource.headers
-                    ? JSON.parse(resource.headers)
-                    : resource.headers
+                ...returnData,
+                headers: returnData.headers
+                    ? JSON.parse(returnData.headers)
+                    : returnData.headers
             },
             success: true,
             error: false,
