@@ -252,11 +252,7 @@ export default function VncClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>
-                                {resourceName
-                                    ? `${t("vncTitle")} - ${resourceName}`
-                                    : t("vncTitle")}
-                            </CardTitle>
+                            <CardTitle>{t("vncTitle")}</CardTitle>
                             <CardDescription>
                                 {resourceName
                                     ? `${t("vncSignInDescription")} (${resourceName})`

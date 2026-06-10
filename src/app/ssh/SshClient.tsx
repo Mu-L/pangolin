@@ -510,11 +510,7 @@ export default function SshClient({
                     <PoweredByPangolin />
                     <Card className="w-full">
                         <CardHeader>
-                            <CardTitle>
-                                {resourceName
-                                    ? `${t("sshSignInTitle")} - ${resourceName}`
-                                    : t("sshSignInTitle")}
-                            </CardTitle>
+                            <CardTitle>{t("sshSignInTitle")}</CardTitle>
                             <CardDescription>
                                 {resourceName
                                     ? `${t("sshSignInDescription")} (${resourceName})`
