@@ -420,31 +420,6 @@ export async function listUserDevices(
             }
         );
 
-        // REMOVING THIS BECAUSE WE HAVE DIFFERENT TYPES OF CLIENTS NOW
-        // // Try to get the latest version, but don't block if it fails
-        // try {
-        //     const latestOlmVersion = await getLatestOlmVersion();
-
-        //     if (latestOlmVersion) {
-        //         olmsWithUpdates.forEach((client) => {
-        //             try {
-        //                 client.olmUpdateAvailable = semver.lt(
-        //                     client.olmVersion ? client.olmVersion : "",
-        //                     latestOlmVersion
-        //                 );
-        //             } catch (error) {
-        //                 client.olmUpdateAvailable = false;
-        //             }
-        //         });
-        //     }
-        // } catch (error) {
-        //     // Log the error but don't let it block the response
-        //     logger.warn(
-        //         "Failed to check for OLM updates, continuing without update info:",
-        //         error
-        //     );
-        // }
-
         return response<ListUserDevicesResponse>(res, {
             data: {
                 devices: olmsWithUpdates,
