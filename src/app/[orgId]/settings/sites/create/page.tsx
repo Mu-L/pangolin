@@ -526,7 +526,7 @@ export default function Page() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>
-                                                                    {t("name")}w
+                                                                    {t("name")}
                                                                 </FormLabel>
                                                                 <FormControl>
                                                                     <Input
