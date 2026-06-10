@@ -2957,6 +2957,7 @@
     "orgOrDomainIdMissing": "Organization or Domain ID is missing",
     "loadingDNSRecords": "Loading DNS records...",
     "olmUpdateAvailableInfo": "An updated version of Olm is available. Please update to the latest version for the best experience.",
+    "updateAvailableInfo": "An updated version is available. Please update to the latest version for the best experience.",
     "client": "Client",
     "proxyProtocol": "Proxy Protocol Settings",
     "proxyProtocolDescription": "Configure Proxy Protocol to preserve client IP addresses for TCP services.",
