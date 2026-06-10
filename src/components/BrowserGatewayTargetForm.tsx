@@ -144,6 +144,7 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                                                 []
                                             }
                                             onSelectionChange={field.onChange}
+                                            filterTypes={["newt"]}
                                         />
                                     ) : (
                                         <SitesSelector
@@ -155,6 +156,7 @@ export function BrowserGatewayTargetForm<T extends FieldValues>(
                                                 field.onChange(site);
                                                 setSiteOpen(false);
                                             }}
+                                            filterTypes={["newt"]}
                                         />
                                     )}
                                 </PopoverContent>
