@@ -56,13 +56,18 @@ async function getLatestReleaseInfo(): Promise<ReleaseInfo | null> {
             return staleReleaseInfo;
         }
 
-        // Drop drafts, pre-releases, and anything with "rc" in the tag name.
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // Drop drafts, pre-releases, anything with "rc" in the tag name,
+        // and releases published less than 1 day ago.
         releases = releases.filter(
             (r: any) =>
                 !r.draft &&
                 !r.prerelease &&
                 !r.tag_name.includes("rc") &&
-                !r.tag_name.includes("v")
+                !r.tag_name.includes("v") &&
+                r.published_at &&
+                new Date(r.published_at) <= oneDayAgo
         );
 
         // Sort descending by semver to find the true latest stable release.
