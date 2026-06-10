@@ -31,7 +31,7 @@ export enum TierFeature {
 }
 
 export const tierMatrix: Record<TierFeature, Tier[]> = {
-    [TierFeature.Labels]: ["tier2", "tier3", "enterprise"],
+    [TierFeature.Labels]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.OrgOidc]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.LoginPageDomain]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.DeviceApprovals]: ["tier1", "tier3", "enterprise"],
@@ -71,16 +71,6 @@ export const tierMatrix: Record<TierFeature, Tier[]> = {
     [TierFeature.WildcardSubdomain]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.NewtAutoUpdate]: ["tier1", "tier2", "tier3", "enterprise"],
     [TierFeature.ResourcePolicies]: ["tier3", "enterprise"],
-    [TierFeature.AdvancedPublicResources]: [
-        "tier1",
-        "tier2",
-        "tier3",
-        "enterprise"
-    ],
-    [TierFeature.AdvancedPrivateResources]: [
-        "tier1",
-        "tier2",
-        "tier3",
-        "enterprise"
-    ]
+    [TierFeature.AdvancedPublicResources]: ["tier3", "enterprise"],
+    [TierFeature.AdvancedPrivateResources]: ["tier3", "enterprise"]
 };
