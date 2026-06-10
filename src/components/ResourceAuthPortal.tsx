@@ -300,6 +300,7 @@ export default function ResourceAuthPortal(props: ResourceAuthPortalProps) {
         let isAllowed = false;
         try {
             const response = await resourceAccessProxy(props.resource.id);
+            console.log("response", response);
             if (response.error) {
                 setAccessDenied(true);
             } else {
