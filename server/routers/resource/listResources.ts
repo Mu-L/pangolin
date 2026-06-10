@@ -123,6 +123,16 @@ const listResourcesSchema = z.object({
             description:
                 "Filter resources based on health status of their targets. `healthy` means all targets are healthy. `degraded` means at least one target is unhealthy, but not all are unhealthy. `offline` means all targets are unhealthy. `unknown` means all targets have unknown health status."
         }),
+    protocol: z
+        .enum(["http", "https", "tcp", "udp", "ssh", "rdp", "vnc"])
+        .optional()
+        .catch(undefined)
+        .openapi({
+            type: "string",
+            enum: ["http", "https", "tcp", "udp", "ssh", "rdp", "vnc"],
+            description:
+                "Filter resources by protocol. `http` and `https` match HTTP resources without and with SSL respectively."
+        }),
     siteId: z.coerce.number<string>().int().positive().optional().openapi({
         type: "integer",
         description:
@@ -437,6 +447,7 @@ export async function listResources(
             enabled,
             query,
             healthStatus,
+            protocol,
             sort_by,
             order,
             siteId,
@@ -632,6 +643,28 @@ export async function listResources(
         if (typeof healthStatus !== "undefined") {
             conditions.push(eq(resources.health, healthStatus));
         }
+
+        if (typeof protocol !== "undefined") {
+            switch (protocol) {
+                case "http":
+                    conditions.push(
+                        and(
+                            eq(resources.mode, "http"),
+                            eq(resources.ssl, false)
+                        )
+                    );
+                    break;
+                case "https":
+                    conditions.push(
+                        and(eq(resources.mode, "http"), eq(resources.ssl, true))
+                    );
+                    break;
+                default:
+                    conditions.push(eq(resources.mode, protocol));
+                    break;
+            }
+        }
+
         if (siteId != null) {
             const resourcesWithSite = db
                 .select({ resourceId: targets.resourceId })

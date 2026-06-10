@@ -278,7 +278,50 @@ export default function PublicResourcesTable({
                 accessorKey: "protocol",
                 friendlyName: t("protocol"),
                 enableHiding: true,
-                header: () => <span className="p-3">{t("protocol")}</span>,
+                header: () => (
+                    <ColumnFilterButton
+                        options={[
+                            {
+                                value: "http",
+                                label: t("editInternalResourceDialogModeHttp")
+                            },
+                            {
+                                value: "https",
+                                label: t("editInternalResourceDialogModeHttps")
+                            },
+                            {
+                                value: "tcp",
+                                label: t("editInternalResourceDialogTcp")
+                            },
+                            {
+                                value: "udp",
+                                label: t("editInternalResourceDialogUdp")
+                            },
+                            {
+                                value: "ssh",
+                                label: t("editInternalResourceDialogModeSsh")
+                            },
+                            {
+                                value: "rdp",
+                                label: t("rdpTitle")
+                            },
+                            {
+                                value: "vnc",
+                                label: t("vncTitle")
+                            }
+                        ]}
+                        selectedValue={
+                            searchParams.get("protocol") ?? undefined
+                        }
+                        onValueChange={(value) =>
+                            handleFilterChange("protocol", value)
+                        }
+                        searchPlaceholder={t("searchPlaceholder")}
+                        emptyMessage={t("emptySearchOptions")}
+                        label={t("protocol")}
+                        className="p-3"
+                    />
+                ),
                 cell: ({ row }) => {
                     const resourceRow = row.original;
                     return (
