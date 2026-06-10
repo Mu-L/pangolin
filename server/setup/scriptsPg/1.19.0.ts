@@ -619,6 +619,14 @@ export default async function migration() {
                     `);
                 }
 
+                // clear the sso, applyRules, and emailWhitelistEnabled columns on all resources since that information is now in the resource policies
+                await db.execute(sql`
+                    UPDATE "resources"
+                    SET "sso" = null,
+                        "applyRules" = null,
+                        "emailWhitelistEnabled" = null
+                `);
+
                 await db.execute(sql`COMMIT`);
                 console.log(
                     `Migrated inline resource policies for ${existingResources.length} resource(s)`
