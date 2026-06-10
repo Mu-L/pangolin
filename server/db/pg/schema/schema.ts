@@ -147,12 +147,10 @@ export const resources = pgTable("resources", {
     }),
     ssl: boolean("ssl").notNull().default(false),
     blockAccess: boolean("blockAccess").notNull().default(false),
-    sso: boolean("sso").notNull().default(true),
     proxyPort: integer("proxyPort"),
-    emailWhitelistEnabled: boolean("emailWhitelistEnabled")
-        .notNull()
-        .default(false),
-    applyRules: boolean("applyRules").notNull().default(false),
+    sso: boolean("sso"),
+    emailWhitelistEnabled: boolean("emailWhitelistEnabled"),
+    applyRules: boolean("applyRules"),
     enabled: boolean("enabled").notNull().default(true),
     stickySession: boolean("stickySession").notNull().default(false),
     tlsServerName: varchar("tlsServerName"),

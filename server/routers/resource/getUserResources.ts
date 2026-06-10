@@ -203,9 +203,9 @@ export async function getUserResources(
             fullDomain: string | null;
             ssl: boolean;
             enabled: boolean;
-            sso: boolean;
+            sso: boolean | null;
             mode: string;
-            emailWhitelistEnabled: boolean;
+            emailWhitelistEnabled: boolean | null;
             policyEmailWhitelistEnabled: boolean | null;
         }> = [];
         if (uniqueResourceIds.length > 0) {

@@ -9,7 +9,8 @@ import {
     resourcePassword,
     resourcePincode,
     resourceRules,
-    resourceWhitelist
+    resourceWhitelist,
+    Transaction
 } from "@server/db";
 import {
     domains,
@@ -310,6 +311,36 @@ export async function updateResource(
     }
 }
 
+async function clearResourceSpecificSettings(
+    resourceId: number,
+    trx: Transaction | typeof db
+) {
+    // remove the resource specific pincode, password, header auth, rules, nad whitelist entries so that the resource will fall back to the policy settings
+    await Promise.all([
+        db
+            .delete(resourcePassword)
+            .where(eq(resourcePassword.resourceId, resourceId)),
+        db
+            .delete(resourcePincode)
+            .where(eq(resourcePincode.resourceId, resourceId)),
+        db
+            .delete(resourceHeaderAuth)
+            .where(eq(resourceHeaderAuth.resourceId, resourceId)),
+        db
+            .delete(resourceHeaderAuthExtendedCompatibility)
+            .where(
+                eq(
+                    resourceHeaderAuthExtendedCompatibility.resourceId,
+                    resourceId
+                )
+            ),
+        db
+            .delete(resourceWhitelist)
+            .where(eq(resourceWhitelist.resourceId, resourceId)),
+        db.delete(resourceRules).where(eq(resourceRules.resourceId, resourceId))
+    ]);
+}
+
 async function updateHttpResource(
     route: {
         req: Request;
@@ -370,6 +401,15 @@ async function updateHttpResource(
                 )
             );
         }
+    }
+
+    // catch when the resource policy changes or gets cleared
+    if (
+        resource.resourcePolicyId != updateData.resourcePolicyId ||
+        (updateData.resourcePolicyId === null &&
+            resource.resourcePolicyId !== null)
+    ) {
+        await clearResourceSpecificSettings(resource.resourceId, db);
     }
 
     if (updateData.niceId) {
@@ -560,8 +600,16 @@ async function updateHttpResource(
             emailWhitelistEnabled,
             applyRules,
             skipToIdpId,
-            ...resourceOnlyData
+            ...resourceOnlyDataRest
         } = updateData;
+
+        const resourceOnlyData = {
+            ...resourceOnlyDataRest,
+            sso: null, // reset these because they are controlled by the inline policy
+            emailWhitelistEnabled: null,
+            applyRules: null,
+            skipToIdpId: null
+        };
 
         const policyUpdate: Record<string, unknown> = {};
         if (sso !== undefined) policyUpdate.sso = sso;
@@ -659,81 +707,6 @@ async function updateRawResource(
         .limit(1);
 
     await db.transaction(async (trx) => {
-        if (updateData.resourcePolicyId != null) {
-            const [existingPolicy] = await trx
-                .select()
-                .from(resourcePolicies)
-                .where(
-                    eq(
-                        resourcePolicies.resourcePolicyId,
-                        updateData.resourcePolicyId
-                    )
-                )
-                .limit(1);
-
-            if (!existingPolicy) {
-                return next(
-                    createHttpError(
-                        HttpCode.NOT_FOUND,
-                        `Resource policy with ID ${updateData.resourcePolicyId} not found`
-                    )
-                );
-            }
-        } else {
-            // we are in an inline policy and we need to clear out the old tables
-            await Promise.all([
-                trx
-                    .delete(resourcePassword)
-                    .where(
-                        eq(
-                            resourcePassword.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourcePincode)
-                    .where(
-                        eq(
-                            resourcePincode.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourceHeaderAuth)
-                    .where(
-                        eq(
-                            resourceHeaderAuth.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourceHeaderAuthExtendedCompatibility)
-                    .where(
-                        eq(
-                            resourceHeaderAuthExtendedCompatibility.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-                trx
-                    .delete(resourceWhitelist)
-                    .where(
-                        eq(
-                            resourceWhitelist.resourceId,
-                            existingResource.resourceId
-                        )
-                    ),
-
-                trx
-                    .delete(resourceRules)
-                    .where(
-                        eq(
-                            resourceRules.resourceId,
-                            existingResource.resourceId
-                        )
-                    )
-            ]);
-        }
-
         if (updateData.niceId) {
             const [existingResourceConflict] = await trx
                 .select()
@@ -758,9 +731,20 @@ async function updateRawResource(
             }
         }
 
+        await clearResourceSpecificSettings(resource.resourceId, trx); // none of these are supported on raw resources
+
+        // we should make sure sso, emailWhitelistEnabled, and applyRules are null because this is a raw resource
+        const realUpdateData = {
+            ...updateData,
+            sso: null,
+            emailWhitelistEnabled: null,
+            applyRules: null,
+            skipToIdpId: null
+        };
+
         [updatedResource] = await trx
             .update(resources)
-            .set(updateData)
+            .set(realUpdateData)
             .where(eq(resources.resourceId, resource.resourceId))
             .returning();
     });
